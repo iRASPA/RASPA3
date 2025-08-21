@@ -57,7 +57,6 @@ import bond_potential;
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(numberOfTrialDirections);
-  std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
   std::vector<std::size_t> beads_already_placed{component.startingBead};
   const Atom first_bead = molecule_atoms[component.startingBead];
@@ -125,10 +124,14 @@ import bond_potential;
             }
           }
 
+          std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
+          if(!(i == 0 && j == 0))
+          {
           for (std::size_t k = 0; k != nextBeads.size(); ++k)
           {
             std::size_t index = nextBeads[k];
             chain_atoms[index] = rotated_atoms[k];
+          }
           }
 
           double torsion_energy = intraMolecularPotentials.calculateTorsionEnergies(chain_atoms);
@@ -144,14 +147,13 @@ import bond_potential;
 
         std::size_t selected_torsion = (i == 0) ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
 
+        trialPositions[i] = torsion_orientations[selected_torsion].first;
+
         double rosen_bluth_weight_torsion = std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
                                                     [](const double &acc, const double &logTorsionBoltzmannFactor)
                                                     { return acc + std::exp(logTorsionBoltzmannFactor); });
 
         RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrialDirections);
-     
-
-        trialPositions[i] = torsion_orientations[selected_torsion].first;
       }
     }
 
@@ -180,13 +182,6 @@ import bond_potential;
 
     // Add 'nextBeads' to 'beads_already_placed'
     beads_already_placed.insert(beads_already_placed.end(), nextBeads.begin(), nextBeads.end());
-
-    // Add the selected atoms
-    for (std::size_t i = 0; i != nextBeads.size(); ++i)
-    {
-      std::size_t index = nextBeads[i];
-      chain_atoms[index] = selected_trial_atoms[i];
-    }
 
   } while (beads_already_placed.size() < component.connectivityTable.numberOfBeads);
 

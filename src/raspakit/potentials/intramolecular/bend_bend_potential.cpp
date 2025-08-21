@@ -31,7 +31,7 @@ BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, Ben
                                      std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfBendBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

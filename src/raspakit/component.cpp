@@ -382,7 +382,7 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     intraMolecularPotentials.bends = readBendPotentials(forceField, parsed_data);
     intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
 
-    //intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
+    intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
   }
 }
 
@@ -1255,50 +1255,58 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const For
 {
   std::vector<VanDerWaalsPotential> van_der_waals_potentials{};
 
-  if (parsed_data.contains("VanDerWaals"))
-  {
-    intraMolecularPotentials.vanDerWaals.reserve(parsed_data["VanDerWaals"].size());
+  std::vector<std::array<std::size_t, 2>> found_van_der_waals = connectivityTable.findAllVanDerWaals();
 
-    for (auto &[_, item] : parsed_data["VanDerWaals"].items())
-    {
-      if (!item.is_array())
-      {
-        throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
-      }
+  //std::print("size: {}\n",found_van_der_waals);
+  //for(auto found_van_der_waal : found_van_der_waals)
+  //{
+  //  std::print("{}\n", found_van_der_waal);
+  //}
 
-      if (item.size() == 2)
-      {
-        // parse 'identifier, identifier'
-        std::size_t A = item[0].get<std::size_t>();
-        std::size_t typeA = atoms[A].type;
-        std::size_t B = item[1].get<std::size_t>();
-        std::size_t typeB = atoms[B].type;
-        VDWParameters parameters = forceField(A, B);
-      }
-      else if (item.size() == 3)
-      {
-        // parse '[identifier, identifier], 1.0'
-      }
-      else if (item.size() == 5)
-      {
-        // parse '[identifier, identifier], 1.0, "LENNARD_JONES", [epsilon, sigma]'
-      }
+  //if (parsed_data.contains("VanDerWaals"))
+  //{
+  //  intraMolecularPotentials.vanDerWaals.reserve(parsed_data["VanDerWaals"].size());
 
-      try
-      {
-        std::vector<std::size_t> identifiers =
-            item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
-        std::string potential_name = item[1].get<std::string>();
-        std::vector<double> potential_parameters =
-            item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+  //  for (auto &[_, item] : parsed_data["VanDerWaals"].items())
+  //  {
+  //    if (!item.is_array())
+  //    {
+  //      throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+  //    }
 
-      }
-      catch (std::exception const &e)
-      {
-        throw std::runtime_error(std::format("Error in Torsion-potential ({}): {}\n", item.dump(), e.what()));
-      }
-    }
-  }
+  //    if (item.size() == 2)
+  //    {
+  //      // parse 'identifier, identifier'
+  //      std::size_t A = item[0].get<std::size_t>();
+  //      std::size_t typeA = atoms[A].type;
+  //      std::size_t B = item[1].get<std::size_t>();
+  //      std::size_t typeB = atoms[B].type;
+  //      VDWParameters parameters = forceField(A, B);
+  //    }
+  //    else if (item.size() == 3)
+  //    {
+  //      // parse '[identifier, identifier], 1.0'
+  //    }
+  //    else if (item.size() == 5)
+  //    {
+  //      // parse '[identifier, identifier], 1.0, "LENNARD_JONES", [epsilon, sigma]'
+  //    }
+
+  //    try
+  //    {
+  //      std::vector<std::size_t> identifiers =
+  //          item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
+  //      std::string potential_name = item[1].get<std::string>();
+  //      std::vector<double> potential_parameters =
+  //          item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+
+  //    }
+  //    catch (std::exception const &e)
+  //    {
+  //      throw std::runtime_error(std::format("Error in Torsion-potential ({}): {}\n", item.dump(), e.what()));
+  //    }
+  //  }
+  //}
 
   return van_der_waals_potentials;
 }

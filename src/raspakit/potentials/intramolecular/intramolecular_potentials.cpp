@@ -49,58 +49,58 @@ std::optional<BondPotential> Potentials::IntraMolecularPotentials::findBondPoten
   return std::nullopt;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::calculateBondSmallMCEnergies(const std::span<Atom> atoms) const
+double Potentials::IntraMolecularPotentials::calculateBondSmallMCEnergies(const std::span<Atom> atoms) const
 {
-  RunningEnergy energies;
+  double energy{};
 
   for(const BondPotential &bond : bonds)
   {
     std::size_t A = bond.identifiers[0];
     std::size_t B = bond.identifiers[1];
-    energies.bond += bond.calculateEnergy(atoms[A].position, atoms[B].position);
+    energy += bond.calculateEnergy(atoms[A].position, atoms[B].position);
   }
 
-  return energies;
+  return energy;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::calculateBendSmallMCEnergies(const std::span<Atom> atoms) const
+double Potentials::IntraMolecularPotentials::calculateBendSmallMCEnergies(const std::span<Atom> atoms) const
 {
-  RunningEnergy energies;
+  double energy{};
 
-  for(const UreyBradleyPotential &ureyBradley : ureyBradleys)
-  {
-    std::size_t A = ureyBradley.identifiers[0];
-    std::size_t B = ureyBradley.identifiers[1];
-    energies.ureyBradley += ureyBradley.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
+  //for(const UreyBradleyPotential &ureyBradley : ureyBradleys)
+  //{
+  //  std::size_t A = ureyBradley.identifiers[0];
+  //  std::size_t B = ureyBradley.identifiers[1];
+  //  energies.ureyBradley += ureyBradley.calculateEnergy(atoms[A].position, atoms[B].position);
+  //}
 
   for(const BendPotential &bend : bends)
   {
     std::size_t A = bend.identifiers[0];
     std::size_t B = bend.identifiers[1];
     std::size_t C = bend.identifiers[2];
-    energies.bend += bend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, std::nullopt);
+    energy += bend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, std::nullopt);
   }
 
-  for(const InversionBendPotential &inversionBend : inversionBends)
-  {
-    std::size_t A = inversionBend.identifiers[0];
-    std::size_t B = inversionBend.identifiers[1];
-    std::size_t C = inversionBend.identifiers[2];
-    std::size_t D = inversionBend.identifiers[3];
-    energies.inversionBend += inversionBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
-  }
+  //for(const InversionBendPotential &inversionBend : inversionBends)
+  //{
+  //  std::size_t A = inversionBend.identifiers[0];
+  //  std::size_t B = inversionBend.identifiers[1];
+  //  std::size_t C = inversionBend.identifiers[2];
+  //  std::size_t D = inversionBend.identifiers[3];
+  //  energies.inversionBend += inversionBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+  //}
 
-  for(const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
-  {
-    std::size_t A = outOfPlaneBend.identifiers[0];
-    std::size_t B = outOfPlaneBend.identifiers[1];
-    std::size_t C = outOfPlaneBend.identifiers[2];
-    std::size_t D = outOfPlaneBend.identifiers[3];
-    energies.outOfPlaneBend += outOfPlaneBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
-  }
+  //for(const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
+  //{
+  //  std::size_t A = outOfPlaneBend.identifiers[0];
+  //  std::size_t B = outOfPlaneBend.identifiers[1];
+  //  std::size_t C = outOfPlaneBend.identifiers[2];
+  //  std::size_t D = outOfPlaneBend.identifiers[3];
+  //  energies.outOfPlaneBend += outOfPlaneBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+  //}
 
-  return energies;
+  return energy;
 }
 
 double Potentials::IntraMolecularPotentials::calculateTorsionEnergies(const std::span<Atom> atoms) const
@@ -115,6 +115,7 @@ double Potentials::IntraMolecularPotentials::calculateTorsionEnergies(const std:
     std::size_t D = torsion.identifiers[3];
     energy += torsion.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
   }
+
 
   return energy;
 }

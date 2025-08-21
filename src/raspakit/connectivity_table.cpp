@@ -245,6 +245,46 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
   return result;
 }
 
+std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() const
+{
+  std::vector<std::array<std::size_t, 2>> result{};
+  result.reserve(numberOfBeads * (numberOfBeads - 1) / 2);
+
+  for(std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  {
+    for(std::size_t j = i + 1; j < numberOfBeads; ++j)
+    {
+      result.push_back({i, j});
+    }
+  }
+
+  std::vector<std::array<std::size_t, 2>> found_bonds = findAllBonds();
+  std::vector<std::array<std::size_t, 3>> found_bends = findAllBends();
+  std::vector<std::array<std::size_t, 4>> found_torsions = findAllTorsions();
+
+
+  for(std::array<std::size_t, 2> &found_bond : found_bonds)
+  {
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[0], found_bond[1]}), result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[1], found_bond[0]}), result.end());
+  }
+
+  for(std::array<std::size_t, 3> &found_bend : found_bends)
+  {
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[0], found_bend[2]}), result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[2], found_bend[0]}), result.end());
+  }
+
+  for(std::array<std::size_t, 4> &found_torsion : found_torsions)
+  {
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[0], found_torsion[3]}), result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[3], found_torsion[0]}), result.end());
+  }
+
+  return result;
+}
+
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ConnectivityTable &b)
 {
   archive << b.versionNumber;

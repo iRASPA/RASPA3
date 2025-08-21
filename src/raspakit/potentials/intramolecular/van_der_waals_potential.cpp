@@ -29,7 +29,7 @@ VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifier
                                            std::vector<double> vector_parameters, double scaling)
     : identifiers(identifiers), type(type), scaling(scaling)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfVanDerWaalsParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfVanDerWaalsParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

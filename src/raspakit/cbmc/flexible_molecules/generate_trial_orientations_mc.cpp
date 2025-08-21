@@ -104,8 +104,8 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   // pick the move accoording to the prescribed weights
   MoveType move_type = MoveType(random.categoricalDistribution(move_probabilities));
 
-  RunningEnergy current_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
-  RunningEnergy current_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
+  double current_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
+  double current_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
   for(std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
@@ -129,9 +129,9 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         double new_bond_length = current_bond_length + (2.0 * random.uniform() - 1.0) * max_change;
         chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + (new_bond_length / current_bond_length) * current_bond_vector;
 
-        RunningEnergy new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
+        double new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
 
-        double energy_difference = (new_bond_energy - current_bond_energy).potentialEnergy();
+        double energy_difference = new_bond_energy - current_bond_energy;
 
         component.cbmc_moves_statistics[currentBead].bondLengthChange.constructed += 1;
         component.cbmc_moves_statistics[currentBead].bondLengthChange.totalConstructed += 1;
@@ -140,7 +140,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         if(random.uniform() < (new_bond_length / current_bond_length) * (new_bond_length / current_bond_length) * std::exp(-beta * energy_difference))
         {
           // update component statistics
-          current_bond_energy = new_bond_energy;
+          current_bond_energy += energy_difference;
 
           component.cbmc_moves_statistics[currentBead].bondLengthChange.accepted += 1;
           component.cbmc_moves_statistics[currentBead].bondLengthChange.totalAccepted += 1;
@@ -149,6 +149,15 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         {
           chain_atoms[selected_next_bead].position = saved_current_position;
         }
+#if defined(DEBUG)
+        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, saved_current_position);
+        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, chain_atoms[selected_next_bead].position);
+        if(std::fabs(new_angle - old_angle) > 1e-5)
+        {
+          throw std::runtime_error(std::format("CBMC: bond-angle change in 'MoveType::BondLengthChange' ({} vs {})\n",
+                                               new_angle, old_angle));
+        }
+#endif
         break;
       }
       case MoveType::BendAngleChange: 
@@ -183,15 +192,10 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
                                           chain_atoms[selected_next_bead].position);
         double new_sinus = std::sin(new_angle);
 
-        RunningEnergy new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
+        double new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
-        double energy_difference = (new_bend_energy - current_bend_energy).potentialEnergy();
+        double energy_difference = new_bend_energy - current_bend_energy;
 
-        //std::print("random angle: {} new: {} {} old {} {} delta: {}\n", random_angle * Units::RadiansToDegrees,
-        //                new_angle * Units::RadiansToDegrees, new_bend_energy.potentialEnergy(), 
-        //                current_angle * Units::RadiansToDegrees, current_bend_energy.potentialEnergy(),
-        //               energy_difference);
-        
         component.cbmc_moves_statistics[currentBead].bendAngleChange.constructed += 1;
         component.cbmc_moves_statistics[currentBead].bendAngleChange.totalConstructed += 1;
 
@@ -199,7 +203,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         if(random.uniform() < (new_sinus / current_sinus) * std::exp(-beta * energy_difference))
         {
           // update component statistics
-          current_bend_energy = new_bend_energy;
+          current_bend_energy += energy_difference;
 
           component.cbmc_moves_statistics[currentBead].bendAngleChange.accepted += 1;
           component.cbmc_moves_statistics[currentBead].bendAngleChange.totalAccepted += 1;
@@ -234,9 +238,9 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
                                                    chain_atoms[currentBead].position,
                                                    chain_atoms[selected_next_bead].position);
 
-        RunningEnergy new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
+        double new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
-        double energy_difference = (new_bend_energy - current_bend_energy).potentialEnergy();
+        double energy_difference = new_bend_energy - current_bend_energy;
 
         component.cbmc_moves_statistics[currentBead].conePositionChange.constructed += 1;
         component.cbmc_moves_statistics[currentBead].conePositionChange.totalConstructed += 1;
@@ -245,7 +249,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         if(random.uniform() < std::exp(-beta * energy_difference))
         {
           // update component statistics
-          current_bend_energy = new_bend_energy;
+          current_bend_energy += energy_difference;
 
           component.cbmc_moves_statistics[currentBead].conePositionChange.accepted += 1;
           component.cbmc_moves_statistics[currentBead].conePositionChange.totalAccepted += 1;
@@ -260,6 +264,19 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         std::unreachable();
     }
   }
+
+  double recomputed_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
+  double recomputed_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
+
+  double bond_drift = std::fabs( recomputed_bond_energy - current_bond_energy);
+  double bend_drift = std::fabs( recomputed_bend_energy - current_bend_energy);
+
+  if(bond_drift > 1e-4 || bend_drift > 1e-4)
+  {
+    std::print("CBMC: internal drifts (bond {}, bend {})\n", bond_drift, bend_drift);
+    std::exit(0);
+  }
+
 
   std::vector<Atom> next_bead_atoms(nextBeads.size());
   for(std::size_t i = 0; i != nextBeads.size(); ++i)

@@ -31,7 +31,7 @@ InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identi
                                                std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfInversionBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfInversionBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

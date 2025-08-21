@@ -31,7 +31,7 @@ BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, Bon
                                      std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfBondBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

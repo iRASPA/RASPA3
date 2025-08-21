@@ -29,7 +29,7 @@ UreyBradleyPotential::UreyBradleyPotential(std::array<std::size_t, 2> identifier
                                            std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < parameters.size(); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfUreyBradleyParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

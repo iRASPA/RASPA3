@@ -1873,9 +1873,12 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::size_t index = 0;
   for(std::size_t i = 0; i < components.size(); ++i)
   {
-    std::span<const Molecule> span_molecules = {&moleculeData[index], numberOfMoleculesPerComponent[i]};
-    runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
-                                                        span_molecules, spanOfMoleculeAtoms());
+    if(numberOfMoleculesPerComponent[i] > 0)
+    {
+      std::span<const Molecule> span_molecules = {&moleculeData[index], numberOfMoleculesPerComponent[i]};
+      runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
+                                                          span_molecules, spanOfMoleculeAtoms());
+    }
 
     index += numberOfMoleculesPerComponent[i];
   }

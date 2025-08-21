@@ -59,8 +59,8 @@ struct IntraMolecularPotentials
 
   std::optional<BondPotential> findBondPotential(std::size_t A, std::size_t B) const;
 
-  RunningEnergy calculateBondSmallMCEnergies(const std::span<Atom> atoms) const;
-  RunningEnergy calculateBendSmallMCEnergies(const std::span<Atom> atoms) const;
+  double calculateBondSmallMCEnergies(const std::span<Atom> atoms) const;
+  double calculateBendSmallMCEnergies(const std::span<Atom> atoms) const;
 
   double calculateTorsionEnergies(const std::span<Atom> atoms) const;
 

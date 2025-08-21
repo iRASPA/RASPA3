@@ -31,7 +31,7 @@ BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifier
                                            std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendTorsionParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfBendTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

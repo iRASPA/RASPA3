@@ -31,7 +31,7 @@ OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> iden
                                                  std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < parameters.size(); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfOutOfPlaneBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }

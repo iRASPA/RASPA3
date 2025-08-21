@@ -31,7 +31,7 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
                                    std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfTorsionParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -268,7 +268,7 @@ std::string TorsionPotential::print() const
       // p_2/k_B [K]
       // p_3/k_B [K]
       return std::format(
-          "{} - {} - {} - {} : THREE_COSINE p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
+          "{} - {} - {} - {} : TRAPPE p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
           identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
           parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
           parameters[3] * Units::EnergyToKelvin);
@@ -395,15 +395,15 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
 
   double3 Dab = posA - posB;
 
-  double3 Dbc = (posC - posB).normalized();
+  double3 Dcb = (posC - posB).normalized();
 
-  double3 Dcd = posD - posC;
+  double3 Ddc = posD - posC;
 
-  double dot_ab = double3::dot(Dab, Dbc);
-  double dot_cd = double3::dot(Dcd, Dbc);
+  double dot_ab = double3::dot(Dab, Dcb);
+  double dot_dc = double3::dot(Ddc, Dcb);
 
-  double3 dr = (Dab - dot_ab * Dbc).normalized();
-  double3 ds = (Dcd - dot_cd * Dbc).normalized();
+  double3 dr = (Dab - dot_ab * Dcb).normalized();
+  double3 ds = (Ddc - dot_dc * Dcb).normalized();
 
   // compute Cos(Phi)
   // Phi is defined in protein convention Phi(trans)=Pi
@@ -423,9 +423,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_1     [-]
       // p_2     [degrees]
       // potential defined in terms of 'phi' and therefore contains a singularity
-      // the sign of the angle-phi is positive if (Rab x Rbc) x (Rbc x Rcd) is in the
+      // the sign of the angle-phi is positive if (Rab x Rcb) x (Rcb x Rdc) is in the
       // same direction as Rbc, and negative otherwise
-      sign = double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
+      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::HarmonicCosine:
@@ -484,7 +484,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       add phase in cos function:
       p_0+p_1*(1+cos(phi-p_4))+p_2*(1-cos(2*(phi-p_4)))+p_3*(1+cos(3*(phi-p_4)))
      */
-      sign = double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
+      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       phi -= parameters[4];  // shift Phi as Phi+parameters[4]
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
@@ -501,7 +501,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // potential defined in terms of 'phi' and therefore contains a singularity
       // the sign of the angle-phi is positive if (Rab x Rbc) x (Rbc x Rcd) is in the
       // same direction as Rbc, and negative otherwise
-      sign = double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
+      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::CFF:
