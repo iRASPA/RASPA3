@@ -1257,6 +1257,24 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const For
 
   std::vector<std::array<std::size_t, 2>> found_van_der_waals = connectivityTable.findAllVanDerWaals();
 
+  for(std::array<std::size_t, 2> &found_van_der_waal : found_van_der_waals)
+  {
+    std::size_t A = found_van_der_waal[0];
+    std::size_t B = found_van_der_waal[1];
+    std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
+    std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
+
+    VDWParameters::Type potentialType = forceField(typeA, typeB).type;
+    double4 parameters = forceField(typeA, typeB).parameters;
+    double shift = forceField(typeA, typeB).shift;
+
+    // FIX: unit conversion
+    VanDerWaalsPotential potential = VanDerWaalsPotential({A, B}, VanDerWaalsType::LennardJones, 
+                                          {parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, shift, 1.0);
+
+    van_der_waals_potentials.push_back(potential);
+  }
+
   //std::print("size: {}\n",found_van_der_waals);
   //for(auto found_van_der_waal : found_van_der_waals)
   //{

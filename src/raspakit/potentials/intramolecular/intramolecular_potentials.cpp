@@ -120,9 +120,23 @@ double Potentials::IntraMolecularPotentials::calculateTorsionEnergies(const std:
   return energy;
 }
 
+double Potentials::IntraMolecularPotentials::calculateVanDerWaalsEnergies(const std::span<Atom> atoms) const
+{
+  double energy{};
+
+  for(const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
+  {
+    std::size_t A = vanDerWaal.identifiers[0];
+    std::size_t B = vanDerWaal.identifiers[1];
+    energy += vanDerWaal.calculateEnergy(atoms[A].position, atoms[B].position);
+  }
+
+  return energy;
+}
+
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BondPotential &bond : bonds)
   {
@@ -258,7 +272,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondEnergies(
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalUreyBradleyEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const UreyBradleyPotential &ureyBradley : ureyBradleys)
   {
@@ -271,7 +285,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalUreyBradleyEn
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BendPotential &bend : bends)
   {
@@ -285,7 +299,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendEnergies(
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalInversionBendEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const InversionBendPotential &inversionBend : inversionBends)
   {
@@ -301,7 +315,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalInversionBend
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalOutOfPlaneBendEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
   {
@@ -317,7 +331,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalOutOfPlaneBen
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalTorsionEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const TorsionPotential &torsion : torsions)
   {
@@ -333,7 +347,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalTorsionEnergi
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalImproperTorsionEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const TorsionPotential &improperTorsion : improperTorsions)
   {
@@ -349,7 +363,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalImproperTorsi
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondBondEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BondBondPotential &bondBond : bondBonds)
   {
@@ -364,7 +378,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondBondEnerg
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondBendEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BondBendPotential &bondBend : bondBends)
   {
@@ -380,7 +394,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondBendEnerg
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondTorsionEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BondTorsionPotential &bondTorsion : bondTorsions)
   {
@@ -396,7 +410,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondTorsionEn
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendBendEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BendBendPotential &bendBend : bendBends)
   {
@@ -412,7 +426,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendBendEnerg
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendTorsionEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const BendTorsionPotential &bendTorsion : bendTorsions)
   {
@@ -428,7 +442,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendTorsionEn
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraVanDerWaalsEnergies(const std::span<const Atom> atoms) const
 {
-  RunningEnergy energies;
+  RunningEnergy energies{};
 
   for(const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
   {

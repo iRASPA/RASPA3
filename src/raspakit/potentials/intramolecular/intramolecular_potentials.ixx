@@ -64,6 +64,8 @@ struct IntraMolecularPotentials
 
   double calculateTorsionEnergies(const std::span<Atom> atoms) const;
 
+  double calculateVanDerWaalsEnergies(const std::span<Atom> atoms) const;
+
   RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
   RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;

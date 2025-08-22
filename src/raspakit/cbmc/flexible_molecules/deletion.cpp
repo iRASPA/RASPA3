@@ -158,10 +158,17 @@ import bond_potential;
     }
 
     // Compute the external-energies for the next-beads
-    const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies =
+    std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies =
         CBMC::computeExternalNonOverlappingEnergies(
             component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
             moleculeAtomData, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, -1);
+
+    // add van der Waals
+    for(std::pair<std::vector<Atom>, RunningEnergy> &conf : externalEnergies)
+    {
+      RunningEnergy recomputed_internal_energies = intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(molecule_atoms);
+      conf.second += recomputed_internal_energies;
+    }
 
     std::vector<double> logBoltzmannFactors{};
     logBoltzmannFactors.reserve(numberOfTrialDirections);
