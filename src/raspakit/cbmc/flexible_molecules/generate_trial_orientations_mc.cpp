@@ -267,6 +267,15 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         {
           chain_atoms[selected_next_bead].position = saved_current_position;
         }
+#if defined(DEBUG)
+        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, saved_current_position);
+        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, chain_atoms[selected_next_bead].position);
+        if(std::fabs(new_angle - old_angle) > 1e-5)
+        {
+          throw std::runtime_error(std::format("CBMC: bend-angle change in 'MoveType::ConeChange' ({} vs {})\n",
+                                               new_angle * Units::RadiansToDegrees, old_angle * Units::RadiansToDegrees));
+        }
+#endif
         break;
       }
       default:

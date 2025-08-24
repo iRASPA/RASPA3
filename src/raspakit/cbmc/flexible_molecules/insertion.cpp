@@ -134,6 +134,26 @@ import bond_potential;
           double torsion_energy = intraMolecularPotentials.calculateTorsionEnergies(chain_atoms);
 
           torsion_orientations[j] = {rotated_atoms, torsion_energy};
+#if defined(DEBUG)
+          for (std::size_t k = 0; k != nextBeads.size(); ++k)
+          {
+            double old_angle = double3::angle(chain_atoms[previous_bead.value()].position, chain_atoms[current_bead].position, trial_orientations[k].position);
+            double new_angle = double3::angle(chain_atoms[previous_bead.value()].position, chain_atoms[current_bead].position, rotated_atoms[k].position);
+            if(std::fabs(new_angle - old_angle) > 1e-5)
+            {
+              throw std::runtime_error(std::format("CBMC: bend-angle change in torsion-rotation ({} vs {})\n",
+                                                   new_angle * Units::RadiansToDegrees, old_angle * Units::RadiansToDegrees));
+            }
+
+            double old_bond_length = (chain_atoms[current_bead].position - trial_orientations[k].position).length();
+            double new_bond_length = (chain_atoms[current_bead].position - rotated_atoms[k].position).length();
+            if(std::fabs(new_bond_length - old_bond_length) > 1e-5)
+            {
+              throw std::runtime_error(std::format("CBMC: bond-distance change in torsion-rotation ({} vs {})\n",
+                                                   new_bond_length, old_bond_length));
+            }
+          }
+#endif
         }
 
         std::vector<double> logTorsionBoltzmannFactors{};

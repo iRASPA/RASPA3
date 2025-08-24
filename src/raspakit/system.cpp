@@ -2030,24 +2030,27 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   std::size_t molecule_index = 0;
   for(std::size_t i = 0; i < components.size(); ++i)
   {
-    std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
-    RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
-                                                        span_molecules, spanOfMoleculeAtoms());
+    if(numberOfMoleculesPerComponent[i] > 0)
+    {
+      std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
+      RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
+                                                          span_molecules, spanOfMoleculeAtoms());
 
-    pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
-    pressureInfo.first.intraComponentEnergies[i].ureyBradley += runningIntraEnergy.ureyBradley;
-    pressureInfo.first.intraComponentEnergies[i].bend += runningIntraEnergy.bend;
-    pressureInfo.first.intraComponentEnergies[i].inversionBend += runningIntraEnergy.inversionBend;
-    pressureInfo.first.intraComponentEnergies[i].outOfPlaneBend += runningIntraEnergy.outOfPlaneBend;
-    pressureInfo.first.intraComponentEnergies[i].torsion += runningIntraEnergy.torsion;
-    pressureInfo.first.intraComponentEnergies[i].improperTorsion += runningIntraEnergy.improperTorsion;
-    pressureInfo.first.intraComponentEnergies[i].bondBond += runningIntraEnergy.bondBond;
-    pressureInfo.first.intraComponentEnergies[i].bondBend += runningIntraEnergy.bondBend;
-    pressureInfo.first.intraComponentEnergies[i].bondTorsion += runningIntraEnergy.bondTorsion;
-    pressureInfo.first.intraComponentEnergies[i].bendBend += runningIntraEnergy.bendBend;
-    pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
-    pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
-    pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
+      pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
+      pressureInfo.first.intraComponentEnergies[i].ureyBradley += runningIntraEnergy.ureyBradley;
+      pressureInfo.first.intraComponentEnergies[i].bend += runningIntraEnergy.bend;
+      pressureInfo.first.intraComponentEnergies[i].inversionBend += runningIntraEnergy.inversionBend;
+      pressureInfo.first.intraComponentEnergies[i].outOfPlaneBend += runningIntraEnergy.outOfPlaneBend;
+      pressureInfo.first.intraComponentEnergies[i].torsion += runningIntraEnergy.torsion;
+      pressureInfo.first.intraComponentEnergies[i].improperTorsion += runningIntraEnergy.improperTorsion;
+      pressureInfo.first.intraComponentEnergies[i].bondBond += runningIntraEnergy.bondBond;
+      pressureInfo.first.intraComponentEnergies[i].bondBend += runningIntraEnergy.bondBend;
+      pressureInfo.first.intraComponentEnergies[i].bondTorsion += runningIntraEnergy.bondTorsion;
+      pressureInfo.first.intraComponentEnergies[i].bendBend += runningIntraEnergy.bendBend;
+      pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
+      pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
+      pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
+    }
 
     molecule_index += numberOfMoleculesPerComponent[i];
   }
