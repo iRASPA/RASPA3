@@ -1126,6 +1126,25 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
   if (cutOffCoulombAutomatic)
   {
     cutOffCoulomb = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
+
+    // compute the alpha-parameter and max k-vectors from the relative precision
+    double eps = std::min(std::fabs(EwaldPrecision), 0.5);
+
+    double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
+
+    EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
+
+    double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
+
+    double3 perpendicularWidths = simulationBox.perpendicularWidths();
+    numberOfWaveVectors =
+        int3(static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+
+    std::size_t maxNumberOfWaveVector =
+        static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
+    reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
   }
 }
 

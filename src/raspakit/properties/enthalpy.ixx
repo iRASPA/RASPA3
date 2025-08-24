@@ -70,7 +70,7 @@ export struct PropertyEnthalpy
   EnthalpyOfAdsorption averagedEnthalpy(std::size_t blockIndex) const
   {
     return (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].first /
-            bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second)
+            std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second))
         .compositeProperty();
   }
 
@@ -80,14 +80,14 @@ export struct PropertyEnthalpy
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / bookKeepingEnthalpyOfAdsorptionTerms[0].second >
-          0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
+          std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) > 0.5)
       {
         average += averagedEnthalpy(blockIndex);
         ++numberOfSamples;
       }
     }
-    return (1.0 / static_cast<double>(numberOfSamples)) * average;
+    return (1.0 / static_cast<double>(std::max(1uz, numberOfSamples))) * average;
   }
 
   std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> averageEnthalpy() const
@@ -98,8 +98,8 @@ export struct PropertyEnthalpy
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / bookKeepingEnthalpyOfAdsorptionTerms[0].second >
-          0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
+          std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) > 0.5)
       {
         EnthalpyOfAdsorption value = averagedEnthalpy(blockIndex) - average;
         sumOfSquares += value * value;
@@ -127,7 +127,7 @@ export struct PropertyEnthalpy
         bookKeepingEnthalpyOfAdsorptionTerms.begin(), bookKeepingEnthalpyOfAdsorptionTerms.end(), enthalpy.begin(),
         [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block)
         {
-          return Units::EnergyToKelvin * ((block.first / block.second).compositeProperty().values[k] - idealGasTerm);
+          return Units::EnergyToKelvin * ((block.first / std::max(1.0, block.second)).compositeProperty().values[k] - idealGasTerm);
         });
     return enthalpy;
   }

@@ -585,7 +585,8 @@ void MonteCarlo::production()
         if (outputToFiles)
         {
           std::ostream stream(streams[system.systemId].rdbuf());
-          std::print(stream, "{}", system.writeProductionStatusReportMC(currentCycle, numberOfCycles));
+          std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
+          std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
           std::flush(stream);
         }
       }
@@ -631,6 +632,8 @@ void MonteCarlo::production()
         }
       }
     }
+
+    
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
@@ -683,8 +686,32 @@ void MonteCarlo::production()
   // Carry out last write of properties after simulation has finished
   if (outputToFiles)
   {
+    // Write out last status
     for (System& system : systems)
     {
+      system.writeRestartFile();
+
+      system.forceField.initializeAutomaticCutOff(system.simulationBox);
+
+      std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+      system.currentEnergyStatus = molecularPressure.first;
+      system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+
+      system.loadings =
+          Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+      std::ostream stream(streams[system.systemId].rdbuf());
+
+      std::print(stream, "\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "                              Simulation finised!\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "\n");
+
+      std::string status_line{std::format("Final state after {} cycles\n", numberOfCycles)};
+      std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
+      std::flush(stream);
+
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(

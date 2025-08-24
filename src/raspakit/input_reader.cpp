@@ -978,13 +978,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
       }
 
+      std::optional<SimulationBox> restart_simulation_box{};
       if (value.contains("RestartFileName") && value["RestartFileName"].is_string())
       {
         std::string restartFileName = value["RestartFileName"].get<std::string>();
 
         if (!std::filesystem::exists(restartFileName))
         {
-          throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", restartFileName));
+          restartFileName += ".json";
+
+          if (!std::filesystem::exists(restartFileName))
+          {
+            throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", restartFileName));
+          }
         }
       
         std::ifstream input_restart_file(restartFileName);
@@ -1009,6 +1015,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::vector<double3> restart_positions = restart_data[component_name].get<std::vector<double3>>();
             jsonRestartFilePositions[systemId][i] = restart_positions;
           }
+        }
+
+        if(restart_data.contains("SimulationBox"))
+        {
+          restart_simulation_box = restart_data["SimulationBox"].get<SimulationBox>();
         }
       }
 
@@ -1051,7 +1062,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       else if (caseInSensStringCompare(typeString, "Box"))
       {
         // Parse box options
-
         double3 boxLengths{25.0, 25.0, 25.0};
         if (value.contains("BoxLengths"))
         {
@@ -1071,6 +1081,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
         SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
+
+        if(restart_simulation_box.has_value())
+        {
+          simulationBox = restart_simulation_box.value();
+        }
+
         systems[systemId] =
             System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {}, jsonComponents[systemId],
                 jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);

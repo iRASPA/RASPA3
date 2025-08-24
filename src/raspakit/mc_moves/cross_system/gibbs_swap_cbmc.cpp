@@ -63,9 +63,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
   Component::GrowType growType = componentA.growType;
 
-  // std::vector<Atom> atoms = componentA.recenteredCopy(1.0,
-  // systemA.numberOfMoleculesPerComponent[selectedComponent]);
-
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(

@@ -501,7 +501,8 @@ void MonteCarloTransitionMatrix::production()
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeProductionStatusReportMC(currentCycle, numberOfCycles));
+        std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
+        std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
         std::flush(stream);
       }
     }

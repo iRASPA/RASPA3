@@ -152,7 +152,7 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
     switch (Units::unitSystem)
     {
       case Units::System::RASPA:
-        std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
+        std::print(stream, "    molecules:      {:.6e} molecules  ({:.6e} +/- {:.6e})\n",
                    numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
                    error.numberOfMolecules[comp.componentId]);
         std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",
@@ -164,7 +164,7 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
                    densityConversionFactor * comp.totalMass * error.numberDensities[comp.componentId]);
         break;
       case Units::System::ReducedUnits:
-        std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
+        std::print(stream, "    molecules:      {:.6e} molecules  ({:.6e} +/- {:.6e})\n",
                    numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
                    error.numberOfMolecules[comp.componentId]);
         std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n",

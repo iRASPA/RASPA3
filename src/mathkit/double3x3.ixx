@@ -12,6 +12,7 @@ module;
 #include <format>
 #include <vector>
 #include <span>
+#include <tuple>
 #endif
 
 export module double3x3;
@@ -249,6 +250,7 @@ export union double3x3
   }
   */
 
+  std::tuple<double3x3, double3, double3x3>  singularValueDecomposition() const;
   static double3x3 computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B);
   static double3x3 computeRotationMatrix(double3 a, double3 b);
 

@@ -511,7 +511,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
       }
     }
 
-    // add atom position passed to 'createInitialMolecules'
+    // Add atom position passed to 'createInitialMolecules'
     if(componentId < initialPositions.size())
     {
       std::vector<double3> positions = initialPositions[componentId];
@@ -519,27 +519,35 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
       {
         std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());
 
-        // compute center of mass
-        double totalMass = 0.0;
         double3 com(0.0, 0.0, 0.0);
-        for (std::size_t k = 0; k < position_view.size(); ++k)
+        simd_quatd orientation{};
+
+        if(components[componentId].rigid)
         {
-          double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
-          com += mass * position_view[k];
-          totalMass += mass;
+          // Compute center of mass
+          double totalMass = 0.0;
+          for (std::size_t k = 0; k < position_view.size(); ++k)
+          {
+            double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
+            com += mass * position_view[k];
+            totalMass += mass;
+          }
+          com /= totalMass;
+
+          double3 reference_com = double3{0.0, 0.0, 0.0};
+
+          std::vector<double3> reference_positions = 
+              components[componentId].atoms | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
+
+          // Compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
+          double3x3 rotation_matrix = double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
+
+          // Get orientation
+          orientation = rotation_matrix.quaternion();
         }
-        com /= totalMass;
-
-        double3 reference_com = double3{0.0, 0.0, 0.0};
-        std::vector<double3> reference_positions = {};
-
-        // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
-        double3x3 rotation_matrix = double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
-        simd_quatd orientation = rotation_matrix.quaternion();
 
         Molecule molecule = Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());
 
-        // construct atoms
         std::vector<Atom> molecule_atoms = components[componentId].atoms;
         for (std::size_t k = 0; k < position_view.size(); ++k)
         {
@@ -1248,15 +1256,16 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   return stream.str();
 }
 
-std::string System::writeProductionStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writeProductionStatusReportMC(const std::string &statusLine) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "{}", statusLine);
   std::print(stream, "===============================================================================\n\n");
 
-  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
-  std::print(stream, "{}\n", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
+  auto [simulation_box, average_simulation_box] = averageSimulationBox.averageSimulationBox();
+  std::print(stream, "{}\n", simulationBox.printStatus(simulation_box, average_simulation_box));
+
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
@@ -3111,6 +3120,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 void System::writeRestartFile()
 {
   nlohmann::json json;
+
+  if(!framework.has_value())
+  {
+    json["SimulationBox"] = simulationBox;
+  }
 
   for(std::size_t component_id = 0; component_id < components.size(); ++component_id)
   {

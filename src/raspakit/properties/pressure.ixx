@@ -71,7 +71,7 @@ export struct PropertyPressure
 
   double3x3 averagedExcessPressureTensor(std::size_t blockIndex) const
   {
-    return bookKeepingExcessPressure[blockIndex].first / bookKeepingExcessPressure[blockIndex].second;
+    return bookKeepingExcessPressure[blockIndex].first / std::max(1.0, bookKeepingExcessPressure[blockIndex].second);
   }
 
   double3x3 averagedExcessPressureTensor() const
@@ -79,7 +79,7 @@ export struct PropertyPressure
     std::pair<double3x3, double> summedBlocks = std::accumulate(
         bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
         std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
-    return summedBlocks.first / summedBlocks.second;
+    return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
   std::pair<double3x3, double3x3> averageExcessPressureTensor() const
@@ -90,7 +90,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
+      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
       {
         double3x3 value = averagedExcessPressureTensor(blockIndex) - average;
         sumOfSquares += sqr(value);
@@ -115,7 +115,7 @@ export struct PropertyPressure
 
   double3x3 averagedIdealGasPressureTensor(std::size_t blockIndex) const
   {
-    return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) *
+    return (bookKeepingIdealGasPressure[blockIndex].first / std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) *
            double3x3::identity();
   }
 
@@ -128,7 +128,7 @@ export struct PropertyPressure
       summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
     }
 
-    return (summedBlocks.first / summedBlocks.second);
+    return (summedBlocks.first / std::max(1.0, summedBlocks.second));
   }
 
   std::pair<double3x3, double3x3> averageIdealGasPressureTensor() const
@@ -139,7 +139,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingIdealGasPressure[blockIndex].second / bookKeepingIdealGasPressure[0].second > 0.5)
+      if (bookKeepingIdealGasPressure[blockIndex].second / std::max(1.0, bookKeepingIdealGasPressure[0].second) > 0.5)
       {
         double3x3 value = averagedIdealGasPressureTensor(blockIndex) - average;
         sumOfSquares += sqr(value);
@@ -164,9 +164,9 @@ export struct PropertyPressure
 
   double3x3 averagedPressureTensor(std::size_t blockIndex) const
   {
-    return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) *
+    return (bookKeepingIdealGasPressure[blockIndex].first / std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) *
                double3x3::identity() +
-           (bookKeepingExcessPressure[blockIndex].first / bookKeepingExcessPressure[blockIndex].second);
+           (bookKeepingExcessPressure[blockIndex].first / std::max(1.0, bookKeepingExcessPressure[blockIndex].second));
   }
 
   std::pair<double3x3, double3x3> averagePressureTensor() const
@@ -177,7 +177,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
+      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
       {
         double3x3 value =
             (averagedExcessPressureTensor(blockIndex) + averagedIdealGasPressureTensor(blockIndex)) - average;
@@ -203,7 +203,7 @@ export struct PropertyPressure
 
   double averagedExcessPressure(std::size_t blockIndex) const
   {
-    return bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * bookKeepingExcessPressure[blockIndex].second);
+    return bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * std::max(1.0, bookKeepingExcessPressure[blockIndex].second));
   }
 
   double averagedExcessPressure() const
@@ -211,7 +211,7 @@ export struct PropertyPressure
     std::pair<double3x3, double> summedBlocks = std::accumulate(
         bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
         std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
-    return summedBlocks.first.trace() / (3.0 * summedBlocks.second);
+    return summedBlocks.first.trace() / (3.0 * std::max(1.0, summedBlocks.second));
   }
 
   std::pair<double, double> averageExcessPressure() const
@@ -222,7 +222,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
+      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
       {
         double value = averagedExcessPressure(blockIndex) - average;
         sumOfSquares += value * value;
@@ -247,7 +247,7 @@ export struct PropertyPressure
 
   double averagedIdealGasPressure(std::size_t blockIndex) const
   {
-    return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second);
+    return (bookKeepingIdealGasPressure[blockIndex].first / std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second));
   }
 
   double averagedIdealGasPressure() const
@@ -259,7 +259,7 @@ export struct PropertyPressure
       summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
     }
 
-    return (summedBlocks.first / summedBlocks.second);
+    return (summedBlocks.first / std::max(1.0, summedBlocks.second));
   }
 
   std::pair<double, double> averageIdealGasPressure() const
@@ -270,7 +270,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingIdealGasPressure[blockIndex].second / bookKeepingIdealGasPressure[0].second > 0.5)
+      if (bookKeepingIdealGasPressure[blockIndex].second / std::max(1.0, bookKeepingIdealGasPressure[0].second) > 0.5)
       {
         double value = averagedIdealGasPressure(blockIndex) - average;
         sumOfSquares += value * value;
@@ -295,8 +295,8 @@ export struct PropertyPressure
 
   double averagedPressure(std::size_t blockIndex) const
   {
-    return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) +
-           (bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * bookKeepingExcessPressure[blockIndex].second));
+    return (bookKeepingIdealGasPressure[blockIndex].first / std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) +
+           (bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * std::max(1.0, bookKeepingExcessPressure[blockIndex].second)));
   }
 
   std::pair<double, double> averagePressure() const
@@ -307,7 +307,7 @@ export struct PropertyPressure
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
+      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
       {
         double value = (averagedExcessPressure(blockIndex) + averagedIdealGasPressure(blockIndex)) - average;
         sumOfSquares += value * value;
@@ -315,7 +315,7 @@ export struct PropertyPressure
       }
     }
 
-    double confidenceIntervalError = 0.0;
+    double confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
       std::size_t degreesOfFreedom = numberOfSamples - 1;

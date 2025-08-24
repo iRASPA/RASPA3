@@ -70,7 +70,7 @@ export struct PropertyLoading
 
   Loadings averagedLoading(std::size_t blockIndex) const
   {
-    return bookKeepingLoadings[blockIndex].first / bookKeepingLoadings[blockIndex].second;
+    return bookKeepingLoadings[blockIndex].first / std::max(1.0, bookKeepingLoadings[blockIndex].second);
   }
 
   Loadings averagedLoading() const
@@ -78,7 +78,7 @@ export struct PropertyLoading
     std::pair<Loadings, double> summedBlocks =
         std::accumulate(bookKeepingLoadings.begin(), bookKeepingLoadings.end(),
                         std::make_pair(Loadings(numberOfComponents), 0.0), pair_sum);
-    return summedBlocks.first / summedBlocks.second;
+    return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
   std::pair<Loadings, Loadings> averageLoading() const
@@ -89,7 +89,7 @@ export struct PropertyLoading
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingLoadings[blockIndex].second / bookKeepingLoadings[0].second > 0.5)
+      if (bookKeepingLoadings[blockIndex].second / std::max(1.0, bookKeepingLoadings[0].second) > 0.5)
       {
         Loadings value = averagedLoading(blockIndex) - average;
         sumOfSquares += value * value;

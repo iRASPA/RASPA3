@@ -381,7 +381,7 @@ export struct System
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
-  std::string writeProductionStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMC(const std::string &statusLine) const;
   std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;

@@ -76,7 +76,7 @@ export struct PropertyEnergy
 
   EnergyStatus averagedEnergy(std::size_t blockIndex) const
   {
-    return bookKeepingEnergyStatus[blockIndex].first / bookKeepingEnergyStatus[blockIndex].second;
+    return bookKeepingEnergyStatus[blockIndex].first / std::max(1.0, bookKeepingEnergyStatus[blockIndex].second);
   }
 
   EnergyStatus averagedEnergy() const
@@ -84,7 +84,7 @@ export struct PropertyEnergy
     std::pair<EnergyStatus, double> summedBlocks = std::accumulate(
         bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(),
         std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0), pair_sum);
-    return summedBlocks.first / summedBlocks.second;
+    return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
   std::pair<EnergyStatus, EnergyStatus> averageEnergy() const
@@ -96,7 +96,7 @@ export struct PropertyEnergy
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnergyStatus[blockIndex].second / bookKeepingEnergyStatus[0].second > 0.5)
+      if (bookKeepingEnergyStatus[blockIndex].second / std::max(1.0, bookKeepingEnergyStatus[0].second) > 0.5)
       {
         EnergyStatus value = averagedEnergy(blockIndex) - average;
         sumOfSquares += value * value;

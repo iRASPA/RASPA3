@@ -542,25 +542,25 @@ export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b
 
 export void to_json(nlohmann::json& j, const SimulationBox& b)
 {
-  j = nlohmann::json{{"lengthA", b.lengthA},
-                     {"lengthB", b.lengthB},
-                     {"lengthC", b.lengthC},
-                     {"angleAlpha", b.angleAlpha * 180.0 / (std::numbers::pi * 90.0)},
-                     {"angleBeta", b.angleBeta * 180.0 / (std::numbers::pi * 90.0)},
-                     {"angleGamma", b.angleGamma * 180.0 / (std::numbers::pi * 90.0)}};
+  j = nlohmann::json{{"length-a", b.lengthA},
+                     {"length-b", b.lengthB},
+                     {"length-c", b.lengthC},
+                     {"angle-alpha", b.angleAlpha * Units::RadiansToDegrees},
+                     {"angle-beta", b.angleBeta * Units::RadiansToDegrees},
+                     {"angle-gamma", b.angleGamma * Units::RadiansToDegrees}};
 }
 
 export void from_json(const nlohmann::json& j, SimulationBox& b)
 {
-  j.at("lengthA").get_to(b.lengthA);
-  j.at("lengthB").get_to(b.lengthB);
-  j.at("lengthC").get_to(b.lengthC);
-  j.at("angleAlpha").get_to(b.angleAlpha);
-  j.at("angleBeta").get_to(b.angleBeta);
-  j.at("angleGamma").get_to(b.angleGamma);
-  b.angleAlpha *= std::numbers::pi * 90.0 / 180.0;
-  b.angleBeta *= std::numbers::pi * 90.0 / 180.0;
-  b.angleGamma *= std::numbers::pi * 90.0 / 180.0;
+  j.at("length-a").get_to(b.lengthA);
+  j.at("length-b").get_to(b.lengthB);
+  j.at("length-c").get_to(b.lengthC);
+  j.at("angle-alpha").get_to(b.angleAlpha);
+  j.at("angle-beta").get_to(b.angleBeta);
+  j.at("angle-gamma").get_to(b.angleGamma);
+  b.angleAlpha *= Units::DegreesToRadians;
+  b.angleBeta *= Units::DegreesToRadians;
+  b.angleGamma *= Units::DegreesToRadians;
 
   double temp = (std::cos(b.angleAlpha) - std::cos(b.angleGamma) * std::cos(b.angleBeta)) / std::sin(b.angleGamma);
 

@@ -80,7 +80,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   int3 ewald_k_stored_A = systemA.forceField.numberOfWaveVectors;
 
   systemA.forceField.initializeAutomaticCutOff(newBoxA);
-  systemA.forceField.initializeEwaldParameters(newBoxA);
 
   // Compute new intermolecular energy for systemA
   time_begin = std::chrono::system_clock::now();
@@ -124,7 +123,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   int3 ewald_k_stored_B = systemB.forceField.numberOfWaveVectors;
 
   systemB.forceField.initializeAutomaticCutOff(newBoxB);
-  systemB.forceField.initializeEwaldParameters(newBoxB);
 
   // Compute new intermolecular energy for systemB
   time_begin = std::chrono::system_clock::now();

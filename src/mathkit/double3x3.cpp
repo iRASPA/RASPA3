@@ -12,6 +12,7 @@ module;
 #include <ostream>
 #include <vector>
 #include <span>
+#include <tuple>
 #endif
 
 #include <malloc/_malloc.h>
@@ -364,6 +365,36 @@ void print_matrix( char* desc, int m, int n, double* a, int lda ) {
         }
 }
 
+std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition() const
+{
+  blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
+
+  char jobU = 'A';
+  char jobVT = 'A';
+  double wkopt;
+
+  double s[3], u[9], vt[9];
+  std::vector<double> matrix = std::vector<double>{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
+
+  lwork = -1;
+  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+
+  lwork = static_cast<blas_int>(wkopt);
+  std::vector<double> work(lwork);
+  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+
+  if( info > 0 ) 
+  {
+    printf( "The algorithm computing SVD failed to converge.\n" );
+  }
+
+  double3 sigma = double3(s[0], s[1], s[2]);
+  double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
+  double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
+
+  return {matrix_u, sigma, matrix_vt};
+}
+
 // https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
 // compute the rotation matrix to map set 'A' onto set 'B'
 double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B)
@@ -477,6 +508,7 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
 
   return result;
 }
+
 
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec)

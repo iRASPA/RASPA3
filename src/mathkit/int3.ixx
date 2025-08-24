@@ -8,6 +8,7 @@ module;
 #include <fstream>
 #include <functional>
 #include <tuple>
+#include <format>
 #endif
 
 export module int3;
@@ -106,6 +107,17 @@ export inline bool operator<(const int3 lhs, const int3 rhs)
 {
   return std::tie(lhs.x, lhs.y, lhs.z) < std::tie(rhs.x, rhs.y, rhs.z);
 }
+
+export template <>
+struct std::formatter<int3>: std::formatter<std::string_view>
+{
+  auto format(const int3& v, std::format_context& ctx) const
+  {
+    std::string temp{};
+    std::format_to(std::back_inserter(temp), "({}, {}, {})", v.x, v.y, v.z);
+    return std::formatter<std::string_view>::format(temp, ctx);
+  }
+};
 
 /*
 namespace std

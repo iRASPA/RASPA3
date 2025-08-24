@@ -77,7 +77,6 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
 
   system.forceField.initializeAutomaticCutOff(newBox);
-  system.forceField.initializeEwaldParameters(newBox);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new intermolecular energy
