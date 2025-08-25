@@ -494,6 +494,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       // Convenience notation listing the properties as a single value. These will then be taken for all systems.
       // ========================================================================================================
+      //
 
       if (item.contains("TranslationProbability") && item["TranslationProbability"].is_number_float())
       {

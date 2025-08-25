@@ -89,7 +89,7 @@ std::string BondPotential::print() const
     case BondType::None:
       return std::format("{} - {} : NONE\n", identifiers[0], identifiers[1]);
     case BondType::Fixed:
-      return std::format("{} - {} : FIXED\n", identifiers[0], identifiers[1]);
+      return std::format("{} - {} : FIXED  p_0={:g} [Å]\n", identifiers[0], identifiers[1], parameters[0]);
     case BondType::Harmonic:
       return std::format("{} - {} : HARMONIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å]\n", identifiers[0], identifiers[1],
                          parameters[0] * Units::EnergyToKelvin, parameters[1]);

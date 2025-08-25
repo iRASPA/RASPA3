@@ -52,6 +52,14 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> computeExternalNo
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip = -1) noexcept;
 
+const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> computeExternalNonOverlappingEnergies(
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    std::vector<std::vector<Atom>> &trialPositionSets, const std::vector<double> &RosenbluthWeightsTorsion,
+    std::make_signed_t<std::size_t> skip = -1) noexcept;
+
 const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,

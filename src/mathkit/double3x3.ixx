@@ -10,6 +10,7 @@ module;
 #include <string>
 #include <string_view>
 #include <format>
+#include <print>
 #include <vector>
 #include <span>
 #include <tuple>

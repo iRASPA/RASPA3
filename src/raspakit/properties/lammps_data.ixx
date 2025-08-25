@@ -8,6 +8,7 @@ module;
 #include <string>
 #include <utility>
 #include <vector>
+#include <optional>
 #endif
 
 export module write_lammps_data;

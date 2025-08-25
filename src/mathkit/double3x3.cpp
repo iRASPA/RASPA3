@@ -13,11 +13,8 @@ module;
 #include <vector>
 #include <span>
 #include <tuple>
+#include <print>
 #endif
-
-#include <malloc/_malloc.h>
-#include <_stdlib.h>
-#include <_printf.h>
 
 #define sqr(x) ((x) * (x))
 #define SIGN(a, b) ((b) >= 0.0 ? std::fabs(a) : -std::fabs(a))
@@ -356,15 +353,6 @@ simd_quatd double3x3::quaternion()
   return q;
 }
 
-void print_matrix( char* desc, int m, int n, double* a, int lda ) {
-        int i, j;
-        printf( "\n %s\n", desc );
-        for( i = 0; i < m; i++ ) {
-                for( j = 0; j < n; j++ ) printf( " %6.2f", a[i+j*lda] );
-                printf( "\n" );
-        }
-}
-
 std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition() const
 {
   blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
@@ -385,7 +373,7 @@ std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition(
 
   if( info > 0 ) 
   {
-    printf( "The algorithm computing SVD failed to converge.\n" );
+    std::print( "The algorithm computing SVD failed to converge.\n" );
   }
 
   double3 sigma = double3(s[0], s[1], s[2]);
@@ -437,7 +425,7 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
 
   if( info > 0 ) 
   {
-    printf( "The algorithm computing SVD failed to converge.\n" );
+    std::print( "The algorithm computing SVD failed to converge.\n" );
   }
 
   double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
@@ -491,7 +479,7 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
 
   if( info > 0 ) 
   {
-    printf( "The algorithm computing SVD failed to converge.\n" );
+    std::print( "The algorithm computing SVD failed to converge.\n" );
   }
 
   double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);

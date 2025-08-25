@@ -10,6 +10,7 @@ module;
 #include <format>
 #include <string>
 #include <string_view>
+#include <array>
 #endif
 
 export module double3;

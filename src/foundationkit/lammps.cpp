@@ -6,6 +6,10 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <span>
+#include <format>
+#include <print>
+#include <sstream>
 #endif
 
 module lammps_io;

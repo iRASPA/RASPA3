@@ -129,34 +129,34 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
                  Units::EnergyToKelvin * average_total_widom_chemical_potential.second);
       if (imposedChemicalPotential)
       {
-        std::print(stream, "    Imposed chemical potential:  {: .6e} [K]\n",
+        std::print(stream, "    Imposed chemical potential:         {: .6e} [K]\n",
                    Units::EnergyToKelvin * imposedChemicalPotential.value());
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [kJ/mol]\n",
+      std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * average_excess_widom_chemical_potential.first,
                  Units::EnergyToKJPerMol * average_excess_widom_chemical_potential.second);
-      std::print(stream, "    Tail-correction chemical potential: {: .6e} +/- {: .6e} [K]\n",
+      std::print(stream, "    Tail-correction chemical potential: {: .6e} +/- {: .6e} [kj/mol]\n",
                  Units::EnergyToKJPerMol * average_chemical_potential_tail_correction.first,
                  Units::EnergyToKJPerMol * average_chemical_potential_tail_correction.second);
-      std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+      std::print(stream, "    Ideal chemical potential:           {: .6e} +/- {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * average_ideal_gas_widom_chemical_potential.first,
                  Units::EnergyToKJPerMol * average_ideal_gas_widom_chemical_potential.second);
-      std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+      std::print(stream, "    Total chemical potential:           {: .6e} +/- {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * average_total_widom_chemical_potential.first,
                  Units::EnergyToKJPerMol * average_total_widom_chemical_potential.second);
       if (imposedChemicalPotential)
       {
-        std::print(stream, "    Imposed chemical potential:  {: .6e} [kJ/mol]\n",
+        std::print(stream, "    Imposed chemical potential:         {: .6e} [kJ/mol]\n",
                    Units::EnergyToKJPerMol * imposedChemicalPotential.value());
         std::print(stream, "    ---------------------------------------------------------------------------\n");
       }
       if (imposedFugacity)
       {
-        std::print(stream, "    Imposed fugacity:            {: .6e} [Pa]\n",
+        std::print(stream, "    Imposed fugacity:                   {: .6e} [Pa]\n",
                    Units::PressureConversionFactor * imposedFugacity.value());
 
-        std::print(stream, "    Measured fugacity:           {: .6e} +/- {: .6e} [Pa]\n",
+        std::print(stream, "    Measured fugacity:                  {: .6e} +/- {: .6e} [Pa]\n",
                    Units::PressureConversionFactor * average_widom_fugacity.first,
                    Units::PressureConversionFactor * average_widom_fugacity.second);
       }

@@ -10,6 +10,8 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <format>
+#include <print>
 #endif
     
 module cbmc_generate_trialorientations_mc;

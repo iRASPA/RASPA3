@@ -11,6 +11,7 @@ module;
 #include <streambuf>
 #include <string>
 #include <vector>
+#include <optional>
 #endif
 
 module write_lammps_data;

@@ -560,8 +560,12 @@ std::string Component::printStatus(const ForceField &forceField) const
   std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
   std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
 
-  std::print(stream, "    Number Of Atoms:    {}\n", atoms.size());
-  std::print(stream, "    CBMC starting bead: {}\n", startingBead);
+  std::print(stream, "    Number Of Atoms:              {}\n", atoms.size());
+  std::print(stream, "    CBMC starting bead:           {}\n", startingBead);
+  if(idealGasRosenbluthWeight.has_value())
+  {
+    std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
+  }
   for (std::size_t i = 0; i != atoms.size(); ++i)
   {
     std::size_t atomType = static_cast<std::size_t>(atoms[i].type);

@@ -96,11 +96,13 @@ import bond_potential;
     else
     {
       // Case: growing a single or multiple bonds with a previous bead present
- 
+
+      // Get old positions
       std::vector<Atom> trial_orientations(nextBeads.size());
-      for(std::size_t i = 0; i < nextBeads.size(); ++i)
+      for(std::size_t k = 0; k < nextBeads.size(); ++k)
       {
-        trial_orientations[i] = molecule_atoms[nextBeads[i]];
+        std::size_t index = nextBeads[k];
+        trial_orientations[k] = molecule_atoms[index];
       }
 
       // Rotate around to obtain the other trial-orientations
@@ -114,24 +116,18 @@ import bond_potential;
         for(std::size_t j = 0; j != numberOfTorsionTrialDirections; ++j)
         {
           std::vector<Atom> rotated_atoms = trial_orientations;
-          if(!(i == 0 && j == 0))
+          double random_angle = (i == 0 && j == 0) ? 0.0 :(2.0 * random.uniform() - 1.0) * std::numbers::pi;
+          for(std::size_t k = 0; k < rotated_atoms.size(); ++k)
           {
-            double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
-            for(Atom & rotated_atom : rotated_atoms)
-            {
-              rotated_atom.position = molecule_atoms[current_bead].position +
-                  last_bond_vector.rotateAroundAxis(rotated_atom.position - molecule_atoms[current_bead].position, random_angle);
-            }
+            rotated_atoms[k].position = molecule_atoms[current_bead].position +
+                last_bond_vector.rotateAroundAxis(trial_orientations[k].position - molecule_atoms[current_bead].position, random_angle);
           }
 
           std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
-          if(!(i == 0 && j == 0))
-          {
           for (std::size_t k = 0; k != nextBeads.size(); ++k)
           {
             std::size_t index = nextBeads[k];
             chain_atoms[index] = rotated_atoms[k];
-          }
           }
 
           double torsion_energy = intraMolecularPotentials.calculateTorsionEnergies(chain_atoms);
@@ -145,47 +141,52 @@ import bond_potential;
                        [&](const std::pair<std::vector<Atom>, double> &v)
                        { return -beta * std::get<1>(v); });
 
-        std::size_t selected_torsion = (i == 0) ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
-
-        trialPositions[i] = torsion_orientations[selected_torsion].first;
-
         double rosen_bluth_weight_torsion = std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
                                                     [](const double &acc, const double &logTorsionBoltzmannFactor)
                                                     { return acc + std::exp(logTorsionBoltzmannFactor); });
+
+        std::size_t selected_torsion = (i == 0) ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
+
+        auto &[selected_positions, selected_energy] =  torsion_orientations[selected_torsion];
+
+        trialPositions[i] = (i == 0) ? trial_orientations :  selected_positions;
 
         RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrialDirections);
       }
     }
 
     // Compute the external-energies for the next-beads
-    std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies =
+    std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> externalEnergies =
         CBMC::computeExternalNonOverlappingEnergies(
             component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-            moleculeAtomData, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, -1);
+            moleculeAtomData, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, RosenBluthWeightTorsion, -1);
 
     // add van der Waals
-    for(std::pair<std::vector<Atom>, RunningEnergy> &conf : externalEnergies)
+    for(auto &[external_positions, external_energies, external_torsion] : externalEnergies)
     {
       RunningEnergy recomputed_internal_energies = intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(molecule_atoms);
-      conf.second += recomputed_internal_energies;
+      external_energies += recomputed_internal_energies;
     }
 
     std::vector<double> logBoltzmannFactors{};
     logBoltzmannFactors.reserve(numberOfTrialDirections);
     std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                   [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
+                   [&](const std::tuple<std::vector<Atom>, RunningEnergy, double> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
-
-    std::size_t selected = 0;
 
     double rosen_bluth_weight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
                                                 [](const double &acc, const double &logBoltzmannFactor)
                                                 { return acc + std::exp(logBoltzmannFactor); });
 
-    chain_rosen_bluth_weight *= RosenBluthWeightTorsion[selected] * rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
+    std::size_t selected = 0;
 
-    const std::vector<Atom> &selected_trial_atoms = externalEnergies[selected].first;
-    chain_external_energies += externalEnergies[selected].second;
+    auto &[selected_atom_positions, selected_energies, selected_torsion_rosenbluth_factor] = externalEnergies[selected];
+
+
+    chain_rosen_bluth_weight *= selected_torsion_rosenbluth_factor * rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
+
+    const std::vector<Atom> &selected_trial_atoms = selected_atom_positions;
+    chain_external_energies += selected_energies;
 
     // Add 'nextBeads' to 'beads_already_placed'
     beads_already_placed.insert(beads_already_placed.end(), nextBeads.begin(), nextBeads.end());

@@ -153,6 +153,53 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
   return energies;
 }
 
+const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::computeExternalNonOverlappingEnergies(
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    std::vector<std::vector<Atom>> &trialPositionSets, const std::vector<double> &RosenbluthWeightsTorsion,
+    std::make_signed_t<std::size_t> skip) noexcept
+{
+  std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> energies{};
+  energies.reserve(trialPositionSets.size());
+
+  for(std::size_t i = 0; i != trialPositionSets.size(); ++i)
+  {
+    if (CBMC::insideBlockedPockets(framework, component, trialPositionSets[i]))
+    {
+      continue;
+    }
+
+    std::optional<RunningEnergy> eternalFieldEnergy = CBMC::computeExternalFieldEnergy(
+        hasExternalField, forceField, simulationBox, cutOffFrameworkVDW, cutOffCoulomb, trialPositionSets[i]);
+    if (!eternalFieldEnergy.has_value()) 
+    {
+      continue;
+    }
+
+    std::optional<RunningEnergy> frameworkEnergy =
+        CBMC::computeFrameworkMoleculeEnergy(forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
+                                             cutOffFrameworkVDW, cutOffCoulomb, trialPositionSets[i], skip);
+    if (!frameworkEnergy.has_value()) 
+    {
+      continue;
+    }
+
+    std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
+        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSets[i], skip);
+    if (!interEnergy.has_value()) 
+    {
+      continue;
+    }
+
+    energies.push_back({trialPositionSets[i], 
+                        eternalFieldEnergy.value() + frameworkEnergy.value() + interEnergy.value(),
+                        RosenbluthWeightsTorsion[i]});
+  }
+  return energies;
+}
+
 const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,

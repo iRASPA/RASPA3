@@ -3,6 +3,8 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <string>
 #include <optional>
+#include <span>
+#include <vector>
 #endif
 
 export module lammps_io;
