@@ -292,6 +292,7 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
+  if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for (std::size_t i = 0; i != numberOfAtoms; ++i)
@@ -458,7 +459,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
-    const std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomPositions)
 {
@@ -494,6 +495,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for (std::size_t i = 0; i != numberOfAtoms; ++i)
@@ -963,6 +965,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
   if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for (std::size_t i = 0; i != oldatoms.size(); ++i)
@@ -1210,6 +1213,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
   if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for (std::size_t i = 0; i != oldatoms.size(); ++i)
@@ -1823,6 +1827,7 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
+  if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for (std::size_t i = 0; i != numberOfAtoms; ++i)

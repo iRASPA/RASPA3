@@ -421,9 +421,9 @@ ForceField::ForceField(std::string filePath)
   {
     if (parsed_data["CutOffMoleculeVDW"].is_string())
     {
-      std::string cutOffCoulombString = parsed_data["CutOffMoleculeVDW"].get<std::string>();
+      std::string cutOffMoleculeVDWString = parsed_data["CutOffMoleculeVDW"].get<std::string>();
 
-      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      if (caseInSensStringCompare(cutOffMoleculeVDWString, "auto"))
       {
         cutOffMoleculeVDWAutomatic = true;
       }
@@ -1136,7 +1136,6 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
 
     double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-    double3 perpendicularWidths = simulationBox.perpendicularWidths();
     numberOfWaveVectors =
         int3(static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
              static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),

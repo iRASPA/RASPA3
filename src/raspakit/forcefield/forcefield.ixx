@@ -102,7 +102,7 @@ export struct ForceField
   double cutOffFrameworkVDW{12.0};        ///< Cut-off distance for VDW interactions between framework and molecules.
   bool cutOffMoleculeVDWAutomatic{false};
   double cutOffMoleculeVDW{12.0};         ///< Cut-off distance for VDW interactions between molecules.
-  bool cutOffCoulombAutomatic{false};
+  bool cutOffCoulombAutomatic{true};
   double cutOffCoulomb{12.0};             ///< Cut-off distance for Coulomb interactions.
   double dualCutOff{6.0};                 ///< Inner cut-off distance when using dual cut-off scheme.
 

@@ -135,8 +135,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
-
-    return newTotalEnergy;
+    return newTotalEnergy - oldTotalEnergy;
   }
 
   system.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored;

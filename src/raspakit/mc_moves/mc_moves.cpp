@@ -199,7 +199,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       // accept if energy difference is not 0
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value();
+        selectedSystem.runningEnergies += energy.value();
       }
       break;
     }
@@ -293,8 +293,8 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value().first;
-        selectedSecondSystem.runningEnergies = energy.value().second;
+        selectedSystem.runningEnergies += energy.value().first;
+        selectedSecondSystem.runningEnergies += energy.value().second;
       }
       break;
     }
@@ -500,7 +500,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       // accept if energy difference is not 0
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value();
+        selectedSystem.runningEnergies += energy.value();
       }
       break;
     }
@@ -618,8 +618,8 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value().first;
-        selectedSecondSystem.runningEnergies = energy.value().second;
+        selectedSystem.runningEnergies += energy.value().first;
+        selectedSecondSystem.runningEnergies += energy.value().second;
       }
       break;
     }
@@ -819,7 +819,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, selectedSystem);
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value();
+        selectedSystem.runningEnergies += energy.value();
       }
       break;
     }
@@ -952,8 +952,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
       if (energy)
       {
-        selectedSystem.runningEnergies = energy.value().first;
-        selectedSecondSystem.runningEnergies = energy.value().second;
+        selectedSystem.runningEnergies += energy.value().first;
+        selectedSecondSystem.runningEnergies += energy.value().second;
       }
       break;
     }

@@ -106,6 +106,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
+  if(newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
+  {
+    return std::nullopt;
+  }
+
   systemA.mc_moves_statistics.addConstructed(move);
 
   // Scale systemB to new volume and calculate new positions
@@ -149,6 +154,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
 
+  if(newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
+  {
+    return std::nullopt;
+  }
+
   systemB.mc_moves_statistics.addConstructed(move);
 
   // Calculate total energy change deltaU
@@ -175,7 +185,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
     std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomData.begin());
     Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
-    return std::make_pair(newTotalEnergyA, newTotalEnergyB);
+    return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
   }
 
   systemA.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_A;

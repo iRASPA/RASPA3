@@ -58,9 +58,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   componentB.mc_moves_statistics.addTrial(move);
 
   // Retrieve cutoff distances and grow type from system A
-  double cutOffFrameworkVDW = systemA.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = systemA.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
+  double cutOffFrameworkVDWA = systemA.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDWA = systemA.forceField.cutOffMoleculeVDW;
+  double cutOffCoulombA = systemA.forceField.cutOffCoulomb;
   Component::GrowType growType = componentA.growType;
 
   // Attempt to grow a new molecule in system A using CBMC insertion
@@ -68,7 +68,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random, componentA, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
       systemA.interpolationGrids, systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
-      systemA.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeIndex,
+      systemA.beta, growType, cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA, newMoleculeIndex,
       1.0, false, false, systemA.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
 
@@ -116,12 +116,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
+  // Retrieve cutoff distances and grow type from system B
+  double cutOffFrameworkVDWB = systemB.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDWB = systemB.forceField.cutOffMoleculeVDW;
+  double cutOffCoulombB = systemB.forceField.cutOffCoulomb;
+
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
       random, componentB, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
       systemB.interpolationGrids, systemB.framework, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(),
-      systemB.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
+      systemB.beta, growType, cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB, molecule,
       systemB.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
 
