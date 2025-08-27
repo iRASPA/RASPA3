@@ -193,6 +193,8 @@ export struct Atom
   }
 };
 
+/*
+// does not compile on llvm-18
 export template <>
 struct std::formatter<Atom>: std::formatter<string_view>
 {
@@ -204,6 +206,7 @@ struct std::formatter<Atom>: std::formatter<string_view>
     return std::formatter<string_view>::format(temp, ctx);
   }
 };
+*/
 
 export void to_json(nlohmann::json &j, const Atom &a)
 {

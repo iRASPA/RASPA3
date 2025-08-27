@@ -120,7 +120,7 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
         grid_cell.begin() + std::distance(&data_cell[0, 0, 0, 0], &data_cell[i, 0, 0, 0]);
     std::vector<double>::iterator it_end = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-    std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+    //[[maybe_unused]]std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
     double normalization{1.0};
     switch (normType)
     {

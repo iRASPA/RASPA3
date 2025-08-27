@@ -42,6 +42,6 @@ export namespace CBMC
     generateTrialOrientationsMonteCarloScheme(RandomNumber &random, double beta,
         Component &component,
         const std::vector<Atom> chain_atoms, std::size_t previousBead,
-        std::size_t currentBead, std::vector<std::size_t> nextBeads, std::size_t numberOfTrialDirections,
+        std::size_t currentBead, std::vector<std::size_t> nextBeads, 
         const Potentials::IntraMolecularPotentials &intraMolecularInteractions);
 }

@@ -79,6 +79,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDer
 
   archive << b.type;
   archive << b.identifiers;
+  archive << b.shift;
+  archive << b.scaling;
   archive << b.parameters;
 
 #if DEBUG_ARCHIVE
@@ -101,6 +103,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsP
 
   archive >> b.type;
   archive >> b.identifiers;
+  archive >> b.shift;
+  archive >> b.scaling;
   archive >> b.parameters;
 
 #if DEBUG_ARCHIVE

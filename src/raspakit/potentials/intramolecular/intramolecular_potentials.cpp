@@ -469,7 +469,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraCoulombE
   return energies;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(const std::span<Atom> atoms) const
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient([[maybe_unused]]const std::span<Atom> atoms) const
 { 
   RunningEnergy energies{};
 

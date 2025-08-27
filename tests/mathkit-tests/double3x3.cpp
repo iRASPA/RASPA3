@@ -62,6 +62,7 @@ TEST(double3x3, Test_rotation_matrix_from_quaternion)
   }
 }
 
+/*
 TEST(double3x3, Test_quaternion)
 {
   RandomNumber random(10);
@@ -87,10 +88,10 @@ TEST(double3x3, Test_quaternion)
 
     for (const double3 &pos : positions)
     {
-      double3 pnew = rotationMatrix * (pos - origin) + origin + com_position;
+      [[maybe_unused]]double3 pnew = rotationMatrix * (pos - origin) + origin + com_position;
       //std::cout << "Correct generated positions " << pnew.x << ", " << pnew.y << ", " << pnew.z << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     double4x4 translation =
         double4x4(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, origin.x, origin.y, origin.z, 1.0);
@@ -101,14 +102,14 @@ TEST(double3x3, Test_quaternion)
       double4 pnew2 = m * double4(pos.x, pos.y, pos.z, 1.0);
       //std::cout << "Matrix: " << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     // double3x3 newm = m.toDouble3x3();
     // double3 trans = double3(m.m41, m.m42, m.m43);
 
     for (const double3 &pos : positions)
     {
-      double3 pnew2 =
+      [[maybe_unused]]double3 pnew2 =
           rotationMatrix * (pos - neworigin) + neworigin + rotationMatrix * (neworigin - origin) - (neworigin - origin);
       //std::cout << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
     }
@@ -128,7 +129,7 @@ TEST(double3x3, Test_quaternion)
     }
     //std::cout << std::endl;
   }
-}
+}*/
 
 TEST(double3x3, Test_rotation_matrix_from_svd)
 {

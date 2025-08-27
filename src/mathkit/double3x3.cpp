@@ -355,7 +355,7 @@ simd_quatd double3x3::quaternion()
 
 std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition() const
 {
-  blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
+  blas_int m1 = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
 
   char jobU = 'A';
   char jobVT = 'A';
@@ -365,11 +365,11 @@ std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition(
   std::vector<double> matrix = std::vector<double>{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
 
   lwork = -1;
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
 
   lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(lwork);
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+  std::vector<double> work(static_cast<std::size_t>(lwork));
+  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
 
   if( info > 0 ) 
   {
@@ -407,7 +407,7 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
     H.cz += vec_i.z * vec_j.z;
   }
 
-  blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
+  blas_int m1 = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
 
   char jobU = 'A';
   char jobVT = 'A';
@@ -417,11 +417,11 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
 
   lwork = -1;
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
 
   lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(lwork);
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+  std::vector<double> work(static_cast<std::size_t>(lwork));
+  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
 
   if( info > 0 ) 
   {
@@ -474,7 +474,7 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
   dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
 
   lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(lwork);
+  std::vector<double> work(static_cast<std::size_t>(lwork));
   dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
 
   if( info > 0 ) 

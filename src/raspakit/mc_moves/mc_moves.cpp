@@ -74,7 +74,7 @@ import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 
 void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &selectedSystem, System &selectedSecondSystem,
-                                 std::size_t selectedComponent, std::size_t &fractionalMoleculeSystem)
+                                 std::size_t selectedComponent, [[maybe_unused]]std::size_t &fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);

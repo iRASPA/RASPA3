@@ -10,6 +10,7 @@ module;
 #include <format>
 #include <print>
 #include <sstream>
+#include <cmath>
 #endif
 
 module lammps_io;

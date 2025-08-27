@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <utility>
 #include <cmath>
 #include <cstddef>
 #include <fstream>

@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <utility>
 #include <cstddef>
 #include <iostream>
 #include <numeric>
@@ -218,7 +219,7 @@ import interpolation_energy_grid;
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
     double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, Molecule &molecule,
+    double cutOffCoulomb, [[maybe_unused]]Molecule &molecule,
     std::span<Atom> molecule_atoms, double storedR) noexcept
 {
   std::size_t startingBead = component.startingBead;

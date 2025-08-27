@@ -183,7 +183,6 @@ import bond_potential;
 
     chain_rosen_bluth_weight *= selected_torsion_rosenbluth_factor * rosen_bluth_weight / static_cast<double>(forceField.numberOfTrialDirections);
 
-    const std::vector<Atom> &selected_trial_atoms = selected_atom_positions;
     chain_external_energies += selected_energies;
 
     // Add 'nextBeads' to 'beads_already_placed'

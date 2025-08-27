@@ -57,9 +57,9 @@ import interpolation_energy_grid;
 
     std::vector<Atom> randomlyRotatedAtoms(molecule_atoms.begin(), molecule_atoms.end());
     double3 rotation_center = molecule_atoms[component.startingBead].position;
-    for(std::size_t i = 0; i != randomlyRotatedAtoms.size(); ++i)
+    for(std::size_t k = 0; k != randomlyRotatedAtoms.size(); ++k)
     {
-      randomlyRotatedAtoms[i].position = rotation_center + rotationMatrix * (molecule_atoms[i].position - rotation_center);
+      randomlyRotatedAtoms[k].position = rotation_center + rotationMatrix * (molecule_atoms[k].position - rotation_center);
     }
 
     double totalMass = 0.0;

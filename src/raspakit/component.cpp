@@ -123,13 +123,13 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
       criticalPressure(P_c),
       acentricFactor(w),
       fugacityCoefficient(fugacityCoefficient),
+      connectivityTable(connectivityTable),
+      intraMolecularPotentials(intraMolecularPotentials),
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
-      averageRosenbluthWeights(numberOfBlocks),
-      intraMolecularPotentials(intraMolecularPotentials),
-      connectivityTable(connectivityTable)
+      averageRosenbluthWeights(numberOfBlocks)
 {
   totalMass = 0.0;
   netCharge = 0.0;
@@ -1255,7 +1255,7 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(const ForceField 
 }
 
 std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const ForceField &forceField,
-                                        const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+                                        [[maybe_unused]]const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
   std::vector<VanDerWaalsPotential> van_der_waals_potentials{};
 
@@ -1268,7 +1268,7 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const For
     std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
     std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
 
-    VDWParameters::Type potentialType = forceField(typeA, typeB).type;
+    [[maybe_unused]] VDWParameters::Type potentialType = forceField(typeA, typeB).type;
     double4 parameters = forceField(typeA, typeB).parameters;
     double shift = forceField(typeA, typeB).shift;
 

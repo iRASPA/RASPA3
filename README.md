@@ -75,11 +75,13 @@ cd examples/basic/1_mc_methane_in_box
 - MC/MD hybrid move
 - tail-corrections for CFCMC
 - grids for rigid frameworks
-- restart-file
-- zeo++-type calculations
+- writing and reading restart-files
+
+# Experimental
+- flexible molecules
 
 # Todo-list
-- flexible molecules
+- zeo++-type calculations
 - flexible frameworks
 - reaction ensemble
 - identity change

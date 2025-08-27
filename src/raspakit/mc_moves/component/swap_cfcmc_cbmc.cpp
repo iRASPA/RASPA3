@@ -65,7 +65,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   // Store old lambda values and bin index
   std::size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
-  double oldLambda = component.lambdaGC.lambdaValue();
 
   // Get maximum allowed change in lambda for this move
   double maxChange = component.mc_moves_statistics.getMaxChange(move, 2);

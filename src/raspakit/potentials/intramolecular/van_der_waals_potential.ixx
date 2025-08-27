@@ -52,8 +52,8 @@ export struct VanDerWaalsPotential
 
   std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the vanDerWaals.
   VanDerWaalsType type;                    ///< The type of vanDerWaals potential.
-  double scaling;
   double shift;
+  double scaling;
   std::array<double, maximumNumberOfVanDerWaalsParameters>
       parameters;  ///< Parameters associated with the vanDerWaals potential.
 

@@ -140,7 +140,6 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
         growData->atom);
-    std::vector<Atom> old_molecule = std::vector(molecule_atoms.begin(), molecule_atoms.end());
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
         component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
