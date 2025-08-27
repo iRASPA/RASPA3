@@ -95,12 +95,14 @@ export inline std::pair<double, double> meanConfidence(std::vector<double> &data
  */
 export struct BlockErrorEstimation
 {
-  std::size_t numberOfBins;          ///< Total number of bins.
-  std::size_t currentSample{0};      ///< Current sample index.
-  std::size_t numberOfSamples;       ///< Total number of samples.
-  std::size_t currentBin{0};         ///< Current bin index.
-  double binSize{};                  ///< Size of each bin.
-  std::vector<std::size_t> nextBin;  ///< Indices of the next bin boundaries.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  
+  std::size_t numberOfBins{};          ///< Total number of bins.
+  std::size_t currentSample{0};        ///< Current sample index.
+  std::size_t numberOfSamples;         ///< Total number of samples.
+  std::size_t currentBin{0};           ///< Current bin index.
+  double binSize{};                    ///< Size of each bin.
+  std::vector<std::size_t> nextBin{};  ///< Indices of the next bin boundaries.
 
   /**
    * \brief Default constructor.

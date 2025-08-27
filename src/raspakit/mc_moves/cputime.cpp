@@ -431,6 +431,14 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
   archive << t.energyPressureComputation;
   archive << t.timingMap;
 
+  archive << t.propertySampling;
+  archive << t.energyPressureComputation;
+  archive << t.pressureFrameworkTime;
+  archive << t.pressureIntermolecularTime;
+  archive << t.pressureEwaldTime;
+  archive << t.pressureTailTime;
+  archive << t.pressureRestTime;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -452,6 +460,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTim
   archive >> t.propertySampling;
   archive >> t.energyPressureComputation;
   archive >> t.timingMap;
+
+  archive >> t.propertySampling;
+  archive >> t.energyPressureComputation;
+  archive >> t.pressureFrameworkTime;
+  archive >> t.pressureIntermolecularTime;
+  archive >> t.pressureEwaldTime;
+  archive >> t.pressureTailTime;
+  archive >> t.pressureRestTime;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -27,6 +27,7 @@ import archive;
 export struct ConnectivityTable
 {
   std::uint64_t versionNumber{1};
+
   std::size_t numberOfBeads;
   std::vector<bool> table;
 

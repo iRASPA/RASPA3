@@ -878,11 +878,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.simulationStage;
 
   archive << mc.systems;
-
   archive << mc.fractionalMoleculeSystem;
 
   archive << mc.estimation;
 
+  // not written: totalGridCreationTime
+  
   archive << mc.totalInitializationSimulationTime;
   archive << mc.totalEquilibrationSimulationTime;
   archive << mc.totalProductionSimulationTime;
@@ -920,11 +921,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.simulationStage;
 
   archive >> mc.systems;
-
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;
 
+  // not written: totalGridCreationTime
+ 
   archive >> mc.totalInitializationSimulationTime;
   archive >> mc.totalEquilibrationSimulationTime;
   archive >> mc.totalProductionSimulationTime;

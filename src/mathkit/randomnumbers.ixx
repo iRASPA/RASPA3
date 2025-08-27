@@ -112,6 +112,7 @@ export struct RandomNumber
 
   std::size_t categoricalDistribution(const std::vector<double> &probabilities)
   {
+    ++count;
     std::discrete_distribution<std::size_t> d(probabilities.begin(), probabilities.end());
     return d(mt);
   }

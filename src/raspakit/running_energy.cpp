@@ -59,34 +59,78 @@ std::string RunningEnergy::printMC() const
              conv * ewald_self, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Ewald exclusion{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * ewald_exclusion, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bond{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bond, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra Urey-Bradley{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * ureyBradley, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bend{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra inversion-bend{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * inversionBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    out-of-plane bend{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * outOfPlaneBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra torsion{}            {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * torsion, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra improper torsion{}   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * improperTorsion, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bond-bond{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bondBond, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bond-bend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bondBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bond-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bondBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bend-bend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bendBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra bend-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * bendTorsion, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * intraVDW, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * intraCoul, Units::displayedUnitOfEnergyString);
+  
+  if(std::fabs(bond) > 1e-10)
+  {
+    std::print(stream, "    intra bond{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bond, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(ureyBradley) > 1e-10)
+  {
+    std::print(stream, "    intra Urey-Bradley{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * ureyBradley, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bend) > 1e-10)
+  {
+    std::print(stream, "    intra bend{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(inversionBend) > 1e-10)
+  {
+    std::print(stream, "    intra inversion-bend{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * inversionBend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(outOfPlaneBend) > 1e-10)
+  {
+    std::print(stream, "    out-of-plane bend{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * outOfPlaneBend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(torsion) > 1e-10)
+  {
+    std::print(stream, "    intra torsion{}            {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * torsion, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(improperTorsion) > 1e-10)
+  {
+    std::print(stream, "    intra improper torsion{}   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * improperTorsion, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bondBond) > 1e-10)
+  {
+    std::print(stream, "    intra bond-bond{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bondBond, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bondBend) > 1e-10)
+  {
+    std::print(stream, "    intra bond-bend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bondBend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bondBend) > 1e-10)
+  {
+    std::print(stream, "    intra bond-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bondBend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bendBend) > 1e-10)
+  {
+    std::print(stream, "    intra bend-bend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bendBend, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(bendTorsion) > 1e-10)
+  {
+    std::print(stream, "    intra bend-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(intraVDW) > 1e-10)
+  {
+    std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * intraVDW, Units::displayedUnitOfEnergyString);
+  }
+  if(std::fabs(intraCoul) > 1e-10)
+  {
+    std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * intraCoul, Units::displayedUnitOfEnergyString);
+  }
+
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,

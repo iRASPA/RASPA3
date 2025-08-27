@@ -708,6 +708,7 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive, 
 {
   archive << p.versionNumber;
 
+  archive << p.chiralCenters;
   archive << p.bonds;
   archive << p.ureyBradleys;
   archive << p.bends;
@@ -742,6 +743,7 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
                                          location.line(), location.file_name()));
   }
 
+  archive >> p.chiralCenters;
   archive >> p.bonds;
   archive >> p.ureyBradleys;
   archive >> p.bends;

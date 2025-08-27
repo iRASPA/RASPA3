@@ -192,6 +192,7 @@ export struct System
   double timeStep{0.0005};
 
   SimulationBox simulationBox;
+  bool containsTheFractionalMolecule{true};
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
@@ -233,6 +234,28 @@ export struct System
   Reactions reactions;
   TransitionMatrix tmmc;
 
+
+  // property measurements
+  PropertyEnergy averageEnergies;
+  PropertyLoading averageLoadings;
+  PropertyEnthalpy averageEnthalpiesOfAdsorption;
+  PropertyTemperature averageTemperature;
+  PropertyTemperature averageTranslationalTemperature;
+  PropertyTemperature averageRotationalTemperature;
+  PropertyPressure averagePressure;
+  PropertySimulationBox averageSimulationBox;
+
+  std::optional<SampleMovie> samplePDBMovie;
+
+  std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
+  std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
+  std::optional<PropertyDensityGrid> propertyDensityGrid;
+  std::optional<PropertyEnergyHistogram> averageEnergyHistogram;
+  std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
+  std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
+  std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
+  std::optional<WriteLammpsData> writeLammpsData;
+
   // Breakthrough settings
   std::size_t columnNumberOfGridPoints{100};
   double columnTotalPressure{1e5};
@@ -249,27 +272,6 @@ export struct System
   std::size_t numberOfCarrierGases{0};
   std::size_t carrierGasComponent{0};
   std::size_t maxIsothermTerms{0};
-
-  bool containsTheFractionalMolecule{true};
-
-  // property measurements
-  PropertyEnergy averageEnergies;
-  PropertyLoading averageLoadings;
-  PropertyEnthalpy averageEnthalpiesOfAdsorption;
-  PropertyTemperature averageTemperature;
-  PropertyTemperature averageTranslationalTemperature;
-  PropertyTemperature averageRotationalTemperature;
-  PropertyPressure averagePressure;
-  PropertySimulationBox averageSimulationBox;
-  std::optional<SampleMovie> samplePDBMovie;
-  std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
-  std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
-  std::optional<PropertyDensityGrid> propertyDensityGrid;
-  std::optional<PropertyEnergyHistogram> averageEnergyHistogram;
-  std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
-  std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
-  std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
-  std::optional<WriteLammpsData> writeLammpsData;
 
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
 

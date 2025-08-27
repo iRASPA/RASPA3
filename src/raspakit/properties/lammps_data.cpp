@@ -12,6 +12,7 @@ module;
 #include <string>
 #include <vector>
 #include <optional>
+#include <source_location>
 #endif
 
 module write_lammps_data;
@@ -20,6 +21,7 @@ module write_lammps_data;
 import std;
 #endif
 
+import archive;
 import double3;
 import atom;
 import simulationbox;
@@ -47,3 +49,43 @@ void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component
                                     numberOfIntegerMoleculesPerComponent, framework)
          << std::endl;
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const WriteLammpsData &m)
+{
+  archive << m.versionNumber;
+
+  archive << m.sampleEvery;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
+  return archive;
+}
+
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, WriteLammpsData &m)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > m.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'WriteLammpsData' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> m.sampleEvery;
+
+#if DEBUG_ARCHIVE
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("WriteLammpsData: Error in binary restart\n"));
+  }
+#endif
+
+  return archive;
+}
+

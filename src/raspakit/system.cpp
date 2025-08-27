@@ -2905,21 +2905,29 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.versionNumber;
 
   archive << s.systemId;
+
   archive << s.temperature;
   archive << s.pressure;
   archive << s.input_pressure;
   archive << s.beta;
+
   archive << s.heliumVoidFraction;
+
   archive << s.numberOfFrameworks;
   archive << s.numberOfFrameworkAtoms;
   archive << s.numberOfRigidFrameworkAtoms;
+
   archive << s.framework;
   archive << s.components;
+
   archive << s.equationOfState;
   archive << s.thermostat;
+
   archive << s.loadings;
+
   archive << s.swappableComponents;
   archive << s.initialNumberOfMolecules;
+
   archive << s.numberOfMoleculesPerComponent;
   archive << s.numberOfIntegerMoleculesPerComponent;
   archive << s.numberOfFractionalMoleculesPerComponent;
@@ -2927,27 +2935,42 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
+
   archive << s.idealGasEnergiesPerComponent;
+
   archive << s.forceField;
   archive << s.hasExternalField;
+
   archive << s.numberOfPseudoAtoms;
   archive << s.totalNumberOfPseudoAtoms;
+
   archive << s.translationalCenterOfMassConstraint;
   archive << s.translationalDegreesOfFreedom;
   archive << s.rotationalDegreesOfFreedom;
+
   archive << s.timeStep;
+
   archive << s.simulationBox;
+  archive << s.containsTheFractionalMolecule;
+
   archive << s.atomData;
   archive << s.moleculeData;
   archive << s.electricPotential;
   archive << s.electricField;
   archive << s.electricFieldNew;
+
   archive << s.conservedEnergy;
   archive << s.referenceEnergy;
+  archive << s.accumulatedDrift;
+
   archive << s.rigidEnergies;
   archive << s.runningEnergies;
+
   archive << s.currentExcessPressureTensor;
   archive << s.currentEnergyStatus;
+
+  archive << s.numberOfHybridMCSteps;
+
   archive << s.eik_xy;
   archive << s.eik_x;
   archive << s.eik_y;
@@ -2960,11 +2983,34 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.netChargeFramework;
   archive << s.netChargeAdsorbates;
   archive << s.netChargePerComponent;
+
   archive << s.mc_moves_probabilities;
   archive << s.mc_moves_statistics;
   archive << s.mc_moves_cputime;
+
   archive << s.reactions;
   archive << s.tmmc;
+
+  archive << s.averageEnergies;
+  archive << s.averageLoadings;
+  archive << s.averageEnthalpiesOfAdsorption;
+  archive << s.averageTemperature;
+  archive << s.averageTranslationalTemperature;
+  archive << s.averageRotationalTemperature;
+  archive << s.averagePressure;
+  archive << s.averageSimulationBox;
+
+  archive << s.samplePDBMovie;
+
+  archive << s.propertyConventionalRadialDistributionFunction;
+  archive << s.propertyRadialDistributionFunction;
+  archive << s.propertyDensityGrid;
+  archive << s.averageEnergyHistogram;
+  archive << s.averageNumberOfMoleculesHistogram;
+  archive << s.propertyMSD;
+  archive << s.propertyVACF;
+  archive << s.writeLammpsData;
+
   archive << s.columnNumberOfGridPoints;
   archive << s.columnTotalPressure;
   archive << s.columnPressureGradient;
@@ -2980,19 +3026,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfCarrierGases;
   archive << s.carrierGasComponent;
   archive << s.maxIsothermTerms;
-  archive << s.containsTheFractionalMolecule;
-  archive << s.averageEnergies;
-  archive << s.averageLoadings;
-  archive << s.averageEnthalpiesOfAdsorption;
-  archive << s.averageTemperature;
-  archive << s.averageTranslationalTemperature;
-  archive << s.averageRotationalTemperature;
-  archive << s.averagePressure;
-  archive << s.averageSimulationBox;
-  archive << s.averageEnergyHistogram;
-  archive << s.propertyConventionalRadialDistributionFunction;
-  // archive << s.propertyRadialDistributionFunction;
-  // archive << s.propertyDensityGrid;
 
   archive << s.interpolationGrids;
 
@@ -3015,21 +3048,29 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   }
 
   archive >> s.systemId;
+
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;
   archive >> s.beta;
+
   archive >> s.heliumVoidFraction;
+
   archive >> s.numberOfFrameworks;
   archive >> s.numberOfFrameworkAtoms;
   archive >> s.numberOfRigidFrameworkAtoms;
+
   archive >> s.framework;
   archive >> s.components;
+
   archive >> s.equationOfState;
   archive >> s.thermostat;
+
   archive >> s.loadings;
+
   archive >> s.swappableComponents;
   archive >> s.initialNumberOfMolecules;
+
   archive >> s.numberOfMoleculesPerComponent;
   archive >> s.numberOfIntegerMoleculesPerComponent;
   archive >> s.numberOfFractionalMoleculesPerComponent;
@@ -3037,27 +3078,42 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
+
   archive >> s.idealGasEnergiesPerComponent;
+
   archive >> s.forceField;
   archive >> s.hasExternalField;
+
   archive >> s.numberOfPseudoAtoms;
   archive >> s.totalNumberOfPseudoAtoms;
+
   archive >> s.translationalCenterOfMassConstraint;
   archive >> s.translationalDegreesOfFreedom;
   archive >> s.rotationalDegreesOfFreedom;
+
   archive >> s.timeStep;
+
   archive >> s.simulationBox;
+  archive >> s.containsTheFractionalMolecule;
+
   archive >> s.atomData;
   archive >> s.moleculeData;
   archive >> s.electricPotential;
   archive >> s.electricField;
   archive >> s.electricFieldNew;
+
   archive >> s.conservedEnergy;
   archive >> s.referenceEnergy;
+  archive >> s.accumulatedDrift;
+
   archive >> s.rigidEnergies;
   archive >> s.runningEnergies;
+
   archive >> s.currentExcessPressureTensor;
   archive >> s.currentEnergyStatus;
+
+  archive >> s.numberOfHybridMCSteps;
+
   archive >> s.eik_xy;
   archive >> s.eik_x;
   archive >> s.eik_y;
@@ -3070,11 +3126,34 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.netChargeFramework;
   archive >> s.netChargeAdsorbates;
   archive >> s.netChargePerComponent;
+
   archive >> s.mc_moves_probabilities;
   archive >> s.mc_moves_statistics;
   archive >> s.mc_moves_cputime;
+
   archive >> s.reactions;
   archive >> s.tmmc;
+
+  archive >> s.averageEnergies;
+  archive >> s.averageLoadings;
+  archive >> s.averageEnthalpiesOfAdsorption;
+  archive >> s.averageTemperature;
+  archive >> s.averageTranslationalTemperature;
+  archive >> s.averageRotationalTemperature;
+  archive >> s.averagePressure;
+  archive >> s.averageSimulationBox;
+
+  archive >> s.samplePDBMovie;
+
+  archive >> s.propertyConventionalRadialDistributionFunction;
+  archive >> s.propertyRadialDistributionFunction;
+  archive >> s.propertyDensityGrid;
+  archive >> s.averageEnergyHistogram;
+  archive >> s.averageNumberOfMoleculesHistogram;
+  archive >> s.propertyMSD;
+  archive >> s.propertyVACF;
+  archive >> s.writeLammpsData;
+
   archive >> s.columnNumberOfGridPoints;
   archive >> s.columnTotalPressure;
   archive >> s.columnPressureGradient;
@@ -3090,19 +3169,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfCarrierGases;
   archive >> s.carrierGasComponent;
   archive >> s.maxIsothermTerms;
-  archive >> s.containsTheFractionalMolecule;
-  archive >> s.averageEnergies;
-  archive >> s.averageLoadings;
-  archive >> s.averageEnthalpiesOfAdsorption;
-  archive >> s.averageTemperature;
-  archive >> s.averageTranslationalTemperature;
-  archive >> s.averageRotationalTemperature;
-  archive >> s.averagePressure;
-  archive >> s.averageSimulationBox;
-  archive >> s.averageEnergyHistogram;
-  archive >> s.propertyConventionalRadialDistributionFunction;
-  // archive >> s.propertyRadialDistributionFunction;
-  // archive >> s.propertyDensityGrid;
 
   archive >> s.interpolationGrids;
 

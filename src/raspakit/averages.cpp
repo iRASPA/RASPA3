@@ -12,6 +12,7 @@ module;
 #include <ostream>
 #include <utility>
 #include <vector>
+#include <source_location>
 #endif
 
 module averages;
@@ -24,6 +25,8 @@ import archive;
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BlockErrorEstimation &blockerror)
 {
+  archive << blockerror.versionNumber;
+
   archive << blockerror.numberOfBins;
   archive << blockerror.currentSample;
   archive << blockerror.numberOfSamples;
@@ -40,6 +43,15 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BlockE
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BlockErrorEstimation &blockerror)
 {
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > blockerror.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'BlockErrorEstimation' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
+  }
+
   archive >> blockerror.numberOfBins;
   archive >> blockerror.currentSample;
   archive >> blockerror.numberOfSamples;

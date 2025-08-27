@@ -4,6 +4,7 @@ module;
 #include <array>
 #include <cstddef>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #endif
 
@@ -13,6 +14,7 @@ export module multi_site_isotherm;
 import std;
 #endif
 
+import archive;
 import hashcombine;
 import randomnumbers;
 import isotherm;
@@ -26,6 +28,8 @@ export struct MultiSiteIsotherm
     EI = 2,
     SEI = 3
   };
+
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   bool operator==(MultiSiteIsotherm const &) const = default;
 
@@ -115,6 +119,9 @@ export struct MultiSiteIsotherm
 
   double fitness() const;
   std::string gnuplotFunctionString(char s) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MultiSiteIsotherm &c);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MultiSiteIsotherm &c);
 };
 
 namespace std

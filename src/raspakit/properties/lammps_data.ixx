@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <span>
 #include <string>
@@ -17,6 +18,7 @@ export module write_lammps_data;
 import std;
 #endif
 
+import archive;
 import double3;
 import atom;
 import simulationbox;
@@ -33,6 +35,10 @@ import framework;
  */
 export struct WriteLammpsData
 {
+  std::uint64_t versionNumber{1};
+
+  WriteLammpsData() {};
+
   WriteLammpsData(std::size_t systemId, std::size_t sampleEvery);
 
   /**
@@ -46,4 +52,7 @@ export struct WriteLammpsData
   std::size_t systemId; ///< Necessary for determining filename.
 
   int modelNumber{1};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const WriteLammpsData& box);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, WriteLammpsData& box);
 };

@@ -212,6 +212,8 @@ export struct Component
   Shape shapeType;                   ///< Shape type of the molecule.
   std::vector<Atom> atoms{};         ///< List of atoms in the component.
   
+  ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
   std::vector<Atom> grownAtoms{};
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
@@ -227,6 +229,9 @@ export struct Component
   std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
   PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
+ 
+  double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
+ 
 
   MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
   double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].
@@ -237,7 +242,6 @@ export struct Component
   std::size_t columnLoading{1};   ///< Column index for loading data.
   std::size_t columnError{2};     ///< Column index for error data.
 
-  double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 
   /**
    * \brief Enumeration of pressure scaling types.
@@ -250,9 +254,7 @@ export struct Component
 
   PressureScale pressureScale{PressureScale::Log};  ///< Pressure scaling type.
 
-  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
 
-  ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
 
   /**
    * \brief Reads component data from a file.

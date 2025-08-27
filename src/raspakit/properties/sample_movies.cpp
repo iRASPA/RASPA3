@@ -11,6 +11,7 @@ module;
 #include <streambuf>
 #include <string>
 #include <vector>
+#include <source_location>
 #endif
 
 module sample_movies;
@@ -19,6 +20,7 @@ module sample_movies;
 import std;
 #endif
 
+import archive;
 import double3;
 import stringutils;
 import atom;
@@ -61,3 +63,43 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
     ++modelNumber;
   }
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SampleMovie &m)
+{
+  archive << m.versionNumber;
+
+  archive << m.sampleEvery;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
+  return archive;
+}
+
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SampleMovie &m)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > m.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'SampleMovie' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> m.sampleEvery;
+
+#if DEBUG_ARCHIVE
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("SampleMovie: Error in binary restart\n"));
+  }
+#endif
+
+  return archive;
+}
+

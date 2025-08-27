@@ -1348,6 +1348,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.blockingPockets;
 
   archive << c.rigid;
+  archive << c.translationalDegreesOfFreedom;
+  archive << c.rotationalDegreesOfFreedom;
 
   archive << c.criticalTemperature;
   archive << c.criticalPressure;
@@ -1368,8 +1370,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.netCharge;
   archive << c.startingBead;
   archive << c.definedAtoms;
+  
+  archive << c.inertiaVector;
+  archive << c.inverseInertiaVector;
+  archive << c.shapeType;
   archive << c.atoms;
 
+  archive << c.connectivityTable;
+  archive << c.intraMolecularPotentials;
   archive << c.grownAtoms;
 
   archive << c.initialNumberOfMolecules;
@@ -1380,8 +1388,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.intraMolecularPotentials;
 
-  archive << c.connectivityTable;
-
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
@@ -1390,7 +1396,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.averageRosenbluthWeights;
 
-  // MultiSiteIsotherm isotherm{};      // isotherm information
+  archive << c.lnPartitionFunction;
+
+  archive << c.isotherm;
   archive << c.massTransferCoefficient;
   archive << c.axialDispersionCoefficient;
   archive << c.isCarrierGas;
@@ -1398,8 +1406,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.columnPressure;
   archive << c.columnLoading;
   archive << c.columnError;
-
-  archive << c.lnPartitionFunction;
 
   archive << c.pressureScale;
 
@@ -1432,6 +1438,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.blockingPockets;
 
   archive >> c.rigid;
+  archive >> c.translationalDegreesOfFreedom;
+  archive >> c.rotationalDegreesOfFreedom;
 
   archive >> c.criticalTemperature;
   archive >> c.criticalPressure;
@@ -1452,8 +1460,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.netCharge;
   archive >> c.startingBead;
   archive >> c.definedAtoms;
+  
+  archive >> c.inertiaVector;
+  archive >> c.inverseInertiaVector;
+  archive >> c.shapeType;
   archive >> c.atoms;
 
+  archive >> c.connectivityTable;
+  archive >> c.intraMolecularPotentials;
   archive >> c.grownAtoms;
 
   archive >> c.initialNumberOfMolecules;
@@ -1464,8 +1478,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.intraMolecularPotentials;
 
-  archive >> c.connectivityTable;
-
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
@@ -1474,7 +1486,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.averageRosenbluthWeights;
 
-  // MultiSiteIsotherm isotherm{};      // isotherm information
+  archive >> c.lnPartitionFunction;
+
+  archive >> c.isotherm;
   archive >> c.massTransferCoefficient;
   archive >> c.axialDispersionCoefficient;
   archive >> c.isCarrierGas;
@@ -1483,9 +1497,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.columnLoading;
   archive >> c.columnError;
 
-  archive >> c.lnPartitionFunction;
-
   archive >> c.pressureScale;
+
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
