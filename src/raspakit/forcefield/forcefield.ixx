@@ -111,8 +111,6 @@ export struct ForceField
 
   ChargeMethod chargeMethod{ChargeMethod::Ewald};  ///< Method used for calculating electrostatic interactions.
 
-  double overlapCriteria{1e5};  ///< Energy criteria for considering overlaps.
-
   double EwaldPrecision{1e-6};        ///< Desired precision for Ewald summation.
   double EwaldAlpha{0.265058};        ///< Ewald convergence parameter alpha.
   int3 numberOfWaveVectors{8, 8, 8};  ///< Number of wave vectors in each direction for Ewald summation.
@@ -125,8 +123,12 @@ export struct ForceField
   bool useCharge{true};          ///< Indicates if charges are used in calculations.
   bool omitEwaldFourier{false};  ///< If true, omits the Fourier component in Ewald summation.
 
-  double minimumRosenbluthFactor{1e-150};  ///< Minimum allowed Rosenbluth factor.
   double energyOverlapCriteria{1e6};       ///< Energy criteria for considering overlaps.
+  
+  std::size_t numberOfTrialDirections{ 10 };
+  std::size_t numberOfTorsionTrialDirections{ 100 };
+  std::size_t numberOfFirstBeadPositions{ 10 };
+  double minimumRosenbluthFactor{1e-150};            ///< Minimum allowed Rosenbluth factor.
 
   bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.

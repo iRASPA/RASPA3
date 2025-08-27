@@ -211,7 +211,6 @@ export struct System
   double3x3 currentExcessPressureTensor;
   EnergyStatus currentEnergyStatus;
 
-  std::size_t numberOfTrialDirections{10};
   std::size_t numberOfHybridMCSteps{10};
 
   std::vector<std::complex<double>> eik_xy{};

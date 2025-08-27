@@ -78,7 +78,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         random, system.components[selectedComponent], system.hasExternalField, system.forceField,
         system.simulationBox, system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(),
         system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-        molecule, system.numberOfTrialDirections);
+        molecule);
     time_end = std::chrono::system_clock::now();
 
     // Update the CPU time statistics for the non-Ewald part of the move

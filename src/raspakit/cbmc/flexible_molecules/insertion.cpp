@@ -51,19 +51,17 @@ import bond_potential;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule_atoms,
-    std::size_t numberOfTrialDirections)
+    double cutOffCoulomb, std::vector<Atom> molecule_atoms)
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
-  std::vector<std::vector<Atom>> trialPositions(numberOfTrialDirections);
+  std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
-  std::vector<std::size_t> beads_already_placed{startingBead};
-  const Atom first_bead = molecule_atoms[startingBead];
+  std::vector<std::size_t> beads_already_placed{component.startingBead};
+  const Atom first_bead = molecule_atoms[component.startingBead];
 
-  std::size_t numberOfTorsionTrialDirections{ 100 };
   double chain_rosen_bluth_weight = 1.0;
-  std::vector<double> RosenBluthWeightTorsion(numberOfTrialDirections, 1.0);
+  std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
   RunningEnergy chain_external_energies{};
 
   do
@@ -86,7 +84,7 @@ import bond_potential;
 
       const BondPotential bond = intraMolecularPotentials.bonds.front();
 
-      for(std::size_t i = 0; i != numberOfTrialDirections; ++i)
+      for(std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
       {
         double bond_length = bond.generateBondLength(random, beta);
         double3 unit_vector = random.randomVectorOnUnitSphere();
@@ -102,7 +100,7 @@ import bond_potential;
       // Case: growing a single or multiple bonds with a previous bead present
       
       std::vector<Atom> trial_orientations = generateTrialOrientationsMonteCarloScheme(
-          random, beta, component, chain_atoms, previous_bead.value(), current_bead, nextBeads, numberOfTrialDirections,
+          random, beta, component, chain_atoms, previous_bead.value(), current_bead, nextBeads, forceField.numberOfTrialDirections,
           intraMolecularPotentials);
 
 
@@ -110,11 +108,11 @@ import bond_potential;
       double3 last_bond_vector =
           (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
 
-      for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
+      for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
       {
-        std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrialDirections);
+        std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(forceField.numberOfTorsionTrialDirections);
 
-        for(std::size_t j = 0; j != numberOfTorsionTrialDirections; ++j)
+        for(std::size_t j = 0; j != forceField.numberOfTorsionTrialDirections; ++j)
         {
           double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
 
@@ -161,7 +159,7 @@ import bond_potential;
 
         // Select rotation around bond-vector
         std::vector<double> logTorsionBoltzmannFactors{};
-        logTorsionBoltzmannFactors.reserve(numberOfTorsionTrialDirections);
+        logTorsionBoltzmannFactors.reserve(forceField.numberOfTorsionTrialDirections);
         std::transform(torsion_orientations.begin(), torsion_orientations.end(), std::back_inserter(logTorsionBoltzmannFactors),
                        [&](const std::pair<std::vector<Atom>, double> &v)
                        { return -beta * std::get<1>(v); });
@@ -170,7 +168,7 @@ import bond_potential;
                                                     [](const double &acc, const double &logTorsionBoltzmannFactor)
                                                     { return acc + std::exp(logTorsionBoltzmannFactor); });
 
-        RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrialDirections);
+        RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(forceField.numberOfTorsionTrialDirections);
 
         std::size_t selected_torsion = CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
 
@@ -205,7 +203,7 @@ import bond_potential;
 
     // Select based on Van der Waals
     std::vector<double> logBoltzmannFactors{};
-    logBoltzmannFactors.reserve(numberOfTrialDirections);
+    logBoltzmannFactors.reserve(forceField.numberOfTrialDirections);
     std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                    [&](const std::tuple<std::vector<Atom>, RunningEnergy, double> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
@@ -219,7 +217,7 @@ import bond_potential;
 
     auto &[selected_atom_positions, selected_energies, selected_torsion_rosenbluth_factor] = externalEnergies[selected];
 
-    chain_rosen_bluth_weight *= selected_torsion_rosenbluth_factor * rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
+    chain_rosen_bluth_weight *= selected_torsion_rosenbluth_factor * rosen_bluth_weight / static_cast<double>(forceField.numberOfTrialDirections);
 
     if (chain_rosen_bluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
 

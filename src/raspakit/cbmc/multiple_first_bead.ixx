@@ -29,26 +29,26 @@ export namespace CBMC
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom &atom, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, const Atom &atom) noexcept;
 
 [[nodiscard]] FirstBeadData retraceMultipleFirstBeadSwapDeletion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forcefield,
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom atom, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, const Atom atom) noexcept;
 
 [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom &atom, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, const Atom &atom) noexcept;
 
 [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom &atom, double storedR, std::size_t numberOfTrialDirections);
+    double cutOffCoulomb, const Atom &atom, double storedR);
 }  // namespace CBMC

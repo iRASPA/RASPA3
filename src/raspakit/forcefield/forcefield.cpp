@@ -937,7 +937,7 @@ std::string ForceField::printForceFieldStatus() const
                Units::displayedUnitOfLengthString);
   }
 
-  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria,
+  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
              Units::displayedUnitOfEnergyString);
 
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
@@ -1167,8 +1167,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
 
   archive << f.chargeMethod;
 
-  archive << f.overlapCriteria;
-
   archive << f.EwaldPrecision;
   archive << f.EwaldAlpha;
   archive << f.numberOfWaveVectors;
@@ -1177,10 +1175,15 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.automaticEwald;
   archive << f.useCharge;
   archive << f.omitEwaldFourier;
-  archive << f.minimumRosenbluthFactor;
-  archive << f.energyOverlapCriteria;
-  archive << f.useDualCutOff;
 
+  archive << f.energyOverlapCriteria;
+
+  archive << f.numberOfTrialDirections;
+  archive << f.numberOfTorsionTrialDirections;
+  archive << f.numberOfFirstBeadPositions;
+  archive << f.minimumRosenbluthFactor;
+
+  archive << f.useDualCutOff;
   archive << f.omitInterInteractions;
 
   archive << f.computePolarization;
@@ -1232,8 +1235,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.chargeMethod;
 
-  archive >> f.overlapCriteria;
-
   archive >> f.EwaldPrecision;
   archive >> f.EwaldAlpha;
   archive >> f.numberOfWaveVectors;
@@ -1242,10 +1243,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.automaticEwald;
   archive >> f.useCharge;
   archive >> f.omitEwaldFourier;
-  archive >> f.minimumRosenbluthFactor;
-  archive >> f.energyOverlapCriteria;
-  archive >> f.useDualCutOff;
 
+  archive >> f.energyOverlapCriteria;
+
+  archive >> f.numberOfTrialDirections;
+  archive >> f.numberOfTorsionTrialDirections;
+  archive >> f.numberOfFirstBeadPositions;
+  archive >> f.minimumRosenbluthFactor;
+
+  archive >> f.useDualCutOff;
   archive >> f.omitInterInteractions;
 
   archive >> f.computePolarization;
@@ -1280,7 +1286,7 @@ bool ForceField::operator==(const ForceField& other) const
   // first the cheap ones
   if (cutOffFrameworkVDW != other.cutOffFrameworkVDW || cutOffMoleculeVDW != other.cutOffMoleculeVDW ||
       cutOffCoulomb != other.cutOffCoulomb || dualCutOff != other.dualCutOff ||
-      numberOfPseudoAtoms != other.numberOfPseudoAtoms || overlapCriteria != other.overlapCriteria ||
+      numberOfPseudoAtoms != other.numberOfPseudoAtoms || energyOverlapCriteria != other.energyOverlapCriteria ||
       EwaldPrecision != other.EwaldPrecision || EwaldAlpha != other.EwaldAlpha ||
       numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
       useCharge != other.useCharge || omitEwaldFourier != other.omitEwaldFourier ||

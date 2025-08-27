@@ -177,7 +177,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   if (!framework.has_value()) return energySum;
 
   bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -311,7 +311,7 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
   RunningEnergy energySum{};
 
   bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 

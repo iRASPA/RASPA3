@@ -49,7 +49,7 @@ import threadpool;
 
   bool useCharge = forceField.useCharge;
 
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 

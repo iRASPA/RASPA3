@@ -156,7 +156,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
   if (forceField.omitInterInteractions) return energySum;
 
   bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -694,7 +694,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
   if (forceField.omitInterPolarization) return energySum;
 
   bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 

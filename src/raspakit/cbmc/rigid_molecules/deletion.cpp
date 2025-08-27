@@ -42,27 +42,26 @@ import interpolation_energy_grid;
 
 
 [[nodiscard]] ChainRetraceData CBMC::retraceRigidMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
-                                                          const ForceField &forcefield, const SimulationBox &simulationBox,
+                                                          const ForceField &forceField, const SimulationBox &simulationBox,
                                                           const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
                                                           const std::optional<Framework> &framework,
                                                           std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
                                                           double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                                          double cutOffCoulomb, std::size_t startingBead, std::span<Atom> molecule_atoms,
-                                                          std::size_t numberOfTrialDirections) noexcept
+                                                          double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<std::vector<Atom>> trialPositions = {trialPosition};
 
-  for (std::size_t i = 1; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 1; i < forceField.numberOfTrialDirections; ++i)
   {
-    trialPositions.push_back(CBMC::rotateRandomlyAround(random, trialPosition, startingBead));
+    trialPositions.push_back(CBMC::rotateRandomlyAround(random, trialPosition, component.startingBead));
   };
 
   const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies =
-      CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forcefield, simulationBox,
+      CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
                                                   interpolationGrids, framework, frameworkAtomData, moleculeAtomData,
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
-                                                  std::make_signed_t<std::size_t>(startingBead));
+                                                  std::make_signed_t<std::size_t>(component.startingBead));
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
@@ -73,5 +72,5 @@ import interpolation_energy_grid;
                                             [](const double &acc, const double &logBoltmannFactor)
                                             { return acc + std::exp(logBoltmannFactor); });
 
-  return ChainRetraceData(externalEnergies[0].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
+  return ChainRetraceData(externalEnergies[0].second, RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
 }

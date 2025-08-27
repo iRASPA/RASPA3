@@ -71,7 +71,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule,
-      1.0, false, false, system.numberOfTrialDirections);
+      1.0, false, false);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move

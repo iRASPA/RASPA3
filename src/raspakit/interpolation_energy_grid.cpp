@@ -3565,7 +3565,7 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
           {
             double value = Interactions::calculateEnergyAtPosition(interpolationGridType, forceField, super_cell_box,
                                                                    pos, pseudo_atom_index, framework_atoms);
-            data_cell[0, i, j, k] = (value > forceField.overlapCriteria) ? 2.0 * forceField.overlapCriteria : value;
+            data_cell[0, i, j, k] = (value > forceField.energyOverlapCriteria) ? 2.0 * forceField.energyOverlapCriteria : value;
           }
           break;
           case ForceField::InterpolationScheme::Tricubic:
@@ -3585,13 +3585,13 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
             values[7] /= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y) *
                          static_cast<double>(numberOfCells.z);
 
-            if (values[0] > forceField.overlapCriteria)
+            if (values[0] > forceField.energyOverlapCriteria)
             {
               // if overlap then make values finite
-              data_cell[0, i, j, k] = 2.0 * forceField.overlapCriteria;
-              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
-              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
-              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[0, i, j, k] = 2.0 * forceField.energyOverlapCriteria;
+              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
               for (std::size_t l = 4; l < 8; ++l)
               {
                 data_cell[l, i, j, k] = 0.0;
@@ -3666,13 +3666,13 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
                           static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
                           static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
 
-            if (values[0] > forceField.overlapCriteria)
+            if (values[0] > forceField.energyOverlapCriteria)
             {
               // if overlap then make values finite
-              data_cell[0, i, j, k] = 2.0 * forceField.overlapCriteria;
-              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
-              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
-              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[0, i, j, k] = 2.0 * forceField.energyOverlapCriteria;
+              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
               for (std::size_t l = 4; l < 27; ++l)
               {
                 data_cell[l, i, j, k] = 0.0;

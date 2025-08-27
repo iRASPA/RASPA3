@@ -45,19 +45,18 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule_atoms, 
-    std::size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::vector<Atom> molecule_atoms) noexcept
 {
-  std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(numberOfTrialDirections);
+  std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(forceField.numberOfTrialDirections);
 
   // randomly rotated configurations around the starting bead
-  for (std::size_t i = 0; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 0; i < forceField.numberOfTrialDirections; ++i)
   {
     simd_quatd orientation = random.randomSimdQuatd();
     double3x3 rotationMatrix = double3x3::buildRotationMatrixInverse(orientation);
 
     std::vector<Atom> randomlyRotatedAtoms(molecule_atoms.begin(), molecule_atoms.end());
-    double3 rotation_center = molecule_atoms[startingBead].position;
+    double3 rotation_center = molecule_atoms[component.startingBead].position;
     for(std::size_t i = 0; i != randomlyRotatedAtoms.size(); ++i)
     {
       randomlyRotatedAtoms[i].position = rotation_center + rotationMatrix * (molecule_atoms[i].position - rotation_center);
@@ -83,7 +82,7 @@ import interpolation_energy_grid;
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
                                                   interpolationGrids, framework, frameworkAtomData, moleculeAtomData,
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
-                                                  std::make_signed_t<std::size_t>(startingBead));
+                                                  std::make_signed_t<std::size_t>(component.startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltmannFactors{};
@@ -101,5 +100,5 @@ import interpolation_energy_grid;
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainGrowData(selected_molecule, selected_atoms, selected_running_energy, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
+  return ChainGrowData(selected_molecule, selected_atoms, selected_running_energy, RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
 }

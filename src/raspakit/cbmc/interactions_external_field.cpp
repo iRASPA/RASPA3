@@ -45,7 +45,7 @@ import threadpool;
 {
   RunningEnergy energySum;
 
-  const double overlapCriteria = forceField.overlapCriteria;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
 
   if (hasExternalField)
   {

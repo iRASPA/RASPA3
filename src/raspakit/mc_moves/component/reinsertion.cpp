@@ -81,7 +81,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, system.numberOfTrialDirections);
+      molecule_atoms);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
@@ -112,7 +112,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, growData->storedR, system.numberOfTrialDirections);
+      molecule_atoms, growData->storedR);
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the retracing step.

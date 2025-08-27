@@ -69,7 +69,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       random, componentA, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
       systemA.interpolationGrids, systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
       systemA.beta, growType, cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA, newMoleculeIndex,
-      1.0, false, false, systemA.numberOfTrialDirections);
+      1.0, false, false);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)
@@ -126,8 +126,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
       random, componentB, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
       systemB.interpolationGrids, systemB.framework, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(),
-      systemB.beta, growType, cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB, molecule,
-      systemB.numberOfTrialDirections);
+      systemB.beta, growType, cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB, molecule);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC deletion (non-Ewald part)

@@ -208,8 +208,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         random, component, system.hasExternalField, system.forceField, system.simulationBox,
         system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule,
-        newLambda, system.components[selectedComponent].lambdaGC.computeDUdlambda, true,
-        system.numberOfTrialDirections);
+        newLambda, system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -349,7 +348,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
           random, component, system.hasExternalField, system.forceField, system.simulationBox,
           system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
           system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, 
-          fractionalMolecule, system.numberOfTrialDirections);
+          fractionalMolecule);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);

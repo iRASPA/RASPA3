@@ -66,7 +66,7 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule,
-      1.0, false, false, system.numberOfTrialDirections);
+      1.0, false, false);
   t2 = std::chrono::system_clock::now();
 
   component.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);

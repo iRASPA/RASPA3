@@ -60,7 +60,7 @@ template <>
     double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
 {
   bool useCharge = forceField.useCharge;
-  [[maybe_unused]] const double overlapCriteria = forceField.overlapCriteria;
+  [[maybe_unused]] const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 
@@ -158,7 +158,7 @@ template <>
     RunningEnergy energySum;
 
     bool useCharge = forceField.useCharge;
-    const double overlapCriteria = forceField.overlapCriteria;
+    const double overlapCriteria = forceField.energyOverlapCriteria;
     const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
     const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 
@@ -264,7 +264,7 @@ template <>
     double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
 {
   bool useCharge = forceField.useCharge;
-  [[maybe_unused]] const double overlapCriteria = forceField.overlapCriteria;
+  [[maybe_unused]] const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 

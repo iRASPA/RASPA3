@@ -504,8 +504,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
               random, components[componentId], hasExternalField, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
               forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, 
-              numberOfMoleculesPerComponent[componentId], 0.0, groupId, true, numberOfTrialDirections);
-        } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
+              numberOfMoleculesPerComponent[componentId], 0.0, groupId, true);
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
       }
@@ -571,9 +571,9 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
               random, components[componentId], hasExternalField, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
               forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb,
-              numberOfMoleculesPerComponent[componentId], 1.0, false, false, numberOfTrialDirections);
+              numberOfMoleculesPerComponent[componentId], 1.0, false, false);
 
-        } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
         inside_blocked_pocket = insideBlockedPockets(components[componentId], newMolecule);
@@ -2485,7 +2485,7 @@ void System::createInterpolationGrids(std::ostream& stream)
 
         // test charges when no VDW overlap detected (putting a unit charge on top of negative framework atom can lead
         // to very negative energies)
-        if (analytical_vdw_energy < forceField.overlapCriteria)
+        if (analytical_vdw_energy < forceField.energyOverlapCriteria)
         {
           double charge = forceField.pseudoAtoms[index].charge;
           auto [interpolated_value_real_ewald, interpolated_gradient_real_ewald, interpolated_hessian_real_ewald] =
@@ -2948,7 +2948,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.runningEnergies;
   archive << s.currentExcessPressureTensor;
   archive << s.currentEnergyStatus;
-  archive << s.numberOfTrialDirections;
   archive << s.eik_xy;
   archive << s.eik_x;
   archive << s.eik_y;
@@ -3059,7 +3058,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.runningEnergies;
   archive >> s.currentExcessPressureTensor;
   archive >> s.currentEnergyStatus;
-  archive >> s.numberOfTrialDirections;
   archive >> s.eik_xy;
   archive >> s.eik_x;
   archive >> s.eik_y;

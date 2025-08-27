@@ -39,7 +39,7 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule,
-    double scaling, bool groupId, bool isFractional, std::size_t numberOfTrialDirections) noexcept;
+    double scaling, bool groupId, bool isFractional) noexcept;
 
 // deletion
 [[nodiscard]] ChainRetraceData retraceMoleculeSwapDeletion(
@@ -48,8 +48,8 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
-    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::span<Atom> molecule_atoms,
-    std::size_t numberOfTrialDirections) noexcept;
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, 
+    std::span<Atom> molecule_atoms) noexcept;
 
 // reinsertion grow
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeReinsertion(
@@ -59,7 +59,7 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType,
     double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    Molecule &molecule, std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
+    Molecule &molecule, std::span<Atom> molecule_atoms) noexcept;
 
 // reinsertion retrace
 [[nodiscard]] ChainRetraceData retraceMoleculeReinsertion(
@@ -70,5 +70,5 @@ export namespace CBMC
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
     double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, Molecule &molecule, std::span<Atom> molecule_atoms,
-    double storedR, std::size_t numberOfTrialDirections) noexcept;
+    double storedR) noexcept;
 }  // namespace CBMC
