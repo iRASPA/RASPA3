@@ -156,7 +156,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         if(std::fabs(new_angle - old_angle) > 1e-5)
         {
           throw std::runtime_error(std::format("CBMC: bond-angle change in 'MoveType::BondLengthChange' ({} vs {})\n",
-                                               new_angle, old_angle));
+                                               new_angle * Units::RadiansToDegrees, old_angle * Units::RadiansToDegrees));
         }
 #endif
         break;

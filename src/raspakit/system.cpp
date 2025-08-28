@@ -3195,9 +3195,16 @@ void System::writeRestartFile()
 
   for(std::size_t component_id = 0; component_id < components.size(); ++component_id)
   {
-    const std::span<const Atom> atoms = spanOfIntegerAtomsOfComponent(component_id);
+    std::vector<double3> positions{};
 
-    std::vector<double3> positions = atoms | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
+    if(numberOfMoleculesPerComponent[component_id] > 0)
+    {
+      const std::span<const Atom> atoms = spanOfIntegerAtomsOfComponent(component_id);
+
+      positions = spanOfIntegerAtomsOfComponent(component_id)
+                    | std::views::transform(&Atom::position) 
+                    | std::ranges::to<std::vector>();
+    }
     json[components[component_id].name] = positions;
   }
 
