@@ -147,6 +147,36 @@ $(document).ready(function(){initNavTree('restart.html',''); initResizable(); })
 <p>To use these restart-files to start from the saved (and hopefully equilibrated) postions, first copy these files to the working directory (the location of the <code>simulation.json</code>). </p><div class="fragment"><div class="line">cp output\restart_240_0.s0.json .</div>
 <div class="line">cp output\restart_240_0.s1.json .</div>
 </div><!-- fragment --><p> This is because the restart-files in the output-directory are overwritten every run. Next change the <code>simulation.json</code> to use the restart-files</p>
+<p>The contents of the restart files look like </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;CO2&quot;: [</div>
+<div class="line">    [ 16.640068355882505, 9.764919807611305, 4.333198721377549 ],</div>
+<div class="line">    [ 17.15733718188185, 8.82872907970449, 4.75293778631024 ],</div>
+<div class="line">    [ 17.67460600788119, 7.892538351797674, 5.172676851242931 ],</div>
+<div class="line">    [ 3.815549021105568, 8.879311693833092, 17.616704775297364 ],</div>
+<div class="line">    [ 4.677375964586537, 8.549547910646638, 18.30132961182377 ],</div>
+<div class="line">    [ 5.539202908067507, 8.219784127460183, 18.985954448350178 ]</div>
+<div class="line">  ],</div>
+<div class="line">  &quot;SimulationBox&quot;: {</div>
+<div class="line">    &quot;angle-alpha&quot;: 90.0,</div>
+<div class="line">    &quot;angle-beta&quot;: 90.0,</div>
+<div class="line">    &quot;angle-gamma&quot;: 90.0,</div>
+<div class="line">    &quot;length-a&quot;: 31.881622110825266,</div>
+<div class="line">    &quot;length-b&quot;: 31.881622110825266,</div>
+<div class="line">    &quot;length-c&quot;: 31.881622110825266</div>
+<div class="line">  }</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> So, the component-name as the key, and the value is an array of positions, and information on the simulation-box (during NPT or Gibbs the box changes). CO$_2$ molecules are usually modeled as <code>rigid</code> and implemented using quaternions. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;CriticalTemperature&quot;: 304.1282,</div>
+<div class="line">  &quot;CriticalPressure&quot;: 7377300.0,</div>
+<div class="line">  &quot;AcentricFactor&quot;: 0.22394,</div>
+<div class="line">  &quot;Type&quot;: &quot;rigid&quot;,</div>
+<div class="line">  &quot;pseudoAtoms&quot;: [</div>
+<div class="line">    [&quot;O_co2&quot;, [0.0, 0.0, 1.149]],</div>
+<div class="line">    [&quot;C_co2&quot;, [0.0, 0.0, 0.0]],</div>
+<div class="line">    [&quot;O_co2&quot;, [0.0, 0.0, -1.149]]</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> The quaternions are computed from the positions using singular-value decompositions. The advantage is that, even when the positions are input by hand and do not satisfy the rigid constraints, an optimal mapping or best fit is obtained. For output restart-files, reading these in, should result in the exact same positions and energies.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 25000,</div>
