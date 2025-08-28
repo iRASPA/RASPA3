@@ -13,9 +13,10 @@ var searchData=
   ['atmtotorr_10',['AtmToTorr',['../structUnits.html#ae6ca36c1a78effc472e16e004832a4d2',1,'Units']]],
   ['atomicmassunit_11',['AtomicMassUnit',['../structUnits.html#abc575ca8bd257ccccecd321aa6e3c439',1,'Units']]],
   ['atomicnumber_12',['atomicNumber',['../structPseudoAtom.html#a39d393bf27ffb4e119044bc600d5b82c',1,'PseudoAtom']]],
-  ['atoms_13',['atoms',['../structComponent.html#af7ca684104452c143bb5be2d91654de3',1,'Component::atoms'],['../structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc',1,'Framework::atoms']]],
-  ['automaticewald_14',['automaticEwald',['../structForceField.html#abf5cc2af0745da32eaa15935ac71c65e',1,'ForceField']]],
-  ['averagerosenbluthweights_15',['averageRosenbluthWeights',['../structComponent.html#a371290e41662794fbd284fe60bf2745a',1,'Component']]],
-  ['avogadroconstant_16',['AvogadroConstant',['../structUnits.html#a87e95ae2d47550be077a34f30fb0cb36',1,'Units']]],
-  ['axialdispersioncoefficient_17',['axialDispersionCoefficient',['../structComponent.html#a94286dab5dd62994168deb8993467449',1,'Component']]]
+  ['atomindex_13',['atomIndex',['../structMolecule.html#abf58540516f717f884a45164522bdb77',1,'Molecule']]],
+  ['atoms_14',['atoms',['../structComponent.html#af7ca684104452c143bb5be2d91654de3',1,'Component::atoms'],['../structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc',1,'Framework::atoms']]],
+  ['automaticewald_15',['automaticEwald',['../structForceField.html#abf5cc2af0745da32eaa15935ac71c65e',1,'ForceField']]],
+  ['averagerosenbluthweights_16',['averageRosenbluthWeights',['../structComponent.html#a371290e41662794fbd284fe60bf2745a',1,'Component']]],
+  ['avogadroconstant_17',['AvogadroConstant',['../structUnits.html#a87e95ae2d47550be077a34f30fb0cb36',1,'Units']]],
+  ['axialdispersioncoefficient_18',['axialDispersionCoefficient',['../structComponent.html#a94286dab5dd62994168deb8993467449',1,'Component']]]
 ];

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,6 +102,7 @@ $(document).ready(function(){initNavTree('structWriteLammpsData.html',''); initR
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#friends">Friends</a> &#124;
 <a href="structWriteLammpsData-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">WriteLammpsData Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_write__lammps__data.html">write_lammps_data</a></div></div></div>
 </div><!--header-->
@@ -122,6 +123,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>update</b> (std::size
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
+<tr class="memitem:a66e1c10428b23b52b1430fd194178a09" id="r_a66e1c10428b23b52b1430fd194178a09"><td class="memItemLeft" align="right" valign="top"><a id="a66e1c10428b23b52b1430fd194178a09" name="a66e1c10428b23b52b1430fd194178a09"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="separator:a66e1c10428b23b52b1430fd194178a09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3adf79be87628ede09d5fe976d43576e" id="r_a3adf79be87628ede09d5fe976d43576e"><td class="memItemLeft" align="right" valign="top"><a id="a3adf79be87628ede09d5fe976d43576e" name="a3adf79be87628ede09d5fe976d43576e"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b> {10}</td></tr>
 <tr class="memdesc:a3adf79be87628ede09d5fe976d43576e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writing frequency. <br /></td></tr>
@@ -133,6 +137,15 @@ std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>systemId</b></
 <tr class="memitem:a0d782906396dd08554dfe436dd9eddca" id="r_a0d782906396dd08554dfe436dd9eddca"><td class="memItemLeft" align="right" valign="top"><a id="a0d782906396dd08554dfe436dd9eddca" name="a0d782906396dd08554dfe436dd9eddca"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>modelNumber</b> {1}</td></tr>
 <tr class="separator:a0d782906396dd08554dfe436dd9eddca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
+Friends</h2></td></tr>
+<tr class="memitem:a34e6e0c093ccc3544d94f68bab0b297a" id="r_a34e6e0c093ccc3544d94f68bab0b297a"><td class="memItemLeft" align="right" valign="top"><a id="a34e6e0c093ccc3544d94f68bab0b297a" name="a34e6e0c093ccc3544d94f68bab0b297a"></a>
+Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&lt;&lt;</b> (Archive&lt; std::ofstream &gt; &amp;archive, const <a class="el" href="structWriteLammpsData.html">WriteLammpsData</a> &amp;box)</td></tr>
+<tr class="separator:a34e6e0c093ccc3544d94f68bab0b297a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9664fe66b2af6d4a923b1a4d6978cdb4" id="r_a9664fe66b2af6d4a923b1a4d6978cdb4"><td class="memItemLeft" align="right" valign="top"><a id="a9664fe66b2af6d4a923b1a4d6978cdb4" name="a9664fe66b2af6d4a923b1a4d6978cdb4"></a>
+Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structWriteLammpsData.html">WriteLammpsData</a> &amp;box)</td></tr>
+<tr class="separator:a9664fe66b2af6d4a923b1a4d6978cdb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A property writer class for writing LAMMPS data files. </p>

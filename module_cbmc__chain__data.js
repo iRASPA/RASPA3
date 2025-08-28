@@ -1,4 +1,5 @@
 var module_cbmc__chain__data =
 [
-    [ "ChainData", "structChainData.html", null ]
+    [ "ChainGrowData", "structChainGrowData.html", null ],
+    [ "ChainRetraceData", "structChainRetraceData.html", null ]
 ];

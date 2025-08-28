@@ -10,10 +10,11 @@ var searchData=
   ['rejectoutofbound_7',['rejectOutofBound',['../structTransitionMatrix.html#a8386a4b54930d1648490e1a380460bfe',1,'TransitionMatrix']]],
   ['rescalewanglandauevery_8',['rescalewanglandauevery',['../structMolecularDynamics.html#a578a489e9d81c5088e5f61026caf5ec3',1,'MolecularDynamics::rescaleWangLandauEvery'],['../structMonteCarloTransitionMatrix.html#af99320f4ccb6a08e931a52f856b08747',1,'MonteCarloTransitionMatrix::rescaleWangLandauEvery'],['../structMonteCarlo.html#aeba53b20c72cd85d94fae50e8850680b',1,'MonteCarlo::rescaleWangLandauEvery'],['../structInputReader.html#ad9070e5cdca89894bdda204cc7bdaf1a',1,'InputReader::rescaleWangLandauEvery']]],
   ['restartfrombinary_9',['restartFromBinary',['../structInputReader.html#a54f00f8196189df3d6d521ec170dbdbd',1,'InputReader']]],
-  ['reverse_5flnpi_10',['reverse_lnpi',['../structTransitionMatrix.html#a5fc3239b0df1dc3818c7d4754e1c6c77',1,'TransitionMatrix']]],
-  ['rezeroafterinitialization_11',['rezeroAfterInitialization',['../structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3',1,'TransitionMatrix']]],
-  ['rigid_12',['rigid',['../structComponent.html#a205d5610646701fbcb47d58cee3848be',1,'Component::rigid'],['../structFramework.html#ac6a05f3fff8f8d164856ccb55e15a3eb',1,'Framework::rigid']]],
-  ['rotationaldegreesoffreedom_13',['rotationalDegreesOfFreedom',['../structComponent.html#a79e47df34566ee1922e4f542ef80ad3d',1,'Component']]],
-  ['rotationaldgreesoffreedom_14',['rotationalDgreesOfFreedom',['../structThermostat.html#a946a876db659830ca6aa7e10e3454c50',1,'Thermostat']]],
-  ['rotationalkineticenergy_15',['rotationalKineticEnergy',['../structRunningEnergy.html#a52e9488faa6805d564a6969f4f575162',1,'RunningEnergy']]]
+  ['restartfrombinaryfilename_10',['restartFromBinaryFileName',['../structInputReader.html#a122bf608cfc062bb076bf6adb6d4daed',1,'InputReader']]],
+  ['reverse_5flnpi_11',['reverse_lnpi',['../structTransitionMatrix.html#a5fc3239b0df1dc3818c7d4754e1c6c77',1,'TransitionMatrix']]],
+  ['rezeroafterinitialization_12',['rezeroAfterInitialization',['../structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3',1,'TransitionMatrix']]],
+  ['rigid_13',['rigid',['../structComponent.html#a205d5610646701fbcb47d58cee3848be',1,'Component::rigid'],['../structFramework.html#ac6a05f3fff8f8d164856ccb55e15a3eb',1,'Framework::rigid']]],
+  ['rotationaldegreesoffreedom_14',['rotationalDegreesOfFreedom',['../structComponent.html#a79e47df34566ee1922e4f542ef80ad3d',1,'Component']]],
+  ['rotationaldgreesoffreedom_15',['rotationalDgreesOfFreedom',['../structThermostat.html#a946a876db659830ca6aa7e10e3454c50',1,'Thermostat']]],
+  ['rotationalkineticenergy_16',['rotationalKineticEnergy',['../structRunningEnergy.html#a52e9488faa6805d564a6969f4f575162',1,'RunningEnergy']]]
 ];

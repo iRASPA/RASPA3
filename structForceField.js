@@ -43,7 +43,6 @@ var structForceField =
     [ "omitEwaldFourier", "structForceField.html#a769468a3667a1d4b214cb026cdea9b69", null ],
     [ "omitInterInteractions", "structForceField.html#af63e6ecb8544061747929b9388bd0258", null ],
     [ "omitInterPolarization", "structForceField.html#a1c4b5e8c34a59973511e75f31e5964fa", null ],
-    [ "overlapCriteria", "structForceField.html#a655260d265c700febd59d2f61e89fe8a", null ],
     [ "pseudoAtoms", "structForceField.html#aba31b1a2878451120cd0812ae8e8642f", null ],
     [ "reciprocalCutOffSquared", "structForceField.html#ae3fbad7d30fb83e67871d2289b152aa1", null ],
     [ "reciprocalIntegerCutOffSquared", "structForceField.html#a40d3d045bc2d53dc0a54b3e15fd45906", null ],

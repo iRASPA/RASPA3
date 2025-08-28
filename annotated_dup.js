@@ -4,12 +4,12 @@ var annotated_dup =
       [ "EnergyFactor", "structPotentials_1_1EnergyFactor.html", null ],
       [ "GradientFactor", "structPotentials_1_1GradientFactor.html", null ],
       [ "HessianFactor", "structPotentials_1_1HessianFactor.html", null ],
-      [ "InternalPotentials", "structPotentials_1_1InternalPotentials.html", null ],
+      [ "IntraMolecularPotentials", "structPotentials_1_1IntraMolecularPotentials.html", null ],
       [ "TricubicDerivativeFactor", "structPotentials_1_1TricubicDerivativeFactor.html", null ],
       [ "TriquinticDerivativeFactor", "structPotentials_1_1TriquinticDerivativeFactor.html", null ]
     ] ],
     [ "std", "namespacestd.html", [
-      [ "formatter< Atom >", "structstd_1_1formatter_3_01Atom_01_4.html", null ],
+      [ "formatter< BondPotential >", "structstd_1_1formatter_3_01BondPotential_01_4.html", null ],
       [ "hash< MultiSiteIsotherm >", "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html", null ]
     ] ],
     [ "Atom", "structAtom.html", "structAtom" ],
@@ -24,7 +24,8 @@ var annotated_dup =
     [ "Breakthrough", "structBreakthrough.html", null ],
     [ "BreakthroughSimulation", "structBreakthroughSimulation.html", null ],
     [ "CBMCMoveStatistics", "structCBMCMoveStatistics.html", null ],
-    [ "ChainData", "structChainData.html", null ],
+    [ "ChainGrowData", "structChainGrowData.html", null ],
+    [ "ChainRetraceData", "structChainRetraceData.html", null ],
     [ "ChargeEquilbrationElementData", "structChargeEquilbrationElementData.html", null ],
     [ "ChiralCenter", "structChiralCenter.html", "structChiralCenter" ],
     [ "CIFReader", "structCIFReader.html", "structCIFReader" ],
@@ -69,7 +70,7 @@ var annotated_dup =
     [ "MonteCarlo", "structMonteCarlo.html", "structMonteCarlo" ],
     [ "MonteCarloTransitionMatrix", "structMonteCarloTransitionMatrix.html", "structMonteCarloTransitionMatrix" ],
     [ "MoveStatistics", "structMoveStatistics.html", "structMoveStatistics" ],
-    [ "MultiSiteIsotherm", "structMultiSiteIsotherm.html", null ],
+    [ "MultiSiteIsotherm", "structMultiSiteIsotherm.html", "structMultiSiteIsotherm" ],
     [ "OutOfPlaneBendPotential", "structOutOfPlaneBendPotential.html", "structOutOfPlaneBendPotential" ],
     [ "PressureRange", "structPressureRange.html", null ],
     [ "PropertyConventionalRadialDistributionFunction", "structPropertyConventionalRadialDistributionFunction.html", null ],

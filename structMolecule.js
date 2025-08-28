@@ -2,6 +2,7 @@ var structMolecule =
 [
     [ "Molecule", "structMolecule.html#ac8edc753255d7488c4581c87619b7344", null ],
     [ "Molecule", "structMolecule.html#a406c61170d52f6ca5074b731844dbb75", null ],
+    [ "atomIndex", "structMolecule.html#abf58540516f717f884a45164522bdb77", null ],
     [ "centerOfMassPosition", "structMolecule.html#ab1e2695326e1c9e4438cb34713ab9c37", null ],
     [ "componentId", "structMolecule.html#a0bed0ef407474fb6848a07ed3a8ce0c2", null ],
     [ "gradient", "structMolecule.html#a32850edc85f6b4af856e7dec0e0fef40", null ],

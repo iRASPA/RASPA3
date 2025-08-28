@@ -21,9 +21,10 @@ var searchData=
   ['atom_18',['atom',['../structAtom.html#a08bce8e02378489d3f1d3f4bafbe5bca',1,'Atom::Atom() noexcept=default'],['../structAtom.html#a8702c9f79db4ecaa31a8ef718405e2d1',1,'Atom::Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, std::uint32_t moleculeId, std::uint16_t type, std::uint8_t componentId, std::uint8_t groupId, std::uint8_t isFractional)'],['../structAtom.html#a339f530f5d85e1feb9eeaf8f66388503',1,'Atom::Atom(double3 position, double charge, double lambda, std::uint32_t moleculeId, std::uint16_t type, std::uint8_t componentId, std::uint8_t groupId, std::uint8_t isFractional)'],['../structAtom.html',1,'Atom']]],
   ['atomicmassunit_19',['AtomicMassUnit',['../structUnits.html#abc575ca8bd257ccccecd321aa6e3c439',1,'Units']]],
   ['atomicnumber_20',['atomicNumber',['../structPseudoAtom.html#a39d393bf27ffb4e119044bc600d5b82c',1,'PseudoAtom']]],
-  ['atoms_21',['atoms',['../structComponent.html#af7ca684104452c143bb5be2d91654de3',1,'Component::atoms'],['../structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc',1,'Framework::atoms']]],
-  ['automaticewald_22',['automaticEwald',['../structForceField.html#abf5cc2af0745da32eaa15935ac71c65e',1,'ForceField']]],
-  ['averagerosenbluthweights_23',['averageRosenbluthWeights',['../structComponent.html#a371290e41662794fbd284fe60bf2745a',1,'Component']]],
-  ['avogadroconstant_24',['AvogadroConstant',['../structUnits.html#a87e95ae2d47550be077a34f30fb0cb36',1,'Units']]],
-  ['axialdispersioncoefficient_25',['axialDispersionCoefficient',['../structComponent.html#a94286dab5dd62994168deb8993467449',1,'Component']]]
+  ['atomindex_21',['atomIndex',['../structMolecule.html#abf58540516f717f884a45164522bdb77',1,'Molecule']]],
+  ['atoms_22',['atoms',['../structComponent.html#af7ca684104452c143bb5be2d91654de3',1,'Component::atoms'],['../structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc',1,'Framework::atoms']]],
+  ['automaticewald_23',['automaticEwald',['../structForceField.html#abf5cc2af0745da32eaa15935ac71c65e',1,'ForceField']]],
+  ['averagerosenbluthweights_24',['averageRosenbluthWeights',['../structComponent.html#a371290e41662794fbd284fe60bf2745a',1,'Component']]],
+  ['avogadroconstant_25',['AvogadroConstant',['../structUnits.html#a87e95ae2d47550be077a34f30fb0cb36',1,'Units']]],
+  ['axialdispersioncoefficient_26',['axialDispersionCoefficient',['../structComponent.html#a94286dab5dd62994168deb8993467449',1,'Component']]]
 ];

@@ -8,5 +8,6 @@ var structBlockErrorEstimation =
     [ "currentSample", "structBlockErrorEstimation.html#aa8dd2938784d7e2a696866d908a207f5", null ],
     [ "nextBin", "structBlockErrorEstimation.html#af7d9f136004e62797eac9d183287303e", null ],
     [ "numberOfBins", "structBlockErrorEstimation.html#a2a7c13510ad0bebd10323cb007cdc4bc", null ],
-    [ "numberOfSamples", "structBlockErrorEstimation.html#ade638e7bda12334a19fd64de48a4d076", null ]
+    [ "numberOfSamples", "structBlockErrorEstimation.html#ade638e7bda12334a19fd64de48a4d076", null ],
+    [ "versionNumber", "structBlockErrorEstimation.html#a8a2268f56ed5b4a85208162a5d0fab41", null ]
 ];

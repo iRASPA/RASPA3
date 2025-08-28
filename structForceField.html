@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -325,10 +325,6 @@ std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt;&#
 <a class="el" href="structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983">ChargeMethod</a>&#160;</td><td class="memItemRight" valign="bottom"><b>chargeMethod</b> {<a class="el" href="structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983a4ca32cf75df1f52742531e3a08c470e4">ChargeMethod::Ewald</a>}</td></tr>
 <tr class="memdesc:a12d0757c03cbc58fd42f5dc1208d58da"><td class="mdescLeft">&#160;</td><td class="mdescRight">Method used for calculating electrostatic interactions. <br /></td></tr>
 <tr class="separator:a12d0757c03cbc58fd42f5dc1208d58da"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a655260d265c700febd59d2f61e89fe8a" id="r_a655260d265c700febd59d2f61e89fe8a"><td class="memItemLeft" align="right" valign="top"><a id="a655260d265c700febd59d2f61e89fe8a" name="a655260d265c700febd59d2f61e89fe8a"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>overlapCriteria</b> {1e5}</td></tr>
-<tr class="memdesc:a655260d265c700febd59d2f61e89fe8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy criteria for considering overlaps. <br /></td></tr>
-<tr class="separator:a655260d265c700febd59d2f61e89fe8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a299fec43ce18f393c247d16d34e956fa" id="r_a299fec43ce18f393c247d16d34e956fa"><td class="memItemLeft" align="right" valign="top"><a id="a299fec43ce18f393c247d16d34e956fa" name="a299fec43ce18f393c247d16d34e956fa"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>EwaldPrecision</b> {1e-6}</td></tr>
 <tr class="memdesc:a299fec43ce18f393c247d16d34e956fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Desired precision for Ewald summation. <br /></td></tr>
@@ -359,14 +355,23 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>useCharge</b> {true}<
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>omitEwaldFourier</b> {false}</td></tr>
 <tr class="memdesc:a769468a3667a1d4b214cb026cdea9b69"><td class="mdescLeft">&#160;</td><td class="mdescRight">If true, omits the Fourier component in Ewald summation. <br /></td></tr>
 <tr class="separator:a769468a3667a1d4b214cb026cdea9b69"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a05c395fa1f6618853754c8034fc49ecf" id="r_a05c395fa1f6618853754c8034fc49ecf"><td class="memItemLeft" align="right" valign="top"><a id="a05c395fa1f6618853754c8034fc49ecf" name="a05c395fa1f6618853754c8034fc49ecf"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>minimumRosenbluthFactor</b> {1e-150}</td></tr>
-<tr class="memdesc:a05c395fa1f6618853754c8034fc49ecf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Minimum allowed Rosenbluth factor. <br /></td></tr>
-<tr class="separator:a05c395fa1f6618853754c8034fc49ecf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1de969f26e26bbafc6ce6711bef75bb9" id="r_a1de969f26e26bbafc6ce6711bef75bb9"><td class="memItemLeft" align="right" valign="top"><a id="a1de969f26e26bbafc6ce6711bef75bb9" name="a1de969f26e26bbafc6ce6711bef75bb9"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>energyOverlapCriteria</b> {1e6}</td></tr>
 <tr class="memdesc:a1de969f26e26bbafc6ce6711bef75bb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy criteria for considering overlaps. <br /></td></tr>
 <tr class="separator:a1de969f26e26bbafc6ce6711bef75bb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05190f08a0818d061e5a1afc1d3a11dc" id="r_a05190f08a0818d061e5a1afc1d3a11dc"><td class="memItemLeft" align="right" valign="top"><a id="a05190f08a0818d061e5a1afc1d3a11dc" name="a05190f08a0818d061e5a1afc1d3a11dc"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfTrialDirections</b> { 10 }</td></tr>
+<tr class="separator:a05190f08a0818d061e5a1afc1d3a11dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a140321ba27b8f6430742ad48355473a1" id="r_a140321ba27b8f6430742ad48355473a1"><td class="memItemLeft" align="right" valign="top"><a id="a140321ba27b8f6430742ad48355473a1" name="a140321ba27b8f6430742ad48355473a1"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfTorsionTrialDirections</b> { 100 }</td></tr>
+<tr class="separator:a140321ba27b8f6430742ad48355473a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23d91eea1ea41bbcb4a563414be0146c" id="r_a23d91eea1ea41bbcb4a563414be0146c"><td class="memItemLeft" align="right" valign="top"><a id="a23d91eea1ea41bbcb4a563414be0146c" name="a23d91eea1ea41bbcb4a563414be0146c"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfFirstBeadPositions</b> { 10 }</td></tr>
+<tr class="separator:a23d91eea1ea41bbcb4a563414be0146c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05c395fa1f6618853754c8034fc49ecf" id="r_a05c395fa1f6618853754c8034fc49ecf"><td class="memItemLeft" align="right" valign="top"><a id="a05c395fa1f6618853754c8034fc49ecf" name="a05c395fa1f6618853754c8034fc49ecf"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>minimumRosenbluthFactor</b> {1e-150}</td></tr>
+<tr class="memdesc:a05c395fa1f6618853754c8034fc49ecf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Minimum allowed Rosenbluth factor. <br /></td></tr>
+<tr class="separator:a05c395fa1f6618853754c8034fc49ecf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae229fc635a810876e07dd1910911dbf1" id="r_ae229fc635a810876e07dd1910911dbf1"><td class="memItemLeft" align="right" valign="top"><a id="ae229fc635a810876e07dd1910911dbf1" name="ae229fc635a810876e07dd1910911dbf1"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>useDualCutOff</b> {false}</td></tr>
 <tr class="memdesc:ae229fc635a810876e07dd1910911dbf1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates if dual cut-off scheme is used. <br /></td></tr>

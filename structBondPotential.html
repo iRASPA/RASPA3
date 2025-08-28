@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -155,6 +155,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>generateBondLength<
 <tr class="memitem:aa580c370a1d67416142722210c639842" id="r_aa580c370a1d67416142722210c639842"><td class="memItemLeft" align="right" valign="top"><a id="aa580c370a1d67416142722210c639842" name="aa580c370a1d67416142722210c639842"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>calculateEnergy</b> (const double3 &amp;posA, const double3 &amp;posB) const</td></tr>
 <tr class="separator:aa580c370a1d67416142722210c639842"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af33074e25682952d8c6401eb0458e171" id="r_af33074e25682952d8c6401eb0458e171"><td class="memItemLeft" align="right" valign="top"><a id="af33074e25682952d8c6401eb0458e171" name="af33074e25682952d8c6401eb0458e171"></a>
+std::tuple&lt; double, std::array&lt; double3, 2 &gt;, double3x3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>potentialEnergyGradientStrain</b> (const double3 &amp;posA, const double3 &amp;posB) const</td></tr>
+<tr class="separator:af33074e25682952d8c6401eb0458e171"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -167,7 +170,7 @@ std::array&lt; std::size_t, 2 &gt;&#160;</td><td class="memItemRight" valign="bo
 <tr class="memdesc:aa99fc4c85645d89cc8f922e5f55f3f81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Identifiers of the two particles forming the bond. <br /></td></tr>
 <tr class="separator:aa99fc4c85645d89cc8f922e5f55f3f81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4920b1fd294af6f39e452e7447a5e9eb" id="r_a4920b1fd294af6f39e452e7447a5e9eb"><td class="memItemLeft" align="right" valign="top"><a id="a4920b1fd294af6f39e452e7447a5e9eb" name="a4920b1fd294af6f39e452e7447a5e9eb"></a>
-BondType&#160;</td><td class="memItemRight" valign="bottom"><b>type</b></td></tr>
+BondType&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> { BondType::None }</td></tr>
 <tr class="memdesc:a4920b1fd294af6f39e452e7447a5e9eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">The type of bond potential. <br /></td></tr>
 <tr class="separator:a4920b1fd294af6f39e452e7447a5e9eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1055f040a630da4b9bc57103294c3cdb" id="r_a1055f040a630da4b9bc57103294c3cdb"><td class="memItemLeft" align="right" valign="top"><a id="a1055f040a630da4b9bc57103294c3cdb" name="a1055f040a630da4b9bc57103294c3cdb"></a>
@@ -177,9 +180,9 @@ std::array&lt; double, maximumNumberOfBondParameters &gt;&#160;</td><td class="m
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
-<tr class="memitem:a8237380ead7e6bb685af1b7856d6396e" id="r_a8237380ead7e6bb685af1b7856d6396e"><td class="memItemLeft" align="right" valign="top">static std::array&lt; std::size_t, 11 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBondPotential.html#a8237380ead7e6bb685af1b7856d6396e">numberOfBondParameters</a> {1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2}</td></tr>
-<tr class="memdesc:a8237380ead7e6bb685af1b7856d6396e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters required for each bond type.  <br /></td></tr>
-<tr class="separator:a8237380ead7e6bb685af1b7856d6396e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9316f78f5dcb384b40ada6665450bb8" id="r_af9316f78f5dcb384b40ada6665450bb8"><td class="memItemLeft" align="right" valign="top">static std::array&lt; std::size_t, 12 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBondPotential.html#af9316f78f5dcb384b40ada6665450bb8">numberOfBondParameters</a> {0, 1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2}</td></tr>
+<tr class="memdesc:af9316f78f5dcb384b40ada6665450bb8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters required for each bond type.  <br /></td></tr>
+<tr class="separator:af9316f78f5dcb384b40ada6665450bb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaf8502fd5fd0b94eea45a68d5e91cae2" id="r_aaf8502fd5fd0b94eea45a68d5e91cae2"><td class="memItemLeft" align="right" valign="top">static std::map&lt; std::string, BondType &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBondPotential.html#aaf8502fd5fd0b94eea45a68d5e91cae2">definitionForString</a></td></tr>
 <tr class="memdesc:aaf8502fd5fd0b94eea45a68d5e91cae2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mapping of bond type strings to BondType enums.  <br /></td></tr>
 <tr class="separator:aaf8502fd5fd0b94eea45a68d5e91cae2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -313,6 +316,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">      {<span class="stringliteral">&quot;NONE&quot;</span>, BondType::None},</div>
 <div class="line">      {<span class="stringliteral">&quot;FIXED&quot;</span>, BondType::Fixed},</div>
 <div class="line">      {<span class="stringliteral">&quot;HARMONIC&quot;</span>, BondType::Harmonic},</div>
 <div class="line">      {<span class="stringliteral">&quot;CORE_SHELL_SPRING&quot;</span>, BondType::CoreShellSpring},</div>
@@ -330,8 +334,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 
 </div>
 </div>
-<a id="a8237380ead7e6bb685af1b7856d6396e" name="a8237380ead7e6bb685af1b7856d6396e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8237380ead7e6bb685af1b7856d6396e">&#9670;&#160;</a></span>numberOfBondParameters</h2>
+<a id="af9316f78f5dcb384b40ada6665450bb8" name="af9316f78f5dcb384b40ada6665450bb8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af9316f78f5dcb384b40ada6665450bb8">&#9670;&#160;</a></span>numberOfBondParameters</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -340,7 +344,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::array&lt;std::size_t, 11&gt; BondPotential::numberOfBondParameters {1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2}</td>
+          <td class="memname">std::array&lt;std::size_t, 12&gt; BondPotential::numberOfBondParameters {0, 1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2}</td>
         </tr>
       </table>
   </td>
@@ -356,7 +360,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 </div>
 </div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
-<li>src/raspakit/potentials/internal/<b>bond_potential.ixx</b></li>
+<li>src/raspakit/potentials/intramolecular/<b>bond_potential.ixx</b></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

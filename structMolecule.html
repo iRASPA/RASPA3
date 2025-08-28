@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -153,18 +153,31 @@ simd_quatd&#160;</td><td class="memItemRight" valign="bottom"><b>orientationGrad
 double&#160;</td><td class="memItemRight" valign="bottom"><b>mass</b></td></tr>
 <tr class="memdesc:acf57087a8d3f90845883df2264893c59"><td class="mdescLeft">&#160;</td><td class="mdescRight">Molecular mass. <br /></td></tr>
 <tr class="separator:acf57087a8d3f90845883df2264893c59"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0bed0ef407474fb6848a07ed3a8ce0c2" id="r_a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memItemLeft" align="right" valign="top"><a id="a0bed0ef407474fb6848a07ed3a8ce0c2" name="a0bed0ef407474fb6848a07ed3a8ce0c2"></a>
-std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b></td></tr>
-<tr class="memdesc:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointing to the index in the components list. <br /></td></tr>
-<tr class="separator:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a56c9dbfab3691d6f646dd45ff96d41" id="r_a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memItemLeft" align="right" valign="top"><a id="a1a56c9dbfab3691d6f646dd45ff96d41" name="a1a56c9dbfab3691d6f646dd45ff96d41"></a>
-std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfAtoms</b></td></tr>
-<tr class="memdesc:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of subatoms in this molecule. <br /></td></tr>
-<tr class="separator:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acb1704646872ce5c98ad93cddabd2b08" id="r_acb1704646872ce5c98ad93cddabd2b08"><td class="memItemLeft" align="right" valign="top"><a id="acb1704646872ce5c98ad93cddabd2b08" name="acb1704646872ce5c98ad93cddabd2b08"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>invMass</b></td></tr>
 <tr class="memdesc:acb1704646872ce5c98ad93cddabd2b08"><td class="mdescLeft">&#160;</td><td class="mdescRight">1/mass to save on computing (and set correct size) <br /></td></tr>
 <tr class="separator:acb1704646872ce5c98ad93cddabd2b08"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a38567e248e91cba9e9c1ab867862152a" id="r_a38567e248e91cba9e9c1ab867862152a"><td class="memItemLeft" align="right" valign="top"><a id="a38567e248e91cba9e9c1ab867862152a" name="a38567e248e91cba9e9c1ab867862152a"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>padding1</b></td></tr>
+<tr class="separator:a38567e248e91cba9e9c1ab867862152a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a1c8a9f31319656156e59c9005beb45" id="r_a1a1c8a9f31319656156e59c9005beb45"><td class="memItemLeft" align="right" valign="top"><a id="a1a1c8a9f31319656156e59c9005beb45" name="a1a1c8a9f31319656156e59c9005beb45"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>padding2</b></td></tr>
+<tr class="separator:a1a1c8a9f31319656156e59c9005beb45"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf58540516f717f884a45164522bdb77" id="r_abf58540516f717f884a45164522bdb77"><td class="memItemLeft" align="right" valign="top"><a id="abf58540516f717f884a45164522bdb77" name="abf58540516f717f884a45164522bdb77"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>atomIndex</b></td></tr>
+<tr class="memdesc:abf58540516f717f884a45164522bdb77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointing to the index in the list of atoms. <br /></td></tr>
+<tr class="separator:abf58540516f717f884a45164522bdb77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a56c9dbfab3691d6f646dd45ff96d41" id="r_a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memItemLeft" align="right" valign="top"><a id="a1a56c9dbfab3691d6f646dd45ff96d41" name="a1a56c9dbfab3691d6f646dd45ff96d41"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfAtoms</b></td></tr>
+<tr class="memdesc:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of subatoms in this molecule. <br /></td></tr>
+<tr class="separator:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bed0ef407474fb6848a07ed3a8ce0c2" id="r_a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memItemLeft" align="right" valign="top"><a id="a0bed0ef407474fb6848a07ed3a8ce0c2" name="a0bed0ef407474fb6848a07ed3a8ce0c2"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b></td></tr>
+<tr class="memdesc:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointing to the index in the components list. <br /></td></tr>
+<tr class="separator:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa19169c346c74994e41b6c7b50f78e9c" id="r_aa19169c346c74994e41b6c7b50f78e9c"><td class="memItemLeft" align="right" valign="top"><a id="aa19169c346c74994e41b6c7b50f78e9c" name="aa19169c346c74994e41b6c7b50f78e9c"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>padding3</b></td></tr>
+<tr class="separator:aa19169c346c74994e41b6c7b50f78e9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

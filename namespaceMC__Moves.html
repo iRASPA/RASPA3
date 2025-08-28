@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -170,9 +170,12 @@ std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a
 <tr class="memitem:a27681fc9f049ed980f71b117328b20af" id="r_a27681fc9f049ed980f71b117328b20af"><td class="memItemLeft" align="right" valign="top"><a id="a27681fc9f049ed980f71b117328b20af" name="a27681fc9f049ed980f71b117328b20af"></a>
 std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>MC_Moves::reactionMove_CFCMC_CBMC</b> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, const std::vector&lt; std::size_t &gt; reactantStoichiometry, const std::vector&lt; std::size_t &gt; productStoichiometry)</td></tr>
 <tr class="separator:a27681fc9f049ed980f71b117328b20af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac9b00d7d0c4ae7c5c0d1869e6dca85ce" id="r_ac9b00d7d0c4ae7c5c0d1869e6dca85ce"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#ac9b00d7d0c4ae7c5c0d1869e6dca85ce">MC_Moves::performRandomMove</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;selectedSystem, <a class="el" href="structSystem.html">System</a> &amp;selectedSecondSystem, std::size_t selectedComponent, std::size_t &amp;fractionalMoleculeSystem)</td></tr>
-<tr class="memdesc:ac9b00d7d0c4ae7c5c0d1869e6dca85ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a random Monte Carlo move on the selected system.  <br /></td></tr>
-<tr class="separator:ac9b00d7d0c4ae7c5c0d1869e6dca85ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa442a7c81691b45d5d01e207fd376792" id="r_aa442a7c81691b45d5d01e207fd376792"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#aa442a7c81691b45d5d01e207fd376792">MC_Moves::performRandomMoveInitialization</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;selectedSystem, <a class="el" href="structSystem.html">System</a> &amp;selectedSecondSystem, std::size_t selectedComponent, std::size_t &amp;fractionalMoleculeSystem)</td></tr>
+<tr class="memdesc:aa442a7c81691b45d5d01e207fd376792"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a random Monte Carlo move on the selected system.  <br /></td></tr>
+<tr class="separator:aa442a7c81691b45d5d01e207fd376792"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab75d1c3dd343b4ecef7802e09a5f1ba6" id="r_ab75d1c3dd343b4ecef7802e09a5f1ba6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#ab75d1c3dd343b4ecef7802e09a5f1ba6">MC_Moves::performRandomMoveEquilibration</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;selectedSystem, <a class="el" href="structSystem.html">System</a> &amp;selectedSecondSystem, std::size_t selectedComponent, std::size_t &amp;fractionalMoleculeSystem)</td></tr>
+<tr class="memdesc:ab75d1c3dd343b4ecef7802e09a5f1ba6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a random Monte Carlo move on the selected system.  <br /></td></tr>
+<tr class="separator:ab75d1c3dd343b4ecef7802e09a5f1ba6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afd95ddb48f7ad7b69de89ec99e655835" id="r_afd95ddb48f7ad7b69de89ec99e655835"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#afd95ddb48f7ad7b69de89ec99e655835">MC_Moves::performRandomMoveProduction</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;selectedSystem, <a class="el" href="structSystem.html">System</a> &amp;selectedSecondSystem, std::size_t selectedComponent, std::size_t &amp;fractionalMoleculeSystem, std::size_t currentBlock)</td></tr>
 <tr class="memdesc:afd95ddb48f7ad7b69de89ec99e655835"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a random Monte Carlo move during production runs, with statistics tracking.  <br /></td></tr>
 <tr class="separator:afd95ddb48f7ad7b69de89ec99e655835"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -660,8 +663,8 @@ restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 
 
 </div>
 </div>
-<a id="ac9b00d7d0c4ae7c5c0d1869e6dca85ce" name="ac9b00d7d0c4ae7c5c0d1869e6dca85ce"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac9b00d7d0c4ae7c5c0d1869e6dca85ce">&#9670;&#160;</a></span>performRandomMove()</h2>
+<a id="ab75d1c3dd343b4ecef7802e09a5f1ba6" name="ab75d1c3dd343b4ecef7802e09a5f1ba6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab75d1c3dd343b4ecef7802e09a5f1ba6">&#9670;&#160;</a></span>performRandomMoveEquilibration()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -670,7 +673,75 @@ restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void MC_Moves::performRandomMove </td>
+          <td class="memname">void MC_Moves::performRandomMoveEquilibration </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSystem.html">System</a> &amp;&#160;</td>
+          <td class="paramname"><em>selectedSystem</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSystem.html">System</a> &amp;&#160;</td>
+          <td class="paramname"><em>selectedSecondSystem</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>selectedComponent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t &amp;&#160;</td>
+          <td class="paramname"><em>fractionalMoleculeSystem</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">export</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Performs a random Monte Carlo move on the selected system. </p>
+<p>This function selects and executes a random Monte Carlo move for the specified component in the selected system, based on the configured move probabilities.</p>
+<p>The function updates the system's state and running energies as necessary after the move.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>Reference to the random number generator. </td></tr>
+    <tr><td class="paramname">selectedSystem</td><td>The system on which to perform the move. </td></tr>
+    <tr><td class="paramname">selectedSecondSystem</td><td>A secondary system, used in moves involving two systems (e.g., Gibbs ensemble moves). </td></tr>
+    <tr><td class="paramname">selectedComponent</td><td>The index of the component on which the move is to be performed. </td></tr>
+    <tr><td class="paramname">fractionalMoleculeSystem</td><td>Reference to the system index holding the fractional molecule (used in CFCMC moves). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aa442a7c81691b45d5d01e207fd376792" name="aa442a7c81691b45d5d01e207fd376792"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa442a7c81691b45d5d01e207fd376792">&#9670;&#160;</a></span>performRandomMoveInitialization()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MC_Moves::performRandomMoveInitialization </td>
           <td>(</td>
           <td class="paramtype">RandomNumber &amp;&#160;</td>
           <td class="paramname"><em>random</em>, </td>

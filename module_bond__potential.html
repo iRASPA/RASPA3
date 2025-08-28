@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -113,23 +113,26 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBondPotential.html">BondPotential</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents a bond potential between two particles.  <a href="structBondPotential.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structstd_1_1formatter_3_01BondPotential_01_4.html">std::formatter&lt; BondPotential &gt;</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
 <tr class="memitem:ae0165a0784896edc91a11c2e82ccd8e4" id="r_ae0165a0784896edc91a11c2e82ccd8e4"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><b>BondType</b> : std::size_t { <br />
-&#160;&#160;<b>Fixed</b> = 0
-, <b>Harmonic</b> = 1
-, <b>CoreShellSpring</b> = 2
-, <b>Morse</b> = 3
+&#160;&#160;<b>None</b> = 0
+, <b>Fixed</b> = 1
+, <b>Harmonic</b> = 2
+, <b>CoreShellSpring</b> = 3
 , <br />
-&#160;&#160;<b>LJ_12_6</b> = 4
-, <b>LennardJones</b> = 5
-, <b>Buckingham</b> = 6
-, <b>RestrainedHarmonic</b> = 7
+&#160;&#160;<b>Morse</b> = 4
+, <b>LJ_12_6</b> = 5
+, <b>LennardJones</b> = 6
+, <b>Buckingham</b> = 7
 , <br />
-&#160;&#160;<b>Quartic</b> = 8
-, <b>CFF_Quartic</b> = 9
-, <b>MM3</b> = 10
+&#160;&#160;<b>RestrainedHarmonic</b> = 8
+, <b>Quartic</b> = 9
+, <b>CFF_Quartic</b> = 10
+, <b>MM3</b> = 11
 <br />
  }</td></tr>
 <tr class="memdesc:ae0165a0784896edc91a11c2e82ccd8e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of different bond types.  <a href="bond__potential_8ixx.html#ae0165a0784896edc91a11c2e82ccd8e4">More...</a><br /></td></tr>
@@ -144,7 +147,7 @@ Variables</h2></td></tr>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:bond__potential_8ixx" id="r_bond__potential_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/potentials/internal/<b>bond_potential.ixx</b></td></tr>
+<tr class="memitem:bond__potential_8ixx" id="r_bond__potential_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/potentials/intramolecular/<b>bond_potential.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

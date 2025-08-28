@@ -31,6 +31,7 @@ var structInputReader =
     [ "randomSeed", "structInputReader.html#a8ada6d0ec11b5267071401463cdd789b", null ],
     [ "rescaleWangLandauEvery", "structInputReader.html#ad9070e5cdca89894bdda204cc7bdaf1a", null ],
     [ "restartFromBinary", "structInputReader.html#a54f00f8196189df3d6d521ec170dbdbd", null ],
+    [ "restartFromBinaryFileName", "structInputReader.html#a122bf608cfc062bb076bf6adb6d4daed", null ],
     [ "simulationType", "structInputReader.html#ab81241ee159cf277e422f3356f26059b", null ],
     [ "systems", "structInputReader.html#a0f4d8e107e88384ec0032552f542011c", null ],
     [ "temperature", "structInputReader.html#aeed3c23470902947cac650d784632939", null ],

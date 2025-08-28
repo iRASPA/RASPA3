@@ -13,7 +13,8 @@ var hierarchy =
     [ "Breakthrough", "structBreakthrough.html", null ],
     [ "BreakthroughSimulation", "structBreakthroughSimulation.html", null ],
     [ "CBMCMoveStatistics", "structCBMCMoveStatistics.html", null ],
-    [ "ChainData", "structChainData.html", null ],
+    [ "ChainGrowData", "structChainGrowData.html", null ],
+    [ "ChainRetraceData", "structChainRetraceData.html", null ],
     [ "ChargeEquilbrationElementData", "structChargeEquilbrationElementData.html", null ],
     [ "ChiralCenter", "structChiralCenter.html", null ],
     [ "CIFReader", "structCIFReader.html", null ],
@@ -35,7 +36,7 @@ var hierarchy =
     [ "FirstBeadData", "structFirstBeadData.html", null ],
     [ "ForceField", "structForceField.html", null ],
     [ "std::formatter", null, [
-      [ "std::formatter< Atom >", "structstd_1_1formatter_3_01Atom_01_4.html", null ]
+      [ "std::formatter< BondPotential >", "structstd_1_1formatter_3_01BondPotential_01_4.html", null ]
     ] ],
     [ "Framework", "structFramework.html", null ],
     [ "Potentials::GradientFactor", "structPotentials_1_1GradientFactor.html", null ],
@@ -46,8 +47,8 @@ var hierarchy =
     [ "ForceField::InsensitiveCompare", "structForceField_1_1InsensitiveCompare.html", null ],
     [ "InputReader::InsensitiveCompare", "structInputReader_1_1InsensitiveCompare.html", null ],
     [ "IntegratorsCPUTime", "structIntegratorsCPUTime.html", null ],
-    [ "Potentials::InternalPotentials", "structPotentials_1_1InternalPotentials.html", null ],
     [ "InterpolationEnergyGrid", "structInterpolationEnergyGrid.html", null ],
+    [ "Potentials::IntraMolecularPotentials", "structPotentials_1_1IntraMolecularPotentials.html", null ],
     [ "InversionBendPotential", "structInversionBendPotential.html", null ],
     [ "Isotherm", "structIsotherm.html", null ],
     [ "IsothermFitting", "structIsothermFitting.html", null ],
