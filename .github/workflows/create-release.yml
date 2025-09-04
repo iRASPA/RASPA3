@@ -805,6 +805,50 @@ jobs:
           asset_name:  raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.2.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
+  linux-x86_64-core-avx2-debian-13-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: debian:13
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev cmake
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          /bin/rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-debian-13
+      - name: create-raspa-deb-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_arm64.deb .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_arm64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-13_core-avx2.deb
+          asset_content_type: application/octet-stream
+
   linux-x86_64-core-avx2-debian-12-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -1660,6 +1704,50 @@ jobs:
           asset_name:  raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.2.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
+  linux-x86_64-skylake-avx512-debian-13-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: debian:13
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev cmake
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          /bin/rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-debian-13
+      - name: create-raspa-deb-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_arm64.deb .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_arm64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-13_skylake-avx512.deb
+          asset_content_type: application/octet-stream
+
   linux-x86_64-skylake-avx512-debian-12-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -1756,6 +1844,94 @@ jobs:
 
 # aarch64 linux 
 # =====================================================================================================================
+  
+  linux-aarch64-debian-13-job:
+    runs-on: ubuntu-24.04-arm
+    needs: release-job
+    container:
+      image: arm64v8/debian:13
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev cmake
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          /bin/rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-aarch64-debian-13
+      - name: create-raspa-deb-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_arm64.deb .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_arm64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_arm64_debian-13.deb
+          asset_content_type: application/octet-stream
+
+  linux-aarch64-ubuntu-25-job:
+    runs-on: ubuntu-24.04-arm
+    needs: release-job
+    container:
+      image: arm64v8/ubuntu:25.04
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev cmake
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          /bin/rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-aarch64-ubuntu-25
+      - name: create-raspa-deb-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_arm64.deb .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_arm64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_arm64_ubuntu-25.deb
+          asset_content_type: application/octet-stream
 
 
   linux-aarch64-ubuntu-24-job:
