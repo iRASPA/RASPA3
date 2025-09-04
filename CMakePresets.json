@@ -1537,7 +1537,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1555,12 +1555,12 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-18/lib/libomp.so.5",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/aarch64-linux-gnu/libomp.so.5",
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
@@ -1573,7 +1573,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
