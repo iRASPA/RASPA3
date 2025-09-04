@@ -50,6 +50,7 @@ export struct MCMoveStatistics
     statsMapDouble[MoveTypes::VolumeChange] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     statsMapDouble[MoveTypes::ReinsertionCBMC] = MoveStatistics<double>{};
+    statsMapDouble[MoveTypes::PartialReinsertionCBMC] = MoveStatistics<double>{};
     statsMapDouble[MoveTypes::IdentityChangeCBMC] = MoveStatistics<double>{};
     statsMapDouble[MoveTypes::GibbsVolume] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};

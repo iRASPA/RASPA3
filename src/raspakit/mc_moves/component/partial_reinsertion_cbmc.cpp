@@ -15,7 +15,7 @@ module;
 #include <vector>
 #endif
 
-module mc_moves_identity_change;
+module mc_moves_partial_reinsertion;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
@@ -48,13 +48,13 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, System &system,
-                                                          std::size_t selectedComponent, std::size_t selectedMolecule,
-                                                          Molecule &molecule, std::span<Atom> molecule_atoms)
+std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &random, System &system,
+                                                              std::size_t selectedComponent, std::size_t selectedMolecule,
+                                                              Molecule &molecule, std::span<Atom> molecule_atoms)
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::ReinsertionCBMC;
+  MoveTypes move = MoveTypes::PartialReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
   // Increment move counts for reinsertion CBMC statistics.
@@ -75,14 +75,19 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
   Component::GrowType growType = component.growType;
 
+
+  std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
+  const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
+
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
+  std::optional<ChainGrowData> growData = CBMC::growMoleculePartialReinsertion(
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms);
+      molecule_atoms, beads_already_placed);
   time_end = std::chrono::system_clock::now();
+
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
@@ -108,11 +113,11 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
+  ChainRetraceData retraceData = CBMC::retraceMoleculePartialReinsertion(
       random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, growData->storedR);
+      molecule_atoms, beads_already_placed);
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the retracing step.
@@ -125,6 +130,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
+
   // Record CPU time taken for the Ewald Fourier part of the move.
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);

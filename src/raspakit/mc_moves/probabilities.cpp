@@ -23,13 +23,13 @@ import mc_moves_move_types;
 MCMoveProbabilities::MCMoveProbabilities(double translationProbability, double randomTranslationProbability,
                                          double rotationProbability, double randomRotationProbability,
                                          double volumeChangeProbability, double reinsertionCBMCProbability,
-                                         double identityChangeCBMCProbability, double swapProbability,
-                                         double swapCBMCProbability, double swapCFCMCProbability,
-                                         double swapCBCFCMCProbability, double gibbsVolumeChangeProbability,
-                                         double gibbsSwapCBMCProbability, double gibbsSwapCFCMCProbability,
-                                         double widomProbability, double widomCFCMCProbability,
-                                         double widomCBCFCMCProbability, double parallelTemperingProbability,
-                                         double hybridMCProbability)
+                                         double partialReinsertionCBMCProbability, double identityChangeCBMCProbability, 
+                                         double swapProbability, double swapCBMCProbability, 
+                                         double swapCFCMCProbability, double swapCBCFCMCProbability, 
+                                         double gibbsVolumeChangeProbability, double gibbsSwapCBMCProbability,
+                                         double gibbsSwapCFCMCProbability, double widomProbability,
+                                         double widomCFCMCProbability, double widomCBCFCMCProbability,
+                                         double parallelTemperingProbability, double hybridMCProbability)
 {
   probabilities[MoveTypes::Translation] = translationProbability;
   probabilities[MoveTypes::RandomTranslation] = randomTranslationProbability;
@@ -37,6 +37,7 @@ MCMoveProbabilities::MCMoveProbabilities(double translationProbability, double r
   probabilities[MoveTypes::RandomRotation] = randomRotationProbability;
   probabilities[MoveTypes::VolumeChange] = volumeChangeProbability;
   probabilities[MoveTypes::ReinsertionCBMC] = reinsertionCBMCProbability;
+  probabilities[MoveTypes::PartialReinsertionCBMC] = partialReinsertionCBMCProbability;
   probabilities[MoveTypes::IdentityChangeCBMC] = identityChangeCBMCProbability;
   probabilities[MoveTypes::Swap] = swapProbability;
   probabilities[MoveTypes::SwapCBMC] = swapCBMCProbability;

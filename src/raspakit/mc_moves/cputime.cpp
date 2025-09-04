@@ -69,6 +69,12 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
                  }},
+                {MoveTypes::PartialReinsertionCBMC,
+                 {
+                     {"Total", std::chrono::duration<double>::zero()},
+                     {"NonEwald", std::chrono::duration<double>::zero()},
+                     {"Ewald", std::chrono::duration<double>::zero()},
+                 }},
                 {MoveTypes::Swap,
                  {
                      {"Total", std::chrono::duration<double>::zero()},

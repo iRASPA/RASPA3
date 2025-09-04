@@ -215,6 +215,7 @@ export struct Component
   ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
   std::vector<Atom> grownAtoms{};
+  std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 
@@ -382,6 +383,8 @@ export struct Component
   std::vector<TorsionPotential> readTorsionPotentials(const ForceField &forceField,
                     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(const ForceField &forceField,
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
                     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);

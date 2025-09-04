@@ -45,7 +45,7 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::vector<Atom> molecule_atoms) noexcept
+    double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(forceField.numberOfTrialDirections);
 

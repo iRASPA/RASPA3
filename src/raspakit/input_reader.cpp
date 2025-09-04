@@ -541,6 +541,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("PartialReinsertionProbability") && item["PartialReinsertionProbability"].is_number_float())
+      {
+        double partial_reinsertion_CBMC_probability = item["PartialReinsertionProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(MoveTypes::PartialReinsertionCBMC, partial_reinsertion_CBMC_probability);
+        }
+      }
+
       if (item.contains("SwapConventionalProbability") && item["SwapConventionalProbability"].is_number_float())
       {
         double swapProbability = item["SwapConventionalProbability"].get<double>();
@@ -1691,6 +1700,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "RotationProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",
+    "PartialReinsertionProbability",
     "SwapConventionalProbability",
     "SwapProbability",
     "CFCMC_SwapProbability",

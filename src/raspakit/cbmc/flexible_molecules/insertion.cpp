@@ -51,14 +51,13 @@ import bond_potential;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::vector<Atom> molecule_atoms)
+    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced)
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
-  std::vector<std::size_t> beads_already_placed{component.startingBead};
-  const Atom first_bead = molecule_atoms[component.startingBead];
+  std::vector<std::size_t> beads_already_placed(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
 
   double chain_rosen_bluth_weight = 1.0;
   std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
@@ -90,7 +89,7 @@ import bond_potential;
         double3 unit_vector = random.randomVectorOnUnitSphere();
 
         Atom trial_atom = chain_atoms[nextBeads[0]];
-        trial_atom.position = first_bead.position + bond_length * unit_vector;
+        trial_atom.position = chain_atoms[current_bead].position + bond_length * unit_vector;
 
         trialPositions[i] = { trial_atom };
       }

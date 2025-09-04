@@ -98,7 +98,7 @@ import interpolation_energy_grid;
     case Component::GrowType::Flexible:
       chainData = CBMC::growFlexibleMoleculeChainInsertion(
                        random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-                       moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms);
+                       moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms, { component.startingBead });
       break;
     default:
       std::unreachable();
@@ -143,7 +143,7 @@ import interpolation_energy_grid;
     case Component::GrowType::Flexible:
       chainData = CBMC::retraceFlexibleMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
                         frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-                        molecule_atoms);
+                        molecule_atoms, { component.startingBead });
       break;
     default:
       std::unreachable();
@@ -196,7 +196,7 @@ import interpolation_energy_grid;
     case Component::GrowType::Flexible:
       chainData = CBMC::growFlexibleMoleculeChainInsertion(
                      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-                     moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, atoms);
+                     moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, atoms, { component.startingBead });
       break;
     default:
       std::unreachable();
@@ -244,13 +244,194 @@ import interpolation_energy_grid;
     case Component::GrowType::Flexible:
       chainData = CBMC::retraceFlexibleMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
                         frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-                        molecule_atoms);
+                        molecule_atoms, { component.startingBead });
       break;
     default:
       std::unreachable();
   }
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
-                   firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
+                          firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
 }
 
+[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePartialReinsertion(
+    RandomNumber &random, Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, Molecule &molecule, std::span<Atom> moleculeAtoms,
+    const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+{
+  std::optional<ChainGrowData> chainData{};
+  switch (growType)
+  {
+    case Component::GrowType::Rigid:
+      chainData = CBMC::growRigidMoleculeChainInsertion(
+                        random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+                        moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeAtoms);
+      break;
+    case Component::GrowType::Flexible:
+      chainData = CBMC::growFlexibleMoleculeChainInsertion(
+                       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+                       moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeAtoms, beadsAlreadyPlaced);
+      break;
+    default:
+      std::unreachable();
+  }
+
+  if (!chainData) return std::nullopt;
+
+  // Copy data over from old molecule, since we are reinserting the same molecule
+  chainData->molecule.atomIndex = molecule.atomIndex;
+  chainData->molecule.numberOfAtoms = molecule.numberOfAtoms;
+
+  return ChainGrowData(chainData->molecule, chainData->atom,
+                       chainData->energies,
+                       chainData->RosenbluthWeight, 0.0);
+}
+
+
+
+[[nodiscard]] ChainRetraceData CBMC::retraceMoleculePartialReinsertion(
+    RandomNumber &random, const Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, [[maybe_unused]]Molecule &molecule,
+    std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+{
+  ChainRetraceData chainData;
+  switch (growType)
+  {
+    case Component::GrowType::Rigid:
+      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
+                                        frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+                                        moleculeAtoms);
+      break;
+    case Component::GrowType::Flexible:
+      chainData = CBMC::retraceFlexibleMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
+                        frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+                        moleculeAtoms, beadsAlreadyPlaced);
+      break;
+    default:
+      std::unreachable();
+  }
+
+  return ChainRetraceData(chainData.energies,
+                          chainData.RosenbluthWeight, 0.0);
+}
+
+
+
+
+
+
+[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
+    RandomNumber &random, Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule,
+    double scaling, bool groupId, bool isFractional) noexcept
+{
+  std::size_t startingBead = component.startingBead;
+  Atom firstBead = component.atoms[startingBead];
+  firstBead.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
+  firstBead.groupId = groupId;
+  firstBead.isFractional = isFractional;
+  firstBead.setScaling(scaling);
+
+  std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead);
+
+  if (!firstBeadData) return std::nullopt;
+
+  if (component.atoms.size() == 1)
+  {
+    return ChainGrowData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
+                              component.totalMass, component.componentId, component.definedAtoms.size()),
+                              {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
+  }
+
+  // place the molecule centered around the first bead at 'firstBeadData->atom.position'
+  std::vector<Atom> molecule_atoms = component.atoms;
+  for(Atom &atom : molecule_atoms)
+  {
+    atom.position += firstBeadData->atom.position - component.atoms[startingBead].position;
+    atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
+    atom.groupId = groupId;
+    atom.isFractional = isFractional;
+    atom.setScaling(scaling);
+  }
+
+  std::optional<ChainGrowData> chainData{};
+  switch (growType)
+  {
+    case Component::GrowType::Rigid:
+      chainData = CBMC::growRigidMoleculeChainInsertion(
+                        random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+                        moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms);
+      break;
+    case Component::GrowType::Flexible:
+      chainData = CBMC::growFlexibleMoleculeChainInsertion(
+                       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+                       moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms, { component.startingBead });
+      break;
+    default:
+      std::unreachable();
+  }
+
+  if (!chainData) return std::nullopt;
+
+  return ChainGrowData(chainData->molecule, chainData->atom,
+                       firstBeadData->energies + chainData->energies,
+                       firstBeadData->RosenbluthWeight * chainData->RosenbluthWeight, 0.0);
+}
+
+
+
+[[nodiscard]] ChainRetraceData CBMC::retraceMoleculeIdentityChangeDeletion(
+    RandomNumber &random, const Component &component, bool hasExternalField, 
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
+{
+  std::size_t startingBead = component.startingBead;
+
+  const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadSwapDeletion(
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms[startingBead]);
+
+  if (molecule_atoms.size() == 1)
+  {
+    return ChainRetraceData(firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
+  }
+
+  ChainRetraceData chainData;
+  switch (growType)
+  {
+    case Component::GrowType::Rigid:
+      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
+                                        frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+                                        molecule_atoms);
+      break;
+    case Component::GrowType::Flexible:
+      chainData = CBMC::retraceFlexibleMoleculeChainDeletion(random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework,
+                        frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+                        molecule_atoms, { component.startingBead });
+      break;
+    default:
+      std::unreachable();
+  }
+
+  return ChainRetraceData(firstBeadData.energies + chainData.energies,
+                          firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
+}

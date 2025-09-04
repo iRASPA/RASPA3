@@ -17,6 +17,9 @@ module;
 #include <utility>
 #include <vector>
 #include <optional>
+#if defined(__has_include) && __has_include(<mdspan>)
+#include <mdspan>
+#endif
 #endif
 
 module connectivity_table;
@@ -27,6 +30,22 @@ import std;
 
 import archive;
 import stringutils;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+import mdspan;
+#endif
+
+#ifdef BLAS_ILP64
+typedef long long blas_int;
+#else
+typedef int blas_int;
+#endif
+
+/* DSYEV prototype */
+extern "C"
+{
+  void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
+              blas_int* info);
+}
 
 std::string ConnectivityTable::print(const std::string &prestring) const
 {
@@ -127,6 +146,7 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   return {previous_bead, current_bead, nextBeads};
 }
 
+
 std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t currentBead) const
 {
   std::vector<std::size_t> neighbors{};
@@ -140,6 +160,139 @@ std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t current
     }
   }
   return neighbors;
+}
+
+// https://en.wikipedia.org/wiki/Algebraic_connectivity
+// https://en.wikipedia.org/wiki/Laplacian_matrix
+// The algebraic connectivity (also known as Fiedler value or Fiedler eigenvalue after Miroslav Fiedler) 
+// of a graph G is the second-smallest eigenvalue (counting multiple eigenvalues separately) of the 
+// Laplacian matrix of G.[1] This eigenvalue is greater than 0 if and only if G is a connected graph.
+// the number of times 0 appears as an eigenvalue in the Laplacian is the number of connected components in the graph
+bool ConnectivityTable::checkIsConnectedSubgraph(const std::vector<std::size_t> &set)
+{
+  if(set.empty() || (set.size() == 1)) 
+  {
+    return true;
+  }
+
+  std::vector<double> laplacian_matrix(set.size() * set.size());
+  std::mdspan<double, std::dextents<std::size_t, 2>, std::layout_left> 
+    data_laplacian_matrix(laplacian_matrix.data(), set.size(), set.size());
+
+  for(std::size_t i = 0; i < set.size(); ++i)
+  {
+    for(std::size_t j = 0; j < set.size(); ++j)
+    {
+      if(i == j)
+      {
+        for(std::size_t k = 0; k < set.size(); ++k)
+        {
+          if(table[set[i] * numberOfBeads + set[k]])
+          {
+            data_laplacian_matrix[i, i] += 1.0;
+          }
+        }
+      }
+      else
+      {
+        data_laplacian_matrix[i, j] = table[set[i] * numberOfBeads + set[j]] ? -1.0 : 0.0;
+      }
+    }
+  }
+
+  char decompositionJobV = 'N';
+  char upload = 'U';
+  std::vector<double> work(9 * set.size());
+  blas_int lwork = 9 * set.size();
+  std::vector<double> e = std::vector<double>(set.size());
+  blas_int error = 0;
+  blas_int N = set.size();
+  blas_int M = set.size();
+
+  dsyev_(&decompositionJobV, &upload, &M, laplacian_matrix.data(), &N, e.data(), work.data(), &lwork, &error);
+
+  return std::fabs(e[1]) > 1e-8;
+}
+
+std::optional<std::vector<std::size_t>> ConnectivityTable::checkValidityNextBeads(
+    const std::vector<std::size_t> &placedBeads) const
+{
+  // copy the connectvity from the molecule
+  ConnectivityTable to_do_connectivity = *this;
+
+  // remove the already grown beads
+  for (const std::size_t placed_bead : placedBeads)
+  {
+    for (std::size_t j = 0; j != numberOfBeads; ++j)
+    {
+      // note: update is asymmetric (only [placed_bead, j], not [j, placed_bead])
+      to_do_connectivity[placed_bead, j] = false;
+    }
+  }
+
+  // search for next-bonds, i.e. everything connected to 'placedBeads'
+  std::vector<std::pair<std::size_t, std::size_t>> nextBonds{};
+  nextBonds.reserve(16);
+  for (const std::size_t k : placedBeads)
+  {
+    for (std::size_t j = 0; j != numberOfBeads; ++j)
+    {
+      if(to_do_connectivity[j, k])
+      {
+        nextBonds.push_back(std::make_pair(k, j));
+      }
+    }
+  }
+
+  if (nextBonds.empty())
+  {
+    return std::nullopt;
+  }
+
+  // always select the first for reversibility in coupled/decoupled
+  std::optional<std::size_t> previous_bead{};
+  std::size_t current_bead = nextBonds[0].first;
+  std::size_t next_bead = nextBonds[0].second;
+
+  // there can be more bonds connected to 'current_bead', so search for these
+  std::vector<std::size_t> nextBeads{};
+  nextBeads.reserve(nextBonds.size());
+  std::size_t number_of_previous_beads{};
+
+  for (std::size_t i = 0; i != numberOfBeads; ++i)
+  {
+    if ((*this)[i, current_bead])
+    {
+      if (to_do_connectivity[i, current_bead])
+      {
+        nextBeads.push_back(i);
+      }
+      else
+      {
+        ++number_of_previous_beads;
+        previous_bead = i;
+      }
+    }
+  }
+
+  // if there are no previous beads, than grow the chosen, single bond
+  if (number_of_previous_beads == 0)
+  {
+    return {{next_bead}};
+  }
+  else
+  {
+    if (!previous_bead)
+    {
+      return std::nullopt;
+    }
+    else if (number_of_previous_beads > 1)
+    {
+      return std::nullopt;
+    }
+  }
+
+  return {nextBeads};
 }
 
 std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllBonds() const

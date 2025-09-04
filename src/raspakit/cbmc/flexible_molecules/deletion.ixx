@@ -34,5 +34,6 @@ export namespace CBMC
                                                              const std::optional<Framework> &framework,
                                                              std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
                                                              double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                                             double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept;
+                                                             double cutOffCoulomb, std::span<Atom> molecule_atoms,
+                                                             const std::vector<std::size_t> beadsAlreadyPlaced) noexcept;
 }

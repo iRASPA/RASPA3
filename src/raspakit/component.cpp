@@ -24,6 +24,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <numeric>
 #endif
 
 #if !defined(_WIN32)
@@ -383,6 +384,8 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
 
     intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
+
+    partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
   }
 }
 
@@ -761,6 +764,16 @@ std::string Component::printStatus(const ForceField &forceField) const
       for (std::size_t i = 0; i < intraMolecularPotentials.coulombs.size(); ++i)
       {
         std::print(stream, "        {}", intraMolecularPotentials.coulombs[i].print());
+      }
+      std::print(stream, "\n");
+    }
+
+    if(!partialReinsertionFixedAtoms.empty())
+    {
+      std::print(stream, "    number of partial-reinsertion moves: {}\n", partialReinsertionFixedAtoms.size());
+      for (std::size_t i = 0; i < partialReinsertionFixedAtoms.size(); ++i)
+      {
+        std::print(stream, "        fixed atoms: {}\n", partialReinsertionFixedAtoms[i]);
       }
       std::print(stream, "\n");
     }
@@ -1333,6 +1346,61 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const For
   return van_der_waals_potentials;
 }
 
+std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  std::vector<std::vector<std::size_t>> config_moves{};
+
+  if (parsed_data.contains("Partial-reinsertion"))
+  {
+    auto item = parsed_data["Partial-reinsertion"];
+    if (!item.is_array())
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+    }
+
+    try
+    {
+      config_moves = parsed_data["Partial-reinsertion"].get<std::vector<std::vector<std::size_t>>>();
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(std::format("Error in defined partial reinsertion ({}): {}\n", item.dump(), e.what()));
+    }
+  }
+
+  for(const std::vector<std::size_t> config_move : config_moves)
+  {
+    if(!connectivityTable.checkIsConnectedSubgraph(config_move))
+    {
+      throw std::runtime_error(std::format("Error in defined partial reinsertion ({} is not connected)\n", 
+            config_move));
+    }
+  }
+
+  for(const std::vector<std::size_t> config_move : config_moves)
+  {
+    std::vector<std::size_t> beads_already_placed = config_move;
+
+    do
+    {
+      std::optional<std::vector<std::size_t>> nextBeads = connectivityTable.checkValidityNextBeads(beads_already_placed);
+      if(nextBeads.has_value())
+      {
+        beads_already_placed.insert(beads_already_placed.end(), nextBeads->begin(), nextBeads->end());
+      }
+      else
+      {
+        throw std::runtime_error(std::format("Error in defined partial reinsertion\n"
+           "{} does not satisfy requirement that all branches need to be grown at the same time\n", config_move));
+      }
+    }
+    while (beads_already_placed.size() < connectivityTable.numberOfBeads);
+  }
+
+  return config_moves;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c)
 {
   archive << c.versionNumber;
@@ -1379,6 +1447,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
   archive << c.grownAtoms;
+  archive << c.partialReinsertionFixedAtoms;
 
   archive << c.initialNumberOfMolecules;
 
@@ -1469,6 +1538,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
   archive >> c.grownAtoms;
+  archive >> c.partialReinsertionFixedAtoms;
 
   archive >> c.initialNumberOfMolecules;
 

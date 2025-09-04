@@ -53,6 +53,7 @@ import mc_moves_random_translation;
 import mc_moves_rotation;
 import mc_moves_random_rotation;
 import mc_moves_reinsertion;
+import mc_moves_partial_reinsertion;
 import mc_moves_insertion;
 import mc_moves_deletion;
 import mc_moves_insertion_cbmc;
@@ -229,8 +230,56 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
+    case MoveTypes::PartialReinsertionCBMC:
+    {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
     case MoveTypes::IdentityChangeCBMC:
     {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference = MC_Moves::identityChangeMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
       break;
     }
     case MoveTypes::Swap:
@@ -530,8 +579,56 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
+    case MoveTypes::PartialReinsertionCBMC:
+    {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
     case MoveTypes::IdentityChangeCBMC:
     {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference = MC_Moves::identityChangeMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
       break;
     }
     case MoveTypes::Swap:
@@ -843,9 +940,44 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
+    case MoveTypes::PartialReinsertionCBMC:
+    {
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
     case MoveTypes::IdentityChangeCBMC:
     {
-      selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::optional<RunningEnergy> energyDifference = MC_Moves::identityChangeMove(
+            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
       break;
     }
     case MoveTypes::Swap:

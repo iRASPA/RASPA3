@@ -46,6 +46,10 @@ export struct ConnectivityTable
 
   std::string print(const std::string &prestring) const;
 
+  bool checkIsConnectedSubgraph(const std::vector<std::size_t> &set);
+  std::optional<std::vector<std::size_t>> checkValidityNextBeads(
+    const std::vector<std::size_t> &placedBeads) const;
+
   std::vector<std::size_t> findAllNeighbors(std::size_t currentBead) const;
   std::vector<std::array<std::size_t, 2>> findAllBonds() const;
   std::vector<std::array<std::size_t, 3>> findAllBends() const;

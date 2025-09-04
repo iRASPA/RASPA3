@@ -20,27 +20,29 @@ export enum class MoveTypes : std::size_t {
   RandomRotation = 3,
   VolumeChange = 4,
   ReinsertionCBMC = 5,
-  IdentityChangeCBMC = 6,
-  Swap = 7,
-  SwapCBMC = 8,
-  SwapCFCMC = 9,
-  SwapCBCFCMC = 10,
-  GibbsVolume = 11,
-  GibbsSwapCBMC = 12,
-  GibbsSwapCFCMC = 13,
-  Widom = 14,
-  WidomCFCMC = 15,
-  WidomCBCFCMC = 16,
-  ParallelTempering = 17,
-  HybridMC = 18,
+  PartialReinsertionCBMC = 6,
+  IdentityChangeCBMC = 7,
+  Swap = 8,
+  SwapCBMC = 9,
+  SwapCFCMC = 10,
+  SwapCBCFCMC = 11,
+  GibbsVolume = 12,
+  GibbsSwapCBMC = 13,
+  GibbsSwapCFCMC = 14,
+  Widom = 15,
+  WidomCFCMC = 16,
+  WidomCBCFCMC = 17,
+  ParallelTempering = 18,
+  HybridMC = 19,
   Count
 };
 
 export std::unordered_set<MoveTypes> componentMoves = {
-    MoveTypes::Translation,     MoveTypes::RandomTranslation,  MoveTypes::Rotation, MoveTypes::RandomRotation,
-    MoveTypes::ReinsertionCBMC, MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,     MoveTypes::SwapCBMC,
-    MoveTypes::SwapCFCMC,       MoveTypes::SwapCBCFCMC,        MoveTypes::Widom,    MoveTypes::WidomCFCMC,
-    MoveTypes::WidomCBCFCMC};
+    MoveTypes::Translation,        MoveTypes::RandomTranslation,   MoveTypes::Rotation, 
+    MoveTypes::RandomRotation,     MoveTypes::ReinsertionCBMC,     MoveTypes::PartialReinsertionCBMC,
+    MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,                MoveTypes::SwapCBMC,
+    MoveTypes::SwapCFCMC,          MoveTypes::SwapCBCFCMC,         MoveTypes::Widom,    
+    MoveTypes::WidomCFCMC,         MoveTypes::WidomCBCFCMC};
 
 export std::unordered_set<MoveTypes> systemMoves = {MoveTypes::VolumeChange, MoveTypes::HybridMC};
 
@@ -56,6 +58,7 @@ export std::map<MoveTypes, std::string> moveNames = {
     {MoveTypes::RandomRotation, "Random rotation"},
     {MoveTypes::VolumeChange, "Volume change"},
     {MoveTypes::ReinsertionCBMC, "Reinsertion (CBMC)"},
+    {MoveTypes::PartialReinsertionCBMC, "Partial reinsertion (CBMC)"},
     {MoveTypes::IdentityChangeCBMC, "Identity change (CBMC)"},
     {MoveTypes::Swap, "Swap"},
     {MoveTypes::SwapCBMC, "Swap (CBMC)"},

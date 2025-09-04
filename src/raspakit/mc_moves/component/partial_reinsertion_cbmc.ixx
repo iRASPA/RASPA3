@@ -6,7 +6,7 @@ module;
 #include <span>
 #endif
 
-export module mc_moves_identity_change;
+export module mc_moves_partial_reinsertion;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
@@ -35,7 +35,7 @@ export namespace MC_Moves
  *
  * \return An optional RunningEnergy containing the energy difference if the move is accepted; std::nullopt otherwise.
  */
-std::optional<RunningEnergy> identityChangeMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                             std::size_t selectedMolecule, Molecule &molecule,
-                                             std::span<Atom> molecule_atoms);
+std::optional<RunningEnergy> partialReinsertionMove(RandomNumber &random, System &system, std::size_t selectedComponent,
+                                                    std::size_t selectedMolecule, Molecule &molecule,
+                                                    std::span<Atom> molecule_atoms);
 }  // namespace MC_Moves
