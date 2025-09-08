@@ -1,10 +1,11 @@
 # User Manual
 
 - \subpage manual_main
-- \subpage installation
-- \subpage structure
-- \subpage running
-- \subpage restart
 - \subpage units
+- \subpage installing
+- \subpage running
 - \subpage commands
+- \subpage examples
+- \subpage restart
 - \subpage FAQ
+- \subpage structure

@@ -1,5 +1,5 @@
 # Structure of RASPA3
-\page structure Structure
+\page structure Appendix: Structure of the RASPA Code
 
 ## Main structure
 

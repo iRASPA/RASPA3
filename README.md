@@ -29,7 +29,6 @@
   <a href="#running">Running</a> •
   <a href="#python">Python</a> •
   <a href="#dependencies">Dependencies</a> •
-  <a href="#installation-guide">Installation Guide</a> •
 </p>
 
 # Authors
@@ -79,6 +78,7 @@ cd examples/basic/1_mc_methane_in_box
 
 # Experimental
 - flexible molecules
+- partial insertion move
 
 # Todo-list
 - zeo++-type calculations
