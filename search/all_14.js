@@ -17,5 +17,5 @@ var searchData=
   ['usedualcutoff_14',['useDualCutOff',['../structForceField.html#ae229fc635a810876e07dd1910911dbf1',1,'ForceField']]],
   ['user_20manual_15',['User Manual',['../md_docs_2manual.html',1,'']]],
   ['usetmbias_16',['useTMBias',['../structTransitionMatrix.html#a2492d39f9199ec216051940a0a67a9d9',1,'TransitionMatrix']]],
-  ['using_20conda_17',['Installing using Conda',['../installing_using_conda.html',1,'md_docs_2manual_2installing']]]
+  ['using_20conda_17',['Installing using Conda',['../installing_using_conda.html',1,'installation']]]
 ];
