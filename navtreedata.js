@@ -25,7 +25,6 @@
 var NAVTREE =
 [
   [ "RASPA3", "index.html", [
-    [ "Monte Carlo of Methane in a box", "basic1.html", null ],
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
       [ "Installing", "installing.html", [
@@ -71,13 +70,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_triquintic__derivative__factor.html",
-"structChainRetraceData.html",
+"module_triquintic__derivatives__external__field.html",
+"structChargeEquilbrationElementData.html",
 "structForceField.html#a0651c97f845e566888c8df277a183336",
-"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cabc624c94e0cb544c7e2ca47c9af04aca",
-"structMonteCarlo.html#a72b356e99a4ec690dc94ca8c07cb8671",
-"structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1",
-"structTorsionPotential.html#ad3f6122282c04c8ed4caddd97bb2b760"
+"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a",
+"structMonteCarlo.html#a742ffab27a370392748419dba2579260",
+"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd",
+"structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

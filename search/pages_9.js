@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['of_20methane_20in_20a_20box_0',['Monte Carlo of Methane in a box',['../basic1.html',1,'']]]
+  ['packages_0',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]],
+  ['pre_20compiled_20packages_1',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]]
 ];
