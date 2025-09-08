@@ -23,8 +23,8 @@ var searchData=
   ['enthalpyconversionfactor_20',['EnthalpyConversionFactor',['../structUnits.html#a20ec87dc12cebe8736b9b4ec3813ed0d',1,'Units']]],
   ['enthalpyofadsorption_21',['EnthalpyOfAdsorption',['../structEnthalpyOfAdsorption.html',1,'']]],
   ['enthalpyofadsorptionterms_22',['EnthalpyOfAdsorptionTerms',['../structEnthalpyOfAdsorptionTerms.html',1,'']]],
-  ['equationofstate_23',['equationofstate',['../structEquationOfState.html#a83a67132f77dded8cc99c6e0024a5dd4',1,'EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double heliumVoidFraction, std::vector&lt; Component &gt; &amp;components)'],['../structEquationOfState.html#a03dc3da0d5bc8498d2799783577e64d3',1,'EquationOfState::EquationOfState()=default'],['../structEquationOfState.html',1,'EquationOfState'],['../structEquationOfState.html#a3ba390021f69b0511144725495a96f6b',1,'EquationOfState::equationOfState']]],
-  ['equilibrate_24',['equilibrate',['../structMolecularDynamics.html#a62516c9f0e4aa163518be46248ad6b3b',1,'MolecularDynamics::equilibrate()'],['../structMonteCarlo.html#a47465c9d5e14bfd9109c4adc177dc8b9',1,'MonteCarlo::equilibrate()'],['../structMonteCarloTransitionMatrix.html#ad842db42f074e450f80210fb0bce9aa2',1,'MonteCarloTransitionMatrix::equilibrate()']]],
+  ['equationofstate_23',['equationofstate',['../structEquationOfState.html',1,'EquationOfState'],['../structEquationOfState.html#a3ba390021f69b0511144725495a96f6b',1,'EquationOfState::equationOfState'],['../structEquationOfState.html#a03dc3da0d5bc8498d2799783577e64d3',1,'EquationOfState::EquationOfState()=default'],['../structEquationOfState.html#a83a67132f77dded8cc99c6e0024a5dd4',1,'EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double heliumVoidFraction, std::vector&lt; Component &gt; &amp;components)']]],
+  ['equilibrate_24',['equilibrate',['../structMolecularDynamics.html#a62516c9f0e4aa163518be46248ad6b3b',1,'MolecularDynamics::equilibrate()'],['../structMonteCarloTransitionMatrix.html#ad842db42f074e450f80210fb0bce9aa2',1,'MonteCarloTransitionMatrix::equilibrate()'],['../structMonteCarlo.html#a47465c9d5e14bfd9109c4adc177dc8b9',1,'MonteCarlo::equilibrate()']]],
   ['equilibratedmoleculerandominbox_25',['equilibratedMoleculeRandomInBox',['../structComponent.html#ac9996efbabfef1236d2fbb1b866e8f26',1,'Component']]],
   ['equilibration_26',['equilibration',['../structMolecularDynamics.html#a02ca4cf55547781d43e924db0f4d2e56afa541803322f896bd1d80476d131350f',1,'MolecularDynamics::Equilibration'],['../structMonteCarlo.html#adc884471a87369c253c114f68cf33546afa541803322f896bd1d80476d131350f',1,'MonteCarlo::Equilibration'],['../structMonteCarloTransitionMatrix.html#a106434adbbba178c715b3c1310467b56afa541803322f896bd1d80476d131350f',1,'MonteCarloTransitionMatrix::Equilibration']]],
   ['estimation_27',['estimation',['../structMolecularDynamics.html#af77fbdf4654c54ec3f0b1efdacfba8e7',1,'MolecularDynamics::estimation'],['../structMonteCarlo.html#a51ab0b9d8286781620be48c38d5e036a',1,'MonteCarlo::estimation'],['../structMonteCarloTransitionMatrix.html#a1ece1bc94cbc7d79ad68df30fbd32130',1,'MonteCarloTransitionMatrix::estimation']]],
@@ -38,8 +38,12 @@ var searchData=
   ['ewaldfourier_35',['ewaldFourier',['../structRunningEnergy.html#a11b8beaf8eaa250603b85e573f99ce4f',1,'RunningEnergy']]],
   ['ewaldprecision_36',['EwaldPrecision',['../structForceField.html#a299fec43ce18f393c247d16d34e956fa',1,'ForceField']]],
   ['examples_37',['Examples',['../examples.html',1,'md_docs_2manual']]],
-  ['excludedintracoulomb_38',['excludedIntraCoulomb',['../structFramework.html#ac42912bbd546cbd5dc40c13766e3f304',1,'Framework']]],
-  ['expanddefinedatomstounitcell_39',['expandDefinedAtomsToUnitCell',['../structFramework.html#a5233b6bd6e7b32e8247e921a30ed3bd7',1,'Framework']]],
-  ['externalfieldcharge_40',['externalFieldCharge',['../structRunningEnergy.html#a81c9a92f8b5c449dd1da819eb404207f',1,'RunningEnergy']]],
-  ['externalfieldvdw_41',['externalFieldVDW',['../structRunningEnergy.html#a8f50572c04bc302d0f14b2867e0ecb95',1,'RunningEnergy']]]
+  ['examples_20advanced_38',['Examples Advanced',['../examples_advanced.html',1,'examples']]],
+  ['examples_20auxillary_39',['Examples Auxillary',['../examples_auxillary.html',1,'examples']]],
+  ['examples_20basic_40',['Examples Basic',['../examples_basic.html',1,'examples']]],
+  ['examples_20non_20basic_41',['Examples Non-Basic',['../examples_nonbasic.html',1,'examples']]],
+  ['excludedintracoulomb_42',['excludedIntraCoulomb',['../structFramework.html#ac42912bbd546cbd5dc40c13766e3f304',1,'Framework']]],
+  ['expanddefinedatomstounitcell_43',['expandDefinedAtomsToUnitCell',['../structFramework.html#a5233b6bd6e7b32e8247e921a30ed3bd7',1,'Framework']]],
+  ['externalfieldcharge_44',['externalFieldCharge',['../structRunningEnergy.html#a81c9a92f8b5c449dd1da819eb404207f',1,'RunningEnergy']]],
+  ['externalfieldvdw_45',['externalFieldVDW',['../structRunningEnergy.html#a8f50572c04bc302d0f14b2867e0ecb95',1,'RunningEnergy']]]
 ];

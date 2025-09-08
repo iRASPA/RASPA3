@@ -1,5 +1,9 @@
 var NAVTREEINDEX1 =
 {
+"module_tricubic__derivatives__external__field.html":[3,0,89],
+"module_triquintic__derivative__factor.html":[3,0,90],
+"module_triquintic__derivatives__external__field.html":[3,0,93],
+"module_units.html":[3,0,161],
 "module_urey__bradley__potential.html":[3,0,107],
 "module_van__der__waals__potential.html":[3,0,108],
 "module_vdwparameters.html":[3,0,23],
@@ -245,9 +249,5 @@ var NAVTREEINDEX1 =
 "structCIFReader.html#ae39a214f3d2b3feec4280565f5565e3f":[3,0,18,0,14],
 "structCIFReader.html#ae39a214f3d2b3feec4280565f5565e3f":[5,0,18,14],
 "structChainGrowData.html":[3,0,3,0],
-"structChainGrowData.html":[5,0,14],
-"structChainRetraceData.html":[3,0,3,1],
-"structChainRetraceData.html":[5,0,15],
-"structChargeEquilbrationElementData.html":[5,0,16],
-"structChiralCenter.html":[5,0,17]
+"structChainGrowData.html":[5,0,14]
 };
