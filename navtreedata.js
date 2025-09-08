@@ -27,7 +27,7 @@ var NAVTREE =
   [ "RASPA3", "index.html", [
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
-      [ "Installation", "installation.html", [
+      [ "Installing", "installing.html", [
         [ "Installing using Conda", "installing_using_conda.html", null ],
         [ "Installing pre-Compiled Packages", "installing_binary_packages.html", null ],
         [ "Installing from Source", "installing_from_source.html", null ]
@@ -37,11 +37,13 @@ var NAVTREE =
       [ "Restart", "restart.html", null ],
       [ "Units", "units.html", null ],
       [ "Commands", "commands.html", null ],
+      [ "Examples", "examples.html", null ],
       [ "FAQ", "FAQ.html", null ]
     ] ],
     [ "Tutorial", "md_docs_2tutorial.html", [
       [ "Monte Carlo of Methane in a box", "basic1.html", null ]
     ] ],
+    [ "Installation", "installation.html", null ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -66,13 +68,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_vdwparameters.html",
-"structChiralCenter.html#ae4cffd4a2d88df7e37cd2de71d637f76",
-"structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983",
-"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caf87cd752a63b97e7f6f97081aca93ff9",
-"structMonteCarlo.html#a76ad739bb694d62fea00fe53193ac0ef",
-"structPseudoAtom.html#a5a9b515ef0130cffe6fb27a1910a33c2",
-"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1"
+"module_urey__bradley__potential.html",
+"structChiralCenter.html",
+"structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb",
+"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caedd652c19d7dbbfb3d242aa14b2fec8c",
+"structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45",
+"structPseudoAtom.html#a532f144150cd44507a0307be6f4989eb",
+"structTransitionMatrix.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
