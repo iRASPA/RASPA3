@@ -20,6 +20,6 @@ var searchData=
   ['frameworkid_17',['frameworkId',['../structFramework.html#ab34db0b26cb8464992c1cbfb6b1ef7f3',1,'Framework']]],
   ['frameworkmoleculecharge_18',['frameworkMoleculeCharge',['../structRunningEnergy.html#a5267c85a15991347a4c5f3353dcbfa44',1,'RunningEnergy']]],
   ['frameworkmoleculevdw_19',['frameworkMoleculeVDW',['../structRunningEnergy.html#a3b6f6f7c0b10f08d3f30aa9b133826a5',1,'RunningEnergy']]],
-  ['from_20source_20',['Installing from Source',['../installing_from_source.html',1,'md_docs_2manual']]],
+  ['from_20source_20',['Installing from Source',['../installing_from_source.html',1,'md_docs_2manual_2installing']]],
   ['fugacitycoefficient_21',['fugacityCoefficient',['../structComponent.html#a8b31256ad8b46242cf8dc757b22f0dc7',1,'Component']]]
 ];
