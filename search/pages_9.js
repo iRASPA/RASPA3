@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['packages_0',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]],
-  ['pre_20compiled_20packages_1',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]]
+  ['raspa3_0',['RASPA3',['../index.html',1,'']]],
+  ['restart_1',['Restart',['../restart.html',1,'md_docs_2manual']]],
+  ['running_2',['Running',['../running.html',1,'md_docs_2manual']]]
 ];
