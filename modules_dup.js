@@ -45,6 +45,7 @@ var modules_dup =
     [ "mc_moves_identity_change", "module_mc__moves__identity__change.html", null ],
     [ "mc_moves_insertion", "module_mc__moves__insertion.html", null ],
     [ "mc_moves_insertion_cbmc", "module_mc__moves__insertion__cbmc.html", null ],
+    [ "mc_moves_partial_reinsertion", "module_mc__moves__partial__reinsertion.html", null ],
     [ "mc_moves_random_rotation", "module_mc__moves__random__rotation.html", null ],
     [ "mc_moves_random_translation", "module_mc__moves__random__translation.html", null ],
     [ "mc_moves_reinsertion", "module_mc__moves__reinsertion.html", null ],

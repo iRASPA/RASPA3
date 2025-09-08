@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.9</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.10</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -116,15 +116,18 @@ Functions</h2></td></tr>
 <tr class="memitem:a6476ea133f1b8d8877bc69c983fd4401" id="r_a6476ea133f1b8d8877bc69c983fd4401"><td class="memItemLeft" align="right" valign="top">std::pair&lt; std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;, double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#a6476ea133f1b8d8877bc69c983fd4401">MC_Moves::deletionMoveCBMC</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent, std::size_t selectedMolecule)</td></tr>
 <tr class="memdesc:a6476ea133f1b8d8877bc69c983fd4401"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a CBMC deletion move for a specified molecule.  <br /></td></tr>
 <tr class="separator:a6476ea133f1b8d8877bc69c983fd4401"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a88cf5d392aca8b8cb7d61dc0ebca8509" id="r_a88cf5d392aca8b8cb7d61dc0ebca8509"><td class="memItemLeft" align="right" valign="top"><a id="a88cf5d392aca8b8cb7d61dc0ebca8509" name="a88cf5d392aca8b8cb7d61dc0ebca8509"></a>
-std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>MC_Moves::identityChangeMove</b> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent, std::size_t selectedMolecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atoms)</td></tr>
-<tr class="separator:a88cf5d392aca8b8cb7d61dc0ebca8509"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae6005de448418b75a5cbdad52786a711" id="r_ae6005de448418b75a5cbdad52786a711"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#ae6005de448418b75a5cbdad52786a711">MC_Moves::identityChangeMove</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent, std::size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
+<tr class="memdesc:ae6005de448418b75a5cbdad52786a711"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a CBMC reinsertion move for a selected molecule.  <br /></td></tr>
+<tr class="separator:ae6005de448418b75a5cbdad52786a711"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a228fab5d7c1d8d21d50475872a8fc805" id="r_a228fab5d7c1d8d21d50475872a8fc805"><td class="memItemLeft" align="right" valign="top">std::pair&lt; std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;, double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#a228fab5d7c1d8d21d50475872a8fc805">MC_Moves::insertionMove</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent)</td></tr>
 <tr class="memdesc:a228fab5d7c1d8d21d50475872a8fc805"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs an insertion move in the Monte Carlo simulation.  <br /></td></tr>
 <tr class="separator:a228fab5d7c1d8d21d50475872a8fc805"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c45f1d95417e0d64acd1e1a2008a634" id="r_a9c45f1d95417e0d64acd1e1a2008a634"><td class="memItemLeft" align="right" valign="top">std::pair&lt; std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;, double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#a9c45f1d95417e0d64acd1e1a2008a634">MC_Moves::insertionMoveCBMC</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent)</td></tr>
 <tr class="memdesc:a9c45f1d95417e0d64acd1e1a2008a634"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a Configurational-Bias Monte Carlo (CBMC) insertion move.  <br /></td></tr>
 <tr class="separator:a9c45f1d95417e0d64acd1e1a2008a634"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a406fb8b738d606d4f96b6ac40ec59a" id="r_a9a406fb8b738d606d4f96b6ac40ec59a"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#a9a406fb8b738d606d4f96b6ac40ec59a">MC_Moves::partialReinsertionMove</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent, std::size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
+<tr class="memdesc:a9a406fb8b738d606d4f96b6ac40ec59a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a CBMC reinsertion move for a selected molecule.  <br /></td></tr>
+<tr class="separator:a9a406fb8b738d606d4f96b6ac40ec59a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61c8294bf411d0188d2c0f78cee28515" id="r_a61c8294bf411d0188d2c0f78cee28515"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMC__Moves.html#a61c8294bf411d0188d2c0f78cee28515">MC_Moves::randomRotationMove</a> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, std::size_t selectedComponent, std::size_t selectedMolecule, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
 <tr class="memdesc:a61c8294bf411d0188d2c0f78cee28515"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a random rotation move on a molecule within the system.  <br /></td></tr>
 <tr class="separator:a61c8294bf411d0188d2c0f78cee28515"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -495,6 +498,81 @@ std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a
 
 </div>
 </div>
+<a id="ae6005de448418b75a5cbdad52786a711" name="ae6005de448418b75a5cbdad52786a711"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae6005de448418b75a5cbdad52786a711">&#9670;&#160;</a></span>identityChangeMove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; MC_Moves::identityChangeMove </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSystem.html">System</a> &amp;&#160;</td>
+          <td class="paramname"><em>system</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>selectedComponent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>selectedMolecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structMolecule.html">Molecule</a> &amp;&#160;</td>
+          <td class="paramname"><em>molecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>molecule_atoms</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">export</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Performs a CBMC reinsertion move for a selected molecule. </p>
+<p>Attempts to reinsert a molecule using Configurational Bias Monte Carlo (CBMC) method. Updates the system if the move is accepted and returns the energy difference.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>Random number generator instance. </td></tr>
+    <tr><td class="paramname">system</td><td>The simulation system. </td></tr>
+    <tr><td class="paramname">selectedComponent</td><td>Index of the selected component. </td></tr>
+    <tr><td class="paramname">selectedMolecule</td><td>Index of the selected molecule within the component. </td></tr>
+    <tr><td class="paramname">molecule</td><td>Reference to the molecule to be reinserted. </td></tr>
+    <tr><td class="paramname">molecule_atoms</td><td>Span of atoms belonging to the molecule.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>An optional <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> containing the energy difference if the move is accepted; std::nullopt otherwise. </dd></dl>
+
+</div>
+</div>
 <a id="a228fab5d7c1d8d21d50475872a8fc805" name="a228fab5d7c1d8d21d50475872a8fc805"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a228fab5d7c1d8d21d50475872a8fc805">&#9670;&#160;</a></span>insertionMove()</h2>
 
@@ -660,6 +738,81 @@ restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>An optional pair of <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> objects if the swap is accepted; std::nullopt otherwise. </dd></dl>
+
+</div>
+</div>
+<a id="a9a406fb8b738d606d4f96b6ac40ec59a" name="a9a406fb8b738d606d4f96b6ac40ec59a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9a406fb8b738d606d4f96b6ac40ec59a">&#9670;&#160;</a></span>partialReinsertionMove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; MC_Moves::partialReinsertionMove </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSystem.html">System</a> &amp;&#160;</td>
+          <td class="paramname"><em>system</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>selectedComponent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>selectedMolecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structMolecule.html">Molecule</a> &amp;&#160;</td>
+          <td class="paramname"><em>molecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>molecule_atoms</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">export</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Performs a CBMC reinsertion move for a selected molecule. </p>
+<p>Attempts to reinsert a molecule using Configurational Bias Monte Carlo (CBMC) method. Updates the system if the move is accepted and returns the energy difference.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>Random number generator instance. </td></tr>
+    <tr><td class="paramname">system</td><td>The simulation system. </td></tr>
+    <tr><td class="paramname">selectedComponent</td><td>Index of the selected component. </td></tr>
+    <tr><td class="paramname">selectedMolecule</td><td>Index of the selected molecule within the component. </td></tr>
+    <tr><td class="paramname">molecule</td><td>Reference to the molecule to be reinserted. </td></tr>
+    <tr><td class="paramname">molecule_atoms</td><td>Span of atoms belonging to the molecule.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>An optional <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> containing the energy difference if the move is accepted; std::nullopt otherwise. </dd></dl>
 
 </div>
 </div>
