@@ -102,7 +102,90 @@ $(document).ready(function(){initNavTree('installing_from_source.html',''); init
   <div class="headertitle"><div class="title">Installing from Source</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"></div></div><!-- contents -->
+<div class="textblock"><h1>1. Building from Source</h1>
+<h2>1.1 Prerequisites</h2>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Package   </th><th class="markdownTableHeadNone">Min. version    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">clang/clang++   </td><td class="markdownTableBodyNone">18    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">cmake   </td><td class="markdownTableBodyNone">3.28    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">ninja   </td><td class="markdownTableBodyNone">1.11    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">python   </td><td class="markdownTableBodyNone">3.11    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">pybind11   </td><td class="markdownTableBodyNone">2.12    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">BLAS + LAPACK   </td><td class="markdownTableBodyNone">64‑bit ints    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">HDF5   </td><td class="markdownTableBodyNone">1.12    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">OpenMP · OpenCL   </td><td class="markdownTableBodyNone">latest   </td></tr>
+</table>
+<h2>1.2 Build with Conda (recommended)</h2>
+<div class="fragment"><div class="line">git clone https://github.com/raspa3/raspa3.git</div>
+<div class="line">cd raspa3</div>
+<div class="line">conda env create -f env.yml</div>
+<div class="line">conda activate raspa</div>
+<div class="line">cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3</div>
+<div class="line">ninja -C build</div>
+<div class="line">ninja -C build install      # optional</div>
+</div><!-- fragment --><p><b>Note</b>: remove the package ocl-icd from env.yml for Mac and Windows installations, as OpenCL is only available for Linux. For MacOS using the system OpenCL is recommended.</p>
+<p><b>Note</b>: it is often necessary to add the conda installed libraries raspa3 links against to your dynamic library path using <code>export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib:$LD_LIBRARY_PATH</code>.</p>
+<h2>1.3 Linux examples</h2>
+<h3>Ubuntu 24.04</h3>
+<div class="fragment"><div class="line">sudo apt install -y git ca-certificates cmake ninja-build \</div>
+<div class="line">  llvm lld clang clang-tidy libc++-dev libc++abi-dev \</div>
+<div class="line">  libomp-dev libclang-rt-dev python3 python3-dev pybind11-dev \</div>
+<div class="line">  liblapack64-dev libblas64-dev</div>
+<div class="line"> </div>
+<div class="line">git clone https://github.com/raspa3/raspa3.git</div>
+<div class="line">cd raspa3</div>
+<div class="line">cmake -B build --preset=linux-x86_64-core-avx2-ubuntu-24</div>
+<div class="line">ninja -C build</div>
+<div class="line">ninja -C build install</div>
+</div><!-- fragment --><h3>Fedora 40</h3>
+<div class="fragment"><div class="line">sudo dnf install -y git llvm lld cmake clang clang-tools-extra ninja-build \</div>
+<div class="line">  libomp-devel libcxx libcxx-devel libcxxabi libcxxabi-devel \</div>
+<div class="line">  lapack64 blas64 python3 python3-devel pybind11-devel</div>
+<div class="line"> </div>
+<div class="line">git clone https://github.com/raspa3/raspa3.git</div>
+<div class="line">cd raspa3</div>
+<div class="line">cmake -B build --preset=linux-x86_64-core-avx2-fedora-40</div>
+<div class="line">ninja -C build</div>
+<div class="line">ninja -C build install</div>
+</div><!-- fragment --><h2>1.4 macOS (Homebrew)</h2>
+<div class="fragment"><div class="line">brew install llvm lld libomp hdf5 libaec ninja cmake doxygen graphviz lapack pybind11</div>
+<div class="line">export PATH=&quot;$(brew --prefix llvm)/bin:$PATH&quot;  # clang‑18</div>
+<div class="line">export HDF5_ROOT=&quot;$(brew --prefix hdf5)&quot;</div>
+<div class="line">git clone https://github.com/raspa3/raspa3.git</div>
+<div class="line">cd raspa3</div>
+<div class="line">cmake -B build --preset=macos-apple-silicon  # or macos-x64-core-avx2</div>
+<div class="line">ninja -C build</div>
+<div class="line">ninja -C build install</div>
+</div><!-- fragment --><hr  />
+<h1>2. CMake Presets</h1>
+<p>Run <code>cmake --list-presets</code> to see every preset. Common shortcuts:</p>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Preset   </th><th class="markdownTableHeadNone">Target    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">linux_conda   </td><td class="markdownTableBodyNone">Generic Linux + Conda    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">linux-x86_64-core-avx2-ubuntu-24   </td><td class="markdownTableBodyNone">Ubuntu 24, AVX2    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">linux-x86_64-skylake-avx512-fedora-40   </td><td class="markdownTableBodyNone">Fedora 40, AVX‑512    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">mac_conda   </td><td class="markdownTableBodyNone">macOS + Conda    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">macos-apple-silicon   </td><td class="markdownTableBodyNone">macOS Apple Silicon    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">windows_conda_raspa3   </td><td class="markdownTableBodyNone">Windows + Conda   </td></tr>
+</table>
+<hr  />
+ </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->
 <!-- start footer part -->

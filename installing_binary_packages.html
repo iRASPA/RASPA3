@@ -102,7 +102,23 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
   <div class="headertitle"><div class="title">Installing pre-Compiled Packages</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><h1>Table of Contents</h1>
+<div class="textblock"><p>RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23. Pre‑built binaries for mac and windows are <b>statically linked</b> and therefore do not require any external runtime libraries. If you only want to <em>use</em> RASPA 3, download a pre‑built package. If you want to <em>develop</em> or <em>debug</em> RASPA 3, follow the build‑from‑source instructions.</p>
+<p>All official releases are published on the <b>GitHub “Releases” tab</b>. Choose the file that matches your operating system, CPU architecture and AVX capability.</p>
+<table class="markdownTable">
+<tr class="markdownTableHead">
+<th class="markdownTableHeadNone">Platform   </th><th class="markdownTableHeadNone">File suffix   </th><th class="markdownTableHeadNone">Example    </th></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">Conda   </td><td class="markdownTableBodyNone">–   </td><td class="markdownTableBodyNone">install with <code>conda install raspa3 raspalib</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">Debian / Ubuntu   </td><td class="markdownTableBodyNone"><code>.deb</code>   </td><td class="markdownTableBodyNone"><code>raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.deb</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">RPM‑based Linux   </td><td class="markdownTableBodyNone"><code>.rpm</code>   </td><td class="markdownTableBodyNone"><code>raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.rpm</code>    </td></tr>
+<tr class="markdownTableRowEven">
+<td class="markdownTableBodyNone">macOS   </td><td class="markdownTableBodyNone"><code>.pkg</code>   </td><td class="markdownTableBodyNone"><code>raspa‑{VERSION}‑mac‑{ARCH}.pkg</code>    </td></tr>
+<tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">Windows   </td><td class="markdownTableBodyNone"><code>.exe</code>   </td><td class="markdownTableBodyNone"><code>raspa‑{VERSION}‑windows‑{ARCH}‑{AVX}.exe</code>   </td></tr>
+</table>
+<h1>Table of Contents</h1>
 <ol type="1">
 <li>Mac-Apple-Silicon</li>
 <li>Windows-arm64</li>
@@ -137,12 +153,12 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
 <li><a class="el" href="installing_binary_packages.html#Almalinux-8-amd64-avx512">Almalinux-8-amd64-avx512</a></li>
 <li><a class="el" href="installing_binary_packages.html#Redhat-9-amd64-avx2">Redhat-9-amd64-avx2</a></li>
 <li><a class="el" href="installing_binary_packages.html#Redhat-9-amd64-avx512">Redhat-9-amd64-avx512</a></li>
-<li>Redhat/Centos-8-amd64-avx2</li>
-<li>Redhat/Centos-8-amd64-avx512</li>
-<li>Redhat/Centos-7-amd64-avx2</li>
-<li>Redhat/Centos-7-amd64-avx512</li>
-<li>Redhat/Centos-6-amd64-avx2</li>
-<li>Redhat/Centos-6-amd64-avx512</li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-8-amd64-avx2">Redhat-8-amd64-avx2</a></li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-8-amd64-avx512">Redhat-8-amd64-avx512</a></li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-7-amd64-avx2">Redhat-7-amd64-avx2</a></li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-7-amd64-avx512">Redhat-7-amd64-avx512</a></li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-6-amd64-avx2">Redhat-6-amd64-avx2</a></li>
+<li><a class="el" href="installing_binary_packages.html#Redhat-6-amd64-avx512">Redhat-6-amd64-avx512</a></li>
 <li><a class="el" href="installing_binary_packages.html#Fedora-41-amd64-avx2">Fedora-41-amd64-avx2</a></li>
 <li><a class="el" href="installing_binary_packages.html#Fedora-41-amd64-avx512">Fedora-41-amd64-avx512</a></li>
 <li><a class="el" href="installing_binary_packages.html#Fedora-40-amd64-avx2">Fedora-40-amd64-avx2</a></li>
@@ -317,13 +333,13 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
 </div><!-- fragment --><h3>Redhat-9-amd64 with AVX512 support <a class="anchor" id="Redhat-9-amd64-avx512"></a></h3>
 <p>dependencies: blas64, lapack64, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3 tested on: rockylinux/rockylinux:9 </p><div class="fragment"><div class="line">yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el9.x86_64.skylake-avx512.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-8-amd64 with AVX2 support <a class="anchor" id="Redhat/Centos-8-amd64-avx2"></a></h3>
+</div><!-- fragment --><h3>Redhat-8-amd64 with AVX2 support <a class="anchor" id="Redhat-8-amd64-avx2"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3 tested on: rockylinux/rockylinux:8 </p><div class="fragment"><div class="line">yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el8.x86_64.core-avx2.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-8-amd64 with AVX512 support <a class="anchor" id="Redhat/Centos-8-amd64-avx512"></a></h3>
+</div><!-- fragment --><h3>Redhat-8-amd64 with AVX512 support <a class="anchor" id="Redhat-8-amd64-avx512"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3 tested on: rockylinux/rockylinux:8 </p><div class="fragment"><div class="line">yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el8.x86_64.skylake-avx512.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-7-amd64 with AVX2 support <a class="anchor" id="Redhat/Centos-7-amd64-avx2"></a></h3>
+</div><!-- fragment --><h3>Redhat-7-amd64 with AVX2 support <a class="anchor" id="Redhat-7-amd64-avx2"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3 tested on: centos:centos7.9.2009 </p><div class="fragment"><div class="line">sed -i -e &quot;s|mirrorlist=|#mirrorlist=|g&quot; /etc/yum.repos.d/*</div>
 <div class="line">sed -i -e &quot;s|#baseurl=|baseurl=|g&quot; /etc/yum.repos.d/*</div>
 <div class="line">sed -i -e &quot;s|http://mirror.centos.org|https://vault.centos.org|g&quot; /etc/yum.repos.d/*</div>
@@ -332,7 +348,7 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
 </div><!-- fragment --><div class="fragment"><div class="line">yum install blas</div>
 <div class="line">yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el7.x86_64.core-avx2.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-7-amd64 with AVX512 support <a class="anchor" id="Redhat/Centos-7-amd64-avx512"></a></h3>
+</div><!-- fragment --><h3>Redhat-7-amd64 with AVX512 support <a class="anchor" id="Redhat-7-amd64-avx512"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3 tested on: centos:centos7.9.2009 </p><div class="fragment"><div class="line">sed -i -e &quot;s|mirrorlist=|#mirrorlist=|g&quot; /etc/yum.repos.d/*</div>
 <div class="line">sed -i -e &quot;s|#baseurl=|baseurl=|g&quot; /etc/yum.repos.d/*</div>
 <div class="line">sed -i -e &quot;s|http://mirror.centos.org|https://vault.centos.org|g&quot; /etc/yum.repos.d/*</div>
@@ -341,7 +357,7 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
 </div><!-- fragment --> <div class="fragment"><div class="line">yum install blas</div>
 <div class="line">yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el7.x86_64.skylake-avx512.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-6-amd64 with AVX2 support <a class="anchor" id="Redhat/Centos-6-amd64-avx2"></a></h3>
+</div><!-- fragment --><h3>Redhat-6-amd64 with AVX2 support <a class="anchor" id="Redhat-6-amd64-avx2"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3 tested on: centos:centos6 </p><div class="fragment"><div class="line">curl https://www.getpagespeed.com/files/centos6-eol.repo --output /etc/yum.repos.d/CentOS-Base.repo </div>
 <div class="line">curl https://www.getpagespeed.com/files/centos6-epel-eol.repo --output /etc/yum.repos.d/epel.repo</div>
 <div class="line">yum -y install centos-release-scl</div>
@@ -350,7 +366,7 @@ $(document).ready(function(){initNavTree('installing_binary_packages.html',''); 
 <div class="line">yum update -y &amp;&amp; \</div>
 </div><!-- fragment --> <div class="fragment"><div class="line">yum install --nogpgcheck  https://github.com/iRASPA/RASPA3/releases/download/v3.0.10/raspa-3.0.10-1.el6.x86_64.core-avx2.rpm</div>
 <div class="line">/usr/share/raspa3/tests/unit_tests_raspakit</div>
-</div><!-- fragment --><h3>Redhat/Centos-6-amd64 with AVX512 support <a class="anchor" id="Redhat/Centos-6-amd64-avx512"></a></h3>
+</div><!-- fragment --><h3>Redhat-6-amd64 with AVX512 support <a class="anchor" id="Redhat-6-amd64-avx512"></a></h3>
 <p>dependencies: blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3 tested on: centos:centos6 </p><div class="fragment"><div class="line">curl https://www.getpagespeed.com/files/centos6-eol.repo --output /etc/yum.repos.d/CentOS-Base.repo </div>
 <div class="line">curl https://www.getpagespeed.com/files/centos6-epel-eol.repo --output /etc/yum.repos.d/epel.repo</div>
 <div class="line">yum -y install centos-release-scl</div>
