@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['non_20basic_0',['Examples Non-Basic',['../examples_nonbasic.html',1,'examples']]]
+  ['manual_0',['manual',['../manual_main.html',1,'Manual'],['../md_docs_2manual.html',1,'User Manual']]]
 ];

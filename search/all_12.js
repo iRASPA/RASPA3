@@ -38,7 +38,7 @@ var searchData=
   ['stretchbends_35',['stretchBends',['../structFramework.html#afd4d56c08b9aaa4dd02a84253c46b10f',1,'Framework']]],
   ['stretchtorsions_36',['stretchTorsions',['../structFramework.html#a1ae0e631022c40ad80de795cd8437f6f',1,'Framework']]],
   ['stringtoenum_37',['stringToEnum',['../structVDWParameters.html#a603f7d139f5856459cb1797ea18df345',1,'VDWParameters']]],
-  ['structure_38',['Structure',['../structure.html',1,'md_docs_2manual']]],
+  ['structure_20of_20the_20raspa_20code_38',['Appendix: Structure of the RASPA Code',['../structure.html',1,'md_docs_2manual']]],
   ['supercriticalfluid_39',['SuperCriticalFluid',['../structEquationOfState.html#ad24dde64769d920de844de46c3426af5a2c3a64d87d74b9a159d4c3bc925d42e8',1,'EquationOfState']]],
   ['swappable_40',['swappable',['../structComponent.html#a9bb694a5b3664bafded82337fb57a1e8',1,'Component']]],
   ['system_41',['system',['../structSystem.html#a7ffb94a5a2db03014de0a8440f0cee3a',1,'System::System()=default'],['../structSystem.html#aa79c914e3d0694f5493ce97a0423411c',1,'System::System(std::size_t id, ForceField forcefield, std::optional&lt; SimulationBox &gt; box, double T, std::optional&lt; double &gt; P, double heliumVoidFraction, std::optional&lt; Framework &gt; framework, std::vector&lt; Component &gt; components, std::vector&lt; std::vector&lt; double3 &gt; &gt; initialPositions, std::vector&lt; std::size_t &gt; initialNumberOfMolecules, std::size_t numberOfBlocks, const MCMoveProbabilities &amp;systemProbabilities=MCMoveProbabilities(), std::optional&lt; std::size_t &gt; sampleMoviesEvery=std::nullopt)'],['../structSystem.html',1,'System']]],

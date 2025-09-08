@@ -27,15 +27,13 @@ var NAVTREE =
   [ "RASPA3", "index.html", [
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
+      [ "Units", "units.html", null ],
       [ "Installing", "installing.html", [
         [ "Installing using Conda", "installing_using_conda.html", null ],
         [ "Installing pre-Compiled Packages", "installing_binary_packages.html", null ],
         [ "Installing from Source", "installing_from_source.html", null ]
       ] ],
-      [ "Structure", "structure.html", null ],
       [ "Running", "running.html", null ],
-      [ "Restart", "restart.html", null ],
-      [ "Units", "units.html", null ],
       [ "Commands", "commands.html", null ],
       [ "Examples", "examples.html", [
         [ "Examples Basic", "examples_basic.html", null ],
@@ -43,8 +41,11 @@ var NAVTREE =
         [ "Examples Advanced", "examples_advanced.html", null ],
         [ "Examples Auxillary", "examples_auxillary.html", null ]
       ] ],
-      [ "FAQ", "FAQ.html", null ]
+      [ "Restart", "restart.html", null ],
+      [ "FAQ", "FAQ.html", null ],
+      [ "Appendix: Structure of the RASPA Code", "structure.html", null ]
     ] ],
+    [ "RASPA 3 – Installation Guide", "md_INSTALLATION.html", null ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -69,9 +70,9 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_units.html",
-"structChiralCenter.html",
-"structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb",
+"module_triquintic__derivatives__external__field.html",
+"structChargeEquilbrationElementData.html",
+"structForceField.html#a0651c97f845e566888c8df277a183336",
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a",
 "structMonteCarlo.html#a742ffab27a370392748419dba2579260",
 "structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd",
