@@ -1,6 +1,5 @@
 var NAVTREEINDEX4 =
 {
-"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cabc624c94e0cb544c7e2ca47c9af04aca":[5,0,36,1,6],
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cabc624c94e0cb544c7e2ca47c9af04aca":[3,0,26,0,1,6],
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a":[3,0,26,0,1,2],
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a":[5,0,36,1,2],
@@ -249,5 +248,6 @@ var NAVTREEINDEX4 =
 "structMonteCarlo.html#a6edc21940648bbef1065ca55d507a0a3a6ffe065db3c2dd7b1d0593d313b71ca6":[5,0,57,1,0],
 "structMonteCarlo.html#a6edc21940648bbef1065ca55d507a0a3a6ffe065db3c2dd7b1d0593d313b71ca6":[3,0,71,0,1,0],
 "structMonteCarlo.html#a6edc21940648bbef1065ca55d507a0a3ae9014f71985913179dc0f969c602833e":[3,0,71,0,1,1],
-"structMonteCarlo.html#a6edc21940648bbef1065ca55d507a0a3ae9014f71985913179dc0f969c602833e":[5,0,57,1,1]
+"structMonteCarlo.html#a6edc21940648bbef1065ca55d507a0a3ae9014f71985913179dc0f969c602833e":[5,0,57,1,1],
+"structMonteCarlo.html#a72b356e99a4ec690dc94ca8c07cb8671":[3,0,71,0,22]
 };

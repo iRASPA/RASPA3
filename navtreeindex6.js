@@ -1,6 +1,5 @@
 var NAVTREEINDEX6 =
 {
-"structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1":[5,0,78,8],
 "structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1":[3,0,22,0,8],
 "structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd":[3,0,22,0,5],
 "structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd":[5,0,78,5],
@@ -249,5 +248,6 @@ var NAVTREEINDEX6 =
 "structTorsionPotential.html#a60f6653d96df0cdbc0b81acd09d99e1f":[3,0,106,0,5],
 "structTorsionPotential.html#a60f6653d96df0cdbc0b81acd09d99e1f":[5,0,87,5],
 "structTorsionPotential.html#a7cf5cb73e440e8ab2a3872d3e9dc6247":[3,0,106,0,2],
-"structTorsionPotential.html#a7cf5cb73e440e8ab2a3872d3e9dc6247":[5,0,87,2]
+"structTorsionPotential.html#a7cf5cb73e440e8ab2a3872d3e9dc6247":[5,0,87,2],
+"structTorsionPotential.html#ad3f6122282c04c8ed4caddd97bb2b760":[5,0,87,4]
 };

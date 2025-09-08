@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['of_20methane_20in_20a_20box_0',['Monte Carlo of Methane in a box',['../basic1.html',1,'md_docs_2tutorial']]],
+  ['of_20methane_20in_20a_20box_0',['Monte Carlo of Methane in a box',['../basic1.html',1,'']]],
   ['omitewaldfourier_1',['omitEwaldFourier',['../structForceField.html#a769468a3667a1d4b214cb026cdea9b69',1,'ForceField']]],
   ['omitinterinteractions_2',['omitInterInteractions',['../structForceField.html#af63e6ecb8544061747929b9388bd0258',1,'ForceField']]],
   ['omitinterpolarization_3',['omitInterPolarization',['../structForceField.html#a1c4b5e8c34a59973511e75f31e5964fa',1,'ForceField']]],

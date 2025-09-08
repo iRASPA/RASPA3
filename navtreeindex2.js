@@ -1,6 +1,5 @@
 var NAVTREEINDEX2 =
 {
-"structChainRetraceData.html":[3,0,3,1],
 "structChainRetraceData.html":[5,0,15],
 "structChargeEquilbrationElementData.html":[5,0,16],
 "structChiralCenter.html":[5,0,17],
@@ -249,5 +248,6 @@ var NAVTREEINDEX2 =
 "structForceField.html":[3,0,21,0],
 "structForceField.html#a025b3e42cf2c696c438b4d04aa302614":[5,0,33,12],
 "structForceField.html#a025b3e42cf2c696c438b4d04aa302614":[3,0,21,0,12],
-"structForceField.html#a05c395fa1f6618853754c8034fc49ecf":[5,0,33,28]
+"structForceField.html#a05c395fa1f6618853754c8034fc49ecf":[5,0,33,28],
+"structForceField.html#a05c395fa1f6618853754c8034fc49ecf":[3,0,21,0,28]
 };

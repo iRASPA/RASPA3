@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['tutorial_0',['Tutorial',['../md_docs_2tutorial.html',1,'']]]
+  ['source_0',['Installing from Source',['../installing_from_source.html',1,'installing']]],
+  ['structure_1',['Structure',['../structure.html',1,'md_docs_2manual']]]
 ];

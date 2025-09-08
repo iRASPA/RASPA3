@@ -1,6 +1,5 @@
 var NAVTREEINDEX7 =
 {
-"structTorsionPotential.html#ad3f6122282c04c8ed4caddd97bb2b760":[5,0,87,4],
 "structTorsionPotential.html#ad3f6122282c04c8ed4caddd97bb2b760":[3,0,106,0,4],
 "structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb":[3,0,106,0,0],
 "structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb":[5,0,87,0],
@@ -138,6 +137,6 @@ var NAVTREEINDEX7 =
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[3,0,144,1],
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[4,0,2,1],
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[5,0,1,1],
-"structure.html":[0,2],
-"units.html":[0,5]
+"structure.html":[1,2],
+"units.html":[1,5]
 };

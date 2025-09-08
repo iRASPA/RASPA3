@@ -25,6 +25,7 @@
 var NAVTREE =
 [
   [ "RASPA3", "index.html", [
+    [ "Monte Carlo of Methane in a box", "basic1.html", null ],
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
       [ "Installing", "installing.html", [
@@ -45,10 +46,7 @@ var NAVTREE =
       ] ],
       [ "FAQ", "FAQ.html", null ]
     ] ],
-    [ "Tutorial", "md_docs_2tutorial.html", [
-      [ "Monte Carlo of Methane in a box", "basic1.html", null ]
-    ] ],
-    [ "Installation", "installation.html", null ],
+    [ "RASPA 3 – Installation Guide", "md_INSTALLATION.html", null ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -73,9 +71,9 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_tricubic__derivatives__external__field.html",
+"module_triquintic__derivative__factor.html",
 "structChainRetraceData.html",
-"structForceField.html#a05c395fa1f6618853754c8034fc49ecf",
+"structForceField.html#a0651c97f845e566888c8df277a183336",
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cabc624c94e0cb544c7e2ca47c9af04aca",
 "structMonteCarlo.html#a72b356e99a4ec690dc94ca8c07cb8671",
 "structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1",
