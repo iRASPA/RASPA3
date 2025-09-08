@@ -19,7 +19,7 @@ var searchData=
   ['inputstring_16',['inputString',['../structInputReader.html#a41eda75f00d9415d2e775501ce9808af',1,'InputReader']]],
   ['insensitivecompare_17',['insensitivecompare',['../structForceField_1_1InsensitiveCompare.html',1,'ForceField::InsensitiveCompare'],['../structInputReader_1_1InsensitiveCompare.html',1,'InputReader::InsensitiveCompare']]],
   ['installation_18',['Installation',['../installation.html',1,'']]],
-  ['installing_20from_20pre_20compiled_20packages_19',['&quot;Installing from pre-Compiled Packages&quot;',['../package_installation.html',1,'md_docs_2manual']]],
+  ['installing_20from_20pre_20compiled_20packages_19',['Installing from pre-Compiled Packages',['../package_installation.html',1,'md_docs_2manual']]],
   ['integratorscputime_20',['IntegratorsCPUTime',['../structIntegratorsCPUTime.html',1,'']]],
   ['interpolationenergygrid_21',['InterpolationEnergyGrid',['../structInterpolationEnergyGrid.html',1,'']]],
   ['intracoul_22',['intraCoul',['../structRunningEnergy.html#a30b1ec533ad027497b2d4d9bed936ddd',1,'RunningEnergy']]],

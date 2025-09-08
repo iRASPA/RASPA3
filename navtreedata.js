@@ -27,7 +27,7 @@ var NAVTREE =
   [ "RASPA3", "index.html", [
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
-      [ "\"Installing from pre-Compiled Packages\"", "package_installation.html", null ],
+      [ "Installing from pre-Compiled Packages", "package_installation.html", null ],
       [ "Structure", "structure.html", null ],
       [ "Running", "running.html", null ],
       [ "Restart", "restart.html", null ],
