@@ -1,5 +1,7 @@
 var NAVTREEINDEX7 =
 {
+"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1":[3,0,129,0,5],
+"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1":[5,0,88,5],
 "structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3":[3,0,129,0,19],
 "structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3":[5,0,88,19],
 "structTransitionMatrix.html#a2492d39f9199ec216051940a0a67a9d9":[5,0,88,22],
@@ -130,6 +132,6 @@ var NAVTREEINDEX7 =
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[3,0,144,1],
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[4,0,2,1],
 "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html":[5,0,1,1],
-"structure.html":[0,2],
-"units.html":[0,5]
+"structure.html":[0,4],
+"units.html":[0,7]
 };

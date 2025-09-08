@@ -27,7 +27,9 @@ var NAVTREE =
   [ "RASPA3", "index.html", [
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
-      [ "Installing from pre-Compiled Packages", "package_installation.html", null ],
+      [ "Installing using Conda", "installing_using_conda.html", null ],
+      [ "Installing pre-Compiled Packages", "installing_binary_packages.html", null ],
+      [ "Installing from Source", "installing_from_source.html", null ],
       [ "Structure", "structure.html", null ],
       [ "Running", "running.html", null ],
       [ "Restart", "restart.html", null ],
@@ -63,13 +65,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"namespaceHardwareInfo.html",
-"structComponent.html",
-"structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983a279ede0c6bdbd7d26309becd159053d8",
-"structInputReader.html#a768c45a9b8f8ac7be60bbe8cfe7a0686",
-"structMonteCarlo.html#a848e0c0591f3836c13038c048d77fc7a",
-"structPseudoAtom.html#aa71f65fc0bd7d399fef6dd74a9bd9262",
-"structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3"
+"module_vdwparameters.html",
+"structChiralCenter.html#ae4cffd4a2d88df7e37cd2de71d637f76",
+"structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983",
+"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caf87cd752a63b97e7f6f97081aca93ff9",
+"structMonteCarlo.html#a76ad739bb694d62fea00fe53193ac0ef",
+"structPseudoAtom.html#a5a9b515ef0130cffe6fb27a1910a33c2",
+"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

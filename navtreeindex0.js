@@ -1,14 +1,14 @@
 var NAVTREEINDEX0 =
 {
-"FAQ.html":[0,7],
+"FAQ.html":[0,9],
 "annotated.html":[5,0],
 "basic1.html":[1,0],
 "classMixturePrediction.html":[3,0,142,0],
 "classMixturePrediction.html":[5,0,53],
 "classes.html":[5,1],
-"commands.html":[0,6],
-"functions.html":[5,3,0,0],
+"commands.html":[0,8],
 "functions.html":[5,3,0],
+"functions.html":[5,3,0,0],
 "functions_a.html":[5,3,0,1],
 "functions_b.html":[5,3,0,2],
 "functions_c.html":[5,3,0,3],
@@ -84,6 +84,9 @@ var NAVTREEINDEX0 =
 "hierarchy.html":[5,2],
 "index.html":[],
 "installation.html":[2],
+"installing_binary_packages.html":[0,2],
+"installing_from_source.html":[0,3],
+"installing_using_conda.html":[0,1],
 "manual_main.html":[0,0],
 "md_docs_2manual.html":[0],
 "md_docs_2tutorial.html":[1],
@@ -246,8 +249,5 @@ var NAVTREEINDEX0 =
 "module_triquintic__derivatives__external__field.html":[3,0,93],
 "module_units.html":[3,0,161],
 "module_urey__bradley__potential.html":[3,0,107],
-"module_van__der__waals__potential.html":[3,0,108],
-"module_vdwparameters.html":[3,0,23],
-"module_write__lammps__data.html":[3,0,119],
-"modules.html":[3,0]
+"module_van__der__waals__potential.html":[3,0,108]
 };

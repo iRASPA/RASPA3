@@ -1,5 +1,7 @@
 var NAVTREEINDEX6 =
 {
+"structPseudoAtom.html#a5a9b515ef0130cffe6fb27a1910a33c2":[5,0,78,1],
+"structPseudoAtom.html#a5a9b515ef0130cffe6fb27a1910a33c2":[3,0,22,0,1],
 "structPseudoAtom.html#aa71f65fc0bd7d399fef6dd74a9bd9262":[5,0,78,11],
 "structPseudoAtom.html#aa71f65fc0bd7d399fef6dd74a9bd9262":[3,0,22,0,11],
 "structPseudoAtom.html#acf4996286ed58a462d4edb3051c604b6":[3,0,22,0,4],
@@ -247,7 +249,5 @@ var NAVTREEINDEX6 =
 "structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb":[3,0,106,0,0],
 "structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb":[5,0,87,0],
 "structTransitionMatrix.html":[5,0,88],
-"structTransitionMatrix.html":[3,0,129,0],
-"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1":[3,0,129,0,5],
-"structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1":[5,0,88,5]
+"structTransitionMatrix.html":[3,0,129,0]
 };
