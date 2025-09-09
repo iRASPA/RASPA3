@@ -104,9 +104,19 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="contents">
 <div class="textblock"><h1>Table of Contents</h1>
 <ol type="1">
-<li><a class="el" href="examples_basic.html#Example_1">Monte Carlo: methane in box</a></li>
-<li><a class="el" href="examples_basic.html#Example_2">Monte Carlo: CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in two independent boxes</a></li>
-<li><a class="el" href="examples_basic.html#Example_2">Monte Carlo: binary mixture in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_1">Monte Carlo: methane in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in two independent boxes</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_4">Monte Carlo: binary mixture propane and butane in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_5">Molecular Dynamics: methane in box (msd)</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_6">Monte Carlo: enthalpy of adsorption in MFI at zero loading</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_8">Monte Carlo: adsorption of methane in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_9">Monte Carlo: adsorption of butane in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO&lt;sub&gt;2&lt;/sub&gt; in Cu-BTC</a></li>
+<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_12">Monte Carlo: radial distribution function of water</a></li>
+<li><a class="el" href="examples_basic.html#Example_13">Molecular Dynamics: radial distribution function of water</a></li>
 </ol>
 <h3>Monte Carlo: methane in box <a class="anchor" id="Example_1"></a></h3>
 <p>A Monte Carlo run of 100 methane molecules in a $30\times30\times30$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in &lsquo;movies/&rsquo;, and can be viewed with iRASPA or VMD.</p>
@@ -376,7 +386,8 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">Rotation-move probability:                0.3333333333333333 [-]</div>
 <div class="line">Reinsertion (CBMC) probability:           0.3333333333333333 [-]</div>
 </div><!-- fragment --><p> At every MC-step, each move will be randomly selected with 1/3 probability.</p>
-<h3>Monte Carlo: binary mixture in box<a class="anchor" id="Example_3"></a></h3>
+<h3>Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box<a class="anchor" id="Example_3"></a></h3>
+<h3>Monte Carlo: binary mixture propane and butane in box<a class="anchor" id="Example_4"></a></h3>
 <p>A Monte Carlo run of 50 propane and 50 butane molecules in a $30\times30\times30$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -653,7 +664,16 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    ---------------------------------------------------------------------------</div>
 <div class="line">    Pressure average   1.732363e+07 +/-  5.652840e+05 [Pa]</div>
 <div class="line">                       1.732363e+02 +/-  5.652840e+00 [bar]</div>
-</div><!-- fragment --> </div></div><!-- contents -->
+</div><!-- fragment --><h3>Molecular Dynamics: methane in box (msd)<a class="anchor" id="Example_5"></a></h3>
+<h3>Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a class="anchor" id="Example_6"></a></h3>
+<h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_7"></a></h3>
+<h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_8"></a></h3>
+<h3>Monte Carlo: adsorption of butane in MFI<a class="anchor" id="Example_9"></a></h3>
+<h3>Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
+<h3>Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI<a class="anchor" id="Example_11"></a></h3>
+<h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_12"></a></h3>
+<h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_13"></a></h3>
+</div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->
 <!-- start footer part -->
