@@ -5,7 +5,17 @@
 ## Table of Contents
 1. [Monte Carlo: methane in box](#Example_1)
 2. [Monte Carlo: CO<sub>2</sub> and N<sub>2</sub> in two independent boxes](#Example_2)
-3. [Monte Carlo: binary mixture in box](#Example_2)
+3. [Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box](#Example_3)
+4. [Monte Carlo: binary mixture propane and butane in box](#Example_4)
+5. [Molecular Dynamics: methane in box (msd)](#Example_5)
+6. [Monte Carlo: enthalpy of adsorption in MFI at zero loading](#Example_6)
+7. [Monte Carlo: Henry coefficient of methane in MFI](#Example_7)
+8. [Monte Carlo: adsorption of methane in MFI](#Example_8)
+9. [Monte Carlo: adsorption of butane in MFI](#Example_9)
+10. [Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC](#Example_10)
+11. [Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI](#Example_11)
+12. [Monte Carlo: radial distribution function of water](#Example_12)
+13. [Molecular Dynamics: radial distribution function of water](#Example_13)
 
 
 #### Monte Carlo: methane in box <a name="Example_1"></a>
@@ -333,7 +343,9 @@ Reinsertion (CBMC) probability:           0.3333333333333333 [-]
 ```
 At every MC-step, each move will be randomly selected with 1/3 probability.
 
-#### Monte Carlo: binary mixture in box<a name="Example_3"></a>
+#### Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box<a name="Example_3"></a>
+
+#### Monte Carlo: binary mixture propane and butane in box<a name="Example_4"></a>
 
 A Monte Carlo run of 50 propane and 50 butane molecules in a $30\times30\times30$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.
 
@@ -650,3 +662,22 @@ Average pressure tensor:
     Pressure average   1.732363e+07 +/-  5.652840e+05 [Pa]
                        1.732363e+02 +/-  5.652840e+00 [bar]
 ```
+
+
+#### Molecular Dynamics: methane in box (msd)<a name="Example_5"></a>
+
+#### Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a name="Example_6"></a>
+
+#### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_7"></a>
+
+#### Monte Carlo: adsorption of methane in MFI<a name="Example_8"></a>
+
+#### Monte Carlo: adsorption of butane in MFI<a name="Example_9"></a>
+
+#### Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC<a name="Example_10"></a>
+
+#### Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI<a name="Example_11"></a>
+
+#### Monte Carlo: radial distribution function of water<a name="Example_12"></a>
+
+#### Molecular Dynamics: radial distribution function of water<a name="Example_13"></a>
