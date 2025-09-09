@@ -1,36 +1,35 @@
-{
+{ 
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
-  "NumberOfInitializationCycles" : 1000,
+  "NumberOfCycles" : 20000,
+  "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
-  
-  "Systems" : 
-  [
+      
+  "Systems" :
+  [   
     {
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 500.0,
-      "ChargeMethod" : "Ewald"
-    }
-  ],
-
-  "Components" : 
-  [ 
+      "ChargeMethod" : "None" 
+    } 
+  ],  
+  "Components" :
+  [
     {
-      "Name" : "CO2",
-      "MoleculeDefinition" : "ExampleDefinitions",
+      "Name" : "propane",
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 50
     },
     {
-      "Name" : "N2",
-      "MoleculeDefinition" : "ExampleDefinitions",
+      "Name" : "butane",
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 50
-    }
-  ]
-}
+    } 
+  ] 
+} 
