@@ -45,7 +45,6 @@ var NAVTREE =
       [ "FAQ", "FAQ.html", null ],
       [ "Appendix: Structure of the RASPA Code", "structure.html", null ]
     ] ],
-    [ "RASPA 3 – Installation Guide", "md_INSTALLATION.html", null ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -70,9 +69,9 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_triquintic__derivatives__external__field.html",
-"structChargeEquilbrationElementData.html",
-"structForceField.html#a0651c97f845e566888c8df277a183336",
+"module_units.html",
+"structChiralCenter.html",
+"structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb",
 "structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a",
 "structMonteCarlo.html#a742ffab27a370392748419dba2579260",
 "structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd",

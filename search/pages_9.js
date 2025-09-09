@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['of_20the_20raspa_20code_0',['Appendix: Structure of the RASPA Code',['../structure.html',1,'md_docs_2manual']]]
+  ['packages_0',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]],
+  ['pre_20compiled_20packages_1',['Installing pre-Compiled Packages',['../installing_binary_packages.html',1,'installing']]]
 ];
