@@ -179,8 +179,12 @@ import interpolation_energy_grid;
 
   if (molecule_atoms.size() == 1)
   {
-    return ChainGrowData(Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass, component.componentId,
-                         component.definedAtoms.size()),
+  Molecule firstBeadMolecule = Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass, component.componentId,
+                         component.definedAtoms.size());
+  firstBeadMolecule.atomIndex = molecule.atomIndex;
+  firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
+
+    return ChainGrowData(firstBeadMolecule,
                          {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight,
                          firstBeadData->storedR);
   }
@@ -354,6 +358,8 @@ import interpolation_energy_grid;
 
   if (component.atoms.size() == 1)
   {
+
+    // update atom index
     return ChainGrowData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
                               component.totalMass, component.componentId, component.definedAtoms.size()),
                               {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
@@ -388,6 +394,7 @@ import interpolation_energy_grid;
   }
 
   if (!chainData) return std::nullopt;
+    // update atom index
 
   return ChainGrowData(chainData->molecule, chainData->atom,
                        firstBeadData->energies + chainData->energies,
@@ -412,6 +419,7 @@ import interpolation_energy_grid;
 
   if (molecule_atoms.size() == 1)
   {
+    // update atom index
     return ChainRetraceData(firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
   }
 
@@ -432,6 +440,7 @@ import interpolation_energy_grid;
       std::unreachable();
   }
 
+    // update atom index
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
                           firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
 }
