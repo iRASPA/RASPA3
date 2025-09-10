@@ -105,21 +105,21 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="textblock"><h1>Table of Contents</h1>
 <ol type="1">
 <li><a class="el" href="examples_nonbasic.html#Example_1">Monte Carlo: methane in box</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO&amp;#x2082; and N&amp;#x2082; in two independent boxes</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO&amp;#x2082; and N&amp;#x2082; in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO &amp;#x2082; and N &amp;#x2082; in two independent boxes</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO &amp;#x2082; and N &amp;#x2082; in box</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_4">Monte Carlo: binary mixture propane and butane in box</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_5">Molecular Dynamics: methane in box (msd)</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_6">Monte Carlo: enthalpy of adsorption in MFI at zero loading</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_8">Monte Carlo: adsorption of methane in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_9">Monte Carlo: adsorption of butane in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO&amp;#x2082; in Cu-BTC</a></li>
-<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO&amp;#x2082; and N&amp;#x2082; in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO &amp;#x2082; in Cu-BTC</a></li>
+<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO &amp;#x2082; and N &amp;#x2082; in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_12">Monte Carlo: radial distribution function of water</a></li>
 <li><a class="el" href="examples_basic.html#Example_13">Molecular Dynamics: radial distribution function of water</a></li>
 </ol>
 <h3>Monte Carlo: methane in box <a class="anchor" id="Example_1"></a></h3>
-<p>A Monte Carlo run of 100 methane molecules in a $30\times30\times30$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in &lsquo;movies/&rsquo;, and can be viewed with iRASPA or VMD.</p>
+<p>A Monte Carlo run of 100 methane molecules in a $30 \times 30 \times 30$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in &lsquo;movies/&rsquo;, and can be viewed with iRASPA or VMD.</p>
 <p>The inputs for the simulation are specified in a json-file called <code>simulation.json</code>: </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -148,7 +148,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> There are global settings, but also settings for <code>Systems</code> and <code>Components</code>. The latter are arrays of sections with options. In this example, we specify one system of type <code>Box</code> with box-lengths $30\times30\times30$ &Aring;. We also set the option to make movies to <code>true</code> and sample the movie-snapshots every 10 cycles.</p>
+</div><!-- fragment --><p> There are global settings, but also settings for <code>Systems</code> and <code>Components</code>. The latter are arrays of sections with options. In this example, we specify one system of type <code>Box</code> with box-lengths $30 \times 30 \times 30$ &Aring;. We also set the option to make movies to <code>true</code> and sample the movie-snapshots every 10 cycles.</p>
 <p>In RASPA, the cycle is define as max(20,$N$) steps, where $N$ is the number of molecules in the system. In every cycle, each of the molecules has on average been used for a Monte Carlo move (accepted or rejected). There is a minimum of 20 steps to avoid that low-density systems or not sampled well. The definition of a cycle is less dependent on the system size. The number of Monte Carlo steps is roughly the number of cycles times the average number of molecules.</p>
 <p>The forcefield is defined in <code>force_field.json</code> </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;MixingRule&quot; : &quot;Lorentz-Berthelot&quot;,</div>
@@ -215,8 +215,8 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    Block[  4] -1.833114e+04</div>
 <div class="line">    ---------------------------------------------------------------------------</div>
 <div class="line">    Average  -1.826821e+04 +/-  1.160851e+02 [K]</div>
-</div><!-- fragment --><h3>Monte Carlo: CO&amp;#x2082; and N&amp;#x2082; in two independent boxes <a class="anchor" id="Example_2"></a></h3>
-<p>RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is $25\times25\times25$ &Aring; with 90 $^\circ$ angles, containing 100 N&amp;#x2082; and 0 CO&amp;#x2082; and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size $30\times30\times30$ with $\beta=120^\circ,\alpha=\gamma=90^\circ$ containing 0 N&amp;#x2082; and 100 CO&amp;#x2082; molecules. The first system is at 300K, the second at 500K.</p>
+</div><!-- fragment --><h3>Monte Carlo: CO &amp;#x2082; and N &amp;#x2082; in two independent boxes <a class="anchor" id="Example_2"></a></h3>
+<p>RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is $25 \times 25 \times 25$ &Aring; with 90 $^\circ$ angles, containing 100 N &amp;#x2082; and 0 CO &amp;#x2082; and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size $30 \times 30 \times 30$ with $\beta = 120^\circ, \alpha = \gamma = 90^\circ$ containing 0 N &amp;#x2082; and 100 CO &amp;#x2082; molecules. The first system is at 300K, the second at 500K.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -264,7 +264,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> with the N&amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
+</div><!-- fragment --><p> with the N &amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;CriticalTemperature&quot;: 126.192,</div>
 <div class="line">  &quot;CriticalPressure&quot;: 3395800.0,</div>
 <div class="line">  &quot;AcentricFactor&quot;: 0.0372,</div>
@@ -275,7 +275,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    [&quot;N_n2&quot;, [0.0, 0.0, -0.55]]</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> and CO&amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
+</div><!-- fragment --><p> and CO &amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;CriticalTemperature&quot;: 304.1282,</div>
 <div class="line">  &quot;CriticalPressure&quot;: 7377300.0,</div>
 <div class="line">  &quot;AcentricFactor&quot;: 0.22394,</div>
@@ -363,7 +363,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> The CO&amp;#x2082; has the charges distrubted over the atoms to approximate the experimental quadrupole. For N&amp;#x2082; we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This <code>N_com</code> is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.</p>
+</div><!-- fragment --><p> The CO &amp;#x2082; has the charges distrubted over the atoms to approximate the experimental quadrupole. For N &amp;#x2082; we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This <code>N_com</code> is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.</p>
 <p>Based on the self-interactions and the mixing rule, the cross-interactions are computed: </p><div class="fragment"><div class="line">C_co2    - C_co2    Lennard-Jones p₀/kʙ:  29.93300 [K], p₁:  2.74500 [Å]</div>
 <div class="line">                                  shift:  -0.01715 [K], tailcorrections: false</div>
 <div class="line">C_co2    - O_co2    Lennard-Jones p₀/kʙ:  50.63981 [K], p₁:  2.88100 [Å]</div>
@@ -390,7 +390,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">Rotation-move probability:                0.3333333333333333 [-]</div>
 <div class="line">Reinsertion (CBMC) probability:           0.3333333333333333 [-]</div>
 </div><!-- fragment --><p> At every MC-step, each move will be randomly selected with 1/3 probability.</p>
-<h3>Monte Carlo: binary mixture CO&amp;#x2082; and N&amp;#x2082; in box<a class="anchor" id="Example_3"></a></h3>
+<h3>Monte Carlo: binary mixture CO &amp;#x2082; and N &amp;#x2082; in box<a class="anchor" id="Example_3"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -926,7 +926,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: adsorption of CO&amp;#x2082; in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of CO &amp;#x2082; in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
@@ -1118,7 +1118,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO&amp;#x2082; and N&amp;#x2082; in MFI<a class="anchor" id="Example_11"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO &amp;#x2082; and N &amp;#x2082; in MFI<a class="anchor" id="Example_11"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
