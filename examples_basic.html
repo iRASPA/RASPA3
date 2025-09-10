@@ -104,21 +104,21 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="contents">
 <div class="textblock"><h1>Table of Contents</h1>
 <ol type="1">
-<li><a class="el" href="examples_nonbasic.html#Example_1">Monte Carlo: methane in box</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO₂ and N₂ in two independent boxes</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO₂ and N₂ in box</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_4">Monte Carlo: binary mixture propane and butane in box</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_5">Molecular Dynamics: methane in box (msd)</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_6">Monte Carlo: enthalpy of adsorption in MFI at zero loading</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_8">Monte Carlo: adsorption of methane in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_9">Monte Carlo: adsorption of butane in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO₂ in Cu-BTC</a></li>
-<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_12">Monte Carlo: radial distribution function of water</a></li>
-<li><a class="el" href="examples_basic.html#Example_13">Molecular Dynamics: radial distribution function of water</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_1">Monte Carlo: methane in box</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_2">Monte Carlo: CO₂ and N₂ in two independent boxes</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_3">Monte Carlo: binary mixture CO₂ and N₂ in box</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_4">Monte Carlo: binary mixture propane and butane in box</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_5">Molecular Dynamics: methane in box (msd)</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_6">Monte Carlo: enthalpy of adsorption in MFI at zero loading</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_8">Monte Carlo: adsorption of methane in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_9">Monte Carlo: adsorption of butane in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_10">Monte Carlo: adsorption of CO₂ in Cu-BTC</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_11">Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_12">Monte Carlo: radial distribution function of water</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_13">Molecular Dynamics: radial distribution function of water</a></li>
 </ol>
-<h3>Monte Carlo: methane in box <a class="anchor" id="Example_1"></a></h3>
+<h3>Monte Carlo: methane in box <a class="anchor" id="Example_basic_1"></a></h3>
 <p>A Monte Carlo run of 100 methane molecules in a \(30 \times 30 \times 30\) &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in &lsquo;movies/&rsquo;, and can be viewed with iRASPA or VMD.</p>
 <p>The inputs for the simulation are specified in a json-file called <code>simulation.json</code>: </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -215,7 +215,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    Block[  4] -1.833114e+04</div>
 <div class="line">    ---------------------------------------------------------------------------</div>
 <div class="line">    Average  -1.826821e+04 +/-  1.160851e+02 [K]</div>
-</div><!-- fragment --><h3>Monte Carlo: CO₂ and N₂ in two independent boxes <a class="anchor" id="Example_2"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: CO₂ and N₂ in two independent boxes <a class="anchor" id="Example_basic_2"></a></h3>
 <p>RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is \(25 \times 25 \times 25\) &Aring; with 90 \(^\circ\) angles, containing 100 N₂ and 0 CO₂ and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size \(30 \times 30 \times 30\) with \(\beta = 120^\circ, \alpha = \gamma = 90^\circ\) containing 0 N₂ and 100 CO₂ molecules. The first system is at 300K, the second at 500K.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -390,7 +390,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">Rotation-move probability:                0.3333333333333333 [-]</div>
 <div class="line">Reinsertion (CBMC) probability:           0.3333333333333333 [-]</div>
 </div><!-- fragment --><p> At every MC-step, each move will be randomly selected with 1/3 probability.</p>
-<h3>Monte Carlo: binary mixture CO₂ and N₂ in box<a class="anchor" id="Example_3"></a></h3>
+<h3>Monte Carlo: binary mixture CO₂ and N₂ in box<a class="anchor" id="Example_basic_3"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -433,7 +433,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: binary mixture propane and butane in box<a class="anchor" id="Example_4"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: binary mixture propane and butane in box<a class="anchor" id="Example_basic_4"></a></h3>
 <p>A Monte Carlo run of 50 propane and 50 butane molecules in a \(30\times30\times30\) &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -710,7 +710,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    ---------------------------------------------------------------------------</div>
 <div class="line">    Pressure average   1.732363e+07 +/-  5.652840e+05 [Pa]</div>
 <div class="line">                       1.732363e+02 +/-  5.652840e+00 [bar]</div>
-</div><!-- fragment --><h3>Molecular Dynamics: methane in box (msd)<a class="anchor" id="Example_5"></a></h3>
+</div><!-- fragment --><h3>Molecular Dynamics: methane in box (msd)<a class="anchor" id="Example_basic_5"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 1000000,</div>
@@ -742,7 +742,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a class="anchor" id="Example_6"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a class="anchor" id="Example_basic_6"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 5000,</div>
@@ -832,7 +832,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">O        O      0.1884   -0.25     -0.3538   -1.025 </div>
 <div class="line">O        O      0.2883   -0.25      0.0579   -1.025 </div>
 <div class="line">O        O      0.1085   -0.25      0.0611   -1.025 </div>
-</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_7"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_basic_7"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
@@ -860,7 +860,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_8"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_basic_8"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 50000,</div>
@@ -898,7 +898,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 </div><!-- fragment --><div class="image">
 <img src="example_basic_8_density.png" alt=""/>
 </div>
- <h3>Monte Carlo: adsorption of butane in MFI<a class="anchor" id="Example_9"></a></h3>
+ <h3>Monte Carlo: adsorption of butane in MFI<a class="anchor" id="Example_basic_9"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
@@ -929,7 +929,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: adsorption of CO₂ in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of CO₂ in Cu-BTC<a class="anchor" id="Example_basic_10"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
@@ -1121,7 +1121,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a class="anchor" id="Example_11"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a class="anchor" id="Example_basic_11"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
@@ -1159,7 +1159,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_12"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_basic_12"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -1195,7 +1195,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_13"></a></h3>
+</div><!-- fragment --><h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_basic_13"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
