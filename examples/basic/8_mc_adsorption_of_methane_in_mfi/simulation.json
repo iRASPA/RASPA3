@@ -1,8 +1,8 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
-  "NumberOfInitializationCycles" : 5000,
-  "PrintEvery" : 1000,
+  "NumberOfCycles" : 5000000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 10000,
 
   "Systems" : [
     {
@@ -14,7 +14,7 @@
       "ChargeMethod" : "None",
       "ComputeDensityGrid" : true,
       "SampleDensityGridEvery" : 10,
-      "WriteDensityGridEvery" : 5000,
+      "WriteDensityGridEvery" : 50000,
       "DensityGridSize" : [128, 128, 128]
     }
   ],

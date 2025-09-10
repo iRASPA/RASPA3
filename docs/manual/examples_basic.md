@@ -949,7 +949,7 @@ O        O      0.1085   -0.25      0.0611   -1.025
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
-      "CreateNuMberofmolecules" : 0
+      "CreateNumberOfMolecules" : 0
     }
   ]
 }
@@ -985,7 +985,7 @@ O        O      0.1085   -0.25      0.0611   -1.025
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
-      "CreateNuMberofmolecules" : 0
+      "CreateNumberOfMolecules" : 0
     }
   ]
 }

@@ -1,0 +1,25 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 0,
+  "PrintEvery" : 5000,
+
+  "ForceField" : ".",
+  
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "butane",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
