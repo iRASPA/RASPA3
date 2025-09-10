@@ -105,16 +105,16 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="textblock"><h1>Table of Contents</h1>
 <ol type="1">
 <li><a class="el" href="examples_nonbasic.html#Example_1">Monte Carlo: methane in box</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in two independent boxes</a></li>
-<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in box</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_2">Monte Carlo: CO&amp;#x2082; and N&amp;#x2082; in two independent boxes</a></li>
+<li><a class="el" href="examples_nonbasic.html#Example_3">Monte Carlo: binary mixture CO&amp;#x2082; and N&amp;#x2082; in box</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_4">Monte Carlo: binary mixture propane and butane in box</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_5">Molecular Dynamics: methane in box (msd)</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_6">Monte Carlo: enthalpy of adsorption in MFI at zero loading</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
 <li><a class="el" href="examples_nonbasic.html#Example_8">Monte Carlo: adsorption of methane in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_9">Monte Carlo: adsorption of butane in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO&lt;sub&gt;2&lt;/sub&gt; in Cu-BTC</a></li>
-<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO&lt;sub&gt;2&lt;/sub&gt; and N&lt;sub&gt;2&lt;/sub&gt; in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_10">Monte Carlo: adsorption of CO&amp;#x2082; in Cu-BTC</a></li>
+<li><a class="el" href="examples_basic.html#Example_11">Monte Carlo: Henry coefficient of methane, CO&amp;#x2082; and N&amp;#x2082; in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_12">Monte Carlo: radial distribution function of water</a></li>
 <li><a class="el" href="examples_basic.html#Example_13">Molecular Dynamics: radial distribution function of water</a></li>
 </ol>
@@ -215,8 +215,8 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    Block[  4] -1.833114e+04</div>
 <div class="line">    ---------------------------------------------------------------------------</div>
 <div class="line">    Average  -1.826821e+04 +/-  1.160851e+02 [K]</div>
-</div><!-- fragment --><h3>Monte Carlo: CO<sub>2</sub> and N<sub>2</sub> in two independent boxes <a class="anchor" id="Example_2"></a></h3>
-<p>RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is $25\times25\times25$ &Aring; with 90 $^\circ$ angles, containing 100 N<sub>2</sub> and 0 CO<sub>2</sub> and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size $30\times30\times30$ with $\beta=120^\circ,\alpha=\gamma=90^\circ$ containing 0 N<sub>2</sub> and 100 CO<sub>2</sub> molecules. The first system is at 300K, the second at 500K.</p>
+</div><!-- fragment --><h3>Monte Carlo: CO&amp;#x2082; and N&amp;#x2082; in two independent boxes <a class="anchor" id="Example_2"></a></h3>
+<p>RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is $25\times25\times25$ &Aring; with 90 $^\circ$ angles, containing 100 N&amp;#x2082; and 0 CO&amp;#x2082; and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size $30\times30\times30$ with $\beta=120^\circ,\alpha=\gamma=90^\circ$ containing 0 N&amp;#x2082; and 100 CO&amp;#x2082; molecules. The first system is at 300K, the second at 500K.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -229,14 +229,18 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
 <div class="line">      &quot;BoxLengths&quot; : [25.0, 25.0, 25.0],</div>
 <div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
-<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;OutputPDBMovie&quot; : true,</div>
+<div class="line">      &quot;SampleMovieEvery&quot; : 10</div>
 <div class="line">    },</div>
 <div class="line">    {</div>
 <div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
 <div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
 <div class="line">      &quot;BoxAngles&quot; : [90.0, 120.0, 90.0],</div>
 <div class="line">      &quot;ExternalTemperature&quot; : 500.0,</div>
-<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;OutputPDBMovie&quot; : true,</div>
+<div class="line">      &quot;SampleMovieEvery&quot; : 10</div>
 <div class="line">    }</div>
 <div class="line">  ],</div>
 <div class="line"> </div>
@@ -260,7 +264,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> with the N<sub>2</sub> defined as </p><div class="fragment"><div class="line">{</div>
+</div><!-- fragment --><p> with the N&amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;CriticalTemperature&quot;: 126.192,</div>
 <div class="line">  &quot;CriticalPressure&quot;: 3395800.0,</div>
 <div class="line">  &quot;AcentricFactor&quot;: 0.0372,</div>
@@ -271,7 +275,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    [&quot;N_n2&quot;, [0.0, 0.0, -0.55]]</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> and CO<sub>2</sub> defined as </p><div class="fragment"><div class="line">{</div>
+</div><!-- fragment --><p> and CO&amp;#x2082; defined as </p><div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;CriticalTemperature&quot;: 304.1282,</div>
 <div class="line">  &quot;CriticalPressure&quot;: 7377300.0,</div>
 <div class="line">  &quot;AcentricFactor&quot;: 0.22394,</div>
@@ -359,7 +363,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><p> The CO<sub>2</sub> has the charges distrubted over the atoms to approximate the experimental quadrupole. For N<sub>2</sub> we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This <code>N_com</code> is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.</p>
+</div><!-- fragment --><p> The CO&amp;#x2082; has the charges distrubted over the atoms to approximate the experimental quadrupole. For N&amp;#x2082; we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This <code>N_com</code> is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.</p>
 <p>Based on the self-interactions and the mixing rule, the cross-interactions are computed: </p><div class="fragment"><div class="line">C_co2    - C_co2    Lennard-Jones p₀/kʙ:  29.93300 [K], p₁:  2.74500 [Å]</div>
 <div class="line">                                  shift:  -0.01715 [K], tailcorrections: false</div>
 <div class="line">C_co2    - O_co2    Lennard-Jones p₀/kʙ:  50.63981 [K], p₁:  2.88100 [Å]</div>
@@ -386,8 +390,50 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">Rotation-move probability:                0.3333333333333333 [-]</div>
 <div class="line">Reinsertion (CBMC) probability:           0.3333333333333333 [-]</div>
 </div><!-- fragment --><p> At every MC-step, each move will be randomly selected with 1/3 probability.</p>
-<h3>Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box<a class="anchor" id="Example_3"></a></h3>
-<h3>Monte Carlo: binary mixture propane and butane in box<a class="anchor" id="Example_4"></a></h3>
+<h3>Monte Carlo: binary mixture CO&amp;#x2082; and N&amp;#x2082; in box<a class="anchor" id="Example_3"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 1000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [25.0, 25.0, 25.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 500.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 1.0,</div>
+<div class="line">      &quot;RotationProbability&quot; : 1.0,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : [50, 25]</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;N2&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 1.0,</div>
+<div class="line">      &quot;RotationProbability&quot; : 1.0,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : [25, 50]</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: binary mixture propane and butane in box<a class="anchor" id="Example_4"></a></h3>
 <p>A Monte Carlo run of 50 propane and 50 butane molecules in a $30\times30\times30$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.</p>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -665,15 +711,522 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    Pressure average   1.732363e+07 +/-  5.652840e+05 [Pa]</div>
 <div class="line">                       1.732363e+02 +/-  5.652840e+00 [bar]</div>
 </div><!-- fragment --><h3>Molecular Dynamics: methane in box (msd)<a class="anchor" id="Example_5"></a></h3>
-<h3>Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a class="anchor" id="Example_6"></a></h3>
-<h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_7"></a></h3>
-<h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_8"></a></h3>
-<h3>Monte Carlo: adsorption of butane in MFI<a class="anchor" id="Example_9"></a></h3>
-<h3>Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
-<h3>Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI<a class="anchor" id="Example_11"></a></h3>
-<h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_12"></a></h3>
-<h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_13"></a></h3>
-</div></div><!-- contents -->
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 1000000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 1000,</div>
+<div class="line">  &quot;NumberOfEquilibrationCycles&quot; : 10000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 10000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;,</div>
+<div class="line">      &quot;Ensemble&quot; : &quot;NVT&quot;,</div>
+<div class="line">      &quot;ComputeMSD&quot; : true,</div>
+<div class="line">      &quot;SampleMSDEvery&quot; : 10,</div>
+<div class="line">      &quot;WriteMSDEvery&quot; : 5000</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 100</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a class="anchor" id="Example_6"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 5000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 5000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;HeliumVoidFraction&quot; : 0.29,</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 1</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><div class="fragment"><div class="line">data_MFI</div>
+<div class="line"> </div>
+<div class="line">_cell_length_a    20.022</div>
+<div class="line">_cell_length_b    19.899</div>
+<div class="line">_cell_length_c    13.383</div>
+<div class="line">_cell_angle_alpha 90</div>
+<div class="line">_cell_angle_beta  90</div>
+<div class="line">_cell_angle_gamma 90</div>
+<div class="line">_cell_volume      5332.03</div>
+<div class="line"> </div>
+<div class="line">_symmetry_cell_setting          orthorhombic</div>
+<div class="line">_symmetry_space_group_name_Hall &#39;-P 2ac 2n&#39;</div>
+<div class="line">_symmetry_space_group_name_H-M  &#39;P n m a&#39;</div>
+<div class="line">_symmetry_Int_Tables_number     62</div>
+<div class="line"> </div>
+<div class="line">loop_</div>
+<div class="line">_atom_site_label</div>
+<div class="line">_atom_site_type_symbol</div>
+<div class="line">_atom_site_fract_x</div>
+<div class="line">_atom_site_fract_y</div>
+<div class="line">_atom_site_fract_z</div>
+<div class="line">_atom_site_charge</div>
+<div class="line">Si       Si     0.42238   0.0565   -0.33598   2.05  </div>
+<div class="line">Si       Si     0.30716   0.02772  -0.1893    2.05  </div>
+<div class="line">Si       Si     0.27911   0.06127   0.0312    2.05  </div>
+<div class="line">Si       Si     0.12215   0.06298   0.0267    2.05  </div>
+<div class="line">Si       Si     0.07128   0.02722  -0.18551   2.05  </div>
+<div class="line">Si       Si     0.18641   0.05896  -0.32818   2.05  </div>
+<div class="line">Si       Si     0.42265  -0.1725   -0.32718   2.05  </div>
+<div class="line">Si       Si     0.30778  -0.13016  -0.18548   2.05  </div>
+<div class="line">Si       Si     0.27554  -0.17279   0.03109   2.05  </div>
+<div class="line">Si       Si     0.12058  -0.1731    0.02979   2.05  </div>
+<div class="line">Si       Si     0.07044  -0.13037  -0.182     2.05  </div>
+<div class="line">Si       Si     0.18706  -0.17327  -0.31933   2.05  </div>
+<div class="line">O        O      0.3726    0.0534   -0.2442   -1.025 </div>
+<div class="line">O        O      0.3084    0.0587   -0.0789   -1.025 </div>
+<div class="line">O        O      0.2007    0.0592    0.0289   -1.025 </div>
+<div class="line">O        O      0.0969    0.0611   -0.0856   -1.025 </div>
+<div class="line">O        O      0.1149    0.0541   -0.2763   -1.025 </div>
+<div class="line">O        O      0.2435    0.0553   -0.246    -1.025 </div>
+<div class="line">O        O      0.3742   -0.1561   -0.2372   -1.025 </div>
+<div class="line">O        O      0.3085   -0.1552   -0.0728   -1.025 </div>
+<div class="line">O        O      0.198    -0.1554    0.0288   -1.025 </div>
+<div class="line">O        O      0.091    -0.1614   -0.0777   -1.025 </div>
+<div class="line">O        O      0.1169   -0.1578   -0.2694   -1.025 </div>
+<div class="line">O        O      0.2448   -0.1594   -0.2422   -1.025 </div>
+<div class="line">O        O      0.3047   -0.051    -0.1866   -1.025 </div>
+<div class="line">O        O      0.0768   -0.0519   -0.1769   -1.025 </div>
+<div class="line">O        O      0.4161    0.1276   -0.3896   -1.025 </div>
+<div class="line">O        O      0.4086   -0.0017   -0.4136   -1.025 </div>
+<div class="line">O        O      0.402    -0.1314   -0.4239   -1.025 </div>
+<div class="line">O        O      0.1886    0.1298   -0.3836   -1.025 </div>
+<div class="line">O        O      0.194     0.0007   -0.4082   -1.025 </div>
+<div class="line">O        O      0.1951   -0.1291   -0.419    -1.025 </div>
+<div class="line">O        O     -0.0037    0.0502   -0.208    -1.025 </div>
+<div class="line">O        O     -0.004    -0.1528   -0.2078   -1.025 </div>
+<div class="line">O        O      0.4192   -0.25     -0.354    -1.025 </div>
+<div class="line">O        O      0.1884   -0.25     -0.3538   -1.025 </div>
+<div class="line">O        O      0.2883   -0.25      0.0579   -1.025 </div>
+<div class="line">O        O      0.1085   -0.25      0.0611   -1.025 </div>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_7"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;ForceField&quot; : &quot;.&quot;,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e5,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_8"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 50000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 5000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e5,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;,</div>
+<div class="line">      &quot;ComputeDensityGrid&quot; : true,</div>
+<div class="line">      &quot;SampleDensityGridEvery&quot; : 10,</div>
+<div class="line">      &quot;WriteDensityGridEvery&quot; : 5000,</div>
+<div class="line">      &quot;DensityGridSize&quot; : [128, 128, 128]</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNuMberofmolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of butane in MFI<a class="anchor" id="Example_9"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 5000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e5,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;butane&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNuMberofmolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of CO&amp;#x2082; in Cu-BTC<a class="anchor" id="Example_10"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 20000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;Cu-BTC&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [1, 1, 1],</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 323.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e4</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNuMberofmolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><div class="fragment"><div class="line">data_Cu-BTC</div>
+<div class="line"> </div>
+<div class="line">_cell_length_a    26.343</div>
+<div class="line">_cell_length_b    26.343</div>
+<div class="line">_cell_length_c    26.343</div>
+<div class="line">_cell_angle_alpha 90</div>
+<div class="line">_cell_angle_beta  90</div>
+<div class="line">_cell_angle_gamma 90</div>
+<div class="line">_cell_volume      18280.8</div>
+<div class="line"> </div>
+<div class="line">_symmetry_cell_setting          cubic</div>
+<div class="line">_symmetry_space_group_name_Hall &#39;-F 4 2 3&#39;</div>
+<div class="line">_symmetry_space_group_name_H-M  &#39;F m -3 m&#39;</div>
+<div class="line">_symmetry_Int_Tables_number     225</div>
+<div class="line"> </div>
+<div class="line">loop_</div>
+<div class="line">_atom_site_label</div>
+<div class="line">_atom_site_type_symbol</div>
+<div class="line">_atom_site_fract_x</div>
+<div class="line">_atom_site_fract_y</div>
+<div class="line">_atom_site_fract_z</div>
+<div class="line">_atom_site_charge</div>
+<div class="line">Cu1  Cu     0.2853     0.2853     0           1.248</div>
+<div class="line">O1   O      0.3166     0.2431     0.9478     -0.624</div>
+<div class="line">C1   C      0.2968     0.2032     0.9313      0.494</div>
+<div class="line">C2   C      0.322      0.178      0.887       0.130</div>
+<div class="line">C3   C      0.3655     0.1994     0.8655     -0.156</div>
+<div class="line">H1   H      0.3802     0.228      0.8802      0.156</div>
+</div><!-- fragment --><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;MixingRule&quot; : &quot;Lorentz-Berthelot&quot;,</div>
+<div class="line">  &quot;TruncationMethod&quot; : &quot;shifted&quot;,</div>
+<div class="line">  &quot;TailCorrections&quot; : false,</div>
+<div class="line">  &quot;CutOffVDW&quot; : 12.0,</div>
+<div class="line">  &quot;PseudoAtoms&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;Cu1&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;Cu&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;Cu&quot;,</div>
+<div class="line">      &quot;mass&quot; : 63.546039732,</div>
+<div class="line">      &quot;charge&quot; :  1.248</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;O1&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;O&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;O&quot;,</div>
+<div class="line">      &quot;mass&quot; : 15.999404927,</div>
+<div class="line">      &quot;charge&quot; : -0.624</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C1&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;mass&quot; : 12.010735897,</div>
+<div class="line">      &quot;charge&quot; :  0.494</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C2&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;mass&quot; : 12.010735897,</div>
+<div class="line">      &quot;charge&quot; :  0.13</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C3&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;mass&quot; : 12.010735897,</div>
+<div class="line">      &quot;charge&quot; : -0.156</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;H1&quot;,</div>
+<div class="line">      &quot;framework&quot; : true,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;H&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;H&quot;,</div>
+<div class="line">      &quot;mass&quot; : 1.007940754,</div>
+<div class="line">      &quot;charge&quot; :  0.156</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C_co2&quot;,</div>
+<div class="line">      &quot;framework&quot; : false,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;C&quot;,</div>
+<div class="line">      &quot;mass&quot; : 12.0,</div>
+<div class="line">      &quot;charge&quot; :  0.6512</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;O_co2&quot;,</div>
+<div class="line">      &quot;framework&quot; : false,</div>
+<div class="line">      &quot;print_to_output&quot; : true,</div>
+<div class="line">      &quot;element&quot; : &quot;O&quot;,</div>
+<div class="line">      &quot;print_as&quot; : &quot;O&quot;,</div>
+<div class="line">      &quot;mass&quot; : 15.9994,</div>
+<div class="line">      &quot;charge&quot; : -0.3256</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line">  &quot;SelfInteractions&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;Cu1&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [2.5161, 3.11369],</div>
+<div class="line">      &quot;source&quot; : &quot;UFF&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;O1&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [48.1581, 3.03315],</div>
+<div class="line">      &quot;source&quot; : &quot;DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C1&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [47.8562, 3.47299],</div>
+<div class="line">      &quot;source&quot; : &quot;DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C2&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [47.8562, 3.47299],</div>
+<div class="line">      &quot;source&quot; : &quot;DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C3&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [47.8562, 3.47299],</div>
+<div class="line">      &quot;source&quot; : &quot;DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;H1&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [7.64893, 2.84642],</div>
+<div class="line">      &quot;source&quot; : &quot;DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;O_co2&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [85.671, 3.017],</div>
+<div class="line">      &quot;source&quot; : &quot;A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820&quot;</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;name&quot; : &quot;C_co2&quot;,</div>
+<div class="line">      &quot;type&quot; : &quot;lennard-jones&quot;,</div>
+<div class="line">      &quot;parameters&quot; : [29.933, 2.745],</div>
+<div class="line">      &quot;source&quot; : &quot;A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO&amp;#x2082; and N&amp;#x2082; in MFI<a class="anchor" id="Example_11"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 1000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;ForceField&quot; : &quot;.&quot;,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e5,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;N2&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_12"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 5000,</div>
+<div class="line">  &quot;NumberOfEquilibrationCycles&quot; : 20000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [24.83, 24.83, 24.83],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 298.0,</div>
+<div class="line">      &quot;Ensemble&quot; : &quot;NVT&quot;,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;OutputPDBMovie&quot; : false,</div>
+<div class="line">      &quot;SampleMovieEvery&quot; : 10,</div>
+<div class="line">      &quot;ComputeConventionalRDF&quot; : true,</div>
+<div class="line">      &quot;NumberOfBinsConventionalRDF&quot; : 128,</div>
+<div class="line">      &quot;RangeConventionalRDF&quot; : 12.0,</div>
+<div class="line">      &quot;WriteConventionalRDFEvery&quot; : 100</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;water&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 512</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_13"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 10000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 100,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [24.83, 24.83, 24.83],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 298.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;OutputPDBMovie&quot; : false,</div>
+<div class="line">      &quot;SampleMovieEvery&quot; : 10,</div>
+<div class="line">      &quot;ComputeConventionalRDF&quot; : true,</div>
+<div class="line">      &quot;NumberOfBinsConventionalRDF&quot; : 128,</div>
+<div class="line">      &quot;RangeConventionalRDF&quot; : 12.0,</div>
+<div class="line">      &quot;WriteConventionalRDFEvery&quot; : 100</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;water&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 512</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --> </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->
 <!-- start footer part -->
