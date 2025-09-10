@@ -704,7 +704,7 @@ void MonteCarlo::production()
 
       std::print(stream, "\n");
       std::print(stream, "===============================================================================\n");
-      std::print(stream, "                              Simulation finised!\n");
+      std::print(stream, "                             Simulation finished!\n");
       std::print(stream, "===============================================================================\n");
       std::print(stream, "\n");
 

@@ -3,22 +3,22 @@
 
 
 ## Table of Contents
-1. [Monte Carlo: methane in box](#Example_1)
-2. [Monte Carlo: CO₂ and N₂ in two independent boxes](#Example_2)
-3. [Monte Carlo: binary mixture CO₂ and N₂ in box](#Example_3)
-4. [Monte Carlo: binary mixture propane and butane in box](#Example_4)
-5. [Molecular Dynamics: methane in box (msd)](#Example_5)
-6. [Monte Carlo: enthalpy of adsorption in MFI at zero loading](#Example_6)
-7. [Monte Carlo: Henry coefficient of methane in MFI](#Example_7)
-8. [Monte Carlo: adsorption of methane in MFI](#Example_8)
-9. [Monte Carlo: adsorption of butane in MFI](#Example_9)
-10. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_10)
-11. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_11)
-12. [Monte Carlo: radial distribution function of water](#Example_12)
-13. [Molecular Dynamics: radial distribution function of water](#Example_13)
+1. [Monte Carlo: methane in box](#Example_basic_1)
+2. [Monte Carlo: CO₂ and N₂ in two independent boxes](#Example_basic_2)
+3. [Monte Carlo: binary mixture CO₂ and N₂ in box](#Example_basic_3)
+4. [Monte Carlo: binary mixture propane and butane in box](#Example_basic_4)
+5. [Molecular Dynamics: methane in box (msd)](#Example_basic_5)
+6. [Monte Carlo: enthalpy of adsorption in MFI at zero loading](#Example_basic_6)
+7. [Monte Carlo: Henry coefficient of methane in MFI](#Example_basic_7)
+8. [Monte Carlo: adsorption of methane in MFI](#Example_basic_8)
+9. [Monte Carlo: adsorption of butane in MFI](#Example_basic_9)
+10. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_basic_10)
+11. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_11)
+12. [Monte Carlo: radial distribution function of water](#Example_basic_12)
+13. [Molecular Dynamics: radial distribution function of water](#Example_basic_13)
 
 
-#### Monte Carlo: methane in box <a name="Example_1"></a>
+#### Monte Carlo: methane in box <a name="Example_basic_1"></a>
 
 A Monte Carlo run of 100 methane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in `movies/', and can be viewed with iRASPA or VMD.
 
@@ -145,7 +145,7 @@ Total energy:
     Average  -1.826821e+04 +/-  1.160851e+02 [K]
 ```
 
-#### Monte Carlo: CO₂ and N₂ in two independent boxes <a name="Example_2"></a>
+#### Monte Carlo: CO₂ and N₂ in two independent boxes <a name="Example_basic_2"></a>
 
 RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is \f$25 \times 25 \times 25\f$ &Aring; with 90 \f$^\circ\f$ angles, containing 100 N₂ and 0 CO₂ and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size \f$30 \times 30 \times 30\f$ with \f$\beta = 120^\circ, \alpha = \gamma = 90^\circ\f$ containing 0 N₂ and 100 CO₂ molecules. The first system is at 300K, the second at 500K.
 
@@ -347,7 +347,7 @@ Reinsertion (CBMC) probability:           0.3333333333333333 [-]
 ```
 At every MC-step, each move will be randomly selected with 1/3 probability.
 
-#### Monte Carlo: binary mixture CO₂ and N₂ in box<a name="Example_3"></a>
+#### Monte Carlo: binary mixture CO₂ and N₂ in box<a name="Example_basic_3"></a>
 
 ```json
 {
@@ -394,7 +394,7 @@ At every MC-step, each move will be randomly selected with 1/3 probability.
 }
 ```
 
-#### Monte Carlo: binary mixture propane and butane in box<a name="Example_4"></a>
+#### Monte Carlo: binary mixture propane and butane in box<a name="Example_basic_4"></a>
 
 A Monte Carlo run of 50 propane and 50 butane molecules in a \f$30\times30\times30\f$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.
 
@@ -713,7 +713,7 @@ Average pressure tensor:
 ```
 
 
-#### Molecular Dynamics: methane in box (msd)<a name="Example_5"></a>
+#### Molecular Dynamics: methane in box (msd)<a name="Example_basic_5"></a>
 
 ```json
 {
@@ -749,7 +749,7 @@ Average pressure tensor:
 }
 ```
 
-#### Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a name="Example_6"></a>
+#### Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a name="Example_basic_6"></a>
 
 ```json
 {
@@ -846,7 +846,7 @@ O        O      0.2883   -0.25      0.0579   -1.025
 O        O      0.1085   -0.25      0.0611   -1.025 
 ```
 
-#### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_7"></a>
+#### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_basic_7"></a>
 
 ```json
 {
@@ -878,7 +878,7 @@ O        O      0.1085   -0.25      0.0611   -1.025
 }
 ```
 
-#### Monte Carlo: adsorption of methane in MFI<a name="Example_8"></a>
+#### Monte Carlo: adsorption of methane in MFI<a name="Example_basic_8"></a>
 
 ```json
 {
@@ -917,7 +917,10 @@ O        O      0.1085   -0.25      0.0611   -1.025
 }
 ```
 
-#### Monte Carlo: adsorption of butane in MFI<a name="Example_9"></a>
+\image html example_basic_8_density.png
+\image latex example_basic_8_density.png
+
+#### Monte Carlo: adsorption of butane in MFI<a name="Example_basic_9"></a>
 
 ```json
 {
@@ -952,7 +955,7 @@ O        O      0.1085   -0.25      0.0611   -1.025
 }
 ```
 
-#### Monte Carlo: adsorption of CO₂ in Cu-BTC<a name="Example_10"></a>
+#### Monte Carlo: adsorption of CO₂ in Cu-BTC<a name="Example_basic_10"></a>
 
 ```json
 {
@@ -1155,7 +1158,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 
 ```
 
-#### Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a name="Example_11"></a>
+#### Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a name="Example_basic_11"></a>
 
 ```json
 {
@@ -1197,7 +1200,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Monte Carlo: radial distribution function of water<a name="Example_12"></a>
+#### Monte Carlo: radial distribution function of water<a name="Example_basic_12"></a>
 
 ```json
 {
@@ -1237,7 +1240,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Molecular Dynamics: radial distribution function of water<a name="Example_13"></a>
+#### Molecular Dynamics: radial distribution function of water<a name="Example_basic_13"></a>
 
 ```json
 {
