@@ -3,25 +3,30 @@
   "NumberOfCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
-  
-  "Systems" : 
+
+  "Systems" :
   [
     {
       "Type" : "Box",
       "BoxLengths" : [25.0, 25.0, 25.0],
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "Ewald"
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     },
     {
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
+      "BoxAngles" : [90.0, 120.0, 90.0],
       "ExternalTemperature" : 500.0,
-      "ChargeMethod" : "Ewald"
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     }
   ],
 
-  "Components" : 
-  [ 
+  "Components" :
+  [
     {
       "Name" : "CO2",
       "MoleculeDefinition" : "ExampleDefinitions",

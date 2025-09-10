@@ -1,4 +1,8 @@
 {
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "CutOffVDW" : 12.0,
   "PseudoAtoms" :
   [
     {
@@ -20,8 +24,5 @@
       "parameters" : [158.5, 3.72],
       "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
     }
-  ],
-  "MixingRule" : "Lorentz-Berthelot",
-  "TruncationMethod" : "shifted",
-  "TailCorrections" : false
+  ]
 }

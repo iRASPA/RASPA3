@@ -1,29 +1,34 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 5000,
+  "NumberOfCycles" : 50000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
-  
-  "Systems" : 
-  [
+
+  "Systems" : [
     {
       "Type" : "Framework",
       "Name" : "MFI_SI",
       "NumberOfUnitCells" : [2, 2, 2],
-      "HeliumVoidFraction" : 0.29,
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "None"
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None",
+      "ComputeDensityGrid" : true,
+      "SampleDensityGridEvery" : 10,
+      "WriteDensityGridEvery" : 5000,
+      "DensityGridSize" : [128, 128, 128]
     }
   ],
 
-  "Components" : 
-  [ 
+  "Components" : [ 
     {
       "Name" : "methane",
       "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
       "TranslationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "CreateNumberOfMolecules" : 1
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
     }
   ]
 }

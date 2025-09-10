@@ -4,23 +4,23 @@
 
 ## Table of Contents
 1. [Monte Carlo: methane in box](#Example_1)
-2. [Monte Carlo: CO<sub>2</sub> and N<sub>2</sub> in two independent boxes](#Example_2)
-3. [Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box](#Example_3)
+2. [Monte Carlo: CO₂ and N₂ in two independent boxes](#Example_2)
+3. [Monte Carlo: binary mixture CO₂ and N₂ in box](#Example_3)
 4. [Monte Carlo: binary mixture propane and butane in box](#Example_4)
 5. [Molecular Dynamics: methane in box (msd)](#Example_5)
 6. [Monte Carlo: enthalpy of adsorption in MFI at zero loading](#Example_6)
 7. [Monte Carlo: Henry coefficient of methane in MFI](#Example_7)
 8. [Monte Carlo: adsorption of methane in MFI](#Example_8)
 9. [Monte Carlo: adsorption of butane in MFI](#Example_9)
-10. [Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC](#Example_10)
-11. [Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI](#Example_11)
+10. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_10)
+11. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_11)
 12. [Monte Carlo: radial distribution function of water](#Example_12)
 13. [Molecular Dynamics: radial distribution function of water](#Example_13)
 
 
 #### Monte Carlo: methane in box <a name="Example_1"></a>
 
-A Monte Carlo run of 100 methane molecules in a $30\times30\times30$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in `movies/', and can be viewed with iRASPA or VMD.
+A Monte Carlo run of 100 methane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in `movies/', and can be viewed with iRASPA or VMD.
 
 The inputs for the simulation are specified in a json-file called `simulation.json`:
 ```json
@@ -53,9 +53,9 @@ The inputs for the simulation are specified in a json-file called `simulation.js
   ]
 }
 ```
-There are global settings, but also settings for `Systems` and `Components`. The latter are arrays of sections with options. In this example, we specify one system of type `Box` with box-lengths $30\times30\times30$ &Aring;. We also set the option to make movies to `true` and sample the movie-snapshots every 10 cycles.
+There are global settings, but also settings for `Systems` and `Components`. The latter are arrays of sections with options. In this example, we specify one system of type `Box` with box-lengths \f$30 \times 30 \times 30\f$ &Aring;. We also set the option to make movies to `true` and sample the movie-snapshots every 10 cycles.
 
-In RASPA, the cycle is define as max(20,$N$) steps, where $N$ is the number of molecules in the system. In every cycle, each of the molecules has on average been used for a Monte Carlo move (accepted or rejected). There is a minimum of 20 steps to avoid that low-density systems or not sampled well. The definition of a cycle is less dependent on the system size. The number of Monte Carlo steps is roughly the number of cycles times the average number of molecules.
+In RASPA, the cycle is define as max(20,\f$N\f$) steps, where \f$N\f$ is the number of molecules in the system. In every cycle, each of the molecules has on average been used for a Monte Carlo move (accepted or rejected). There is a minimum of 20 steps to avoid that low-density systems or not sampled well. The definition of a cycle is less dependent on the system size. The number of Monte Carlo steps is roughly the number of cycles times the average number of molecules.
 
 The forcefield is defined in `force_field.json`
 ```
@@ -117,7 +117,7 @@ Total potential energy      | -1.892240e+04 |  -1.892240e+04 |  3.412879e-10 |
 -----------------------------------------------------------------------------
 ```
 
-In Monte Carlo, only difference in energies are computed. These differences are continuously added to keep track of the current energies (from which average energies etc. are computed). Obviously, the current energy that is kept track off during the simulation should be equal to a full recalculation of the energies. The difference between the two signals an error. If the drift is higher than say $10^{-3}$ or $10^{-4}$ the results of the simulation are in error. This could be due to an error in one of the Monte Carlo moves or because the force field is ``wrong'' (a typical error is when one forgets to define required potentials).
+In Monte Carlo, only difference in energies are computed. These differences are continuously added to keep track of the current energies (from which average energies etc. are computed). Obviously, the current energy that is kept track off during the simulation should be equal to a full recalculation of the energies. The difference between the two signals an error. If the drift is higher than say \f$10^{-3}\f$ or \f$10^{-4}\f$ the results of the simulation are in error. This could be due to an error in one of the Monte Carlo moves or because the force field is ``wrong'' (a typical error is when one forgets to define required potentials).
 
 The performance of Monte Carlo moves is monitored. Translation moves are usually scaled to achieve an acceptance rate of 50%.  Here, the move reached its upper limit of 1.5 &Aring; because of the low density of the system.
 
@@ -145,9 +145,9 @@ Total energy:
     Average  -1.826821e+04 +/-  1.160851e+02 [K]
 ```
 
-#### Monte Carlo: CO<sub>2</sub> and N<sub>2</sub> in two independent boxes <a name="Example_2"></a>
+#### Monte Carlo: CO₂ and N₂ in two independent boxes <a name="Example_2"></a>
 
-RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is $25\times25\times25$ &Aring; with 90 $^\circ$ angles, containing 100 N<sub>2</sub> and 0 CO<sub>2</sub> and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size $30\times30\times30$ with $\beta=120^\circ,\alpha=\gamma=90^\circ$ containing 0 N<sub>2</sub> and 100 CO<sub>2</sub> molecules. The first system is at 300K, the second at 500K.
+RASPA has a build-in structure of being able to simulate several systems at the same time. This has applications in Gibbs-ensembles and (hyper) parallel tempering for example. However, this capability can also be used for independent systems. The first box is \f$25 \times 25 \times 25\f$ &Aring; with 90 \f$^\circ\f$ angles, containing 100 N₂ and 0 CO₂ and molecules and moved around by translation, rotation and reinsertion. The second box is monoclinic and of size \f$30 \times 30 \times 30\f$ with \f$\beta = 120^\circ, \alpha = \gamma = 90^\circ\f$ containing 0 N₂ and 100 CO₂ molecules. The first system is at 300K, the second at 500K.
 
 ```json
 {
@@ -162,14 +162,18 @@ RASPA has a build-in structure of being able to simulate several systems at the 
       "Type" : "Box",
       "BoxLengths" : [25.0, 25.0, 25.0],
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "Ewald"
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     },
     {
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
       "BoxAngles" : [90.0, 120.0, 90.0],
       "ExternalTemperature" : 500.0,
-      "ChargeMethod" : "Ewald"
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     }
   ],
 
@@ -194,7 +198,7 @@ RASPA has a build-in structure of being able to simulate several systems at the 
   ]
 }
 ```
-with the N<sub>2</sub> defined as 
+with the N₂ defined as 
 ```json
 {
   "CriticalTemperature": 126.192,
@@ -208,7 +212,7 @@ with the N<sub>2</sub> defined as
   ]
 }
 ```
-and CO<sub>2</sub> defined as
+and CO₂ defined as
 ```json
 {
   "CriticalTemperature": 304.1282,
@@ -303,7 +307,7 @@ The force field is defined as
   ]
 }
 ```
-The CO<sub>2</sub> has the charges distrubted over the atoms to approximate the experimental quadrupole. For N<sub>2</sub> we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This `N_com` is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.
+The CO₂ has the charges distrubted over the atoms to approximate the experimental quadrupole. For N₂ we can not do the same. However, we can add a "dummy" site in the center of the two nitrogen atoms to mimick the quadrupole. This `N_com` is placed at the center of mass and has no VDW interactions, and only acts as a charge-center.
 
 Based on the self-interactions and the mixing rule, the cross-interactions are computed:
 ```
@@ -343,11 +347,56 @@ Reinsertion (CBMC) probability:           0.3333333333333333 [-]
 ```
 At every MC-step, each move will be randomly selected with 1/3 probability.
 
-#### Monte Carlo: binary mixture CO<sub>2</sub> and N<sub>2</sub> in box<a name="Example_3"></a>
+#### Monte Carlo: binary mixture CO₂ and N₂ in box<a name="Example_3"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [25.0, 25.0, 25.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "Ewald"
+    },
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 500.0,
+      "ChargeMethod" : "Ewald"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : [50, 25]
+    },
+    {
+      "Name" : "N2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : [25, 50]
+    }
+  ]
+}
+```
 
 #### Monte Carlo: binary mixture propane and butane in box<a name="Example_4"></a>
 
-A Monte Carlo run of 50 propane and 50 butane molecules in a $30\times30\times30$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.
+A Monte Carlo run of 50 propane and 50 butane molecules in a \f$30\times30\times30\f$ &Aring; box. The MC moves are translation, rotation, full reinsertion, and partial reinsertion. After 1000 steps of initialization the production run is started. We run for 20,000 cycles to get some decent statistics.
 
 ```json
 {
@@ -666,18 +715,562 @@ Average pressure tensor:
 
 #### Molecular Dynamics: methane in box (msd)<a name="Example_5"></a>
 
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 10000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "Ensemble" : "NVT",
+      "ComputeMSD" : true,
+      "SampleMSDEvery" : 10,
+      "WriteMSDEvery" : 5000
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "methane",
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 100
+    }
+  ]
+}
+```
+
 #### Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a name="Example_6"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 5000,
+  "NumberOfInitializationCycles" : 5000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "HeliumVoidFraction" : 0.29,
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "methane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 1
+    }
+  ]
+}
+```
+
+```
+data_MFI
+
+_cell_length_a    20.022
+_cell_length_b    19.899
+_cell_length_c    13.383
+_cell_angle_alpha 90
+_cell_angle_beta  90
+_cell_angle_gamma 90
+_cell_volume      5332.03
+
+_symmetry_cell_setting          orthorhombic
+_symmetry_space_group_name_Hall '-P 2ac 2n'
+_symmetry_space_group_name_H-M  'P n m a'
+_symmetry_Int_Tables_number     62
+
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_charge
+Si       Si     0.42238   0.0565   -0.33598   2.05  
+Si       Si     0.30716   0.02772  -0.1893    2.05  
+Si       Si     0.27911   0.06127   0.0312    2.05  
+Si       Si     0.12215   0.06298   0.0267    2.05  
+Si       Si     0.07128   0.02722  -0.18551   2.05  
+Si       Si     0.18641   0.05896  -0.32818   2.05  
+Si       Si     0.42265  -0.1725   -0.32718   2.05  
+Si       Si     0.30778  -0.13016  -0.18548   2.05  
+Si       Si     0.27554  -0.17279   0.03109   2.05  
+Si       Si     0.12058  -0.1731    0.02979   2.05  
+Si       Si     0.07044  -0.13037  -0.182     2.05  
+Si       Si     0.18706  -0.17327  -0.31933   2.05  
+O        O      0.3726    0.0534   -0.2442   -1.025 
+O        O      0.3084    0.0587   -0.0789   -1.025 
+O        O      0.2007    0.0592    0.0289   -1.025 
+O        O      0.0969    0.0611   -0.0856   -1.025 
+O        O      0.1149    0.0541   -0.2763   -1.025 
+O        O      0.2435    0.0553   -0.246    -1.025 
+O        O      0.3742   -0.1561   -0.2372   -1.025 
+O        O      0.3085   -0.1552   -0.0728   -1.025 
+O        O      0.198    -0.1554    0.0288   -1.025 
+O        O      0.091    -0.1614   -0.0777   -1.025 
+O        O      0.1169   -0.1578   -0.2694   -1.025 
+O        O      0.2448   -0.1594   -0.2422   -1.025 
+O        O      0.3047   -0.051    -0.1866   -1.025 
+O        O      0.0768   -0.0519   -0.1769   -1.025 
+O        O      0.4161    0.1276   -0.3896   -1.025 
+O        O      0.4086   -0.0017   -0.4136   -1.025 
+O        O      0.402    -0.1314   -0.4239   -1.025 
+O        O      0.1886    0.1298   -0.3836   -1.025 
+O        O      0.194     0.0007   -0.4082   -1.025 
+O        O      0.1951   -0.1291   -0.419    -1.025 
+O        O     -0.0037    0.0502   -0.208    -1.025 
+O        O     -0.004    -0.1528   -0.2078   -1.025 
+O        O      0.4192   -0.25     -0.354    -1.025 
+O        O      0.1884   -0.25     -0.3538   -1.025 
+O        O      0.2883   -0.25      0.0579   -1.025 
+O        O      0.1085   -0.25      0.0611   -1.025 
+```
 
 #### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_7"></a>
 
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 20000,
+  "NumberOfInitializationCycles" : 0,
+  "PrintEvery" : 1000,
+
+  "ForceField" : ".",
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
 #### Monte Carlo: adsorption of methane in MFI<a name="Example_8"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 50000,
+  "NumberOfInitializationCycles" : 5000,
+  "PrintEvery" : 1000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None",
+      "ComputeDensityGrid" : true,
+      "SampleDensityGridEvery" : 10,
+      "WriteDensityGridEvery" : 5000,
+      "DensityGridSize" : [128, 128, 128]
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
+    }
+  ]
+}
+```
 
 #### Monte Carlo: adsorption of butane in MFI<a name="Example_9"></a>
 
-#### Monte Carlo: adsorption of CO<sub>2</sub> in Cu-BTC<a name="Example_10"></a>
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 20000,
+  "NumberOfInitializationCycles" : 5000,
+  "PrintEvery" : 1000,
 
-#### Monte Carlo: Henry coefficient of methane, CO<sub>2</sub> and N<sub>2</sub> in MFI<a name="Example_11"></a>
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "butane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
+    }
+  ]
+}
+```
+
+#### Monte Carlo: adsorption of CO₂ in Cu-BTC<a name="Example_10"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 20000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "Cu-BTC",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature" : 323.0,
+      "ExternalPressure" : 1.0e4
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
+    }
+  ]
+}
+```
+
+```
+data_Cu-BTC
+
+_cell_length_a    26.343
+_cell_length_b    26.343
+_cell_length_c    26.343
+_cell_angle_alpha 90
+_cell_angle_beta  90
+_cell_angle_gamma 90
+_cell_volume      18280.8
+
+_symmetry_cell_setting          cubic
+_symmetry_space_group_name_Hall '-F 4 2 3'
+_symmetry_space_group_name_H-M  'F m -3 m'
+_symmetry_Int_Tables_number     225
+
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_charge
+Cu1  Cu     0.2853     0.2853     0           1.248
+O1   O      0.3166     0.2431     0.9478     -0.624
+C1   C      0.2968     0.2032     0.9313      0.494
+C2   C      0.322      0.178      0.887       0.130
+C3   C      0.3655     0.1994     0.8655     -0.156
+H1   H      0.3802     0.228      0.8802      0.156
+```
+
+```
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "CutOffVDW" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Cu1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Cu",
+      "print_as" : "Cu",
+      "mass" : 63.546039732,
+      "charge" :  1.248
+    },
+    {
+      "name" : "O1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.999404927,
+      "charge" : -0.624
+    },
+    {
+      "name" : "C1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" :  0.494
+    },
+    {
+      "name" : "C2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" :  0.13
+    },
+    {
+      "name" : "C3",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" : -0.156
+    },
+    {
+      "name" : "H1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.007940754,
+      "charge" :  0.156
+    },
+    {
+      "name" : "C_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" :  0.6512
+    },
+    {
+      "name" : "O_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.3256
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "Cu1",
+      "type" : "lennard-jones",
+      "parameters" : [2.5161, 3.11369],
+      "source" : "UFF"
+    },
+    {
+      "name" : "O1",
+      "type" : "lennard-jones",
+      "parameters" : [48.1581, 3.03315],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C1",
+      "type" : "lennard-jones",
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C2",
+      "type" : "lennard-jones",
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C3",
+      "type" : "lennard-jones",
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "H1",
+      "type" : "lennard-jones",
+      "parameters" : [7.64893, 2.84642],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "O_co2",
+      "type" : "lennard-jones",
+      "parameters" : [85.671, 3.017],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "C_co2",
+      "type" : "lennard-jones",
+      "parameters" : [29.933, 2.745],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ]
+}
+
+```
+
+#### Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a name="Example_11"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 20000,
+  "NumberOfInitializationCycles" : 0,
+  "PrintEvery" : 1000,
+
+  "ForceField" : ".",
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "CO2",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "N2",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "methane",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
 
 #### Monte Carlo: radial distribution function of water<a name="Example_12"></a>
 
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [24.83, 24.83, 24.83],
+      "ExternalTemperature" : 298.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : false,
+      "SampleMovieEvery" : 10,
+      "ComputeConventionalRDF" : true,
+      "NumberOfBinsConventionalRDF" : 128,
+      "RangeConventionalRDF" : 12.0,
+      "WriteConventionalRDFEvery" : 100
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "water",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 512
+    }
+  ]
+}
+```
+
 #### Molecular Dynamics: radial distribution function of water<a name="Example_13"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 100,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [24.83, 24.83, 24.83],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : false,
+      "SampleMovieEvery" : 10,
+      "ComputeConventionalRDF" : true,
+      "NumberOfBinsConventionalRDF" : 128,
+      "RangeConventionalRDF" : 12.0,
+      "WriteConventionalRDFEvery" : 100
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "water",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 512
+    }
+  ]
+}
+```

@@ -3,8 +3,8 @@
   "NumberOfCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
-  
-  "Systems" : 
+
+  "Systems" :
   [
     {
       "Type" : "Box",
@@ -16,13 +16,13 @@
     }
   ],
 
-  "Components" : 
+  "Components" :
   [ 
     {
       "Name" : "methane",
       "MoleculeDefinition" : "ExampleDefinitions",
-      "TranslationProbability" : 0.5,
+      "TranslationProbability" : 1.0,
       "CreateNumberOfMolecules" : 100
     }
   ]
-}
+}   
