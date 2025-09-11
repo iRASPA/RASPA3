@@ -11,14 +11,13 @@
 
 #### Monte Carlo: Ideal gas Rosenbluth weight butane at 300K<a name="Example_auxillary_1"></a>
 
+To compare simulation values to experiments a reference state should be chosen. A convenient reference state is the ideal gas. The reference Rosenbluth value can be computed from a simulation of a single chain in an empty box at the desired temperature. 
 ```json
 {
   "SimulationType" : "MonteCarlo",
   "NumberOfCycles" : 100000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
-
-  "ForceField" : ".",
 
   "Systems" : [
     {
@@ -38,7 +37,7 @@
   ]
 }
 ```
-
+Note that the ideal-gas Rosenbluth weight depends on the temperatures _and_ on the force field.
 ```json
 {
   "CriticalTemperature" : 425.125,
@@ -69,10 +68,11 @@
   ]
 }
 ```
-
-\f$1.304441\times10^{-1} \pm 1.109380\times10^{-5}\f$
+For this butane-model, we obtain at 300K an ideal-gas Rosenbluth weight of \f$1.304441\times10^{-1} \pm 1.109380\times10^{-5}\f$.
 
 #### Monte Carlo: Ideal gas Rosenbluth weight C5-C9 at 573K<a name="Example_auxillary_2"></a>
+
+Note that for Rosenbluth weights several chains can be computed simultaneously, since they are computed from Widom insertions where the molecule is never actually inserted in the system.
 
 ```
 {
@@ -132,6 +132,7 @@
 
 #### Monte Carlo: Ideal gas Rosenbluth weight C6-isomers at 433K<a name="Example_auxillary_3"></a>
 
+Similarly, we can obtain the ideal-gas Rosenbluth weights of hexane isomers.
 ```
 {
   "SimulationType" : "MonteCarlo",
@@ -172,6 +173,7 @@
   ]
 }
 ```
+Note the ideal-gas Rosenbluth weights can vary a lot, even for isomers.
 
 | Molecule        | Rosenbluth weight                             |
 |-----------------|-----------------------------------------------|
@@ -182,6 +184,7 @@
 
 #### Charge-equilibration IRMOF-1<a name="Example_auxillary_4"></a>
 
+TODO: not working yet ([charge equilibration]: no solution found').
 ```
 {
   "SimulationType" : "MonteCarlo",
@@ -205,7 +208,7 @@
     {
       "Name" : "methane",
       "TranslationProbability" : 1.0,
-      "CreateNumberOfMolecules" :0
+      "CreateNumberOfMolecules" : 0
     }
   ]
 }
@@ -213,6 +216,7 @@
 
 #### Grid Interpolation: CO₂ in IRMOF-1<a name="Example_auxillary_5"></a>
 
+Some simulations, especially with a large number of unitcells, by using grid-interpolation. Consider a simulation of CO₂, then we can make a pre-computed energy grid for the oxygen and the carbon of the molecule. An additional grid is needed for the electrostatics.
 ```json
 {
   "SimulationType" : "MonteCarlo",
@@ -258,5 +262,74 @@ In the `force_field.json` we can set additional options to switch on the use of 
   "InterpolationScheme" : 3
 }
 ```
+InterpolationScheme 1 is capable of interpolating only energies, InterpolationScheme 3 interpolates the energies and the forces, while InterpolationScheme 5 interpolates energies, forces, and the Hessian.
 
+For each listed (pseudo-)atom, a grid will be made at the start of the simulation.
+```
+Generating an Ewald Real interpolation grid (172x172x172) for a unit charge
+===============================================================================
+(Using 1 1 1 periodic cells to create grid)
+Percentage finished: 1
+Percentage finished: 2
+Percentage finished: 3
+....
+Percentage finished: 99
+Percentage finished: 100
+Grid done... (     20.537806 [s])
 
+Generating an VDW interpolation grid (172x172x172) for C_co2
+===============================================================================
+(Using 1 1 1 periodic cells to create grid)
+Percentage finished: 1
+Percentage finished: 2
+Percentage finished: 3
+....
+Percentage finished: 99
+Percentage finished: 100
+Grid done... (      6.685936 [s])
+```
+
+After grid creation, the grids are tested with random insertions
+```
+Testing VDW interpolation grid (172x172x172) for C_co2
+-------------------------------------------------------------------------------
+(Using 100000 points for testing)
+
+Boltzmann average energy VDW (table):      -214.02840045285805
+Boltzmann average energy VDW (full):       -214.01140960167118
+Boltzmann relative error:                  0.00021947314459359044
+
+Boltzmann average gradient(x) VDW (table): 3.712850362496449
+Boltzmann average gradient(x) VDW (full):  3.713806990998235
+Boltzmann relative error:                  0.002155151736540394
+
+Boltzmann average gradient(y) VDW (table): 0.8850842781059334
+Boltzmann average gradient(y) VDW (full):  0.8857628567145862
+Boltzmann relative error:                  0.002131945045696959
+
+Boltzmann average gradient(z) VDW (table): 0.6725652417255391
+Boltzmann average gradient(z) VDW (full):  0.671549051697825
+Boltzmann relative error:                  0.0020873926276597484
+
+Testing Coulomb interpolation grid (172x172x172) for C_co2
+-------------------------------------------------------------------------------
+(Using 100000 points for testing)
+
+Boltzmann average energy Real Ewald (table):      -192.95353813520873
+Boltzmann average energy Real Ewald (full):       -192.95384459189873
+Boltzmann relative error:                         5.643361809478482e-05
+
+Boltzmann average gradient(x) Real Ewald (table): -1.115591762633454
+Boltzmann average gradient(x) Real Ewald (full):  -1.1181301909005674
+Boltzmann relative error:                         0.0009199018730806105
+
+Boltzmann average gradient(y) Real Ewald (table): 2.994373232849875
+Boltzmann average gradient(y) Real Ewald (full):  2.994950182057741
+Boltzmann relative error:                         0.000927688382477166
+
+Boltzmann average gradient(z) Real Ewald (table): 5.0800230953098415
+Boltzmann average gradient(z) Real Ewald (full):  5.0797601170886315
+Boltzmann relative error:                         0.0009238132876741674
+```
+
+Note that grids also work with the CFCMC techniques. Here, the fractional molecules are computed using full energy evaluations, while the energies of all integer molecule are interpolated.

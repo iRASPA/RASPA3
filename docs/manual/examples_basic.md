@@ -120,7 +120,6 @@ Total potential energy      | -1.892240e+04 |  -1.892240e+04 |  3.412879e-10 |
 In Monte Carlo, only difference in energies are computed. These differences are continuously added to keep track of the current energies (from which average energies etc. are computed). Obviously, the current energy that is kept track off during the simulation should be equal to a full recalculation of the energies. The difference between the two signals an error. If the drift is higher than say \f$10^{-3}\f$ or \f$10^{-4}\f$ the results of the simulation are in error. This could be due to an error in one of the Monte Carlo moves or because the force field is ``wrong'' (a typical error is when one forgets to define required potentials).
 
 The performance of Monte Carlo moves is monitored. Translation moves are usually scaled to achieve an acceptance rate of 50%.  Here, the move reached its upper limit of 1.5 &Aring; because of the low density of the system.
-
 ```
 Component 0 [methane]
     Translation all:             1000000
@@ -130,9 +129,9 @@ Component 0 [methane]
     Translation fraction:       0.795582   0.797220   0.795066
     Translation max-change:     1.500000   1.500000   1.500000
 ```
+The last 3 columns correspond to the \f$x\f$, \f$y\f$, and \f$z\f$ directions, respectively.
 
 Averages are computed along with an error bar. The error is computed by dividing the simulation in 5 blocks and calculating the standard deviation. The errors in RASPA are computed as the 95% confidence interval.
-
 ```
 Total energy:
 -------------------------------------------------------------------------------
