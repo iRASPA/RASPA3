@@ -197,16 +197,15 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    molecule-molecule VDW   | -1.892240e+04 |  -1.892240e+04 |  3.412879e-10 |</div>
 <div class="line">-----------------------------------------------------------------------------</div>
 </div><!-- fragment --><p>In Monte Carlo, only difference in energies are computed. These differences are continuously added to keep track of the current energies (from which average energies etc. are computed). Obviously, the current energy that is kept track off during the simulation should be equal to a full recalculation of the energies. The difference between the two signals an error. If the drift is higher than say \(10^{-3}\) or \(10^{-4}\) the results of the simulation are in error. This could be due to an error in one of the Monte Carlo moves or because the force field is `&lsquo;wrong&rsquo;' (a typical error is when one forgets to define required potentials).</p>
-<p>The performance of Monte Carlo moves is monitored. Translation moves are usually scaled to achieve an acceptance rate of 50%. Here, the move reached its upper limit of 1.5 &Aring; because of the low density of the system.</p>
-<div class="fragment"><div class="line">Component 0 [methane]</div>
+<p>The performance of Monte Carlo moves is monitored. Translation moves are usually scaled to achieve an acceptance rate of 50%. Here, the move reached its upper limit of 1.5 &Aring; because of the low density of the system. </p><div class="fragment"><div class="line">Component 0 [methane]</div>
 <div class="line">    Translation all:             1000000</div>
 <div class="line">    Translation total:            333611     334052     332337</div>
 <div class="line">    Translation constructed:      333340     333852     332065</div>
 <div class="line">    Translation accepted:         265415     266313     264230</div>
 <div class="line">    Translation fraction:       0.795582   0.797220   0.795066</div>
 <div class="line">    Translation max-change:     1.500000   1.500000   1.500000</div>
-</div><!-- fragment --><p>Averages are computed along with an error bar. The error is computed by dividing the simulation in 5 blocks and calculating the standard deviation. The errors in RASPA are computed as the 95% confidence interval.</p>
-<div class="fragment"><div class="line">Total energy:</div>
+</div><!-- fragment --><p> The last 3 columns correspond to the \(x\), \(y\), and \(z\) directions, respectively.</p>
+<p>Averages are computed along with an error bar. The error is computed by dividing the simulation in 5 blocks and calculating the standard deviation. The errors in RASPA are computed as the 95% confidence interval. </p><div class="fragment"><div class="line">Total energy:</div>
 <div class="line">-------------------------------------------------------------------------------</div>
 <div class="line">    Block[  0] -1.821186e+04</div>
 <div class="line">    Block[  1] -1.813742e+04</div>
@@ -925,7 +924,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
 <div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
 <div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
-<div class="line">      &quot;CreateNuMberofmolecules&quot; : 0</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
@@ -957,7 +956,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
 <div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
 <div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
-<div class="line">      &quot;CreateNuMberofmolecules&quot; : 0</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>

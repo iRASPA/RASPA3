@@ -111,9 +111,106 @@ $(document).ready(function(){initNavTree('examples_auxillary.html',''); initResi
 <li><a class="el" href="examples_auxillary.html#Example_auxillary_5">Grid Interpolation: CO₂ in IRMOF-1</a></li>
 </ol>
 <h3>Monte Carlo: Ideal gas Rosenbluth weight butane at 300K<a class="anchor" id="Example_auxillary_1"></a></h3>
-<p>\(1.304441\times10^{-1} \pm 1.109380\times10^{-5}\)</p>
+<p>To compare simulation values to experiments a reference state should be chosen. A convenient reference state is the ideal gas. The reference Rosenbluth value can be computed from a simulation of a single chain in an empty box at the desired temperature. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;butane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> Note that the ideal-gas Rosenbluth weight depends on the temperatures <em>and</em> on the force field. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;CriticalTemperature&quot; : 425.125,</div>
+<div class="line">  &quot;CriticalPressure&quot; : 3796000.0,</div>
+<div class="line">  &quot;AcentricFactor&quot; : 0.201,</div>
+<div class="line">  &quot;Type&quot; : &quot;flexible&quot;,</div>
+<div class="line">  &quot;pseudoAtoms&quot; :</div>
+<div class="line">    [</div>
+<div class="line">      [&quot;CH3&quot;, [0.0, 0.0, 0.0]],</div>
+<div class="line">      [&quot;CH2&quot;, [0.0, 0.0, 0.0]],</div>
+<div class="line">      [&quot;CH2&quot;, [0.0, 0.0, 0.0]],</div>
+<div class="line">      [&quot;CH3&quot;, [0.0, 0.0, 0.0]]</div>
+<div class="line">    ],</div>
+<div class="line">  &quot;Connectivity&quot; : [</div>
+<div class="line">    [0, 1],</div>
+<div class="line">    [1, 2],</div>
+<div class="line">    [2, 3]</div>
+<div class="line">  ],</div>
+<div class="line">  &quot;Bonds&quot; : [</div>
+<div class="line">    [[&quot;CH3&quot;, &quot;CH2&quot;], &quot;HARMONIC&quot;, [96500.0, 1.54]],</div>
+<div class="line">    [[&quot;CH2&quot;, &quot;CH2&quot;], &quot;HARMONIC&quot;, [96500.0, 1.54]]</div>
+<div class="line">  ],</div>
+<div class="line">  &quot;Bends&quot; : [</div>
+<div class="line">    [[&quot;CH3&quot;, &quot;CH2&quot;, &quot;CH2&quot;], &quot;HARMONIC&quot;, [62500.0, 114]]</div>
+<div class="line">  ],</div>
+<div class="line">  &quot;Torsions&quot; : [</div>
+<div class="line">    [[&quot;CH3&quot;, &quot;CH2&quot;, &quot;CH2&quot;, &quot;CH3&quot;], &quot;TRAPPE&quot;, [0.0, 355.03, -68.19, 791.32]]</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> For this butane-model, we obtain at 300K an ideal-gas Rosenbluth weight of \(1.304441\times10^{-1} \pm 1.109380\times10^{-5}\).</p>
 <h3>Monte Carlo: Ideal gas Rosenbluth weight C5-C9 at 573K<a class="anchor" id="Example_auxillary_2"></a></h3>
-<table class="markdownTable">
+<p>Note that for Rosenbluth weights several chains can be computed simultaneously, since they are computed from Widom insertions where the molecule is never actually inserted in the system.</p>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;ForceField&quot; : &quot;.&quot;,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 573.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;pentane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;hexane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;heptane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;octane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;nonane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone"><a class="el" href="structMolecule.html">Molecule</a>   </th><th class="markdownTableHeadNone">Rosenbluth weight    </th></tr>
 <tr class="markdownTableRowOdd">
@@ -128,6 +225,45 @@ $(document).ready(function(){initNavTree('examples_auxillary.html',''); initResi
 <td class="markdownTableBodyNone">\(n\)-nonane   </td><td class="markdownTableBodyNone">\(2.885495\times10^{-4} \pm  2.165096\times10^{-7}\)   </td></tr>
 </table>
 <h3>Monte Carlo: Ideal gas Rosenbluth weight C6-isomers at 433K<a class="anchor" id="Example_auxillary_3"></a></h3>
+<p>Similarly, we can obtain the ideal-gas Rosenbluth weights of hexane isomers. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Box&quot;,</div>
+<div class="line">      &quot;BoxLengths&quot; : [30.0, 30.0, 30.0],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 433.0,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;None&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;hexane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;2-methylpentane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;3-methylpentane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    },</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;22-methylbutane&quot;,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> Note the ideal-gas Rosenbluth weights can vary a lot, even for isomers.</p>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone"><a class="el" href="structMolecule.html">Molecule</a>   </th><th class="markdownTableHeadNone">Rosenbluth weight    </th></tr>
@@ -141,7 +277,133 @@ $(document).ready(function(){initNavTree('examples_auxillary.html',''); initResi
 <td class="markdownTableBodyNone">22-methylbutane   </td><td class="markdownTableBodyNone">\(1.347238\times10^{-1} \pm  1.493745\times10^{-4}\)   </td></tr>
 </table>
 <h3>Charge-equilibration IRMOF-1<a class="anchor" id="Example_auxillary_4"></a></h3>
-<h3>Grid Interpolation: CO₂ in IRMOF-1<a class="anchor" id="Example_auxillary_5"></a></h3>
+<p>TODO: not working yet ([charge equilibration]: no solution found'). </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 0,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 0,</div>
+<div class="line">  &quot;NumberOfEquilibrationCycles&quot; : 0,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;IRMOF-1&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [1, 1, 1],</div>
+<div class="line">      &quot;UseChargesFrom&quot; : &quot;ChargeEquilibration&quot;,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 300.0</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><h3>Grid Interpolation: CO₂ in IRMOF-1<a class="anchor" id="Example_auxillary_5"></a></h3>
+<p>Some simulations, especially with a large number of unitcells, by using grid-interpolation. Consider a simulation of CO₂, then we can make a pre-computed energy grid for the oxygen and the carbon of the molecule. An additional grid is needed for the electrostatics. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 20000,</div>
+<div class="line">  &quot;NumberOfEquilibrationCycles&quot; : 50000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;IRMOF-1&quot;,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;,</div>
+<div class="line">      &quot;CutOff&quot; : 12.0,</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 298.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1e5</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; : [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
+<div class="line">      &quot;ThermodynamicIntegration&quot; : true,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;CFCMC_CBMC_SwapProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><p>In the <code>force_field.json</code> we can set additional options to switch on the use of grid-interpolation. </p><div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;UseInterpolationGrids&quot; : [&quot;C_co2&quot;, &quot;O_co2&quot;],</div>
+<div class="line">  &quot;SpacingVDWGrid&quot; : 0.15,</div>
+<div class="line">  &quot;SpacingCoulombGrid&quot; : 0.15,</div>
+<div class="line">  &quot;NumberOfGridTestPoints&quot; : 100000,</div>
+<div class="line">  &quot;InterpolationScheme&quot; : 3</div>
+<div class="line">}</div>
+</div><!-- fragment --><p> InterpolationScheme 1 is capable of interpolating only energies, InterpolationScheme 3 interpolates the energies and the forces, while InterpolationScheme 5 interpolates energies, forces, and the Hessian.</p>
+<p>For each listed (pseudo-)atom, a grid will be made at the start of the simulation. </p><div class="fragment"><div class="line">Generating an Ewald Real interpolation grid (172x172x172) for a unit charge</div>
+<div class="line">===============================================================================</div>
+<div class="line">(Using 1 1 1 periodic cells to create grid)</div>
+<div class="line">Percentage finished: 1</div>
+<div class="line">Percentage finished: 2</div>
+<div class="line">Percentage finished: 3</div>
+<div class="line">....</div>
+<div class="line">Percentage finished: 99</div>
+<div class="line">Percentage finished: 100</div>
+<div class="line">Grid done... (     20.537806 [s])</div>
+<div class="line"> </div>
+<div class="line">Generating an VDW interpolation grid (172x172x172) for C_co2</div>
+<div class="line">===============================================================================</div>
+<div class="line">(Using 1 1 1 periodic cells to create grid)</div>
+<div class="line">Percentage finished: 1</div>
+<div class="line">Percentage finished: 2</div>
+<div class="line">Percentage finished: 3</div>
+<div class="line">....</div>
+<div class="line">Percentage finished: 99</div>
+<div class="line">Percentage finished: 100</div>
+<div class="line">Grid done... (      6.685936 [s])</div>
+</div><!-- fragment --><p>After grid creation, the grids are tested with random insertions </p><div class="fragment"><div class="line">Testing VDW interpolation grid (172x172x172) for C_co2</div>
+<div class="line">-------------------------------------------------------------------------------</div>
+<div class="line">(Using 100000 points for testing)</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average energy VDW (table):      -214.02840045285805</div>
+<div class="line">Boltzmann average energy VDW (full):       -214.01140960167118</div>
+<div class="line">Boltzmann relative error:                  0.00021947314459359044</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(x) VDW (table): 3.712850362496449</div>
+<div class="line">Boltzmann average gradient(x) VDW (full):  3.713806990998235</div>
+<div class="line">Boltzmann relative error:                  0.002155151736540394</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(y) VDW (table): 0.8850842781059334</div>
+<div class="line">Boltzmann average gradient(y) VDW (full):  0.8857628567145862</div>
+<div class="line">Boltzmann relative error:                  0.002131945045696959</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(z) VDW (table): 0.6725652417255391</div>
+<div class="line">Boltzmann average gradient(z) VDW (full):  0.671549051697825</div>
+<div class="line">Boltzmann relative error:                  0.0020873926276597484</div>
+<div class="line"> </div>
+<div class="line">Testing Coulomb interpolation grid (172x172x172) for C_co2</div>
+<div class="line">-------------------------------------------------------------------------------</div>
+<div class="line">(Using 100000 points for testing)</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average energy Real Ewald (table):      -192.95353813520873</div>
+<div class="line">Boltzmann average energy Real Ewald (full):       -192.95384459189873</div>
+<div class="line">Boltzmann relative error:                         5.643361809478482e-05</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(x) Real Ewald (table): -1.115591762633454</div>
+<div class="line">Boltzmann average gradient(x) Real Ewald (full):  -1.1181301909005674</div>
+<div class="line">Boltzmann relative error:                         0.0009199018730806105</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(y) Real Ewald (table): 2.994373232849875</div>
+<div class="line">Boltzmann average gradient(y) Real Ewald (full):  2.994950182057741</div>
+<div class="line">Boltzmann relative error:                         0.000927688382477166</div>
+<div class="line"> </div>
+<div class="line">Boltzmann average gradient(z) Real Ewald (table): 5.0800230953098415</div>
+<div class="line">Boltzmann average gradient(z) Real Ewald (full):  5.0797601170886315</div>
+<div class="line">Boltzmann relative error:                         0.0009238132876741674</div>
+</div><!-- fragment --><p>Note that grids also work with the CFCMC techniques. Here, the fractional molecules are computed using full energy evaluations, while the energies of all integer molecule are interpolated. </p>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->
