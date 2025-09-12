@@ -1123,7 +1123,7 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
     cutOffMoleculeVDW = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
   }
 
-  if (cutOffCoulombAutomatic)
+  if (cutOffCoulombAutomatic && automaticEwald)
   {
     cutOffCoulomb = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
 
