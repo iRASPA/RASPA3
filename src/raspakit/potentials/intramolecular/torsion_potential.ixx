@@ -12,6 +12,9 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <format>
+#include <string_view>
+#include <utility>
 #endif
 
 export module torsion_potential;
@@ -134,4 +137,15 @@ export struct TorsionPotential
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TorsionPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TorsionPotential &b);
+};
+
+export template <>
+struct std::formatter<TorsionPotential>: std::formatter<std::string_view>
+{
+  auto format(const TorsionPotential& v, std::format_context& ctx) const
+  {
+    std::string temp{};
+    std::format_to(std::back_inserter(temp), "({}, {}, {})", v.identifiers, std::to_underlying(v.type), v.parameters);
+    return std::formatter<std::string_view>::format(temp, ctx);
+  }
 };

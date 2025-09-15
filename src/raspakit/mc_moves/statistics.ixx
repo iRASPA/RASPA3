@@ -41,11 +41,11 @@ export struct MCMoveStatistics
     statsMapDouble3[MoveTypes::Swap] = MoveStatistics<double3>{};
     statsMapDouble3[MoveTypes::SwapCBMC] = MoveStatistics<double3>{};
     statsMapDouble3[MoveTypes::SwapCFCMC] = MoveStatistics<double3>{
-        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.0), .upperLimit = double3(1.0)};
+        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
     statsMapDouble3[MoveTypes::SwapCBCFCMC] = MoveStatistics<double3>{
-        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.0), .upperLimit = double3(1.0)};
+        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
     statsMapDouble3[MoveTypes::GibbsSwapCFCMC] = MoveStatistics<double3>{
-        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.0), .upperLimit = double3(1.0)};
+        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
 
     statsMapDouble[MoveTypes::VolumeChange] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};

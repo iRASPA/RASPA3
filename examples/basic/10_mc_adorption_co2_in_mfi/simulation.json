@@ -1,21 +1,25 @@
 {
   "SimulationType" : "MonteCarlo",
   "NumberOfCycles" : 100000,
-  "NumberOfInitializationCycles" : 20000,
+  "NumberOfInitializationCycles" : 50000,
+  "NumberOfEquilibrationCycles" : 50000,
   "PrintEvery" : 5000,
   
-  "Systems" : [
+  "Systems" : 
+  [
     {
       "Type" : "Framework",
-      "Name" : "Cu-BTC",
-      "NumberOfUnitCells" : [1, 1, 1],
-      "ChargeMethod" : "Ewald",
-      "ExternalTemperature" : 323.0,
-      "ExternalPressure" : 1.0e4
+      "Name" : "MFI_SI",
+      "HeliumVoidFraction" : 0.3,
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 353.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "Ewald"
     }
   ],
 
-  "Components" : [ 
+  "Components" : 
+  [ 
     {
       "Name" : "CO2",
       "MoleculeDefinition" : "ExampleDefinitions",

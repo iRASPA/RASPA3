@@ -70,7 +70,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
                  Units::EnergyToKJPerMol * enthalpy.second.values[k]);
       if (!components[index].idealGasEnergy)
       {
-        std::print(stream, "    Warning: need to subtract the ideal-gas energy.\n");
+        std::print(stream, "    Note: need to subtract the ideal-gas energy.\n");
       }
       std::print(stream, "\n");
     }
@@ -116,8 +116,8 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
         std::size_t index = swappableComponents[k];
         if (!components[index].idealGasEnergy)
         {
-          std::print(stream, "    Warning: Recompute value of the total enthalpy of adsorption by hand.\n");
-          std::print(stream, "             Need to subtract the ideal-gas energy of component {}.\n", index);
+          std::print(stream, "    Note: Recompute value of the total enthalpy of adsorption by hand.\n");
+          std::print(stream, "          Need to subtract the ideal-gas energy of component {}.\n", index);
         }
       }
       std::print(stream, "\n");
@@ -153,7 +153,7 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
       if (!components[index].idealGasEnergy)
       {
         status[components[index].name]["warning"] =
-            "Warning: Recompute value of the total enthalpy of adsorption by hand. Need to subtract the ideal-gas "
+            "Note: Recompute value of the total enthalpy of adsorption by hand. Need to subtract the ideal-gas "
             "energy";
       }
     }

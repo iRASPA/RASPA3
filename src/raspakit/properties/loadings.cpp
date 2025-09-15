@@ -97,6 +97,8 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
 
   if (frameworkMass)
   {
+    std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
+
     const double toMolePerKg = 1000.0 / frameworkMass.value();
     const double toMgPerKg = 1000.0 * comp.totalMass / frameworkMass.value();
 

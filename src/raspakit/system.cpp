@@ -1099,7 +1099,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   }
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
@@ -1149,7 +1149,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   }
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
@@ -1243,7 +1243,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   }
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
@@ -1291,7 +1291,7 @@ std::string System::writeProductionStatusReportMC(const std::string &statusLine)
   }
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component& c : components)
@@ -1655,7 +1655,7 @@ std::string System::writeComponentStatus() const
   }
   for (const Component& component : components)
   {
-    std::print(stream, "{}", component.printStatus(forceField));
+    std::print(stream, "{}", component.printStatus(forceField, input_pressure));
   }
   std::print(stream, "\n\n\n\n");
 
@@ -2187,8 +2187,9 @@ std::string System::writeMCMoveStatistics() const
 
     if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
     {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
+      double imposedChemicalPotential = std::log(beta * component.molFraction * 
+                component.fugacityCoefficient.value_or(1.0) * pressure) / beta;
+      double imposedFugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure;
       std::print(stream, "{}",
                  component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(
                      temperature, simulationBox.volume, frameworkMass(),

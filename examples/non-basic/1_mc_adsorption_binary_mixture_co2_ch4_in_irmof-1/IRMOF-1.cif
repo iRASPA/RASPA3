@@ -13,9 +13,9 @@ _citation_page_first         469
 _citation_page_last          472
 _citation_year               2002
 
-_cell_length_a    25.6690
-_cell_length_b    25.6690
-_cell_length_c    25.6690
+_cell_length_a    25.832
+_cell_length_b    25.832
+_cell_length_c    25.832
 _cell_angle_alpha 90
 _cell_angle_beta  90
 _cell_angle_gamma 90
@@ -228,10 +228,12 @@ _atom_site_fract_x
 _atom_site_fract_y
 _atom_site_fract_z
 _atom_site_charge
-Zn1      Zn     0.2935     0.2065     0.2065     1.275
-O1       O      0.25       0.25       0.25      -1.5
-O2       O      0.2818     0.2182     0.1339    -0.6
-C1       C      0.25       0.25       0.1105     0.475
-C2       C      0.25       0.25       0.0538     0.125
-C3       C      0.2831     0.2169     0.0263    -0.15
-H1       H      0.3049     0.1951     0.0448     0.15
+Zn1      Zn     0.2934     0.2066     0.2066     0 
+O1       O      0.25       0.25       0.25       0 
+O2       O      0.2819     0.2181     0.134      0 
+C1       C      0.25       0.25       0.1113     0 
+C2       C      0.25       0.25       0.0538     0 
+C3       C      0.2829     0.2171     0.0269     0 
+H1       H      0.3049     0.1951     0.0448     0 
+
+

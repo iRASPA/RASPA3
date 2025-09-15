@@ -277,7 +277,7 @@ export struct Component
    * \param forceField The force field used for interpreting atom types.
    * \return A string detailing the component's status.
    */
-  std::string printStatus(const ForceField &forceField) const;
+  std::string printStatus(const ForceField &forceField, double inputPressure) const;
 
   /**
    * \brief Generates a string representing the breakthrough status of the component.

@@ -1,9 +1,9 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfCycles" : 500000,
   "NumberOfInitializationCycles" : 50000,
   "NumberOfEquilibrationCycles" : 50000,
-  "PrintEvery" : 1000,
+  "PrintEvery" : 5000,
   
   "Systems" : 
   [
@@ -13,11 +13,7 @@
       "NumberOfUnitCells" : [2, 2, 2],
       "ExternalTemperature" : 353.0,
       "ExternalPressure" : 1.0e5,
-      "ChargeMethod" : "Ewald",
-      "ComputeDensityGrid" : true,
-      "SampleDensityGridEvery" : 10,
-      "WriteDensityGridEvery" : 5000,
-      "DensityGridSize" : [128, 128, 128]
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -30,8 +26,9 @@
       "ThermodynamicIntegration" : true,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
+      "ReinsertionProbability" : 0.0,
       "CFCMC_CBMC_SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
     }
   ]

@@ -282,6 +282,7 @@ void MonteCarlo::performCycle()
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+
         selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSecondSystem.containsTheFractionalMolecule);
@@ -291,15 +292,6 @@ void MonteCarlo::performCycle()
                                               fractionalMoleculeSystem, estimation.currentBin);
         numberOfSteps++;
         break;
-    }
-
-    if (simulationStage == SimulationStage::Equilibration)
-    {
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-          selectedSecondSystem.containsTheFractionalMolecule);
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);

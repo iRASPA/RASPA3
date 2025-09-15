@@ -71,7 +71,6 @@ import interpolation_energy_grid;
       totalMass += mass;
     }
     com /= totalMass;
-  
 
     trialPositions[i] =
         {Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),

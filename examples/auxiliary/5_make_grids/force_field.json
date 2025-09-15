@@ -9,7 +9,7 @@
   "SpacingVDWGrid" : 0.15,
   "SpacingCoulombGrid" : 0.15,
   "NumberOfGridTestPoints" : 100000,
-  "InterpolationScheme" : 5,
+  "InterpolationScheme" : 3,
   "PseudoAtoms" :
   [
     {

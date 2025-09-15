@@ -1,8 +1,8 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
-  "NumberOfInitializationCycles" : 10000,
-  "NumberOfEquilibrationCycles" : 10000,
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 50000,
+  "NumberOfEquilibrationCycles" : 100000,
   "PrintEvery" : 1000,
   
   "Systems" : 
@@ -27,11 +27,12 @@
   [ 
     {
       "Name" : "CO2",
-      "MoleculeDefinition" : "ExampleDefinitions",
+      "ThermodynamicIntegration" : true,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
+      "ReinsertionProbability" : 0.0,
       "Gibbs_CFCMC_SwapProbability" : 1.0,
+      "WidomProbability" : 0.5,
       "CreateNumberOfMolecules" : [256, 256]
     }
   ]

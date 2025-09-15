@@ -22,8 +22,8 @@
   "Components" : [ 
     {
       "Name" : "methane",
-      "MoleculeDefinition" : "ExampleDefinitions",
       "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.0,
       "TranslationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,

@@ -12,10 +12,11 @@
 7. [Monte Carlo: Henry coefficient of methane in MFI](#Example_basic_7)
 8. [Monte Carlo: adsorption of methane in MFI](#Example_basic_8)
 9. [Monte Carlo: adsorption of butane in MFI](#Example_basic_9)
-10. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_basic_10)
-11. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_11)
-12. [Monte Carlo: radial distribution function of water](#Example_basic_12)
-13. [Molecular Dynamics: radial distribution function of water](#Example_basic_13)
+10. [Monte Carlo: adsorption of CO₂ in MFI](#Example_basic_10)
+11. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_basic_11)
+12. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_12)
+13. [Monte Carlo: radial distribution function of water](#Example_basic_13)
+14. [Molecular Dynamics: radial distribution function of water](#Example_basic_14)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -845,6 +846,18 @@ O        O      0.2883   -0.25      0.0579   -1.025
 O        O      0.1085   -0.25      0.0611   -1.025 
 ```
 
+```
+Total energy/kʙ
+-------------------------------------------------------------------------------
+    Block[  0] -1.986247e+03
+    Block[  1] -1.983422e+03
+    Block[  2] -1.985899e+03
+    Block[  3] -1.984366e+03
+    Block[  4] -1.984200e+03
+    ---------------------------------------------------------------------------
+    Average  -1.984827e+03 +/-  1.487712e+00 [K]
+```
+
 #### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_basic_7"></a>
 
 ```json
@@ -871,10 +884,35 @@ O        O      0.1085   -0.25      0.0611   -1.025
     {
       "Name" : "methane",
       "WidomProbability" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.0,
       "CreateNumberOfMolecules" : 0
     }
   ]
 }
+```
+
+```
+    Widom insertion Rosenbluth weight statistics:
+    ---------------------------------------------------------------------------
+        Block[  0]  2.732844e+01
+        Block[  1]  2.741241e+01
+        Block[  2]  2.736756e+01
+        Block[  3]  2.745297e+01
+        Block[  4]  2.738999e+01
+    ---------------------------------------------------------------------------
+    Average Rosenbluth weight:    2.739027e+01 +/-  5.809780e-02 [-]
+
+
+    Henry coefficient based on Rosenbluth weight:
+    ---------------------------------------------------------------------------
+        Block[  0]  4.349384e-06
+        Block[  1]  4.362748e-06
+        Block[  2]  4.355610e-06
+        Block[  3]  4.369203e-06
+        Block[  4]  4.359181e-06
+    ---------------------------------------------------------------------------
+    Average Henry coefficient:    4.359225e-06 +/-  9.246399e-09 [mol/kg/Pa]
+    Average Henry coefficient:    3.526013e-05 +/-  7.479065e-08 [molec./uc/Pa]
 ```
 
 #### Monte Carlo: adsorption of methane in MFI<a name="Example_basic_8"></a>
@@ -904,8 +942,8 @@ O        O      0.1085   -0.25      0.0611   -1.025
   "Components" : [
     {
       "Name" : "methane",
-      "MoleculeDefinition" : "ExampleDefinitions",
       "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.0,
       "TranslationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,
@@ -914,6 +952,94 @@ O        O      0.1085   -0.25      0.0611   -1.025
     }
   ]
 }
+```
+
+```
+Component 0 (methane)
+    Block[  0]  2.313265e+01
+    Block[  1]  2.312087e+01
+    Block[  2]  2.316992e+01
+    Block[  3]  2.315223e+01
+    Block[  4]  2.315949e+01
+    ---------------------------------------------------------------------------
+    Abs. loading average   2.314703e+01 +/-  2.480976e-02 [molecules/cell]
+    Abs. loading average   2.893379e+00 +/-  3.101220e-03 [molecules/uc]
+    Abs. loading average   3.577097e-01 +/-  3.834051e-04 [mol/kg-framework]
+    Abs. loading average   5.738543e+00 +/-  6.150761e-03 [mg/g-framework]
+
+    Block[  0]  2.210055e+01
+    Block[  1]  2.208877e+01
+    Block[  2]  2.213782e+01
+    Block[  3]  2.212013e+01
+    Block[  4]  2.212739e+01
+    ---------------------------------------------------------------------------
+    Excess loading average   2.211493e+01 +/-  2.480976e-02 [molecules/cell]
+    Excess loading average   2.764367e+00 +/-  3.101220e-03 [molecules/uc]
+    Excess loading average   3.417598e-01 +/-  3.834051e-04 [mol/kg-framework]
+    Excess loading average   5.482668e+00 +/-  6.150761e-03 [mg/g-framework]
+```
+
+```
+Component 0 [methane]
+-------------------------------------------------------------------------------
+    Block[  0] -2.315836e+03
+    Block[  1] -2.318128e+03
+    Block[  2] -2.316719e+03
+    Block[  3] -2.316961e+03
+    Block[  4] -2.318220e+03
+    ---------------------------------------------------------------------------
+    Enthalpy of adsorption: -2.317173e+03 +/-  1.248718e+00 [K]
+                            -1.926605e+01 +/-  1.038242e-02 [kJ/mol]
+    Warning: need to subtract the ideal-gas energy.
+```
+
+```
+Component 0 [methane]
+    Reinsertion (CBMC)   all:            19743492
+    Reinsertion (CBMC)   total:          19743492
+    Reinsertion (CBMC)   constructed:    16997136
+    Reinsertion (CBMC)   accepted:        3589911
+    Reinsertion (CBMC)   fraction:       0.181828
+    Reinsertion (CBMC)   max-change:     0.000000
+
+    Translation          all:            19749581
+    Translation          total:           6581839    6587371    6580371
+    Translation          constructed:     6581733    6587300    6580362
+    Translation          accepted:        3767703    3755567    3293183
+    Translation          fraction:       0.572439   0.570116   0.500456
+    Translation          max-change:     1.500000   1.500000   1.337404
+
+    Swap (CBMC)          all:            39481509
+    Swap (CBMC)          total:          19743020   19738489          0
+    Swap (CBMC)          constructed:    16955288   19738489          0
+    Swap (CBMC)          accepted:        5907149    5907153          0
+    Swap (CBMC)          fraction:       0.299202   0.299271   0.000000
+    Swap (CBMC)          max-change:     0.000000   0.000000   0.000000
+```
+
+```
+    Widom insertion chemical potential  statistics:
+    ---------------------------------------------------------------------------
+        Block[  0] -941.5351279073475
+        Block[  1] -941.669377429965
+        Block[  2] -941.2687442002162
+        Block[  3] -941.1908992648339
+        Block[  4] -941.1534302104509
+    ---------------------------------------------------------------------------
+    Excess chemical potential:          -9.413635e+02 +/-  2.816759e-01 [K]
+    Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [K]
+    Ideal chemical potential:           -2.255720e+03 +/-  3.215800e-01 [K]
+    Total chemical potential:           -3.197084e+03 +/-  5.866208e-01 [K]
+    Imposed chemical potential:         -3.189455e+03 [K]
+    ---------------------------------------------------------------------------
+    Excess chemical potential:          -7.826934e+00 +/-  2.341984e-03 [kJ/mol]
+    Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [kj/mol]
+    Ideal chemical potential:           -1.875511e+01 +/-  2.673766e-03 [kJ/mol]
+    Total chemical potential:           -2.658204e+01 +/-  4.877438e-03 [kJ/mol]
+    Imposed chemical potential:         -2.651861e+01 [kJ/mol]
+    ---------------------------------------------------------------------------
+    Imposed fugacity:                    1.000000e+05 [Pa]
+    Measured fugacity:                   9.748910e+04 +/-  1.905630e+02 [Pa]
 ```
 
 \image html example_basic_8_density.png
@@ -942,9 +1068,10 @@ O        O      0.1085   -0.25      0.0611   -1.025
   "Components" : [
     {
       "Name" : "butane",
-      "MoleculeDefinition" : "ExampleDefinitions",
       "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 0.1304441,
       "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
@@ -954,7 +1081,111 @@ O        O      0.1085   -0.25      0.0611   -1.025
 }
 ```
 
-#### Monte Carlo: adsorption of CO₂ in Cu-BTC<a name="Example_basic_10"></a>
+```
+Component 0 (butane)
+    Block[  0]  4.897422e+01
+    Block[  1]  4.911684e+01
+    Block[  2]  4.854518e+01
+    Block[  3]  4.898799e+01
+    Block[  4]  4.913708e+01
+    ---------------------------------------------------------------------------
+    Abs. loading average   4.895226e+01 +/-  2.968620e-01 [molecules/cell]
+    Abs. loading average   6.119033e+00 +/-  3.710775e-02 [molecules/uc]
+    Abs. loading average   1.060962e+00 +/-  6.434008e-03 [mol/kg-framework]
+    Abs. loading average   6.171597e+01 +/-  3.742652e-01 [mg/g-framework]
+```
+
+```
+    Widom insertion chemical potential  statistics:
+    ---------------------------------------------------------------------------
+        Block[  0] -3229.528393446422
+        Block[  1] -3229.4951993384507
+        Block[  2] -3237.13549982758
+        Block[  3] -3230.6367434433205
+        Block[  4] -3226.4629229725147
+    ---------------------------------------------------------------------------
+    Excess chemical potential:          -3.230658e+03 +/-  4.894948e+00 [K]
+    Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [K]
+    Ideal chemical potential:           -2.031027e+03 +/-  1.823937e+00 [K]
+    Total chemical potential:           -5.261684e+03 +/-  6.668591e+00 [K]
+    Imposed chemical potential:         -5.261783e+03 [K]
+    ---------------------------------------------------------------------------
+    Excess chemical potential:          -2.686119e+01 +/-  4.069887e-02 [kJ/mol]
+    Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [kj/mol]
+    Ideal chemical potential:           -1.688690e+01 +/-  1.516506e-02 [kJ/mol]
+    Total chemical potential:           -4.374809e+01 +/-  5.544577e-02 [kJ/mol]
+    Imposed chemical potential:         -4.374891e+01 [kJ/mol]
+    ---------------------------------------------------------------------------
+    Imposed fugacity:                    1.000000e+02 [Pa]
+    Measured fugacity:                   1.000331e+02 +/-  2.205947e+00 [Pa]
+```
+
+#### Monte Carlo: adsorption of CO₂ in MFI<a name="Example_basic_10"></a>
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 50000,
+  "NumberOfEquilibrationCycles" : 50000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "HeliumVoidFraction" : 0.3,
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 353.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "Ewald"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+```
+Component 0 (CO2)
+    Block[  0]  2.601000e+01
+    Block[  1]  2.651520e+01
+    Block[  2]  2.645855e+01
+    Block[  3]  2.631695e+01
+    Block[  4]  2.613330e+01
+    ---------------------------------------------------------------------------
+    Abs. loading average   2.628680e+01 +/-  2.653616e-01 [molecules/cell]
+    Abs. loading average   3.285850e+00 +/-  3.317020e-02 [molecules/uc]
+    Abs. loading average   4.062310e-01 +/-  4.100846e-03 [mol/kg-framework]
+    Abs. loading average   1.787368e+01 +/-  1.804323e-01 [mg/g-framework]
+
+    Block[  0]  2.574659e+01
+    Block[  1]  2.625179e+01
+    Block[  2]  2.619514e+01
+    Block[  3]  2.605354e+01
+    Block[  4]  2.586989e+01
+    ---------------------------------------------------------------------------
+    Excess loading average   2.602339e+01 +/-  2.653616e-01 [molecules/cell]
+    Excess loading average   3.252923e+00 +/-  3.317020e-02 [molecules/uc]
+    Excess loading average   4.021603e-01 +/-  4.100846e-03 [mol/kg-framework]
+    Excess loading average   1.769457e+01 +/-  1.804323e-01 [mg/g-framework]
+```
+
+#### Monte Carlo: adsorption of CO₂ in Cu-BTC<a name="Example_basic_11"></a>
 
 ```json
 {
@@ -977,8 +1208,8 @@ O        O      0.1085   -0.25      0.0611   -1.025
   "Components" : [
     {
       "Name" : "CO2",
-      "MoleculeDefinition" : "ExampleDefinitions",
       "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.0,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
@@ -1157,7 +1388,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 
 ```
 
-#### Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a name="Example_basic_11"></a>
+#### Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a name="Example_basic_12"></a>
 
 ```json
 {
@@ -1199,7 +1430,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Monte Carlo: radial distribution function of water<a name="Example_basic_12"></a>
+#### Monte Carlo: radial distribution function of water<a name="Example_basic_13"></a>
 
 ```json
 {
@@ -1239,7 +1470,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Molecular Dynamics: radial distribution function of water<a name="Example_basic_13"></a>
+#### Molecular Dynamics: radial distribution function of water<a name="Example_basic_14"></a>
 
 ```json
 {

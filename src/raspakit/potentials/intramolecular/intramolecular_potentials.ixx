@@ -8,6 +8,11 @@ module;
 #include <optional>
 #include <span>
 #include <tuple>
+#include <format>
+#include <print>
+#include <format>
+#include <string_view>
+#include <utility>
 #endif
 
 export module intra_molecular_potentials;
@@ -89,8 +94,22 @@ struct IntraMolecularPotentials
     filteredInteractions(std::size_t numberOfBeads, const std::span<std::size_t> beadsAlreadyPlaced,
                          const std::span<std::size_t> beadsToBePlaced) const;
 
+  std::string printStatus() const;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::IntraMolecularPotentials& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::IntraMolecularPotentials& p);
 };
 }  // namespace Potentials
+
+/*
+export template <>
+struct std::formatter<Potentials::IntraMolecularPotentials>: std::formatter<string_view>
+{
+  auto format(const Potentials::IntraMolecularPotentials& p, std::format_context& ctx) const
+  {
+    std::string temp{};
+    std::format_to(std::back_inserter(temp), "(bonds: {}-{})", p.bonds);
+    return std::formatter<string_view>::format(temp, ctx);
+  }
+};
+*/

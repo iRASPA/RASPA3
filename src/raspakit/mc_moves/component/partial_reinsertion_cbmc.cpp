@@ -57,6 +57,11 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   MoveTypes move = MoveTypes::PartialReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
+  if(component.partialReinsertionFixedAtoms.empty())
+  {
+    return std::nullopt;
+  }
+
   // Increment move counts for reinsertion CBMC statistics.
   component.mc_moves_statistics.addTrial(move);
 
@@ -77,6 +82,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
 
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
+
+
   const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
 
   time_begin = std::chrono::system_clock::now();

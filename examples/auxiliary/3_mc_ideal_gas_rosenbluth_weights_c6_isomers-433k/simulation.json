@@ -1,6 +1,6 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfCycles" : 1000000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
 
@@ -30,7 +30,12 @@
       "CreateNumberOfMolecules" : 0
     },
     {
-      "Name" : "22-methylbutane",
+      "Name" : "22-dimethylbutane",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "23-dimethylbutane",
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
     }

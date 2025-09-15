@@ -1,7 +1,7 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
-  "NumberOfInitializationCycles" : 10000,
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 50000,
   "PrintEvery" : 1000,
   
   "Systems" : 
@@ -10,7 +10,7 @@
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 250.0,
-      "ExternalPressure" : 1e6,
+      "ExternalPressure" : 1e7,
       "ChargeMethod" : "Ewald",
       "VolumeMoveProbability" : 0.05
     }

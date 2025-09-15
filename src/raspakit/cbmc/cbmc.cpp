@@ -179,10 +179,10 @@ import interpolation_energy_grid;
 
   if (molecule_atoms.size() == 1)
   {
-  Molecule firstBeadMolecule = Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass, component.componentId,
-                         component.definedAtoms.size());
-  firstBeadMolecule.atomIndex = molecule.atomIndex;
-  firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
+    Molecule firstBeadMolecule = Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass, component.componentId,
+                                          component.definedAtoms.size());
+    firstBeadMolecule.atomIndex = molecule.atomIndex;
+    firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
 
     return ChainGrowData(firstBeadMolecule,
                          {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight,

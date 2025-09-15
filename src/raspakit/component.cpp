@@ -533,7 +533,7 @@ double3 Component::computeCenterOfMass(std::vector<Atom> atom_list) const
   return com / total_mass;
 }
 
-std::string Component::printStatus(const ForceField &forceField) const
+std::string Component::printStatus(const ForceField &forceField, double inputPressure) const
 {
   std::ostringstream stream;
 
@@ -555,6 +555,7 @@ std::string Component::printStatus(const ForceField &forceField) const
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
   std::print(stream << std::boolalpha, "    Swappable:                   {}\n\n", swappable);
   std::print(stream, "    Mass:                         {} [-]\n", totalMass);
+  std::print(stream, "    Fugacity:                     {} [Pa]\n", molFraction * fugacityCoefficient.value_or(1.0) * inputPressure);
   if (fugacityCoefficient.has_value())
   {
     std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());

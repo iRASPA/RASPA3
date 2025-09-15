@@ -37,7 +37,7 @@ struct MoveStatistics
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
-  T counts{};               ///< Number of move attempts.
+  T counts{};          ///< Number of move attempts.
   T constructed{};          ///< Number of moves constructed.
   T accepted{};             ///< Number of moves accepted.
   std::size_t allCounts{};  ///< Total number of counts across all types.
@@ -75,20 +75,24 @@ struct MoveStatistics
   void optimizeAcceptance()
   {
     if (!optimize) return;
-    T ratio = accepted / (counts + T(1.0));
-    if constexpr (std::is_same_v<double, T>)
+
+    if(counts != T{})  // Do not optimize if not counted
     {
-      T scaling = std::clamp(ratio / targetAcceptance, T(0.5), T(1.5));
-      maxChange = std::clamp(maxChange * scaling, lowerLimit, upperLimit);
+      T ratio = accepted / (counts + T(1.0));
+      if constexpr (std::is_same_v<double, T>)
+      {
+        T scaling = std::clamp(ratio / targetAcceptance, T(0.5), T(1.5));
+        maxChange = std::clamp(maxChange * scaling, lowerLimit, upperLimit);
+      }
+      else
+      {
+        T scaling = clamp(ratio / targetAcceptance, T(0.5), T(1.5));
+        maxChange = clamp(maxChange * scaling, lowerLimit, upperLimit);
+      }
+      counts = T{};
+      constructed = T{};
+      accepted = T{};
     }
-    else
-    {
-      T scaling = clamp(ratio / targetAcceptance, T(0.5), T(1.5));
-      maxChange = clamp(maxChange * scaling, lowerLimit, upperLimit);
-    }
-    counts = T{};
-    constructed = T{};
-    accepted = T{};
   }
 
   template <class U>

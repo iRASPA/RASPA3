@@ -643,7 +643,7 @@
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
         "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
         "HDF5_USE_STATIC_LIBRARIES": true,
