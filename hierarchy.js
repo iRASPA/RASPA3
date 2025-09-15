@@ -36,7 +36,9 @@ var hierarchy =
     [ "FirstBeadData", "structFirstBeadData.html", null ],
     [ "ForceField", "structForceField.html", null ],
     [ "std::formatter", null, [
-      [ "std::formatter< BondPotential >", "structstd_1_1formatter_3_01BondPotential_01_4.html", null ]
+      [ "std::formatter< BendPotential >", "structstd_1_1formatter_3_01BendPotential_01_4.html", null ],
+      [ "std::formatter< BondPotential >", "structstd_1_1formatter_3_01BondPotential_01_4.html", null ],
+      [ "std::formatter< TorsionPotential >", "structstd_1_1formatter_3_01TorsionPotential_01_4.html", null ]
     ] ],
     [ "Framework", "structFramework.html", null ],
     [ "Potentials::GradientFactor", "structPotentials_1_1GradientFactor.html", null ],

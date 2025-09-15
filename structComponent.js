@@ -26,7 +26,7 @@ var structComponent =
     [ "equilibratedMoleculeRandomInBox", "structComponent.html#ac9996efbabfef1236d2fbb1b866e8f26", null ],
     [ "jsonStatus", "structComponent.html#a1f397ff72c70880b66625e93114e464a", null ],
     [ "printBreakthroughStatus", "structComponent.html#acc614c7859e76eff266d145cc8bec02d", null ],
-    [ "printStatus", "structComponent.html#a5f0095fcd3a913c818271df3ed7f0440", null ],
+    [ "printStatus", "structComponent.html#a150efba9c271dcd7547708f16d61efdc", null ],
     [ "readComponent", "structComponent.html#a7001a8d5f258f478a5edb7529fb0400f", null ],
     [ "repr", "structComponent.html#aeeda438752491b095b04b162f1d539ff", null ],
     [ "rotate", "structComponent.html#ab80dadfd183a4b54c7d63a4309169c1f", null ],

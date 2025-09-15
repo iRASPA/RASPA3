@@ -1,5 +1,9 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="Node000000" title=" " alt="" coords="5,5,117,31"/>
-<area shape="rect" id="Node000001" href="$structstd_1_1formatter_3_01BondPotential_01_4.html" title=" " alt="" coords="165,5,399,31"/>
-<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="131,15,165,15,165,21,131,21"/>
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,55,117,80"/>
+<area shape="rect" id="Node000001" href="$structstd_1_1formatter_3_01BendPotential_01_4.html" title=" " alt="" coords="172,5,405,31"/>
+<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="125,49,165,39,219,28,220,33,166,45,126,54"/>
+<area shape="rect" id="Node000002" href="$structstd_1_1formatter_3_01BondPotential_01_4.html" title=" " alt="" coords="172,55,405,80"/>
+<area shape="poly" id="edge2_Node000000_Node000002" title=" " alt="" coords="131,65,172,65,172,70,131,70"/>
+<area shape="rect" id="Node000003" href="$structstd_1_1formatter_3_01TorsionPotential_01_4.html" title=" " alt="" coords="165,104,412,129"/>
+<area shape="poly" id="edge3_Node000000_Node000003" title=" " alt="" coords="130,81,166,89,225,101,224,107,165,94,129,86"/>
 </map>

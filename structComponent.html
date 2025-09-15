@@ -264,9 +264,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a7001a8d5f258f478a5edb7529fb0400f" id="r_a7001a8d5f258f478a5edb7529fb0400f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a7001a8d5f258f478a5edb7529fb0400f">readComponent</a> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::string &amp;fileName)</td></tr>
 <tr class="memdesc:a7001a8d5f258f478a5edb7529fb0400f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads component data from a file.  <br /></td></tr>
 <tr class="separator:a7001a8d5f258f478a5edb7529fb0400f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5f0095fcd3a913c818271df3ed7f0440" id="r_a5f0095fcd3a913c818271df3ed7f0440"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a5f0095fcd3a913c818271df3ed7f0440">printStatus</a> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField) const</td></tr>
-<tr class="memdesc:a5f0095fcd3a913c818271df3ed7f0440"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a string representing the component's current status.  <br /></td></tr>
-<tr class="separator:a5f0095fcd3a913c818271df3ed7f0440"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a150efba9c271dcd7547708f16d61efdc" id="r_a150efba9c271dcd7547708f16d61efdc"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a150efba9c271dcd7547708f16d61efdc">printStatus</a> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, double inputPressure) const</td></tr>
+<tr class="memdesc:a150efba9c271dcd7547708f16d61efdc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a string representing the component's current status.  <br /></td></tr>
+<tr class="separator:a150efba9c271dcd7547708f16d61efdc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc614c7859e76eff266d145cc8bec02d" id="r_acc614c7859e76eff266d145cc8bec02d"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#acc614c7859e76eff266d145cc8bec02d">printBreakthroughStatus</a> () const</td></tr>
 <tr class="memdesc:acc614c7859e76eff266d145cc8bec02d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a string representing the breakthrough status of the component.  <br /></td></tr>
 <tr class="separator:acc614c7859e76eff266d145cc8bec02d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1067,8 +1067,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 
 </div>
 </div>
-<a id="a5f0095fcd3a913c818271df3ed7f0440" name="a5f0095fcd3a913c818271df3ed7f0440"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5f0095fcd3a913c818271df3ed7f0440">&#9670;&#160;</a></span>printStatus()</h2>
+<a id="a150efba9c271dcd7547708f16d61efdc" name="a150efba9c271dcd7547708f16d61efdc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a150efba9c271dcd7547708f16d61efdc">&#9670;&#160;</a></span>printStatus()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1077,8 +1077,18 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
           <td class="memname">std::string Component::printStatus </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
-          <td class="paramname"><em>forceField</em></td><td>)</td>
-          <td> const</td>
+          <td class="paramname"><em>forceField</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>inputPressure</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
         </tr>
       </table>
 </div><div class="memdoc">

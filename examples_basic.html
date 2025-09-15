@@ -113,10 +113,11 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <li><a class="el" href="examples_basic.html#Example_basic_7">Monte Carlo: Henry coefficient of methane in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_basic_8">Monte Carlo: adsorption of methane in MFI</a></li>
 <li><a class="el" href="examples_basic.html#Example_basic_9">Monte Carlo: adsorption of butane in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_basic_10">Monte Carlo: adsorption of CO₂ in Cu-BTC</a></li>
-<li><a class="el" href="examples_basic.html#Example_basic_11">Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI</a></li>
-<li><a class="el" href="examples_basic.html#Example_basic_12">Monte Carlo: radial distribution function of water</a></li>
-<li><a class="el" href="examples_basic.html#Example_basic_13">Molecular Dynamics: radial distribution function of water</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_10">Monte Carlo: adsorption of CO₂ in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_11">Monte Carlo: adsorption of CO₂ in Cu-BTC</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_12">Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_13">Monte Carlo: radial distribution function of water</a></li>
+<li><a class="el" href="examples_basic.html#Example_basic_14">Molecular Dynamics: radial distribution function of water</a></li>
 </ol>
 <h3>Monte Carlo: methane in box <a class="anchor" id="Example_basic_1"></a></h3>
 <p>A Monte Carlo run of 100 methane molecules in a \(30 \times 30 \times 30\) &Aring; box at 300K. After 1000 cycles of initialization the production run is started. A movie is written and every 10th configuration is appended to the movie. The movie is stored in &lsquo;movies/&rsquo;, and can be viewed with iRASPA or VMD.</p>
@@ -831,6 +832,15 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">O        O      0.1884   -0.25     -0.3538   -1.025 </div>
 <div class="line">O        O      0.2883   -0.25      0.0579   -1.025 </div>
 <div class="line">O        O      0.1085   -0.25      0.0611   -1.025 </div>
+</div><!-- fragment --><div class="fragment"><div class="line">Total energy/kʙ</div>
+<div class="line">-------------------------------------------------------------------------------</div>
+<div class="line">    Block[  0] -1.986247e+03</div>
+<div class="line">    Block[  1] -1.983422e+03</div>
+<div class="line">    Block[  2] -1.985899e+03</div>
+<div class="line">    Block[  3] -1.984366e+03</div>
+<div class="line">    Block[  4] -1.984200e+03</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Average  -1.984827e+03 +/-  1.487712e+00 [K]</div>
 </div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane in MFI<a class="anchor" id="Example_basic_7"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -855,10 +865,32 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    {</div>
 <div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
 <div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;IdealGasRosenbluthWeight&quot; : 1.0,</div>
 <div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Widom insertion Rosenbluth weight statistics:</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">    Block[  0]  2.732844e+01</div>
+<div class="line">    Block[  1]  2.741241e+01</div>
+<div class="line">    Block[  2]  2.736756e+01</div>
+<div class="line">    Block[  3]  2.745297e+01</div>
+<div class="line">    Block[  4]  2.738999e+01</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Average Rosenbluth weight:    2.739027e+01 +/-  5.809780e-02 [-]</div>
+<div class="line"> </div>
+<div class="line"> </div>
+<div class="line">Henry coefficient based on Rosenbluth weight:</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">    Block[  0]  4.349384e-06</div>
+<div class="line">    Block[  1]  4.362748e-06</div>
+<div class="line">    Block[  2]  4.355610e-06</div>
+<div class="line">    Block[  3]  4.369203e-06</div>
+<div class="line">    Block[  4]  4.359181e-06</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Average Henry coefficient:    4.359225e-06 +/-  9.246399e-09 [mol/kg/Pa]</div>
+<div class="line">Average Henry coefficient:    3.526013e-05 +/-  7.479065e-08 [molec./uc/Pa]</div>
 </div><!-- fragment --><h3>Monte Carlo: adsorption of methane in MFI<a class="anchor" id="Example_basic_8"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
@@ -884,8 +916,8 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">  &quot;Components&quot; : [</div>
 <div class="line">    {</div>
 <div class="line">      &quot;Name&quot; : &quot;methane&quot;,</div>
-<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
 <div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;IdealGasRosenbluthWeight&quot; : 1.0,</div>
 <div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
 <div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
 <div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
@@ -894,6 +926,82 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Component 0 (methane)</div>
+<div class="line">    Block[  0]  2.313265e+01</div>
+<div class="line">    Block[  1]  2.312087e+01</div>
+<div class="line">    Block[  2]  2.316992e+01</div>
+<div class="line">    Block[  3]  2.315223e+01</div>
+<div class="line">    Block[  4]  2.315949e+01</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Abs. loading average   2.314703e+01 +/-  2.480976e-02 [molecules/cell]</div>
+<div class="line">    Abs. loading average   2.893379e+00 +/-  3.101220e-03 [molecules/uc]</div>
+<div class="line">    Abs. loading average   3.577097e-01 +/-  3.834051e-04 [mol/kg-framework]</div>
+<div class="line">    Abs. loading average   5.738543e+00 +/-  6.150761e-03 [mg/g-framework]</div>
+<div class="line"> </div>
+<div class="line">    Block[  0]  2.210055e+01</div>
+<div class="line">    Block[  1]  2.208877e+01</div>
+<div class="line">    Block[  2]  2.213782e+01</div>
+<div class="line">    Block[  3]  2.212013e+01</div>
+<div class="line">    Block[  4]  2.212739e+01</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Excess loading average   2.211493e+01 +/-  2.480976e-02 [molecules/cell]</div>
+<div class="line">    Excess loading average   2.764367e+00 +/-  3.101220e-03 [molecules/uc]</div>
+<div class="line">    Excess loading average   3.417598e-01 +/-  3.834051e-04 [mol/kg-framework]</div>
+<div class="line">    Excess loading average   5.482668e+00 +/-  6.150761e-03 [mg/g-framework]</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Component 0 [methane]</div>
+<div class="line">-------------------------------------------------------------------------------</div>
+<div class="line">    Block[  0] -2.315836e+03</div>
+<div class="line">    Block[  1] -2.318128e+03</div>
+<div class="line">    Block[  2] -2.316719e+03</div>
+<div class="line">    Block[  3] -2.316961e+03</div>
+<div class="line">    Block[  4] -2.318220e+03</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Enthalpy of adsorption: -2.317173e+03 +/-  1.248718e+00 [K]</div>
+<div class="line">                            -1.926605e+01 +/-  1.038242e-02 [kJ/mol]</div>
+<div class="line">    Warning: need to subtract the ideal-gas energy.</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Component 0 [methane]</div>
+<div class="line">    Reinsertion (CBMC)   all:            19743492</div>
+<div class="line">    Reinsertion (CBMC)   total:          19743492</div>
+<div class="line">    Reinsertion (CBMC)   constructed:    16997136</div>
+<div class="line">    Reinsertion (CBMC)   accepted:        3589911</div>
+<div class="line">    Reinsertion (CBMC)   fraction:       0.181828</div>
+<div class="line">    Reinsertion (CBMC)   max-change:     0.000000</div>
+<div class="line"> </div>
+<div class="line">    Translation          all:            19749581</div>
+<div class="line">    Translation          total:           6581839    6587371    6580371</div>
+<div class="line">    Translation          constructed:     6581733    6587300    6580362</div>
+<div class="line">    Translation          accepted:        3767703    3755567    3293183</div>
+<div class="line">    Translation          fraction:       0.572439   0.570116   0.500456</div>
+<div class="line">    Translation          max-change:     1.500000   1.500000   1.337404</div>
+<div class="line"> </div>
+<div class="line">    Swap (CBMC)          all:            39481509</div>
+<div class="line">    Swap (CBMC)          total:          19743020   19738489          0</div>
+<div class="line">    Swap (CBMC)          constructed:    16955288   19738489          0</div>
+<div class="line">    Swap (CBMC)          accepted:        5907149    5907153          0</div>
+<div class="line">    Swap (CBMC)          fraction:       0.299202   0.299271   0.000000</div>
+<div class="line">    Swap (CBMC)          max-change:     0.000000   0.000000   0.000000</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Widom insertion chemical potential  statistics:</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">    Block[  0] -941.5351279073475</div>
+<div class="line">    Block[  1] -941.669377429965</div>
+<div class="line">    Block[  2] -941.2687442002162</div>
+<div class="line">    Block[  3] -941.1908992648339</div>
+<div class="line">    Block[  4] -941.1534302104509</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Excess chemical potential:          -9.413635e+02 +/-  2.816759e-01 [K]</div>
+<div class="line">Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [K]</div>
+<div class="line">Ideal chemical potential:           -2.255720e+03 +/-  3.215800e-01 [K]</div>
+<div class="line">Total chemical potential:           -3.197084e+03 +/-  5.866208e-01 [K]</div>
+<div class="line">Imposed chemical potential:         -3.189455e+03 [K]</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Excess chemical potential:          -7.826934e+00 +/-  2.341984e-03 [kJ/mol]</div>
+<div class="line">Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [kj/mol]</div>
+<div class="line">Ideal chemical potential:           -1.875511e+01 +/-  2.673766e-03 [kJ/mol]</div>
+<div class="line">Total chemical potential:           -2.658204e+01 +/-  4.877438e-03 [kJ/mol]</div>
+<div class="line">Imposed chemical potential:         -2.651861e+01 [kJ/mol]</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Imposed fugacity:                    1.000000e+05 [Pa]</div>
+<div class="line">Measured fugacity:                   9.748910e+04 +/-  1.905630e+02 [Pa]</div>
 </div><!-- fragment --><div class="image">
 <img src="example_basic_8_density.png" alt=""/>
 </div>
@@ -918,9 +1026,10 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">  &quot;Components&quot; : [</div>
 <div class="line">    {</div>
 <div class="line">      &quot;Name&quot; : &quot;butane&quot;,</div>
-<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
 <div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;IdealGasRosenbluthWeight&quot; : 0.1304441,</div>
 <div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
 <div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
 <div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
 <div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
@@ -928,7 +1037,98 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: adsorption of CO₂ in Cu-BTC<a class="anchor" id="Example_basic_10"></a></h3>
+</div><!-- fragment --><div class="fragment"><div class="line">Component 0 (butane)</div>
+<div class="line">    Block[  0]  4.897422e+01</div>
+<div class="line">    Block[  1]  4.911684e+01</div>
+<div class="line">    Block[  2]  4.854518e+01</div>
+<div class="line">    Block[  3]  4.898799e+01</div>
+<div class="line">    Block[  4]  4.913708e+01</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Abs. loading average   4.895226e+01 +/-  2.968620e-01 [molecules/cell]</div>
+<div class="line">    Abs. loading average   6.119033e+00 +/-  3.710775e-02 [molecules/uc]</div>
+<div class="line">    Abs. loading average   1.060962e+00 +/-  6.434008e-03 [mol/kg-framework]</div>
+<div class="line">    Abs. loading average   6.171597e+01 +/-  3.742652e-01 [mg/g-framework]</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Widom insertion chemical potential  statistics:</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">    Block[  0] -3229.528393446422</div>
+<div class="line">    Block[  1] -3229.4951993384507</div>
+<div class="line">    Block[  2] -3237.13549982758</div>
+<div class="line">    Block[  3] -3230.6367434433205</div>
+<div class="line">    Block[  4] -3226.4629229725147</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Excess chemical potential:          -3.230658e+03 +/-  4.894948e+00 [K]</div>
+<div class="line">Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [K]</div>
+<div class="line">Ideal chemical potential:           -2.031027e+03 +/-  1.823937e+00 [K]</div>
+<div class="line">Total chemical potential:           -5.261684e+03 +/-  6.668591e+00 [K]</div>
+<div class="line">Imposed chemical potential:         -5.261783e+03 [K]</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Excess chemical potential:          -2.686119e+01 +/-  4.069887e-02 [kJ/mol]</div>
+<div class="line">Tail-correction chemical potential:  0.000000e+00 +/-  0.000000e+00 [kj/mol]</div>
+<div class="line">Ideal chemical potential:           -1.688690e+01 +/-  1.516506e-02 [kJ/mol]</div>
+<div class="line">Total chemical potential:           -4.374809e+01 +/-  5.544577e-02 [kJ/mol]</div>
+<div class="line">Imposed chemical potential:         -4.374891e+01 [kJ/mol]</div>
+<div class="line">---------------------------------------------------------------------------</div>
+<div class="line">Imposed fugacity:                    1.000000e+02 [Pa]</div>
+<div class="line">Measured fugacity:                   1.000331e+02 +/-  2.205947e+00 [Pa]</div>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of CO₂ in MFI<a class="anchor" id="Example_basic_10"></a></h3>
+<div class="fragment"><div class="line">{</div>
+<div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
+<div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
+<div class="line">  &quot;NumberOfInitializationCycles&quot; : 50000,</div>
+<div class="line">  &quot;NumberOfEquilibrationCycles&quot; : 50000,</div>
+<div class="line">  &quot;PrintEvery&quot; : 5000,</div>
+<div class="line"> </div>
+<div class="line">  &quot;Systems&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Type&quot; : &quot;Framework&quot;,</div>
+<div class="line">      &quot;Name&quot; : &quot;MFI_SI&quot;,</div>
+<div class="line">      &quot;HeliumVoidFraction&quot; : 0.3,</div>
+<div class="line">      &quot;NumberOfUnitCells&quot; : [2, 2, 2],</div>
+<div class="line">      &quot;ExternalTemperature&quot; : 353.0,</div>
+<div class="line">      &quot;ExternalPressure&quot; : 1.0e5,</div>
+<div class="line">      &quot;ChargeMethod&quot; : &quot;Ewald&quot;</div>
+<div class="line">    }</div>
+<div class="line">  ],</div>
+<div class="line"> </div>
+<div class="line">  &quot;Components&quot; :</div>
+<div class="line">  [</div>
+<div class="line">    {</div>
+<div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
+<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
+<div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
+<div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
+<div class="line">      &quot;SwapProbability&quot; : 1.0,</div>
+<div class="line">      &quot;WidomProbability&quot; : 1.0,</div>
+<div class="line">      &quot;CreateNumberOfMolecules&quot; : 0</div>
+<div class="line">    }</div>
+<div class="line">  ]</div>
+<div class="line">}</div>
+</div><!-- fragment --><div class="fragment"><div class="line">Component 0 (CO2)</div>
+<div class="line">    Block[  0]  2.601000e+01</div>
+<div class="line">    Block[  1]  2.651520e+01</div>
+<div class="line">    Block[  2]  2.645855e+01</div>
+<div class="line">    Block[  3]  2.631695e+01</div>
+<div class="line">    Block[  4]  2.613330e+01</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Abs. loading average   2.628680e+01 +/-  2.653616e-01 [molecules/cell]</div>
+<div class="line">    Abs. loading average   3.285850e+00 +/-  3.317020e-02 [molecules/uc]</div>
+<div class="line">    Abs. loading average   4.062310e-01 +/-  4.100846e-03 [mol/kg-framework]</div>
+<div class="line">    Abs. loading average   1.787368e+01 +/-  1.804323e-01 [mg/g-framework]</div>
+<div class="line"> </div>
+<div class="line">    Block[  0]  2.574659e+01</div>
+<div class="line">    Block[  1]  2.625179e+01</div>
+<div class="line">    Block[  2]  2.619514e+01</div>
+<div class="line">    Block[  3]  2.605354e+01</div>
+<div class="line">    Block[  4]  2.586989e+01</div>
+<div class="line">    ---------------------------------------------------------------------------</div>
+<div class="line">    Excess loading average   2.602339e+01 +/-  2.653616e-01 [molecules/cell]</div>
+<div class="line">    Excess loading average   3.252923e+00 +/-  3.317020e-02 [molecules/uc]</div>
+<div class="line">    Excess loading average   4.021603e-01 +/-  4.100846e-03 [mol/kg-framework]</div>
+<div class="line">    Excess loading average   1.769457e+01 +/-  1.804323e-01 [mg/g-framework]</div>
+</div><!-- fragment --><h3>Monte Carlo: adsorption of CO₂ in Cu-BTC<a class="anchor" id="Example_basic_11"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
@@ -949,8 +1149,8 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">  &quot;Components&quot; : [</div>
 <div class="line">    {</div>
 <div class="line">      &quot;Name&quot; : &quot;CO2&quot;,</div>
-<div class="line">      &quot;MoleculeDefinition&quot; : &quot;ExampleDefinitions&quot;,</div>
 <div class="line">      &quot;FugacityCoefficient&quot; : 1.0,</div>
+<div class="line">      &quot;IdealGasRosenbluthWeight&quot; : 1.0,</div>
 <div class="line">      &quot;TranslationProbability&quot; : 0.5,</div>
 <div class="line">      &quot;RotationProbability&quot; : 0.5,</div>
 <div class="line">      &quot;ReinsertionProbability&quot; : 0.5,</div>
@@ -1120,7 +1320,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a class="anchor" id="Example_basic_11"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI<a class="anchor" id="Example_basic_12"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 20000,</div>
@@ -1158,7 +1358,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_basic_12"></a></h3>
+</div><!-- fragment --><h3>Monte Carlo: radial distribution function of water<a class="anchor" id="Example_basic_13"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
@@ -1194,7 +1394,7 @@ $(document).ready(function(){initNavTree('examples_basic.html',''); initResizabl
 <div class="line">    }</div>
 <div class="line">  ]</div>
 <div class="line">}</div>
-</div><!-- fragment --><h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_basic_13"></a></h3>
+</div><!-- fragment --><h3>Molecular Dynamics: radial distribution function of water<a class="anchor" id="Example_basic_14"></a></h3>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MonteCarlo&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 10000,</div>
