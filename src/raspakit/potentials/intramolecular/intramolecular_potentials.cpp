@@ -710,21 +710,21 @@ std::string Potentials::IntraMolecularPotentials::printStatus() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "bonds: {}\n", bonds.size());
-  for(const BondPotential &bond : bonds)
-  {
-    std::print("  {}\n", bond);
-  }
-  std::print(stream, "bends: {}\n", bends.size());
-  for(const BendPotential &bend : bends)
-  {
-    std::print("  {}\n", bend);
-  }
-  std::print(stream, "torsions: {}\n", torsions.size());
-  for(const TorsionPotential &torsion : torsions)
-  {
-    std::print("  {}\n", torsion);
-  }
+  //std::print(stream, "bonds: {}\n", bonds.size());
+  //for(const BondPotential &bond : bonds)
+  //{
+  //  std::print("  {}\n", bond);
+  //}
+  //std::print(stream, "bends: {}\n", bends.size());
+  //for(const BendPotential &bend : bends)
+  //{
+  //  std::print("  {}\n", bend);
+  //}
+  //std::print(stream, "torsions: {}\n", torsions.size());
+  //for(const TorsionPotential &torsion : torsions)
+  //{
+  //  std::print("  {}\n", torsion);
+  //}
 
   std::print(stream, "\n\n");
 

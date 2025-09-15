@@ -139,6 +139,7 @@ export struct TorsionPotential
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TorsionPotential &b);
 };
 
+/*
 export template <>
 struct std::formatter<TorsionPotential>: std::formatter<std::string_view>
 {
@@ -149,3 +150,4 @@ struct std::formatter<TorsionPotential>: std::formatter<std::string_view>
     return std::formatter<std::string_view>::format(temp, ctx);
   }
 };
+*/

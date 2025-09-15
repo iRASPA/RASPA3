@@ -136,6 +136,7 @@ export struct BendPotential
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BendPotential &b);
 };
 
+/*
 export template <>
 struct std::formatter<BendPotential>: std::formatter<std::string_view>
 {
@@ -146,3 +147,4 @@ struct std::formatter<BendPotential>: std::formatter<std::string_view>
     return std::formatter<std::string_view>::format(temp, ctx);
   }
 };
+*/
