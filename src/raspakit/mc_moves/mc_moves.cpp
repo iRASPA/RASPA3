@@ -348,6 +348,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       break;
     }
     case MoveTypes::GibbsSwapCBMC:
+    case MoveTypes::GibbsSwapCFCMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -363,30 +364,6 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       {
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             MC_Moves::GibbsSwapMove_CBMC(random, selectedSecondSystem, selectedSystem, selectedComponent);
-        if (energy)
-        {
-          selectedSecondSystem.runningEnergies += energy.value().first;
-          selectedSystem.runningEnergies += energy.value().second;
-        }
-      }
-      break;
-    }
-    case MoveTypes::GibbsSwapCFCMC:
-    {
-      if (selectedSystem.containsTheFractionalMolecule)
-      {
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSystem, selectedSecondSystem, fractionalMoleculeSystem, selectedComponent);
-        if (energy)
-        {
-          selectedSystem.runningEnergies += energy.value().first;
-          selectedSecondSystem.runningEnergies += energy.value().second;
-        }
-      }
-      else if (selectedSecondSystem.containsTheFractionalMolecule)
-      {
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSecondSystem, selectedSystem, fractionalMoleculeSystem, selectedComponent);
         if (energy)
         {
           selectedSecondSystem.runningEnergies += energy.value().first;

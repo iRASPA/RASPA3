@@ -1,8 +1,8 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
-  "NumberOfInitializationCycles" : 50000,
-  "NumberOfEquilibrationCycles" : 100000,
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfEquilibrationCycles" : 5000,
   "PrintEvery" : 1000,
   
   "Systems" : 
@@ -30,7 +30,7 @@
       "ThermodynamicIntegration" : true,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
-      "ReinsertionProbability" : 0.0,
+      "ReinsertionProbability" : 0.5,
       "Gibbs_CFCMC_SwapProbability" : 1.0,
       "WidomProbability" : 0.5,
       "CreateNumberOfMolecules" : [256, 256]

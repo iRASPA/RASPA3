@@ -49,6 +49,7 @@ import interpolation_energy_grid;
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(forceField.numberOfTrialDirections);
 
+  /*
   // randomly rotated configurations around the starting bead
   for (std::size_t i = 0; i < forceField.numberOfTrialDirections; ++i)
   {
@@ -76,6 +77,34 @@ import interpolation_energy_grid;
         {Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
          randomlyRotatedAtoms};
   };
+
+  */
+
+  std::size_t starting_bead = component.startingBead;
+    // randomly rotated configurations around the starting bead
+  for (std::size_t i = 0; i < forceField.numberOfTrialDirections; ++i)
+  {
+    simd_quatd orientation = random.randomSimdQuatd();
+    std::vector<Atom> randomlyRotatedAtoms = component.rotatePositions(orientation);
+    double3 shift = molecule_atoms[starting_bead].position - randomlyRotatedAtoms[starting_bead].position;
+
+    for (std::size_t j = 0; j < randomlyRotatedAtoms.size(); ++j)
+    {
+      randomlyRotatedAtoms[j].position += shift;
+      randomlyRotatedAtoms[j].charge = molecule_atoms[j].charge;
+      randomlyRotatedAtoms[j].scalingVDW = molecule_atoms[j].scalingVDW;
+      randomlyRotatedAtoms[j].scalingCoulomb = molecule_atoms[j].scalingCoulomb;
+      randomlyRotatedAtoms[j].moleculeId = molecule_atoms[j].moleculeId;
+      randomlyRotatedAtoms[j].componentId = molecule_atoms[j].componentId;
+      randomlyRotatedAtoms[j].groupId = molecule_atoms[j].groupId;
+      randomlyRotatedAtoms[j].isFractional = molecule_atoms[j].isFractional;
+    }
+
+    trialPositions[i] =
+        {Molecule(shift, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+         randomlyRotatedAtoms};
+  };
+
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,

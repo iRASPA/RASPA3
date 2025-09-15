@@ -12,8 +12,6 @@
 
 #### Monte Carlo: CFCMC Gibbs CO₂<a name="Example_advanced_1"></a>
 
-Status: Error in CFCMC Reinsertion move.
-
 ```json
 {
   "SimulationType" : "MonteCarlo",
@@ -47,7 +45,7 @@ Status: Error in CFCMC Reinsertion move.
       "ThermodynamicIntegration" : true,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
-      "ReinsertionProbability" : 0.0,
+      "ReinsertionProbability" : 0.5,
       "Gibbs_CFCMC_SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : [256, 256]
@@ -92,8 +90,6 @@ The pressure is \f$13.85 \pm 2.2\f$ and \f$13.80 \pm 4.1\f$  for the vapor and l
 
 
 #### Monte Carlo: Monte Carlo: CFCMC adsorption of  CO₂ in MFI<a name="Example_advanced_2"></a>
-
-Status: Error in CFCMC Reinsertion move.
 
 ```json
 {
