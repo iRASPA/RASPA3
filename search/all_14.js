@@ -13,7 +13,7 @@ var searchData=
   ['ureybradleypotential_10',['ureybradleypotential',['../structUreyBradleyPotential.html#a2882209d1fefc285720027d12939a2f8',1,'UreyBradleyPotential::UreyBradleyPotential()'],['../structUreyBradleyPotential.html#acd5a6c90cb12a1bbbb221136b4a002f7',1,'UreyBradleyPotential::UreyBradleyPotential(std::array&lt; std::size_t, 2 &gt; identifiers, const UreyBradleyType type)'],['../structUreyBradleyPotential.html',1,'UreyBradleyPotential']]],
   ['usebias_11',['useBias',['../structTransitionMatrix.html#ac513c7e4297099fe499d0a45966cd62e',1,'TransitionMatrix']]],
   ['usecharge_12',['useCharge',['../structForceField.html#a63b2c41cefb46290c44876bb2f86c886',1,'ForceField']]],
-  ['usechargesfrom_13',['usechargesfrom',['../structFramework.html#ab50a57d40879663e918566c32fdf8a3e',1,'Framework::UseChargesFrom'],['../structFramework.html#a2b7400ee595aac7dc2e7ceb43a81b7ec',1,'Framework::useChargesFrom']]],
+  ['usechargesfrom_13',['usechargesfrom',['../structFramework.html#a2b7400ee595aac7dc2e7ceb43a81b7ec',1,'Framework::useChargesFrom'],['../structFramework.html#ab50a57d40879663e918566c32fdf8a3e',1,'Framework::UseChargesFrom']]],
   ['usedualcutoff_14',['useDualCutOff',['../structForceField.html#ae229fc635a810876e07dd1910911dbf1',1,'ForceField']]],
   ['user_20manual_15',['User Manual',['../md_docs_2manual.html',1,'']]],
   ['usetmbias_16',['useTMBias',['../structTransitionMatrix.html#a2492d39f9199ec216051940a0a67a9d9',1,'TransitionMatrix']]],

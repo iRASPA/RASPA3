@@ -10,7 +10,7 @@ var searchData=
   ['chargeconversionfactor_7',['ChargeConversionFactor',['../structUnits.html#a76410fd7399e68e615e59b0b007cd7f4',1,'Units']]],
   ['chargeequilbrationelementdata_8',['ChargeEquilbrationElementData',['../structChargeEquilbrationElementData.html',1,'']]],
   ['chargeequilibration_9',['ChargeEquilibration',['../structFramework.html#ab50a57d40879663e918566c32fdf8a3ea31c3ebb741cdfa0661ca2e821e2c7dde',1,'Framework']]],
-  ['chargemethod_10',['chargemethod',['../structForceField.html#a12d0757c03cbc58fd42f5dc1208d58da',1,'ForceField::chargeMethod'],['../structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983',1,'ForceField::ChargeMethod']]],
+  ['chargemethod_10',['chargemethod',['../structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983',1,'ForceField::ChargeMethod'],['../structForceField.html#a12d0757c03cbc58fd42f5dc1208d58da',1,'ForceField::chargeMethod']]],
   ['chargeunit_11',['ChargeUnit',['../structUnits.html#acffd6547c9457dd106557495dc486a80',1,'Units']]],
   ['chiralcenter_12',['ChiralCenter',['../structChiralCenter.html',1,'']]],
   ['chiralcenters_13',['chiralCenters',['../structFramework.html#aaf1228768b3d98248a5b9bd4a5773a0a',1,'Framework']]],

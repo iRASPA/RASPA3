@@ -54,7 +54,6 @@ var NAVTREE =
     [ "Classes", "annotated.html", [
       [ "Class List", "annotated.html", "annotated_dup" ],
       [ "Class Index", "classes.html", null ],
-      [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
       [ "Class Members", "functions.html", [
         [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", "functions_func" ],
@@ -69,13 +68,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_units.html",
+"module_urey__bradley__potential.html",
 "structChiralCenter.html",
 "structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb",
-"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a",
-"structMonteCarlo.html#a742ffab27a370392748419dba2579260",
-"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd",
-"structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb"
+"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caedd652c19d7dbbfb3d242aa14b2fec8c",
+"structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45",
+"structPseudoAtom.html#a532f144150cd44507a0307be6f4989eb",
+"structTransitionMatrix.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
