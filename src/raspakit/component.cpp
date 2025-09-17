@@ -510,13 +510,13 @@ std::vector<Atom> Component::rotatePositions(const simd_quatd &q) const
   for (std::size_t i = 0; i < atoms.size(); ++i)
   {
     Atom a = atoms[i];
-    a.position = rotationMatrix * atoms[i].position;
+    a.position = atoms[startingBead].position + rotationMatrix * (atoms[i].position - atoms[startingBead].position);
     rotatedAtoms.push_back(a);
   }
   return rotatedAtoms;
 }
 
-double3 Component::computeCenterOfMass(std::vector<Atom> atom_list) const
+double3 Component::computeCenterOfMass(std::span<Atom> atom_list) const
 {
   std::vector<std::pair<Atom, double>> a{definedAtoms};
   for (std::size_t i = 0; i != a.size(); ++i)

@@ -162,19 +162,26 @@ import interpolation_energy_grid;
     double cutOffCoulomb, Molecule &molecule,
     std::span<Atom> molecule_atoms) noexcept
 {
-  std::vector<Atom> atoms(molecule_atoms.begin(), molecule_atoms.end());
   std::size_t startingBead = component.startingBead;
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growMultipleFirstBeadReinsertion(
       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, atoms[startingBead]);
+      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms[startingBead]);
 
   if (!firstBeadData) return std::nullopt;
 
   // place the molecule centered around the first bead at 'firstBeadData->atom.position'
-  for(Atom &atom : atoms)
+  std::vector<Atom> atoms = component.atoms;
+  for(std::size_t i = 0; i < atoms.size(); ++i)
   {
-    atom.position += firstBeadData->atom.position - molecule_atoms[startingBead].position;
+    atoms[i].position += firstBeadData->atom.position - component.atoms[startingBead].position;
+    atoms[i].charge = molecule_atoms[i].charge;
+    atoms[i].scalingVDW = molecule_atoms[i].scalingVDW;
+    atoms[i].scalingCoulomb = molecule_atoms[i].scalingCoulomb;
+    atoms[i].moleculeId = molecule_atoms[i].moleculeId;
+    atoms[i].componentId = molecule_atoms[i].componentId;
+    atoms[i].groupId = molecule_atoms[i].groupId;
+    atoms[i].isFractional = molecule_atoms[i].isFractional;
   }
 
   if (molecule_atoms.size() == 1)
@@ -328,9 +335,6 @@ import interpolation_energy_grid;
   return ChainRetraceData(chainData.energies,
                           chainData.RosenbluthWeight, 0.0);
 }
-
-
-
 
 
 

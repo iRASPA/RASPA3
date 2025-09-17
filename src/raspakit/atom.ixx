@@ -193,8 +193,8 @@ export struct Atom
   }
 };
 
-/*
 // does not compile on llvm-18
+/*
 export template <>
 struct std::formatter<Atom>: std::formatter<string_view>
 {

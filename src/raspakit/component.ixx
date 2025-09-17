@@ -313,7 +313,7 @@ export struct Component
    * \param atom_list The list of atoms to compute the center of mass for.
    * \return The center of mass position as a double3 vector.
    */
-  double3 computeCenterOfMass(std::vector<Atom> atom_list) const;
+  double3 computeCenterOfMass(std::span<Atom> atom_list) const;
 
   /**
    * \brief Rotates the positions of all atoms using a given quaternion.

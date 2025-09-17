@@ -5,6 +5,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <tuple>
+#include <span>
 #include <vector>
 #endif
 
@@ -22,8 +23,8 @@ import randomnumbers;
 
 export namespace CBMC
 {
-std::vector<Atom> rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, std::size_t startingBead);
-std::vector<Atom> rotateRandomlyAround(simd_quatd &q, std::vector<Atom> atoms, std::size_t startingBead);
+std::vector<Atom> rotateRandomlyAround(RandomNumber &random, std::span<Atom> atoms, std::size_t startingBead);
+std::vector<Atom> rotateRandomlyAround(simd_quatd &q, std::span<Atom> atoms, std::size_t startingBead);
 
 // LogBoltzmannFactors are (-Beta U)
 std::size_t selectTrialPosition(RandomNumber &random, std::vector<double> LogBoltzmannFactors);

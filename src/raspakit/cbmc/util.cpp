@@ -8,6 +8,7 @@ module;
 #include <format>
 #include <iostream>
 #include <tuple>
+#include <span>
 #include <vector>
 // #if defined(__has_include) && __has_include(<stacktrace>)
 // #include <stacktrace>
@@ -28,10 +29,11 @@ import simd_quatd;
 import randomnumbers;
 import stringutils;
 
-std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, std::size_t startingBead)
+std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::span<Atom> atoms, std::size_t startingBead)
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<Atom> randomlyRotatedAtoms{};
+  randomlyRotatedAtoms.reserve(atoms.size());
   for (std::size_t i = 0; i < atoms.size(); ++i)
   {
     Atom b = atoms[i];
@@ -41,7 +43,7 @@ std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::vector<A
   return randomlyRotatedAtoms;
 }
 
-std::vector<Atom> CBMC::rotateRandomlyAround(simd_quatd &q, std::vector<Atom> atoms, std::size_t startingBead)
+std::vector<Atom> CBMC::rotateRandomlyAround(simd_quatd &q, std::span<Atom> atoms, std::size_t startingBead)
 {
   double3x3 randomRotationMatrix = double3x3::buildRotationMatrixInverse(q);
   std::vector<Atom> randomlyRotatedAtoms{};
