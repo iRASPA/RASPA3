@@ -73,6 +73,7 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
   {
     const double densityConversionFactor =
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
+
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
     switch (Units::unitSystem)
     {
@@ -83,6 +84,8 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
                    densityConversionFactor * comp.totalMass * numberDensities[comp.componentId]);
         break;
       case Units::System::ReducedUnits:
+        std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[comp.componentId]);
+        std::print(stream, "    number density:   {: .6e} molec./{}^3\n", numberDensities[comp.componentId], Units::displayedUnitOfLengthString);
         break;
     }
   }

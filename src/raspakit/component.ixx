@@ -219,8 +219,8 @@ export struct Component
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 
-  PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Gibbs-Chebyshev integration.
-  PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs integration.
+  PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Grand-Canonical simulations.
+  PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs simulations.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
 
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.

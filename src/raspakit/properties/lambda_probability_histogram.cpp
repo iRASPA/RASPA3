@@ -240,6 +240,19 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
                    beta * imposedChemicalPotential.value());
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [{}]\n",
+                 (excessChemicalPotential.first + excessChemicalPotentialBias),
+                 excessChemicalPotential.second, Units::unitOfEnergyString);
+      std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [{}]\n",
+                 idealGasChemicalPotential.first, idealGasChemicalPotential.second, Units::unitOfEnergyString);
+      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [{}]\n",
+                 totalChemicalPotential.first, totalChemicalPotential.second, Units::unitOfEnergyString);
+      if (imposedChemicalPotential)
+      {
+        std::print(stream, "    Imposed chemical potential:   {: .6e} [{}]\n",
+                   imposedChemicalPotential.value(), Units::unitOfEnergyString);
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
       if (imposedFugacity)
       {
         std::print(stream, "    Imposed fugacity:             {: .6e} [{}]\n",
