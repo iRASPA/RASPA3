@@ -113,7 +113,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::exp(-systemA.beta * (energyFourierDifferenceA.potentialEnergy() + tailEnergyDifferenceA.potentialEnergy()));
 
   // Select a random molecule of the selected component from system B
-  std::size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
+  std::size_t selectedMolecule = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
   // Retrieve cutoff distances and grow type from system B
