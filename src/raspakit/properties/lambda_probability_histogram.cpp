@@ -351,12 +351,8 @@ void PropertyLambdaProbabilityHistogram::writeBiasingFile(std::filesystem::path 
   std::ofstream stream(path, std::ios::out);
 
   nlohmann::json json;
-  std::vector<double> shifted{biasFactor};
-  for (std::size_t i = 0; i < shifted.size(); ++i)
-  {
-    shifted[i] -= shifted.back();
-  }
-  json["bias"] = shifted;
+
+  json["bias"] = biasFactor;
 
   stream << json.dump(2);
 }
