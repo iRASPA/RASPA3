@@ -136,10 +136,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                                  polarizationDifference.potentialEnergy()));
 
     // Compute acceptance probability factors
-    double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+    double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                       (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
+                       (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);

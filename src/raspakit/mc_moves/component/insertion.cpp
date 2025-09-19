@@ -155,8 +155,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                    energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
-  double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
-  double preFactor = system.beta * component.molFraction * fugacity * system.simulationBox.volume /
+  double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
+  double preFactor = system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];

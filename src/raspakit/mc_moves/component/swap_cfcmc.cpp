@@ -276,11 +276,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                           tailEnergyDifference2;
 
     // Calculate acceptance probability
-    double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
-    double preFactor =
-        system.beta * component.molFraction * fugacity * system.simulationBox.volume / static_cast<double>(1 + oldN);
+    double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
+    double preFactor = system.beta * fugacity * system.simulationBox.volume / static_cast<double>(1 + oldN);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    double Pacc =
+    double Pacc = 
         preFactor *
         std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) +
                  biasTerm);

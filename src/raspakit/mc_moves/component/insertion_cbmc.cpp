@@ -139,9 +139,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
                                polarizationDifference.potentialEnergy()));
 
   // Compute the acceptance probability pre-factor
-  double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+  double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-  double preFactor = correctionFactorEwald * system.beta * component.molFraction * fugacity *
+  double preFactor = correctionFactorEwald * system.beta * fugacity *
                      system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 

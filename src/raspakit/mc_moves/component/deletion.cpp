@@ -141,9 +141,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     component.mc_moves_statistics.addConstructed(move, 1);
 
     // Calculate the acceptance probability
-    double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+    double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                       (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
+                       (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
