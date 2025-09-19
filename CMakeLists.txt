@@ -1,5 +1,5 @@
 # CMakeLists.txt
-#cmake_minimum_required(VERSION 3.0.12)
+#cmake_minimum_required(VERSION 4.0.3)
 cmake_minimum_required(VERSION 3.29)
 
 #set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
@@ -18,7 +18,7 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(raspa3
-  VERSION 3.0.12
+  VERSION 3.0.13
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
