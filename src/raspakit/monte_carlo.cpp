@@ -542,6 +542,19 @@ void MonteCarlo::production()
     }
   }
 
+  if (outputToFiles)
+  {
+    std::filesystem::create_directories("bias_factors");
+    for (System& system : systems)
+    {
+      for (Component& component : system.components)
+      {
+        component.lambdaGC.writeBiasingFile(
+            std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system.systemId));
+      }
+    }
+  }
+
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
