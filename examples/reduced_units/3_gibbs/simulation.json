@@ -1,0 +1,40 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 10000000,
+  "NumberOfInitializationCycles" : 50000,
+  "NumberOfEquilibrationCycles" : 1000000,
+  "PrintEvery" : 5000,
+  "Units" : "Reduced",
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [12.5, 12.5, 12.5],
+      "ExternalTemperature" : 0.6,
+      "ChargeMethod" : "None",
+      "GibbsVolumeMoveProbability" : 0.01
+    },
+    {
+      "Type" : "Box",
+      "BoxLengths" : [12.5, 12.5, 12.5],
+      "ExternalTemperature" : 0.6,
+      "ChargeMethod" : "None",
+      "GibbsVolumeMoveProbability" : 0.01
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "particle",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "ThermoDynamicIntegration" : true,
+      "TranslationProbability" : 1.0,
+      "ReinsertionProbability" : 0.25,
+      "WidomProbability" : 0.25,
+      "GibbsSwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : [128, 128]
+    }
+  ]
+}

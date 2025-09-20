@@ -1,5 +1,5 @@
 # Restart-files `RASPA`
-\page restart Restart
+\page restart Restart Files
 
 ## Writing restart-files
 
@@ -185,4 +185,4 @@ controls how often the file is written out. The default is every 5000 cycles.
 
 NOTE: the format of the binary-restart files will keep changing until version RASPA 3.1. 
 That means that you probably cannot use restart-files from a different version.
-After the release of RASPA 3.1 we will start the process of making them upwards-compatible.
+After the release of RASPA 3.1 we will start the process of making them backwards-compatible.
