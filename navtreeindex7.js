@@ -1,5 +1,6 @@
 var NAVTREEINDEX7 =
 {
+"structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb":[1,0,107,0,0],
 "structTransitionMatrix.html":[3,0,88],
 "structTransitionMatrix.html":[1,0,130,0],
 "structTransitionMatrix.html#a0c5695e1bce638313754a1878cfd3db1":[1,0,130,0,5],

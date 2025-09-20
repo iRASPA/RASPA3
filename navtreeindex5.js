@@ -1,5 +1,6 @@
 var NAVTREEINDEX5 =
 {
+"structMonteCarlo.html#a742ffab27a370392748419dba2579260":[3,0,57,36],
 "structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45":[1,0,72,0,13],
 "structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45":[3,0,57,13],
 "structMonteCarlo.html#a76ad739bb694d62fea00fe53193ac0ef":[1,0,72,0,28],
@@ -248,6 +249,5 @@ var NAVTREEINDEX5 =
 "structPseudoAtom.html#a39d393bf27ffb4e119044bc600d5b82c":[3,0,78,2],
 "structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1":[1,0,23,0,8],
 "structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1":[3,0,78,8],
-"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd":[1,0,23,0,5],
-"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd":[3,0,78,5]
+"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd":[1,0,23,0,5]
 };

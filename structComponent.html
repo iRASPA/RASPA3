@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.12</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -276,9 +276,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab675ce04de824243180efef21a37627f" id="r_ab675ce04de824243180efef21a37627f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ab675ce04de824243180efef21a37627f">computeRigidProperties</a> ()</td></tr>
 <tr class="memdesc:ab675ce04de824243180efef21a37627f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes rigid body properties of the component.  <br /></td></tr>
 <tr class="separator:ab675ce04de824243180efef21a37627f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb30d7b6098a231880a3accfe421eea8" id="r_afb30d7b6098a231880a3accfe421eea8"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#afb30d7b6098a231880a3accfe421eea8">computeCenterOfMass</a> (std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atom_list) const</td></tr>
-<tr class="memdesc:afb30d7b6098a231880a3accfe421eea8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the center of mass for a given list of atoms.  <br /></td></tr>
-<tr class="separator:afb30d7b6098a231880a3accfe421eea8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba3972c0e5176833a50afac3232ab9f5" id="r_aba3972c0e5176833a50afac3232ab9f5"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#aba3972c0e5176833a50afac3232ab9f5">computeCenterOfMass</a> (std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atom_list) const</td></tr>
+<tr class="memdesc:aba3972c0e5176833a50afac3232ab9f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the center of mass for a given list of atoms.  <br /></td></tr>
+<tr class="separator:aba3972c0e5176833a50afac3232ab9f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4844eea9d6cb81693bf406896cb4b212" id="r_a4844eea9d6cb81693bf406896cb4b212"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a4844eea9d6cb81693bf406896cb4b212">rotatePositions</a> (const simd_quatd &amp;q) const</td></tr>
 <tr class="memdesc:a4844eea9d6cb81693bf406896cb4b212"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotates the positions of all atoms using a given quaternion.  <br /></td></tr>
 <tr class="separator:a4844eea9d6cb81693bf406896cb4b212"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -462,11 +462,11 @@ std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>initialNumberO
 <tr class="separator:a185c14114d569e02eb4b493588e93521"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a87d07f60122d516125088573d89ec511" id="r_a87d07f60122d516125088573d89ec511"><td class="memItemLeft" align="right" valign="top"><a id="a87d07f60122d516125088573d89ec511" name="a87d07f60122d516125088573d89ec511"></a>
 <a class="el" href="structPropertyLambdaProbabilityHistogram.html">PropertyLambdaProbabilityHistogram</a>&#160;</td><td class="memItemRight" valign="bottom"><b>lambdaGC</b></td></tr>
-<tr class="memdesc:a87d07f60122d516125088573d89ec511"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Gibbs-Chebyshev integration. <br /></td></tr>
+<tr class="memdesc:a87d07f60122d516125088573d89ec511"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Grand-Canonical simulations. <br /></td></tr>
 <tr class="separator:a87d07f60122d516125088573d89ec511"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66b253ffc96d0e71f8bbf7af1c120722" id="r_a66b253ffc96d0e71f8bbf7af1c120722"><td class="memItemLeft" align="right" valign="top"><a id="a66b253ffc96d0e71f8bbf7af1c120722" name="a66b253ffc96d0e71f8bbf7af1c120722"></a>
 <a class="el" href="structPropertyLambdaProbabilityHistogram.html">PropertyLambdaProbabilityHistogram</a>&#160;</td><td class="memItemRight" valign="bottom"><b>lambdaGibbs</b></td></tr>
-<tr class="memdesc:a66b253ffc96d0e71f8bbf7af1c120722"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Gibbs integration. <br /></td></tr>
+<tr class="memdesc:a66b253ffc96d0e71f8bbf7af1c120722"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Gibbs simulations. <br /></td></tr>
 <tr class="separator:a66b253ffc96d0e71f8bbf7af1c120722"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32fe825d2bb33fc17242e6ddd5ae6d37" id="r_a32fe825d2bb33fc17242e6ddd5ae6d37"><td class="memItemLeft" align="right" valign="top"><a id="a32fe825d2bb33fc17242e6ddd5ae6d37" name="a32fe825d2bb33fc17242e6ddd5ae6d37"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasFractionalMolecule</b> {false}</td></tr>
@@ -910,8 +910,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="afb30d7b6098a231880a3accfe421eea8" name="afb30d7b6098a231880a3accfe421eea8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afb30d7b6098a231880a3accfe421eea8">&#9670;&#160;</a></span>computeCenterOfMass()</h2>
+<a id="aba3972c0e5176833a50afac3232ab9f5" name="aba3972c0e5176833a50afac3232ab9f5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aba3972c0e5176833a50afac3232ab9f5">&#9670;&#160;</a></span>computeCenterOfMass()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -919,7 +919,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
         <tr>
           <td class="memname">double3 Component::computeCenterOfMass </td>
           <td>(</td>
-          <td class="paramtype">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
           <td class="paramname"><em>atom_list</em></td><td>)</td>
           <td> const</td>
         </tr>

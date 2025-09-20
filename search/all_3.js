@@ -30,7 +30,7 @@ var searchData=
   ['componentid_27',['componentid',['../structAtom.html#a94ccc2d868f5aeed7d5fe0661e100cd6',1,'Atom::componentId'],['../structComponent.html#ab195974df594a98b373963364b8b47e2',1,'Component::componentId'],['../structMolecule.html#a0bed0ef407474fb6848a07ed3a8ce0c2',1,'Molecule::componentId']]],
   ['componentoptions_28',['componentOptions',['../structInputReader.html#a3abddfb4cd38f6a324d9d24ead0d5cf6',1,'InputReader']]],
   ['compressibility_29',['compressibility',['../structComponent.html#ace0191604306277b2543a9877f7d52ee',1,'Component']]],
-  ['computecenterofmass_30',['computeCenterOfMass',['../structComponent.html#afb30d7b6098a231880a3accfe421eea8',1,'Component']]],
+  ['computecenterofmass_30',['computeCenterOfMass',['../structComponent.html#aba3972c0e5176833a50afac3232ab9f5',1,'Component']]],
   ['computecomponentfluidproperties_31',['computeComponentFluidProperties',['../structEquationOfState.html#acd32e4e08e0efb2944a129abd398380e',1,'EquationOfState']]],
   ['computeconventionalradialdistributionfunction_32',['computeConventionalRadialDistributionFunction',['../structInputDataSystem.html#ac01a36a42b8c7f095f38d3d65e043d78',1,'InputDataSystem']]],
   ['computedensitygrid_33',['computeDensityGrid',['../structInputDataSystem.html#a6ec92ca52a9aedaf55cb51d2fe2f405f',1,'InputDataSystem']]],

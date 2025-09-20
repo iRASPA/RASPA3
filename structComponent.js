@@ -20,7 +20,7 @@ var structComponent =
     [ "Component", "structComponent.html#a8775db6d1a2c1afc2e77cd3c8f39da6f", null ],
     [ "Component", "structComponent.html#ac0cc8a11a8e2a80c5eef04d70d2a025b", null ],
     [ "Component", "structComponent.html#ac303a90b7c6154d499b8da6d368f6c7a", null ],
-    [ "computeCenterOfMass", "structComponent.html#afb30d7b6098a231880a3accfe421eea8", null ],
+    [ "computeCenterOfMass", "structComponent.html#aba3972c0e5176833a50afac3232ab9f5", null ],
     [ "computeRigidProperties", "structComponent.html#ab675ce04de824243180efef21a37627f", null ],
     [ "copiedAtoms", "structComponent.html#a6e6e2f26a4289a8d65e419b7051d6028", null ],
     [ "equilibratedMoleculeRandomInBox", "structComponent.html#ac9996efbabfef1236d2fbb1b866e8f26", null ],

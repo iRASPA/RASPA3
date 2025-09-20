@@ -39,9 +39,10 @@ var NAVTREE =
         [ "Examples Basic", "examples_basic.html", null ],
         [ "Examples Non-Basic", "examples_nonbasic.html", null ],
         [ "Examples Advanced", "examples_advanced.html", null ],
-        [ "Examples Auxillary", "examples_auxillary.html", null ]
+        [ "Examples Auxillary", "examples_auxillary.html", null ],
+        [ "Examples Reduced Units", "examples_reduced_units.html", null ]
       ] ],
-      [ "Restart", "restart.html", null ],
+      [ "Restart Files", "restart.html", null ],
       [ "FAQ", "FAQ.html", null ],
       [ "Appendix: Structure of the RASPA Code", "structure.html", null ]
     ] ],
@@ -68,13 +69,13 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_urey__bradley__potential.html",
+"module_units.html",
 "structChiralCenter.html",
 "structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb",
-"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caedd652c19d7dbbfb3d242aa14b2fec8c",
-"structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45",
-"structPseudoAtom.html#a532f144150cd44507a0307be6f4989eb",
-"structTransitionMatrix.html"
+"structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179cad81c6186e3dffb8aad87c0aec3bf644a",
+"structMonteCarlo.html#a742ffab27a370392748419dba2579260",
+"structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd",
+"structTorsionPotential.html#aea985e8aa33333acf9445abfcb8d31cb"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

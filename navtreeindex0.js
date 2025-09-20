@@ -11,8 +11,9 @@ var NAVTREEINDEX0 =
 "examples_auxillary.html":[0,5,3],
 "examples_basic.html":[0,5,0],
 "examples_nonbasic.html":[0,5,1],
-"functions.html":[3,2,0,0],
+"examples_reduced_units.html":[0,5,4],
 "functions.html":[3,2,0],
+"functions.html":[3,2,0,0],
 "functions_a.html":[3,2,0,1],
 "functions_b.html":[3,2,0,2],
 "functions_c.html":[3,2,0,3],
@@ -248,6 +249,5 @@ var NAVTREEINDEX0 =
 "module_tricubic__derivative__factor.html":[1,0,87],
 "module_tricubic__derivatives__external__field.html":[1,0,90],
 "module_triquintic__derivative__factor.html":[1,0,91],
-"module_triquintic__derivatives__external__field.html":[1,0,94],
-"module_units.html":[1,0,161]
+"module_triquintic__derivatives__external__field.html":[1,0,94]
 };
