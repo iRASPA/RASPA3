@@ -39,6 +39,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/1_particles_in_box_nvt/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/2_particles_in_box_nvt_cfcmc/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/3_gibbs/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/4_gibbs_cfcmc/run)
 
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
@@ -67,6 +69,26 @@ install(DIRECTORY advanced DESTINATION share/raspa3/examples
         PERMISSIONS OWNER_READ GROUP_READ)
 
 install(DIRECTORY advanced DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" 
+        PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY auxiliary DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" EXCLUDE
+        PERMISSIONS OWNER_READ GROUP_READ)
+
+install(DIRECTORY auxiliary DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" 
+        PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY reduced_units DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" EXCLUDE
+        PERMISSIONS OWNER_READ GROUP_READ)
+
+install(DIRECTORY reduced_units DESTINATION share/raspa3/examples 
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)

@@ -1,4 +1,8 @@
 {
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 4.0,
   "PseudoAtoms" :
   [
     {
@@ -18,8 +22,5 @@
       "type" : "lennard-jones",    
       "parameters" : [1.0, 1.0]
     }
-  ],
-  "MixingRule" : "Lorentz-Berthelot",
-  "TruncationMethod" : "truncated",
-  "TailCorrections" : true
+  ]
 }

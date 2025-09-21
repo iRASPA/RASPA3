@@ -1,9 +1,9 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
-  "NumberOfInitializationCycles" : 10000,
-  "NumberOfEquilibrationCycles" : 10000,
-  "PrintEvery" : 1000,
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 100000,
+  "NumberOfEquilibrationCycles" : 200000,
+  "PrintEvery" : 5000,
   "Units" : "Reduced",
   
   "Systems" : 
@@ -12,8 +12,7 @@
       "Type" : "Box",
       "BoxLengths" : [9.49914251593, 9.49914251593, 9.49914251593],
       "ExternalTemperature" : 1.2,
-      "ChargeMethod" : "None",
-      "CutOff" : 4.0
+      "ChargeMethod" : "None"
     }
   ],
 
@@ -26,8 +25,8 @@
       "FugacityCoefficient" : 1.0,
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 0.25,
-      "WidomProbability" : 0.25,
-      "CFCMC_CBMC_WidomProbability" : 0.25,
+      "WidomProbability" : 0.5,
+      "CFCMC_CBMC_WidomProbability" : 0.5,
       "CreateNumberOfMolecules" : 600
     }
   ]

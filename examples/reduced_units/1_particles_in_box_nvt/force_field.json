@@ -1,8 +1,12 @@
 {
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 4.0,
   "PseudoAtoms" :
   [
     {
-      "name" : "H",
+      "name" : "C",
       "framework": false,
       "print_to_output" : true,
       "element" : "H",  
@@ -14,12 +18,9 @@
   "SelfInteractions" : 
   [
     {
-      "name" : "H",
+      "name" : "C",
       "type" : "lennard-jones",    
       "parameters" : [1.0, 1.0]
     }
-  ],
-  "MixingRule" : "Lorentz-Berthelot",
-  "TruncationMethod" : "truncated",
-  "TailCorrections" : true
+  ]
 }

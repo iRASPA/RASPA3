@@ -1,7 +1,7 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
-  "NumberOfInitializationCycles" : 5000,
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 5000,
   "Units" : "Reduced",
   
@@ -12,7 +12,6 @@
       "BoxLengths" : [9.49914251593, 9.49914251593, 9.49914251593],
       "ExternalTemperature" : 1.2,
       "ChargeMethod" : "None",
-      "CutOff" : 4.0,
       "OutputPDBMovie" : false,
       "SampleMovieEvery" : 10
     }
@@ -25,7 +24,7 @@
       "MoleculeDefinition" : "ExampleDefinitions",
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 0.25,
-      "WidomProbability" : 0.25,
+      "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 600
     }
   ]
