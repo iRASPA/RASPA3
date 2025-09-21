@@ -288,7 +288,7 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     if (!index.has_value())
     {
       throw std::runtime_error(
-          std::format("[Component reader]: unknown pseudo-atom '{}', please lookup type in in 'pseudo_atoms.json'\n",
+          std::format("[Component reader]: unknown pseudo-atom '{}', please lookup type in in 'force_field.json'\n",
                       pseudoAtomName));
     }
     std::size_t pseudoAtomType = index.value();
