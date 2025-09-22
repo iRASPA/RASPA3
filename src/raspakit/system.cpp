@@ -3200,8 +3200,6 @@ void System::writeRestartFile()
 
     if(numberOfMoleculesPerComponent[component_id] > 0)
     {
-      const std::span<const Atom> atoms = spanOfIntegerAtomsOfComponent(component_id);
-
       positions = spanOfIntegerAtomsOfComponent(component_id)
                     | std::views::transform(&Atom::position) 
                     | std::ranges::to<std::vector>();

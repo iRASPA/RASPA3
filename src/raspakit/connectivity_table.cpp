@@ -203,11 +203,11 @@ bool ConnectivityTable::checkIsConnectedSubgraph(const std::vector<std::size_t> 
   char decompositionJobV = 'N';
   char upload = 'U';
   std::vector<double> work(9 * set.size());
-  blas_int lwork = 9 * set.size();
+  blas_int lwork = 9 * static_cast<blas_int>(set.size());
   std::vector<double> e = std::vector<double>(set.size());
   blas_int error = 0;
-  blas_int N = set.size();
-  blas_int M = set.size();
+  blas_int N = static_cast<blas_int>(set.size());
+  blas_int M = static_cast<blas_int>(set.size());
 
   dsyev_(&decompositionJobV, &upload, &M, laplacian_matrix.data(), &N, e.data(), work.data(), &lwork, &error);
 

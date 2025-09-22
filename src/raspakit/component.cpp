@@ -1370,7 +1370,7 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
     }
   }
 
-  for(const std::vector<std::size_t> config_move : config_moves)
+  for(const std::vector<std::size_t> &config_move : config_moves)
   {
     if(!connectivityTable.checkIsConnectedSubgraph(config_move))
     {
@@ -1379,7 +1379,7 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
     }
   }
 
-  for(const std::vector<std::size_t> config_move : config_moves)
+  for(const std::vector<std::size_t> &config_move : config_moves)
   {
     std::vector<std::size_t> beads_already_placed = config_move;
 
