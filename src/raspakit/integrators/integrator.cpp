@@ -37,8 +37,6 @@ RunningEnergy Integrators::velocityVerlet(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> numberOfMoleculesPerComponent)
 {
-  // Start timing the integration step
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // apply thermo for temperature control
   if (thermostat.has_value())
@@ -49,6 +47,10 @@ RunningEnergy Integrators::velocityVerlet(
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculePositions, scaling);
   }
+
+  // Start timing the integration step
+  // NOTE: moved from first statement to here as workaround for parsing error in llvm 21.1.1
+  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // evolve the positions a half timestep
   updateVelocities(moleculePositions, 0.5 * dt);
