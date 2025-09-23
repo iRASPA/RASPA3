@@ -123,7 +123,8 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics(
 {
   std::ostringstream stream;
 
-  std::print(stream, "Integrators CPU Time Statistics:\n\n");
+  std::print(stream, "Integrators CPU Time Statistics:\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
 
   std::print(stream, "Compute Translational Kinetic Energy: {:14f} [s]\n", computeTranslationalKineticEnergy.count());
   std::print(stream, "Compute Rotational Kinetic Energy:    {:14f} [s]\n", computeRotationalKineticEnergy.count());

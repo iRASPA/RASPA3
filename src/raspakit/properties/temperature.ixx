@@ -44,6 +44,8 @@ export struct PropertyTemperature
   std::size_t numberOfBlocks;
   std::vector<std::pair<double, double>> bookKeepingTemperature;
 
+  std::string writeAveragesStatistics(const std::string tag);
+
   inline void addSample(std::size_t blockIndex, const double &temperature, const double &weight)
   {
     bookKeepingTemperature[blockIndex].first += weight * temperature;

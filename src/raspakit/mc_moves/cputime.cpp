@@ -256,11 +256,6 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
   std::print(stream, "\n");
   std::print(stream, "Property sampling               {:14f} [s]\n", propertySampling.count());
   std::print(stream, "Energy/pressure sampling:       {:14f} [s]\n", energyPressureComputation.count());
-  std::print(stream, "Pressure sampling: (fw)         {:14f} [s]\n", pressureFrameworkTime.count());
-  std::print(stream, "Pressure sampling: (im)         {:14f} [s]\n", pressureIntermolecularTime.count());
-  std::print(stream, "Pressure sampling: (ew)         {:14f} [s]\n", pressureEwaldTime.count());
-  std::print(stream, "Pressure sampling: (tc)         {:14f} [s]\n", pressureTailTime.count());
-  std::print(stream, "Pressure sampling: (..)         {:14f} [s]\n", pressureRestTime.count());
   std::print(stream, "\n\n");
 
   return stream.str();

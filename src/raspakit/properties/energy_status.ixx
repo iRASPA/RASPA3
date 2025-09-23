@@ -44,7 +44,10 @@ export struct EnergyStatus
         frameworkComponentEnergies(std::vector<EnergyInter>(std::max(1uz, numberOfFrameworks) * numberOfComponents)),
         interComponentEnergies(std::vector<EnergyInter>(numberOfComponents * numberOfComponents)),
         polarizationEnergy(0.0, 0.0),
-        dUdlambda(0.0)
+        dUdlambda(0.0),
+        translationalKineticEnergy(0.0),
+        rotationalKineticEnergy(0.0),
+        noseHooverEnergy(0.0)
   {
   }
 
@@ -78,6 +81,9 @@ export struct EnergyStatus
     totalEnergy = Potentials::EnergyFactor(0.0, 0.0);
     polarizationEnergy = Potentials::EnergyFactor(0.0, 0.0);
     dUdlambda = 0.0;
+    translationalKineticEnergy = 0.0;
+    rotationalKineticEnergy = 0.0;
+    noseHooverEnergy = 0.0;
     intraEnergy.zero();
     externalFieldMoleculeEnergy.zero();
     frameworkMoleculeEnergy.zero();
@@ -114,7 +120,7 @@ export struct EnergyStatus
       interEnergy += interComponentEnergies[i];
     }
     totalEnergy = intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
-                  interEnergy.total() + polarizationEnergy;
+                  interEnergy.total() + polarizationEnergy + Potentials::EnergyFactor(translationalKineticEnergy + rotationalKineticEnergy + noseHooverEnergy, 0.0);
   }
 
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
@@ -124,6 +130,9 @@ export struct EnergyStatus
     totalEnergy += b.totalEnergy;
     polarizationEnergy += b.polarizationEnergy;
     dUdlambda += b.dUdlambda;
+    translationalKineticEnergy += b.translationalKineticEnergy;
+    rotationalKineticEnergy += b.rotationalKineticEnergy;
+    noseHooverEnergy += b.noseHooverEnergy;
     intraEnergy += b.intraEnergy;
     externalFieldMoleculeEnergy += b.externalFieldMoleculeEnergy;
     frameworkMoleculeEnergy += b.frameworkMoleculeEnergy;
@@ -153,6 +162,9 @@ export struct EnergyStatus
     totalEnergy -= b.totalEnergy;
     polarizationEnergy -= b.polarizationEnergy;
     dUdlambda -= b.dUdlambda;
+    translationalKineticEnergy -= b.translationalKineticEnergy;
+    rotationalKineticEnergy -= b.rotationalKineticEnergy;
+    noseHooverEnergy -= b.noseHooverEnergy;
     intraEnergy -= b.intraEnergy;
     externalFieldMoleculeEnergy -= b.externalFieldMoleculeEnergy;
     frameworkMoleculeEnergy -= b.frameworkMoleculeEnergy;
@@ -183,6 +195,9 @@ export struct EnergyStatus
     v.totalEnergy = -totalEnergy;
     v.polarizationEnergy = -polarizationEnergy;
     v.dUdlambda = -dUdlambda;
+    v.translationalKineticEnergy = -translationalKineticEnergy;
+    v.rotationalKineticEnergy = -rotationalKineticEnergy;
+    v.noseHooverEnergy = -noseHooverEnergy;
     v.intraEnergy = -intraEnergy;
     v.externalFieldMoleculeEnergy = -externalFieldMoleculeEnergy;
     v.frameworkMoleculeEnergy = -frameworkMoleculeEnergy;
@@ -222,6 +237,9 @@ export struct EnergyStatus
   std::vector<EnergyInter> interComponentEnergies;
   Potentials::EnergyFactor polarizationEnergy;
   double dUdlambda;
+  double translationalKineticEnergy;
+  double rotationalKineticEnergy;
+  double noseHooverEnergy;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyStatus& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyStatus& e);
@@ -233,6 +251,9 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
   m.totalEnergy = a.totalEnergy + b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy + b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
+  m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
+  m.noseHooverEnergy = a.noseHooverEnergy + b.noseHooverEnergy;
   m.intraEnergy = a.intraEnergy + b.intraEnergy;
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy + b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy + b.frameworkMoleculeEnergy;
@@ -263,6 +284,9 @@ export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& 
   m.totalEnergy = a.totalEnergy - b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy - b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda - b.dUdlambda;
+  m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
+  m.noseHooverEnergy = a.noseHooverEnergy - b.noseHooverEnergy;
   m.intraEnergy = a.intraEnergy - b.intraEnergy;
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy - b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy - b.frameworkMoleculeEnergy;
@@ -293,6 +317,9 @@ export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& 
   m.totalEnergy = a.totalEnergy * b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy * b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda * b.dUdlambda;
+  m.translationalKineticEnergy = a.translationalKineticEnergy * b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy * b.rotationalKineticEnergy;
+  m.noseHooverEnergy = a.noseHooverEnergy * b.noseHooverEnergy;
   m.intraEnergy = a.intraEnergy * b.intraEnergy;
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy * b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy * b.frameworkMoleculeEnergy;
@@ -323,6 +350,9 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
   m.totalEnergy = a * b.totalEnergy;
   m.polarizationEnergy = a * b.polarizationEnergy;
   m.dUdlambda = a * b.dUdlambda;
+  m.translationalKineticEnergy = a * b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
+  m.noseHooverEnergy = a * b.noseHooverEnergy;
   m.intraEnergy = a * b.intraEnergy;
   m.externalFieldMoleculeEnergy = a * b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a * b.frameworkMoleculeEnergy;
@@ -353,6 +383,9 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
   m.totalEnergy = a.totalEnergy / b;
   m.polarizationEnergy = a.polarizationEnergy / b;
   m.dUdlambda = a.dUdlambda / b;
+  m.translationalKineticEnergy = a.translationalKineticEnergy / b;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy / b;
+  m.noseHooverEnergy = a.noseHooverEnergy / b;
   m.intraEnergy = a.intraEnergy / b;
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy / b;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy / b;
@@ -383,6 +416,9 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
   m.totalEnergy = sqrt(a.totalEnergy);
   m.polarizationEnergy = sqrt(a.polarizationEnergy);
   m.dUdlambda = std::sqrt(a.dUdlambda);
+  m.translationalKineticEnergy = std::sqrt(a.translationalKineticEnergy);
+  m.rotationalKineticEnergy = std::sqrt(a.rotationalKineticEnergy);
+  m.noseHooverEnergy = std::sqrt(a.noseHooverEnergy);
   m.intraEnergy = sqrt(a.intraEnergy);
   m.externalFieldMoleculeEnergy = sqrt(a.externalFieldMoleculeEnergy);
   m.frameworkMoleculeEnergy = sqrt(a.frameworkMoleculeEnergy);

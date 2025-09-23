@@ -608,19 +608,16 @@ void MolecularDynamics::output()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    std::print(stream, "Monte-Carlo moves statistics\n");
-    std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "                             Simulation finished!\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "\n");
 
-    std::print(stream, "{}", system.writeMCMoveStatistics());
+      std::string status_line{std::format("Final state after {} cycles\n\n", numberOfCycles)};
 
-    std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}\n", countTotal.writeMCMoveStatistics(numberOfSteps));
-
-    std::print(stream, "\n\n");
-
-    std::print(stream, "Production run CPU timings of the MC moves\n");
+    std::print(stream, "Production run CPU timings of the MD simulation\n");
     std::print(stream, "===============================================================================\n\n");
 
     for (const Component& component : system.components)
@@ -629,17 +626,18 @@ void MolecularDynamics::output()
                  component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
-    std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics());
-
-    std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
-
-    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
+    std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics(totalSimulationTime));
     std::print(stream, "\n\n");
 
     std::print(
         stream, "{}",
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+
+    std::print(stream, "Temperature averages and statistics:\n");
+    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "{}", system.averageTemperature.writeAveragesStatistics("Total"));
+    std::print(stream, "{}", system.averageTranslationalTemperature.writeAveragesStatistics("Translational"));
+    std::print(stream, "{}", system.averageRotationalTemperature.writeAveragesStatistics("Rotational"));
 
     if (!(system.framework.has_value() && system.framework->rigid))
     {

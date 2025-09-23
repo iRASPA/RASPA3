@@ -715,6 +715,8 @@ Average pressure tensor:
 
 #### Molecular Dynamics: methane in box (msd)<a name="Example_basic_5"></a>
 
+A molecular dynamics run of a methane fluid at 300K and a density of 98.7 kg / m3. As no `TimeStep` is specified in the `simulation.json` the default value of `timeStep = 5e-4` is used. We measure the MSD by setting ComputeMSD to true
+
 ```json
 {
   "SimulationType" : "MolecularDynamics",
@@ -748,6 +750,152 @@ Average pressure tensor:
   ]
 }
 ```
+
+We measure the average energies, which is just the Van der Waals contribution as methane is modelled as an uncharged, unpolarized point particle.
+
+```
+Energy averages and statistics:
+===============================================================================
+
+Inter-molecular energy contributions per energy type:
+-------------------------------------------------------------------------------
+
+    Van der Waals energy/kʙ 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] -1.845790e+04
+        Block[  1] -1.833565e+04
+        Block[  2] -1.835129e+04
+        Block[  3] -1.856717e+04
+        Block[  4] -1.820499e+04
+        -----------------------------------------------------------------------
+        Average  -1.838340e+04 +/-  1.693840e+02 [K]
+
+...
+
+
+Kinetic Energies:
+-------------------------------------------------------------------------------
+
+    Translational Kinetic energy/kʙ
+    ---------------------------------------------------------------------------
+        Block[  0]  4.455050e+04
+        Block[  1]  4.455015e+04
+        Block[  2]  4.454971e+04
+        Block[  3]  4.455030e+04
+        Block[  4]  4.455015e+04
+        -----------------------------------------------------------------------
+        Average   4.455016e+04 +/-  3.642679e-01 [K]
+
+    Rotational Kinetic energy/kʙ
+    ---------------------------------------------------------------------------
+        Block[  0]  0.000000e+00
+        Block[  1]  0.000000e+00
+        Block[  2]  0.000000e+00
+        Block[  3]  0.000000e+00
+        Block[  4]  0.000000e+00
+        -----------------------------------------------------------------------
+        Average   0.000000e+00 +/-  0.000000e+00 [K]
+
+    Nose Hoover energy/kʙ
+    ---------------------------------------------------------------------------
+        Block[  0] -8.475074e+01
+        Block[  1] -3.162406e+02
+        Block[  2] -1.737929e+02
+        Block[  3] -1.862179e+02
+        Block[  4] -2.077868e+01
+        -----------------------------------------------------------------------
+        Average  -1.563561e+02 +/-  1.391706e+02 [K]
+
+...
+
+Total energy/kʙ
+-------------------------------------------------------------------------------
+    Block[  0] -1.845790e+04
+    Block[  1] -1.833565e+04
+    Block[  2] -1.835129e+04
+    Block[  3] -1.856717e+04
+    Block[  4] -1.820499e+04
+    ---------------------------------------------------------------------------
+    Average  -1.838340e+04 +/-  1.693840e+02 [K]
+```
+
+And we measure the pressure
+
+```
+Pressure averages and statistics:
+===============================================================================
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.3030e+02 -9.7982e-02  5.0615e-01 +/- 1.0480e+00 9.4374e-01 6.2455e-01 [bar]
+-9.7982e-02  1.2941e+02 -7.9968e-02 +/- 9.4374e-01 1.1444e+00 8.8396e-01 [bar]
+ 5.0615e-01 -7.9968e-02  1.2939e+02 +/- 6.2455e-01 8.8396e-01 1.7600e+00 [bar]
+
+    Block[  0]  1.534056e+07
+    Block[  1]  1.534056e+07
+    Block[  2]  1.534056e+07
+    Block[  3]  1.534056e+07
+    Block[  4]  1.534056e+07
+    ---------------------------------------------------------------------------
+    Ideal gas pressure   1.534056e+07 +/-  0.000000e+00 [Pa]
+                         1.534056e+02 +/-  0.000000e+00 [bar]
+
+
+    Block[  0] -2.345817e+06
+    Block[  1] -2.411870e+06
+    Block[  2] -2.256290e+06
+    Block[  3] -2.457657e+06
+    Block[  4] -2.380705e+06
+    ---------------------------------------------------------------------------
+    Excess pressure  -2.370468e+06 +/-  9.427166e+04 [Pa]
+                     -2.370468e+01 +/-  9.427166e-01 [bar]
+
+
+    Block[  0]  1.299474e+07
+    Block[  1]  1.292869e+07
+    Block[  2]  1.308427e+07
+    Block[  3]  1.288290e+07
+    Block[  4]  1.295985e+07
+    ---------------------------------------------------------------------------
+    Pressure average   1.297009e+07 +/-  9.427166e+04 [Pa]
+                       1.297009e+02 +/-  9.427166e-01 [bar]
+```
+
+As we have also measured the MSD we can now plot the MSD over time and check the dynamics. We can see the ballistic regime, where the MSD scales with \f$t^2\f$ and the diffusive regime where the MSD scales with \f$t\f$. 
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams["font.size"] = 16
+mpl.rcParams["figure.figsize"] = (8, 6)
+
+msd = np.genfromtxt('msd/msd_self_methane.s0.txt')
+
+fig, ax = plt.subplots()
+ax.plot(msd[:, 0], msd[:, 1], label=r'$\langle | \mathbf{q}(t) - \mathbf{q}_0 |^2 \rangle$')
+ax.plot(msd[:, 0], msd[:, 2], label=r'$\langle | x(t) - x_0 |^2 \rangle$')
+ax.plot(msd[:, 0], msd[:, 3], label=r'$\langle | y(t) - y_0 |^2 \rangle$')
+ax.plot(msd[:, 0], msd[:, 4], label=r'$\langle | z(t) - z_0 |^2 \rangle$')
+
+x1 = np.logspace(0.5, 2.5, 5)
+ax.plot(x1, 1e2 * x1, c='black', ls='--')
+ax.annotate(r"$\sim D_0 t$", (1e1, 6e3))
+
+x2 = np.logspace(-2.2, -0.2, 5)
+ax.plot(x2, 1e2*x2**(2), c='black', ls='--')
+ax.annotate(r"$\sim D_0 t^2$", (2e-2, 1e0))
+
+ax.legend()
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel(r"Time, $t$ / ps")
+ax.set_ylabel(r"MSD / $\mathrm{\AA}^2$")
+plt.savefig('example_basic_5_msd.png')
+```
+
+\image html example_basic_5_msd.png
+\image latex example_basic_5_msd.png
 
 #### Monte Carlo: enthalpy of adsorption of methane in MFI at zero loading<a name="Example_basic_6"></a>
 

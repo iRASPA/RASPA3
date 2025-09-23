@@ -466,7 +466,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
     }
   }
 
-  std::print(stream, "Intra-molecular energyes per energy type:\n");
+  std::print(stream, "Intra-molecular energies per energy type:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n\n");
 
   for (std::size_t k = 0; k < components.size(); k++)
@@ -725,9 +725,53 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
   }
   std::print(stream, "\n");
 
+  double prefactor = Units::EnergyToKelvin;
+
+  std::print(stream, "Kinetic Energies:\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n\n");
+  std::print(stream, "    Translational Kinetic energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
+  {
+    EnergyStatus blockAverage = averagedEnergy(i);
+    std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.translationalKineticEnergy);
+  }
+  std::print(stream, "        -----------------------------------------------------------------------\n");
+  std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
+             prefactor * computedAverage.first.translationalKineticEnergy,
+             prefactor * computedAverage.second.translationalKineticEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "\n");
+
+  std::print(stream, "    Rotational Kinetic energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
+  {
+    EnergyStatus blockAverage = averagedEnergy(i);
+    std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.rotationalKineticEnergy);
+  }
+  std::print(stream, "        -----------------------------------------------------------------------\n");
+  std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
+             prefactor * computedAverage.first.rotationalKineticEnergy,
+             prefactor * computedAverage.second.rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "\n");
+
+
+  std::print(stream, "    Nose Hoover energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
+  {
+    EnergyStatus blockAverage = averagedEnergy(i);
+    std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.noseHooverEnergy);
+  }
+  std::print(stream, "        -----------------------------------------------------------------------\n");
+  std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
+             prefactor * computedAverage.first.noseHooverEnergy,
+             prefactor * computedAverage.second.noseHooverEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "\n");
+
+
   std::print(stream, "Polarization energy{}\n", Units::displayedUnitOfEnergyConversionString);
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  double prefactor = Units::EnergyToKelvin;
   for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
   {
     EnergyStatus blockAverage = averagedEnergy(i);

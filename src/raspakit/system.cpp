@@ -1213,12 +1213,10 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "Kinetic energy:     {: .6e}\n",
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
-  std::print(stream, "Conserved energy:   {: .6e}\n", conservedEnergy);
+  std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
   double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
-
-  stream << runningEnergies.printMD();
 
   std::print(stream, "\n");
 
@@ -1493,7 +1491,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Kinetic energy:     {: .6e}\n",
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
-  std::print(stream, "Conserved energy:   {: .6e}\n", conservedEnergy);
+  std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
   double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
@@ -2016,6 +2014,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
       spanOfMoleculeAtoms());
+
+  pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
+  pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
+  pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));
