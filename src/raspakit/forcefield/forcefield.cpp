@@ -706,7 +706,7 @@ void ForceField::applyMixingRule()
         for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
           if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+              data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
           {
             double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
                                     data[j * numberOfPseudoAtoms + j].parameters.x);
@@ -729,7 +729,7 @@ void ForceField::applyMixingRule()
         for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
           if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+              data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
           {
             double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
                                     data[j * numberOfPseudoAtoms + j].parameters.x);
@@ -747,6 +747,24 @@ void ForceField::applyMixingRule()
         }
       }
       break;
+  }
+
+  // set all interactions without interaction energy or length to none interactions
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
+    {
+      if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+           (data[i * numberOfPseudoAtoms + i].parameters.x == 0.0 ||
+            data[i * numberOfPseudoAtoms + i].parameters.y == 0.0)) ||
+          (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones &&
+           (data[j * numberOfPseudoAtoms + j].parameters.x == 0.0 ||
+            data[j * numberOfPseudoAtoms + j].parameters.y == 0.0)))
+      {
+        data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+        data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+      }
+    }
   }
 }
 
