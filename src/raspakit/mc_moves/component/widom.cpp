@@ -45,7 +45,7 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 
-std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
+double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
 {
   std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   MoveTypes move = MoveTypes::Widom;
@@ -73,14 +73,14 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   system.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
 
   // If molecule growth failed, terminate the move.
-  if (!growData) return {0.0, 0.0};
+  if (!growData) return 0.0;
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   // Check if the new molecule is inside blocked pockets; if so, abort the move.
   if (system.insideBlockedPockets(component, newMolecule))
   {
-    return {0.0, 0.0};
+    return 0.0;
   }
 
   // Update statistics for successfully constructed molecules.
@@ -115,5 +115,5 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
-  return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, 0.0};
+  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 }

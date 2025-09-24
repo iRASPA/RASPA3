@@ -1161,10 +1161,10 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case MoveTypes::Widom:
     {
-      std::pair<double, double> value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
+      double value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
       selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(
-          currentBlock, value.first, 2.0 * value.second, selectedSystem.weight());
+          currentBlock, value, selectedSystem.weight());
       break;
     }
     case MoveTypes::WidomCFCMC:

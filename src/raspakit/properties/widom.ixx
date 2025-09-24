@@ -25,18 +25,17 @@ import archive;
 import int3;
 import averages;
 
+
 export struct PropertyWidom
 {
   struct BookKeeping
   {
     double RosenbluthValue;
-    double tailCorrection;
     double count;
 
     friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BookKeeping &w)
     {
       archive << w.RosenbluthValue;
-      archive << w.tailCorrection;
       archive << w.count;
 
       return archive;
@@ -45,19 +44,18 @@ export struct PropertyWidom
     friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BookKeeping &w)
     {
       archive >> w.RosenbluthValue;
-      archive >> w.tailCorrection;
       archive >> w.count;
 
       return archive;
     }
   };
 
+  PropertyWidom();
+
   inline static BookKeeping pair_acc_widom(const BookKeeping &lhs, const BookKeeping &rhs)
   {
-    return {lhs.RosenbluthValue + rhs.RosenbluthValue, lhs.tailCorrection + rhs.tailCorrection, lhs.count + rhs.count};
+    return {lhs.RosenbluthValue + rhs.RosenbluthValue, lhs.count + rhs.count};
   }
-
-  PropertyWidom();
 
   PropertyWidom(std::size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingWidom(numberOfBlocks), bookKeepingDensity(numberOfBlocks)
@@ -78,10 +76,9 @@ export struct PropertyWidom
   std::string writeAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
                                                        std::optional<double> imposedFugacity) const;
 
-  inline void addWidomSample(std::size_t blockIndex, double WidomValue, double tailCorrection, double weight)
+  inline void addWidomSample(std::size_t blockIndex, double WidomValue, double weight)
   {
     bookKeepingWidom[blockIndex].RosenbluthValue += weight * WidomValue;
-    bookKeepingWidom[blockIndex].tailCorrection += weight * tailCorrection;
     bookKeepingWidom[blockIndex].count += weight;
   }
 
@@ -89,54 +86,6 @@ export struct PropertyWidom
   {
     bookKeepingDensity[blockIndex].first += weight * density;
     bookKeepingDensity[blockIndex].second += weight;
-  }
-
-  //====================================================================================================================
-
-  double averagedChemicalPotentialTailCorrection(std::size_t blockIndex) const
-  {
-    return bookKeepingWidom[blockIndex].tailCorrection / bookKeepingWidom[blockIndex].count;
-  }
-
-  double averagedChemicalPotentialTailCorrection() const
-  {
-    std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      summedBlocks.first += bookKeepingWidom[blockIndex].tailCorrection;
-      summedBlocks.second += bookKeepingWidom[blockIndex].count;
-    }
-
-    return summedBlocks.first / summedBlocks.second;
-  }
-
-  std::pair<double, double> averageChemicalPotentialTailCorrection() const
-  {
-    double average = averagedChemicalPotentialTailCorrection();
-
-    double sumOfSquares = 0.0;
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingWidom[blockIndex].count / bookKeepingWidom[0].count > 0.5)
-      {
-        double value = averagedChemicalPotentialTailCorrection(blockIndex) - average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-
-    double confidenceIntervalError = 0.0;
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
   }
 
   //====================================================================================================================
@@ -326,8 +275,7 @@ export struct PropertyWidom
 
   std::pair<double, double> averageTotalChemicalPotential(double beta) const
   {
-    double average = averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) +
-                     averagedChemicalPotentialTailCorrection();
+    double average = averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     std::size_t numberOfSamples = 0;
@@ -336,9 +284,8 @@ export struct PropertyWidom
       if (bookKeepingWidom[blockIndex].count / bookKeepingWidom[0].count > 0.5)
       {
         double value =
-            (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta) +
-             averagedChemicalPotentialTailCorrection(blockIndex)) -
-            average;
+            (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta)) -
+             average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
@@ -359,9 +306,7 @@ export struct PropertyWidom
 
   std::pair<double, double> averageFugacity(double beta) const
   {
-    double average = std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) +
-                                      averagedChemicalPotentialTailCorrection())) /
-                     beta;
+    double average = std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta))) / beta;
 
     double sumOfSquares = 0.0;
     std::size_t numberOfSamples = 0;
@@ -371,7 +316,7 @@ export struct PropertyWidom
       {
         double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
                                         averagedIdealGasChemicalPotential(
-                                            blockIndex, beta + averagedChemicalPotentialTailCorrection(blockIndex)))) /
+                                            blockIndex, beta))) /
                            beta -
                        average;
         sumOfSquares += value * value;
