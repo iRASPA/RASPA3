@@ -9,9 +9,11 @@ module;
 #include <fstream>
 #include <map>
 #include <print>
+#include <format>
 #include <ranges>
 #include <source_location>
 #include <vector>
+#include <ostream>
 #endif
 
 module property_temperature;
@@ -22,6 +24,7 @@ import std;
 
 import archive;
 import units;
+import stringutils;
 
 std::string PropertyTemperature::writeAveragesStatistics(const std::string tag)
 {
