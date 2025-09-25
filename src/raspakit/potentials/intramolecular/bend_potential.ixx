@@ -5,17 +5,17 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <format>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <print>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
-#include <vector>
-#include <optional>
-#include <format>
-#include <string_view>
 #include <utility>
+#include <vector>
 #endif
 
 export module bend_potential;
@@ -130,7 +130,9 @@ export struct BendPotential
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc,
                          const std::optional<const double3> &posD) const;
 
-  std::tuple<double, std::array<double3, 3>, double3x3> potentialEnergyGradientStrain(const double3 &posA, const double3 &posB, const double3 &posC) const;
+  std::tuple<double, std::array<double3, 3>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                      const double3 &posB,
+                                                                                      const double3 &posC) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BendPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BendPotential &b);

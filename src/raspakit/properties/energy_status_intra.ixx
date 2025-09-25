@@ -61,8 +61,9 @@ export struct EnergyIntra
 
   inline Potentials::EnergyFactor total() const
   {
-    return Potentials::EnergyFactor(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + 
-                                    bondBond + bondBend + bondTorsion + bendBend + bendTorsion + vanDerWaals + coulomb,
+    return Potentials::EnergyFactor(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
+                                        improperTorsion + bondBond + bondBend + bondTorsion + bendBend + bendTorsion +
+                                        vanDerWaals + coulomb,
                                     0.0);
   }
 

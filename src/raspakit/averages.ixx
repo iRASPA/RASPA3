@@ -96,7 +96,7 @@ export inline std::pair<double, double> meanConfidence(std::vector<double> &data
 export struct BlockErrorEstimation
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
-  
+
   std::size_t numberOfBins{};          ///< Total number of bins.
   std::size_t currentSample{0};        ///< Current sample index.
   std::size_t numberOfSamples;         ///< Total number of samples.

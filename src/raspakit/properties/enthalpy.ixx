@@ -80,8 +80,9 @@ export struct PropertyEnthalpy
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
-          std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) > 0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second /
+              std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) >
+          0.5)
       {
         average += averagedEnthalpy(blockIndex);
         ++numberOfSamples;
@@ -98,8 +99,9 @@ export struct PropertyEnthalpy
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
-          std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) > 0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second /
+              std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) >
+          0.5)
       {
         EnthalpyOfAdsorption value = averagedEnthalpy(blockIndex) - average;
         sumOfSquares += value * value;
@@ -123,12 +125,13 @@ export struct PropertyEnthalpy
   {
     std::vector<double> enthalpy(numberOfBlocks);
 
-    std::transform(
-        bookKeepingEnthalpyOfAdsorptionTerms.begin(), bookKeepingEnthalpyOfAdsorptionTerms.end(), enthalpy.begin(),
-        [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block)
-        {
-          return Units::EnergyToKelvin * ((block.first / std::max(1.0, block.second)).compositeProperty().values[k] - idealGasTerm);
-        });
+    std::transform(bookKeepingEnthalpyOfAdsorptionTerms.begin(), bookKeepingEnthalpyOfAdsorptionTerms.end(),
+                   enthalpy.begin(),
+                   [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block)
+                   {
+                     return Units::EnergyToKelvin *
+                            ((block.first / std::max(1.0, block.second)).compositeProperty().values[k] - idealGasTerm);
+                   });
     return enthalpy;
   }
 

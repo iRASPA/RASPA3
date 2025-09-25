@@ -163,11 +163,9 @@ export struct Component
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
   Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
-            double w, std::vector<Atom> definedAtoms, 
-            const ConnectivityTable &connectivityTable,
-            const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
-            std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
-            const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
+            double w, std::vector<Atom> definedAtoms, const ConnectivityTable &connectivityTable,
+            const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
+            std::size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
@@ -207,12 +205,12 @@ export struct Component
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
-  double3 inertiaVector{};           ///< Inertia vector of the component.
-  double3 inverseInertiaVector{};    ///< Inverse of the inertia vector.
-  Shape shapeType;                   ///< Shape type of the molecule.
-  std::vector<Atom> atoms{};         ///< List of atoms in the component.
-  
-  ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
+  double3 inertiaVector{};         ///< Inertia vector of the component.
+  double3 inverseInertiaVector{};  ///< Inverse of the inertia vector.
+  Shape shapeType;                 ///< Shape type of the molecule.
+  std::vector<Atom> atoms{};       ///< List of atoms in the component.
+
+  ConnectivityTable connectivityTable{};                            ///< Connectivity table for the component.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
   std::vector<Atom> grownAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
@@ -230,9 +228,8 @@ export struct Component
   std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
   PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
- 
+
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
- 
 
   MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
   double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].
@@ -242,7 +239,6 @@ export struct Component
   std::size_t columnPressure{0};  ///< Column index for pressure data.
   std::size_t columnLoading{1};   ///< Column index for loading data.
   std::size_t columnError{2};     ///< Column index for error data.
-
 
   /**
    * \brief Enumeration of pressure scaling types.
@@ -254,8 +250,6 @@ export struct Component
   };
 
   PressureScale pressureScale{PressureScale::Log};  ///< Pressure scaling type.
-
-
 
   /**
    * \brief Reads component data from a file.
@@ -374,18 +368,18 @@ export struct Component
                                                 simd_quatd rotation) const;
 
   ConnectivityTable readConnectivityTable(std::size_t size,
-            const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+                                          const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   std::vector<BondPotential> readBondPotentials(const ForceField &forceField,
-                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+                                                const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<BendPotential> readBendPotentials(const ForceField &forceField,
-                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+                                                const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<TorsionPotential> readTorsionPotentials(const ForceField &forceField,
-                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
-  std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(const ForceField &forceField,
-                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+                                                      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(
+      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
-                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);

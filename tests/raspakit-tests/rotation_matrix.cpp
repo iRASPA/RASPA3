@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <numbers>
+#include <print>
 #include <span>
 #include <vector>
-#include <print>
-#include <numbers>
 
 import int3;
 import double3;
@@ -36,9 +36,9 @@ TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {40}, 5);
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 
-  for(std::size_t i = 0; i != 40; ++i)
+  for (std::size_t i = 0; i != 40; ++i)
   {
     double3 com = system.moleculeData[i].centerOfMassPosition;
 
@@ -46,30 +46,31 @@ TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
     std::size_t numberOfAtoms = system.moleculeData[i].numberOfAtoms;
 
     std::vector<double3> positions(numberOfAtoms);
-    for(std::size_t j = 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
-      positions[j] = atomPositions[atomIndex + j].position;
+      positions[j] = atomData[atomIndex + j].position;
     }
 
     std::vector<double3> reference_positions(numberOfAtoms);
 
-    for(std::size_t j = 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
       reference_positions[j] = c.atoms[j].position;
     }
 
     // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
-    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions, double3{0.0, 0.0, 0.0}, reference_positions);
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions,
+                                                                 double3{0.0, 0.0, 0.0}, reference_positions);
 
     simd_quatd computed_quaternion = rotation_matrix.quaternion();
 
-    double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse( computed_quaternion);
+    double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse(computed_quaternion);
 
-    for(std::size_t j = 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.x, (com + finalRotationMatrix * c.atoms[j].position).x, 1e-6);
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.y, (com + finalRotationMatrix * c.atoms[j].position).y, 1e-6);
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.z, (com + finalRotationMatrix * c.atoms[j].position).z, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.x, (com + finalRotationMatrix * c.atoms[j].position).x, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.y, (com + finalRotationMatrix * c.atoms[j].position).y, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.z, (com + finalRotationMatrix * c.atoms[j].position).z, 1e-6);
     }
   }
 }
@@ -99,13 +100,13 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
                            Atom(double3(0.00000, -0.06461, 0.00000), -0.84760, 1.0, 0, 0, 0, false, false),
                            Atom(double3(0.81649, 0.51275, 0.00000), 0.42380, 1.0, 0, 1, 0, false, false),
                            Atom(double3(-0.81649, 0.51275, 0.00000), 0.42380, 1.0, 0, 1, 0, false, false)},
-                           {}, {}, 5, 21);
+                          {}, {}, 5, 21);
 
   System system = System(0, forceField, box, 300.0, 1e4, 1.0, {}, {c}, {}, {400}, 5);
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 
-  for(std::size_t i = 0; i != 400; ++i)
+  for (std::size_t i = 0; i != 400; ++i)
   {
     double3 com = system.moleculeData[i].centerOfMassPosition;
 
@@ -113,31 +114,31 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
     std::size_t numberOfAtoms = system.moleculeData[i].numberOfAtoms;
 
     std::vector<double3> positions(numberOfAtoms);
-    for(std::size_t j = 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
-      positions[j] = atomPositions[atomIndex + j].position;
+      positions[j] = atomData[atomIndex + j].position;
     }
 
     std::vector<double3> reference_positions(numberOfAtoms);
 
-    for(std::size_t j = 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
       reference_positions[j] = c.atoms[j].position;
     }
 
     // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
-    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions, double3{0.0, 0.0, 0.0}, reference_positions);
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions,
+                                                                 double3{0.0, 0.0, 0.0}, reference_positions);
 
     simd_quatd computed_quaternion = rotation_matrix.quaternion();
 
-    double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse( computed_quaternion );
+    double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse(computed_quaternion);
 
-    for(std::size_t j= 0; j != numberOfAtoms; ++j)
+    for (std::size_t j = 0; j != numberOfAtoms; ++j)
     {
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.x, (com + finalRotationMatrix * c.atoms[j].position).x, 1e-6);
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.y, (com + finalRotationMatrix * c.atoms[j].position).y, 1e-6);
-      EXPECT_NEAR(atomPositions[atomIndex + j].position.z, (com + finalRotationMatrix * c.atoms[j].position).z, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.x, (com + finalRotationMatrix * c.atoms[j].position).x, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.y, (com + finalRotationMatrix * c.atoms[j].position).y, 1e-6);
+      EXPECT_NEAR(atomData[atomIndex + j].position.z, (com + finalRotationMatrix * c.atoms[j].position).z, 1e-6);
     }
   }
 }
-

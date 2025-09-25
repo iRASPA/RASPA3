@@ -43,7 +43,7 @@ export namespace MC_Moves
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
 void performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                       std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+                                     std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move on the selected system.
@@ -60,7 +60,7 @@ void performRandomMoveInitialization(RandomNumber& random, System& selectedSyste
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
 void performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                       std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+                                    std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move during production runs, with statistics tracking.

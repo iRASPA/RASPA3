@@ -80,7 +80,7 @@ import interpolation_energy_grid;
   // set the trial positions of the first bead randomly in the simulation box for the 1..N_trial atomns, but leave the
   // first as the old
   std::for_each(trialPositions.begin() + 1, trialPositions.end(),
-           [&](Atom& a) { a.position = simulationBox.randomPosition(random); });
+                [&](Atom& a) { a.position = simulationBox.randomPosition(random); });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
       component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
@@ -94,7 +94,8 @@ import interpolation_energy_grid;
                                             [](const double& acc, const double& logBoltmannFactor)
                                             { return acc + std::exp(logBoltmannFactor); });
 
-  return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight / double(forceField.numberOfFirstBeadPositions), 0.0);
+  return FirstBeadData(atom, externalEnergies[0].second,
+                       RosenbluthWeight / double(forceField.numberOfFirstBeadPositions), 0.0);
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
@@ -162,6 +163,6 @@ import interpolation_energy_grid;
                                             { return acc + std::exp(logBoltmannFactor); });
 
   // w(o)=exp(-beta u(o))+r  Eq. 18 from Esselink et al.
-  return FirstBeadData(atom, externalEnergies[0].second, (RosenbluthWeight + storedR) / double(forceField.numberOfFirstBeadPositions),
-                       0.0);
+  return FirstBeadData(atom, externalEnergies[0].second,
+                       (RosenbluthWeight + storedR) / double(forceField.numberOfFirstBeadPositions), 0.0);
 }

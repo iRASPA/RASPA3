@@ -174,10 +174,9 @@ export struct RunningEnergy
   inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
-           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + 
-           bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion +
-           bondBond + bondBend + bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul +
-           tail + polarization;
+           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
+           ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization;
   }
 
   /**
@@ -223,10 +222,10 @@ export struct RunningEnergy
   inline double conservedEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
-           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion +
-           bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion +
-           bondBond + bondBend + bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul +
-           tail + polarization + translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
+           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
+           ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization +
+           translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
   }
 
   /**
@@ -260,18 +259,8 @@ export struct RunningEnergy
     ewald_fourier = 0.0;
     ewald_self = 0.0;
     ewald_exclusion = 0.0;
-    bond = 0.0,
-    ureyBradley = 0.0,
-    bend = 0.0,
-    inversionBend = 0.0,
-    outOfPlaneBend = 0.0,
-    torsion = 0.0,
-    improperTorsion = 0.0,
-    bondBond = 0.0,
-    bondBend = 0.0,
-    bondTorsion = 0.0,
-    bendBend = 0.0,
-    bendTorsion = 0.0,
+    bond = 0.0, ureyBradley = 0.0, bend = 0.0, inversionBend = 0.0, outOfPlaneBend = 0.0, torsion = 0.0,
+    improperTorsion = 0.0, bondBond = 0.0, bondBend = 0.0, bondTorsion = 0.0, bendBend = 0.0, bendTorsion = 0.0,
     intraVDW = 0.0;
     intraCoul = 0.0;
     tail = 0.0;
@@ -398,15 +387,15 @@ export struct RunningEnergy
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  double externalFieldVDW;            ///< Energy from van der Waals interactions with external field.
-  double frameworkMoleculeVDW;        ///< Energy from van der Waals interactions between framework and molecules.
-  double moleculeMoleculeVDW;         ///< Energy from van der Waals interactions between molecules.
-  double externalFieldCharge;         ///< Energy from Coulomb interactions with external field.
-  double frameworkMoleculeCharge;     ///< Energy from Coulomb interactions between framework and molecules.
-  double moleculeMoleculeCharge;      ///< Energy from Coulomb interactions between molecules.
-  double ewald_fourier;               ///< Fourier component of Ewald sum for Coulomb interactions.
-  double ewald_self;                  ///< Self-interaction correction in Ewald sum.
-  double ewald_exclusion;             ///< Exclusion term in Ewald sum for Coulomb interactions.
+  double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
+  double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
+  double moleculeMoleculeVDW;      ///< Energy from van der Waals interactions between molecules.
+  double externalFieldCharge;      ///< Energy from Coulomb interactions with external field.
+  double frameworkMoleculeCharge;  ///< Energy from Coulomb interactions between framework and molecules.
+  double moleculeMoleculeCharge;   ///< Energy from Coulomb interactions between molecules.
+  double ewald_fourier;            ///< Fourier component of Ewald sum for Coulomb interactions.
+  double ewald_self;               ///< Self-interaction correction in Ewald sum.
+  double ewald_exclusion;          ///< Exclusion term in Ewald sum for Coulomb interactions.
   double bond;
   double ureyBradley;
   double bend;

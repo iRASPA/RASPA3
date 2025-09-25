@@ -2,13 +2,13 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <map>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <format>
 #endif
 
 export module simd_quatd;
@@ -110,7 +110,7 @@ export inline simd_quatd operator*(const simd_quatd& a, const simd_quatd& b)
 }
 
 export template <>
-struct std::formatter<simd_quatd>: std::formatter<std::string_view>
+struct std::formatter<simd_quatd> : std::formatter<std::string_view>
 {
   auto format(const simd_quatd& v, std::format_context& ctx) const
   {

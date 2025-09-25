@@ -3,15 +3,15 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <istream>
 #include <ostream>
 #include <print>
 #include <sstream>
-#include <type_traits>
-#include <format>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #endif
 
 export module atom;
@@ -201,9 +201,10 @@ struct std::formatter<Atom>: std::formatter<string_view>
   auto format(const Atom& atom, std::format_context& ctx) const
   {
     std::string temp{};
-    std::format_to(std::back_inserter(temp), "(position: {}, charge: {}, scalings: {} {}, molecule-id: {}, type: {}, component-id: {}, group: {}, fractional: {})",
-        atom.position, atom.charge, atom. scalingVDW, atom.scalingCoulomb, atom.moleculeId, atom.type, atom.componentId, atom.groupId, atom.isFractional);
-    return std::formatter<string_view>::format(temp, ctx);
+    std::format_to(std::back_inserter(temp), "(position: {}, charge: {}, scalings: {} {}, molecule-id: {}, type: {},
+component-id: {}, group: {}, fractional: {})", atom.position, atom.charge, atom. scalingVDW, atom.scalingCoulomb,
+atom.moleculeId, atom.type, atom.componentId, atom.groupId, atom.isFractional); return
+std::formatter<string_view>::format(temp, ctx);
   }
 };
 */

@@ -25,7 +25,6 @@ import framework;
 import component;
 import interpolation_energy_grid;
 
-
 export namespace CBMC
 {
 [[nodiscard]] std::optional<ChainGrowData> growFlexibleMoleculeChainInsertion(

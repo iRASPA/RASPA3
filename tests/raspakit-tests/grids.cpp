@@ -117,16 +117,16 @@ TEST(grids, Test_CHA_grid)
   std::print("CORRECT cartesian hessian:  {} {} {} {} {} {}\n", cartesian_hessian.ax, cartesian_hessian.ay,
              cartesian_hessian.az, cartesian_hessian.by, cartesian_hessian.bz, cartesian_hessian.cz);
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  atomPositions[0].position = pos;
-  atomPositions[0].charge = 1.0;
-  RunningEnergy energy = Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox,
-                                                                        frameworkAtoms, atomPositions);
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = pos;
+  atomData[0].charge = 1.0;
+  RunningEnergy energy =
+      Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, frameworkAtoms, atomData);
   auto [l1, l2, hessian] = Interactions::calculateHessianAtPositionCoulomb(system.forceField, system.simulationBox, pos,
                                                                            1.0, frameworkAtoms);
 
-  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, atomPositions[0].gradient.x,
-             atomPositions[0].gradient.y, atomPositions[0].gradient.z);
+  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, atomData[0].gradient.x,
+             atomData[0].gradient.y, atomData[0].gradient.z);
   std::print("CORRECT analytical hessian: {} {} {} {} {} {}\n", hessian.ax, hessian.ay, hessian.az, hessian.by,
              hessian.bz, hessian.cz);
 
@@ -142,7 +142,7 @@ TEST(grids, Test_CHA_grid)
   // RunningEnergy energy =
   //     Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
   //     system.interpolationGrids,
-  //                                                  system.framework, frameworkAtoms, atomPositions);
+  //                                                  system.framework, frameworkAtoms, atomData);
 
   auto [interpolated_value, interpolated_gradient, interpolated_hessian] = grid.interpolateHessian(pos);
 

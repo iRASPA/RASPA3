@@ -47,7 +47,10 @@ export struct PredefinedElements
     // case-independent (ci) compare_less binary function
     struct nocase_compare
     {
-      bool operator()(const unsigned char& c1, const unsigned char& c2) const { return std::tolower(c1) < std::tolower(c2); }
+      bool operator()(const unsigned char& c1, const unsigned char& c2) const
+      {
+        return std::tolower(c1) < std::tolower(c2);
+      }
     };
 
     bool operator()(const std::string& s1, const std::string& s2) const

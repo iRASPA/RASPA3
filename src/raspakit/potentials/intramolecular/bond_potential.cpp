@@ -8,13 +8,13 @@ module;
 #include <cstddef>
 #include <exception>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <limits>
 #endif
 
 module bond_potential;
@@ -377,7 +377,8 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
   }
 }
 
-std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEnergyGradientStrain(const double3 &posA, const double3 &posB) const
+std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB) const
 {
   double temp, temp2;
   double r1, rri;
@@ -461,7 +462,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
       // p_2     [Å]
       r1 = r - parameters[1];
       U = 0.5 * parameters[0] * std::pow(std::min(std::fabs(r1), parameters[2]), 2) +
-                parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
+          parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
       DF = 0.0;
       break;
     case BondType::Quartic:
@@ -474,7 +475,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
       temp = r - parameters[1];
       temp2 = temp * temp;
       U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-             0.25 * parameters[3] * temp2 * temp2;
+          0.25 * parameters[3] * temp2 * temp2;
       DF = 0.0;
       break;
     case BondType::CFF_Quartic:
@@ -503,7 +504,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
       std::unreachable();
   }
 
-  du_dr =  DF * dr;
+  du_dr = DF * dr;
 
   du_da = du_dr;
   du_db = -du_dr;

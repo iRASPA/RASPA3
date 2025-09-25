@@ -36,7 +36,7 @@ export namespace Integrators
  * It handles both translational and rotational motion, applies thermostat if present, computes energies,
  * and updates gradients.
  *
- * \param moleculePositions The span of molecule positions and orientations.
+ * \param moleculeData The span of molecule positions and orientations.
  * \param moleculeAtomPositions The span of atom positions within molecules.
  * \param components The list of component types in the simulation.
  * \param dt The time step size.
@@ -54,11 +54,11 @@ export namespace Integrators
  * \return The updated running energies after the integration step.
  */
 RunningEnergy velocityVerlet(
-    std::span<Molecule> moleculePositions, std::span<Atom> moleculeAtomPositions,
-    const std::vector<Component> components, double dt, std::optional<Thermostat>& thermostat,
-    std::span<Atom> frameworkAtomPositions, const ForceField& forceField, const SimulationBox& simulationBox,
-    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
-    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
+    double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
+    std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
+    std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,

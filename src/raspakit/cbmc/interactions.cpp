@@ -7,11 +7,11 @@ module;
 #include <iomanip>
 #include <iostream>
 #include <optional>
+#include <print>
 #include <span>
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#include <print>
 #endif
 
 module cbmc_interactions;
@@ -164,7 +164,7 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
   std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> energies{};
   energies.reserve(trialPositionSets.size());
 
-  for(std::size_t i = 0; i != trialPositionSets.size(); ++i)
+  for (std::size_t i = 0; i != trialPositionSets.size(); ++i)
   {
     if (CBMC::insideBlockedPockets(framework, component, trialPositionSets[i]))
     {
@@ -173,7 +173,7 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
 
     std::optional<RunningEnergy> eternalFieldEnergy = CBMC::computeExternalFieldEnergy(
         hasExternalField, forceField, simulationBox, cutOffFrameworkVDW, cutOffCoulomb, trialPositionSets[i]);
-    if (!eternalFieldEnergy.has_value()) 
+    if (!eternalFieldEnergy.has_value())
     {
       continue;
     }
@@ -181,19 +181,19 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
     std::optional<RunningEnergy> frameworkEnergy =
         CBMC::computeFrameworkMoleculeEnergy(forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
                                              cutOffFrameworkVDW, cutOffCoulomb, trialPositionSets[i], skip);
-    if (!frameworkEnergy.has_value()) 
+    if (!frameworkEnergy.has_value())
     {
       continue;
     }
 
     std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
         forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSets[i], skip);
-    if (!interEnergy.has_value()) 
+    if (!interEnergy.has_value())
     {
       continue;
     }
 
-    energies.push_back({trialPositionSets[i], 
+    energies.push_back({trialPositionSets[i],
                         eternalFieldEnergy.value() + frameworkEnergy.value() + interEnergy.value(),
                         RosenbluthWeightsTorsion[i]});
   }

@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <print>
 #include <span>
 #include <tuple>
 #include <vector>
-#include <print>
 
 import int3;
 import double3;
@@ -37,31 +37,25 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
   double delta = 1e-5;
   double tolerance = 1e-4;
 
-  ForceField forceField = ForceField({
-      {"CH4", false, 16.04246, 0.0, 0.0, 8, false},
-      {"CH3", false, 15.03452, 0.0, 0.0, 8, false},
-      {"CH2", false, 14.02658, 0.0, 0.0, 8, false},
-      {"CH",  false, 13.01864, 0.0, 0.0, 8, false},
-      {"C",   false, 12.0,     0.0, 0.0, 8, false}},
-     {{158.5,  3.72},
-      {108.0,  3.76},
-      {56.0,   3.96},
-      {17.0,   4.67},
-      {0.8,    6.38}},
-     ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField({{"CH4", false, 16.04246, 0.0, 0.0, 8, false},
+                                      {"CH3", false, 15.03452, 0.0, 0.0, 8, false},
+                                      {"CH2", false, 14.02658, 0.0, 0.0, 8, false},
+                                      {"CH", false, 13.01864, 0.0, 0.0, 8, false},
+                                      {"C", false, 12.0, 0.0, 0.0, 8, false}},
+                                     {{158.5, 3.72}, {108.0, 3.76}, {56.0, 3.96}, {17.0, 4.67}, {0.8, 6.38}},
+                                     ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   ConnectivityTable connectivityTable(2);
-  connectivityTable[0,1] = true;
-  connectivityTable[1,0] = true;
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
 
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};
-  intraMolecularPotentials.bonds = { BondPotential( {0, 1}, BondType::Harmonic, {96500.0, 1.54}) };
+  intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54})};
 
-  Component c = Component(0, forceField, "ethane", 305.33, 4871800.0, 0.0993,
-                   {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false),
-                    Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)}, 
-                    connectivityTable, intraMolecularPotentials, 5, 21);
-
+  Component c = Component(
+      0, forceField, "ethane", 305.33, 4871800.0, 0.0993,
+      {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false), Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)},
+      connectivityTable, intraMolecularPotentials, 5, 21);
 
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
@@ -72,8 +66,8 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<double, double3x3> pressureInfo = Interactions::computeIntraMolecularBondStrainDerivative(system.components[0].intraMolecularPotentials,
-                                                                                      system.moleculeData, moleculeAtomPositions);
+  std::pair<double, double3x3> pressureInfo = Interactions::computeIntraMolecularBondStrainDerivative(
+      system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
 
   double3 gradient{};
   for (size_t i = 0; i < moleculeAtomPositions.size(); ++i)
@@ -84,26 +78,32 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
 
     // finite difference x
     moleculeAtomPositions[i].position.x = saved_position.x + 0.5 * delta;
-    x2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    x2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.x = saved_position.x - 0.5 * delta;
-    x1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    x1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.x = saved_position.x;
 
     // finite difference y
     moleculeAtomPositions[i].position.y = saved_position.y + 0.5 * delta;
-    y2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    y2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.y = saved_position.y - 0.5 * delta;
-    y1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    y1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.y = saved_position.y;
 
     // finite difference z
     moleculeAtomPositions[i].position.z = saved_position.z + 0.5 * delta;
-    z2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    z2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.z = saved_position.z - 0.5 * delta;
-    z1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+    z1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
+                                                       system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.z = saved_position.z;
 
     gradient.x = (x2.bond - x1.bond) / delta;
@@ -135,7 +135,6 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
       std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, delta}},
                 pressureInfo.second.cz}};
 
-
   double3x3 inv = system.simulationBox.inverseCell;
   double3x3 identity{double3{1.0, 0.0, 0.0}, double3{0.0, 1.0, 0.0}, double3{0.0, 0.0, 1.0}};
 
@@ -151,8 +150,8 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
                      return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
                                  m.componentId, m.groupId, m.isFractional);
                    });
-    RunningEnergy EnergyForward2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculeData, moleculeAtomPositions_forward2);
+    RunningEnergy EnergyForward2 = Interactions::computeIntraMolecularBondEnergy(
+        system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions_forward2);
 
     SimulationBox strainBox_forward1 =
         SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
@@ -164,9 +163,8 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
                      return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
                                  m.componentId, m.groupId, m.isFractional);
                    });
-    RunningEnergy EnergyForward1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculeData,
-                                                                             moleculeAtomPositions_forward1);
+    RunningEnergy EnergyForward1 = Interactions::computeIntraMolecularBondEnergy(
+        system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions_forward1);
 
     SimulationBox strainBox_backward1 =
         SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
@@ -178,9 +176,8 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
                      return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
                                  m.componentId, m.groupId, m.isFractional);
                    });
-    RunningEnergy EnergyBackward1 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculeData,
-                                                                              moleculeAtomPositions_backward1);
+    RunningEnergy EnergyBackward1 = Interactions::computeIntraMolecularBondEnergy(
+        system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions_backward1);
 
     SimulationBox strainBox_backward2 =
         SimulationBox((identity - strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
@@ -192,9 +189,8 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
                      return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
                                  m.componentId, m.groupId, m.isFractional);
                    });
-    RunningEnergy EnergyBackward2 = Interactions::computeIntraMolecularBondEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculeData,
-                                                                              moleculeAtomPositions_backward2);
+    RunningEnergy EnergyBackward2 = Interactions::computeIntraMolecularBondEnergy(
+        system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions_backward2);
 
     double strainDerivative = (-EnergyForward2.potentialEnergy() + 8.0 * EnergyForward1.potentialEnergy() -
                                8.0 * EnergyBackward1.potentialEnergy() + EnergyBackward2.potentialEnergy()) /
@@ -203,4 +199,3 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
     EXPECT_NEAR(strainDerivative, strain.second, tolerance) << "Wrong strainDerivative";
   }
 }
-

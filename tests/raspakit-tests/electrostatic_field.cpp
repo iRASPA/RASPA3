@@ -27,23 +27,19 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
-
 // Test if E = F / q for framework-molecule interactions
 TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
-{ 
+{
   double tolerance = 1e-6;
 
-  ForceField forceField =  ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
-                     {"O", true, 15.999, -1.025, 0.0, 8, false},
-                     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
+  ForceField forceField = ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
+                                      {"O", true, 15.999, -1.025, 0.0, 8, false},
+                                      {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+                                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
 
-                    {{0.0, 2.30},
-                     {0.0, 3.30},
-                     {0.0, 2.745},
-                     {0.0, 3.017}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-  
+                                     {{0.0, 2.30}, {0.0, 3.30}, {0.0, 2.745}, {0.0, 3.017}},
+                                     ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
+
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
@@ -51,23 +47,23 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                   {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                    Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
-                    Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                    {}, {}, 5, 21);
-  
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, {}, 5, 21);
+
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
-  
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms(); 
-  atomPositions[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
-  atomPositions[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
-  atomPositions[2].position = double3(5.93355, 7.93355, 2.0 + 5.93355 - 1.149);
-      
-  //system.precomputeTotalRigidEnergy();
-  //RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-  //    system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-  //    system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-  //    system.spanOfMoleculeAtoms());
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
+  atomData[2].position = double3(5.93355, 7.93355, 2.0 + 5.93355 - 1.149);
+
+  // system.precomputeTotalRigidEnergy();
+  // RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
+  //     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+  //     system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+  //     system.spanOfMoleculeAtoms());
 
   std::span<double3> moleculeElectricField = system.spanOfMoleculeElectricField();
   std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -75,23 +71,22 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   std::fill(moleculeElectricField.begin(), moleculeElectricField.end(), double3(0.0, 0.0, 0.0));
 
   RunningEnergy energy1 = Interactions::computeFrameworkMoleculeElectricField(
-        system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomPositions);
+      system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomData);
 
   RunningEnergy energy2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, frameworkAtoms, atomPositions, system.interpolationGrids);
-
+      system.forceField, system.simulationBox, frameworkAtoms, atomData, system.interpolationGrids);
 
   EXPECT_NEAR(energy1.frameworkMoleculeVDW, energy2.frameworkMoleculeVDW, tolerance);
   EXPECT_NEAR(energy1.frameworkMoleculeCharge, energy2.frameworkMoleculeCharge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].x, -atomPositions[0].gradient.x / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].y, -atomPositions[0].gradient.y / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].z, -atomPositions[0].gradient.z / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].x, -atomPositions[1].gradient.x / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].y, -atomPositions[1].gradient.y / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].z, -atomPositions[1].gradient.z / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].x, -atomPositions[2].gradient.x / atomPositions[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].y, -atomPositions[2].gradient.y / atomPositions[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].z, -atomPositions[2].gradient.z / atomPositions[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].x, -atomData[0].gradient.x / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].y, -atomData[0].gradient.y / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].z, -atomData[0].gradient.z / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].x, -atomData[1].gradient.x / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].y, -atomData[1].gradient.y / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].z, -atomData[1].gradient.z / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].x, -atomData[2].gradient.x / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].y, -atomData[2].gradient.y / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].z, -atomData[2].gradient.z / atomData[2].charge, tolerance);
 }
 
 // Test if E = F / q for Ewald interactions
@@ -99,20 +94,17 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 // Otherwise, even a single molecule has interctions with its periodic images,
 // leading to a small difference
 TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
-{ 
+{
   double tolerance = 1e-6;
 
-  ForceField forceField =  ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
-                     {"O", true, 15.999, -1.025, 0.0, 8, false},
-                     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
+  ForceField forceField = ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
+                                      {"O", true, 15.999, -1.025, 0.0, 8, false},
+                                      {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+                                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
 
-                    {{0.0, 2.30},
-                     {0.0, 3.30},
-                     {0.0, 2.745},
-                     {0.0, 3.017}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-  
+                                     {{0.0, 2.30}, {0.0, 3.30}, {0.0, 2.745}, {0.0, 3.017}},
+                                     ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
+
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
@@ -121,18 +113,17 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                   {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                    Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
-                    Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                    {}, {}, 5, 21);
-  
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, {}, 5, 21);
+
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
-  
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms(); 
-  atomPositions[0].position = double3(5.83355, 7.83355, 1.8 + 5.93355 + 1.149);
-  atomPositions[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
-  atomPositions[2].position = double3(6.03355, 8.03355, 2.2 + 5.93355 - 1.149);
-      
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.83355, 7.83355, 1.8 + 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
+  atomData[2].position = double3(6.03355, 8.03355, 2.2 + 5.93355 - 1.149);
 
   std::span<double3> moleculeElectricField = system.spanOfMoleculeElectricField();
 
@@ -141,8 +132,8 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   system.precomputeTotalRigidEnergy();
   RunningEnergy energy1 = Interactions::computeEwaldFourierElectricField(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
-      system.forceField, system.simulationBox, moleculeElectricField, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, moleculeElectricField, system.components,
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
   RunningEnergy energy2 = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
@@ -152,15 +143,15 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   EXPECT_NEAR(energy1.ewald_fourier, energy2.ewald_fourier, tolerance);
   EXPECT_NEAR(energy1.ewald_self, energy2.ewald_self, tolerance);
   EXPECT_NEAR(energy1.ewald_exclusion, energy2.ewald_exclusion, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].x, -atomPositions[0].gradient.x / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].y, -atomPositions[0].gradient.y / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].z, -atomPositions[0].gradient.z / atomPositions[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].x, -atomPositions[1].gradient.x / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].y, -atomPositions[1].gradient.y / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].z, -atomPositions[1].gradient.z / atomPositions[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].x, -atomPositions[2].gradient.x / atomPositions[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].y, -atomPositions[2].gradient.y / atomPositions[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].z, -atomPositions[2].gradient.z / atomPositions[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].x, -atomData[0].gradient.x / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].y, -atomData[0].gradient.y / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].z, -atomData[0].gradient.z / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].x, -atomData[1].gradient.x / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].y, -atomData[1].gradient.y / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].z, -atomData[1].gradient.z / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].x, -atomData[2].gradient.x / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].y, -atomData[2].gradient.y / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].z, -atomData[2].gradient.z / atomData[2].charge, tolerance);
 }
 
 /*
@@ -202,79 +193,79 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2)
   std::span<double3> electricField = system.spanOfMoleculeElectricField();
 
   // create copy
-  std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
+  std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
   double delta = 1e-5;
   double3 gradient;
-  for (size_t i = 0; i < atomPositions.size(); ++i)
+  for (size_t i = 0; i < atomData.size(); ++i)
   {
     double x1, x2, y1, y2, z1, z2;
 
     // finite difference x
-    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
+    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     x2 = moleculeElectricPotential[i];
 
-    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
+    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     x1 = moleculeElectricPotential[i];
-    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
+    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x;
 
     // finite difference y
-    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
+    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     y2 = moleculeElectricPotential[i];
 
-    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
+    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     y1 = moleculeElectricPotential[i];
-    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
+    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y;
 
     // finite difference z
-    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
+    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     z2 = moleculeElectricPotential[i];
 
-    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
+    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
     std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
     Interactions::computeFrameworkMoleculeElectricPotential(
-        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomPositions);
+        system.forceField, system.simulationBox, moleculeElectricPotential, frameworkAtomPositions, atomData);
     Interactions::computeEwaldFourierElectricPotential(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                        system.fixedFrameworkStoredEik, moleculeElectricPotential,
                                                        system.forceField, system.simulationBox, system.components,
-                                                       system.numberOfMoleculesPerComponent, atomPositions);
+                                                       system.numberOfMoleculesPerComponent, atomData);
     z1 = moleculeElectricPotential[i];
-    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
+    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z;
 
     gradient.x = -(x2 - x1) / delta;
     gradient.y = -(y2 - y1) / delta;

@@ -31,17 +31,15 @@ import intra_molecular_potentials;
 
 export namespace CBMC
 {
-  enum class MoveType : std::size_t 
-  {
-    BondLengthChange = 0,
-    BendAngleChange = 1,
-    ConeChange = 2
-  };
+enum class MoveType : std::size_t
+{
+  BondLengthChange = 0,
+  BendAngleChange = 1,
+  ConeChange = 2
+};
 
-  std::vector<Atom>
-    generateTrialOrientationsMonteCarloScheme(RandomNumber &random, double beta,
-        Component &component,
-        const std::vector<Atom> chain_atoms, std::size_t previousBead,
-        std::size_t currentBead, std::vector<std::size_t> nextBeads, 
-        const Potentials::IntraMolecularPotentials &intraMolecularInteractions);
-}
+std::vector<Atom> generateTrialOrientationsMonteCarloScheme(
+    RandomNumber &random, double beta, Component &component, const std::vector<Atom> chain_atoms,
+    std::size_t previousBead, std::size_t currentBead, std::vector<std::size_t> nextBeads,
+    const Potentials::IntraMolecularPotentials &intraMolecularInteractions);
+}  // namespace CBMC

@@ -453,8 +453,8 @@ void CommandLine::run(int argc, char *argv[])
         std::vector<double> reordered(grid.data.size());
         std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> spanFortran(
             grid.data.data(), std::to_underlying(order), gridSize.x + 1, gridSize.y + 1, gridSize.z + 1);
-        std::mdspan<double, std::dextents<std::size_t, 4>> spanC(reordered.data(), std::to_underlying(order), gridSize.x + 1,
-                                                            gridSize.y + 1, gridSize.z + 1);
+        std::mdspan<double, std::dextents<std::size_t, 4>> spanC(reordered.data(), std::to_underlying(order),
+                                                                 gridSize.x + 1, gridSize.y + 1, gridSize.z + 1);
 
         for (std::size_t v = 0; v < std::to_underlying(order); v++)
         {
@@ -470,10 +470,11 @@ void CommandLine::run(int argc, char *argv[])
           }
         }
 
-        h5File.createDataset<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name,
-                                     {std::to_underlying(order), static_cast<std::size_t>(gridSize.x + 1),
-                                      static_cast<std::size_t>(gridSize.y + 1), static_cast<std::size_t>(gridSize.z + 1)},
-                                     {});
+        h5File.createDataset<double>(
+            "/", forceField->pseudoAtoms[pseudoAtomIdx].name,
+            {std::to_underlying(order), static_cast<std::size_t>(gridSize.x + 1),
+             static_cast<std::size_t>(gridSize.y + 1), static_cast<std::size_t>(gridSize.z + 1)},
+            {});
         h5File.writeVector<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name, reordered);
       }
     }

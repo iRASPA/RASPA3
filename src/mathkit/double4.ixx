@@ -3,8 +3,8 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
-#include <fstream>
 #include <format>
+#include <fstream>
 #endif
 
 export module double4;
@@ -110,7 +110,7 @@ export inline double4 sqrt(const double4& a)
 }
 
 export template <>
-struct std::formatter<double4>: std::formatter<std::string_view>
+struct std::formatter<double4> : std::formatter<std::string_view>
 {
   auto format(const double4& v, std::format_context& ctx) const
   {
@@ -119,4 +119,3 @@ struct std::formatter<double4>: std::formatter<std::string_view>
     return std::formatter<std::string_view>::format(temp, ctx);
   }
 };
-

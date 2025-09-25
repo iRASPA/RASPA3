@@ -26,15 +26,11 @@ export struct ChainGrowData
   double RosenbluthWeight;
   double storedR;
 
-  ChainGrowData(): molecule(), atom(), energies(), RosenbluthWeight(), storedR() {}
+  ChainGrowData() : molecule(), atom(), energies(), RosenbluthWeight(), storedR() {}
 
   ChainGrowData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
-            double storedR) noexcept
-      : molecule(molecule),
-        atom(atom),
-        energies(energies),
-        RosenbluthWeight(RosenbluthWeight),
-        storedR(storedR)
+                double storedR) noexcept
+      : molecule(molecule), atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };
@@ -45,12 +41,10 @@ export struct ChainRetraceData
   double RosenbluthWeight;
   double storedR;
 
-  ChainRetraceData(): energies(), RosenbluthWeight(), storedR() {}
+  ChainRetraceData() : energies(), RosenbluthWeight(), storedR() {}
 
   ChainRetraceData(RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept
-      : energies(energies),
-        RosenbluthWeight(RosenbluthWeight),
-        storedR(storedR)
+      : energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };

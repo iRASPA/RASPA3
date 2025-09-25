@@ -274,11 +274,11 @@ void MonteCarlo::performCycle()
         break;
       case SimulationStage::Initialization:
         MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                    fractionalMoleculeSystem);
+                                                  fractionalMoleculeSystem);
         break;
       case SimulationStage::Equilibration:
         MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                    fractionalMoleculeSystem);
+                                                 fractionalMoleculeSystem);
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
@@ -638,8 +638,6 @@ void MonteCarlo::production()
       }
     }
 
-    
-
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart
@@ -888,7 +886,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.estimation;
 
   // not written: totalGridCreationTime
-  
+
   archive << mc.totalInitializationSimulationTime;
   archive << mc.totalEquilibrationSimulationTime;
   archive << mc.totalProductionSimulationTime;
@@ -931,7 +929,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.estimation;
 
   // not written: totalGridCreationTime
- 
+
   archive >> mc.totalInitializationSimulationTime;
   archive >> mc.totalEquilibrationSimulationTime;
   archive >> mc.totalProductionSimulationTime;

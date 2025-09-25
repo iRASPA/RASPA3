@@ -37,12 +37,13 @@ export enum class MoveTypes : std::size_t {
   Count
 };
 
-export std::unordered_set<MoveTypes> componentMoves = {
-    MoveTypes::Translation,        MoveTypes::RandomTranslation,   MoveTypes::Rotation, 
-    MoveTypes::RandomRotation,     MoveTypes::ReinsertionCBMC,     MoveTypes::PartialReinsertionCBMC,
-    MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,                MoveTypes::SwapCBMC,
-    MoveTypes::SwapCFCMC,          MoveTypes::SwapCBCFCMC,         MoveTypes::Widom,    
-    MoveTypes::WidomCFCMC,         MoveTypes::WidomCBCFCMC};
+export std::unordered_set<MoveTypes> componentMoves = {MoveTypes::Translation,        MoveTypes::RandomTranslation,
+                                                       MoveTypes::Rotation,           MoveTypes::RandomRotation,
+                                                       MoveTypes::ReinsertionCBMC,    MoveTypes::PartialReinsertionCBMC,
+                                                       MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,
+                                                       MoveTypes::SwapCBMC,           MoveTypes::SwapCFCMC,
+                                                       MoveTypes::SwapCBCFCMC,        MoveTypes::Widom,
+                                                       MoveTypes::WidomCFCMC,         MoveTypes::WidomCBCFCMC};
 
 export std::unordered_set<MoveTypes> systemMoves = {MoveTypes::VolumeChange, MoveTypes::HybridMC};
 

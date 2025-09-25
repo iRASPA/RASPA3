@@ -9,6 +9,7 @@ module;
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <print>
 #include <source_location>
 #include <sstream>
@@ -16,7 +17,6 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <optional>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
@@ -43,8 +43,8 @@ typedef int blas_int;
 /* DSYEV prototype */
 extern "C"
 {
-  void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
-              blas_int* info);
+  void dsyev_(char *jobz, char *uplo, blas_int *n, double *a, blas_int *lda, double *w, double *work, blas_int *lwork,
+              blas_int *info);
 }
 
 std::string ConnectivityTable::print(const std::string &prestring) const
@@ -88,7 +88,7 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   {
     for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
-      if(to_do_connectivity[j, k])
+      if (to_do_connectivity[j, k])
       {
         nextBonds.push_back(std::make_pair(k, j));
       }
@@ -146,15 +146,14 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   return {previous_bead, current_bead, nextBeads};
 }
 
-
 std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t currentBead) const
 {
   std::vector<std::size_t> neighbors{};
   neighbors.reserve(numberOfBeads);
 
-  for(std::size_t i = 0; i < numberOfBeads; ++i)
+  for (std::size_t i = 0; i < numberOfBeads; ++i)
   {
-    if(((*this)[currentBead, i]) && (i != currentBead))
+    if (((*this)[currentBead, i]) && (i != currentBead))
     {
       neighbors.push_back(i);
     }
@@ -164,30 +163,30 @@ std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t current
 
 // https://en.wikipedia.org/wiki/Algebraic_connectivity
 // https://en.wikipedia.org/wiki/Laplacian_matrix
-// The algebraic connectivity (also known as Fiedler value or Fiedler eigenvalue after Miroslav Fiedler) 
-// of a graph G is the second-smallest eigenvalue (counting multiple eigenvalues separately) of the 
+// The algebraic connectivity (also known as Fiedler value or Fiedler eigenvalue after Miroslav Fiedler)
+// of a graph G is the second-smallest eigenvalue (counting multiple eigenvalues separately) of the
 // Laplacian matrix of G.[1] This eigenvalue is greater than 0 if and only if G is a connected graph.
 // the number of times 0 appears as an eigenvalue in the Laplacian is the number of connected components in the graph
 bool ConnectivityTable::checkIsConnectedSubgraph(const std::vector<std::size_t> &set)
 {
-  if(set.empty() || (set.size() == 1)) 
+  if (set.empty() || (set.size() == 1))
   {
     return true;
   }
 
   std::vector<double> laplacian_matrix(set.size() * set.size());
-  std::mdspan<double, std::dextents<std::size_t, 2>, std::layout_left> 
-    data_laplacian_matrix(laplacian_matrix.data(), set.size(), set.size());
+  std::mdspan<double, std::dextents<std::size_t, 2>, std::layout_left> data_laplacian_matrix(laplacian_matrix.data(),
+                                                                                             set.size(), set.size());
 
-  for(std::size_t i = 0; i < set.size(); ++i)
+  for (std::size_t i = 0; i < set.size(); ++i)
   {
-    for(std::size_t j = 0; j < set.size(); ++j)
+    for (std::size_t j = 0; j < set.size(); ++j)
     {
-      if(i == j)
+      if (i == j)
       {
-        for(std::size_t k = 0; k < set.size(); ++k)
+        for (std::size_t k = 0; k < set.size(); ++k)
         {
-          if(table[set[i] * numberOfBeads + set[k]])
+          if (table[set[i] * numberOfBeads + set[k]])
           {
             data_laplacian_matrix[i, i] += 1.0;
           }
@@ -237,7 +236,7 @@ std::optional<std::vector<std::size_t>> ConnectivityTable::checkValidityNextBead
   {
     for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
-      if(to_do_connectivity[j, k])
+      if (to_do_connectivity[j, k])
       {
         nextBonds.push_back(std::make_pair(k, j));
       }
@@ -299,11 +298,11 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllBonds() const
 {
   std::vector<std::array<std::size_t, 2>> result{};
 
-  for(std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
   {
-    for(std::size_t j = i + 1; j < numberOfBeads; ++j)
+    for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
-      if((*this)[i, j])
+      if ((*this)[i, j])
       {
         result.push_back({i, j});
       }
@@ -319,37 +318,35 @@ std::vector<std::array<std::size_t, 3>> ConnectivityTable::findAllBends() const
 
   std::vector<std::array<std::size_t, 2>> found_bonds = findAllBonds();
 
-  for(const std::array<std::size_t, 2> found_bond : found_bonds)
+  for (const std::array<std::size_t, 2> found_bond : found_bonds)
   {
-     // extend to the left
-     for(std::size_t left_bead : findAllNeighbors(found_bond[0]))
-     {
-       if( left_bead != found_bond[1])
-       {
-         std::array<std::size_t, 3> bend = {std::min(left_bead, found_bond[1]),
-                                            found_bond[0], 
-                                            std::max(left_bead, found_bond[1])};
-         if(std::find(result.begin(), result.end(), bend) == result.end())
-         {
-           result.push_back(bend);
-         }
-       }
-     }
+    // extend to the left
+    for (std::size_t left_bead : findAllNeighbors(found_bond[0]))
+    {
+      if (left_bead != found_bond[1])
+      {
+        std::array<std::size_t, 3> bend = {std::min(left_bead, found_bond[1]), found_bond[0],
+                                           std::max(left_bead, found_bond[1])};
+        if (std::find(result.begin(), result.end(), bend) == result.end())
+        {
+          result.push_back(bend);
+        }
+      }
+    }
 
-     // extend to the right
-     for(std::size_t right_bead : findAllNeighbors(found_bond[1]))
-     {
-       if( right_bead != found_bond[0])
-       {
-         std::array<std::size_t, 3> bend = {std::min(found_bond[0], right_bead),
-                                            found_bond[1], 
-                                            std::max(found_bond[0], right_bead)};
-         if(std::find(result.begin(), result.end(), bend) == result.end())
-         {
-           result.push_back(bend);
-         }
-       }
-     }
+    // extend to the right
+    for (std::size_t right_bead : findAllNeighbors(found_bond[1]))
+    {
+      if (right_bead != found_bond[0])
+      {
+        std::array<std::size_t, 3> bend = {std::min(found_bond[0], right_bead), found_bond[1],
+                                           std::max(found_bond[0], right_bead)};
+        if (std::find(result.begin(), result.end(), bend) == result.end())
+        {
+          result.push_back(bend);
+        }
+      }
+    }
   }
 
   return result;
@@ -361,38 +358,38 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
 
   std::vector<std::array<std::size_t, 3>> found_bends = findAllBends();
 
-  for(const std::array<std::size_t, 3> found_bend : found_bends)
+  for (const std::array<std::size_t, 3> found_bend : found_bends)
   {
-     // extend to the left
-     for(std::size_t left_bead : findAllNeighbors(found_bend[0]))
-     {
-       if( left_bead != found_bend[1])
-       {
-         std::array<std::size_t, 4> torsion = {left_bead, found_bend[0], found_bend[1], found_bend[2]};
-         std::array<std::size_t, 4> torsion_mirrored = {found_bend[2], found_bend[1], found_bend[0], left_bead};
-         if(std::find(result.begin(), result.end(), torsion) == result.end() &&
+    // extend to the left
+    for (std::size_t left_bead : findAllNeighbors(found_bend[0]))
+    {
+      if (left_bead != found_bend[1])
+      {
+        std::array<std::size_t, 4> torsion = {left_bead, found_bend[0], found_bend[1], found_bend[2]};
+        std::array<std::size_t, 4> torsion_mirrored = {found_bend[2], found_bend[1], found_bend[0], left_bead};
+        if (std::find(result.begin(), result.end(), torsion) == result.end() &&
             std::find(result.begin(), result.end(), torsion_mirrored) == result.end())
-         {
-           result.push_back(torsion);
-         }
-       }
-     }
+        {
+          result.push_back(torsion);
+        }
+      }
+    }
 
-     // extend to the right
-     for(std::size_t right_bead : findAllNeighbors(found_bend[2]))
-     {
-       if( right_bead != found_bend[1])
-       {
-         std::array<std::size_t, 4> torsion = {found_bend[0], found_bend[1], found_bend[2], right_bead};
-         std::array<std::size_t, 4> torsion_mirrored = {right_bead, found_bend[2], found_bend[1], found_bend[0]};
+    // extend to the right
+    for (std::size_t right_bead : findAllNeighbors(found_bend[2]))
+    {
+      if (right_bead != found_bend[1])
+      {
+        std::array<std::size_t, 4> torsion = {found_bend[0], found_bend[1], found_bend[2], right_bead};
+        std::array<std::size_t, 4> torsion_mirrored = {right_bead, found_bend[2], found_bend[1], found_bend[0]};
 
-         if(std::find(result.begin(), result.end(), torsion) == result.end() &&
+        if (std::find(result.begin(), result.end(), torsion) == result.end() &&
             std::find(result.begin(), result.end(), torsion_mirrored) == result.end())
-         {
-           result.push_back(torsion);
-         }
-       }
-     }
+        {
+          result.push_back(torsion);
+        }
+      }
+    }
   }
 
   return result;
@@ -403,9 +400,9 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() 
   std::vector<std::array<std::size_t, 2>> result{};
   result.reserve(numberOfBeads * (numberOfBeads - 1) / 2);
 
-  for(std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
   {
-    for(std::size_t j = i + 1; j < numberOfBeads; ++j)
+    for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
       result.push_back({i, j});
     }
@@ -415,28 +412,34 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() 
   std::vector<std::array<std::size_t, 3>> found_bends = findAllBends();
   std::vector<std::array<std::size_t, 4>> found_torsions = findAllTorsions();
 
-
-  for(std::array<std::size_t, 2> &found_bond : found_bonds)
+  for (std::array<std::size_t, 2> &found_bond : found_bonds)
   {
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[0], found_bond[1]}), result.end());
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[1], found_bond[0]}), result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[0], found_bond[1]}),
+                 result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bond[1], found_bond[0]}),
+                 result.end());
   }
 
-  for(std::array<std::size_t, 3> &found_bend : found_bends)
+  for (std::array<std::size_t, 3> &found_bend : found_bends)
   {
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[0], found_bend[2]}), result.end());
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[2], found_bend[0]}), result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[0], found_bend[2]}),
+                 result.end());
+    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_bend[2], found_bend[0]}),
+                 result.end());
   }
 
-  for(std::array<std::size_t, 4> &found_torsion : found_torsions)
+  for (std::array<std::size_t, 4> &found_torsion : found_torsions)
   {
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[0], found_torsion[3]}), result.end());
-    result.erase(std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[3], found_torsion[0]}), result.end());
+    result.erase(
+        std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[0], found_torsion[3]}),
+        result.end());
+    result.erase(
+        std::remove(result.begin(), result.end(), std::array<std::size_t, 2>{found_torsion[3], found_torsion[0]}),
+        result.end());
   }
 
   return result;
 }
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ConnectivityTable &b)
 {

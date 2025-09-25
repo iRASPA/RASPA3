@@ -39,7 +39,6 @@ import framework;
 import component;
 import interpolation_energy_grid;
 
-
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
@@ -58,11 +57,10 @@ import interpolation_energy_grid;
     std::vector<Atom> randomlyRotatedAtoms = CBMC::rotateRandomlyAround(orientation, molecule_atoms, starting_bead);
     double3 com = component.computeCenterOfMass(randomlyRotatedAtoms);
 
-    trialPositions[i] =
-        {Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
-         randomlyRotatedAtoms};
+    trialPositions[i] = {
+        Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+        randomlyRotatedAtoms};
   };
-
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
@@ -86,5 +84,6 @@ import interpolation_energy_grid;
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainGrowData(selected_molecule, selected_atoms, selected_running_energy, RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
+  return ChainGrowData(selected_molecule, selected_atoms, selected_running_energy,
+                       RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
 }

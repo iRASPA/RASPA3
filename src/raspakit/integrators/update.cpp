@@ -35,11 +35,11 @@ import randomnumbers;
 import units;
 import interpolation_energy_grid;
 
-void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling)
+void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::pair<double, double> scaling)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   // Scale velocities and orientation momenta of each molecule
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     molecule.velocity = scaling.first * molecule.velocity;
     molecule.orientationMomentum = scaling.second * molecule.orientationMomentum;
@@ -48,13 +48,13 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pa
   integratorsCPUTime.scaleVelocities += end - begin;
 }
 
-void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculePositions)
+void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
-  double3 totalVelocity = computeCenterOfMassVelocity(moleculePositions);
+  double3 totalVelocity = computeCenterOfMassVelocity(moleculeData);
   // Scale velocities and orientation momenta of each molecule
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     molecule.velocity -= totalVelocity;
   }
@@ -62,11 +62,11 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculePo
   integratorsCPUTime.removeCenterOfMassVelocity += end - begin;
 }
 
-void Integrators::updatePositions(std::span<Molecule> moleculePositions, double dt)
+void Integrators::updatePositions(std::span<Molecule> moleculeData, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   // Update the center of mass positions for each molecule
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     molecule.centerOfMassPosition += dt * molecule.velocity;
   }
@@ -74,12 +74,12 @@ void Integrators::updatePositions(std::span<Molecule> moleculePositions, double 
   integratorsCPUTime.updatePositions += end - begin;
 }
 
-void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double dt)
+void Integrators::updateVelocities(std::span<Molecule> moleculeData, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // Update velocities and orientation momenta based on gradients
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     molecule.velocity -= dt * molecule.gradient * molecule.invMass;
     molecule.orientationMomentum -= dt * molecule.orientationGradient;
@@ -88,10 +88,10 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
-void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions,
+void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                                        const std::vector<Component> components, double temperature)
 {
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     // Draw reandom vector with variance kBT / m
     molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
@@ -118,13 +118,13 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
   }
 }
 
-void Integrators::createCartesianPositions(std::span<const Molecule> moleculePositions,
+void Integrators::createCartesianPositions(std::span<const Molecule> moleculeData,
                                            std::span<Atom> moleculeAtomPositions, std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   std::size_t index{};
   // Convert molecule positions and orientations to atom positions
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     simd_quatd q = molecule.orientation;
@@ -140,11 +140,11 @@ void Integrators::createCartesianPositions(std::span<const Molecule> moleculePos
   integratorsCPUTime.createCartesianPositions += end - begin;
 }
 
-void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculePositions,
-                                            const std::vector<Component> components, double dt)
+void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components,
+                                            double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
     std::pair<simd_quatd, simd_quatd> pq = std::make_pair(molecule.orientationMomentum, molecule.orientation);
@@ -156,14 +156,14 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculePosition
   integratorsCPUTime.noSquishFreeRotorOrderTwo += end - begin;
 }
 
-void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculePositions,
+void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
                                                             std::span<Atom> moleculeAtomPositions,
                                                             std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   std::size_t index{};
   // Update center of mass velocities and orientation momenta for each molecule
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
 
@@ -198,7 +198,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
   integratorsCPUTime.updateCenterOfMassAndQuaternionVelocities += end - begin;
 }
 
-void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculePositions,
+void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData,
                                                            std::span<Atom> moleculeAtomPositions,
                                                            std::vector<Component> components)
 {
@@ -206,7 +206,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
   std::size_t index{};
 
   // Update gradients of center of mass and orientation for each molecule
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     double3 com_gradient{};
@@ -264,7 +264,7 @@ RunningEnergy Integrators::updateGradients(
       numberOfMoleculesPerComponent, moleculeAtomPositions);
 
   RunningEnergy internal_energies{};
-  for(const Component &component : components)
+  for (const Component& component : components)
   {
     internal_energies += component.intraMolecularPotentials.computeInternalGradient(moleculeAtomPositions);
   }

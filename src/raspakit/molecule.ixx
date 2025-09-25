@@ -36,9 +36,9 @@ export struct Molecule
   double invMass;                  ///< 1/mass to save on computing (and set correct size)
   double padding1;
   double padding2;
-  std::size_t atomIndex;         ///< Pointing to the index in the list of atoms
-  std::size_t numberOfAtoms;     ///< Number of subatoms in this molecule
-  std::size_t componentId;       ///< Pointing to the index in the components list
+  std::size_t atomIndex;      ///< Pointing to the index in the list of atoms
+  std::size_t numberOfAtoms;  ///< Number of subatoms in this molecule
+  std::size_t componentId;    ///< Pointing to the index in the components list
   std::size_t padding3;
 
   /**
@@ -93,7 +93,7 @@ export struct Molecule
 };
 
 // should be 8 times double4 = 8x(8x4) = 8x32 = 256 bytes
- static_assert(sizeof(Molecule) == 256, "struct Molecule size is not 256");
+static_assert(sizeof(Molecule) == 256, "struct Molecule size is not 256");
 
 export void to_json(nlohmann::json &j, const Molecule &a)
 {

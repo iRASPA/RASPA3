@@ -7,11 +7,11 @@ module;
 #include <iostream>
 #include <numbers>
 #include <print>
+#include <source_location>
 #include <span>
 #include <streambuf>
 #include <string>
 #include <vector>
-#include <source_location>
 #endif
 
 module sample_movies;
@@ -36,7 +36,7 @@ SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery) : sample
 }
 
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
-                         std::span<Atom> atomPositions, std::size_t currentCycle)
+                         std::span<Atom> atomData, std::size_t currentCycle)
 {
   if (currentCycle % sampleEvery == 0)
   {
@@ -48,7 +48,7 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
                simulationBox.lengthB, simulationBox.lengthC, simulationBox.angleAlpha * 180.0 / std::numbers::pi,
                simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
 
-    for (int index = 1; const Atom &atom : atomPositions)
+    for (int index = 1; const Atom &atom : atomData)
     {
       std::size_t atomicNumber = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].atomicNumber;
       std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name);
@@ -77,7 +77,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Sample
   return archive;
 }
 
-
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SampleMovie &m)
 {
   std::uint64_t versionNumber;
@@ -102,4 +101,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SampleMovie 
 
   return archive;
 }
-

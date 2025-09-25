@@ -10,10 +10,10 @@ module;
 #include <map>
 #include <numbers>
 #include <ostream>
-#include <vector>
+#include <print>
 #include <span>
 #include <tuple>
-#include <print>
+#include <vector>
 #endif
 
 #define sqr(x) ((x) * (x))
@@ -31,9 +31,8 @@ extern "C"
   void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
               blas_int* info);
 
-  void dgesvd_( char* jobu, char* jobvt, blas_int* m, blas_int* n, double* a,
-               blas_int* lda, double* s, double* u, blas_int* ldu, double* vt, blas_int* ldvt,
-               double* work, blas_int* lwork, blas_int* info );
+  void dgesvd_(char* jobu, char* jobvt, blas_int* m, blas_int* n, double* a, blas_int* lda, double* s, double* u,
+               blas_int* ldu, double* vt, blas_int* ldvt, double* work, blas_int* lwork, blas_int* info);
 }
 
 module double3x3;
@@ -362,18 +361,19 @@ std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition(
   double wkopt;
 
   double s[3], u[9], vt[9];
-  std::vector<double> matrix = std::vector<double>{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
+  std::vector<double> matrix =
+      std::vector<double>{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
 
   lwork = -1;
-  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
 
   lwork = static_cast<blas_int>(wkopt);
   std::vector<double> work(static_cast<std::size_t>(lwork));
-  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
-  if( info > 0 ) 
+  if (info > 0)
   {
-    std::print( "The algorithm computing SVD failed to converge.\n" );
+    std::print("The algorithm computing SVD failed to converge.\n");
   }
 
   double3 sigma = double3(s[0], s[1], s[2]);
@@ -385,11 +385,12 @@ std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition(
 
 // https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
 // compute the rotation matrix to map set 'A' onto set 'B'
-double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B)
+double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A,
+                                           double3 center_of_mass_B, std::span<double3> positions_B)
 {
   double3x3 H{};
 
-  for(std::size_t i = 0; i < positions_A.size(); ++i)
+  for (std::size_t i = 0; i < positions_A.size(); ++i)
   {
     double3 vec_i = positions_A[i] - center_of_mass_A;
     double3 vec_j = positions_B[i] - center_of_mass_B;
@@ -417,15 +418,15 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
 
   lwork = -1;
-  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
 
   lwork = static_cast<blas_int>(wkopt);
   std::vector<double> work(static_cast<std::size_t>(lwork));
-  dgesvd_( &jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
-  if( info > 0 ) 
+  if (info > 0)
   {
-    std::print( "The algorithm computing SVD failed to converge.\n" );
+    std::print("The algorithm computing SVD failed to converge.\n");
   }
 
   double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
@@ -435,9 +436,10 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   double3x3 result = matrix_vt.transpose() * matrix_u.transpose();
 
   double determinant = result.determinant();
-  if(determinant < 0.0)
+  if (determinant < 0.0)
   {
-    return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) * matrix_u.transpose();
+    return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) *
+           matrix_u.transpose();
   }
 
   return result;
@@ -459,7 +461,6 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
   H.cx = vec_i.x * vec_j.z;
   H.cy = vec_i.y * vec_j.z;
   H.cz = vec_i.z * vec_j.z;
-  
 
   blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
 
@@ -471,15 +472,15 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
   std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
 
   lwork = -1;
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+  dgesvd_(&jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
 
   lwork = static_cast<blas_int>(wkopt);
   std::vector<double> work(static_cast<std::size_t>(lwork));
-  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+  dgesvd_(&jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
-  if( info > 0 ) 
+  if (info > 0)
   {
-    std::print( "The algorithm computing SVD failed to converge.\n" );
+    std::print("The algorithm computing SVD failed to converge.\n");
   }
 
   double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
@@ -489,15 +490,14 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
   double3x3 result = matrix_vt.transpose() * matrix_u.transpose();
 
   double determinant = result.determinant();
-  if(determinant < 0.0)
+  if (determinant < 0.0)
   {
-    return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) * matrix_u.transpose();
+    return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) *
+           matrix_u.transpose();
   }
 
   return result;
 }
-
-
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec)
 {

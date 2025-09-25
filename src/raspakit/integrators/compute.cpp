@@ -25,11 +25,11 @@ import interactions_ewald;
 import running_energy;
 import integrators_cputime;
 
-double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculePositions)
+double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   double energy{};
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     // Accumulate kinetic energy: 0.5 * mass * velocity squared
     energy += 0.5 * molecule.mass * double3::dot(molecule.velocity, molecule.velocity);
@@ -40,14 +40,14 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
   return energy;
 }
 
-double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculePositions,
+double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculeData,
                                                    const std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   double3 ang_vel;
   double energy{};
 
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     // Get inertia and inverse inertia vectors for the molecule's component
     double3 inertiaVector = components[molecule.componentId].inertiaVector;
@@ -70,13 +70,13 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
   return energy;
 }
 
-double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculePositions)
+double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculeData)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   double3 com{};
   double totalMass{};
 
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     // Accumulate total mass and weighted positions
     totalMass += molecule.mass;
@@ -91,13 +91,13 @@ double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculePosit
 }
 
 // The velocity of the center of mass is the average velocity of all objects in the system weighted by their masses
-double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> moleculePositions)
+double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> moleculeData)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   double3 com_velocity{};
   double totalMass{};
 
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     // Accumulate total mass and weighted velocities
     totalMass += molecule.mass;
@@ -110,12 +110,12 @@ double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> molec
   return com_velocity / totalMass;
 }
 
-double3 Integrators::computeLinearMomentum(std::span<const Molecule> moleculePositions)
+double3 Integrators::computeLinearMomentum(std::span<const Molecule> moleculeData)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   double3 com_momentum{};
-  for (const Molecule& molecule : moleculePositions)
+  for (const Molecule& molecule : moleculeData)
   {
     // Accumulate linear momentum: mass * velocity
     com_momentum += molecule.mass * molecule.velocity;

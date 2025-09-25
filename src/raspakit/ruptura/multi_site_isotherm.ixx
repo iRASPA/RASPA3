@@ -3,8 +3,8 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <array>
 #include <cstddef>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <vector>
 #endif
 

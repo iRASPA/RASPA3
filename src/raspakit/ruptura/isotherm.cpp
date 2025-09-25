@@ -412,8 +412,8 @@ std::string Isotherm::gnuplotFunctionString(char c, std::size_t i) const
     }
     case Isotherm::Type::BET:
     {
-      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x/((1.0-%c[%zd]*x)*(1.0-%c[%zd]+%c[%zd]*x))", c, i, c, i + 1, c,
-               i + 2, c, i + 2, c, i + 1);
+      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x/((1.0-%c[%zd]*x)*(1.0-%c[%zd]+%c[%zd]*x))", c, i, c, i + 1,
+                    c, i + 2, c, i + 2, c, i + 1);
       return stringBuffer;
     }
     case Isotherm::Type::Henry:
@@ -428,14 +428,14 @@ std::string Isotherm::gnuplotFunctionString(char c, std::size_t i) const
     }
     case Isotherm::Type::Sips:
     {
-      std::snprintf(stringBuffer, 1024, "%c[%zd]*((%c[%zd]*x)**(1.0/%c[%zd]))/(1.0+(%c[%zd]*x)**(1.0/%c[%zd]))", c, i, c,
-               i + 1, c, i + 2, c, i + 1, c, i + 2);
+      std::snprintf(stringBuffer, 1024, "%c[%zd]*((%c[%zd]*x)**(1.0/%c[%zd]))/(1.0+(%c[%zd]*x)**(1.0/%c[%zd]))", c, i,
+                    c, i + 1, c, i + 2, c, i + 1, c, i + 2);
       return stringBuffer;
     }
     case Isotherm::Type::Langmuir_Freundlich:
     {
-      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x**%c[%zd]/(1.0+%c[%zd]*x**%c[%zd])", c, i, c, i + 1, c, i + 2, c,
-               i + 1, c, i + 2);
+      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x**%c[%zd]/(1.0+%c[%zd]*x**%c[%zd])", c, i, c, i + 1, c, i + 2,
+                    c, i + 1, c, i + 2);
       return stringBuffer;
     }
     case Isotherm::Type::Redlich_Peterson:
@@ -445,38 +445,38 @@ std::string Isotherm::gnuplotFunctionString(char c, std::size_t i) const
     }
     case Isotherm::Type::Toth:
     {
-      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x/((1.0+(%c[%zd]*x)**%c[%zd])**(1.0/%c[%zd]))", c, i, c, i + 1, c,
-               i + 1, c, i + 2, c, i + 2);
+      std::snprintf(stringBuffer, 1024, "%c[%zd]*%c[%zd]*x/((1.0+(%c[%zd]*x)**%c[%zd])**(1.0/%c[%zd]))", c, i, c, i + 1,
+                    c, i + 1, c, i + 2, c, i + 2);
       return stringBuffer;
     }
     case Isotherm::Type::Unilan:
     {
       std::snprintf(stringBuffer, 1024,
-               "(%c[%zd]/(2.0*%c[%zd]))*log((1.0+%c[%zd]*exp(%c[%zd])*x)/"
-               "(1.0+%c[%zd]*exp(-%c[%zd])*x))",
-               c, i, c, i + 2, c, i + 1, c, i + 2, c, i + 1, c, i + 2);
+                    "(%c[%zd]/(2.0*%c[%zd]))*log((1.0+%c[%zd]*exp(%c[%zd])*x)/"
+                    "(1.0+%c[%zd]*exp(-%c[%zd])*x))",
+                    c, i, c, i + 2, c, i + 1, c, i + 2, c, i + 1, c, i + 2);
       return stringBuffer;
     }
     case Isotherm::Type::OBrien_Myers:
     {
       std::snprintf(stringBuffer, 1024,
-               "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x) + (%c[%zd]**2)*%c[%zd]*x*(1.0-%c[%zd]*x)/"
-               "(2.0*(1.0+%c[%zd]*x)**3))",
-               c, i, c, i + 1, c, i + 1, c, i + 2, c, i + 1, c, i + 1, c, i + 1);
+                    "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x) + (%c[%zd]**2)*%c[%zd]*x*(1.0-%c[%zd]*x)/"
+                    "(2.0*(1.0+%c[%zd]*x)**3))",
+                    c, i, c, i + 1, c, i + 1, c, i + 2, c, i + 1, c, i + 1, c, i + 1);
       return stringBuffer;
     }
     case Isotherm::Type::Quadratic:
     {
-      std::snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x+2.0*%c[%zd]*x**2)/(1.0+%c[%zd]*x+%c[%zd]*x**2)", c, i, c, i + 1,
-               c, i + 2, c, i + 1, c, i + 2);
+      std::snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x+2.0*%c[%zd]*x**2)/(1.0+%c[%zd]*x+%c[%zd]*x**2)", c, i, c,
+                    i + 1, c, i + 2, c, i + 1, c, i + 2);
       return stringBuffer;
     }
     case Isotherm::Type::Temkin:
     {
       std::snprintf(stringBuffer, 1024,
-               "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x))+%c[%zd]*%c[%zd]*((%c[%zd]*x/(1.0+%c[%zd]*x))"
-               "**2)*(%c[%zd]*x/(1.0+%c[%zd]*x)-1.0)",
-               c, i, c, i + 1, c, i + 1, c, i, c, i + 2, c, i + 1, c, i + 1, c, i + 1, c, i + 1);
+                    "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x))+%c[%zd]*%c[%zd]*((%c[%zd]*x/(1.0+%c[%zd]*x))"
+                    "**2)*(%c[%zd]*x/(1.0+%c[%zd]*x)-1.0)",
+                    c, i, c, i + 1, c, i + 1, c, i, c, i + 2, c, i + 1, c, i + 1, c, i + 1, c, i + 1);
       return stringBuffer;
     }
     default:

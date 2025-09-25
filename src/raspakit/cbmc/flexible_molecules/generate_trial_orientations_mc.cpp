@@ -1,26 +1,26 @@
 module;
-      
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
-#include <utility>
 #include <cmath>
+#include <format>
 #include <iostream>
-#include <numeric> 
+#include <numeric>
 #include <optional>
+#include <print>
 #include <span>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
-#include <format>
-#include <print>
 #endif
-    
+
 module cbmc_generate_trialorientations_mc;
-    
+
 #ifndef USE_LEGACY_HEADERS
 import std;
 #endif
-  
+
 import randomnumbers;
 import units;
 import component;
@@ -29,14 +29,14 @@ import atom;
 import double3;
 import simd_quatd;
 import double3x3;
-import simulationbox; 
+import simulationbox;
 import energy_status;
 import cbmc_first_bead_data;
 import cbmc_chain_data;
-import cbmc_util;   
+import cbmc_util;
 import cbmc_multiple_first_bead;
 import cbmc_interactions;
-import forcefield;  
+import forcefield;
 import energy_factor;
 import running_energy;
 import framework;
@@ -46,16 +46,15 @@ import bond_potential;
 import intra_molecular_potentials;
 import cbmc_move_statistics;
 
-std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &random, double beta,
-            Component &component,
-            const std::vector<Atom> molecule_atoms, std::size_t previousBead,
-            std::size_t currentBead, std::vector<std::size_t> nextBeads, 
-            const Potentials::IntraMolecularPotentials &intraMolecularInteractions)
+std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
+    RandomNumber &random, double beta, Component &component, const std::vector<Atom> molecule_atoms,
+    std::size_t previousBead, std::size_t currentBead, std::vector<std::size_t> nextBeads,
+    const Potentials::IntraMolecularPotentials &intraMolecularInteractions)
 {
   std::vector<Atom> chain_atoms(molecule_atoms);
 
   // Calculate initial positions for the next beads
-  if(!component.grownAtoms.empty())
+  if (!component.grownAtoms.empty())
   {
     // Restore from previous configuration stored in component
     double3 last_bond_vector = chain_atoms[previousBead].position - chain_atoms[currentBead].position;
@@ -63,7 +62,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
 
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(v, last_bond_vector);
 
-    for(std::size_t next_bead : nextBeads)
+    for (std::size_t next_bead : nextBeads)
     {
       double3 va = component.grownAtoms[next_bead].position - component.grownAtoms[currentBead].position;
 
@@ -75,13 +74,16 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   else
   {
     // Generate positions from scratch
-    for(std::size_t next_bead : nextBeads)
+    for (std::size_t next_bead : nextBeads)
     {
       std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, next_bead);
 
-      double bond_length = bond.transform([&random, &beta](const BondPotential &bond) { return bond.generateBondLength(random, beta);}).value_or(1.54);
-      double angle = intraMolecularInteractions.bends.empty() ? 120.0 * Units::DegreesToRadians :
-                         intraMolecularInteractions.bends.front().generateBendAngle(random, beta);
+      double bond_length =
+          bond.transform([&random, &beta](const BondPotential &bond) { return bond.generateBondLength(random, beta); })
+              .value_or(1.54);
+      double angle = intraMolecularInteractions.bends.empty()
+                         ? 120.0 * Units::DegreesToRadians
+                         : intraMolecularInteractions.bends.front().generateBendAngle(random, beta);
 
       double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
       double3 vec = random.randomVectorOnCone(last_bond_vector, angle);
@@ -93,13 +95,13 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   std::size_t number_of_trials = 300;
 
   std::vector<double> move_probabilities{};
-  if( intraMolecularInteractions.bends.size() == 1 )
+  if (intraMolecularInteractions.bends.size() == 1)
   {
-    move_probabilities = { 0.6, 0.4, 0.0 };
+    move_probabilities = {0.6, 0.4, 0.0};
   }
   else
   {
-    move_probabilities = { 0.4, 0.4, 0.2 };
+    move_probabilities = {0.4, 0.4, 0.2};
   }
 
   // pick the move accoording to the prescribed weights
@@ -108,11 +110,11 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   double current_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
   double current_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
-  for(std::size_t trial = 0; trial != number_of_trials; ++trial)
+  for (std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
-    switch(move_type)
+    switch (move_type)
     {
-      case MoveType::BondLengthChange: 
+      case MoveType::BondLengthChange:
       {
         // Move: change bond-length
         // bond-energies are affected by only bond-terms
@@ -128,7 +130,8 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         double3 saved_current_position = chain_atoms[selected_next_bead].position;
         double max_change = component.cbmc_moves_statistics[currentBead].bondLengthChange.maxChange;
         double new_bond_length = current_bond_length + (2.0 * random.uniform() - 1.0) * max_change;
-        chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + (new_bond_length / current_bond_length) * current_bond_vector;
+        chain_atoms[selected_next_bead].position =
+            chain_atoms[currentBead].position + (new_bond_length / current_bond_length) * current_bond_vector;
 
         double new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
 
@@ -138,7 +141,8 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         component.cbmc_moves_statistics[currentBead].bondLengthChange.totalConstructed += 1;
 
         // compute energy
-        if(random.uniform() < (new_bond_length / current_bond_length) * (new_bond_length / current_bond_length) * std::exp(-beta * energy_difference))
+        if (random.uniform() < (new_bond_length / current_bond_length) * (new_bond_length / current_bond_length) *
+                                   std::exp(-beta * energy_difference))
         {
           // update component statistics
           current_bond_energy += energy_difference;
@@ -151,32 +155,36 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
           chain_atoms[selected_next_bead].position = saved_current_position;
         }
 #if defined(DEBUG)
-        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, saved_current_position);
-        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, chain_atoms[selected_next_bead].position);
-        if(std::fabs(new_angle - old_angle) > 1e-5)
+        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
+                                          saved_current_position);
+        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
+                                          chain_atoms[selected_next_bead].position);
+        if (std::fabs(new_angle - old_angle) > 1e-5)
         {
           throw std::runtime_error(std::format("CBMC: bond-angle change in 'MoveType::BondLengthChange' ({} vs {})\n",
-                                               new_angle * Units::RadiansToDegrees, old_angle * Units::RadiansToDegrees));
+                                               new_angle * Units::RadiansToDegrees,
+                                               old_angle * Units::RadiansToDegrees));
         }
 #endif
         break;
       }
-      case MoveType::BendAngleChange: 
+      case MoveType::BendAngleChange:
       {
         // Move: change bend angle of one chosen bead
-        // bend-energies are affected by: 1) bend-terms, 2) urey-bradley 3) bond-bend, 4) bend-bend, 5) inversion-bend, 6) out-of-plane bend
-        
+        // bend-energies are affected by: 1) bend-terms, 2) urey-bradley 3) bond-bend, 4) bend-bend, 5) inversion-bend,
+        // 6) out-of-plane bend
+
         component.cbmc_moves_statistics[currentBead].bendAngleChange.counts += 1;
         component.cbmc_moves_statistics[currentBead].bendAngleChange.totalCounts += 1;
 
         std::size_t selected_next_bead = nextBeads[random.uniform_integer(0, nextBeads.size() - 1)];
 
-        double current_angle = double3::angle(chain_atoms[previousBead].position, 
-                                              chain_atoms[currentBead].position,
+        double current_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
                                               chain_atoms[selected_next_bead].position);
         double current_sinus = std::sin(current_angle);
 
-        double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
+        double3 last_bond_vector =
+            (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
         double3 negative_bond_vector = chain_atoms[currentBead].position - chain_atoms[selected_next_bead].position;
         double3 perpendicular_vector = double3::perpendicular(negative_bond_vector, last_bond_vector);
 
@@ -188,8 +196,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         double3 saved_current_position = chain_atoms[selected_next_bead].position;
         chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + new_vec;
 
-        double new_angle = double3::angle(chain_atoms[previousBead].position,
-                                          chain_atoms[currentBead].position,
+        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
                                           chain_atoms[selected_next_bead].position);
         double new_sinus = std::sin(new_angle);
 
@@ -201,7 +208,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         component.cbmc_moves_statistics[currentBead].bendAngleChange.totalConstructed += 1;
 
         // compute energy
-        if(random.uniform() < (new_sinus / current_sinus) * std::exp(-beta * energy_difference))
+        if (random.uniform() < (new_sinus / current_sinus) * std::exp(-beta * energy_difference))
         {
           // update component statistics
           current_bend_energy += energy_difference;
@@ -216,25 +223,27 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
 #if defined(DEBUG)
         double old_bond = (chain_atoms[currentBead].position - saved_current_position).length();
         double new_bond = (chain_atoms[currentBead].position - chain_atoms[selected_next_bead].position).length();
-        if(std::fabs(new_bond - old_bond) > 1e-5)
+        if (std::fabs(new_bond - old_bond) > 1e-5)
         {
-          throw std::runtime_error(std::format("CBMC: bond-length change in 'MoveType::BendAngleChange' ({} vs {})\n",
-                                               new_bond, old_bond));
+          throw std::runtime_error(
+              std::format("CBMC: bond-length change in 'MoveType::BendAngleChange' ({} vs {})\n", new_bond, old_bond));
         }
 #endif
         break;
       }
-      case MoveType::ConeChange: 
+      case MoveType::ConeChange:
       {
         // Move: rotate one position on the cone while keeping the cone angle fixed
-        // bend-energies are affected by: 1) bend-terms, 2) bond-bend, 3) bend-bend, 4) inversion-bend, 5) out-of-plane bend
-        
+        // bend-energies are affected by: 1) bend-terms, 2) bond-bend, 3) bend-bend, 4) inversion-bend, 5) out-of-plane
+        // bend
+
         component.cbmc_moves_statistics[currentBead].conePositionChange.counts += 1;
         component.cbmc_moves_statistics[currentBead].conePositionChange.totalCounts += 1;
 
         std::size_t selected_next_bead = nextBeads[random.uniform_integer(0, nextBeads.size() - 1)];
 
-        double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
+        double3 last_bond_vector =
+            (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
         double3 bond_vector = chain_atoms[selected_next_bead].position - chain_atoms[currentBead].position;
 
         double max_change = component.cbmc_moves_statistics[currentBead].conePositionChange.maxChange;
@@ -252,7 +261,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         component.cbmc_moves_statistics[currentBead].conePositionChange.totalConstructed += 1;
 
         // compute energy
-        if(random.uniform() < std::exp(-beta * energy_difference))
+        if (random.uniform() < std::exp(-beta * energy_difference))
         {
           // update component statistics
           current_bend_energy += energy_difference;
@@ -265,12 +274,15 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
           chain_atoms[selected_next_bead].position = saved_current_position;
         }
 #if defined(DEBUG)
-        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, saved_current_position);
-        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position, chain_atoms[selected_next_bead].position);
-        if(std::fabs(new_angle - old_angle) > 1e-5)
+        double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
+                                          saved_current_position);
+        double new_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
+                                          chain_atoms[selected_next_bead].position);
+        if (std::fabs(new_angle - old_angle) > 1e-5)
         {
           throw std::runtime_error(std::format("CBMC: bend-angle change in 'MoveType::ConeChange' ({} vs {})\n",
-                                               new_angle * Units::RadiansToDegrees, old_angle * Units::RadiansToDegrees));
+                                               new_angle * Units::RadiansToDegrees,
+                                               old_angle * Units::RadiansToDegrees));
         }
 #endif
         break;
@@ -283,22 +295,20 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   double recomputed_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
   double recomputed_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
-  double bond_drift = std::fabs( recomputed_bond_energy - current_bond_energy);
-  double bend_drift = std::fabs( recomputed_bend_energy - current_bend_energy);
+  double bond_drift = std::fabs(recomputed_bond_energy - current_bond_energy);
+  double bend_drift = std::fabs(recomputed_bend_energy - current_bend_energy);
 
-  if(bond_drift > 1e-4 || bend_drift > 1e-4)
+  if (bond_drift > 1e-4 || bend_drift > 1e-4)
   {
     std::print("CBMC: internal drifts (bond {}, bend {})\n", bond_drift, bend_drift);
     std::exit(0);
   }
 
-
   std::vector<Atom> next_bead_atoms(nextBeads.size());
-  for(std::size_t i = 0; i != nextBeads.size(); ++i)
+  for (std::size_t i = 0; i != nextBeads.size(); ++i)
   {
     next_bead_atoms[i] = chain_atoms[nextBeads[i]];
   }
-
 
   return next_bead_atoms;
 }

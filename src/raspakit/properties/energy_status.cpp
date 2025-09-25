@@ -96,8 +96,8 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
                Units::displayedUnitOfEnergyString);
     std::print(stream, "    Molecule intraVDW:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].vanDerWaals,
                Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule intraChargeCharge: {: .6e} [{}]\n\n",
-               conv * intraComponentEnergies[i].coulomb, Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule intraChargeCharge: {: .6e} [{}]\n\n", conv * intraComponentEnergies[i].coulomb,
+               Units::displayedUnitOfEnergyString);
 
     for (std::size_t j = 0; j < components.size(); ++j)
     {

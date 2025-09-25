@@ -9,6 +9,7 @@ module;
 #include <cerrno>   // errno, ERANGE
 #include <clocale>  // localeconv
 #include <cmath>    // ldexp
+#include <compare>  // partial_ordering
 #include <cstddef>
 #include <cstdint>    // uint8_t, uint16_t, uint32_t, uint64_t
 #include <cstdio>     // snprintf
@@ -42,7 +43,6 @@ module;
 #include <valarray>       // valarray
 #include <vector>         // vector
 #include <version>
-#include <compare>  // partial_ordering
 #ifndef JSON_NO_IO
 #include <iosfwd>  // ostream
 #endif             // JSON_NO_IO

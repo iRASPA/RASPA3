@@ -5,10 +5,10 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <tuple>
-#include <format>
 #endif
 
 export module int3;
@@ -109,7 +109,7 @@ export inline bool operator<(const int3 lhs, const int3 rhs)
 }
 
 export template <>
-struct std::formatter<int3>: std::formatter<std::string_view>
+struct std::formatter<int3> : std::formatter<std::string_view>
 {
   auto format(const int3& v, std::format_context& ctx) const
   {

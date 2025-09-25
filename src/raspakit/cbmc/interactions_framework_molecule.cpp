@@ -11,12 +11,12 @@ module;
 #include <iostream>
 #include <numbers>
 #include <optional>
+#include <print>
 #include <semaphore>
 #include <span>
 #include <thread>
 #include <type_traits>
 #include <vector>
-#include <print>
 #endif
 
 module cbmc_interactions_framework_molecule;

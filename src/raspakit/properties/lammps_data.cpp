@@ -6,13 +6,13 @@ module;
 #include <fstream>
 #include <iostream>
 #include <numbers>
+#include <optional>
 #include <print>
+#include <source_location>
 #include <span>
 #include <streambuf>
 #include <string>
 #include <vector>
-#include <optional>
-#include <source_location>
 #endif
 
 module write_lammps_data;
@@ -38,14 +38,14 @@ WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
 }
 
 void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component> components,
-                             std::span<const Atom> atomPositions, const SimulationBox simulationBox,
+                             std::span<const Atom> atomData, const SimulationBox simulationBox,
                              const ForceField forceField, std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                              std::optional<Framework> framework)
 {
   if (currentCycle % sampleEvery != 0) return;
   ;
   std::ofstream stream(std::format("lammps/s{}.data", systemId), std::ios_base::out);
-  stream << IO::WriteLAMMPSDataFile(components, atomPositions, simulationBox, forceField,
+  stream << IO::WriteLAMMPSDataFile(components, atomData, simulationBox, forceField,
                                     numberOfIntegerMoleculesPerComponent, framework)
          << std::endl;
 }
@@ -62,7 +62,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const WriteL
 
   return archive;
 }
-
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, WriteLammpsData &m)
 {
@@ -88,4 +87,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, WriteLammpsD
 
   return archive;
 }
-

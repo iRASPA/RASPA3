@@ -1,22 +1,22 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <exception>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <span>
-#include <deque>
-#include <optional>
-#include <semaphore>
-#include <mutex>
-#include <complex>
-#include <locale>
-#include <ranges>
-#include <string_view>
-#include <filesystem>
 #include <bitset>
+#include <complex>
+#include <cstddef>
+#include <deque>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <locale>
+#include <mutex>
+#include <optional>
+#include <ranges>
+#include <semaphore>
+#include <span>
+#include <string_view>
+#include <vector>
 #endif
 
 export module commandline;
@@ -45,22 +45,24 @@ import libtorch_test;
 
 export namespace CommandLine
 {
-  enum State : std::uint8_t
-  {
-    None = 0,
-    Help = 1,
-    OpenCL = 2,
-    Input = 3,
-    SurfaceArea = 4,
-    VoidFraction = 5,
-    TessellationComputation = 6,
-    PSD = 7,
-    EnergyGrid = 8,
-    Last = 9
-  };
+enum State : std::uint8_t
+{
+  None = 0,
+  Help = 1,
+  OpenCL = 2,
+  Input = 3,
+  SurfaceArea = 4,
+  VoidFraction = 5,
+  TessellationComputation = 6,
+  PSD = 7,
+  EnergyGrid = 8,
+  Last = 9
+};
 
-  ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);
-  ForceField defaultForceFieldMOF(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);
+ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
+                                    bool useEwald = false);
+ForceField defaultForceFieldMOF(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
+                                bool useEwald = false);
 
-  void run(int argc, char* argv[]);
-}
+void run(int argc, char* argv[]);
+}  // namespace CommandLine

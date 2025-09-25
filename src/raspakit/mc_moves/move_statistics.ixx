@@ -37,7 +37,7 @@ struct MoveStatistics
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
-  T counts{};          ///< Number of move attempts.
+  T counts{};               ///< Number of move attempts.
   T constructed{};          ///< Number of moves constructed.
   T accepted{};             ///< Number of moves accepted.
   std::size_t allCounts{};  ///< Total number of counts across all types.
@@ -76,7 +76,7 @@ struct MoveStatistics
   {
     if (!optimize) return;
 
-    if(counts != T{})  // Do not optimize if not counted
+    if (counts != T{})  // Do not optimize if not counted
     {
       T ratio = accepted / (counts + T(1.0));
       if constexpr (std::is_same_v<double, T>)

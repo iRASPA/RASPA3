@@ -135,7 +135,7 @@ TEST(double3x3, Test_rotation_matrix_from_svd)
 {
   RandomNumber random(std::nullopt);
 
-  for(std::size_t i = 0; i < 10000; ++i)
+  for (std::size_t i = 0; i < 10000; ++i)
   {
     double3 a = random.randomVectorOnUnitSphere();
     double3 b = random.randomVectorOnUnitSphere();

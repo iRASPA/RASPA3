@@ -2,16 +2,15 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
-#include <utility>
+#include <array>
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <ostream>
 #include <string>
-#include <format>
-#include <string>
 #include <string_view>
-#include <array>
+#include <utility>
 #endif
 
 export module double3;
@@ -88,9 +87,7 @@ export union double3
   }
   inline static double3 cross(const double3& v1, const double3& v2)
   {
-    return double3(v1.y * v2.z - v1.z * v2.y, 
-                   v1.z * v2.x - v1.x * v2.z, 
-                   v1.x * v2.y - v1.y * v2.x);
+    return double3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
   }
   inline static double3 normalize(const double3& v)
   {
@@ -122,27 +119,24 @@ export union double3
   inline static double3 perpendicular(double3 u, double3 v)
   {
     double3 w;
- 
-    std::array<double, 3> denominator = { std::fabs(u.z * v.y - u.y * v.z),
-                                          std::fabs(u.z * v.x - u.x * v.z),
-                                          std::fabs(u.y * v.x - u.x * v.y) };
+
+    std::array<double, 3> denominator = {std::fabs(u.z * v.y - u.y * v.z), std::fabs(u.z * v.x - u.x * v.z),
+                                         std::fabs(u.y * v.x - u.x * v.y)};
 
     std::array<double, 3>::iterator maximum = std::max_element(denominator.begin(), denominator.end());
 
-    if(*maximum < 1e-10)
+    if (*maximum < 1e-10)
     {
       // u and v are parallel
       // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector
-      w = double3(std::copysign(u[2], u[0]),
-                  std::copysign(u[2], u[1]),
-                 -std::copysign(u[0], u[2]) - std::copysign(u[1], u[2]));
+      w = double3(std::copysign(u[2], u[0]), std::copysign(u[2], u[1]),
+                  -std::copysign(u[0], u[2]) - std::copysign(u[1], u[2]));
       return w.normalized();
     }
 
     auto choise = std::distance(denominator.begin(), maximum);
 
-  
-    switch(choise)
+    switch (choise)
     {
       case 0:
         // u * z == 0 && v * z == 0, solving for y and z (and x can be chosen freely)
@@ -165,7 +159,7 @@ export union double3
       default:
         std::unreachable();
     }
-  
+
     return w.normalized();
   }
 
@@ -181,31 +175,27 @@ export union double3
     return std::atan2(double3::cross(Rab, Rcb).length(), double3::dot(Rab, Rcb));
   }
 
-  inline double3 rotateAroundAxis(const double3 &coord, double angle) const
+  inline double3 rotateAroundAxis(const double3& coord, double angle) const
   {
     double c = std::cos(angle);
     double w = 1.0 - c;
     double s = std::sqrt(1.0 - c * c);
 
-    if( angle < 0.0) s = -s;
+    if (angle < 0.0) s = -s;
 
-    double r1 = coord.x * (this->x * this->x * w + c) +           coord.y * (this->x * this->y * w + this->z * s) + coord.z * (this->x * this->z * w - this->y * s);
-    double r2 = coord.x * (this->x * this->y * w - this->z * s) + coord.y * (this->y * this->y * w + c) +           coord.z * (this->y * this->z * w + this->x * s);
-    double r3 = coord.x * (this->x * this->z * w + this->y * s) + coord.y * (this->y * this->z * w - this->x * s) + coord.z * (this->z * this->z * w + c);
+    double r1 = coord.x * (this->x * this->x * w + c) + coord.y * (this->x * this->y * w + this->z * s) +
+                coord.z * (this->x * this->z * w - this->y * s);
+    double r2 = coord.x * (this->x * this->y * w - this->z * s) + coord.y * (this->y * this->y * w + c) +
+                coord.z * (this->y * this->z * w + this->x * s);
+    double r3 = coord.x * (this->x * this->z * w + this->y * s) + coord.y * (this->y * this->z * w - this->x * s) +
+                coord.z * (this->z * this->z * w + c);
 
     return {r1, r2, r3};
   }
 
+  inline double3 operator+(const double3& b) const { return double3(this->x + b.x, this->y + b.y, this->z + b.z); }
 
-  inline double3 operator+(const double3& b) const
-  {
-    return double3(this->x + b.x, this->y + b.y, this->z + b.z);
-  }
-  
-  inline double3 operator-(const double3& b) const
-  {
-    return double3(this->x - b.x, this->y - b.y, this->z - b.z);
-  }
+  inline double3 operator-(const double3& b) const { return double3(this->x - b.x, this->y - b.y, this->z - b.z); }
 
   double3 operator-() const { return double3(-this->x, -this->y, -this->z); }
   double3& operator+=(const double3& b)
@@ -262,7 +252,6 @@ export union double3
   //   return archive;
   // }
 
-
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3& vec);
 
@@ -270,7 +259,6 @@ export union double3
   friend void to_json(nlohmann::json&, const double3&);
   friend void from_json(const nlohmann::json&, double3&);
 };
-
 
 export inline double3 operator*(const double3& a, const double3& b) { return double3(a.x * b.x, a.y * b.y, a.z * b.z); }
 
@@ -290,9 +278,8 @@ export double3 clamp(double3 value, double3 low, double3 high)
                  std::clamp(value.z, low.z, high.z));
 }
 
-
 export template <>
-struct std::formatter<double3>: std::formatter<std::string_view>
+struct std::formatter<double3> : std::formatter<std::string_view>
 {
   auto format(const double3& v, std::format_context& ctx) const
   {
@@ -304,8 +291,8 @@ struct std::formatter<double3>: std::formatter<std::string_view>
 
 export void to_json(nlohmann::json& j, const double3& a) { j = nlohmann::json{a.x, a.y, a.z}; }
 
-export void from_json(const nlohmann::json& j, double3& a) 
-{ 
+export void from_json(const nlohmann::json& j, double3& a)
+{
   std::array<double, 3> data;
   j.get_to(data);
   a = double3(data[0], data[1], data[2]);

@@ -62,7 +62,8 @@ export struct CoulombPotential
    */
   CoulombPotential() : identifiers({0, 0}), type(CoulombType::Coulomb), scaling(1.0) {}
 
-  CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters, double scaling);
+  CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters,
+                   double scaling);
 
   /**
    * \brief Constructs a CoulombPotential with specified type and Coulomb IDs.

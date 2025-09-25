@@ -40,14 +40,12 @@ import cbmc_interactions;
 import cbmc_multiple_first_bead;
 import interpolation_energy_grid;
 
-
-[[nodiscard]] ChainRetraceData CBMC::retraceRigidMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
-                                                          const ForceField &forceField, const SimulationBox &simulationBox,
-                                                          const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-                                                          const std::optional<Framework> &framework,
-                                                          std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
-                                                          double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                                          double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
+[[nodiscard]] ChainRetraceData CBMC::retraceRigidMoleculeChainDeletion(
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<std::vector<Atom>> trialPositions = {trialPosition};
@@ -72,5 +70,6 @@ import interpolation_energy_grid;
                                             [](const double &acc, const double &logBoltmannFactor)
                                             { return acc + std::exp(logBoltmannFactor); });
 
-  return ChainRetraceData(externalEnergies[0].second, RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
+  return ChainRetraceData(externalEnergies[0].second, RosenbluthWeight / double(forceField.numberOfTrialDirections),
+                          0.0);
 }

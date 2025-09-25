@@ -30,12 +30,12 @@ export struct MCMoveProbabilities
                       double rotationProbability = 0.0, double randomRotationProbability = 0.0,
                       double volumeChangeProbability = 0.0, double reinsertionCBMCProbability = 0.0,
                       double partialReinsertionCBMCProbability = 0.0, double identityChangeCBMCProbability = 0.0,
-                      double swapProbability = 0.0,  double swapCBMCProbability = 0.0, 
-                      double swapCFCMCProbability = 0.0, double swapCBCFCMCProbability = 0.0, 
-                      double gibbsVolumeChangeProbability = 0.0, double gibbsSwapCBMCProbability = 0.0,
-                      double gibbsSwapCFCMCProbability = 0.0,  double widomProbability = 0.0, 
-                      double widomCFCMCProbability = 0.0, double widomCBCFCMCProbability = 0.0,
-                      double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
+                      double swapProbability = 0.0, double swapCBMCProbability = 0.0, double swapCFCMCProbability = 0.0,
+                      double swapCBCFCMCProbability = 0.0, double gibbsVolumeChangeProbability = 0.0,
+                      double gibbsSwapCBMCProbability = 0.0, double gibbsSwapCFCMCProbability = 0.0,
+                      double widomProbability = 0.0, double widomCFCMCProbability = 0.0,
+                      double widomCBCFCMCProbability = 0.0, double parallelTemperingProbability = 0.0,
+                      double hybridMCProbability = 0.0);
 
   // use .at such that access is const
   double getProbability(const MoveTypes &move) const { return probabilities.at(move); };

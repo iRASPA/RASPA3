@@ -471,33 +471,36 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
 
   for (std::size_t k = 0; k < components.size(); k++)
   {
-    if(!components[k].intraMolecularPotentials.bonds.empty())
+    if (!components[k].intraMolecularPotentials.bonds.empty())
     {
-      std::print(stream, "    Bond energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bond energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bond);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bond);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
                  prefactor * computedAverage.first.intraComponentEnergies[k].bond,
-                 prefactor * computedAverage.second.intraComponentEnergies[k].bond,
-                 Units::displayedUnitOfEnergyString);
+                 prefactor * computedAverage.second.intraComponentEnergies[k].bond, Units::displayedUnitOfEnergyString);
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.ureyBradleys.empty())
+    if (!components[k].intraMolecularPotentials.ureyBradleys.empty())
     {
-      std::print(stream, "    Urey-Bradley energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Urey-Bradley energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].ureyBradley);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].ureyBradley);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -507,33 +510,36 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bends.empty())
+    if (!components[k].intraMolecularPotentials.bends.empty())
     {
-      std::print(stream, "    Bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bend);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bend);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
                  prefactor * computedAverage.first.intraComponentEnergies[k].bend,
-                 prefactor * computedAverage.second.intraComponentEnergies[k].bend,
-                 Units::displayedUnitOfEnergyString);
+                 prefactor * computedAverage.second.intraComponentEnergies[k].bend, Units::displayedUnitOfEnergyString);
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.inversionBends.empty())
+    if (!components[k].intraMolecularPotentials.inversionBends.empty())
     {
-      std::print(stream, "    Inversion-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Inversion-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].inversionBend);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].inversionBend);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -543,15 +549,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.outOfPlaneBends.empty())
+    if (!components[k].intraMolecularPotentials.outOfPlaneBends.empty())
     {
-      std::print(stream, "    Out-of-plane bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Out-of-plane bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].outOfPlaneBend);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].outOfPlaneBend);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -561,15 +569,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.torsions.empty())
+    if (!components[k].intraMolecularPotentials.torsions.empty())
     {
-      std::print(stream, "    Torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].torsion);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].torsion);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -579,15 +589,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.improperTorsions.empty())
+    if (!components[k].intraMolecularPotentials.improperTorsions.empty())
     {
-      std::print(stream, "    Improper torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Improper torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].improperTorsion);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].improperTorsion);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -597,15 +609,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bondBonds.empty())
+    if (!components[k].intraMolecularPotentials.bondBonds.empty())
     {
-      std::print(stream, "    Bond-bond energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bond-bond energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bondBond);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bondBond);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -615,15 +629,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bondBends.empty())
+    if (!components[k].intraMolecularPotentials.bondBends.empty())
     {
-      std::print(stream, "    Bond-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bond-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bondBend);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bondBend);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -633,15 +649,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bondTorsions.empty())
+    if (!components[k].intraMolecularPotentials.bondTorsions.empty())
     {
-      std::print(stream, "    Bond-torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bond-torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bondTorsion);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bondTorsion);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -651,15 +669,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bendBends.empty())
+    if (!components[k].intraMolecularPotentials.bendBends.empty())
     {
-      std::print(stream, "    Bend-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bend-bend energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bendBend);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bendBend);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -669,15 +689,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.bendTorsions.empty())
+    if (!components[k].intraMolecularPotentials.bendTorsions.empty())
     {
-      std::print(stream, "    Bend-Torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Bend-Torsion energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].bendTorsion);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].bendTorsion);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -687,15 +709,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.vanDerWaals.empty())
+    if (!components[k].intraMolecularPotentials.vanDerWaals.empty())
     {
-      std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].vanDerWaals);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].vanDerWaals);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -705,15 +729,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if(!components[k].intraMolecularPotentials.coulombs.empty())
+    if (!components[k].intraMolecularPotentials.coulombs.empty())
     {
-      std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k, components[k].name);
+      std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;
       for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.intraComponentEnergies[k].coulomb);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].coulomb);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
@@ -755,7 +781,6 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
              prefactor * computedAverage.second.rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
-
   std::print(stream, "    Nose Hoover energy{}\n", Units::displayedUnitOfEnergyConversionString);
   std::print(stream, "    ---------------------------------------------------------------------------\n");
   for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -764,11 +789,9 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
     std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.noseHooverEnergy);
   }
   std::print(stream, "        -----------------------------------------------------------------------\n");
-  std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
-             prefactor * computedAverage.first.noseHooverEnergy,
+  std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n", prefactor * computedAverage.first.noseHooverEnergy,
              prefactor * computedAverage.second.noseHooverEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
-
 
   std::print(stream, "Polarization energy{}\n", Units::displayedUnitOfEnergyConversionString);
   std::print(stream, "-------------------------------------------------------------------------------\n");

@@ -10,11 +10,11 @@ module;
 #include <fstream>
 #include <map>
 #include <numbers>
+#include <optional>
 #include <print>
 #include <source_location>
 #include <tuple>
 #include <utility>
-#include <optional>
 #endif
 
 module bend_potential;
@@ -337,7 +337,6 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
   }
 }
 
-
 double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
                                       const std::optional<const double3> &posD) const
 {
@@ -467,7 +466,8 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
   }
 }
 
-std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEnergyGradientStrain(const double3 &posA, const double3 &posB, const double3 &posC) const
+std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB, const double3 &posC) const
 {
   double cos_theta, theta;
   double temp, temp2;
@@ -521,7 +521,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp = theta - parameters[1];
       temp2 = temp * temp;
       U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-             0.25 * parameters[3] * temp2 * temp2;
+          0.25 * parameters[3] * temp2 * temp2;
       break;
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
@@ -567,7 +567,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp = (theta - parameters[1]) * Units::RadiansToDegrees;
       temp2 = temp * temp;
       U = parameters[0] * temp2 *
-             (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+          (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
       break;
     default:
       std::unreachable();

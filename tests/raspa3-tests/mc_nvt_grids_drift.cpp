@@ -45,7 +45,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -58,7 +58,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -120,7 +120,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -133,7 +133,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -195,7 +195,7 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -208,7 +208,7 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -270,7 +270,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -283,7 +283,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -345,7 +345,7 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -358,7 +358,7 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -422,7 +422,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -435,7 +435,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -499,7 +499,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
       Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -512,7 +512,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities, std::nullopt, false);
+      {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 

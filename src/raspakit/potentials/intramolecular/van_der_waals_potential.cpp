@@ -46,8 +46,8 @@ std::string VanDerWaalsPotential::print() const
   switch (type)
   {
     case VanDerWaalsType::LennardJones:
-      return std::format("{} - {} : LENNARD_JONES p_0/k_B={:g} [K], p_1={:g} [Å], shift/k_B={:g}\n", identifiers[0], identifiers[1],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1], 
+      return std::format("{} - {} : LENNARD_JONES p_0/k_B={:g} [K], p_1={:g} [Å], shift/k_B={:g}\n", identifiers[0],
+                         identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1],
                          shift * Units::EnergyToKelvin);
   }
 }

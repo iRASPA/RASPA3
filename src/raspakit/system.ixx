@@ -234,7 +234,6 @@ export struct System
   Reactions reactions;
   TransitionMatrix tmmc;
 
-
   // property measurements
   PropertyEnergy averageEnergies;
   PropertyLoading averageLoadings;

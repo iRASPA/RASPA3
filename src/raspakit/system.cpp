@@ -19,6 +19,7 @@ module;
 #include <ostream>
 #include <print>
 #include <random>
+#include <ranges>
 #include <source_location>
 #include <span>
 #include <streambuf>
@@ -26,7 +27,6 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
-#include <ranges>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
@@ -114,7 +114,7 @@ import mdspan;
  */
 System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T,
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
-               std::vector<std::vector<double3>> initialpositions,  std::vector<std::size_t> initialNumberOfMolecules, 
+               std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
                std::optional<std::size_t> sampleMoviesEvery)
     : systemId(id),
@@ -282,7 +282,6 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
 
   updateMoleculeAtomInformation();
 }
-
 
 /// Inserts a molecule into the vector of atoms.
 ///
@@ -483,7 +482,7 @@ void System::checkMoleculeIds()
   std::print("check complete\n");
 }
 
-void System::createInitialMolecules(const std::vector<std::vector<double3>> &initialPositions)
+void System::createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions)
 {
   // keep a fixed seed
   RandomNumber random(1200);
@@ -501,10 +500,10 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
           bool groupId = components[componentId].lambdaGC.computeDUdlambda;
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox,
-              interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, 
-              numberOfMoleculesPerComponent[componentId], 0.0, groupId, true);
+              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
+              framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 0.0,
+              groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
@@ -512,17 +511,17 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
     }
 
     // Add atom position passed to 'createInitialMolecules'
-    if(componentId < initialPositions.size())
+    if (componentId < initialPositions.size())
     {
       std::vector<double3> positions = initialPositions[componentId];
-      for(std::size_t i = 0; i < positions.size(); i += component.atoms.size())
+      for (std::size_t i = 0; i < positions.size(); i += component.atoms.size())
       {
         std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());
 
         double3 com(0.0, 0.0, 0.0);
         simd_quatd orientation{};
 
-        if(components[componentId].rigid)
+        if (components[componentId].rigid)
         {
           // Compute center of mass
           double totalMass = 0.0;
@@ -536,22 +535,24 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
 
           double3 reference_com = double3{0.0, 0.0, 0.0};
 
-          std::vector<double3> reference_positions = 
+          std::vector<double3> reference_positions =
               components[componentId].atoms | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
 
           // Compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
-          double3x3 rotation_matrix = double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
+          double3x3 rotation_matrix =
+              double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
 
           // Get orientation
           orientation = rotation_matrix.quaternion();
         }
 
-        Molecule molecule = Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());
+        Molecule molecule =
+            Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());
 
         std::vector<Atom> molecule_atoms = components[componentId].atoms;
         for (std::size_t k = 0; k < position_view.size(); ++k)
         {
-          molecule_atoms[k].position =  position_view[k];
+          molecule_atoms[k].position = position_view[k];
         }
 
         insertMolecule(componentId, molecule, molecule_atoms);
@@ -568,10 +569,10 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox,
-              interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb,
-              numberOfMoleculesPerComponent[componentId], 1.0, false, false);
+              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
+              framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 1.0,
+              false, false);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
@@ -757,8 +758,8 @@ const std::span<const Atom> System::spanOfIntegerAtomsOfComponent(std::size_t se
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * numberOfFractionalMoleculesPerComponent[selectedComponent];
-  std::size_t number_of_atoms = size * (numberOfMoleculesPerComponent[selectedComponent] - 
-                      numberOfFractionalMoleculesPerComponent[selectedComponent]);
+  std::size_t number_of_atoms = size * (numberOfMoleculesPerComponent[selectedComponent] -
+                                        numberOfFractionalMoleculesPerComponent[selectedComponent]);
   return std::span(&atomData[index + numberOfFrameworkAtoms], number_of_atoms);
 }
 
@@ -1254,7 +1255,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   return stream.str();
 }
 
-std::string System::writeProductionStatusReportMC(const std::string &statusLine) const
+std::string System::writeProductionStatusReportMC(const std::string& statusLine) const
 {
   std::ostringstream stream;
 
@@ -1820,9 +1821,9 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   std::vector<Molecule> scaledMolecules(moleculeData);
   std::vector<Atom> scaledAtoms(atomData);
 
-  for (Molecule &molecule : scaledMolecules)
+  for (Molecule& molecule : scaledMolecules)
   {
-    const std::span<Atom> span = { &scaledAtoms[molecule.atomIndex], molecule.numberOfAtoms };
+    const std::span<Atom> span = {&scaledAtoms[molecule.atomIndex], molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
@@ -1837,7 +1838,7 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
     molecule.centerOfMassPosition = com * scale;
 
     double3 d = com * (scale - 1.0);
-    for (Atom &atom : span)
+    for (Atom& atom : span)
     {
       atom.position += d;
     }
@@ -1845,7 +1846,6 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
 
   return {scaledMolecules, scaledAtoms};
 }
-
 
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
                                                    const std::pair<EnergyStatus, double3x3>& rhs)
@@ -1878,13 +1878,13 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
   RunningEnergy runningIntraEnergy{};
   std::size_t index = 0;
-  for(std::size_t i = 0; i < components.size(); ++i)
+  for (std::size_t i = 0; i < components.size(); ++i)
   {
-    if(numberOfMoleculesPerComponent[i] > 0)
+    if (numberOfMoleculesPerComponent[i] > 0)
     {
       std::span<const Molecule> span_molecules = {&moleculeData[index], numberOfMoleculesPerComponent[i]};
       runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
-                                                          span_molecules, spanOfMoleculeAtoms());
+                                                                      span_molecules, spanOfMoleculeAtoms());
     }
 
     index += numberOfMoleculesPerComponent[i];
@@ -2028,15 +2028,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
 
-
   std::size_t molecule_index = 0;
-  for(std::size_t i = 0; i < components.size(); ++i)
+  for (std::size_t i = 0; i < components.size(); ++i)
   {
-    if(numberOfMoleculesPerComponent[i] > 0)
+    if (numberOfMoleculesPerComponent[i] > 0)
     {
       std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
-      RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
-                                                          span_molecules, spanOfMoleculeAtoms());
+      RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(
+          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms());
 
       pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
       pressureInfo.first.intraComponentEnergies[i].ureyBradley += runningIntraEnergy.ureyBradley;
@@ -2090,9 +2089,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
-  for (Molecule &molecule : moleculeData)
+  for (Molecule& molecule : moleculeData)
   {
-    const std::span<Atom> span = { &atomData[molecule.atomIndex], molecule.numberOfAtoms };
+    const std::span<Atom> span = {&atomData[molecule.atomIndex], molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
@@ -2189,8 +2188,8 @@ std::string System::writeMCMoveStatistics() const
 
     if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
     {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * 
-                component.fugacityCoefficient.value_or(1.0) * pressure) / beta;
+      double imposedChemicalPotential =
+          std::log(beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure) / beta;
       double imposedFugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure;
       std::print(stream, "{}",
                  component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(
@@ -2201,7 +2200,7 @@ std::string System::writeMCMoveStatistics() const
                      beta, imposedChemicalPotential, imposedFugacity));
     }
 
-    for(std::size_t i = 0; i != component.atoms.size(); ++i)
+    for (std::size_t i = 0; i != component.atoms.size(); ++i)
     {
       std::print(stream, "{}", component.cbmc_moves_statistics[i].writeMCMoveStatistics());
     }
@@ -3191,20 +3190,19 @@ void System::writeRestartFile()
 {
   nlohmann::json json;
 
-  if(!framework.has_value())
+  if (!framework.has_value())
   {
     json["SimulationBox"] = simulationBox;
   }
 
-  for(std::size_t component_id = 0; component_id < components.size(); ++component_id)
+  for (std::size_t component_id = 0; component_id < components.size(); ++component_id)
   {
     std::vector<double3> positions{};
 
-    if(numberOfMoleculesPerComponent[component_id] > 0)
+    if (numberOfMoleculesPerComponent[component_id] > 0)
     {
-      positions = spanOfIntegerAtomsOfComponent(component_id)
-                    | std::views::transform(&Atom::position) 
-                    | std::ranges::to<std::vector>();
+      positions = spanOfIntegerAtomsOfComponent(component_id) | std::views::transform(&Atom::position) |
+                  std::ranges::to<std::vector>();
     }
     json[components[component_id].name] = positions;
   }

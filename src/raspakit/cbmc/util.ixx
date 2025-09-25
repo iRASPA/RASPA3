@@ -4,8 +4,8 @@ module;
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <tuple>
 #include <span>
+#include <tuple>
 #include <vector>
 #endif
 

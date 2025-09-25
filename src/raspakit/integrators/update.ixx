@@ -28,84 +28,82 @@ export namespace Integrators
 /**
  * \brief Scales the velocities and orientation momenta of molecules.
  *
- * \param moleculePositions Span of molecules whose velocities are to be scaled.
+ * \param moleculeData Span of molecules whose velocities are to be scaled.
  * \param scaling Pair of scaling factors for velocity and orientation momentum.
  */
-void scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling);
+void scaleVelocities(std::span<Molecule> moleculeData, std::pair<double, double> scaling);
 
 /**
  * \brief Removes total system velocity.
  *
- * \param moleculePositions Span of molecules whose velocities are to be scaled.
+ * \param moleculeData Span of molecules whose velocities are to be scaled.
  */
-void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculePositions);
+void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData);
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *
- * \param moleculePositions Span of molecules whose positions are to be updated.
+ * \param moleculeData Span of molecules whose positions are to be updated.
  * \param dt Time step for the update.
  */
-void updatePositions(std::span<Molecule> moleculePositions, double dt);
+void updatePositions(std::span<Molecule> moleculeData, double dt);
 
 /**
  * \brief Updates the velocities and orientation momenta of molecules based on gradients.
  *
- * \param moleculePositions Span of molecules whose velocities are to be updated.
+ * \param moleculeData Span of molecules whose velocities are to be updated.
  * \param dt Time step for the update.
  */
-void updateVelocities(std::span<Molecule> moleculePositions, double dt);
+void updateVelocities(std::span<Molecule> moleculeData, double dt);
 
 /**
  * \brief Initializes the velocities according to the Boltzmann distribution
  *
  * \param random A random number generator
- * \param moleculePositions Span of molecules to initialize velocity for.
+ * \param moleculeData Span of molecules to initialize velocity for.
  * \param components Components to get the inertiaVector
  * \param temperature Temperature to set velocities to.
  */
-void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions,
+void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                           const std::vector<Component> components, double temperature);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.
  *
- * \param moleculePositions Span of molecules.
+ * \param moleculeData Span of molecules.
  * \param moleculeAtomPositions Span to store the resulting atom positions.
  * \param components Vector of component definitions.
  */
-void createCartesianPositions(std::span<const Molecule> moleculePositions, std::span<Atom> moleculeAtomPositions,
+void createCartesianPositions(std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                               std::vector<Component> components);
 
 /**
  * \brief Performs second-order NoSquish free rotor integration.
  *
- * \param moleculePositions Span of molecules to be updated.
+ * \param moleculeData Span of molecules to be updated.
  * \param components Vector of component definitions.
  * \param dt Time step for the integration.
  */
-void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculePositions, const std::vector<Component> components,
-                               double dt);
+void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components, double dt);
 
 /**
  * \brief Updates center of mass velocities and orientation momenta of molecules.
  *
- * \param moleculePositions Span of molecules to be updated.
+ * \param moleculeData Span of molecules to be updated.
  * \param moleculeAtomPositions Span of atom positions corresponding to the molecules.
  * \param components Vector of component definitions.
  */
-void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculePositions,
-                                               std::span<Atom> moleculeAtomPositions,
+void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                                std::vector<Component> components);
 
 /**
  * \brief Updates gradients of center of mass and orientation for molecules.
  *
- * \param moleculePositions Span of molecules to be updated.
+ * \param moleculeData Span of molecules to be updated.
  * \param moleculeAtomPositions Span of atom positions corresponding to the molecules.
  * \param components Vector of component definitions.
  */
-void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculePositions,
-                                              std::span<Atom> moleculeAtomPositions, std::vector<Component> components);
+void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                              std::vector<Component> components);
 
 /**
  * \brief Updates gradients and computes energies due to interactions.

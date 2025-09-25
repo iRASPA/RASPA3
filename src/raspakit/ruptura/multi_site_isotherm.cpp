@@ -3,13 +3,13 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
+#include <fstream>
 #include <iostream>
 #include <ostream>
-#include <fstream>
 #include <print>
+#include <source_location>
 #include <sstream>
 #include <vector>
-#include <source_location>
 #endif
 
 module multi_site_isotherm;
@@ -193,7 +193,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MultiS
 
   return archive;
 }
-
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MultiSiteIsotherm &c)
 {

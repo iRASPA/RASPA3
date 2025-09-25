@@ -7,8 +7,8 @@ module;
 #include <exception>
 #include <format>
 #include <iostream>
-#include <tuple>
 #include <span>
+#include <tuple>
 #include <vector>
 // #if defined(__has_include) && __has_include(<stacktrace>)
 // #include <stacktrace>
@@ -64,7 +64,7 @@ std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector<double> 
   // Energies are always bounded from below [-U_max, infinity>
   // Find the lowest energy value, i.e. the largest value of (-Beta U)
   std::vector<double>::iterator match = std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());
-  
+
   if (match == LogBoltzmannFactors.end())
   {
     throw std::runtime_error("[cbmc-utils]: no maximum value found\n");

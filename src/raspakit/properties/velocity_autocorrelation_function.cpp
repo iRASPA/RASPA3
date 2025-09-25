@@ -39,7 +39,7 @@ import averages;
 void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle,
                                                         const std::vector<Component> &components,
                                                         const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                                        std::vector<Molecule> &moleculePositions)
+                                                        std::vector<Molecule> &moleculeData)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
@@ -53,7 +53,7 @@ void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle
         originOnsagerVACF[currentBuffer][i] = double3(0.0, 0.0, 0.0);
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
         {
-          double3 value = moleculePositions[molecule_index].velocity;
+          double3 value = moleculeData[molecule_index].velocity;
           originVACF[currentBuffer][molecule_index] = value;
           originOnsagerVACF[currentBuffer][i] += value;
           ++molecule_index;
@@ -76,7 +76,7 @@ void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle
       {
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
         {
-          double3 value = moleculePositions[molecule_index].velocity;
+          double3 value = moleculeData[molecule_index].velocity;
           acfVACF[currentBuffer][i][index].x += value.x * originVACF[currentBuffer][molecule_index].x;
           acfVACF[currentBuffer][i][index].y += value.y * originVACF[currentBuffer][molecule_index].y;
           acfVACF[currentBuffer][i][index].z += value.z * originVACF[currentBuffer][molecule_index].z;

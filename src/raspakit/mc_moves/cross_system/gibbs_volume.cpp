@@ -106,7 +106,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
-  if(newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
+  if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
   {
     return std::nullopt;
   }
@@ -154,7 +154,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
 
-  if(newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
+  if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
   {
     return std::nullopt;
   }

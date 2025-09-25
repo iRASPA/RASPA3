@@ -217,7 +217,7 @@ void computeEwaldFourierElectricFieldDifference(
  * \param simulationBox The simulation box parameters.
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
- * \param atomPositions Positions and properties of the atoms (updated with computed gradients).
+ * \param atomData Positions and properties of the atoms (updated with computed gradients).
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierGradient(
@@ -226,7 +226,7 @@ RunningEnergy computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomPositions);
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData);
 
 /**
  * \brief Computes the Ewald Fourier energy and its strain derivative.
@@ -245,7 +245,7 @@ RunningEnergy computeEwaldFourierGradient(
  * \param frameworkComponents The framework components in the system.
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
- * \param atomPositions Positions and properties of the atoms (updated with computed gradients).
+ * \param atomData Positions and properties of the atoms (updated with computed gradients).
  * \param UIon The energy of a single ion in the Ewald summation.
  * \param netChargeFramework Net charge of the framework.
  * \param netChargePerComponent Net charges per component.
@@ -258,7 +258,7 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomPositions, double UIon, double netChargeFramework,
+    std::span<Atom> atomData, double UIon, double netChargeFramework,
     std::vector<double> netChargePerComponent) noexcept;
 
 /**
@@ -319,7 +319,7 @@ void computeEwaldFourierElectrostaticPotential(
  * \param electricFieldMolecules Output array to store the computed electric fields for each molecule.
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
- * \param atomPositions Positions and properties of the atoms (updated with computed fields).
+ * \param atomData Positions and properties of the atoms (updated with computed fields).
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierElectricField(
@@ -329,6 +329,6 @@ RunningEnergy computeEwaldFourierElectricField(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<double3> electricFieldMolecules,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomPositions);
+    std::span<Atom> atomData);
 
 }  // namespace Interactions

@@ -25,7 +25,6 @@ import archive;
 import int3;
 import averages;
 
-
 export struct PropertyWidom
 {
   struct BookKeeping
@@ -285,7 +284,7 @@ export struct PropertyWidom
       {
         double value =
             (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta)) -
-             average;
+            average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
@@ -306,7 +305,8 @@ export struct PropertyWidom
 
   std::pair<double, double> averageFugacity(double beta) const
   {
-    double average = std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta))) / beta;
+    double average =
+        std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta))) / beta;
 
     double sumOfSquares = 0.0;
     std::size_t numberOfSamples = 0;
@@ -315,8 +315,7 @@ export struct PropertyWidom
       if (bookKeepingWidom[blockIndex].count / bookKeepingWidom[0].count > 0.5)
       {
         double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
-                                        averagedIdealGasChemicalPotential(
-                                            blockIndex, beta))) /
+                                        averagedIdealGasChemicalPotential(blockIndex, beta))) /
                            beta -
                        average;
         sumOfSquares += value * value;

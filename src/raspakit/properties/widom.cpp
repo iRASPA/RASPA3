@@ -186,22 +186,19 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [{}]\n",
-                 average_excess_widom_chemical_potential.first,
-                 average_excess_widom_chemical_potential.second,
+                 average_excess_widom_chemical_potential.first, average_excess_widom_chemical_potential.second,
                  Units::unitOfEnergyString);
       std::print(stream, "    Ideal chemical potential:           {: .6e} +/- {: .6e} [{}]\n",
-                 average_ideal_gas_widom_chemical_potential.first,
-                 average_ideal_gas_widom_chemical_potential.second,
+                 average_ideal_gas_widom_chemical_potential.first, average_ideal_gas_widom_chemical_potential.second,
                  Units::unitOfEnergyString);
       std::print(stream, "    Total chemical potential:           {: .6e} +/- {: .6e} [{}]\n",
-                 average_total_widom_chemical_potential.first,
-                 average_total_widom_chemical_potential.second,
+                 average_total_widom_chemical_potential.first, average_total_widom_chemical_potential.second,
                  Units::unitOfEnergyString);
       if (imposedChemicalPotential)
       {
-        std::print(stream, "    Imposed chemical potential:  {: .6e} [{}]\n",
-                   imposedChemicalPotential.value(), Units::unitOfEnergyString);
-      }    
+        std::print(stream, "    Imposed chemical potential:  {: .6e} [{}]\n", imposedChemicalPotential.value(),
+                   Units::unitOfEnergyString);
+      }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       if (imposedFugacity)
       {

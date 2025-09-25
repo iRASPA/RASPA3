@@ -38,7 +38,7 @@ import averages;
 
 void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const std::vector<Component> &components,
                                                 const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                                std::vector<Molecule> &moleculePositions)
+                                                std::vector<Molecule> &moleculeData)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
@@ -96,7 +96,7 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
         // self diffusion
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
         {
-          double3 value = moleculePositions[molecule_index].centerOfMassPosition;
+          double3 value = moleculeData[molecule_index].centerOfMassPosition;
 
           std::shift_right(begin(blockDataMSDSelf[currentBlock][molecule_index]),
                            end(blockDataMSDSelf[currentBlock][molecule_index]), 1);
@@ -133,7 +133,7 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
         // self diffusion
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
         {
-          double3 value = moleculePositions[molecule_index].centerOfMassPosition;
+          double3 value = moleculeData[molecule_index].centerOfMassPosition;
           value_onsager[i] += value;
           ++molecule_index;
         }

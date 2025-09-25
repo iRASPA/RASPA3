@@ -70,7 +70,6 @@ export struct RandomNumber
     return normal_distribution(mt);
   }
 
-
   std::size_t integer(std::size_t i, std::size_t j)
   {
     return i + static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform());

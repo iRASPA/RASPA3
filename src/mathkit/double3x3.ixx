@@ -4,16 +4,16 @@ module;
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <istream>
 #include <ostream>
+#include <print>
+#include <span>
 #include <string>
 #include <string_view>
-#include <format>
-#include <print>
-#include <vector>
-#include <span>
 #include <tuple>
+#include <vector>
 #endif
 
 export module double3x3;
@@ -172,7 +172,6 @@ export union double3x3
   static double3x3 buildRotationMatrixInverse(const simd_quatd& q);
   simd_quatd quaternion();
 
-
   inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
   inline bool operator==(const double3x3& b) const
   {
@@ -241,7 +240,7 @@ export union double3x3
     double3x3 rotation_matrix = double3x3{
           double3{ v.x * v.x * w + c, v.x * v.y * w + v.z * s, v.x * v.z * w - v.y * s },
           double3{ v.x * v.y * w - v.z * s, v.y * v.y * w + c, v.y * v.z * w + v.x * s },
-          double3{ v.x * v.z * w + v.y * s, v.y * v.z * w - v.x * s, v.z * v.z * w + c } 
+          double3{ v.x * v.z * w + v.y * s, v.y * v.z * w - v.x * s, v.z * v.z * w + c }
       };
 
     for(double3 &coordinate : coordinates)
@@ -251,8 +250,9 @@ export union double3x3
   }
   */
 
-  std::tuple<double3x3, double3, double3x3>  singularValueDecomposition() const;
-  static double3x3 computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B);
+  std::tuple<double3x3, double3, double3x3> singularValueDecomposition() const;
+  static double3x3 computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A,
+                                         double3 center_of_mass_B, std::span<double3> positions_B);
   static double3x3 computeRotationMatrix(double3 a, double3 b);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec);
@@ -468,7 +468,7 @@ export inline double3x3 sqrt(const double3x3& b)
 }
 
 export template <>
-struct std::formatter<double3x3>: std::formatter<std::string_view>
+struct std::formatter<double3x3> : std::formatter<std::string_view>
 {
   auto format(const double3x3& v, std::format_context& ctx) const
   {

@@ -11,7 +11,6 @@ module;
 #include <type_traits>
 #endif
 
-
 export module stringutils;
 
 #ifndef USE_LEGACY_HEADERS
@@ -22,20 +21,18 @@ import std.compat;
 export inline bool caseInSensStringCompare(const std::string& lhs, const std::string& rhs)
 {
   return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),
-                                                  [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
+                                                [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
 }
 
 export struct caseInsensitiveComparator
 {
   struct nocase_compare
   {
-    bool operator() (const unsigned char& c1, const unsigned char& c2) const {
-        return tolower (c1) < tolower (c2);
-    }
+    bool operator()(const unsigned char& c1, const unsigned char& c2) const { return tolower(c1) < tolower(c2); }
   };
-  bool operator() (const std::string & lhs, const std::string & rhs) const 
+  bool operator()(const std::string& lhs, const std::string& rhs) const
   {
-    return std::lexicographical_compare(lhs.begin (), lhs.end (), rhs.begin (), rhs.end (), nocase_compare ());
+    return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), nocase_compare());
   }
 };
 

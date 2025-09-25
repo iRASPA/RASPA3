@@ -2,11 +2,11 @@
 
 #include <cmath>
 #include <cstddef>
-#include <random>
-#include <numbers>
 #include <format>
-#include <print>
 #include <iostream>
+#include <numbers>
+#include <print>
+#include <random>
 
 import double3;
 import double4;
@@ -20,7 +20,7 @@ TEST(random, Test_RandomVectorOnCone)
   std::random_device rd;
   RandomNumber random(rd());
 
-  for(std::size_t i = 0; i < 100000; ++i)
+  for (std::size_t i = 0; i < 100000; ++i)
   {
     double3 v{random.uniform(), random.uniform(), random.uniform()};
     double imposed_angle = random.uniform() * std::numbers::pi;
@@ -29,7 +29,7 @@ TEST(random, Test_RandomVectorOnCone)
 
     double computed_angle = double3::angle(v, w);
 
-    EXPECT_NEAR(imposed_angle, computed_angle, 1e-10) << std::format("wrong angle: {} vs {}\n", imposed_angle, computed_angle);
+    EXPECT_NEAR(imposed_angle, computed_angle, 1e-10)
+        << std::format("wrong angle: {} vs {}\n", imposed_angle, computed_angle);
   }
 }
-

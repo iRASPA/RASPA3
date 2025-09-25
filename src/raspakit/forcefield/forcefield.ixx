@@ -99,12 +99,12 @@ export struct ForceField
   std::vector<bool> tailCorrections{};  ///< Indicates if tail corrections are applied between pairs of atoms.
   MixingRule mixingRule{MixingRule::Lorentz_Berthelot};  ///< Mixing rule used for cross interactions.
   bool cutOffFrameworkVDWAutomatic{false};
-  double cutOffFrameworkVDW{12.0};        ///< Cut-off distance for VDW interactions between framework and molecules.
+  double cutOffFrameworkVDW{12.0};  ///< Cut-off distance for VDW interactions between framework and molecules.
   bool cutOffMoleculeVDWAutomatic{false};
-  double cutOffMoleculeVDW{12.0};         ///< Cut-off distance for VDW interactions between molecules.
+  double cutOffMoleculeVDW{12.0};  ///< Cut-off distance for VDW interactions between molecules.
   bool cutOffCoulombAutomatic{true};
-  double cutOffCoulomb{12.0};             ///< Cut-off distance for Coulomb interactions.
-  double dualCutOff{6.0};                 ///< Inner cut-off distance when using dual cut-off scheme.
+  double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
+  double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
 
   std::size_t numberOfPseudoAtoms{0};     ///< Number of pseudo-atoms defined in the force field.
   std::vector<PseudoAtom> pseudoAtoms{};  ///< List of pseudo-atoms in the force field.
@@ -123,12 +123,12 @@ export struct ForceField
   bool useCharge{true};          ///< Indicates if charges are used in calculations.
   bool omitEwaldFourier{false};  ///< If true, omits the Fourier component in Ewald summation.
 
-  double energyOverlapCriteria{1e6};       ///< Energy criteria for considering overlaps.
-  
-  std::size_t numberOfTrialDirections{ 10 };
-  std::size_t numberOfTorsionTrialDirections{ 100 };
-  std::size_t numberOfFirstBeadPositions{ 10 };
-  double minimumRosenbluthFactor{1e-150};            ///< Minimum allowed Rosenbluth factor.
+  double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
+
+  std::size_t numberOfTrialDirections{10};
+  std::size_t numberOfTorsionTrialDirections{100};
+  std::size_t numberOfFirstBeadPositions{10};
+  double minimumRosenbluthFactor{1e-150};  ///< Minimum allowed Rosenbluth factor.
 
   bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.

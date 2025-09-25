@@ -21,9 +21,12 @@ export struct CBMCMoveStatistics
 {
   std::uint64_t versionNumber{1};
 
-  MoveStatistics<double> bondLengthChange{.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.3)};
-  MoveStatistics<double> bendAngleChange{.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)};
-  MoveStatistics<double> conePositionChange{.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)};
+  MoveStatistics<double> bondLengthChange{
+      .maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.3)};
+  MoveStatistics<double> bendAngleChange{
+      .maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)};
+  MoveStatistics<double> conePositionChange{
+      .maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)};
 
   const std::string writeMCMoveStatistics() const;
 

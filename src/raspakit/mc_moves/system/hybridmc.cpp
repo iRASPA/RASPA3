@@ -42,14 +42,14 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     return std::nullopt;
   }
 
-  // all copied data: moleculePositions, moleculeAtomPositions, thermostat, dt
+  // all copied data: moleculeData, moleculeAtomPositions, thermostat, dt
   // all const data: components, forcefield, simulationbox, numberofmoleculespercomponents, fixedFrameworkStoredEik
   // all scratch data: eik_x, eik_y, eik_z, eik_xy
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::vector<Atom> moleculeAtomPositions(atomPositions.size());
-  std::copy(atomPositions.begin(), atomPositions.end(), moleculeAtomPositions.begin());
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::vector<Atom> moleculeAtomPositions(atomData.size());
+  std::copy(atomData.begin(), atomData.end(), moleculeAtomPositions.begin());
 
-  std::vector<Molecule> moleculePositions(system.moleculeData);
+  std::vector<Molecule> moleculeData(system.moleculeData);
   std::optional<Thermostat> thermostat(system.thermostat);
 
   // get Timestep from the max change
@@ -57,30 +57,30 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   // initialize the velocities according to Boltzmann distribution
   // NOTE: it is important that the reference energy has the initial kinetic energies
-  Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
+  Integrators::initializeVelocities(random, moleculeData, system.components, system.temperature);
 
   if (system.numberOfFrameworkAtoms == 0)
   {
-    Integrators::removeCenterOfMassVelocityDrift(moleculePositions);
+    Integrators::removeCenterOfMassVelocityDrift(moleculeData);
   }
 
   // before getting energy, recompute current energy
   system.precomputeTotalGradients();
 
   RunningEnergy referenceEnergy = system.runningEnergies;
-  referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
   referenceEnergy.rotationalKineticEnergy =
-      Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
+      Integrators::computeRotationalKineticEnergy(moleculeData, system.components);
   RunningEnergy currentEnergy = referenceEnergy;
 
   // integrate for N steps
   time_begin = std::chrono::system_clock::now();
   for (std::size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
   {
-    currentEnergy = Integrators::velocityVerlet(moleculePositions, moleculeAtomPositions, system.components, dt,
-                                                thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                                                system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
-                                                system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+    currentEnergy = Integrators::velocityVerlet(moleculeData, moleculeAtomPositions, system.components, dt, thermostat,
+                                                system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+                                                system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                system.totalEik, system.fixedFrameworkStoredEik,
                                                 system.interpolationGrids, system.numberOfMoleculesPerComponent);
   }
   time_end = std::chrono::system_clock::now();
@@ -95,11 +95,11 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    system.moleculeData = moleculePositions;
+    system.moleculeData = moleculeData;
     system.thermostat = thermostat;
     system.timeStep = dt;
 
-    std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomPositions.begin());
+    std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
     system.spanOfMoleculeAtoms() = moleculeAtomPositions;
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);

@@ -221,7 +221,7 @@ void MolecularDynamics::initialize()
 
       std::size_t selectedComponent = selectedSystem.randomComponent(random);
       MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
+                                                fractionalMoleculeSystem);
 
       for (System& system : systems)
       {
@@ -608,14 +608,13 @@ void MolecularDynamics::output()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-      std::print(stream, "\n");
-      std::print(stream, "===============================================================================\n");
-      std::print(stream, "                             Simulation finished!\n");
-      std::print(stream, "===============================================================================\n");
-      std::print(stream, "\n");
+    std::print(stream, "\n");
+    std::print(stream, "===============================================================================\n");
+    std::print(stream, "                             Simulation finished!\n");
+    std::print(stream, "===============================================================================\n");
+    std::print(stream, "\n");
 
-      std::string status_line{std::format("Final state after {} cycles\n\n", numberOfCycles)};
-
+    std::string status_line{std::format("Final state after {} cycles\n\n", numberOfCycles)};
 
     std::print(stream, "Production run CPU timings of the MD simulation\n");
     std::print(stream, "===============================================================================\n\n");

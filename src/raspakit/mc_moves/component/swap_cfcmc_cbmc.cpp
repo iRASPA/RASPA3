@@ -204,10 +204,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, component, system.hasExternalField, system.forceField, system.simulationBox,
-        system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-        system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule,
-        newLambda, system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
+        random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule, newLambda,
+        system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -259,8 +259,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute acceptance probability
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-    double preFactor = correctionFactorEwald * system.beta * fugacity *
-                       system.simulationBox.volume /
+    double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
@@ -346,8 +345,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random, component, system.hasExternalField, system.forceField, system.simulationBox,
           system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-          system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, 
-          fractionalMolecule);
+          system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, fractionalMolecule);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
@@ -523,9 +521,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
         // Swap molecules to keep the fractional molecule at a fixed index
         std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-        std::swap(
-            system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)],
-            system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)]);
+        std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)],
+                  system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)]);
 
         // Delete the selected molecule
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);

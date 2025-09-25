@@ -372,7 +372,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     restartFromBinaryFileName = parsed_data["BinaryRestartFileName"].get<std::string>();
   }
 
-
   if (parsed_data.contains("RandomSeed") && parsed_data["RandomSeed"].is_number_unsigned())
   {
     randomSeed = parsed_data["RandomSeed"].get<unsigned long long>();
@@ -461,9 +460,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   std::vector<std::vector<std::size_t>> jsonCreateNumberOfMolecules(jsonNumberOfSystems,
                                                                     std::vector<std::size_t>(jsonNumberOfComponents));
 
-   std::vector<std::vector<std::vector<double3>>> jsonRestartFilePositions(jsonNumberOfSystems,
-                                                                std::vector<std::vector<double3>>(jsonNumberOfComponents, std::vector<double3>()));
-  
+  std::vector<std::vector<std::vector<double3>>> jsonRestartFilePositions(
+      jsonNumberOfSystems, std::vector<std::vector<double3>>(jsonNumberOfComponents, std::vector<double3>()));
+
   // Parse component options
   if (parsed_data.contains("Components"))
   {
@@ -1002,32 +1001,31 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", restartFileName));
           }
         }
-      
+
         std::ifstream input_restart_file(restartFileName);
-      
+
         nlohmann::basic_json<nlohmann::raspa_map> restart_data{};
-      
+
         try
         {
           restart_data = nlohmann::json::parse(input_restart_file);
-
         }
         catch (nlohmann::json::parse_error& ex)
         {
           std::cerr << "parse error at byte " << ex.byte << std::endl;
         }
 
-        for(std::size_t i = 0; i < jsonComponents[systemId].size(); ++i)
+        for (std::size_t i = 0; i < jsonComponents[systemId].size(); ++i)
         {
           std::string component_name = jsonComponents[systemId][i].name;
-          if(restart_data.contains(component_name))
+          if (restart_data.contains(component_name))
           {
             std::vector<double3> restart_positions = restart_data[component_name].get<std::vector<double3>>();
             jsonRestartFilePositions[systemId][i] = restart_positions;
           }
         }
 
-        if(restart_data.contains("SimulationBox"))
+        if (restart_data.contains("SimulationBox"))
         {
           restart_simulation_box = restart_data["SimulationBox"].get<SimulationBox>();
         }
@@ -1065,9 +1063,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                                                    jsonNumberOfUnitCells, useChargesFrom)};
 
         // create system
-        systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
-                                   jsonFrameworkComponents, jsonComponents[systemId],
-                                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+        systems[systemId] =
+            System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
+                   jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
+                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {
@@ -1092,14 +1091,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
 
-        if(restart_simulation_box.has_value())
+        if (restart_simulation_box.has_value())
         {
           simulationBox = restart_simulation_box.value();
         }
 
-        systems[systemId] =
-            System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {}, jsonComponents[systemId],
-                jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+        systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {},
+                                   jsonComponents[systemId], jsonRestartFilePositions[systemId],
+                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
       }
       else
       {
@@ -1303,8 +1302,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyMSD = PropertyMeanSquaredDisplacement(
-              systems[systemId].components.size(), systems[systemId].moleculeData.size(), sampleMSDEvery,
-              writeMSDEvery, numberOfBlockElementsMSD);
+              systems[systemId].components.size(), systems[systemId].moleculeData.size(), sampleMSDEvery, writeMSDEvery,
+              numberOfBlockElementsMSD);
         }
       }
 

@@ -1,16 +1,15 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <format>
 #include <iostream>
 #include <ostream>
 #include <print>
+#include <span>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <span>
-#include <format>
-#include <print>
-#include <sstream>
-#include <cmath>
 #endif
 
 module lammps_io;
@@ -28,7 +27,7 @@ import pseudo_atom;
 import units;
 import framework;
 
-std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomPositions,
+std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
                                     const SimulationBox simulationBox, const ForceField forceField,
                                     std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                     std::optional<Framework> framework)
@@ -36,7 +35,7 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
   std::ostringstream out;
 
   std::print(out, "LAMMPS Description\n\n");
-  std::print(out, "{} atoms\n", atomPositions.size());
+  std::print(out, "{} atoms\n", atomData.size());
 
   std::print(out, "0 bonds\n");
   std::print(out, "0 angles\n");
@@ -84,7 +83,7 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
   std::print(out, "\nAtoms\n\n");
   idx = 1;  // lammps works with 1-indexing
   std::size_t numberOfFrameworkAtoms = (framework.has_value()) ? framework->atoms.size() : 0uz;
-  for (const Atom& atom : atomPositions)
+  for (const Atom& atom : atomData)
   {
     std::size_t fwOffset = (framework.has_value() && idx < numberOfFrameworkAtoms + 1) ? 0 : 1;
     std::print(out, "  {} {} {} {} {} {} {}\n", idx++, atom.moleculeId + molAtomOffset[atom.componentId] + fwOffset + 1,
@@ -93,7 +92,7 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
 
   std::print(out, "\nVelocities\n\n");
   idx = 1;  // lammps works with 1-indexing
-  for (const Atom& atom : atomPositions)
+  for (const Atom& atom : atomData)
   {
     std::print(out, "  {} {} {} {}\n", idx++, atom.velocity.x, atom.velocity.y, atom.velocity.z);
   }

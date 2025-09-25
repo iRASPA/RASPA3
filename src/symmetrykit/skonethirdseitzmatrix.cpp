@@ -12,8 +12,8 @@ module skonethirdseitzmatrix;
 import std;
 #endif
 
-SKOneThirdSeitzMatrix::SKOneThirdSeitzMatrix(std::string text, std::uint8_t encoding, std::int8_t r1, 
-                                             std::int8_t r2, std::int8_t r3, std::int8_t t)
+SKOneThirdSeitzMatrix::SKOneThirdSeitzMatrix(std::string text, std::uint8_t encoding, std::int8_t r1, std::int8_t r2,
+                                             std::int8_t r3, std::int8_t t)
 {
   _text = text;
   _encoding = encoding;

@@ -180,7 +180,7 @@ void MonteCarloTransitionMatrix::performCycle()
         break;
       case SimulationStage::Initialization:
         MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                    fractionalMoleculeSystem);
+                                                  fractionalMoleculeSystem);
 
         N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -188,7 +188,7 @@ void MonteCarloTransitionMatrix::performCycle()
         break;
       case SimulationStage::Equilibration:
         MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                    fractionalMoleculeSystem);
+                                                 fractionalMoleculeSystem);
 
         N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);

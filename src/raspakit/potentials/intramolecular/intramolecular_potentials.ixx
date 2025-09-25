@@ -3,16 +3,15 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <fstream>
-#include <vector>
 #include <optional>
-#include <span>
-#include <tuple>
-#include <format>
 #include <print>
-#include <format>
+#include <span>
 #include <string_view>
+#include <tuple>
 #include <utility>
+#include <vector>
 #endif
 
 export module intra_molecular_potentials;
@@ -90,13 +89,14 @@ struct IntraMolecularPotentials
 
   RunningEnergy computeInternalGradient(const std::span<Atom> atoms) const;
 
-  Potentials::IntraMolecularPotentials 
-    filteredInteractions(std::size_t numberOfBeads, const std::span<std::size_t> beadsAlreadyPlaced,
-                         const std::span<std::size_t> beadsToBePlaced) const;
+  Potentials::IntraMolecularPotentials filteredInteractions(std::size_t numberOfBeads,
+                                                            const std::span<std::size_t> beadsAlreadyPlaced,
+                                                            const std::span<std::size_t> beadsToBePlaced) const;
 
   std::string printStatus() const;
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::IntraMolecularPotentials& p);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive,
+                                            const Potentials::IntraMolecularPotentials& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::IntraMolecularPotentials& p);
 };
 }  // namespace Potentials

@@ -24,14 +24,12 @@ import framework;
 import component;
 import interpolation_energy_grid;
 
-
 export namespace CBMC
 {
-[[nodiscard]] ChainRetraceData retraceRigidMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
-                                          const ForceField &forcefield, const SimulationBox &simulationBox,
-                                          const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-                                          const std::optional<Framework> &framework,
-                                          std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
-                                          double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept;
+[[nodiscard]] ChainRetraceData retraceRigidMoleculeChainDeletion(
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forcefield,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept;
 }

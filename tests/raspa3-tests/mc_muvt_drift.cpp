@@ -54,7 +54,7 @@ TEST(MC_MUVT_DRIFT, insertion)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -62,9 +62,9 @@ TEST(MC_MUVT_DRIFT, insertion)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::Swap, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -78,7 +78,7 @@ TEST(MC_MUVT_DRIFT, insertion)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -142,7 +142,7 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -150,9 +150,9 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -166,7 +166,7 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -230,7 +230,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -238,9 +238,9 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -254,7 +254,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -318,7 +318,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -326,9 +326,9 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -342,7 +342,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -406,7 +406,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -414,9 +414,9 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -430,7 +430,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -494,7 +494,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -502,9 +502,9 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -518,7 +518,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -582,7 +582,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -590,9 +590,9 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, true);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -606,7 +606,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
@@ -670,7 +670,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
+                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
   probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
@@ -678,9 +678,9 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane =
-      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities_methane, std::nullopt, true);
+  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
+                                probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
@@ -694,7 +694,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-       {}, {}, 5, 21, probabilities_water, std::nullopt, false);
+      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 

@@ -78,10 +78,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms);
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
@@ -109,10 +108,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, growData->storedR);
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, growData->storedR);
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the retracing step.
@@ -153,10 +151,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), new_electric_field,
-        old_electric_field, growData->atom, old_molecule);
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(), new_electric_field,
+                                                                  old_electric_field, growData->atom, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,

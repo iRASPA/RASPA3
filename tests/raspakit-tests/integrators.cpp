@@ -86,32 +86,32 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   Component c = TestFactories::makeCO2(forceField, 0, false);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
-  std::span<Molecule> moleculePositions(system.moleculeData);
+  std::span<Molecule> moleculeData(system.moleculeData);
 
-  moleculePositions[0].centerOfMassPosition = double3(5.93355, 7.93355, 5.93355);
-  moleculePositions[1].centerOfMassPosition = double3(5.93355, 3.93355, 5.93355);
-  moleculePositions[0].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
-  moleculePositions[1].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+  moleculeData[0].centerOfMassPosition = double3(5.93355, 7.93355, 5.93355);
+  moleculeData[1].centerOfMassPosition = double3(5.93355, 3.93355, 5.93355);
+  moleculeData[0].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+  moleculeData[1].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
 
-  Integrators::createCartesianPositions(moleculePositions, system.spanOfMoleculeAtoms(), system.components);
+  Integrators::createCartesianPositions(moleculeData, system.spanOfMoleculeAtoms(), system.components);
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  DOUBLE3_EXPECT_NEAR(atomPositions[0].position, double3(5.93355, 7.93355, 7.08255), 1e-6);
-  DOUBLE3_EXPECT_NEAR(atomPositions[1].position, double3(5.93355, 7.93355, 5.93355), 1e-6);
-  DOUBLE3_EXPECT_NEAR(atomPositions[2].position, double3(5.93355, 7.93355, 4.78455), 1e-6);
-  DOUBLE3_EXPECT_NEAR(atomPositions[3].position, double3(5.93355, 3.93355, 7.08255), 1e-6);
-  DOUBLE3_EXPECT_NEAR(atomPositions[4].position, double3(5.93355, 3.93355, 5.93355), 1e-6);
-  DOUBLE3_EXPECT_NEAR(atomPositions[5].position, double3(5.93355, 3.93355, 4.78455), 1e-6);
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  DOUBLE3_EXPECT_NEAR(atomData[0].position, double3(5.93355, 7.93355, 7.08255), 1e-6);
+  DOUBLE3_EXPECT_NEAR(atomData[1].position, double3(5.93355, 7.93355, 5.93355), 1e-6);
+  DOUBLE3_EXPECT_NEAR(atomData[2].position, double3(5.93355, 7.93355, 4.78455), 1e-6);
+  DOUBLE3_EXPECT_NEAR(atomData[3].position, double3(5.93355, 3.93355, 7.08255), 1e-6);
+  DOUBLE3_EXPECT_NEAR(atomData[4].position, double3(5.93355, 3.93355, 5.93355), 1e-6);
+  DOUBLE3_EXPECT_NEAR(atomData[5].position, double3(5.93355, 3.93355, 4.78455), 1e-6);
 
-  moleculePositions[0].velocity = double3(0.0, -1.0, 0.0);
-  moleculePositions[0].orientationMomentum = simd_quatd(10.0, 0.0, 0.0, 0.0);
-  moleculePositions[1].velocity = double3(0.0, 1.0, 0.0);
-  moleculePositions[1].orientationMomentum = simd_quatd(-10.0, 0.0, 0.0, 0.0);
+  moleculeData[0].velocity = double3(0.0, -1.0, 0.0);
+  moleculeData[0].orientationMomentum = simd_quatd(10.0, 0.0, 0.0, 0.0);
+  moleculeData[1].velocity = double3(0.0, 1.0, 0.0);
+  moleculeData[1].orientationMomentum = simd_quatd(-10.0, 0.0, 0.0, 0.0);
 
-  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                              system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                              system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep,
+                              system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+                              system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+                              system.fixedFrameworkStoredEik, system.interpolationGrids,
                               system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculeData[0].centerOfMassPosition, double3(5.933550, 7.933050, 5.933550), 1e-6);
@@ -123,10 +123,10 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   QUATD_EXPECT_NEAR(system.moleculeData[0].orientationMomentum, simd_quatd(10.000011, 0.0, 0.0, -0.000296), 1e-6);
   QUATD_EXPECT_NEAR(system.moleculeData[1].orientationMomentum, simd_quatd(-10.000011, 0.0, 0.0, -0.000296), 1e-6);
 
-  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                              system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                              system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep,
+                              system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+                              system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+                              system.fixedFrameworkStoredEik, system.interpolationGrids,
                               system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculeData[0].centerOfMassPosition, double3(5.933550, 7.932550, 5.933550), 1e-6);

@@ -5,16 +5,16 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <format>
 #include <fstream>
 #include <map>
 #include <print>
 #include <string>
-#include <type_traits>
-#include <vector>
-#include <tuple>
-#include <format>
 #include <string_view>
+#include <tuple>
+#include <type_traits>
 #include <utility>
+#include <vector>
 #endif
 
 export module bond_potential;
@@ -69,7 +69,7 @@ export struct BondPotential
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::array<std::size_t, 2> identifiers;                        ///< Identifiers of the two particles forming the bond.
-  BondType type{ BondType::None };                                                 ///< The type of bond potential.
+  BondType type{BondType::None};                                 ///< The type of bond potential.
   std::array<double, maximumNumberOfBondParameters> parameters;  ///< Parameters associated with the bond potential.
 
   /**
@@ -130,8 +130,8 @@ export struct BondPotential
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
 
-  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA, const double3 &posB) const;
-
+  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                      const double3 &posB) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotential &b);

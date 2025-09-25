@@ -10,9 +10,9 @@ module;
 #include <istream>
 #include <map>
 #include <ostream>
+#include <source_location>
 #include <utility>
 #include <vector>
-#include <source_location>
 #endif
 
 module averages;
@@ -48,8 +48,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BlockErrorEs
   if (versionNumber > blockerror.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'BlockErrorEstimation' at line {} in file {}\n", location.line(),
-                                         location.file_name()));
+    throw std::runtime_error(std::format("Invalid version reading 'BlockErrorEstimation' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
   }
 
   archive >> blockerror.numberOfBins;

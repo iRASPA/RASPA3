@@ -49,15 +49,16 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &random, System &system,
-                                                              std::size_t selectedComponent, std::size_t selectedMolecule,
-                                                              Molecule &molecule, std::span<Atom> molecule_atoms)
+                                                              std::size_t selectedComponent,
+                                                              std::size_t selectedMolecule, Molecule &molecule,
+                                                              std::span<Atom> molecule_atoms)
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;
   MoveTypes move = MoveTypes::PartialReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
-  if(component.partialReinsertionFixedAtoms.empty())
+  if (component.partialReinsertionFixedAtoms.empty())
   {
     return std::nullopt;
   }
@@ -80,19 +81,16 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
   Component::GrowType growType = component.growType;
 
-
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
-
 
   const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
 
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculePartialReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, beads_already_placed);
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the non-Ewald part of the move.
@@ -121,10 +119,9 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculePartialReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
-      molecule_atoms, beads_already_placed);
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the retracing step.
@@ -166,10 +163,9 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), new_electric_field,
-        old_electric_field, growData->atom, old_molecule);
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(), new_electric_field,
+                                                                  old_electric_field, growData->atom, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,

@@ -74,8 +74,9 @@ import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 
-void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &selectedSystem, System &selectedSecondSystem,
-                                 std::size_t selectedComponent, [[maybe_unused]]std::size_t &fractionalMoleculeSystem)
+void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &selectedSystem,
+                                               System &selectedSecondSystem, std::size_t selectedComponent,
+                                               [[maybe_unused]] std::size_t &fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -423,8 +424,9 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
   }
 }
 
-void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &selectedSystem, System &selectedSecondSystem,
-                                 std::size_t selectedComponent, std::size_t &fractionalMoleculeSystem)
+void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &selectedSystem,
+                                              System &selectedSecondSystem, std::size_t selectedComponent,
+                                              std::size_t &fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -1163,8 +1165,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     {
       double value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
-      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(
-          currentBlock, value, selectedSystem.weight());
+      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, value,
+                                                                                           selectedSystem.weight());
       break;
     }
     case MoveTypes::WidomCFCMC:

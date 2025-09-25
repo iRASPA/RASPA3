@@ -59,28 +59,28 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
       occupancyCount = 0;
       occupancyTotal = 0;
 
-      //std::vector<double>::iterator maxValueIterator = std::max_element(histogram.begin(), histogram.end());
-      //double maximumValue = *maxValueIterator;
+      // std::vector<double>::iterator maxValueIterator = std::max_element(histogram.begin(), histogram.end());
+      // double maximumValue = *maxValueIterator;
 
-      //std::print("biasing factors: {}\n", biasFactor);
+      // std::print("biasing factors: {}\n", biasFactor);
       //
-      //bool allBinsAtLeast90PercentOfThisValue = true;
-      //for(std::size_t i = 0; i < histogram.size(); ++i)
+      // bool allBinsAtLeast90PercentOfThisValue = true;
+      // for(std::size_t i = 0; i < histogram.size(); ++i)
       //{
-      //  if (histogram[i] < 0.9 * maximumValue)
-      //  {
-      //    allBinsAtLeast90PercentOfThisValue = false;
-      //    break;
-      //  }
-      //}
-      //if (allBinsAtLeast90PercentOfThisValue)
-      //{ 
-      //  std::print("rescaling!\n");
-      //  WangLandauScalingFactor *= 0.5;
-      //  std::fill(histogram.begin(), histogram.end(), 0.0);
-      //  occupancyCount = 0;
-      //  occupancyTotal = 0;
-      //}
+      //   if (histogram[i] < 0.9 * maximumValue)
+      //   {
+      //     allBinsAtLeast90PercentOfThisValue = false;
+      //     break;
+      //   }
+      // }
+      // if (allBinsAtLeast90PercentOfThisValue)
+      //{
+      //   std::print("rescaling!\n");
+      //   WangLandauScalingFactor *= 0.5;
+      //   std::fill(histogram.begin(), histogram.end(), 0.0);
+      //   occupancyCount = 0;
+      //   occupancyTotal = 0;
+      // }
     }
     break;
     case PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize:
@@ -241,16 +241,16 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [{}]\n",
-                 (excessChemicalPotential.first + excessChemicalPotentialBias),
-                 excessChemicalPotential.second, Units::unitOfEnergyString);
+                 (excessChemicalPotential.first + excessChemicalPotentialBias), excessChemicalPotential.second,
+                 Units::unitOfEnergyString);
       std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [{}]\n",
                  idealGasChemicalPotential.first, idealGasChemicalPotential.second, Units::unitOfEnergyString);
-      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [{}]\n",
-                 totalChemicalPotential.first, totalChemicalPotential.second, Units::unitOfEnergyString);
+      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [{}]\n", totalChemicalPotential.first,
+                 totalChemicalPotential.second, Units::unitOfEnergyString);
       if (imposedChemicalPotential)
       {
-        std::print(stream, "    Imposed chemical potential:   {: .6e} [{}]\n",
-                   imposedChemicalPotential.value(), Units::unitOfEnergyString);
+        std::print(stream, "    Imposed chemical potential:   {: .6e} [{}]\n", imposedChemicalPotential.value(),
+                   Units::unitOfEnergyString);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       if (imposedFugacity)
