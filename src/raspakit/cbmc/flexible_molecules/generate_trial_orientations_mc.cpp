@@ -63,21 +63,21 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
 
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(v, last_bond_vector);
 
-    for(std::size_t i = 0; i != nextBeads.size(); ++i)
+    for(std::size_t next_bead : nextBeads)
     {
-      double3 va = component.grownAtoms[nextBeads[i]].position - component.grownAtoms[currentBead].position;
+      double3 va = component.grownAtoms[next_bead].position - component.grownAtoms[currentBead].position;
 
       double3 vec = rotation_matrix * va;
 
-      chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + vec;
+      chain_atoms[next_bead].position = chain_atoms[currentBead].position + vec;
     }
   }
   else
   {
     // Generate positions from scratch
-    for(std::size_t i = 0; i != nextBeads.size(); ++i)
+    for(std::size_t next_bead : nextBeads)
     {
-      std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, nextBeads[i]);
+      std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, next_bead);
 
       double bond_length = bond.transform([&random, &beta](const BondPotential &bond) { return bond.generateBondLength(random, beta);}).value_or(1.54);
       double angle = intraMolecularInteractions.bends.empty() ? 120.0 * Units::DegreesToRadians :
@@ -86,11 +86,11 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
       double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
       double3 vec = random.randomVectorOnCone(last_bond_vector, angle);
 
-      chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + bond_length * vec;
+      chain_atoms[next_bead].position = chain_atoms[currentBead].position + bond_length * vec;
     }
   }
 
-  std::size_t number_of_trials = 600;
+  std::size_t number_of_trials = 300;
 
   std::vector<double> move_probabilities{};
   if( intraMolecularInteractions.bends.size() == 1 )
