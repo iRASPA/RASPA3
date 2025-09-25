@@ -182,11 +182,11 @@ Note the ideal-gas Rosenbluth weights can vary a lot, even for isomers.
 
 | Molecule        | Rosenbluth weight                             |
 |-----------------|-----------------------------------------------|
-|hexane           | \f$8.099334\times10^{-3} \pm  2.104924\times10^{-6}\f$ |
-|2-methylpentane  | \f$3.748358\times10^{-2} \pm  1.275033\times10^{-5}\f$ |
-|3-methylpentane  | \f$5.348429\times10^{-2} \pm  9.390518\times10^{-6}\f$ |
-|22-methylbutane  | \f$1.347700\times10^{-1} \pm  3.608139\times10^{-5}\f$ |
-|23-methylbutane  | \f$5.814672\times10^{-2} \pm  1.823282\times10^{-5}\f$ |
+|hexane           | \f$8.103901\times10^{-3} \pm  1.589592\times10^{-6}\f$ |
+|2-methylpentane  | \f$4.704858\times10^{-2} \pm  2.292884\times10^{-5}\f$ |
+|3-methylpentane  | \f$5.353616\times10^{-2} \pm  3.071873\times10^{-5}\f$ |
+|22-methylbutane  | \f$2.265790\times10^{-1} \pm  2.305648\times10^{-5}\f$ |
+|23-methylbutane  | \f$8.732375\times10^{-2} \pm  8.600239\times10^{-5}\f$ |
 
 #### Charge-equilibration IRMOF-1<a name="Example_auxillary_4"></a>
 
