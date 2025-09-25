@@ -39,6 +39,6 @@ var searchData=
   ['movestatistics_36',['MoveStatistics',['../structMoveStatistics.html',1,'']]],
   ['movestatistics_3c_20double_20_3e_37',['MoveStatistics&lt; double &gt;',['../structMoveStatistics.html',1,'']]],
   ['movestatistics_3c_20double3_20_3e_38',['MoveStatistics&lt; double3 &gt;',['../structMoveStatistics.html',1,'']]],
-  ['multicomponentmixingrules_39',['multicomponentmixingrules',['../structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242',1,'EquationOfState::multiComponentMixingRules'],['../structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7',1,'EquationOfState::MultiComponentMixingRules']]],
+  ['multicomponentmixingrules_39',['multicomponentmixingrules',['../structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7',1,'EquationOfState::MultiComponentMixingRules'],['../structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242',1,'EquationOfState::multiComponentMixingRules']]],
   ['multisiteisotherm_40',['MultiSiteIsotherm',['../structMultiSiteIsotherm.html',1,'']]]
 ];
