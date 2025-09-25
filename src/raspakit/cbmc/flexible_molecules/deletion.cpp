@@ -160,7 +160,8 @@ import bond_potential;
             moleculeAtomData, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, RosenBluthWeightTorsion, -1);
 
     // add van der Waals
-    for(auto &[external_positions, external_energies, external_torsion] : externalEnergies)
+     std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> totalExternalEnergies = externalEnergies;
+    for(auto &[external_positions, external_energies, external_torsion] : totalExternalEnergies)
     {
       RunningEnergy recomputed_internal_energies = intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(molecule_atoms);
       external_energies += recomputed_internal_energies;
@@ -168,7 +169,7 @@ import bond_potential;
 
     std::vector<double> logBoltzmannFactors{};
     logBoltzmannFactors.reserve(forceField.numberOfTrialDirections);
-    std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
+    std::transform(totalExternalEnergies.begin(), totalExternalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                    [&](const std::tuple<std::vector<Atom>, RunningEnergy, double> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
 

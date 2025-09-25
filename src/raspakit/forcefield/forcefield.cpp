@@ -977,6 +977,7 @@ std::string ForceField::printForceFieldStatus() const
           break;
         case VDWParameters::Type::None:
           std::print(stream, "{:8} - {:8} None\n", pseudoAtoms[i].name, pseudoAtoms[j].name);
+          break;
         default:
           break;
       }

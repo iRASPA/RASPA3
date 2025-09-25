@@ -186,7 +186,8 @@ import bond_potential;
     if (externalEnergies.empty()) return std::nullopt;
 
     // add van der Waals
-    for(auto &[external_positions, external_energy, external_torsion] : externalEnergies)
+    std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> totalExternalEnergies = externalEnergies;
+    for(auto &[external_positions, external_energy, external_torsion] : totalExternalEnergies)
     {
        for (std::size_t k = 0; k != external_positions.size(); ++k)
        {
@@ -203,7 +204,7 @@ import bond_potential;
     // Select based on Van der Waals
     std::vector<double> logBoltzmannFactors{};
     logBoltzmannFactors.reserve(forceField.numberOfTrialDirections);
-    std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
+    std::transform(totalExternalEnergies.begin(), totalExternalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                    [&](const std::tuple<std::vector<Atom>, RunningEnergy, double> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
 
