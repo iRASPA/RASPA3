@@ -441,6 +441,23 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() 
   return result;
 }
 
+const std::string ConnectivityTable::printConnectivityTable() const
+{
+  std::ostringstream stream;
+  std::print(stream, "Connectivity Table\n");
+  std::print(stream, "------------------------------------------------\n");
+  for (std::size_t i = 0; i < numberOfBeads; i++)
+  {
+    for (std::size_t j = 0; j < numberOfBeads; j++)
+    {
+      std::print(stream, "{} ", table[i * numberOfBeads + j] ? "1" : "0");
+    }
+    std::print(stream, "\n");
+  }
+  std::print(stream, "\n");
+  return stream.str();
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ConnectivityTable &b)
 {
   archive << b.versionNumber;

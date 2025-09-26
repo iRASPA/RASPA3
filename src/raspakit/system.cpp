@@ -1751,7 +1751,7 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomData, simulationBox, forceField,
+    writeLammpsData->update(currentCycle, components, atomData, moleculeData, simulationBox, forceField,
                             numberOfIntegerMoleculesPerComponent, framework);
   }
 

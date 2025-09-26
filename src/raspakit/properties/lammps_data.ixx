@@ -26,6 +26,7 @@ import forcefield;
 import component;
 import lammps_io;
 import framework;
+import molecule;
 
 /**
  * \brief A property writer class for writing LAMMPS data files.
@@ -45,7 +46,7 @@ export struct WriteLammpsData
    * \brief Write data to LAMMPS file.
    */
   void update(std::size_t currentCycle, std::span<const Component> components, std::span<const Atom> atomData,
-              const SimulationBox simulationBox, const ForceField forceField,
+              std::span<const Molecule> moleculeData, const SimulationBox simulationBox, const ForceField forceField,
               std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, std::optional<Framework> framework);
 
   std::size_t sampleEvery{10};  ///< Writing frequency.

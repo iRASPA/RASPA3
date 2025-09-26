@@ -48,6 +48,8 @@ export struct ConnectivityTable
   std::vector<std::array<std::size_t, 4>> findAllTorsions() const;
   std::vector<std::array<std::size_t, 2>> findAllVanDerWaals() const;
 
+  const std::string printConnectivityTable() const;
+
   std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> nextBeads(
       const std::vector<std::size_t> &placedBeads) const;
 

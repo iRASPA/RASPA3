@@ -29,6 +29,7 @@ import forcefield;
 import component;
 import lammps_io;
 import framework;
+import molecule;
 
 WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
     : sampleEvery(sampleEvery), systemId(systemId)
@@ -38,14 +39,15 @@ WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
 }
 
 void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component> components,
-                             std::span<const Atom> atomData, const SimulationBox simulationBox,
-                             const ForceField forceField, std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
+                             std::span<const Atom> atomData, std::span<const Molecule> moleculeData,
+                             const SimulationBox simulationBox, const ForceField forceField,
+                             std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                              std::optional<Framework> framework)
 {
   if (currentCycle % sampleEvery != 0) return;
   ;
   std::ofstream stream(std::format("lammps/s{}.data", systemId), std::ios_base::out);
-  stream << IO::WriteLAMMPSDataFile(components, atomData, simulationBox, forceField,
+  stream << IO::WriteLAMMPSDataFile(components, atomData, moleculeData, simulationBox, forceField,
                                     numberOfIntegerMoleculesPerComponent, framework)
          << std::endl;
 }

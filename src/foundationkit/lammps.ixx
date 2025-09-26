@@ -18,6 +18,7 @@ import atom;
 import simulationbox;
 import forcefield;
 import framework;
+import molecule;
 
 export namespace IO
 {
@@ -39,7 +40,8 @@ void ReadLAMMPSDataFile();
  * \param framework meta info on the framework.
  */
 std::string WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
-                                const SimulationBox simulationBox, const ForceField forceField,
+                                std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
+                                const ForceField forceField,
                                 std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                 std::optional<Framework> framework);
 }  // namespace IO

@@ -374,16 +374,13 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     }
   }
 
+  connectivityTable = readConnectivityTable(definedAtoms.size(), parsed_data);
   if (growType == GrowType::Flexible)
   {
-    connectivityTable = readConnectivityTable(definedAtoms.size(), parsed_data);
-
     intraMolecularPotentials.bonds = readBondPotentials(forceField, parsed_data);
     intraMolecularPotentials.bends = readBendPotentials(forceField, parsed_data);
     intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
-
     intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
-
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
   }
 }
