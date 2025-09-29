@@ -3710,6 +3710,83 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
   std::print(stream, "\n");
 }
 
+void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
+                                                    ForceField::InterpolationGridType interpolationGridType,
+                                                    const ForceField &forceField)
+{
+  int3 numberOfExternalFieldGridPoints = forceField.numberOfExternalFieldGridPoints.value();
+
+  double3 delta = double3(1.0 / static_cast<double>(numberOfExternalFieldGridPoints.x), 1.0 / static_cast<double>(numberOfExternalFieldGridPoints.y),
+                          1.0 / static_cast<double>(numberOfExternalFieldGridPoints.z));
+
+  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+        data.data(), std::to_underlying(order), numberOfExternalFieldGridPoints.x, numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
+
+  double percent = 100.0 / static_cast<double>(numberOfExternalFieldGridPoints.x * numberOfExternalFieldGridPoints.y * numberOfExternalFieldGridPoints.z);
+
+  double counter{};
+  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  for (size_t k = 0; k < static_cast<size_t>(numberOfExternalFieldGridPoints.z); ++k)
+  {
+    for (size_t j = 0; j < static_cast<size_t>(numberOfExternalFieldGridPoints.y); ++j)
+    {
+      for (size_t i = 0; i < static_cast<size_t>(numberOfExternalFieldGridPoints.x); ++i)
+      {
+        counter += 1.0;
+
+        switch (order)
+        {
+          case ForceField::InterpolationScheme::Polynomial:
+          {
+            throw std::runtime_error("Polynomial interpolation is not implemented for external fields.");
+          }
+          break;
+          case ForceField::InterpolationScheme::Tricubic:
+          {
+            std::array<double, 8> values{};
+            for (int ind = 0; ind < 8; ++ind)
+            {
+              // TODO: remake this as mdspan
+              values[ind] = forceField.externalFieldGrid[i][j][k][ind];
+            }
+
+            if (values[0] > forceField.energyOverlapCriteria)
+            {
+              // if overlap then make values finite
+              data_cell[0, i, j, k] = 2.0 * forceField.energyOverlapCriteria;
+              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+              for (size_t l = 4; l < 8; ++l)
+              {
+                data_cell[l, i, j, k] = 0.0;
+              }
+            }
+            else
+            {
+              for (size_t l = 0; l < 8; ++l)
+              {
+                data_cell[l, i, j, k] = values[l];
+              }
+            }
+          }
+          break;
+          case ForceField::InterpolationScheme::Triquintic:
+          {
+            throw std::runtime_error("Triquintic interpolation is not implemented for external fields.");
+          }
+          break;
+        }
+      }
+    }
+  }
+  std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> time_duration = time_end - time_begin;
+  std::print(stream, "External field grid done... ({:14f} [s])\n", time_duration.count());
+  std::print(stream, "\n");
+} 
+
 double InterpolationEnergyGrid::interpolate(double3 pos) const
 {
   double3 s = (unitCellBox.inverseCell * pos).fract();

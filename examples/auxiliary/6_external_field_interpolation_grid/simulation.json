@@ -1,0 +1,33 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 1000,
+
+
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1e7,
+      "ChargeMethod" : "None",
+      "ExternalField" : true,
+      "ExternalFieldInterpolationScheme" : "Tricubic",
+      "ComputeDensityGrid" : true,
+      "WriteDensityGridEvery" : 1000
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "methane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 1.0,
+      "SwapConventionalProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

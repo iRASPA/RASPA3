@@ -73,7 +73,8 @@ export struct ForceField
     ExponentialNonPolynomialTestFunction = 6,
     MullerBrown = 7,
     Eckhardt = 8,
-    GonzalezSchlegel = 9  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    GonzalezSchlegel = 9,  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    ExternalField = 10
   };
 
   enum class InterpolationGridType : std::size_t
@@ -140,6 +141,9 @@ export struct ForceField
   PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction};
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
 
+  std::vector<std::vector<std::vector<std::vector<double>>>> externalFieldGrid;
+  std::optional<int3> numberOfExternalFieldGridPoints{};  ///< Size of the external field grid in each dimension.
+
   std::vector<std::size_t> gridPseudoAtomIndices;
   double spacingVDWGrid{0.15};
   double spacingCoulombGrid{0.15};
@@ -148,6 +152,7 @@ export struct ForceField
   std::size_t numberOfGridTestPoints{100000};
   bool interpolationSchemeAuto{true};
   InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
+  InterpolationScheme externalFieldInterpolationScheme{InterpolationScheme::Tricubic};
 
   /**
    * \brief Default constructor for the ForceField struct.

@@ -273,6 +273,7 @@ export struct System
   std::size_t maxIsothermTerms{0};
 
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
+  std::vector<std::optional<InterpolationEnergyGrid>> externalFieldInterpolationGrids;
 
   /// The fractional molecule for grand-canonical is stored first
   inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent)

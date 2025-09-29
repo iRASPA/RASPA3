@@ -222,6 +222,83 @@ void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_
 {
 }
 
+std::pair<std::vector<std::vector<std::vector<std::vector<double>>>>, int3>
+InputReader::parseExternalFieldGrid(const std::string& filename)
+{
+    std::vector<std::tuple<int, int, int, std::vector<double>>> entries;
+
+    std::ifstream infile(filename);
+    if (!infile) {
+        throw std::runtime_error("Cannot open external field grid file: " + filename);
+    }
+
+    int maxX = 0, maxY = 0, maxZ = 0;
+    int valuesPerGridPoint = 0;
+
+    std::string line;
+    // determine number of values per grid point by reading the first line and counting the entries after the first three (i, j, k)
+    if (std::getline(infile, line)) {
+        std::istringstream iss(line);
+        // discard the first three entries (i, j, k)
+        std::string dummy;
+        for (int skip = 0; skip < 3; ++skip) {
+            if (!(iss >> dummy)) {
+                throw std::runtime_error("Invalid format in external field grid file (not enough indices): " + filename);
+            }
+        }
+        // count how many entries remain
+        double val;
+        while (iss >> val) {
+            valuesPerGridPoint++;
+        }
+        if (valuesPerGridPoint == 0) {
+            throw std::runtime_error("No values found per grid point in file: " + filename);
+        }
+    } else {
+        throw std::runtime_error("External field grid file is empty: " + filename);
+    }
+
+    // reset file to beginning for actual reading
+    infile.clear();
+    infile.seekg(0);
+
+    while (std::getline(infile, line)) {
+        std::istringstream iss(line);
+        int i, j, k;
+        if (!(iss >> i >> j >> k)) {
+            throw std::runtime_error("Invalid grid indices in line: " + line);
+        }
+        std::vector<double> values(valuesPerGridPoint);
+        for (int v = 0; v < valuesPerGridPoint; ++v) {
+            if (!(iss >> values[v])) {
+                throw std::runtime_error("Invalid or missing grid data in line: " + line);
+            }
+        }
+        maxX = std::max(maxX, i);
+        maxY = std::max(maxY, j);
+        maxZ = std::max(maxZ, k);
+        entries.emplace_back(i, j, k, values);
+    }
+
+    // allocate the grid
+    std::vector<std::vector<std::vector<std::vector<double>>>> externalFieldGrid(
+        maxX + 1,
+        std::vector<std::vector<std::vector<double>>>(
+            maxY + 1,
+            std::vector<std::vector<double>>(
+                maxZ + 1,
+                std::vector<double>(valuesPerGridPoint)
+            )
+        )
+    );
+
+    for (const auto& [i, j, k, values] : entries) {
+        externalFieldGrid[i][j][k] = values;
+    }
+
+    return {externalFieldGrid, {maxX + 1, maxY + 1, maxZ + 1}};
+}
+
 void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
   // count number of systems
@@ -1083,6 +1160,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           boxAngles = parseDouble3("BoxAngles", value["BoxAngles"]);
         }
         boxAngles = boxAngles * (std::numbers::pi / 180.0);
+         
+        // TODO add check if external field grid file exists and if formats are correct,
+        // add parsing of other formats than tricubic
+        if (value.contains("ExternalField") && value["ExternalField"].get<bool>() == true)
+        {
+          if (value.contains("ExternalFieldInterpolationScheme") && value["ExternalFieldInterpolationScheme"].get<std::string>() == "Tricubic")
+          {
+            auto[externalFieldGrid, externalFieldGridDims] = parseExternalFieldGrid("external_field.input");
+
+            forceFields[systemId]->externalFieldGrid = externalFieldGrid;
+            forceFields[systemId]->numberOfExternalFieldGridPoints = externalFieldGridDims;
+
+            forceFields[systemId]->hasExternalField = value["ExternalField"].get<bool>();
+
+            forceFields[systemId]->externalFieldInterpolationScheme = ForceField::InterpolationScheme::Tricubic;
+            forceFields[systemId]->potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::ExternalField;
+          }
+        }
 
         // create system
         if (!forceFields[systemId].has_value())
@@ -1099,6 +1194,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {},
                                    jsonComponents[systemId], jsonRestartFilePositions[systemId],
                                    jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+        
+        if (value.contains("ExternalField"))
+        {        
+          if (value["ExternalField"].get<bool>() == true)
+          { 
+            systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
+          }
+        }
       }
       else
       {
@@ -1643,6 +1746,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "BoxLengths",
     "BoxAngles",
     "ExternalField",
+    "ExternalFieldInterpolationScheme",
     "ComputeEnergyHistogram",
     "SampleEnergyHistogramEvery",
     "WriteEnergyHistogramEvery",

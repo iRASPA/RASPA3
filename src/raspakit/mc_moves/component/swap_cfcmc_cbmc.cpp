@@ -132,7 +132,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, fractionalMolecule, oldFractionalMolecule);
+        system.hasExternalField, system.forceField, system.simulationBox, fractionalMolecule, oldFractionalMolecule,
+        system.externalFieldInterpolationGrids);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-ExternalField"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-ExternalField"] += (time_end - time_begin);
@@ -416,7 +417,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       time_begin = std::chrono::system_clock::now();
       std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
           system.hasExternalField, system.forceField, system.simulationBox, newFractionalMolecule,
-          savedFractionalMolecule);
+          savedFractionalMolecule, system.externalFieldInterpolationGrids);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-ExternalField"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-ExternalField"] += (time_end - time_begin);
@@ -570,7 +571,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy difference
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldEnergyDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, trialPositions, molecule);
+        system.hasExternalField, system.forceField, system.simulationBox, trialPositions, molecule, system.externalFieldInterpolationGrids);
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

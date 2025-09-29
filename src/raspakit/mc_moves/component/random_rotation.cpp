@@ -82,7 +82,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   // Compute external field energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
+      system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms, system.externalFieldInterpolationGrids);
   time_end = std::chrono::system_clock::now();
 
   component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);

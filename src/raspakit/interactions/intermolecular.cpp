@@ -107,6 +107,32 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField &forceF
   return energySum;
 }
 
+// TODO move to some other module where it makes more sense
+RunningEnergy Interactions::computeExternalFieldEnergy(const ForceField &forceField, const SimulationBox &box,
+                                                        std::span<const Atom> moleculeAtoms,
+                                                      std::vector<std::optional<InterpolationEnergyGrid>> &externalFieldInterpolationGrids) noexcept
+{
+  double3 dr, posA, posB, f;
+  double rr;
+
+  RunningEnergy energySum{};
+
+  if (moleculeAtoms.empty()) return energySum;
+
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  {
+    posA = it1->position;
+    size_t molA = static_cast<size_t>(it1->moleculeId);
+    size_t typeA = static_cast<size_t>(it1->type);
+
+    Potentials::EnergyFactor energyFactorExternal = Potentials::EnergyFactor(0.0, 0.0);
+    energyFactorExternal.energy += externalFieldInterpolationGrids[typeA]->interpolate(posA);
+    energySum.externalFieldVDW += energyFactorExternal.energy;
+  }
+
+  return energySum;
+}
+
 RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &forceField,
                                                             const SimulationBox &simulationBox,
                                                             std::span<const Atom> moleculeAtoms) noexcept

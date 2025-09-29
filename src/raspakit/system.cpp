@@ -1909,6 +1909,9 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy intermolecularTailEnergy =
         Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
 
+    RunningEnergy externalFieldEnergy = Interactions::computeExternalFieldEnergy(
+      forceField, simulationBox, moleculeAtomPositions, externalFieldInterpolationGrids);
+  
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierElectricField(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
         moleculeElectricField, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
@@ -1916,7 +1919,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + polarizationEnergy + runningIntraEnergy;
+           ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
   }
   else
   {
@@ -2213,10 +2216,45 @@ std::string System::writeMCMoveStatistics() const
   return stream.str();
 }
 
+
 void System::createInterpolationGrids(std::ostream& stream)
 {
   // use local random-number generator (so that it does not interfere with a binary-restart)
   RandomNumber random{std::nullopt};
+
+  // create intepolation grids for external fields if needed
+  if (forceField.hasExternalField || forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::ExternalField)
+  {
+    int3 numberOfExternalFieldGridPoints{};
+    if (forceField.numberOfExternalFieldGridPoints.has_value())
+    {
+      numberOfExternalFieldGridPoints = forceField.numberOfExternalFieldGridPoints.value();
+    }
+    else
+    {
+      throw std::runtime_error("Error: Number of external field grid points not specified in the force field.");
+    }
+
+    int3 numberOfCells = int3(
+    numberOfExternalFieldGridPoints.x - 1,
+    numberOfExternalFieldGridPoints.y - 1,
+    numberOfExternalFieldGridPoints.z - 1);
+
+    externalFieldInterpolationGrids.push_back(
+        InterpolationEnergyGrid(simulationBox, numberOfCells, forceField.externalFieldInterpolationScheme));
+
+
+    if (externalFieldInterpolationGrids.back().has_value())
+      externalFieldInterpolationGrids.back()->makeInterpolationGrid(
+        stream, ForceField::InterpolationGridType::LennardJones, forceField);
+    else
+        throw std::runtime_error("External field interpolation grid not set!");
+
+    std::print(stream, "Generating a VDW interpolation grid ({}x{}x{}) for external field\n",
+              numberOfExternalFieldGridPoints.x, numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
+    std::print(stream, "===============================================================================\n");
+
+  }
 
   if (framework.has_value())
   {

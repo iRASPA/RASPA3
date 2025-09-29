@@ -24,6 +24,7 @@ import energy_factor;
 import gradient_factor;
 import forcefield;
 import component;
+import interpolation_energy_grid;
 
 export namespace Interactions
 {
@@ -92,6 +93,22 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
                                                                       std::span<const Atom> moleculeAtoms,
                                                                       std::span<const Atom> newatoms,
                                                                       std::span<const Atom> oldatoms) noexcept;
+/**
+ * \brief Computes the external field energy for a set of atoms.
+ *
+ * Calculates the energy contribution from external fields acting on all atoms in \p moleculeAtoms,
+ * using the provided interpolation grids. This function evaluates the external field energy at each
+ * atom's position and accumulates the total contribution.
+ *
+ * \param forceField The force field parameters used for the calculations.
+ * \param simulationBox The simulation box containing the atoms.
+ * \param moleculeAtoms A span of atoms for which to compute external field energies.
+ * \param externalFieldInterpolationGrids Interpolation grids used to evaluate the external field at atom positions.
+ * \return The total external field energy contributions.
+ */
+RunningEnergy computeExternalFieldEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                         std::span<const Atom> moleculeAtoms,
+                                         std::vector<std::optional<InterpolationEnergyGrid>> &externalFieldInterpolationGrids) noexcept;
 
 /**
  * \brief Computes the inter-molecular forces and energy.

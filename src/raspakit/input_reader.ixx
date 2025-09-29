@@ -185,6 +185,19 @@ export struct InputReader
   void parseMixturePrediction(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   /**
+   * \brief Parses an external field grid file and returns the grid data and dimensions.
+   *
+   * Reads the specified external field grid file and extracts the grid values and their
+   * dimensions. The function returns a 4D vector containing the external field values
+   * at each grid point, along with an int3 specifying the grid dimensions (number of points
+   * in each direction).
+   *
+   * \param filename The path to the external field grid file to be parsed.
+   * \return A pair consisting of the external field grid data and the grid dimensions.
+   */
+  std::pair<std::vector<std::vector<std::vector<std::vector<double>>>>, int3>
+                          parseExternalFieldGrid(const std::string& filename);
+  /**
    * \brief Parses breakthrough simulation configurations from the provided JSON data.
    *
    * This function extracts and initializes parameters specific to breakthrough simulations,

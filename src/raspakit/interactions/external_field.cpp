@@ -39,7 +39,9 @@ import triquintic_derivatives_external_field;
 void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
                                               [[maybe_unused]] const SimulationBox &simulationBox,
                                               [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-                                              [[maybe_unused]] RunningEnergy &energyStatus) noexcept
+                                              [[maybe_unused]] RunningEnergy &energyStatus,
+                                              [[maybe_unused]] std::vector<std::optional<InterpolationEnergyGrid>> 
+                                                                                  &externalFieldInterpolationGrids) noexcept
 {
   if (hasExternalField)
   {
@@ -64,6 +66,9 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       switch (forceField.potentialEnergySurfaceType)
       {
         case ForceField::PotentialEnergySurfaceType::None:
+          break;
+        case ForceField::PotentialEnergySurfaceType::ExternalField:
+          energyFactor.energy += externalFieldInterpolationGrids[typeA]->interpolate(posA);
           break;
         case ForceField::PotentialEnergySurfaceType::MullerBrown:
         {
@@ -368,7 +373,8 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeExternalFieldEnergyDifference(
     bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
     [[maybe_unused]] const SimulationBox &simulationBox, [[maybe_unused]] std::span<const Atom> newatoms,
-    [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
+    [[maybe_unused]] std::span<const Atom> oldatoms, 
+    [[maybe_unused]] std::vector<std::optional<InterpolationEnergyGrid>> &externalFieldInterpolationGrids) noexcept
 {
   RunningEnergy energySum;
 
@@ -391,6 +397,11 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
       if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
+      if (forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::ExternalField)
+      {
+        energyFactor.energy += externalFieldInterpolationGrids[typeA]->interpolate(posA);
+      }
+
       energySum.externalFieldVDW += energyFactor.energy;
       energySum.dudlambdaVDW += energyFactor.dUdlambda;
     }
@@ -409,6 +420,11 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
       // Fill in the energy based on the atom properties and the fractional position 's'
       Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
+
+      if (forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::ExternalField)
+      {
+        energyFactor.energy -= externalFieldInterpolationGrids[typeA]->interpolate(posA);
+      }
 
       energySum.externalFieldVDW -= energyFactor.energy;
       energySum.dudlambdaVDW -= energyFactor.dUdlambda;
