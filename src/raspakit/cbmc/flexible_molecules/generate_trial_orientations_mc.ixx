@@ -39,7 +39,8 @@ enum class MoveType : std::size_t
 };
 
 std::vector<Atom> generateTrialOrientationsMonteCarloScheme(
-    RandomNumber &random, double beta, Component &component, const std::vector<Atom> chain_atoms,
+    RandomNumber &random,  std::size_t numberOfTrialMovesPerOpenBead, double beta, 
+    Component &component, const std::vector<Atom> chain_atoms,
     std::size_t previousBead, std::size_t currentBead, std::vector<std::size_t> nextBeads,
     const Potentials::IntraMolecularPotentials &intraMolecularInteractions);
 }  // namespace CBMC

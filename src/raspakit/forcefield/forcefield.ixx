@@ -125,10 +125,11 @@ export struct ForceField
 
   double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
 
-  std::size_t numberOfTrialDirections{10};
-  std::size_t numberOfTorsionTrialDirections{100};
-  std::size_t numberOfFirstBeadPositions{10};
-  double minimumRosenbluthFactor{1e-150};  ///< Minimum allowed Rosenbluth factor.
+  std::size_t numberOfTrialDirections{ 10 };
+  std::size_t numberOfTorsionTrialDirections{ 100 };
+  std::size_t numberOfFirstBeadPositions{ 10 };
+  std::size_t numberOfTrialMovesPerOpenBead{ 150 };
+  double minimumRosenbluthFactor{ 1e-150 };  ///< Minimum allowed Rosenbluth factor.
 
   bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.

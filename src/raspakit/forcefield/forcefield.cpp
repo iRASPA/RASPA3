@@ -1202,6 +1202,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.numberOfTrialDirections;
   archive << f.numberOfTorsionTrialDirections;
   archive << f.numberOfFirstBeadPositions;
+  archive << f.numberOfTrialMovesPerOpenBead;
   archive << f.minimumRosenbluthFactor;
 
   archive << f.useDualCutOff;
@@ -1270,6 +1271,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.numberOfTrialDirections;
   archive >> f.numberOfTorsionTrialDirections;
   archive >> f.numberOfFirstBeadPositions;
+  archive >> f.numberOfTrialMovesPerOpenBead;
   archive >> f.minimumRosenbluthFactor;
 
   archive >> f.useDualCutOff;

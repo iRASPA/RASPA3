@@ -98,7 +98,8 @@ import bond_potential;
       // Case: growing a single or multiple bonds with a previous bead present
 
       std::vector<Atom> trial_orientations =
-          generateTrialOrientationsMonteCarloScheme(random, beta, component, chain_atoms, previous_bead.value(),
+          generateTrialOrientationsMonteCarloScheme(random, forceField.numberOfTrialMovesPerOpenBead, beta, 
+                                                    component, chain_atoms, previous_bead.value(),
                                                     current_bead, nextBeads, intraMolecularPotentials);
 
       // Rotate around the last bond-vector to obtain the other trial-orientations
