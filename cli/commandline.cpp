@@ -51,6 +51,7 @@ import energy_surface_area;
 import getopt;
 import tessellation;
 import interpolation_energy_grid;
+import pore_size_distribution_ban_vlugt;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
 #endif
@@ -196,8 +197,11 @@ void CommandLine::run(int argc, char *argv[])
            [&is_mof](std::string const &) { is_mof = true; })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
-      .reg({"--tessellation"}, argparser::no_argument, "Use tesselation method",
+      .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
            [&state](std::string const &) { state.set(State::TessellationComputation); })
+      .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
+           "Use pore size distribution method from Ban, Vlugt paper",
+           [&state](std::string const &){state.set(State::PSD_BV);})
       .reg({"--cpu"}, argparser::no_argument, "Compute on the gpu", [&use_cpu](std::string const &) { use_cpu = true; })
       .reg({"--gpu"}, argparser::no_argument, "Compute on the gpu", [&use_gpu](std::string const &) { use_gpu = true; })
       .reg({"--monte-carlo"}, argparser::no_argument, "Use Monte Carlo-based methods",
@@ -334,6 +338,24 @@ void CommandLine::run(int argc, char *argv[])
         if (use_gpu)
         {
           Tessellation s(gridSize);
+          s.run(forceField.value(), framework);
+        }
+      }
+    }
+
+    if(state.test(CommandLine::State::PSD_BV))
+    {
+      std::cout << "Compute pore size distribution using the method from the Ban, Vlugt paper" << std::endl;
+
+      if(use_gridbased_methods)
+      {
+        if(use_cpu)
+        {
+        }
+
+        if(use_gpu)
+        {
+          BanVlugtPoreSizeDistribution s(gridSize);
           s.run(forceField.value(), framework);
         }
       }

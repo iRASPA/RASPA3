@@ -56,7 +56,8 @@ enum State : std::uint8_t
   TessellationComputation = 6,
   PSD = 7,
   EnergyGrid = 8,
-  Last = 9
+  PSD_BV = 9, // Pore Size Distribution using Ban, Vlugt method
+  Last = 10
 };
 
 ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
