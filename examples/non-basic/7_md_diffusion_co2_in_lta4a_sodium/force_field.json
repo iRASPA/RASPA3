@@ -7,7 +7,7 @@
       "element": "O",
       "print_as": "O",
       "mass": 15.9994,
-      "charge": -0.39299,
+      "charge": -0.75,
       "source": "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
     },
     {
@@ -17,7 +17,7 @@
       "element": "O",
       "print_as": "O",
       "mass": 15.9994,
-      "charge": -0.41384,
+      "charge": -0.89,
       "source": "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
     },
     {
@@ -27,7 +27,7 @@
       "element": "Si",
       "print_as": "Si",
       "mass": 28.0855,
-      "charge": 0.78598,
+      "charge": 1.5,
       "source": "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
     },
     {
@@ -37,7 +37,7 @@
       "element": "Al",
       "print_as": "Al",
       "mass": 26.981539,
-      "charge": 0.48598,
+      "charge": 1.26,
       "source": "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
     },
     {
@@ -47,7 +47,7 @@
       "element": "Na",
       "print_as": "Na",
       "mass": 22.98977,
-      "charge": 0.3834,
+      "charge": 0.8,
       "source": "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
     },
     {
