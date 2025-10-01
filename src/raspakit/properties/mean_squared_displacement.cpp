@@ -178,6 +178,8 @@ void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const st
 {
   if (currentCycle % writeEvery != 0uz) return;
 
+  if (countMSD == 0uz) return;
+
   std::filesystem::create_directory("msd");
 
   for (std::size_t i = 0; i < components.size(); ++i)
