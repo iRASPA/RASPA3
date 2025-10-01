@@ -16,14 +16,24 @@ module;
 #endif
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+#endif
+
+
 export module pore_size_distribution_ban_vlugt;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <print>;
-import <string>;
-import <vector>;
+import std;
 #endif
+
 
 import int3;
 import framework;
