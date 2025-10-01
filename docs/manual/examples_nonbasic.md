@@ -782,128 +782,128 @@ Uisng the NIST chemical database, we can compare to the experimental values of 3
 
 ```
 Component 0 (hexane)
-    Block[  0]  1.938018e+01
-    Block[  1]  2.000694e+01
-    Block[  2]  2.042880e+01
-    Block[  3]  2.147259e+01
-    Block[  4]  2.069375e+01
+    Block[  0]  1.942371e+01
+    Block[  1]  1.976920e+01
+    Block[  2]  2.073069e+01
+    Block[  3]  1.944512e+01
+    Block[  4]  1.905125e+01
     ---------------------------------------------------------------------------
-    Abs. loading average   2.039645e+01 +/-  9.680310e-01 [molecules/cell]
-    Abs. loading average   2.549557e+00 +/-  1.210039e-01 [molecules/uc]
-    Abs. loading average   4.420603e-01 +/-  2.098052e-02 [mol/kg-framework]
-    Abs. loading average   3.812981e+01 +/-  1.809670e+00 [mg/g-framework]
+    Abs. loading average   1.968399e+01 +/-  7.920133e-01 [molecules/cell]
+    Abs. loading average   2.460499e+00 +/-  9.900166e-02 [molecules/uc]
+    Abs. loading average   4.266190e-01 +/-  1.716562e-02 [mol/kg-framework]
+    Abs. loading average   3.679792e+01 +/-  1.480616e+00 [mg/g-framework]
 
 
 Component 1 (2-methylpentane)
-    Block[  0]  8.119860e+00
-    Block[  1]  7.462680e+00
-    Block[  2]  7.671530e+00
-    Block[  3]  7.182510e+00
-    Block[  4]  7.427390e+00
+    Block[  0]  8.200430e+00
+    Block[  1]  7.897030e+00
+    Block[  2]  7.471970e+00
+    Block[  3]  8.130210e+00
+    Block[  4]  8.167430e+00
     ---------------------------------------------------------------------------
-    Abs. loading average   7.572794e+00 +/-  4.365559e-01 [molecules/cell]
-    Abs. loading average   9.465993e-01 +/-  5.456949e-02 [molecules/uc]
-    Abs. loading average   1.641281e-01 +/-  9.461648e-03 [mol/kg-framework]
-    Abs. loading average   1.415683e+01 +/-  8.161122e-01 [mg/g-framework]
+    Abs. loading average   7.973414e+00 +/-  3.781092e-01 [molecules/cell]
+    Abs. loading average   9.966768e-01 +/-  4.726365e-02 [molecules/uc]
+    Abs. loading average   1.728109e-01 +/-  8.194909e-03 [mol/kg-framework]
+    Abs. loading average   1.490577e+01 +/-  7.068499e-01 [mg/g-framework]
 
 
 Component 2 (3-methylpentane)
-    Block[  0]  3.988190e+00
-    Block[  1]  4.197100e+00
-    Block[  2]  4.042350e+00
-    Block[  3]  4.091960e+00
-    Block[  4]  4.177710e+00
+    Block[  0]  4.170450e+00
+    Block[  1]  3.930400e+00
+    Block[  2]  3.826780e+00
+    Block[  3]  4.208790e+00
+    Block[  4]  4.164900e+00
     ---------------------------------------------------------------------------
-    Abs. loading average   4.099462e+00 +/-  1.099160e-01 [molecules/cell]
-    Abs. loading average   5.124327e-01 +/-  1.373950e-02 [molecules/uc]
-    Abs. loading average   8.884926e-02 +/-  2.382253e-03 [mol/kg-framework]
-    Abs. loading average   7.663671e+00 +/-  2.054807e-01 [mg/g-framework]
+    Abs. loading average   4.060264e+00 +/-  2.118954e-01 [molecules/cell]
+    Abs. loading average   5.075330e-01 +/-  2.648693e-02 [molecules/uc]
+    Abs. loading average   8.799970e-02 +/-  4.592493e-03 [mol/kg-framework]
+    Abs. loading average   7.590393e+00 +/-  3.961244e-01 [mg/g-framework]
 
 
 Component 3 (22-methylbutane)
-    Block[  0]  1.312820e+00
-    Block[  1]  1.435550e+00
-    Block[  2]  1.322000e+00
-    Block[  3]  1.228440e+00
-    Block[  4]  1.239790e+00
+    Block[  0]  1.420290e+00
+    Block[  1]  1.368850e+00
+    Block[  2]  1.166180e+00
+    Block[  3]  1.281420e+00
+    Block[  4]  1.298270e+00
     ---------------------------------------------------------------------------
-    Abs. loading average   1.307720e+00 +/-  1.028811e-01 [molecules/cell]
-    Abs. loading average   1.634650e-01 +/-  1.286014e-02 [molecules/uc]
-    Abs. loading average   2.834273e-02 +/-  2.229783e-03 [mol/kg-framework]
-    Abs. loading average   2.444695e+00 +/-  1.923294e-01 [mg/g-framework]
+    Abs. loading average   1.307002e+00 +/-  1.197561e-01 [molecules/cell]
+    Abs. loading average   1.633752e-01 +/-  1.496951e-02 [molecules/uc]
+    Abs. loading average   2.832717e-02 +/-  2.595522e-03 [mol/kg-framework]
+    Abs. loading average   2.443353e+00 +/-  2.238761e-01 [mg/g-framework]
 
 
 Component 4 (23-methylbutane)
-    Block[  0]  1.595000e+00
-    Block[  1]  1.534460e+00
-    Block[  2]  1.393040e+00
-    Block[  3]  1.287950e+00
-    Block[  4]  1.423150e+00
+    Block[  0]  1.308970e+00
+    Block[  1]  1.518290e+00
+    Block[  2]  1.456600e+00
+    Block[  3]  1.410370e+00
+    Block[  4]  1.748810e+00
     ---------------------------------------------------------------------------
-    Abs. loading average   1.446720e+00 +/-  1.499172e-01 [molecules/cell]
-    Abs. loading average   1.808400e-01 +/-  1.873965e-02 [molecules/uc]
-    Abs. loading average   3.135533e-02 +/-  3.249214e-03 [mol/kg-framework]
-    Abs. loading average   2.704547e+00 +/-  2.802602e-01 [mg/g-framework]
+    Abs. loading average   1.488608e+00 +/-  2.039950e-01 [molecules/cell]
+    Abs. loading average   1.860760e-01 +/-  2.549938e-02 [molecules/uc]
+    Abs. loading average   3.226319e-02 +/-  4.421265e-03 [mol/kg-framework]
+    Abs. loading average   2.782854e+00 +/-  3.813551e-01 [mg/g-framework]
 ```
 
 ```
 Component 0 [hexane]
 -------------------------------------------------------------------------------
-    Block[  0] -6.442828e+03
-    Block[  1] -6.490959e+03
-    Block[  2] -6.486642e+03
-    Block[  3] -6.398685e+03
-    Block[  4] -6.427075e+03
+    Block[  0] -6.344005e+03
+    Block[  1] -6.199676e+03
+    Block[  2] -6.379315e+03
+    Block[  3] -6.196340e+03
+    Block[  4] -6.276458e+03
     ---------------------------------------------------------------------------
-    Enthalpy of adsorption: -6.449238e+03 +/-  4.898491e+01 [K]
-                            -5.362196e+01 +/-  4.072833e-01 [kJ/mol]
+    Enthalpy of adsorption: -6.279159e+03 +/-  1.027869e+02 [K]
+                            -5.220785e+01 +/-  8.546179e-01 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
 
 Component 1 [2-methylpentane]
 -------------------------------------------------------------------------------
-    Block[  0] -6.345850e+03
-    Block[  1] -6.512363e+03
-    Block[  2] -6.322441e+03
-    Block[  3] -6.341487e+03
-    Block[  4] -6.339311e+03
+    Block[  0] -6.205495e+03
+    Block[  1] -5.925039e+03
+    Block[  2] -6.207101e+03
+    Block[  3] -6.109965e+03
+    Block[  4] -6.183734e+03
     ---------------------------------------------------------------------------
-    Enthalpy of adsorption: -6.372290e+03 +/-  9.783339e+01 [K]
-                            -5.298219e+01 +/-  8.134323e-01 [kJ/mol]
+    Enthalpy of adsorption: -6.126267e+03 +/-  1.480316e+02 [K]
+                            -5.093663e+01 +/-  1.230803e+00 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
 
 Component 2 [3-methylpentane]
 -------------------------------------------------------------------------------
-    Block[  0] -5.846014e+03
-    Block[  1] -6.077024e+03
-    Block[  2] -5.809159e+03
-    Block[  3] -5.762253e+03
-    Block[  4] -5.786489e+03
+    Block[  0] -5.682356e+03
+    Block[  1] -5.611063e+03
+    Block[  2] -5.866397e+03
+    Block[  3] -5.579773e+03
+    Block[  4] -5.821052e+03
     ---------------------------------------------------------------------------
-    Enthalpy of adsorption: -5.856188e+03 +/-  1.579706e+02 [K]
-                            -4.869107e+01 +/-  1.313441e+00 [kJ/mol]
+    Enthalpy of adsorption: -5.712128e+03 +/-  1.573797e+02 [K]
+                            -4.749329e+01 +/-  1.308528e+00 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
 
 Component 3 [22-methylbutane]
 -------------------------------------------------------------------------------
-    Block[  0] -5.300764e+03
-    Block[  1] -5.438470e+03
-    Block[  2] -5.733780e+03
-    Block[  3] -5.454107e+03
-    Block[  4] -5.464367e+03
+    Block[  0] -5.645383e+03
+    Block[  1] -4.992768e+03
+    Block[  2] -5.475047e+03
+    Block[  3] -4.997927e+03
+    Block[  4] -5.470882e+03
     ---------------------------------------------------------------------------
-    Enthalpy of adsorption: -5.478298e+03 +/-  1.954619e+02 [K]
-                            -4.554911e+01 +/-  1.625161e+00 [kJ/mol]
+    Enthalpy of adsorption: -5.316401e+03 +/-  3.742078e+02 [K]
+                            -4.420303e+01 +/-  3.111337e+00 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
 
 Component 4 [23-methylbutane]
 -------------------------------------------------------------------------------
-    Block[  0] -5.318777e+03
-    Block[  1] -5.611167e+03
-    Block[  2] -5.072493e+03
-    Block[  3] -5.249716e+03
-    Block[  4] -5.261793e+03
+    Block[  0] -5.197916e+03
+    Block[  1] -4.948632e+03
+    Block[  2] -5.613417e+03
+    Block[  3] -5.386801e+03
+    Block[  4] -5.379568e+03
     ---------------------------------------------------------------------------
-    Enthalpy of adsorption: -5.302789e+03 +/-  2.427102e+02 [K]
-                            -4.408985e+01 +/-  2.018005e+00 [kJ/mol]
+    Enthalpy of adsorption: -5.305267e+03 +/-  3.077719e+02 [K]
+                            -4.411045e+01 +/-  2.558958e+00 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
 ```
