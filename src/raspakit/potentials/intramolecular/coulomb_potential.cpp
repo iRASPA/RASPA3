@@ -23,6 +23,7 @@ import std;
 
 import archive;
 import randomnumbers;
+import units;
 import double3;
 
 CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type,
@@ -46,8 +47,9 @@ std::string CoulombPotential::print() const
   switch (type)
   {
     case CoulombType::Coulomb:
-      return std::format("{} - {} : COULOMB p_0/k_B={:g} [K], p_1={:g} [Å]\n", identifiers[0], identifiers[1],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1]);
+      return std::format("{} - {} : COULOMB p_0={:g} [{}], p_1={:g} [{}]\n", identifiers[0], identifiers[1],
+                         parameters[0], "e", 
+                         parameters[1], "e");
   }
 }
 
@@ -60,11 +62,7 @@ double CoulombPotential::calculateEnergy(const double3 &posA, const double3 &pos
   switch (type)
   {
     case CoulombType::Coulomb:
-      // 4*p_0*((p_1/r)^12-(p_1/r)^6)
-      // ===============================================
-      // p_0/k_B [K]
-      // p_1     [Å]
-      return 1.0 / r;
+      return Units::CoulombicConversionFactor * parameters[0] * parameters[1] / r;
   }
 }
 

@@ -376,8 +376,12 @@ export struct Component
                                                 const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<TorsionPotential> readTorsionPotentials(const ForceField &forceField,
                                                       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
   std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(
       const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<CoulombPotential> readCoulombPotentials(
+      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
