@@ -34,9 +34,11 @@ module;
 #else
 #include <CL/opencl.h>
 #endif
+#if defined(__has_include) && __has_include(<mdspan>)
+#include <mdspan>
+#endif
 #endif
 
-    
 module pore_size_distribution_ban_vlugt;
     
 #ifndef USE_LEGACY_HEADERS
@@ -56,6 +58,9 @@ import forcefield;
 import component;
 import system;
 import units;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+import mdspan;
+#endif
 
 BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(int3 grid_size):
   grid_size(grid_size)
