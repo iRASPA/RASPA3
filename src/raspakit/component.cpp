@@ -1299,12 +1299,12 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(
               torsion_identified = true;
 
               TorsionPotential torsion_potential =
-                  TorsionPotential({found_torsion[0], found_torsion[1], found_torsion[2]}, TorsionPotential::definitionForString.at(potential_name),
+                  TorsionPotential({found_torsion[0], found_torsion[1], found_torsion[2], found_torsion[3]}, TorsionPotential::definitionForString.at(potential_name),
                                 potential_parameters);
               torsion_potentials.push_back(torsion_potential);
             }
           }
-          else if (item[0][0].is_number_unsigned() && item[0][1].is_number_unsigned() && item[0][2].is_number_unsigned())
+          else if (item[0][0].is_number_unsigned() && item[0][1].is_number_unsigned() && item[0][2].is_number_unsigned() && item[0][3].is_number_unsigned())
           {
             std::size_t A = item[0][0].get<std::size_t>();
             std::size_t B = item[0][1].get<std::size_t>();
