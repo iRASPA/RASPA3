@@ -262,8 +262,6 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
 
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
 
-  if (moleculeAtoms.empty()) return energySum;
-
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
