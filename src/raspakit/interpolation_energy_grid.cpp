@@ -20,6 +20,8 @@ module;
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../mdspan.h"
 #endif
 #endif
 
@@ -51,7 +53,7 @@ import simulationbox;
 import interactions_framework_molecule_grid;
 import interactions_external_field;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.

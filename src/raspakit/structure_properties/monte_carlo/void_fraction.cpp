@@ -21,6 +21,7 @@ import std;
 #endif
 
 import double3;
+import double3x3;
 import randomnumbers;
 import atom;
 import framework;

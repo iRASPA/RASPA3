@@ -278,7 +278,7 @@ export double3 clamp(double3 value, double3 low, double3 high)
                  std::clamp(value.z, low.z, high.z));
 }
 
-export template <>
+template <>
 struct std::formatter<double3> : std::formatter<std::string_view>
 {
   auto format(const double3& v, std::format_context& ctx) const

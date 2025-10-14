@@ -467,7 +467,7 @@ export inline double3x3 sqrt(const double3x3& b)
   return r;
 }
 
-export template <>
+template <>
 struct std::formatter<double3x3> : std::formatter<std::string_view>
 {
   auto format(const double3x3& v, std::format_context& ctx) const

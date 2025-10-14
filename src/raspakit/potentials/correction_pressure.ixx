@@ -12,7 +12,6 @@ import std;
 #endif
 
 import vdwparameters;
-import forcefield;
 import double4;
 
 export namespace Potentials
@@ -30,19 +29,15 @@ export namespace Potentials
  *
  * \return The calculated VDW potential correction.
  */
-inline double potentialCorrectionPressure(const ForceField& forcefield, const std::size_t& typeA,
+inline double potentialCorrectionPressure(VDWParameters::Type potentialType, double4 &parameters, double cutOffVDW, const std::size_t& typeA,
                                           const std::size_t& typeB)
 {
-  VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
-
-  double cutOffVDW = forcefield.cutOffVDW(typeA, typeB);
-
   switch (potentialType)
   {
     case VDWParameters::Type::LennardJones:
     {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y;
+      double arg1 = parameters.x;
+      double arg2 = parameters.y;
       double term3 = (arg2 / cutOffVDW) * (arg2 / cutOffVDW) * (arg2 / cutOffVDW);
       double term6 = term3 * term3;
       return (8.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((2.0 / 3.0) * term6 * term3 - term3);

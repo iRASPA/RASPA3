@@ -61,7 +61,11 @@ struct EnergyFactor
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::EnergyFactor& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::EnergyFactor& e);
+
 };
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::EnergyFactor& e);
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::EnergyFactor& e);
 
 inline EnergyFactor operator+(const EnergyFactor& a, const EnergyFactor& b)
 {

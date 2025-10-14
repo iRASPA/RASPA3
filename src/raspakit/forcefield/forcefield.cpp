@@ -804,8 +804,11 @@ void ForceField::preComputeTailCorrection()
 
       if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
-        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(*this, i, j);
-        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(*this, i, j);
+        double cut_off_vdw = cutOffVDW(i, j);
+        VDWParameters::Type potentialType = data[i * numberOfPseudoAtoms + j].type;
+        double4 parameters = data[i * numberOfPseudoAtoms + j].parameters;
+        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(potentialType, parameters, cut_off_vdw, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(potentialType, parameters, cut_off_vdw, i, j);
       }
     }
   }

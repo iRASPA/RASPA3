@@ -22,6 +22,8 @@ module;
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../../../mdspan.h"
 #endif
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
@@ -57,7 +59,7 @@ import forcefield;
 import framework;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 EnergyOpenCLVoidFraction::EnergyOpenCLVoidFraction()

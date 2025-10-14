@@ -19,6 +19,8 @@ module;
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../mdspan.h"
 #endif
 #endif
 
@@ -31,7 +33,7 @@ import std;
 import archive;
 import stringutils;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 #ifdef BLAS_ILP64

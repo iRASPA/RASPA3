@@ -109,7 +109,7 @@ export inline double4 sqrt(const double4& a)
   return double4(std::sqrt(a.x), std::sqrt(a.y), std::sqrt(a.z), std::sqrt(a.w));
 }
 
-export template <>
+template <>
 struct std::formatter<double4> : std::formatter<std::string_view>
 {
   auto format(const double4& v, std::format_context& ctx) const

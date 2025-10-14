@@ -40,9 +40,14 @@ export struct PropertyLoading
   PropertyLoading(std::size_t numberOfBlocks, std::size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
         numberOfComponents(numberOfComponents),
-        bookKeepingLoadings(
-            std::vector<std::pair<Loadings, double>>(numberOfBlocks, std::make_pair(Loadings(numberOfComponents), 0.0)))
+        bookKeepingLoadings(numberOfBlocks)
   {
+    // workaround for g++
+    for(std::size_t i = 0; i < numberOfBlocks; ++i)
+    {
+      Loadings loadings = Loadings(numberOfComponents);
+      bookKeepingLoadings[i] = {loadings, 0.0};
+    }
   }
 
   bool operator==(PropertyLoading const &) const = default;
@@ -56,8 +61,14 @@ export struct PropertyLoading
   void resize(std::size_t newNumberOfComponents)
   {
     numberOfComponents = newNumberOfComponents;
-    bookKeepingLoadings =
-        std::vector<std::pair<Loadings, double>>(numberOfBlocks, std::make_pair(Loadings(numberOfComponents), 0.0));
+
+    // workaround for g++
+    bookKeepingLoadings = std::vector<std::pair<Loadings, double>>(numberOfBlocks);
+    for(std::size_t i = 0; i < numberOfBlocks; ++i)
+    {
+      Loadings loadings = Loadings(numberOfComponents);
+      bookKeepingLoadings[i] = {loadings, 0.0};
+    }
   }
 
   inline void addSample(std::size_t blockIndex, const Loadings &loading, const double &weight)
@@ -75,10 +86,18 @@ export struct PropertyLoading
 
   Loadings averagedLoading() const
   {
-    std::pair<Loadings, double> summedBlocks =
-        std::accumulate(bookKeepingLoadings.begin(), bookKeepingLoadings.end(),
-                        std::make_pair(Loadings(numberOfComponents), 0.0), pair_sum);
-    return summedBlocks.first / std::max(1.0, summedBlocks.second);
+    // workaround for g++
+    Loadings loadings = Loadings(numberOfComponents);
+
+    std::pair<Loadings, double> summedBlocks = std::make_pair(loadings, 0.0);
+
+    for(const std::pair<Loadings, double> &bookKeepingLoading : bookKeepingLoadings)
+    {
+      summedBlocks.first += bookKeepingLoading.first;
+      summedBlocks.second += bookKeepingLoading.second;
+    }
+
+    return summedBlocks.first / std::max(1.0, summedBlocks.second);;
   }
 
   std::pair<Loadings, Loadings> averageLoading() const

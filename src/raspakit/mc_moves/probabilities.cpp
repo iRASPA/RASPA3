@@ -4,7 +4,7 @@ module;
 #include <cstddef>
 #include <format>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include <random>
 #include <source_location>
 #include <sstream>
@@ -53,10 +53,10 @@ MCMoveProbabilities::MCMoveProbabilities(double translationProbability, double r
   probabilities[MoveTypes::HybridMC] = hybridMCProbability;
 }
 
-const std::map<MoveTypes, double> MCMoveProbabilities::normalizedMap() const
+const std::unordered_map<MoveTypes, double> MCMoveProbabilities::normalizedMap() const
 {
   double totalProbability = 0.0;
-  std::map<MoveTypes, double> normalizedMap(probabilities);
+  std::unordered_map<MoveTypes, double> normalizedMap(probabilities);
   for (auto &[moveType, probability] : normalizedMap)
   {
     totalProbability += probability;

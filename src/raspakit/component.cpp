@@ -13,7 +13,7 @@ module;
 #include <functional>
 #include <iostream>
 #include <iterator>
-#include <map>
+#include <unordered_map>
 #include <numeric>
 #include <optional>
 #include <ostream>
@@ -604,7 +604,7 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
   std::print(stream, "    Net-charge:      {:12.8f} [e]\n", netCharge);
   std::print(stream, "\n");
 
-  const std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  const std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   std::print(stream, "    Move probabilities:\n");
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
@@ -835,7 +835,7 @@ nlohmann::json Component::jsonStatus() const
   }
 
   nlohmann::json moves;
-  std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
     moves[moveNames[moveType]] = probability;

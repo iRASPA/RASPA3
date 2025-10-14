@@ -2,7 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
-#include <map>
+#include <unordered_map>
 #include <random>
 #include <vector>
 #endif
@@ -23,9 +23,6 @@ export struct MCMoveProbabilities
 
   bool operator==(MCMoveProbabilities const &) const = default;
 
-  // vector of unnormalized probabilities (not necessary due to std::discrete_distribution)
-  std::map<MoveTypes, double> probabilities;
-
   MCMoveProbabilities(double translationProbability = 0.0, double randomTranslationProbability = 0.0,
                       double rotationProbability = 0.0, double randomRotationProbability = 0.0,
                       double volumeChangeProbability = 0.0, double reinsertionCBMCProbability = 0.0,
@@ -41,11 +38,14 @@ export struct MCMoveProbabilities
   double getProbability(const MoveTypes &move) const { return probabilities.at(move); };
   void setProbability(const MoveTypes &move, double probability) { probabilities[move] = probability; };
 
-  const std::map<MoveTypes, double> normalizedMap() const;
+  const std::unordered_map<MoveTypes, double> normalizedMap() const;
   void removeRedundantMoves();
   MoveTypes sample(RandomNumber &random);
 
   void join(const MCMoveProbabilities &other);
+
+  // vector of unnormalized probabilities (not necessary due to std::discrete_distribution)
+  std::unordered_map<MoveTypes, double> probabilities{};
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilities &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbabilities &p);

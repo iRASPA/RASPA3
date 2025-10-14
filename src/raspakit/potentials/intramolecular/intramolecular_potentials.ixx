@@ -99,6 +99,10 @@ struct IntraMolecularPotentials
                                             const Potentials::IntraMolecularPotentials& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::IntraMolecularPotentials& p);
 };
+
+  Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive,
+                                          const Potentials::IntraMolecularPotentials& p);
+  Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::IntraMolecularPotentials& p);
 }  // namespace Potentials
 
 /*

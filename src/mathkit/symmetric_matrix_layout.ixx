@@ -7,7 +7,7 @@ module;
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #else
-import mdspan;
+#include "../../mdspan.h"
 #endif
 #endif
 
@@ -15,6 +15,9 @@ export module symmetric_matrix_layout;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+#endif
+#if !(defined(__has_include) && __has_include(<mdspan>))
+//import mdspan;
 #endif
 
 export struct layout_symmetric_matrix

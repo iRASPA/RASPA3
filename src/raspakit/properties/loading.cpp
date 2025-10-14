@@ -205,7 +205,24 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoad
 
   archive >> l.numberOfBlocks;
   archive >> l.numberOfComponents;
-  archive >> l.bookKeepingLoadings;
+ 
+  // archive >> l.bookKeepingLoadings;
+  // workaround for g++
+  std::vector<std::pair<Loadings, double>> book_keeping_loadings(l.numberOfBlocks);
+  for(std::size_t i = 0; i < l.numberOfBlocks; ++i)
+  {
+    Loadings loadings = Loadings(l.numberOfComponents);
+    book_keeping_loadings[i] = {loadings, 0.0};
+  }
+  std::size_t len;
+  archive >> len;
+  for (std::size_t i = 0; i < len; ++i)
+  {
+    std::pair<Loadings, double> element{};
+    archive >> element;
+    book_keeping_loadings[i] = element;
+  }
+  l.bookKeepingLoadings = book_keeping_loadings;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -11,6 +11,7 @@ module;
 #include <iostream>
 #include <istream>
 #include <map>
+#include <unordered_map>
 #include <ostream>
 #include <ranges>
 #include <string>
@@ -483,6 +484,34 @@ class Archive
     }
     return *this;
   }
+
+  template <class T1, class T2>
+  Archive& operator>>(std::unordered_map<T1, T2>& v)
+  {
+    std::size_t len;
+    *this >> len;
+    for (std::size_t i = 0; i < len; ++i)
+    {
+      std::pair<T1, T2> value;
+      *this >> value;
+      v[value.first] = value.second;
+      // v.push_back(value);
+    }
+    return *this;
+  }
+
+  template <class T1, class T2>
+  Archive& operator<<(const std::unordered_map<T1, T2>& v)
+  {
+    std::size_t len = v.size();
+    *this << len;
+    for (typename std::unordered_map<T1, T2>::const_iterator it = v.begin(); it != v.end(); ++it)
+    {
+      *this << *it;
+    }
+    return *this;
+  }
+
 
   template <class T1, class T2>
   Archive& operator>>(std::pair<T1, T2>& v)

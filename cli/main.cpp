@@ -41,8 +41,6 @@ import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;
 import molecular_dynamics;
-import breakthrough;
-import breakthrough_simulation;
 import mixture_prediction_simulation;
 import isotherm_fitting_simulation;
 import multi_site_isotherm;

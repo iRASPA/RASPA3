@@ -11,6 +11,8 @@ module;
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../mdspan.h"
 #endif
 #endif
 
@@ -30,7 +32,7 @@ import skelement;
 import atom;
 import simulationbox;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 extern "C"

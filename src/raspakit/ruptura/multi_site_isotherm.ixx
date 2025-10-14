@@ -124,10 +124,8 @@ export struct MultiSiteIsotherm
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MultiSiteIsotherm &c);
 };
 
-namespace std
-{
-export template <>
-struct hash<MultiSiteIsotherm>
+template <>
+struct std::hash<MultiSiteIsotherm>
 {
   std::size_t operator()(const MultiSiteIsotherm &k) const
   {
@@ -142,4 +140,3 @@ struct hash<MultiSiteIsotherm>
     return h;
   }
 };
-}  // namespace std

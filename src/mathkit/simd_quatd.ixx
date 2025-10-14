@@ -109,7 +109,7 @@ export inline simd_quatd operator*(const simd_quatd& a, const simd_quatd& b)
               a.r * b.iz + a.ix * b.iy - a.iy * b.ix + a.iz * b.r));
 }
 
-export template <>
+template <>
 struct std::formatter<simd_quatd> : std::formatter<std::string_view>
 {
   auto format(const simd_quatd& v, std::format_context& ctx) const

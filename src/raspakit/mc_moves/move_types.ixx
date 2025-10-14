@@ -37,7 +37,7 @@ export enum class MoveTypes : std::size_t {
   Count
 };
 
-export std::unordered_set<MoveTypes> componentMoves = {MoveTypes::Translation,        MoveTypes::RandomTranslation,
+export inline std::unordered_set<MoveTypes> componentMoves = {MoveTypes::Translation,        MoveTypes::RandomTranslation,
                                                        MoveTypes::Rotation,           MoveTypes::RandomRotation,
                                                        MoveTypes::ReinsertionCBMC,    MoveTypes::PartialReinsertionCBMC,
                                                        MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,
@@ -45,14 +45,14 @@ export std::unordered_set<MoveTypes> componentMoves = {MoveTypes::Translation,  
                                                        MoveTypes::SwapCBCFCMC,        MoveTypes::Widom,
                                                        MoveTypes::WidomCFCMC,         MoveTypes::WidomCBCFCMC};
 
-export std::unordered_set<MoveTypes> systemMoves = {MoveTypes::VolumeChange, MoveTypes::HybridMC};
+export inline std::unordered_set<MoveTypes> systemMoves = {MoveTypes::VolumeChange, MoveTypes::HybridMC};
 
-export std::unordered_set<MoveTypes> crossSystemMoves = {MoveTypes::GibbsVolume, MoveTypes::GibbsSwapCBMC,
+export inline std::unordered_set<MoveTypes> crossSystemMoves = {MoveTypes::GibbsVolume, MoveTypes::GibbsSwapCBMC,
                                                          MoveTypes::GibbsSwapCFCMC, MoveTypes::ParallelTempering};
 
-export std::unordered_set<MoveTypes> groupMoves = {};
+export inline std::unordered_set<MoveTypes> groupMoves = {};
 
-export std::map<MoveTypes, std::string> moveNames = {
+export inline std::map<MoveTypes, std::string> moveNames = {
     {MoveTypes::Translation, "Translation"},
     {MoveTypes::RandomTranslation, "Random translation"},
     {MoveTypes::Rotation, "Rotation"},

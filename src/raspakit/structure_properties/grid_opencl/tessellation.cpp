@@ -22,6 +22,8 @@ module;
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../../../mdspan.h"
 #endif
 #endif
 
@@ -36,8 +38,11 @@ module;
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../../../mdspan.h"
 #endif
 #endif
+
 
 module tessellation;
 
@@ -59,7 +64,7 @@ import component;
 import system;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 Tessellation::Tessellation(int3 grid_size) : grid_size(grid_size)

@@ -22,6 +22,8 @@ module;
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../../../mdspan.h"
 #endif
 #endif
 
@@ -36,6 +38,8 @@ module;
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#else
+#include "../../../../mdspan.h"
 #endif
 #endif
 
@@ -59,7 +63,7 @@ import component;
 import system;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
+//import mdspan;
 #endif
 
 BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(int3 grid_size):
