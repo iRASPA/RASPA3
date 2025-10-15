@@ -24,6 +24,7 @@ export class SKPOSCARLegacyParser : public SKParser
  public:
   SKPOSCARLegacyParser(const std::string &content, bool onlyAsymmetricUnitCell = false, bool asMolecule = false,
                        CharacterSet charactersToBeSkipped = CharacterSet::whitespaceAndNewlineCharacterSet());
+  virtual ~SKPOSCARLegacyParser() {};
   void startParsing() noexcept(false) override final;
 
  private:
