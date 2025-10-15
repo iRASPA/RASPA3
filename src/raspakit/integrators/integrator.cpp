@@ -41,8 +41,8 @@ RunningEnergy Integrators::velocityVerlet(
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = computeTranslationalKineticEnergy(moleculeData);
-    double UKineticRotation = computeRotationalKineticEnergy(moleculeData, components);
+    double UKineticTranslation = Integrators::computeTranslationalKineticEnergy(moleculeData);
+    double UKineticRotation = Integrators::computeRotationalKineticEnergy(moleculeData, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculeData, scaling);
   }
