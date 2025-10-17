@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include <algorithm>
 #include <complex>
@@ -301,15 +302,16 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   EXPECT_NEAR(system.moleculeData[1].velocity.y, -4.66344746, 1e-4);
   EXPECT_NEAR(system.moleculeData[1].velocity.z, -1.86784481, 1e-4);
 
-  EXPECT_NEAR(system.moleculeData[0].orientationGradient.ix, -2303.05396459, 1e-4);
-  EXPECT_NEAR(system.moleculeData[0].orientationGradient.iy, -829.64716058, 1e-4);
-  EXPECT_NEAR(system.moleculeData[0].orientationGradient.iz, -544.25501509, 1e-4);
-  EXPECT_NEAR(system.moleculeData[0].orientationGradient.r, -158.60548902, 1e-4);
+  // Note: the reference orientation of water can have two possible orientations depending on the lapack implementation (due to the symmetry of water)
+  EXPECT_THAT(system.moleculeData[0].orientationGradient.ix, ::testing::AnyOf(::testing::DoubleNear(-2303.05396459, 1e-4), ::testing::DoubleNear( -250.63837972895951, 1e-4)));
+  EXPECT_THAT(system.moleculeData[0].orientationGradient.iy, ::testing::AnyOf(::testing::DoubleNear( -829.64716058, 1e-4), ::testing::DoubleNear( -829.78167635979105, 1e-4)));
+  EXPECT_THAT(system.moleculeData[0].orientationGradient.iz, ::testing::AnyOf(::testing::DoubleNear( -544.25501509, 1e-4), ::testing::DoubleNear(1293.9827458442942, 1e-4)));
+  EXPECT_THAT(system.moleculeData[0].orientationGradient.r,  ::testing::AnyOf(::testing::DoubleNear( -158.60548902, 1e-4), ::testing::DoubleNear( -229.35061471419482, 1e-4)));
 
-  EXPECT_NEAR(system.moleculeData[1].orientationGradient.ix, 3659.18641846, 1e-4);
-  EXPECT_NEAR(system.moleculeData[1].orientationGradient.iy, -3391.54768162, 1e-4);
-  EXPECT_NEAR(system.moleculeData[1].orientationGradient.iz, -3436.34304600, 1e-4);
-  EXPECT_NEAR(system.moleculeData[1].orientationGradient.r, 2121.95001708, 1e-4);
+  EXPECT_THAT(system.moleculeData[1].orientationGradient.ix, ::testing::AnyOf(::testing::DoubleNear( 3659.18641846, 1e-4), ::testing::DoubleNear(-4445.6182188609682, 1e-4)));
+  EXPECT_THAT(system.moleculeData[1].orientationGradient.iy, ::testing::AnyOf(::testing::DoubleNear(-3391.54768162, 1e-4), ::testing::DoubleNear( 3040.1226478280214, 1e-4)));
+  EXPECT_THAT(system.moleculeData[1].orientationGradient.iz, ::testing::AnyOf(::testing::DoubleNear(-3436.34304600, 1e-4), ::testing::DoubleNear(-3520.1400933658401, 1e-4)));
+  EXPECT_THAT(system.moleculeData[1].orientationGradient.r,  ::testing::AnyOf(::testing::DoubleNear( 2121.95001708, 1e-4), ::testing::DoubleNear( 120.49529643559475, 1e-4)));
 
   EXPECT_NEAR(system.moleculeData[0].orientationMomentum.ix, -30.13618171, 1e-4);
   EXPECT_NEAR(system.moleculeData[0].orientationMomentum.iy, -26.22576279, 1e-4);

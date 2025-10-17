@@ -44,6 +44,8 @@ if (CONDA)
                         OpenCL::OpenCL
                         GTest::gtest
                         GTest::gtest_main
+                        GTest::gmock
+                        GTest::gmock_main
                         ZLIB::ZLIB
                         -lpthread)
 elseif (LINUX)
@@ -60,6 +62,8 @@ elseif (LINUX)
                         OpenCL::OpenCL
                         GTest::gtest
                         GTest::gtest_main
+                        GTest::gmock
+                        GTest::gmock_main
                         -nostdlib++
                         -l:libc++.a
                         -l:libc++abi.a
@@ -80,6 +84,8 @@ elseif (WIN32)
                         OpenCL::OpenCL
                         GTest::gtest
                         GTest::gtest_main
+                        GTest::gmock
+                        GTest::gmock_main
                         -nostdlib++
                         ${ZLIB_LIBRARIES})
 elseif (APPLE)
@@ -95,6 +101,8 @@ elseif (APPLE)
                         ${TORCH_LIBRARIES}
                         GTest::gtest
                         GTest::gtest_main
+                        GTest::gmock
+                        GTest::gmock_main
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
