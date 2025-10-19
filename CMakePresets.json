@@ -173,8 +173,8 @@
       "cacheVariables": {
         "CONDA": true,
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "$env{CC}",
-        "CMAKE_CXX_COMPILER": "$env{CXX}",
+        "CMAKE_C_COMPILER": "$env{PREFIX}/bin/gcc",
+        "CMAKE_CXX_COMPILER": "$env{PREFIX}/bin/g++",
         "CMAKE_CXX_COMPILER_AR": "$env{AR}",
         "CMAKE_CXX_COMPILER_RANLIB": "$env{RANLIB}",
         "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
@@ -274,8 +274,8 @@
       "cacheVariables": {
         "CONDA": true,
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "$env{CC}",
-        "CMAKE_CXX_COMPILER": "$env{CXX}",
+        "CMAKE_C_COMPILER": "$env{PREFIX}/bin/gcc",
+        "CMAKE_CXX_COMPILER": "$env{PREFIX}/bin/g++",
         "CMAKE_CXX_COMPILER_AR": "$env{AR}",
         "CMAKE_CXX_COMPILER_RANLIB": "$env{RANLIB}",
         "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
