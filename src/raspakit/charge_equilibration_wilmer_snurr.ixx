@@ -8,6 +8,7 @@ module;
 #include <string>
 #include <tuple>
 #include <vector>
+#include <array>
 #include <string_view>
 #endif
 

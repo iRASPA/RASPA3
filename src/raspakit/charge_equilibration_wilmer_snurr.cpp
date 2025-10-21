@@ -9,6 +9,7 @@ module;
 #include <numbers>
 #include <span>
 #include <vector>
+#include <array>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #else
