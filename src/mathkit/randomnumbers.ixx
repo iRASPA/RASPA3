@@ -6,9 +6,12 @@ module;
 #include <fstream>
 #include <iostream>
 #include <optional>
-#include <random>
 #include <tuple>
 #include <utility>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #endif
 
 export module randomnumbers;

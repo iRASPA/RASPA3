@@ -5,10 +5,13 @@ module;
 #include <format>
 #include <fstream>
 #include <unordered_map>
-#include <random>
 #include <source_location>
 #include <sstream>
 #include <vector>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #endif
 
 module mc_moves_probabilities;

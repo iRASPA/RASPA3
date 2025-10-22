@@ -3,8 +3,11 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <unordered_map>
-#include <random>
 #include <vector>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #endif
 
 export module mc_moves_probabilities;

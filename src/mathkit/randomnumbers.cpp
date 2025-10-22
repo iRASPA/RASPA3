@@ -8,9 +8,12 @@ module;
 #include <iostream>
 #include <map>
 #include <numbers>
-#include <random>
 #include <utility>
 #include <vector>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #endif
 
 #ifndef USE_LEGACY_HEADERS

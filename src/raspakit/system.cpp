@@ -18,7 +18,6 @@ module;
 #include <optional>
 #include <ostream>
 #include <print>
-#include <random>
 #include <ranges>
 #include <source_location>
 #include <span>
@@ -27,6 +26,10 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #else

@@ -9,9 +9,12 @@ module;
 #include <limits>
 #include <optional>
 #include <print>
-#include <random>
 #include <string>
 #include <vector>
+#pragma push_macro("__SSE3__")
+#undef __SSE3__
+#include <random>
+#pragma pop_macro("__SSE3__")
 #endif
 
 module mc_pore_size_distribution;
