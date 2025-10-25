@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <array>
 #include <cmath>
@@ -9,7 +13,7 @@ module;
 
 module triquintic_derivatives_external_field;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

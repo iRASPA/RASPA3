@@ -5,6 +5,8 @@ module;
 #include <cstddef>
 #include <optional>
 #include <vector>
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -13,9 +15,8 @@ module;
 #else
 #include <CL/opencl.h>
 #endif
-#endif
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -28,7 +29,7 @@ module;
 
 export module energy_opencl_void_fraction;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

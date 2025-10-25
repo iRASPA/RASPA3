@@ -26,7 +26,7 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "SKIP_EXECUTABLE": true
+        "BUILD_APP": false
       }
     },
     {
@@ -49,8 +49,14 @@
         "OpenMP_libomp_LIBRARY": "$env{PREFIX}/Library/lib/libomp.lib",
         "HDF5_USE_STATIC_LIBRARIES": false,
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -83,8 +89,14 @@
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -116,8 +128,14 @@
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": false,
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -154,8 +172,14 @@
         "OpenMP_libgomp_LIBRARY": "$env{CONDA_PREFIX}/lib/libgomp.so",
         "BLA_VENDOR": "Generic",
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -173,25 +197,70 @@
       "cacheVariables": {
         "CONDA": true,
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-gcc",
-        "CMAKE_CXX_COMPILER": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-g++",
-        "CMAKE_CXX_COMPILER_AR": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-ar",
-        "CMAKE_CXX_COMPILER_RANLIB": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-ranlib",
-        "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
-        "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_C_COMPILER": "$env{CLANG}",
+        "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
+        "CMAKE_CXX_COMPILER_AR": "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB": "$env{RANLIB}",
+        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "$env{BUILD_PREFIX}/bin/clang-scan-deps",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi",
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "OpenMP_C_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
         "OpenMP_C_LIB_NAMES": "libgomp",
         "OpenMP_CXX_LIB_NAMES": "libgomp",
         "OpenMP_libgomp_LIBRARY": "$env{PREFIX}/lib/libgomp.so",
         "HDF5_USE_STATIC_LIBRARIES": false,
         "BLA_VENDOR": "Generic",
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_PYTHON": false,
+        "BLA_SIZEOF_INTEGER": "4"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": ["Linux"]
+        }
+      }
+    },
+    {
+      "name": "linux_conda_raspa3_gcc",
+      "description": "Sets compilers, build type",
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CONDA": true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "$env{GCC}",
+        "CMAKE_CXX_COMPILER": "$env{GXX}",
+        "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
+        "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "HDF5_USE_STATIC_LIBRARIES": false,
+        "BLA_VENDOR": "Generic",
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -221,8 +290,14 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "$env{PREFIX}/Library/lib/libomp.lib",
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": true,
+        "BUILD_APP": false,
+        "BUILD_CLI" : false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "Python3_EXECUTABLE": "$env{PYTHON}",
         "BUILD_PYTHON": true,
@@ -254,8 +329,14 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": true,
+        "BUILD_APP": false,
+        "BUILD_CLI" : false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "Python3_EXECUTABLE": "$env{PYTHON}",
         "BUILD_PYTHON": true,
@@ -274,24 +355,69 @@
       "cacheVariables": {
         "CONDA": true,
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-gcc",
-        "CMAKE_CXX_COMPILER": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-g++",
-        "CMAKE_CXX_COMPILER_AR": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-ar",
-        "CMAKE_CXX_COMPILER_RANLIB": "$env{PREFIX}/bin/x86_64-conda-linux-gnu-ranlib",
-        "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
-        "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_C_COMPILER": "$env{CLANG}",
+        "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
+        "CMAKE_CXX_COMPILER_AR": "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB": "$env{RANLIB}",
+        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "$env{BUILD_PREFIX}/bin/clang-scan-deps",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "OpenMP_C_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
         "OpenMP_C_LIB_NAMES": "libgomp",
         "OpenMP_CXX_LIB_NAMES": "libgomp",
         "OpenMP_libgomp_LIBRARY": "$env{PREFIX}/lib/libgomp.so",
         "BLA_VENDOR": "Generic",
         "BUILD_MAC_PACKAGE": false,
-        "SKIP_EXECUTABLE": true,
+        "BUILD_APP": false,
+        "BUILD_CLI" : false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : false,
+        "BUILD_LIBTORCH": false,
+        "Python3_EXECUTABLE": "$env{PYTHON}",
+        "BUILD_PYTHON": true,
+        "BLA_SIZEOF_INTEGER": "4"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": ["Linux"]
+        }
+      }
+    },
+    {
+      "name": "linux_conda_raspalib_gcc",
+      "description": "Sets compilers, build type",
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CONDA": true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "$env{GCC}",
+        "CMAKE_CXX_COMPILER": "$env{GXX}",
+        "CMAKE_EXE_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
+        "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
+        "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BLA_VENDOR": "Generic",
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": false,
+        "BUILD_CLI" : false,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
         "BUILD_LIBTORCH": false,
         "Python3_EXECUTABLE": "$env{PYTHON}",
         "BUILD_PYTHON": true,
@@ -332,7 +458,14 @@
         "OpenCL_LIBRARY": "C:/vcpkg/installed/ARM64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -372,7 +505,14 @@
         "OpenCL_LIBRARY": "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -412,7 +552,14 @@
         "OpenCL_LIBRARY": "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -442,7 +589,14 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -480,7 +634,14 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
@@ -518,8 +679,15 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -547,8 +715,15 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -579,8 +754,15 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -616,8 +798,48 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : false,
+        "BUILD_TESTING_RASPA3" : false,
+        "BLA_SIZEOF_INTEGER": "4"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": ["macOS"]
+        }
+      }
+    },
+    {
+      "name": "macos-apple-silicon-gcc",
+      "description": "Sets compilers, build type",
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc-15",
+        "CMAKE_CXX_COMPILER": "g++-15",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -645,8 +867,15 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -669,8 +898,16 @@
         "PACKAGE_INSTALL_PREFIX": "/usr",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
         "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": true
+        "BUILD_PYTHON": true,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -730,8 +967,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -743,8 +978,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -756,8 +989,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -769,8 +1000,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -782,8 +1011,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -795,8 +1022,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -808,8 +1033,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -821,8 +1044,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -834,8 +1055,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -847,8 +1066,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -866,8 +1083,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -885,8 +1100,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -898,8 +1111,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -911,8 +1122,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -929,8 +1138,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -947,8 +1154,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -967,8 +1172,6 @@
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -987,8 +1190,6 @@
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1003,8 +1204,6 @@
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
         "Python3_EXECUTABLE": "/usr/bin/python3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1019,8 +1218,6 @@
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
         "Python3_EXECUTABLE": "/usr/bin/python3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1032,8 +1229,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1045,8 +1240,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1063,8 +1256,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-19/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1081,8 +1272,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-19/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1099,8 +1288,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1117,8 +1304,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1135,8 +1320,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-11/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1153,8 +1336,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-11/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1171,8 +1352,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-7/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1189,8 +1368,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-7/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1202,8 +1379,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1215,8 +1390,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1228,8 +1401,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1241,8 +1412,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1259,8 +1428,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1277,8 +1444,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1295,8 +1460,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-10/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1313,8 +1476,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-10/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1326,8 +1487,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1339,8 +1498,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1352,8 +1509,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1365,8 +1520,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1378,8 +1531,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1391,8 +1542,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1404,8 +1553,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1417,8 +1564,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1430,8 +1575,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1443,8 +1586,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1457,8 +1598,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1471,8 +1610,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1485,8 +1622,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1499,8 +1634,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1517,8 +1650,16 @@
         "CMAKE_INSTALL_PREFIX": "/usr",
         "PACKAGE_INSTALL_PREFIX": "/usr",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_APP" : true,
+        "BUILD_CLI" : true,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : true,
+        "BUILD_TESTING_FOUNDATIONKIT" : true,
+        "BUILD_TESTING_SYMMETRYKIT" : true,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : true,
         "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": true
+        "BUILD_PYTHON": true
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -1539,8 +1680,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-19/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1557,8 +1696,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/aarch64-linux-gnu/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1575,8 +1712,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-18/lib/libomp.so.5",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1588,8 +1723,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "8"
       }
     }

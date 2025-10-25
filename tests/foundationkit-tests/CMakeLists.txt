@@ -2,7 +2,6 @@ add_executable(unit_tests_foundationkit
                archive.cpp 
                main.cpp)
 
-
 if (CONDA)
   target_link_libraries(unit_tests_foundationkit
                         PUBLIC

@@ -1,5 +1,10 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#include "mdspanwrapper.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <complex>
@@ -17,16 +22,12 @@ module;
 #include <string>
 #include <tuple>
 #include <vector>
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../../mdspan.h"
-#endif
+#include "mdspanwrapper.h"
 #endif
 
 module property_density_grid;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

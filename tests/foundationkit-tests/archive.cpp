@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <bit>
@@ -6,6 +7,12 @@
 #include <fstream>
 #include <iostream>
 #include <print>
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+import std;
+#endif
 
 /*
 import archive;

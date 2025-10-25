@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -9,6 +10,12 @@
 #include <span>
 #include <tuple>
 #include <vector>
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+import std;
+#endif
 
 import int3;
 import double3;

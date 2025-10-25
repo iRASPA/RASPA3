@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <cctype>
@@ -13,7 +17,7 @@ module;
 
 export module stringutils;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 import std.compat;
 #endif

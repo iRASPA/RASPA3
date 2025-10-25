@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <bitset>
@@ -23,13 +27,13 @@ module;
 #include <vector>
 #endif
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 #include <climits>
 #endif
 
 module isotherm_fitting;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

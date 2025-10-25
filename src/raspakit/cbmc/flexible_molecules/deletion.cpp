@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <cmath>
@@ -15,7 +19,7 @@ module;
 
 module cbmc_flexible_deletion;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

@@ -56,8 +56,18 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/grid_opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/utilitykit/*.ixx)
 
+#set(PCH_HEADER "${PROJECT_SOURCE_DIR}/pch.h")
+#set(PCH_SOURCE "${PROJECT_SOURCE_DIR}/pch.cpp")
+#set(PCH_OUTPUT "${CMAKE_BINARY_DIR}/pch.h.gch")
+#
+#add_custom_command(
+#    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${PCH_OUTPUT}
+#    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS} -x c++-header ${PCH_HEADER} -o ${PCH_OUTPUT}
+#    DEPENDS ${PCH_HEADER} ${PCH_SOURCE}
+#    COMMENT "Building precompiled header ${PCH_OUTPUT}"
+#)
 
-add_library(${PROJECT_NAME} STATIC "")
+add_library(${PROJECT_NAME} STATIC ${PCH_HEADER} ${PCH_SOURCE})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PUBLIC ${SRC_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${SRC_IXX_FILES})

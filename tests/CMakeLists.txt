@@ -1,18 +1,19 @@
-enable_testing()
-
-include(FetchContent)
-FetchContent_Declare(googletest
-      GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG v1.16.0
-      EXCLUDE_FROM_ALL)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-include(GoogleTest)
-
+if(BUILD_TESTING_MATHKIT)
 add_subdirectory(mathkit-tests)
+endif()
+
+if(BUILD_TESTING_FOUNDATIONKIT)
 add_subdirectory(foundationkit-tests)
+endif()
+
+if(BUILD_TESTING_SYMMETRYKIT)
 add_subdirectory(symmetrykit-tests)
+endif()
+
+if(BUILD_TESTING_RASPAKIT)
 add_subdirectory(raspakit-tests)
+endif()
+
+if(BUILD_TESTING_RASPA3)
 add_subdirectory(raspa3-tests)
+endif()

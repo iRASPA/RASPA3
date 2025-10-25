@@ -6,6 +6,8 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
   #include <OpenCL/cl.h>
@@ -14,9 +16,8 @@ module;
 #else
   #include <CL/opencl.h>
 #endif
-#endif
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -30,7 +31,7 @@ module;
 
 export module pore_size_distribution_ban_vlugt;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

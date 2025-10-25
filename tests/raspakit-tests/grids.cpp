@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -8,8 +9,13 @@
 #include <span>
 #include <sstream>
 #include <vector>
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
+#include "mdspanwrapper.h"
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+#include "mdspanwrapper.h"
+import std;
 #endif
 
 import int3;
@@ -36,8 +42,6 @@ import interactions_external_field;
 import interactions_ewald;
 import energy_status;
 import interpolation_energy_grid;
-#if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
 #endif
 
 TEST(grids, Test_CHA_grid)

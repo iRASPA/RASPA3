@@ -1,4 +1,11 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+import std;
+#endif
 
 int main(int argc, char** argv)
 {

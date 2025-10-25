@@ -25,9 +25,10 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-
 add_definitions( -DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
-#add_definitions( -DVERSION=${PROJECT_VERSION})
+#add_definitions( -DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
+#add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
+#add_definitions(-DVERSION=${PROJECT_VERSION})
 
 find_package(ZLIB)
 find_package(BLAS)
@@ -38,6 +39,19 @@ include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
+set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
+
+set(CLANG_WARNINGS  -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -Wno-unknown-warning-option)
+
+set(GCC_WARNINGS -Wall -Wextra -Wmisleading-indentation -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
+
+if(MSVC)
+  set(PROJECT_WARNINGS_CXX ${MSVC_WARNINGS})
+elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  set(PROJECT_WARNINGS_CXX ${CLANG_WARNINGS})
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
+endif()
 
 if(BUILD_LIBTORCH)
   find_package(Torch REQUIRED)
@@ -54,29 +68,39 @@ FetchContent_Declare(voro++
       EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(voro++)
 
-set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
+if(BUILD_TESTING)
+  enable_testing()
 
-set(CLANG_WARNINGS  -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -Wno-unknown-warning-option)
+  include(FetchContent)
+  FetchContent_Declare(googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.16.0
+        EXCLUDE_FROM_ALL)
+  # For Windows: Prevent overriding the parent project's compiler/linker settings
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+  
+  include(GoogleTest)
 
-set(GCC_WARNINGS -Wall -Wextra -Wmisleading-indentation -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
-
-if(MSVC)
-  set(PROJECT_WARNINGS_CXX ${MSVC_WARNINGS})
-elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-  set(PROJECT_WARNINGS_CXX ${CLANG_WARNINGS})
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
+  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+  include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 endif()
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_subdirectory(src)
 
-if(NOT SKIP_EXECUTABLE)
+if(BUILD_APP)
   add_subdirectory(data)
   add_subdirectory(examples)
 
   add_subdirectory(app)
+endif()
+
+if(BUILD_CLI)
   add_subdirectory(cli)
 endif()
+
 if(BUILD_DOXYGEN)
   add_subdirectory(docs)
 endif()

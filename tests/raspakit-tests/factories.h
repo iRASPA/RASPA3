@@ -1,9 +1,16 @@
+#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <complex>
 #include <cstddef>
 #include <span>
 #include <vector>
 #include <numbers>
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+import std;
+#endif
 
 import int3;
 import double3;

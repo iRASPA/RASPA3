@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <array>
 #include <chrono>
@@ -20,7 +24,7 @@ module;
 
 export module framework;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

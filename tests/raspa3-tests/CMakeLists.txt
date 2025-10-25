@@ -5,7 +5,6 @@ add_executable(unit_tests_raspa3
   mc_nvt_grids_drift.cpp
   main.cpp)
 
-
 if (CONDA)
   target_link_libraries(unit_tests_raspa3
                         PUBLIC

@@ -1,5 +1,9 @@
 module;
 
+#ifdef USE_PRECOMPILED_HEADERS
+#include "pch.h"
+#endif
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>  // all_of, find, for_each
 #include <any>
@@ -55,7 +59,7 @@ module;
 
 export module json;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 import std.compat;
 #endif

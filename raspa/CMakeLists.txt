@@ -93,7 +93,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 
 if (CONDA)
-  target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld -L$ENV{CONDA_PREFIX}/lib)
+  target_link_options(${PROJECT_NAME} PRIVATE -L$ENV{CONDA_PREFIX}/lib)
   execute_process ( COMMAND python -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES})
 elseif (LINUX)

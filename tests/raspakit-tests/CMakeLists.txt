@@ -30,7 +30,6 @@ add_executable(unit_tests_raspakit
   rotation_matrix.cpp
   main.cpp)
 
-
 if (CONDA)
   target_link_libraries(unit_tests_raspakit
                         PUBLIC

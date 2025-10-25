@@ -1,8 +1,15 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#endif
+
+#ifdef USE_STD_IMPORT
+#include <gtest/gtest.h>
+import std;
+#endif
 
 import double3;
 import double4;
