@@ -11,7 +11,7 @@ module;
 
 export module interactions_framework_molecule_grid;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

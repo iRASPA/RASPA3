@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <bit>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <print>
+#endif
 
 /*
 import archive;

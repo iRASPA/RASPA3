@@ -1,6 +1,53 @@
 #ifndef MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 #define MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 
+#if defined(__has_include) && __has_include(<mdspan>)
+#include <mdspan>
+#else
+
+#ifdef USE_LEGACY_HEADERS
+#include <version>
+#include <type_traits>
+#include <utility>
+#include <cstdio>
+#include <cstdlib>
+#include <type_traits> // std::is_void
+#include "assert.h"
+#include <cstddef> // size_t
+#include <type_traits>
+#include <utility> // integer_sequence
+#include <span>
+#include <cstddef>  // size_t
+#include <limits>   // numeric_limits
+#include <cstddef>
+#include <type_traits>
+#include <array>
+#include <utility>
+#include <span>
+#include <array>
+#include <type_traits>
+#include <cassert>
+#include <cinttypes>
+#include <array>
+#include <type_traits>
+#include <utility>
+#include <span>
+#include <concepts>
+#include <cassert>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <type_traits>
+#include <cassert>
+#include <complex>
+#include <type_traits>
+#include <array>
+#include <type_traits>
+#include <utility> // index_sequence
+#include <cassert>
+#include <vector>
+#endif
+
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdarray
 //@HEADER
 // ************************************************************************
@@ -18,14 +65,7 @@
 //
 //@HEADER
 
-
-#ifndef MDSPAN_IMPL_STANDARD_NAMESPACE
-  #define MDSPAN_IMPL_STANDARD_NAMESPACE std
-#endif
-
-#ifndef MDSPAN_IMPL_PROPOSED_NAMESPACE
-  #define MDSPAN_IMPL_PROPOSED_NAMESPACE experimental
-#endif
+#define MDSPAN_IMPL_STANDARD_NAMESPACE std
 
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdspan
 //@HEADER
@@ -45,13 +85,6 @@
 //@HEADER
 
 
-#ifndef MDSPAN_IMPL_STANDARD_NAMESPACE
-  #define MDSPAN_IMPL_STANDARD_NAMESPACE std
-#endif
-
-#ifndef MDSPAN_IMPL_PROPOSED_NAMESPACE
-  #define MDSPAN_IMPL_PROPOSED_NAMESPACE experimental
-#endif
 
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/mdspan/mdspan.hpp
 //@HEADER
@@ -73,13 +106,6 @@
 #ifndef MDSPAN_HPP_
 #define MDSPAN_HPP_
 
-#ifndef MDSPAN_IMPL_STANDARD_NAMESPACE
-  #define MDSPAN_IMPL_STANDARD_NAMESPACE Kokkos
-#endif
-
-#ifndef MDSPAN_IMPL_PROPOSED_NAMESPACE
-  #define MDSPAN_IMPL_PROPOSED_NAMESPACE Experimental
-#endif
 
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/default_accessor.hpp
 //@HEADER
@@ -139,13 +165,6 @@
 #  else
 #    define MDSPAN_IMPL_HAS_INCLUDE(x) __has_include(x)
 #  endif
-#endif
-
-#if MDSPAN_IMPL_HAS_INCLUDE(<version>)
-#  include <version>
-#else
-#  include <type_traits>
-#  include <utility>
 #endif
 
 #ifdef _MSVC_LANG
@@ -422,13 +441,6 @@ static_assert(MDSPAN_IMPL_CPLUSPLUS >= MDSPAN_CXX_STD_14, "mdspan requires C++14
 #  define MDSPAN_IMPL_OP6(mds, a, b, c, d, e, f) mds(a,b,c,d,e,f)
 #endif
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/config.hpp
-
-#include <cstdio>
-#include <cstdlib>
-#include <type_traits> // std::is_void
-#if defined(MDSPAN_IMPL_HAS_CUDA) || defined(MDSPAN_IMPL_HAS_HIP) || defined(MDSPAN_IMPL_HAS_SYCL)
-#include "assert.h"
-#endif
 
 #ifndef MDSPAN_IMPL_HOST_DEVICE
 #  if defined(MDSPAN_IMPL_HAS_CUDA) || defined(MDSPAN_IMPL_HAS_HIP)
@@ -1116,8 +1128,6 @@ struct fold_bools;
 #endif
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/macros.hpp
 
-#include <cstddef> // size_t
-
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 
 template <class ElementType>
@@ -1234,9 +1244,6 @@ MDSPAN_IMPL_INLINE_VARIABLE constexpr auto full_extent = full_extent_t{ };
 #ifndef MDSPAN_INCLUDE_EXPERIMENTAL_BITS_TRAIT_BACKPORTS_HPP_
 #define MDSPAN_INCLUDE_EXPERIMENTAL_BITS_TRAIT_BACKPORTS_HPP_
 
-
-#include <type_traits>
-#include <utility> // integer_sequence
 
 //==============================================================================
 // <editor-fold desc="Variable template trait backports (e.g., is_void_v)"> {{{1
@@ -1382,13 +1389,6 @@ using enable_if_t = typename enable_if<_B, T>::type;
 //@HEADER
 
 
-#if defined(__cpp_lib_span)
-#include <span>
-#endif
-
-#include <cstddef>  // size_t
-#include <limits>   // numeric_limits
-
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 #if defined(__cpp_lib_span)
 using std::dynamic_extent;
@@ -1401,10 +1401,6 @@ MDSPAN_IMPL_INLINE_VARIABLE constexpr auto dynamic_extent = std::numeric_limits<
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/dynamic_extent.hpp
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/utility.hpp
 
-#include <cstddef>
-#include <type_traits>
-#include <array>
-#include <utility>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 namespace detail {
@@ -1631,14 +1627,6 @@ constexpr struct mdspan_non_standard_tag {
 } // namespace MDSPAN_IMPL_STANDARD_NAMESPACE
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/utility.hpp
 
-#ifdef __cpp_lib_span
-#include <span>
-#endif
-#include <array>
-#include <type_traits>
-
-#include <cassert>
-#include <cinttypes>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 namespace detail {
@@ -2618,16 +2606,6 @@ struct impl_compressed_pair<
 #if !defined(MDSPAN_IMPL_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
 #endif
 
-#include <array>
-#include <type_traits>
-#include <utility>
-
-#ifdef __cpp_lib_span
-#include <span>
-#endif
-#if defined(MDSPAN_IMPL_USE_CONCEPTS) && MDSPAN_HAS_CXX_20 && defined(__cpp_lib_concepts)
-#  include <concepts>
-#endif
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 
@@ -3295,8 +3273,6 @@ constexpr void validate_strides(with_rank<N>, Layout, const Extents& ext, const 
 //
 //@HEADER
 
-#include <cassert>
-
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 namespace MDSPAN_IMPL_PROPOSED_NAMESPACE {
 
@@ -3656,10 +3632,6 @@ private:
 
 } // end namespace MDSPAN_IMPL_STANDARD_NAMESPACE
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_right.hpp
-
-#include <stdexcept>
-#include <string>
-#include <type_traits>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 template <
@@ -4166,7 +4138,6 @@ MDSPAN_DEDUCTION_GUIDE mdspan(const typename AccessorType::data_handle_type, con
 
 #if MDSPAN_HAS_CXX_17
 #endif
-#include <type_traits>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 
@@ -4428,8 +4399,6 @@ private:
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //@HEADER
-
-#include <cassert>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 namespace MDSPAN_IMPL_PROPOSED_NAMESPACE {
@@ -5530,8 +5499,6 @@ public:
 //@HEADER
 
 
-#include <complex>
-
 //BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/strided_slice.hpp
 
 //@HEADER
@@ -5550,8 +5517,6 @@ public:
 //
 //@HEADER
 
-
-#include <type_traits>
 
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 
@@ -5995,10 +5960,6 @@ constexpr auto submdspan_extents(const extents<IndexType, Extents...> &src_exts,
 //
 //@HEADER
 
-
-#include <array>
-#include <type_traits>
-#include <utility> // index_sequence
 
 // Suppress spurious warning with NVCC about no return statement.
 // This is a known issue in NVCC and NVC++
@@ -6715,9 +6676,6 @@ namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 //@HEADER
 
 
-#include <cassert>
-#include <vector>
-
 namespace MDSPAN_IMPL_STANDARD_NAMESPACE {
 namespace MDSPAN_IMPL_PROPOSED_NAMESPACE {
 
@@ -7161,5 +7119,8 @@ private:
 #endif // MDARRAY_HPP_
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/mdspan/mdarray.hpp
 //END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdarray
+
+#endif
+
 #endif // MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 

@@ -17,7 +17,7 @@ module;
 
 module mc_moves_insertion_cbmc;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

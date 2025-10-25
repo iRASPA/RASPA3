@@ -16,7 +16,7 @@ module;
 
 export module enthalpy_of_adsorption;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

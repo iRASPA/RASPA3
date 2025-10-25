@@ -12,6 +12,9 @@ module;
 #include <fstream>
 #include <tuple> 
 #include <chrono>
+#include "mdspanwrapper.h"
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
   #include <OpenCL/cl.h>
@@ -20,14 +23,9 @@ module;
 #else
   #include <CL/opencl.h>
 #endif
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../../../mdspan.h"
-#endif
-#endif
 
-#ifndef USE_LEGACY_HEADERS
+
+#ifdef USE_STD_IMPORT
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -36,16 +34,11 @@ module;
 #else
 #include <CL/opencl.h>
 #endif
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../../../mdspan.h"
-#endif
 #endif
 
 module pore_size_distribution_ban_vlugt;
     
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

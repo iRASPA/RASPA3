@@ -30,6 +30,7 @@ add_executable(unit_tests_raspakit
   rotation_matrix.cpp
   main.cpp)
 
+target_precompile_headers(unit_tests_raspakit REUSE_FROM raspakit)
 
 if (CONDA)
   target_link_libraries(unit_tests_raspakit

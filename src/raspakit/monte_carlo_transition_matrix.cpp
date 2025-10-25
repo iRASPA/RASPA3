@@ -27,7 +27,7 @@ module;
 
 module monte_carlo_transition_matrix;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

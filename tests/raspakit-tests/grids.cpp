@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
+#endif
 #endif
 
 import int3;

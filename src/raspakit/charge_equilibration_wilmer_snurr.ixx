@@ -14,7 +14,7 @@ module;
 
 export module charge_equilibration_wilmer_snurr;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

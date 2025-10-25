@@ -1,6 +1,8 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <iostream>
+#endif
 
 int main(int argc, char** argv)
 {

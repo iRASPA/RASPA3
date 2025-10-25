@@ -4,6 +4,8 @@ add_executable(unit_tests_mathkit
                random.cpp
                main.cpp)
 
+target_precompile_headers(unit_tests_mathkit REUSE_FROM raspakit)
+
 if (CONDA)
   target_link_libraries(unit_tests_mathkit
                         PUBLIC

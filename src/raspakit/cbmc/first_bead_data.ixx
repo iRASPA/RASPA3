@@ -7,7 +7,7 @@ module;
 
 export module cbmc_first_bead_data;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

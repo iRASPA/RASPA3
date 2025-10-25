@@ -1,9 +1,11 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cstddef>
 #include <tuple>
 #include <vector>
+#endif
 
 import double3;
 import double3x3;

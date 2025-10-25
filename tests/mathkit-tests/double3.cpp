@@ -1,3 +1,4 @@
+#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -7,6 +8,7 @@
 #include <numbers>
 #include <print>
 #include <random>
+#endif
 
 import double3;
 import double4;

@@ -12,7 +12,7 @@ module;
 
 module cbmc_move_statistics;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

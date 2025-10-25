@@ -580,7 +580,7 @@
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
         "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": true,
+        "BUILD_TESTING": false,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -613,6 +613,32 @@
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_LIBTORCH": false,
+        "BUILD_TESTING": false,
+        "BLA_SIZEOF_INTEGER": "4"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": ["macOS"]
+        }
+      }
+    },
+    {
+      "name": "macos-apple-silicon-gcc",
+      "description": "Sets compilers, build type",
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc-15",
+        "CMAKE_CXX_COMPILER": "g++-15",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,

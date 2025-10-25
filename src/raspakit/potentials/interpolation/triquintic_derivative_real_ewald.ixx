@@ -9,7 +9,7 @@ module;
 
 export module potential_triquintic_derivative_real_ewald;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

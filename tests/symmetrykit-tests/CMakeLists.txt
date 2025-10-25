@@ -7,6 +7,8 @@ add_executable(unit_tests_symmetrykit
                find_spacegroup.cpp 
                main.cpp)
 
+target_precompile_headers(unit_tests_symmetrykit REUSE_FROM raspakit)
+
 if (CONDA)
   target_link_libraries(unit_tests_symmetrykit
                         PUBLIC

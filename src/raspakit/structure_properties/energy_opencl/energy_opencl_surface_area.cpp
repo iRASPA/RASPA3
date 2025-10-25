@@ -21,11 +21,9 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../../../mdspan.h"
+#include "mdspanwrapper.h"
 #endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -34,9 +32,8 @@ module;
 #else
 #include <CL/opencl.h>
 #endif
-#endif
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -49,7 +46,7 @@ module;
 
 module energy_opencl_surface_area;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

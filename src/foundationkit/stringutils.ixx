@@ -13,7 +13,7 @@ module;
 
 export module stringutils;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 import std.compat;
 #endif

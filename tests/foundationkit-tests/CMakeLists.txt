@@ -2,6 +2,7 @@ add_executable(unit_tests_foundationkit
                archive.cpp 
                main.cpp)
 
+target_precompile_headers(unit_tests_foundationkit REUSE_FROM raspakit)
 
 if (CONDA)
   target_link_libraries(unit_tests_foundationkit

@@ -18,7 +18,7 @@ module;
 
 module mc_moves_parallel_tempering_swap;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

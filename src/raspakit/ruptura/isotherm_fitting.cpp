@@ -23,13 +23,13 @@ module;
 #include <vector>
 #endif
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 #include <climits>
 #endif
 
 module isotherm_fitting;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

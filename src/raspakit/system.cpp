@@ -30,16 +30,12 @@ module;
 #undef __SSE3__
 #include <random>
 #pragma pop_macro("__SSE3__")
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../mdspan.h"
-#endif
+#include "mdspanwrapper.h"
 #endif
 
 module system;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

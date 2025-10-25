@@ -19,7 +19,7 @@ module;
 
 module mc_pore_size_distribution;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

@@ -16,7 +16,7 @@ module;
 
 module cbmc_interactions_intermolecular;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 

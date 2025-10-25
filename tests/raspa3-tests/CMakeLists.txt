@@ -5,6 +5,7 @@ add_executable(unit_tests_raspa3
   mc_nvt_grids_drift.cpp
   main.cpp)
 
+target_precompile_headers(unit_tests_raspa3 REUSE_FROM raspakit)
 
 if (CONDA)
   target_link_libraries(unit_tests_raspa3

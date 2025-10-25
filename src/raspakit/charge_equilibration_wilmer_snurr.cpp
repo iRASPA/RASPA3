@@ -10,11 +10,7 @@ module;
 #include <span>
 #include <vector>
 #include <array>
-#if defined(__has_include) && __has_include(<mdspan>)
-#include <mdspan>
-#else
-#include "../../mdspan.h"
-#endif
+#include "mdspanwrapper.h"
 #endif
 
 #if !defined(_WIN32)
@@ -23,7 +19,7 @@ module;
 
 module charge_equilibration_wilmer_snurr;
 
-#ifndef USE_LEGACY_HEADERS
+#ifdef USE_STD_IMPORT
 import std;
 #endif
 
@@ -32,9 +28,6 @@ import double3x3;
 import skelement;
 import atom;
 import simulationbox;
-#if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
-#endif
 
 extern "C"
 {
