@@ -23,6 +23,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <filesystem>
 #include "mdspanwrapper.h"
 #endif
 
@@ -47,6 +48,8 @@ import std;
 import double3;
 import double3x3;
 import stringutils;
+import units;
+import input_reader;
 import polint;
 import atom;
 import framework;
@@ -3527,9 +3530,195 @@ import interactions_external_field;
   return X;
 }
 
+InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, int3 numberOfGridPoints, ForceField::InterpolationScheme order)
+      : unitCellBox(unitCellBox),
+        origin(origin),
+        numberOfGridPoints(numberOfGridPoints),
+        numberOfCells(numberOfGridPoints.x - 1, numberOfGridPoints.y - 1, numberOfGridPoints.z -1),
+        order(order),
+        data(std::to_underlying(order) *
+             static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+{
+}
+
+void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& stream, const ForceField& forceField, const SimulationBox &simulationBox)
+{
+  if (forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile)
+  {
+    data = InputReader::parseExternalFieldGridCube(forceField.externalFieldGridFileName);
+  }
+  else
+  {
+    double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
+                            1.0 / static_cast<double>(numberOfCells.z));
+    std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
+        data.data(), std::to_underlying(order), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+
+    double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
+
+    double counter{};
+    std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+    for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
+    {
+      for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
+      {
+        for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfGridPoints.x); ++i)
+        {
+          counter += 1.0;
+          double3 s = double3(static_cast<double>(i) * delta.x, static_cast<double>(j) * delta.y,
+                              static_cast<double>(k) * delta.z);
+          double3 pos = simulationBox.cell * s;
+
+          switch (order)
+          {
+            case ForceField::InterpolationScheme::Polynomial:
+            {
+              std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+              data_cell[0, i, j, k] =
+                  (values[0] > forceField.energyOverlapCriteria) ? 2.0 * forceField.energyOverlapCriteria : values[0];
+            }
+            break;
+            case ForceField::InterpolationScheme::Tricubic:
+            {
+              std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+              values[1] /= static_cast<double>(numberOfCells.x);
+              values[2] /= static_cast<double>(numberOfCells.y);
+              values[3] /= static_cast<double>(numberOfCells.z);
+              values[4] /= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y);
+              values[5] /= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.z);
+              values[6] /= static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.z);
+              values[7] /= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y) *
+                          static_cast<double>(numberOfCells.z);
+
+              if (values[0] > forceField.energyOverlapCriteria)
+              {
+                // if overlap then make values finite
+                data_cell[0, i, j, k] = 2.0 * forceField.energyOverlapCriteria;
+                data_cell[1, i, j, k] =
+                    std::clamp(values[1], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                data_cell[2, i, j, k] =
+                    std::clamp(values[2], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                data_cell[3, i, j, k] =
+                    std::clamp(values[3], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                for (std::size_t l = 4; l < 8; ++l)
+                {
+                  data_cell[l, i, j, k] = 0.0;
+                }
+              }
+              else
+              {
+                for (std::size_t l = 0; l < 8; ++l)
+                {
+                  data_cell[l, i, j, k] = values[l];
+                }
+              }
+            }
+            break;
+            case ForceField::InterpolationScheme::Triquintic:
+              std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
+                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+              values[1] /= static_cast<double>(numberOfCells.x);
+              values[2] /= static_cast<double>(numberOfCells.y);
+              values[3] /= static_cast<double>(numberOfCells.z);
+
+              values[4] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]);
+              values[5] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]);
+              values[6] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[2]);
+              values[7] /= static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]);
+              values[8] /= static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]);
+              values[9] /= static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
+
+              values[10] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]);
+              values[11] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[12] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[1]);
+              values[13] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[14] /= static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[15] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[2]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[16] /= static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]) *
+                            static_cast<double>(numberOfCells[2]);
+
+              values[17] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]);
+              values[18] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
+              values[19] /= static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
+              values[20] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]);
+              values[21] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]);
+              values[22] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
+
+              values[23] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[24] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]) *
+                            static_cast<double>(numberOfCells[2]);
+              values[25] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[2]) *
+                            static_cast<double>(numberOfCells[2]);
+
+              values[26] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]) *
+                            static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
+                            static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
+
+              if (values[0] > forceField.energyOverlapCriteria)
+              {
+                // if overlap then make values finite
+                data_cell[0, i, j, k] = 2.0 * forceField.energyOverlapCriteria;
+                data_cell[1, i, j, k] =
+                    std::clamp(values[1], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                data_cell[2, i, j, k] =
+                    std::clamp(values[2], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                data_cell[3, i, j, k] =
+                    std::clamp(values[3], -forceField.energyOverlapCriteria, forceField.energyOverlapCriteria);
+                for (std::size_t l = 4; l < 27; ++l)
+                {
+                  data_cell[l, i, j, k] = 0.0;
+                }
+              }
+              else
+              {
+                for (std::size_t l = 0; l < 27; ++l)
+                {
+                  data_cell[l, i, j, k] = values[l];
+                }
+              }
+              break;
+          }
+
+          if (static_cast<std::size_t>(counter * percent) > static_cast<std::size_t>((counter - 1.0) * percent))
+          {
+            std::print(stream, "Percentage finished: {}\n", static_cast<std::size_t>(counter * percent));
+            std::flush(stream);
+          }
+        }
+      }
+    }
+    std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> time_duration = time_end - time_begin;
+    std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());
+    std::print(stream, "\n");
+  }
+}
+
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
-void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
+void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,
                                                     double cutOff, std::size_t pseudo_atom_index)
@@ -3577,8 +3766,6 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
             std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPosition(
                 interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
                 framework_atoms);
-            // std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
-            //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
             values[1] /= static_cast<double>(numberOfCells.x);
             values[2] /= static_cast<double>(numberOfCells.y);
@@ -3617,8 +3804,6 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
             std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPosition(
                 interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
                 framework_atoms);
-            // std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
-            //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
             values[1] /= static_cast<double>(numberOfCells.x);
             values[2] /= static_cast<double>(numberOfCells.y);
@@ -4484,6 +4669,38 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
   return {0.0, double3(0.0, 0.0, 0.0), double3x3{}};
 }
 
+void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const SimulationBox &simulationBox,
+                                      const ForceField &forceField)
+{
+  std::filesystem::create_directory("interpolation_grids");
+
+  std::mdspan<double, std::dextents<std::size_t, 3>> data_cell(
+      data.data(), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+
+  std::ofstream ostream(std::format("interpolation_grids/grid_external_field.s{}.cube", systemId));
+  const double3x3 cell = simulationBox.cell;
+
+  std::print(ostream, "Cube interpolation file\n");
+  std::print(ostream, "Written by RASPA-3\n");
+  std::print(ostream, "{} {} {} {}\n", 1, origin.x, origin.y, origin.z);
+
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / numberOfGridPoints.x, cell.ay / numberOfGridPoints.x,
+             cell.az / numberOfGridPoints.x);
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / numberOfGridPoints.y, cell.by / numberOfGridPoints.y,
+             cell.bz / numberOfGridPoints.y);
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / numberOfGridPoints.z, cell.cy / numberOfGridPoints.z,
+             cell.cz / numberOfGridPoints.z);
+
+  // work around: needs to be 1 atom for iRASPA
+  std::print(ostream, "1 0.0 0.0 0.0 0.0\n");
+
+  for (std::vector<double>::iterator it = data.begin(); it != data.end(); ++it)
+  {
+    std::print(ostream, "{}\n", *it * Units::EnergyToKelvin);
+  }
+}
+
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const InterpolationEnergyGrid& s)
 {
   archive << s.versionNumber;
@@ -4493,8 +4710,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
 #endif
 
   archive << s.unitCellBox;
-  archive << s.numberOfCells;
+  archive << s.origin;
   archive << s.numberOfGridPoints;
+  archive << s.numberOfCells;
   archive << s.order;
 
   return archive;
@@ -4512,8 +4730,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Interpolatio
   }
 
   archive >> s.unitCellBox;
-  archive >> s.numberOfCells;
+  archive >> s.origin;
   archive >> s.numberOfGridPoints;
+  archive >> s.numberOfCells;
   archive >> s.order;
 
 #if DEBUG_ARCHIVE

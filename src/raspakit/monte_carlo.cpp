@@ -237,12 +237,14 @@ void MonteCarlo::createInterpolationGrids()
     if (outputToFiles)
     {
       std::ostream stream(streams[system.systemId].rdbuf());
-      system.createInterpolationGrids(stream);
+      system.createExternalFieldInterpolationGrid(stream);
+      system.createFrameworkInterpolationGrids(stream);
     }
     else
     {
       std::ostringstream local;
-      system.createInterpolationGrids(local);
+      system.createExternalFieldInterpolationGrid(local);
+      system.createFrameworkInterpolationGrids(local);
     }
   }
 }

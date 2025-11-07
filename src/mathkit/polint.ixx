@@ -10,6 +10,7 @@ module;
 #include <cstddef>
 #include <ostream>
 #include <vector>
+#include <print>
 #endif
 
 #ifdef USE_STD_IMPORT

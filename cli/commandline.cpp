@@ -35,6 +35,7 @@ import std;
 
 import archive;
 import int3;
+import double3;
 import threadpool;
 import hdf5;
 import input_reader;
@@ -466,9 +467,10 @@ void CommandLine::run(int argc, char *argv[])
                       (gridType == ForceField::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
       for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
-        InterpolationEnergyGrid grid(framework.simulationBox, gridSize, order);
+        InterpolationEnergyGrid grid(framework.simulationBox, double3{},
+                                     gridSize, order);
         std::ostream nullStream{nullptr};
-        grid.makeInterpolationGrid(nullStream, gridType, forceField.value(), framework,
+        grid.makeFrameworkInterpolationGrid(nullStream, gridType, forceField.value(), framework,
                                    (gridType == ForceField::InterpolationGridType::LennardJones)
                                        ? forceField->cutOffFrameworkVDW
                                        : forceField->cutOffCoulomb,

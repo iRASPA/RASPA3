@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_PRECOMPILED_HEADERS
 #include "pch.h"
+#include "mdspanwrapper.h"
 #endif
 
 #ifdef USE_LEGACY_HEADERS
@@ -17,6 +18,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include "mdspanwrapper.h"
 #endif
 
 export module interpolation_energy_grid;
@@ -41,32 +43,29 @@ export struct InterpolationEnergyGrid
   std::uint64_t versionNumber{1};
 
   SimulationBox unitCellBox;
-  int3 numberOfCells;
+  double3 origin;
   int3 numberOfGridPoints;
+  int3 numberOfCells;
   ForceField::InterpolationScheme order;
   std::vector<double> data;
 
   InterpolationEnergyGrid() {}
 
-  InterpolationEnergyGrid(const SimulationBox unitCellBox, int3 numberOfCells, ForceField::InterpolationScheme order)
-      : unitCellBox(unitCellBox),
-        numberOfCells(numberOfCells),
-        numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
-        order(order),
-        data(std::to_underlying(order) *
-             static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
-  {
-  }
+  InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, int3 numberOfGridPoints, ForceField::InterpolationScheme order);
 
   constexpr static std::make_signed_t<std::size_t> num_points_interpolation{6};
 
-  void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
+  void makeExternalFieldInterpolationGrid(std::ostream& stream, const ForceField& forceField, const SimulationBox &simulationBox);
+
+  void makeFrameworkInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
                              const ForceField &forceField, const Framework &framework, double cutOff,
                              std::size_t pseudo_atom_index);
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;
   std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;
+
+  void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InterpolationEnergyGrid &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InterpolationEnergyGrid &s);

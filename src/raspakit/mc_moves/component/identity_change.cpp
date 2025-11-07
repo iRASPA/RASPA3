@@ -82,7 +82,8 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, 
+      system.interpolationGrids, system.externalFieldInterpolationGrid,
       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
@@ -112,7 +113,8 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, 
+      system.interpolationGrids, system.externalFieldInterpolationGrid,
       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, growData->storedR);
   time_end = std::chrono::system_clock::now();
@@ -138,12 +140,14 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   {
     // If dual cutoff is used, compute correction factor due to non-overlapping energies.
     energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+        component, system.hasExternalField, system.forceField, system.simulationBox, 
+        system.interpolationGrids, system.externalFieldInterpolationGrid,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
         growData->atom);
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+        component, system.hasExternalField, system.forceField, system.simulationBox, 
+        system.interpolationGrids, system.externalFieldInterpolationGrid,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
         old_molecule);

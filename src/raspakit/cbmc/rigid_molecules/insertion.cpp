@@ -46,6 +46,7 @@ import interpolation_energy_grid;
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
@@ -68,7 +69,8 @@ import interpolation_energy_grid;
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
-                                                  interpolationGrids, framework, frameworkAtomData, moleculeAtomData,
+                                                  interpolationGrids, externalFieldInterpolationGrid,
+                                                  framework, frameworkAtomData, moleculeAtomData,
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
                                                   std::make_signed_t<std::size_t>(component.startingBead));
   if (externalEnergies.empty()) return std::nullopt;

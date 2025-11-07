@@ -39,11 +39,13 @@ import component;
 import forcefield;
 import tricubic_derivatives_external_field;
 import triquintic_derivatives_external_field;
+import interpolation_energy_grid;
 
 void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-                                              [[maybe_unused]] const SimulationBox &simulationBox,
-                                              [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-                                              [[maybe_unused]] RunningEnergy &energyStatus) noexcept
+        [[maybe_unused]] const SimulationBox &simulationBox,
+        [[maybe_unused]] std::span<const Atom> moleculeAtoms,
+        [[maybe_unused]] RunningEnergy &energyStatus,
+        [[maybe_unused]] const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid) noexcept
 {
   if (hasExternalField)
   {
@@ -54,6 +56,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
       [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
       [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
+      [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
@@ -65,33 +68,42 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       // Fill in the energy based on the atom properties and the fractional position 's'
       Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
 
-      switch (forceField.potentialEnergySurfaceType)
+      if (externalFieldInterpolationGrid.has_value())
       {
-        case ForceField::PotentialEnergySurfaceType::None:
-          break;
-        case ForceField::PotentialEnergySurfaceType::MullerBrown:
-        {
-          double4 A{-200.0, -100.0, -170.0, -15.0};
-          double4 a{-1.0, -1.0, -6.5, -0.7};
-          double4 x0{1.0, 0.0, -0.5, -1.0};
-          double4 b{0.0, 0.0, 11.0, 0.6};
-          double4 y0{0.0, 0.5, 1.5, 1.0};
-          double4 c{-10.0, -10.0, -6.5, 0.7};
-          for (std::size_t i = 0; i < 4; ++i)
-          {
-            energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                   b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                   c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-          }
-        }
-        break;
-        case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-          energyFactor.energy = posA.x * posA.y * posA.z;
-          break;
-        default:
-          break;
+        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
       }
-
+      else
+      {
+        switch (forceField.potentialEnergySurfaceType)
+        {
+          case ForceField::PotentialEnergySurfaceType::None:
+            break;
+          case ForceField::PotentialEnergySurfaceType::GridFile:
+            energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+            break;
+          case ForceField::PotentialEnergySurfaceType::MullerBrown:
+          {
+            double4 A{-200.0, -100.0, -170.0, -15.0};
+            double4 a{-1.0, -1.0, -6.5, -0.7};
+            double4 x0{1.0, 0.0, -0.5, -1.0};
+            double4 b{0.0, 0.0, 11.0, 0.6};
+            double4 y0{0.0, 0.5, 1.5, 1.0};
+            double4 c{-10.0, -10.0, -6.5, 0.7};
+            for (std::size_t i = 0; i < 4; ++i)
+            {
+              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
+                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
+                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
+            energyFactor.energy = posA.x * posA.y * posA.z;
+            break;
+          default:
+            break;
+        }
+      }
       energyStatus.externalFieldVDW += energyFactor.energy;
       energyStatus.dudlambdaVDW += energyFactor.dUdlambda;
     }
@@ -109,7 +121,7 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
   std::array<std::array<double, 3>, 3> second_derivative{};
   std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative{};
 
-  if (forceField.hasExternalField)
+  //if (forceField.hasExternalField)
   {
     switch (forceField.potentialEnergySurfaceType)
     {
@@ -138,7 +150,7 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
 std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExternalField(
     const ForceField &forceField, [[maybe_unused]] const SimulationBox &simulationBox, double3 posA)
 {
-  if (forceField.hasExternalField)
+  //if (forceField.hasExternalField)
   {
     double energy_fractional{0.0};
     std::array<double, 3> first_derivative_fractional{};
@@ -193,7 +205,7 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
 Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceField &forceField, double3 pos)
 {
-  if (forceField.hasExternalField)
+  //if (forceField.hasExternalField)
   {
     switch (forceField.potentialEnergySurfaceType)
     {
@@ -222,7 +234,7 @@ Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceFi
 std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExternalField(
     const ForceField &forceField, const SimulationBox &simulationBox, double3 posA)
 {
-  if (forceField.hasExternalField)
+  //if (forceField.hasExternalField)
   {
     double energy_fractional{0.0};
     std::array<double, 3> first_derivative_fractional{};
@@ -371,8 +383,9 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeExternalFieldEnergyDifference(
     bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-    [[maybe_unused]] const SimulationBox &simulationBox, [[maybe_unused]] std::span<const Atom> newatoms,
-    [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
+    [[maybe_unused]] const SimulationBox &simulationBox, 
+    [[maybe_unused]] const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    [[maybe_unused]] std::span<const Atom> newatoms, [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum;
 
@@ -391,10 +404,45 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
 
-      // FILL IN
+      // Fill in the energy based on the atom properties and the fractional position 's'
       Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
-      if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
+      if (externalFieldInterpolationGrid.has_value())
+      {
+        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+      }
+      else
+      {
+        switch (forceField.potentialEnergySurfaceType)
+        {
+          case ForceField::PotentialEnergySurfaceType::None:
+            break;
+          case ForceField::PotentialEnergySurfaceType::GridFile:
+            energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+            break;
+          case ForceField::PotentialEnergySurfaceType::MullerBrown:
+          {
+            double4 A{-200.0, -100.0, -170.0, -15.0};
+            double4 a{-1.0, -1.0, -6.5, -0.7};
+            double4 x0{1.0, 0.0, -0.5, -1.0};
+            double4 b{0.0, 0.0, 11.0, 0.6};
+            double4 y0{0.0, 0.5, 1.5, 1.0};
+            double4 c{-10.0, -10.0, -6.5, 0.7};
+            for (std::size_t i = 0; i < 4; ++i)
+            {
+              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
+                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
+                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
+            energyFactor.energy = posA.x * posA.y * posA.z;
+            break;
+          default:
+            break;
+        }
+      }
       energySum.externalFieldVDW += energyFactor.energy;
       energySum.dudlambdaVDW += energyFactor.dUdlambda;
     }
@@ -414,6 +462,42 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       // Fill in the energy based on the atom properties and the fractional position 's'
       Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
 
+      if (externalFieldInterpolationGrid.has_value())
+      {
+        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+      }
+      else
+      {
+        switch (forceField.potentialEnergySurfaceType)
+        {
+          case ForceField::PotentialEnergySurfaceType::None:
+            break;
+          case ForceField::PotentialEnergySurfaceType::GridFile:
+            energyFactor.energy = externalFieldInterpolationGrid->interpolate(posA);
+            break;
+          case ForceField::PotentialEnergySurfaceType::MullerBrown:
+          {
+            double4 A{-200.0, -100.0, -170.0, -15.0};
+            double4 a{-1.0, -1.0, -6.5, -0.7};
+            double4 x0{1.0, 0.0, -0.5, -1.0};
+            double4 b{0.0, 0.0, 11.0, 0.6};
+            double4 y0{0.0, 0.5, 1.5, 1.0};
+            double4 c{-10.0, -10.0, -6.5, 0.7};
+            for (std::size_t i = 0; i < 4; ++i)
+            {
+              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
+                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
+                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
+            energyFactor.energy = posA.x * posA.y * posA.z;
+            break;
+          default:
+            break;
+        }
+      }
       energySum.externalFieldVDW -= energyFactor.energy;
       energySum.dudlambdaVDW -= energyFactor.dUdlambda;
     }

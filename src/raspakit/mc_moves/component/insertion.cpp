@@ -90,7 +90,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
   // compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, {});
+      system.hasExternalField, system.forceField, system.simulationBox, 
+      system.externalFieldInterpolationGrid, trialMolecule.second, {});
   if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute framework-molecule energy contribution

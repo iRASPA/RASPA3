@@ -28,6 +28,7 @@ import simulationbox;
 import gradient_factor;
 import forcefield;
 import component;
+import interpolation_energy_grid;
 
 export namespace Interactions
 {
@@ -44,7 +45,8 @@ export namespace Interactions
  * \param energyStatus The running total of energies to be updated.
  */
 void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-                                std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
+                                std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus,
+                                const std::optional<InterpolationEnergyGrid> &externalFieldGrid) noexcept;
 
 /**
  * \brief Computes the tail correction for the external field energy.
@@ -78,7 +80,9 @@ void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &for
  */
 [[nodiscard]] std::optional<RunningEnergy> computeExternalFieldEnergyDifference(
     bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>

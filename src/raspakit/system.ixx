@@ -178,7 +178,7 @@ export struct System
   std::vector<double> idealGasEnergiesPerComponent{};
 
   ForceField forceField;
-  bool hasExternalField;
+  bool hasExternalField{ true };
 
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
@@ -277,6 +277,7 @@ export struct System
   std::size_t maxIsothermTerms{0};
 
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
+  std::optional<InterpolationEnergyGrid> externalFieldInterpolationGrid;
 
   /// The fractional molecule for grand-canonical is stored first
   inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent)
@@ -419,7 +420,8 @@ export struct System
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
-  void createInterpolationGrids(std::ostream &stream);
+  void createExternalFieldInterpolationGrid(std::ostream& stream);
+  void createFrameworkInterpolationGrids(std::ostream &stream);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);

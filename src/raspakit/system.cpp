@@ -53,6 +53,7 @@ import double3x3x3;
 import simd_quatd;
 import cubic;
 import atom;
+import input_reader;
 import framework;
 import component;
 import simulationbox;
@@ -101,6 +102,7 @@ import interactions_framework_molecule_grid;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_internal;
+import interactions_external_field;
 import equation_of_states;
 import thermostat;
 import json;
@@ -505,7 +507,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           bool groupId = components[componentId].lambdaGC.computeDUdlambda;
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
+              random, components[componentId], hasExternalField, forceField, simulationBox, 
+              interpolationGrids, externalFieldInterpolationGrid,
               framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 0.0,
               groupId, true);
@@ -574,7 +577,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
+              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
               framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 1.0,
               false, false);
@@ -1920,8 +1923,12 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
+    RunningEnergy externalFieldEnergy;
+    Interactions::computeExternalFieldEnergy(hasExternalField,
+      forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
+
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + polarizationEnergy + runningIntraEnergy;
+           ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
   }
   else
   {
@@ -1939,8 +1946,12 @@ RunningEnergy System::computeTotalEnergies() noexcept
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
         numberOfMoleculesPerComponent, moleculeAtomPositions);
 
+    RunningEnergy externalFieldEnergy;
+    Interactions::computeExternalFieldEnergy(hasExternalField,
+      forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
+
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + runningIntraEnergy;
+           ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
   }
 }
 
@@ -2218,10 +2229,163 @@ std::string System::writeMCMoveStatistics() const
   return stream.str();
 }
 
-void System::createInterpolationGrids(std::ostream& stream)
+
+void System::createExternalFieldInterpolationGrid(std::ostream& stream)
 {
   // use local random-number generator (so that it does not interfere with a binary-restart)
   RandomNumber random{std::nullopt};
+
+  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
+
+  if(hasExternalField)
+  {
+    if(forceField.useExternalFieldGrid)
+    {
+
+      // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
+      int3 numberOfExternalFieldGridPoints = InputReader::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
+
+      externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
+                                                      numberOfExternalFieldGridPoints, forceField.interpolationScheme);
+
+      std::print(stream, "Generating an external field interpolation grid ({}x{}x{})\n",
+                 externalFieldInterpolationGrid->numberOfGridPoints.x, 
+                 externalFieldInterpolationGrid->numberOfGridPoints.y, 
+                 externalFieldInterpolationGrid->numberOfGridPoints.z);
+      std::print(stream, "===============================================================================\n");
+      externalFieldInterpolationGrid->makeExternalFieldInterpolationGrid(stream, forceField, simulationBox);
+
+      double count{};
+      double summed_errors{};
+      double boltzmann_weighted_difference_squared_summed{};
+      double boltzmann_weighted_full_squared_summed{};
+
+      for (std::size_t i = 0; i < numberOfGridTestPoints; ++i)
+      {
+        // generate random position in super cell
+        double3 s = double3(random.uniform(), random.uniform(), random.uniform());
+        double3 pos = simulationBox.cell * s;
+
+        auto [interpolated_energy, interpolated_gradient, interpolated_hessian] =
+            externalFieldInterpolationGrid->interpolateHessian(pos);
+
+        // convert to Kelvin
+        interpolated_energy *= Units::EnergyToKelvin;
+
+        interpolated_gradient.x *= Units::EnergyToKelvin;
+        interpolated_gradient.y *= Units::EnergyToKelvin;
+        interpolated_gradient.z *= Units::EnergyToKelvin;
+
+        interpolated_hessian.ax *= Units::EnergyToKelvin;
+        interpolated_hessian.ay *= Units::EnergyToKelvin;
+        interpolated_hessian.az *= Units::EnergyToKelvin;
+        interpolated_hessian.bx *= Units::EnergyToKelvin;
+        interpolated_hessian.by *= Units::EnergyToKelvin;
+        interpolated_hessian.bz *= Units::EnergyToKelvin;
+        interpolated_hessian.cx *= Units::EnergyToKelvin;
+        interpolated_hessian.cy *= Units::EnergyToKelvin;
+        interpolated_hessian.cz *= Units::EnergyToKelvin;
+
+        double analytical_energy{};
+        double3 analytical_gradient{};
+        double3x3 analytical_hessian{};
+        switch (forceField.interpolationScheme)
+        {
+          case ForceField::InterpolationScheme::Polynomial:
+          {
+            std::array<double, 8> analytical_polynomial = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+            analytical_energy = analytical_polynomial[0] * Units::EnergyToKelvin;
+          }
+          break;
+          case ForceField::InterpolationScheme::Tricubic:
+          {
+            std::array<double, 8> analytical_tricubic = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+            analytical_energy = analytical_tricubic[0] * Units::EnergyToKelvin;
+
+            // convert gradient from fractional to Cartesian
+            analytical_gradient =
+                framework->simulationBox.inverseCell.transpose() *
+                double3(analytical_tricubic[1], analytical_tricubic[2], analytical_tricubic[3]);
+
+            analytical_gradient.x *= Units::EnergyToKelvin;
+            analytical_gradient.y *= Units::EnergyToKelvin;
+            analytical_gradient.z *= Units::EnergyToKelvin;
+          }
+          break;
+          case ForceField::InterpolationScheme::Triquintic:
+          {
+            std::array<double, 27> analytical_triquintic = Interactions::calculateTriquinticFractionalAtPositionExternalField(
+                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+            analytical_energy = analytical_triquintic[0] * Units::EnergyToKelvin;
+
+            // convert gradient from fractional to Cartesian
+            analytical_gradient =
+                framework->simulationBox.inverseCell.transpose() *
+                double3(analytical_triquintic[1], analytical_triquintic[2], analytical_triquintic[3]);
+
+            analytical_gradient.x *= Units::EnergyToKelvin;
+            analytical_gradient.y *= Units::EnergyToKelvin;
+            analytical_gradient.z *= Units::EnergyToKelvin;
+
+            double3x3 hessian =
+                double3x3(analytical_triquintic[4], analytical_triquintic[5], analytical_triquintic[6],
+                          analytical_triquintic[5], analytical_triquintic[7], analytical_triquintic[8],
+                          analytical_triquintic[6], analytical_triquintic[8], analytical_triquintic[9]);
+            analytical_hessian =
+                framework->simulationBox.inverseCell.transpose() * hessian * framework->simulationBox.inverseCell;
+
+            analytical_hessian.ax *= Units::EnergyToKelvin;
+            analytical_hessian.ay *= Units::EnergyToKelvin;
+            analytical_hessian.az *= Units::EnergyToKelvin;
+            analytical_hessian.bx *= Units::EnergyToKelvin;
+            analytical_hessian.by *= Units::EnergyToKelvin;
+            analytical_hessian.bz *= Units::EnergyToKelvin;
+            analytical_hessian.cx *= Units::EnergyToKelvin;
+            analytical_hessian.cy *= Units::EnergyToKelvin;
+            analytical_hessian.cz *= Units::EnergyToKelvin;
+          }
+          break;
+        }
+
+        double boltzmann_weight_value = std::exp(-beta * analytical_energy);
+        double difference = analytical_energy - interpolated_energy;
+
+        summed_errors += std::fabs(difference);
+        count += 1.0;
+
+        boltzmann_weighted_difference_squared_summed += difference * difference * boltzmann_weight_value;
+        boltzmann_weighted_full_squared_summed += boltzmann_weight_value;
+      }
+
+      std::print(stream, "Testing external-field interpolation grid ({}x{}x{})\n", numberOfExternalFieldGridPoints.x,
+                 numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
+      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
+
+      std::print(stream, "Absolute error energy:                  {}\n\n", summed_errors / count);
+      std::print(stream, "Boltzmann weighted error energy:        {}\n\n",
+                        std::sqrt(boltzmann_weighted_difference_squared_summed / 
+                                  boltzmann_weighted_full_squared_summed));
+    }
+  }
+
+  if(forceField.writeExternalFieldInterpolationGrid)
+  {
+    externalFieldInterpolationGrid->writeOutput(systemId, simulationBox, forceField);
+  }
+}
+
+void System::createFrameworkInterpolationGrids(std::ostream& stream)
+{
+  // use local random-number generator (so that it does not interfere with a binary-restart)
+  RandomNumber random{std::nullopt};
+
+  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
 
   if (framework.has_value())
   {
@@ -2249,8 +2413,9 @@ void System::createInterpolationGrids(std::ostream& stream)
       std::print(stream, "===============================================================================\n");
 
       interpolationGrids.back() =
-          InterpolationEnergyGrid(framework->simulationBox, numberOfCoulombGridPoints, forceField.interpolationScheme);
-      interpolationGrids.back()->makeInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal, forceField,
+          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin,
+                                  numberOfCoulombGridPoints, forceField.interpolationScheme);
+      interpolationGrids.back()->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal, forceField,
                                                        framework.value(), forceField.cutOffCoulomb, 0);
     }
 
@@ -2267,7 +2432,6 @@ void System::createInterpolationGrids(std::ostream& stream)
       numberOfVDWGridPoints.z = static_cast<std::int32_t>(perpendicular_widths.z / forceField.spacingVDWGrid + 0.5);
     }
 
-    std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
     for (const std::size_t& index : forceField.gridPseudoAtomIndices)
     {
       std::print(stream, "Generating an VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
@@ -2275,8 +2439,8 @@ void System::createInterpolationGrids(std::ostream& stream)
       std::print(stream, "===============================================================================\n");
 
       interpolationGrids[index] =
-          InterpolationEnergyGrid(framework->simulationBox, numberOfVDWGridPoints, forceField.interpolationScheme);
-      interpolationGrids[index]->makeInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
+          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin, numberOfVDWGridPoints, forceField.interpolationScheme);
+      interpolationGrids[index]->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
                                                        forceField, framework.value(), forceField.cutOffFrameworkVDW,
                                                        index);
 

@@ -142,7 +142,8 @@ void MolecularDynamics::createInterpolationGrids()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.createInterpolationGrids(stream);
+    system.createExternalFieldInterpolationGrid(stream);
+    system.createFrameworkInterpolationGrids(stream);
   }
 }
 

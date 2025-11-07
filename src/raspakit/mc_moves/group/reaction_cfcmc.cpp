@@ -67,7 +67,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(
   // Fix groupID
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.components[selectedComponent], system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
 
   if (!growData) return std::nullopt;

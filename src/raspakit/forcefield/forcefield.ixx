@@ -37,6 +37,7 @@ import pseudo_atom;
 import vdwparameters;
 import json;
 import simulationbox;
+
 /**
  * \brief Represents the force field used in simulations.
  *
@@ -69,15 +70,16 @@ export struct ForceField
   enum class PotentialEnergySurfaceType : std::size_t
   {
     None = 0,
-    SecondOrderPolynomialTestFunction = 1,
-    ThirdOrderPolynomialTestFunction = 2,
-    FourthOrderPolynomialTestFunction = 3,
-    FifthOrderPolynomialTestFunction = 4,
-    SixthOrderPolynomialTestFunction = 5,
-    ExponentialNonPolynomialTestFunction = 6,
-    MullerBrown = 7,
-    Eckhardt = 8,
-    GonzalezSchlegel = 9  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    GridFile = 1,
+    SecondOrderPolynomialTestFunction = 2,
+    ThirdOrderPolynomialTestFunction = 3,
+    FourthOrderPolynomialTestFunction = 4,
+    FifthOrderPolynomialTestFunction = 5,
+    SixthOrderPolynomialTestFunction = 6,
+    ExponentialNonPolynomialTestFunction = 7,
+    MullerBrown = 8,
+    Eckhardt = 9,
+    GonzalezSchlegel = 10  // https://sci-hub.se/https://doi.org/10.1063/1.465995
   };
 
   enum class InterpolationGridType : std::size_t
@@ -141,9 +143,6 @@ export struct ForceField
   bool computePolarization{false};   ///< Indicates if polarization effects are computed.
   bool omitInterPolarization{true};  ///< If true, omits polarization between molecules.
 
-  bool hasExternalField{false};
-  PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction};
-  double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
 
   std::vector<std::size_t> gridPseudoAtomIndices;
   double spacingVDWGrid{0.15};
@@ -153,6 +152,14 @@ export struct ForceField
   std::size_t numberOfGridTestPoints{100000};
   bool interpolationSchemeAuto{true};
   InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
+  bool writeFrameworkInterpolationGrids{ false };
+
+  PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction};
+  double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
+  bool useExternalFieldGrid{ true };
+  std::string externalFieldGridFileName{ "external_field.cube" };
+  int3 numberOfExternalFieldGridPoints{8, 8, 8};
+  bool writeExternalFieldInterpolationGrid{ false };
 
   /**
    * \brief Default constructor for the ForceField struct.

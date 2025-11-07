@@ -34,6 +34,7 @@ export namespace CBMC
 [[nodiscard]] ChainRetraceData retraceFlexibleMoleculeChainDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forcefield,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced) noexcept;

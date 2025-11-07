@@ -52,6 +52,7 @@ import bond_potential;
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced)
@@ -189,7 +190,8 @@ import bond_potential;
     // Compute the external-energies for the next-beads
     std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> externalEnergies =
         CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
-                                                    interpolationGrids, framework, frameworkAtomData, moleculeAtomData,
+                                                    interpolationGrids, externalFieldInterpolationGrid,
+                                                    framework, frameworkAtomData, moleculeAtomData,
                                                     cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
                                                     trialPositions, RosenBluthWeightTorsion, -1);
 
