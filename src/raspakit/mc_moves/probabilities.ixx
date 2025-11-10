@@ -8,6 +8,7 @@ module;
 #include <cstddef>
 #include <unordered_map>
 #include <vector>
+#include <string>
 #pragma push_macro("__SSE3__")
 #undef __SSE3__
 #include <random>
@@ -53,6 +54,8 @@ export struct MCMoveProbabilities
 
   // vector of unnormalized probabilities (not necessary due to std::discrete_distribution)
   std::unordered_map<MoveTypes, double> probabilities{};
+
+  std::string repr();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilities &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbabilities &p);

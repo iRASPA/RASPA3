@@ -157,10 +157,11 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<MCMoveProbabilities>(m, "MCMoveProbabilities")
       .def(pybind11::init<double, double, double, double, double, double, double, double, double, double, double,
-                          double, double, double, double, double, double, double, double>(),
+                          double, double, double, double, double, double, double, double, double>(),
            pybind11::arg("translationProbability") = 0.0, pybind11::arg("randomTranslationProbability") = 0.0,
            pybind11::arg("rotationProbability") = 0.0, pybind11::arg("randomRotationProbability") = 0.0,
            pybind11::arg("volumeChangeProbability") = 0.0, pybind11::arg("reinsertionCBMCProbability") = 0.0,
+           pybind11::arg("partialReinsertionCBMCProbability") = 0.0,
            pybind11::arg("identityChangeProbability") = 0.0, pybind11::arg("swapProbability") = 0.0,
            pybind11::arg("swapCBMCProbability") = 0.0, pybind11::arg("swapCFCMCProbability") = 0.0,
            pybind11::arg("swapCBCFCMCProbability") = 0.0, pybind11::arg("gibbsVolumeChangeProbability") = 0.0,
@@ -168,7 +169,9 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("widomProbability") = 0.0, pybind11::arg("widomCFCMCProbability") = 0.0,
            pybind11::arg("widomCBCFCMCProbability") = 0.0, pybind11::arg("parallelTemperingProbability") = 0.0,
            pybind11::arg("hybridMCProbability") = 0.0)
-      .def("join", &MCMoveProbabilities::join);
+      .def("join", &MCMoveProbabilities::join)
+      .def("__repr__", &MCMoveProbabilities::repr);
+
 
   pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
