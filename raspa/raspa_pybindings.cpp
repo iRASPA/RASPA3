@@ -5,10 +5,14 @@
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <print>
 #include <string>
 #include <tuple>
 #include <vector>
+#include <functional>
 #endif
+
+#define PYBIND11_DETAILED_ERROR_MESSAGES
 
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
@@ -290,9 +294,11 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
       .def("run", &MonteCarlo::run)
-      .def("initialize", &MonteCarlo::initialize)
-      .def("equilibrate", &MonteCarlo::equilibrate)
-      .def("production", &MonteCarlo::production)
+      .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
+      //.def("initialize", [](MonteCarlo& self, const pybind11::function& callback) {try {self.initialize(callback);} catch (...) {std::print("here\n");}},
+      //     pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
+      .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
+      .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
       .def("cycle", &MonteCarlo::performCycle)
       .def_readonly("systems", &MonteCarlo::systems)
       .def_readwrite("simulationStage", &MonteCarlo::simulationStage);

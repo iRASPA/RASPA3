@@ -145,7 +145,7 @@ std::vector<T> parseList(std::size_t size, const std::string& item, auto json)
       std::format("[Input reader (parseList)]: key '{}', value {} should be array of numbers\n", item, json.dump()));
 }
 
-InputReader::InputReader(const std::string inputFile)  // : inputStream(inputFile)
+InputReader::InputReader(const std::string inputFile)
 {
   if (!std::filesystem::exists(inputFile))
   {

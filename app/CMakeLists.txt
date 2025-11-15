@@ -62,12 +62,14 @@ elseif (APPLE)
         $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
         $ENV{HOMEBREW_PREFIX}/lib/libaec.a 
         $ENV{HOMEBREW_PREFIX}/lib/libsz.a 
-        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
-        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
-        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
         $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
         OpenCL::OpenCL
         ${ZLIB_LIBRARIES}
+        -static-libstdc++ 
+        -nostdlib++
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/unwind/libunwind.a 
         -lpthread)
 endif()
 

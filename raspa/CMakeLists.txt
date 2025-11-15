@@ -6,7 +6,7 @@ include(FetchContent)
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG        v2.10.4
+    GIT_TAG        v3.0.1
 )
 
 FetchContent_GetProperties(pybind11)
@@ -79,10 +79,12 @@ elseif (APPLE)
     $ENV{HOMEBREW_PREFIX}/lib/libsz.a
     voro++
     ${TORCH_LIBRARIES}
-    $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
+    $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
+    -static-libstdc++
+    -nostdlib++
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
-    $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
+    $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/unwind/libunwind.a
     OpenCL::OpenCL
     ${ZLIB_LIBRARIES}
     -lpthread)

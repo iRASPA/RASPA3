@@ -27,6 +27,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <functional>
 #endif
 
 module monte_carlo;
@@ -306,7 +307,7 @@ void MonteCarlo::performCycle()
   }
 }
 
-void MonteCarlo::initialize()
+void MonteCarlo::initialize(std::function<void()> call_back_function)
 {
   std::chrono::system_clock::time_point t1, t2;
 
@@ -348,6 +349,12 @@ void MonteCarlo::initialize()
           std::flush(stream);
         }
       }
+
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+       
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
@@ -395,7 +402,7 @@ void MonteCarlo::initialize()
   }
 }
 
-void MonteCarlo::equilibrate()
+void MonteCarlo::equilibrate(std::function<void()> call_back_function)
 {
   std::chrono::system_clock::time_point t1, t2;
 
@@ -433,6 +440,11 @@ void MonteCarlo::equilibrate()
           std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
           std::flush(stream);
         }
+
+      }
+      if(call_back_function)
+      {
+        call_back_function();
       }
     }
 
@@ -504,7 +516,7 @@ void MonteCarlo::equilibrate()
   }
 }
 
-void MonteCarlo::production()
+void MonteCarlo::production(std::function<void()> call_back_function)
 {
   double minBias{0uz};
   std::chrono::system_clock::time_point t1, t2;
@@ -600,6 +612,10 @@ void MonteCarlo::production()
           std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
           std::flush(stream);
         }
+      }
+      if(call_back_function)
+      {
+        call_back_function();
       }
     }
 

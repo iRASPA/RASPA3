@@ -153,4 +153,9 @@ int main(int argc, char* argv[])
     std::cerr << e.what();
     std::exit(-1);
   }
+  catch (...)
+  {
+    std::cerr << "Exception caught" << std::endl;
+    std::exit(-1);
+  }
 }

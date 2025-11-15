@@ -11,6 +11,7 @@ module;
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <functional>
 #endif
 
 export module monte_carlo;
@@ -163,7 +164,7 @@ export struct MonteCarlo
    * Sets up the simulation systems, writes initial output, and runs
    * the specified number of initialization cycles.
    */
-  void initialize();
+  void initialize(std::function<void()> call_back_function = []{});
 
   /**
    * \brief Performs the equilibration stage of the simulation.
@@ -171,14 +172,14 @@ export struct MonteCarlo
    * Equilibrates the systems by running the specified number of equilibration cycles,
    * and adjusts Wang-Landau biasing factors.
    */
-  void equilibrate();
+  void equilibrate(std::function<void()> call_back_function = []{});
 
   /**
    * \brief Performs the production stage of the simulation.
    *
    * Runs the main simulation cycles, collects statistics, and samples properties.
    */
-  void production();
+  void production(std::function<void()> call_back_function = []{});
 
   /**
    * \brief Generates the final output of the simulation.

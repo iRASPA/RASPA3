@@ -24,7 +24,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_APP": false
       }
@@ -85,7 +85,7 @@
         "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
         "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
@@ -124,7 +124,7 @@
         "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": false,
         "BUILD_MAC_PACKAGE": false,
@@ -163,7 +163,7 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{CONDA_PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-fopenmp=libgomp",
         "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
@@ -206,7 +206,7 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-fopenmp=libgomp",
         "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
@@ -247,7 +247,7 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": false,
@@ -326,7 +326,7 @@
         "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP": false,
@@ -364,7 +364,7 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-fopenmp=libgomp",
         "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
@@ -405,7 +405,7 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-L$env{PREFIX}/lib",
         "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
         "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -fomit-frame-pointer -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{PREFIX}/include -DNDEBUG -fvisibility=hidden -g -O3 -ffast-math -Wpsabi --param ggc-min-expand=20 --param ggc-min-heapsize=32768",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BLA_VENDOR": "Generic",
@@ -582,7 +582,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
@@ -627,7 +627,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
@@ -708,7 +708,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
@@ -747,7 +747,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
@@ -756,6 +756,7 @@
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP": true,
         "BUILD_CLI": true,
+        "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT" : true,
@@ -791,7 +792,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target arm64-apple-macos11.7 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target arm64-apple-macos11.7 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
@@ -800,6 +801,7 @@
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP" : true,
         "BUILD_CLI" : true,
+        "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": false,
         "BUILD_TESTING_MATHKIT" : true,
@@ -826,13 +828,14 @@
         "CMAKE_CXX_COMPILER": "g++-15",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP" : true,
         "BUILD_CLI" : true,
+        "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT" : true,
@@ -869,6 +872,7 @@
         "BUILD_MAC_PACKAGE": true,
         "BUILD_APP" : true,
         "BUILD_CLI" : true,
+        "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT" : true,
@@ -923,7 +927,7 @@
         "CXXFLAGS": "-stdlib=libc++"
       },
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "HDF5_ROOT": "$env{HOME}/software/",
@@ -945,7 +949,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "CMAKE_INSTALL_PREFIX": "$env{HOME}/raspa3",
         "CMAKE_C_COMPILER": "$env{HOME}/software/bin/clang",
         "CMAKE_CXX_COMPILER": "$env{HOME}/software/bin/clang++",
@@ -964,7 +968,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -975,7 +979,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -986,7 +990,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -997,7 +1001,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1008,7 +1012,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1019,7 +1023,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1030,7 +1034,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1041,7 +1045,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1052,7 +1056,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1063,7 +1067,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "4"
@@ -1075,7 +1079,7 @@
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1092,7 +1096,7 @@
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1108,7 +1112,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1119,7 +1123,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1130,7 +1134,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1146,7 +1150,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1162,7 +1166,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1180,7 +1184,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1198,7 +1202,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
@@ -1212,7 +1216,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
@@ -1226,7 +1230,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1237,7 +1241,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1248,7 +1252,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1264,7 +1268,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1280,7 +1284,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1296,7 +1300,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1312,7 +1316,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1328,7 +1332,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1344,7 +1348,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1360,7 +1364,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1376,7 +1380,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1387,7 +1391,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1398,7 +1402,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1409,7 +1413,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1420,7 +1424,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1436,7 +1440,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1452,7 +1456,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1468,7 +1472,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1484,7 +1488,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1495,7 +1499,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1506,7 +1510,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1517,7 +1521,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1528,7 +1532,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1539,7 +1543,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1550,7 +1554,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1561,7 +1565,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1572,7 +1576,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1583,7 +1587,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
@@ -1594,7 +1598,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
@@ -1606,7 +1610,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
@@ -1618,7 +1622,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
@@ -1630,7 +1634,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
@@ -1672,7 +1676,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-aarch64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1688,7 +1692,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-aarch64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1704,7 +1708,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-aarch64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
@@ -1720,7 +1724,7 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-aarch64",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "8"
