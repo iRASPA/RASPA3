@@ -792,7 +792,10 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
       std::print(stream, "    number of partial-reinsertion moves: {}\n", partialReinsertionFixedAtoms.size());
       for (std::size_t i = 0; i < partialReinsertionFixedAtoms.size(); ++i)
       {
-        std::print(stream, "        fixed atoms: {}\n", partialReinsertionFixedAtoms[i]);
+        std::stringstream result{};
+        std::copy(partialReinsertionFixedAtoms[i].begin(), partialReinsertionFixedAtoms[i].end(), 
+                  std::ostream_iterator<std::size_t>(result, " "));
+        std::print(stream, "        fixed atoms: {}\n", result.str());
       }
       std::print(stream, "\n");
     }
@@ -1498,8 +1501,11 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
   {
     if (!connectivityTable.checkIsConnectedSubgraph(config_move))
     {
+      std::stringstream result{};
+      std::copy(config_move.begin(), config_move.end(), 
+                  std::ostream_iterator<std::size_t>(result, " "));
       throw std::runtime_error(
-          std::format("Error in defined partial reinsertion ({} is not connected)\n", config_move));
+          std::format("Error in defined partial reinsertion ({} is not connected)\n", result.str()));
     }
   }
 
@@ -1517,10 +1523,14 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
       }
       else
       {
+        std::stringstream result{};
+        std::copy(config_move.begin(), config_move.end(),
+                  std::ostream_iterator<std::size_t>(result, " "));
+
         throw std::runtime_error(
             std::format("Error in defined partial reinsertion\n"
                         "{} does not satisfy requirement that all branches need to be grown at the same time\n",
-                        config_move));
+                        result.str()));
       }
     } while (beads_already_placed.size() < connectivityTable.numberOfBeads);
   }

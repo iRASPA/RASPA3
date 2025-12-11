@@ -53,7 +53,6 @@ import double3x3x3;
 import simd_quatd;
 import cubic;
 import atom;
-import input_reader;
 import framework;
 import component;
 import simulationbox;
@@ -103,12 +102,14 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_internal;
 import interactions_external_field;
+import interactions_external_field_grid;
 import equation_of_states;
 import thermostat;
 import json;
 import integrators;
 import integrators_compute;
 import integrators_update;
+import interpolation_energy_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -2243,7 +2244,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream)
     {
 
       // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
-      int3 numberOfExternalFieldGridPoints = InputReader::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
+      int3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
 
       externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
                                                       numberOfExternalFieldGridPoints, forceField.interpolationScheme);
