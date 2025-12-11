@@ -23,6 +23,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <string>
 #include <filesystem>
 #include "mdspanwrapper.h"
 #endif
@@ -49,13 +50,12 @@ import double3;
 import double3x3;
 import stringutils;
 import units;
-import input_reader;
 import polint;
 import atom;
 import framework;
 import simulationbox;
 import interactions_framework_molecule_grid;
-import interactions_external_field;
+import interactions_external_field_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -3541,11 +3541,107 @@ InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox
 {
 }
 
+const int3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
+{
+  int3 gridDims;
+  double ax, ay, az, bx, by, bz, cx, cy, cz;  // dummy variables currently
+
+  std::ifstream infile(filename);
+
+  if (!infile) {
+      throw std::runtime_error("Cannot open cube file: " + filename);
+  }
+
+  std::string line;
+
+  // skip comment lines
+  std::getline(infile, line);
+  std::getline(infile, line);
+
+  if (!std::getline(infile, line))
+  {
+      throw std::runtime_error("Invalid cube file (missing origin line): " + filename);
+  }
+
+  // read X basis vector coordinates
+  if (!std::getline(infile, line))
+      throw std::runtime_error("Invalid cube file (missing X grid line): " + filename);
+  {
+      std::istringstream iss(line);
+      if (!(iss >> gridDims.x >> ax >> ay >> az))
+          throw std::runtime_error("Invalid X grid line in cube: " + filename);
+  }
+
+  // Y vector
+  if (!std::getline(infile, line))
+      throw std::runtime_error("Invalid cube file (missing Y grid line): " + filename);
+  {
+      std::istringstream iss(line);
+      if (!(iss >> gridDims.y >> bx >> by >> bz))
+          throw std::runtime_error("Invalid Y grid line in cube: " + filename);
+  }
+
+  // Z vector
+  if (!std::getline(infile, line))
+      throw std::runtime_error("Invalid cube file (missing Z grid line): " + filename);
+  {
+      std::istringstream iss(line);
+      if (!(iss >> gridDims.z >> cx >> cy >> cz))
+          throw std::runtime_error("Invalid Z grid line in cube: " + filename);
+  }
+
+  if (gridDims.x < 0 && gridDims.y < 0 && gridDims.z < 0)
+  {
+    gridDims = {-1 * gridDims.x, -1 * gridDims.y, -1 * gridDims.z};
+  }
+  else
+  {
+    throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only poisitive, not mixed");
+  }
+
+  return gridDims;
+}
+
+/**
+ * \brief Parses external field grid based on the provided CUBE file.
+ *
+ * This function extracts parameters specific to external field grids,
+ * allowing to use this data in construction of external field interpolation grid in simulations.
+ *
+ * \param filename The name of the CUBE file containing the external field data.
+ * \return A pair containing the 3D grid of external field values and the grid dimensions.
+ */
+const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
+{
+  int3 gridDims = parseExternalFieldGridDimensions(filename);
+
+  std::ifstream infile(filename);
+
+  // skip comments and already read lines
+  std::string line;
+  for (int i = 0; i < 6; ++i) {
+      std::getline(infile, line);
+  }
+
+  std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
+  double value{};
+  for (int i = 0; i < gridDims.x * gridDims.y * gridDims.z; i++)
+  {
+    if (!(infile >> value)){
+      throw std::runtime_error("Unexpected end of cube data: " + filename);
+    }
+    // TODO: add options for different input units
+    gridFlat[i] = value * Units::KelvinToEnergy;
+  }
+
+  return gridFlat;
+}
+
 void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& stream, const ForceField& forceField, const SimulationBox &simulationBox)
 {
   if (forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile)
   {
-    data = InputReader::parseExternalFieldGridCube(forceField.externalFieldGridFileName);
+    data = InterpolationEnergyGrid::parseExternalFieldGridCube(forceField.externalFieldGridFileName);
   }
   else
   {
