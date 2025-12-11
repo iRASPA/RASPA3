@@ -18,6 +18,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <string>
 #include "mdspanwrapper.h"
 #endif
 
@@ -66,6 +67,19 @@ export struct InterpolationEnergyGrid
   std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;
 
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField);
+
+  static const int3 parseExternalFieldGridDimensions(const std::string& filename);
+
+  /**
+   * \brief Parses external field grid based on the provided CUBE file.
+   *
+   * This function extracts parameters specific to external field grids,
+   * allowing to use this data in construction of external field interpolation grid in simulations.
+   *
+   * \param filename The name of the CUBE file containing the external field data.
+   * \return A pair containing the 3D grid of external field values and the grid dimensions.
+   */
+  static const std::vector<double> parseExternalFieldGridCube(const std::string& filename);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InterpolationEnergyGrid &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InterpolationEnergyGrid &s);
