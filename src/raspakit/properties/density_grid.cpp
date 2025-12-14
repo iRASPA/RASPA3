@@ -49,30 +49,141 @@ import component;
 // Gaussian cube file are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
 
+namespace
+{
+struct AxisStencil
+{
+  std::size_t left;
+  std::size_t right;
+  double wLeft;
+  double wRight;
+};
+
+inline AxisStencil equitableAxis(double f, std::size_t n)
+{
+  f -= std::floor(f);
+
+  const double g = static_cast<double>(n) * f;
+  const long idx = static_cast<long>(std::ceil(g));
+  const double part = g - std::floor(g);
+
+  AxisStencil out{};
+
+  if (part > 0.5)
+  {
+    if (idx >= static_cast<long>(n))
+    {
+      out.left = n - 1;
+      out.right = 0;
+    }
+    else
+    {
+      out.left = static_cast<std::size_t>(idx - 1);
+      out.right = static_cast<std::size_t>(idx);
+    }
+    out.wLeft = 1.5 - part;
+    out.wRight = part - 0.5;
+  }
+  else
+  {
+    if (idx <= 1)
+    {
+      out.left = n - 1;
+      out.right = 0;
+    }
+    else
+    {
+      out.left = static_cast<std::size_t>(idx - 2);
+      out.right = static_cast<std::size_t>(idx - 1);
+    }
+    out.wLeft = 0.5 - part;
+    out.wRight = 0.5 + part;
+  }
+
+  out.wLeft = std::max(0.0, out.wLeft);
+  out.wRight = std::max(0.0, out.wRight);
+
+  return out;
+}
+
+inline void depositEquitable(std::mdspan<double, std::dextents<std::size_t, 5>> grid,
+                             std::size_t comp, std::size_t channel, double3 f, const double3 gridSize)
+{
+  const std::size_t Nx = static_cast<std::size_t>(gridSize.x);
+  const std::size_t Ny = static_cast<std::size_t>(gridSize.y);
+  const std::size_t Nz = static_cast<std::size_t>(gridSize.z);
+
+  const AxisStencil A = equitableAxis(f.x, Nx);
+  const AxisStencil B = equitableAxis(f.y, Ny);
+  const AxisStencil C = equitableAxis(f.z, Nz);
+
+  grid[comp, channel, A.left,  B.left,  C.left]  += A.wLeft  * B.wLeft  * C.wLeft;
+  grid[comp, channel, A.right, B.left,  C.left]  += A.wRight * B.wLeft  * C.wLeft;
+  grid[comp, channel, A.left,  B.right, C.left]  += A.wLeft  * B.wRight * C.wLeft;
+  grid[comp, channel, A.left,  B.left,  C.right] += A.wLeft  * B.wLeft  * C.wRight;
+  grid[comp, channel, A.right, B.right, C.left]  += A.wRight * B.wRight * C.wLeft;
+  grid[comp, channel, A.right, B.left,  C.right] += A.wRight * B.wLeft  * C.wRight;
+  grid[comp, channel, A.left,  B.right, C.right] += A.wLeft  * B.wRight * C.wRight;
+  grid[comp, channel, A.right, B.right, C.right] += A.wRight * B.wRight * C.wRight;
+}
+}
+
 void PropertyDensityGrid::sample(const std::optional<Framework> &framework, const SimulationBox &simulationBox,
                                  std::span<const Atom> moleculeAtoms, std::size_t currentCycle)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
-  std::mdspan<double, std::dextents<std::size_t, 4>> data_cell(
-      grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  std::mdspan<double, std::dextents<std::size_t, 4>> data_unitcell(
-      grid_unitcell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  const std::size_t nChannels = numberOfChannels;
+
+  std::mdspan<double, std::dextents<std::size_t, 5>> data_cell(
+      grid_cell.data(), numberOfComponents, nChannels, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<std::size_t, 5>> data_unitcell(
+      grid_unitcell.data(), numberOfComponents, nChannels, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for (std::span<const Atom>::iterator it = moleculeAtoms.begin(); it != moleculeAtoms.end(); ++it)
   {
     if (it->isFractional) continue;
-    std::size_t comp = static_cast<std::size_t>(it->componentId);
-    double3 pos = it->position;
-    double3 s = (simulationBox.inverseCell * pos).fract();
-    data_cell[comp, static_cast<std::size_t>(s.x * gridSize.x), static_cast<std::size_t>(s.y * gridSize.y),
-              static_cast<std::size_t>(s.z * gridSize.z)]++;
+
+    const std::size_t comp = static_cast<std::size_t>(it->componentId);
+
+    // Channel selection:
+    // - If DensityGridPseudoAtomsList is empty: accumulate ALL atoms for the component into channel 0.
+    // - If it is non-empty: accumulate only atoms whose pseudo atom type is in the list, into the
+    //   corresponding channel.
+    std::size_t channel = 0uz;
+    if (!densityGridPseudoAtomsList.empty())
+    {
+      auto found = std::find(densityGridPseudoAtomsList.begin(), densityGridPseudoAtomsList.end(),
+                             static_cast<std::size_t>(it->type));
+      if (found == densityGridPseudoAtomsList.end()) continue;
+      channel = static_cast<std::size_t>(std::distance(densityGridPseudoAtomsList.begin(), found));
+    }
+
+    const double3 pos = it->position;
+
+    const double3 s = (simulationBox.inverseCell * pos).fract();
+    if (binningMode == Binning::Standard)
+    {
+      data_cell[comp, channel, static_cast<std::size_t>(s.x * gridSize.x), static_cast<std::size_t>(s.y * gridSize.y),
+                static_cast<std::size_t>(s.z * gridSize.z)]++;
+    }
+    else
+    {
+      depositEquitable(data_cell, comp, channel, s, gridSize);
+    }
 
     if (framework.has_value())
     {
-      double3 t = (framework->simulationBox.inverseCell * pos).fract();
-      data_unitcell[comp, static_cast<std::size_t>(t.x * gridSize.x), static_cast<std::size_t>(t.y * gridSize.y),
-                    static_cast<std::size_t>(t.z * gridSize.z)]++;
+      const double3 t = (framework->simulationBox.inverseCell * pos).fract();
+      if (binningMode == Binning::Standard)
+      {
+        data_unitcell[comp, channel, static_cast<std::size_t>(t.x * gridSize.x), static_cast<std::size_t>(t.y * gridSize.y),
+                      static_cast<std::size_t>(t.z * gridSize.z)]++;
+      }
+      else
+      {
+        depositEquitable(data_unitcell, comp, channel, t, gridSize);
+      }
     }
   }
 
@@ -87,14 +198,36 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
 
   std::filesystem::create_directory("density_grids");
 
-  std::mdspan<double, std::dextents<std::size_t, 4>> data_cell(
-      grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  std::mdspan<double, std::dextents<std::size_t, 4>> data_unitcell(
-      grid_unitcell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  const std::size_t nChannels = numberOfChannels;
+
+  std::mdspan<double, std::dextents<std::size_t, 5>> data_cell(
+      grid_cell.data(), numberOfComponents, nChannels, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<std::size_t, 5>> data_unitcell(
+      grid_unitcell.data(), numberOfComponents, nChannels, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for (std::size_t i = 0; i < components.size(); ++i)
   {
-    std::ofstream ostream(std::format("density_grids/grid_component_{}.s{}.cube", components[i].name, systemId));
+    for (std::size_t c = 0; c < nChannels; ++c)
+    {
+      std::string channelName;
+      if (!densityGridPseudoAtomsList.empty())
+      {
+        const std::size_t pseudoType = densityGridPseudoAtomsList[c];
+        channelName = forceField.pseudoAtoms[pseudoType].name;
+      }
+
+      std::vector<double>::iterator it_begin =
+          grid_cell.begin() + static_cast<std::vector<double>::difference_type>(((i * nChannels) + c) * totalGridSize);
+      std::vector<double>::iterator it_end = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
+      std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+      if (maximum == it_end || *maximum <= 0.0)
+      {
+        continue;
+      }
+      std::ofstream ostream(
+          channelName.empty()
+              ? std::format("density_grids/grid_cell_component_{}.s{}.cube", components[i].name, systemId)
+              : std::format("density_grids/grid_cell_component_{}_{}.s{}.cube", components[i].name, channelName, systemId));
     const double3x3 cell = simulationBox.cell;
 
     std::vector<Atom> frameworkAtoms = framework.has_value() ? framework->atoms : std::vector<Atom>{};
@@ -119,21 +252,13 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
       std::print(ostream, "{} {} {} {} {}\n", atomicNumber, charge, pos.x, pos.y, pos.z);
     }
 
-    std::vector<double>::iterator it_begin =
-        grid_cell.begin() + std::distance(&data_cell[0, 0, 0, 0], &data_cell[i, 0, 0, 0]);
-    std::vector<double>::iterator it_end = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
-
     //[[maybe_unused]]std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
-    double normalization{1.0};
+      double normalization{1.0};
     switch (normType)
     {
       case Normalization::Max:
       {
-        std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
-        if (maximum != it_end)
-        {
-          normalization = static_cast<double>(1.0 / *maximum);
-        }
+        normalization = (*maximum > 0.0) ? (1.0 / *maximum) : 1.0;
         break;
       }
       case Normalization::NumberDensity:
@@ -144,9 +269,10 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
       }
     }
 
-    for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
-    {
-      std::print(ostream, "{}\n", *it * normalization);
+      for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
+      {
+        std::print(ostream, "{}\n", *it * normalization);
+      }
     }
   }
 
@@ -154,8 +280,28 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
   {
     for (std::size_t i = 0; i < components.size(); ++i)
     {
-      std::ofstream ostream(
-          std::format("density_grids/grid_unitcell_component_{}.s{}.cube", components[i].name, systemId));
+      for (std::size_t c = 0; c < nChannels; ++c)
+      {
+        std::string channelName;
+        if (!densityGridPseudoAtomsList.empty())
+        {
+          const std::size_t pseudoType = densityGridPseudoAtomsList[c];
+          channelName = forceField.pseudoAtoms[pseudoType].name;
+        }
+
+        std::vector<double>::iterator it_begin =
+            grid_unitcell.begin() + static_cast<std::vector<double>::difference_type>(((i * nChannels) + c) * totalGridSize);
+        std::vector<double>::iterator it_end =
+            it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
+        std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+        if (maximum == it_end || *maximum <= 0.0)
+        {
+          continue;
+        }
+        std::ofstream ostream(
+            channelName.empty()
+                ? std::format("density_grids/grid_unitcell_component_{}.s{}.cube", components[i].name, systemId)
+                : std::format("density_grids/grid_unitcell_component_{}_{}.s{}.cube", components[i].name, channelName, systemId));
 
       std::vector<Atom> frameworkAtoms = framework->unitCellAtoms;
       double3x3 unitCell = framework->simulationBox.cell;
@@ -180,23 +326,15 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
         std::print(ostream, "{} {} {} {} {}\n", atomicNumber, charge, pos.x, pos.y, pos.z);
       }
 
-      std::vector<double>::iterator it_begin =
-          grid_unitcell.begin() + std::distance(&data_unitcell[0, 0, 0, 0], &data_unitcell[i, 0, 0, 0]);
-      std::vector<double>::iterator it_end =
-          it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-      double normalization{1.0};
+        double normalization{1.0};
       switch (normType)
       {
         case Normalization::Max:
         {
-          std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
-          if (maximum != it_end)
-          {
-            normalization = static_cast<double>(1.0 / *maximum);
-          }
-          break;
-        }
+        normalization = (*maximum > 0.0) ? (1.0 / *maximum) : 1.0;
+        break;
+      }
         case Normalization::NumberDensity:
         {
           double3 numberOfUnitCells = simulationBox.lengths() / framework->simulationBox.lengths();
@@ -207,9 +345,10 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
         }
       }
 
-      for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
-      {
-        std::print(ostream, "{}\n", *it * normalization);
+        for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
+        {
+          std::print(ostream, "{}\n", *it * normalization);
+        }
       }
     }
   }
@@ -230,7 +369,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << temp.sampleEvery;
   archive << temp.writeEvery;
 
+  archive << temp.densityGridPseudoAtomsList;
+
   archive << temp.normType;
+  archive << temp.binningMode;
   archive << temp.numberOfSamples;
 
 #if DEBUG_ARCHIVE
@@ -262,17 +404,38 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
   archive >> temp.sampleEvery;
   archive >> temp.writeEvery;
 
+  if (versionNumber >= 3)
+  {
+    archive >> temp.densityGridPseudoAtomsList;
+  }
+  else
+  {
+    temp.densityGridPseudoAtomsList.clear();
+  }
+
+  temp.numberOfChannels =
+      temp.densityGridPseudoAtomsList.empty() ? 1uz : temp.densityGridPseudoAtomsList.size();
+
   archive >> temp.normType;
+  if (versionNumber >= 4)
+  {
+    archive >> temp.binningMode;
+  }
+  else
+  {
+    temp.binningMode = PropertyDensityGrid::Binning::Standard;
+  }
   archive >> temp.numberOfSamples;
 
-#if DEBUG_ARCHIVE
+  #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("PropertyDensityGrid: Error in binary restart\n"));
+    throw std::runtime_error(
+        std::format("PropertyDensityGrid: Error in binary restart\n"));
   }
-#endif
+  #endif
 
   return archive;
 }

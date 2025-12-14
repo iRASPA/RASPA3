@@ -1392,9 +1392,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
           }
 
-          systems[systemId].propertyDensityGrid = PropertyDensityGrid(
+          
+          PropertyDensityGrid::Binning binning = PropertyDensityGrid::Binning::Standard;
+          if (value.contains("DensityGridBinning") && value["DensityGridBinning"].is_string())
+          {
+            std::string binningString = value["DensityGridBinning"].get<std::string>();
+            if (caseInSensStringCompare(binningString, "Equitable"))
+            {
+              binning = PropertyDensityGrid::Binning::Equitable;
+            }
+            else if (caseInSensStringCompare(binningString, "Standard"))
+            {
+              binning = PropertyDensityGrid::Binning::Standard;
+            }
+            else
+            {
+              throw std::runtime_error(std::format("Error: DensityGridBinning must be 'Standard' or 'Equitable', got '{}'",
+                                                   binningString));
+            }
+          }
+
+systems[systemId].propertyDensityGrid = PropertyDensityGrid(
               systems[systemId].framework ? 1 : 0, systems[systemId].components.size(), densityGridSize,
-              sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm);
+              sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm, binning);
         }
       }
 
@@ -1684,6 +1704,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "DensityGridSize",
     "DensityGridPseudoAtomsList",
     "DensityGridNormalization",
+    "DensityGridBinning",
     "OutputPDBMovie",
     "SampleMovieEvery",
     "WriteLammpsData",
