@@ -44,16 +44,23 @@ export struct PropertyDensityGrid
     NumberDensity = 1
   };
 
+  enum class Binning : std::size_t
+  {
+    Standard = 0,
+    Equitable = 1
+  };
+
   PropertyDensityGrid() {}
 
   PropertyDensityGrid(std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints,
                       std::size_t sampleEvery, std::size_t writeEvery,
-                      std::vector<std::size_t> densityGridPseudoAtomsList, Normalization normType)
+                      std::vector<std::size_t> densityGridPseudoAtomsList, Normalization normType, Binning binningMode)
       : numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
-        grid_cell(numberOfComponents *
+        numberOfChannels((densityGridPseudoAtomsList.empty() ? 1uz : densityGridPseudoAtomsList.size())),
+        grid_cell(numberOfComponents * numberOfChannels *
                   static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-        grid_unitcell(numberOfComponents *
+        grid_unitcell(numberOfComponents * numberOfChannels *
                       static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         totalGridSize(static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         numberOfGridPoints(numberOfGridPoints),
@@ -62,14 +69,16 @@ export struct PropertyDensityGrid
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         densityGridPseudoAtomsList(densityGridPseudoAtomsList),
-        normType(normType)
+        normType(normType),
+        binningMode(binningMode)
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{4};
 
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
+  std::size_t numberOfChannels{1};
   std::vector<double> grid_cell;
   std::vector<double> grid_unitcell;
   std::size_t totalGridSize;
@@ -79,6 +88,7 @@ export struct PropertyDensityGrid
   std::size_t writeEvery;
   std::vector<std::size_t> densityGridPseudoAtomsList;
   Normalization normType{Normalization::Max};
+  Binning binningMode{Binning::Standard};
   std::size_t numberOfSamples{0};
 
   void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,

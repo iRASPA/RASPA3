@@ -1,0 +1,48 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 100000,
+  "PrintEvery" : 10000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "IRMOF-1",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "HeliumVoidFraction" : 0.81,
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1e6,
+      "ComputeDensityGrid" : true,
+      "SampleDensityGridEvery" : 10,
+      "WriteDensityGridEvery" : 10000,
+      "DensityGridSize" : [128, 128, 128],
+      "DensityGridPseudoAtomsList" : ["C_co2", "O_co2"]
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "CO2",
+      "MolFraction" : 0.25,
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "methane",
+      "MolFraction" : 0.75,
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

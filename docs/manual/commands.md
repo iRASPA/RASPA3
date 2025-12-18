@@ -10,6 +10,8 @@
   * [Simulation duration](#simulation-duration)
   * [Restart and crash-recovery](#restart-and-crash-recovery)
   * [Printing options](#printing-options)
+  * [Parameter tuning](#parameter-tuning)
+  * [Systems & Components](#systems-components)
 * [System options](#system-options)
   * [Operating conditions and thermostat/barostat-parameters](#operating-conditions-and-thermostatbarostat-parameters)
   * [Box/Framework options](#boxframework-options)
@@ -31,7 +33,7 @@
 
 ----------------------------------------------------------------------------------
 
-## Input sections
+## Input sections <a name="input-sections"></a>
 
 ```json
 {
@@ -71,9 +73,9 @@
 
 ----------------------------------------------------------------------------------
 
-## General options
+## General options <a name="general-options"></a>
 
-### Simulation types
+### Simulation types <a name="simulation-types"></a>
 
 -   `"SimulationType" : "MonteCarlo"`
     Starts the Monte Carlo part of `RASPA`. The particular ensemble is
@@ -84,7 +86,7 @@
     Starts the Molecular Dynamics part of `RASPA`. The ensemble must be
     explicitly specified.
 
-### Simulation duration
+### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfCycles" : integer`
     The number of cycles for the production run. For Monte Carlo a cycle
@@ -107,7 +109,7 @@
     the equilibration-phase is used to measure the biasing factors, using
     Wang-Landau estimation.
 
-### Restart and crash-recovery
+### Restart and crash-recovery <a name="restart-and-crash-recovery"></a>
 
 -   `"RestartFile" : boolean`
     Reads the positions, velocities, and force from the directory
@@ -129,14 +131,14 @@
     The output frequency (i.e. every `int` cycles) of writing the
     crash-recovery file.
 
-### Printing options
+### Printing options  <a name="printing-options"></a>
 
 -   `"PrintEvery" : integer`
     Prints the loadings (when a framework is present) and energies every
     `int` cycles. For MD information like energy conservation and
     stress are printed.
 
-### Parameter tuning
+### Parameter tuning  <a name="parameter-tuning"></a>
 
 -   `"RescaleWangLandauEvery" : integer`
     Determines the frequency of updates for optimizing the λ parameter in
@@ -149,7 +151,7 @@
     Translation, the maximum displacement is optimized, for rotation the
     maximum angle, for hybrid MC the maximum timestep etc.
 
-### Systems & Components
+### Systems & Components <a name="systems-components"></a>
 
 -   `"Systems" : list`
     List of system settings, each containing a dictionary with possible
@@ -163,9 +165,9 @@
 
 ----------------------------------------------------------------------------------
 
-## System options
+## System options <a name="system-options"></a>
 
-### Operating conditions and thermostat/barostat-parameters
+### Operating conditions and thermostat/barostat-parameters  <a name="operating-conditions-and-thermostatbarostat-parameters"></a>
 
 -   `"ExternalTemperature" : floating-point-number`
     The external temperature in Kelvin for the system. From this, the system
@@ -184,7 +186,7 @@
     The time scale on which the system thermostat evolves. Default:
     `0.15`
 
-### Box/Framework options
+### Box/Framework options  <a name="boxframework-options"></a>
 
 -   `"Type" : string`
     Sets the system type. The type string can be:
@@ -238,7 +240,7 @@
         scheme of Wilmer and Snurr. The charges are symmetrized over the
         asymmetric atoms.
 
-### Force field definitions
+### Force field definitions  <a name="force-field-definitions"></a>
 
 -   `"ForceField" : string`
     Reads in the force field file `string.json`, Note that if this file
@@ -289,7 +291,7 @@
     -   `"Ewald"`
         Switches on the Ewald summation for the charge calculation.
 
-### System `MC`-moves
+### System `MC`-moves  <a name="system-mc-moves"></a>
 
 -   `"VolumeChangeProbability" : floating-point-number`
     The probability per cycle to attempt a volume-change. Rigid
@@ -309,7 +311,7 @@
     move propagates the Hamiltonian via a short Molecular Dynamics
     simulation and accepts the new state based on the drift.
 
-### Molecular dynamics parameters
+### Molecular dynamics parameters  <a name="molecular-dynamics-parameters"></a>
 
 -   `"TimeStep" : floating-point-number`
     The time step in picoseconds for `MD` integration. Default value:
@@ -328,9 +330,9 @@
         are constant. Instantaneous values for the temperature are
         fluctuating.
 
-### Options to measure properties
+### Options to measure properties  <a name="options-to-measure-properties"></a>
 
-#### Output pdb-movies
+#### Output pdb-movies  <a name="output-pdb-movies"></a>
 
 `"OutputPDBMovie" : boolean`
 
@@ -340,7 +342,7 @@ Output is written to the directory `movies`.
 -   `"SampleMovieEvery" : integer`
     Sample the movie every `int` cycles. Default: `1`
 
-#### Histogram of the energy
+#### Histogram of the energy  <a name="histogram-of-the-energy"></a>
 
 
 `"ComputeEnergyHistogram" : boolean`
@@ -369,7 +371,7 @@ Output is written to the directory `energy_histogram`.
 -   `"UpperLimitEnergyHistogram" : floating-point-number`
     The upper limit of the histogram. Default: `1000`
 
-#### Histogram of the number of molecules
+#### Histogram of the number of molecules  <a name="histogram-of-the-number-of-molecules"></a>
 
 
 `"ComputeNumberOfMoleculesHistogram" : boolean`
@@ -392,7 +394,7 @@ Output is written to the directory `number_of_molecules_histogram`.
 -   `"UpperLimitNumberOfMoleculesHistogram" : floating-point-number`
     The upper limit of the histograms. Default: `200`
 
-#### Radial Distribution Function (RDF) force-based
+#### Radial Distribution Function (RDF) force-based  <a name="radial-distribution-function-rdf-force-based"></a>
 
 
 `"ComputeRDF" : boolean`
@@ -413,7 +415,7 @@ Output is written to the directory `rdf`.
 -   `"UpperLimitRDF" : floating-point-number`
     The upper limit of the rdf. Default: `15.0`
 
-#### Radial Distribution Function (RDF) conventional
+#### Radial Distribution Function (RDF) conventional  <a name="radial-distribution-function-rdf-conventional"></a>
 
 
 `"ComputeConventionalRDF" : boolean`
@@ -434,7 +436,7 @@ Output is written to the directory `conventional_rdf`.
 -   `"UpperLimitConventionalRDF" : floating-point-number`
     The upper limit of the rdf. Default: `15.0`
 
-#### Mean-Squared Displacement (MSD) order-N
+#### Mean-Squared Displacement (MSD) order-N  <a name="mean-squared-displacement-msd-order-n"></a>
 
 
 `"ComputeMSD" : boolean`
@@ -452,7 +454,7 @@ Output is written to the directory `msd`.
 -   `"NumberOfBlockElementsMSD" : integer`
     The number of elements per block of the msd. Default: `25.0`
 
-#### Density grids
+#### Density grids  <a name="density-grids"></a>
 
 
 `"ComputeDensityGrid" : boolean`
@@ -470,11 +472,24 @@ Output is written to the directory `density_grids`.
 -   `"DensityGridSize" : [integer, integer, integer]`
     Sets the size of the density grids. Default: `[128, 128, 128]`
 
+-   `"DensityGridBinning" : string`
+    Sets the binning strategy used to accumulate the density grids: 
+
+    -   `"Standard"`\ 
+        Uses conventional histogram binning, where each particle contributes fully to the voxel in which it resides. Default: `"Standard"`
+
+    -   `"Equitable"`\ 
+        Uses equitable binning, where each particle contributes fractionally to neighboring voxels based on its position. This produces smoother density grids and reduces discretization artifacts, especially for fine grids.
+
+-   `"DensityGridPseudoAtomsList" : [string, string, ...]`
+Restricts the density grid calculation to a subset of pseudo atoms belonging to a given component. When specified, separate density grids are generated for each listed pseudo atom type instead of a single combined grid for the component.
+If not specified, all pseudo atoms of the component are accumulated into a single density grid. This option is useful for resolving atom specific adsorption behaviour within a molecule, for example separating carbon and oxygen sites in CO<sub>2.
+
 ----------------------------------------------------------------------------------
 
-## Component options
+## Component options  <a name="component-options"></a>
 
-### Component properties
+### Component properties  <a name="component-properties"></a>
 
 -   `"Name" : string`
     The descriptive name of the component.
@@ -541,7 +556,7 @@ Output is written to the directory `density_grids`.
     Boolean switch to determine whether to do a thermodynamic integration
     over dU/dλ for the fractional component.
 
-### Component **`MC`**-moves
+### Component **`MC`**-moves  <a name="component-mc-moves"></a>
 
 -   `"TranslationProbability" : floating-point-number`
     The relative probability to attempt a translation move for the

@@ -1,0 +1,37 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 3000000,
+  "NumberOfInitializationCycles" : 100000,
+  "PrintEvery" : 10000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "CALF-20",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature": 296.0,
+      "ExternalPressure": 1000000.0,
+      "CutOffVDW": 6.25,
+      "ComputeDensityGrid" : true,
+      "SampleDensityGridEvery" : 10,
+      "WriteDensityGridEvery" : 10000,
+      "DensityGridSize" : [120, 132, 128],
+      "DensityGridPseudoAtomsList" : ["Cx", "Ox"],
+      "DensityGridBinning": "Equitable"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "CO2",
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
+    }
+  ]
+}
