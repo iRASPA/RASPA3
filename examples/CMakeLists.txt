@@ -42,6 +42,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/3_gibbs/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/4_gibbs_cfcmc/run)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/1_mc_adsorption_binary_mixture_co2_ch4_in_irmof_1_split_density_by_site/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/2_mc_adsorption_of_methane_in_mfi_standard_binning/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/3_mc_adsorption_of_methane_in_mfi_equitable_binning/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/4_mc_adsorption_of_co2_in_calf_20_methyl_split_density_equitable_binning/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/5_mc_adsorption_of_c2h2_in_cpl_1_split_density_equitable_binning/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/6_mc_adsorption_of_co2_in_calf_20_split_density_equitable_binning/run)
+
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples
@@ -89,6 +96,16 @@ install(DIRECTORY reduced_units DESTINATION share/raspa3/examples
         PERMISSIONS OWNER_READ GROUP_READ)
 
 install(DIRECTORY reduced_units DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" 
+        PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY density_grids DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" EXCLUDE
+        PERMISSIONS OWNER_READ GROUP_READ)
+
+install(DIRECTORY density_grids DESTINATION share/raspa3/examples 
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
