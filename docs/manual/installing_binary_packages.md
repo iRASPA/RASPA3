@@ -92,8 +92,8 @@ tested on: arm64v8/ubuntu:25.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_arm64_ubuntu-25.deb
-apt-get install ./raspa_3.0.16_arm64_ubuntu-25.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_arm64_ubuntu-25.deb
+apt-get install ./raspa_3.0.18_arm64_ubuntu-25.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -103,8 +103,8 @@ tested on: arm64v8/ubuntu:24.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_arm64_ubuntu-24.deb
-apt-get install ./raspa_3.0.16_arm64_ubuntu-24.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_arm64_ubuntu-24.deb
+apt-get install ./raspa_3.0.18_arm64_ubuntu-24.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -114,8 +114,8 @@ tested on: arm64v8/debian:13
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_arm64_debian-13.deb
-apt-get install ./raspa_3.0.16_arm64_debian-13.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_arm64_debian-13.deb
+apt-get install ./raspa_3.0.18_arm64_debian-13.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -130,8 +130,8 @@ tested on: ubuntu:25.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-25-core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-25-core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-25-core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-25-core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -142,8 +142,8 @@ tested on: ubuntu:25.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-25_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-25_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-25_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-25_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -154,8 +154,8 @@ tested on: ubuntu:24.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-24-core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-24-core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-24-core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-24-core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -166,8 +166,8 @@ tested on: ubuntu:24.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-24_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-24_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-24_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-24_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -178,8 +178,8 @@ tested on: ubuntu:22.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-22-core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-22-core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-22-core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-22-core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -190,8 +190,8 @@ tested on: ubuntu:22.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-22_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-22_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-22_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-22_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -202,8 +202,8 @@ tested on: ubuntu:20.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-20-core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-20-core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-20-core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-20-core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -214,8 +214,8 @@ tested on: ubuntu:20.04
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_ubuntu-20_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_ubuntu-20_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_ubuntu-20_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_ubuntu-20_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -226,8 +226,8 @@ tested on: debian:13
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-13_core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_debian-13_core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-13_core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_debian-13_core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -238,8 +238,8 @@ tested on: debian:13
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-13_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_debian-13_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-13_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_debian-13_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -250,8 +250,8 @@ tested on: debian:12
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-12_core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_debian-12_core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-12_core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_debian-12_core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -262,8 +262,8 @@ tested on: debian:12
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-12_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_debian-12_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-12_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_debian-12_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -274,8 +274,8 @@ tested on: debian:11
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-11_core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_debian-11_core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-11_core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_debian-11_core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -286,8 +286,8 @@ tested on: debian:11
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-11_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_debian-11_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-11_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_debian-11_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -299,8 +299,8 @@ workaround: echo "deb http://archive.debian.org/debian stretch main contrib non-
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-10_core-avx2.deb
-apt-get install ./raspa_3.0.16_amd64_debian-10_core-avx2.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-10_core-avx2.deb
+apt-get install ./raspa_3.0.18_amd64_debian-10_core-avx2.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -312,8 +312,8 @@ workaround: echo "deb http://archive.debian.org/debian stretch main contrib non-
 ```
 apt update
 apt install wget 
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa_3.0.16_amd64_debian-10_skylake-avx512.deb
-apt-get install ./raspa_3.0.16_amd64_debian-10_skylake-avx512.deb
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa_3.0.18_amd64_debian-10_skylake-avx512.deb
+apt-get install ./raspa_3.0.18_amd64_debian-10_skylake-avx512.deb
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -324,8 +324,8 @@ tested on: archlinux:latest
 ```
 pacman -Sy
 pacman -S wget
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1-x86_64-core-avx2.pkg.tar.zst
-pacman -U ./raspa-3.0.16-1-x86_64-core-avx2.pkg.tar.zst
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1-x86_64-core-avx2.pkg.tar.zst
+pacman -U ./raspa-3.0.18-1-x86_64-core-avx2.pkg.tar.zst
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -336,8 +336,8 @@ tested on: archlinux:latest
 ```
 pacman -Sy
 pacman -S wget
-wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1-x86_64-skylake-avx512.pkg.tar.zst
-pacman -U ./raspa-3.0.16-1-x86_64-skylake-avx512.pkg.tar.zst
+wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1-x86_64-skylake-avx512.pkg.tar.zst
+pacman -U ./raspa-3.0.18-1-x86_64-skylake-avx512.pkg.tar.zst
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -346,7 +346,7 @@ pacman -U ./raspa-3.0.16-1-x86_64-skylake-avx512.pkg.tar.zst
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: almalinux/9-base
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.almalinux.el9.x86_64.core-avx2.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.almalinux.el9.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -355,7 +355,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: almalinux/9-base
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.almalinux.el9.x86_64.skylake-avx512.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.almalinux.el9.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -364,7 +364,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: almalinux/8-base
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.almalinux.el8.x86_64.core-avx2.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.almalinux.el8.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -373,7 +373,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: almalinux/8-base
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.almalinux.el8.x86_64.skylake-avx512.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.almalinux.el8.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -382,7 +382,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: rockylinux/rockylinux:9
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el9.x86_64.core-avx2.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el9.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -391,7 +391,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: rockylinux/rockylinux:9
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el9.x86_64.skylake-avx512.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el9.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -400,7 +400,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: rockylinux/rockylinux:8
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el8.x86_64.core-avx2.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el8.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -409,7 +409,7 @@ yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3
 tested on: rockylinux/rockylinux:8
 ```
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el8.x86_64.skylake-avx512.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el8.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -427,7 +427,7 @@ yum install epel-release
 
 ```
 yum install blas
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el7.x86_64.core-avx2.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el7.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -444,7 +444,7 @@ yum install epel-release
 ```
 ```
 yum install blas
-yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el7.x86_64.skylake-avx512.rpm
+yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el7.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -461,7 +461,7 @@ curl https://www.getpagespeed.com/files/centos6-scl-rh-eol.repo --output /etc/yu
 yum update -y && \
 ```
 ```
-yum install --nogpgcheck  https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el6.x86_64.core-avx2.rpm
+yum install --nogpgcheck  https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el6.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -478,7 +478,7 @@ curl https://www.getpagespeed.com/files/centos6-scl-rh-eol.repo --output /etc/yu
 yum update -y && \
 ```
 ```
-yum install --nogpgcheck https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.el6.x86_64.skylake-avx512.rpm
+yum install --nogpgcheck https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.el6.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -487,7 +487,7 @@ yum install --nogpgcheck https://github.com/iRASPA/RASPA3/releases/download/v3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double
 tested on: fedora:41
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc41.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc41.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -496,7 +496,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double
 tested on: fedora:41
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc41.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc41.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -505,7 +505,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double
 tested on: fedora:40
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc40.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc40.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -514,7 +514,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double
 tested on: fedora:40
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc40.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc40.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -523,7 +523,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:39
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc39.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc39.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -532,7 +532,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:39
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc39.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc39.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -541,7 +541,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:38
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc38.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc38.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -550,7 +550,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:38
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc38.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc38.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -559,7 +559,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:37
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc37.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc37.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -568,7 +568,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:37
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc37.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc37.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -577,7 +577,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:36
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc36.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc36.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -586,7 +586,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:36
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc36.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc36.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -595,7 +595,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:35
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc35.x86_64.core-avx2.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc35.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -604,7 +604,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double
 tested on: fedora:35
 ```
-dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.fc35.x86_64.skylake-avx512.rpm
+dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.fc35.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -613,7 +613,7 @@ dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0
 dependencies: libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/tumbleweed
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-tumbleweed.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-tumbleweed.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -622,7 +622,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/tumbleweed
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-tumbleweed.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-tumbleweed.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -631,7 +631,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.6
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.6.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.6.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -640,7 +640,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.6
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.6.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.6.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -649,7 +649,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.5
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.5.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.5.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -658,7 +658,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.5
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.5.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.5.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -667,7 +667,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.4
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.4.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.4.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -676,7 +676,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.4
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.4.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.4.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -685,7 +685,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.3
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.3.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.3.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -694,7 +694,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.3
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.3.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.3.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -703,7 +703,7 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.2
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.2.x86_64.core-avx2.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.2.x86_64.core-avx2.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -712,6 +712,6 @@ zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-
 dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3
 tested on: opensuse/leap:15.2
 ```
-zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.16/raspa-3.0.16-1.opensuse-leap-15.2.x86_64.skylake-avx512.rpm
+zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.18/raspa-3.0.18-1.opensuse-leap-15.2.x86_64.skylake-avx512.rpm
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
