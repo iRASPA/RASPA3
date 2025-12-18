@@ -8,7 +8,7 @@ var searchData=
   ['chainretracedata_5',['ChainRetraceData',['../structChainRetraceData.html',1,'']]],
   ['charge_6',['charge',['../structAtom.html#ab7fa10034d4d2a16b5288fd58430155f',1,'Atom::charge'],['../structPseudoAtom.html#add1a7306a2f04d335780690d9e1fb3ce',1,'PseudoAtom::charge']]],
   ['chargeconversionfactor_7',['ChargeConversionFactor',['../structUnits.html#a76410fd7399e68e615e59b0b007cd7f4',1,'Units']]],
-  ['chargeequilbrationelementdata_8',['ChargeEquilbrationElementData',['../structChargeEquilbrationElementData.html',1,'']]],
+  ['chargeequilbrationelementdata_8',['ChargeEquilbrationElementData',['../structChargeEquilibration_1_1ChargeEquilbrationElementData.html',1,'ChargeEquilibration']]],
   ['chargeequilibration_9',['ChargeEquilibration',['../structFramework.html#ab50a57d40879663e918566c32fdf8a3ea31c3ebb741cdfa0661ca2e821e2c7dde',1,'Framework']]],
   ['chargemethod_10',['chargemethod',['../structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983',1,'ForceField::ChargeMethod'],['../structForceField.html#a12d0757c03cbc58fd42f5dc1208d58da',1,'ForceField::chargeMethod']]],
   ['chargeunit_11',['ChargeUnit',['../structUnits.html#acffd6547c9457dd106557495dc486a80',1,'Units']]],

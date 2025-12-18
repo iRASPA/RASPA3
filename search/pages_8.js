@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['of_20the_20raspa_20code_0',['Appendix: Structure of the RASPA Code',['../structure.html',1,'md_docs_2manual']]]
+  ['manual_0',['manual',['../manual_main.html',1,'Manual'],['../md_docs_2manual.html',1,'User Manual']]]
 ];

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -127,12 +127,16 @@ Public Types</h2></td></tr>
 , <b>NumberDensity</b> = 1
  }</td></tr>
 <tr class="separator:ad1f142dd884d4623fa9e2c68e3c096db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a793138be1682d8bfeecd2875c2fd90" id="r_a6a793138be1682d8bfeecd2875c2fd90"><td class="memItemLeft" align="right" valign="top"><a id="a6a793138be1682d8bfeecd2875c2fd90" name="a6a793138be1682d8bfeecd2875c2fd90"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Binning</b> : std::size_t { <b>Standard</b> = 0
+, <b>Equitable</b> = 1
+ }</td></tr>
+<tr class="separator:a6a793138be1682d8bfeecd2875c2fd90"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a117d81fa8dbb68a9c6df25995b99f6d5" id="r_a117d81fa8dbb68a9c6df25995b99f6d5"><td class="memItemLeft" align="right" valign="top"><a id="a117d81fa8dbb68a9c6df25995b99f6d5" name="a117d81fa8dbb68a9c6df25995b99f6d5"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyDensityGrid</b> (std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints, std::size_t sampleEvery, std::size_t writeEvery, std::vector&lt; std::size_t &gt; densityGridPseudoAtomsList, Normalization normType)</td></tr>
-<tr class="separator:a117d81fa8dbb68a9c6df25995b99f6d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3a8be3012786d2925eb9a25e5a4e29b" id="r_af3a8be3012786d2925eb9a25e5a4e29b"><td class="memItemLeft" align="right" valign="top"><a id="af3a8be3012786d2925eb9a25e5a4e29b" name="af3a8be3012786d2925eb9a25e5a4e29b"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyDensityGrid</b> (std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints, std::size_t sampleEvery, std::size_t writeEvery, std::vector&lt; std::size_t &gt; densityGridPseudoAtomsList, Normalization normType, Binning binningMode)</td></tr>
+<tr class="separator:af3a8be3012786d2925eb9a25e5a4e29b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abc34f0323180c055a95cc12100620f47" id="r_abc34f0323180c055a95cc12100620f47"><td class="memItemLeft" align="right" valign="top"><a id="abc34f0323180c055a95cc12100620f47" name="abc34f0323180c055a95cc12100620f47"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const std::optional&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, std::size_t currrentCycle)</td></tr>
 <tr class="separator:abc34f0323180c055a95cc12100620f47"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -143,7 +147,7 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (std:
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a298aad278534519cd85f8e8212acd033" id="r_a298aad278534519cd85f8e8212acd033"><td class="memItemLeft" align="right" valign="top"><a id="a298aad278534519cd85f8e8212acd033" name="a298aad278534519cd85f8e8212acd033"></a>
-std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {4}</td></tr>
 <tr class="separator:a298aad278534519cd85f8e8212acd033"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a03725ea84e8fb07b01a8fb9a0296c0ba" id="r_a03725ea84e8fb07b01a8fb9a0296c0ba"><td class="memItemLeft" align="right" valign="top"><a id="a03725ea84e8fb07b01a8fb9a0296c0ba" name="a03725ea84e8fb07b01a8fb9a0296c0ba"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfFrameworks</b></td></tr>
@@ -151,6 +155,9 @@ std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfFramew
 <tr class="memitem:a35fe1ac09261f9e1ca2044a3901928bf" id="r_a35fe1ac09261f9e1ca2044a3901928bf"><td class="memItemLeft" align="right" valign="top"><a id="a35fe1ac09261f9e1ca2044a3901928bf" name="a35fe1ac09261f9e1ca2044a3901928bf"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfComponents</b></td></tr>
 <tr class="separator:a35fe1ac09261f9e1ca2044a3901928bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9bde19f7a500079cfd7224d664688dd1" id="r_a9bde19f7a500079cfd7224d664688dd1"><td class="memItemLeft" align="right" valign="top"><a id="a9bde19f7a500079cfd7224d664688dd1" name="a9bde19f7a500079cfd7224d664688dd1"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfChannels</b> {1}</td></tr>
+<tr class="separator:a9bde19f7a500079cfd7224d664688dd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1690a6df5f819f1ee18a0afcc7e77af3" id="r_a1690a6df5f819f1ee18a0afcc7e77af3"><td class="memItemLeft" align="right" valign="top"><a id="a1690a6df5f819f1ee18a0afcc7e77af3" name="a1690a6df5f819f1ee18a0afcc7e77af3"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>grid_cell</b></td></tr>
 <tr class="separator:a1690a6df5f819f1ee18a0afcc7e77af3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -178,6 +185,9 @@ std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bott
 <tr class="memitem:a0d87f013df6d1e4c7d45cb2615a591ce" id="r_a0d87f013df6d1e4c7d45cb2615a591ce"><td class="memItemLeft" align="right" valign="top"><a id="a0d87f013df6d1e4c7d45cb2615a591ce" name="a0d87f013df6d1e4c7d45cb2615a591ce"></a>
 Normalization&#160;</td><td class="memItemRight" valign="bottom"><b>normType</b> {Normalization::Max}</td></tr>
 <tr class="separator:a0d87f013df6d1e4c7d45cb2615a591ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac5715daec77d90a8c5bfeffa84bbed20" id="r_ac5715daec77d90a8c5bfeffa84bbed20"><td class="memItemLeft" align="right" valign="top"><a id="ac5715daec77d90a8c5bfeffa84bbed20" name="ac5715daec77d90a8c5bfeffa84bbed20"></a>
+Binning&#160;</td><td class="memItemRight" valign="bottom"><b>binningMode</b> {Binning::Standard}</td></tr>
+<tr class="separator:ac5715daec77d90a8c5bfeffa84bbed20"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1940838593795b4f6c2210e33dc78022" id="r_a1940838593795b4f6c2210e33dc78022"><td class="memItemLeft" align="right" valign="top"><a id="a1940838593795b4f6c2210e33dc78022" name="a1940838593795b4f6c2210e33dc78022"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfSamples</b> {0}</td></tr>
 <tr class="separator:a1940838593795b4f6c2210e33dc78022"><td class="memSeparator" colspan="2">&#160;</td></tr>

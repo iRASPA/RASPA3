@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -108,10 +108,10 @@ $(document).ready(function(){initNavTree('structMonteCarlo.html',''); initResiza
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a1c99c1db9cb967c29eb65df31a2020e8">createInterpolationGrids</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#a8da7646cccaee7b2e5b914f42ea81fed">createOutputFiles</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a848e0c0591f3836c13038c048d77fc7a">currentCycle</a></td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
-  <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#a47465c9d5e14bfd9109c4adc177dc8b9">equilibrate</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#a582794cb30f1d5b37c8d15246f56cc63">equilibrate</a>(std::function&lt; void()&gt; call_back_function=[]{})</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a51ab0b9d8286781620be48c38d5e036a">estimation</a></td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>fractionalMoleculeSystem</b> (defined in <a class="el" href="structMonteCarlo.html">MonteCarlo</a>)</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a9aba3b6e256709cc50814e6c85be5a02">initialize</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a3fd22652855e0dc4a340ec8183d359af">initialize</a>(std::function&lt; void()&gt; call_back_function=[]{})</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#ab59a7679e86d34701f8e2a063bccc93e">MonteCarlo</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a92cb53d86687ec03d2c5d649e064c486">MonteCarlo</a>(InputReader &amp;reader) noexcept</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#ae8230ceb301d2935a7145619847a9ceb">MonteCarlo</a>(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles, std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, std::vector&lt; System &gt; &amp;systems, RandomNumber &amp;randomSeed, std::size_t numberOfBlocks, bool outputToFiles=false)</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
@@ -128,7 +128,7 @@ $(document).ready(function(){initNavTree('structMonteCarlo.html',''); initResiza
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>outputToFiles</b> (defined in <a class="el" href="structMonteCarlo.html">MonteCarlo</a>)</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#aec028e9bb172cacbae643bf4b7859407">performCycle</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a8fb7abf7faa5c1436abfe73317f9fe64">printEvery</a></td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
-  <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#aa8d54514d1b1ce8ab12cd2d1d81b4615">production</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#ab52ab095ea04c0af26a4b6cb0740b7ee">production</a>(std::function&lt; void()&gt; call_back_function=[]{})</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#ae3c5f824fb3e58d5834c91d06acffb88">random</a></td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structMonteCarlo.html#ab75cd19b07050a3bd2ed5f70962614c6">randomSystem</a>()</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45">repr</a>() const</td><td class="entry"><a class="el" href="structMonteCarlo.html">MonteCarlo</a></td><td class="entry"></td></tr>

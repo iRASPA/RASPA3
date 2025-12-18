@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -106,8 +106,10 @@ $(document).ready(function(){initNavTree('structCoulombPotential.html',''); init
 <p>This is the complete list of members for <a class="el" href="structCoulombPotential.html">CoulombPotential</a>, including all inherited members.</p>
 <table class="directory">
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>calculateEnergy</b>(const double3 &amp;posA, const double3 &amp;posB) const (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>chargeA</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>chargeB</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#ad98feb29af4f43b136160750d379d9a9">CoulombPotential</a>()</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>CoulombPotential</b>(std::array&lt; std::size_t, 2 &gt; identifiers, CoulombType type, std::vector&lt; double &gt; vector_parameters, double scaling) (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>CoulombPotential</b>(std::array&lt; std::size_t, 2 &gt; identifiers, CoulombType type, double chargeA, double chargeB, double scaling) (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#afebc0b97f11f17c0c1c07e7a3b197cce">CoulombPotential</a>(std::array&lt; std::size_t, 2 &gt; identifiers, const CoulombType type)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structCoulombPotential.html#a228ad46a62166a70de5864df94ddcb64">definitionForString</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">static</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#a9f0daebb574bd637f283d05e1eeeece1">identifiers</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
@@ -115,11 +117,10 @@ $(document).ready(function(){initNavTree('structCoulombPotential.html',''); init
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>operator&lt;&lt;</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>operator==</b>(CoulombPotential const &amp;) const =default (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>operator&gt;&gt;</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="structCoulombPotential.html#a89f96ff062c303a573e39517b4a11b1d">parameters</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
-  <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#a7c2e83dd6b9ccaa41f5270c28fe120ad">print</a>() const</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>scaling</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
-  <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#a473da1d6d1bec713062203fa277ab41d">type</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="structCoulombPotential.html#a6093448409198d2ce44f559856499bf2">versionNumber</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structCoulombPotential.html#a7c2e83dd6b9ccaa41f5270c28fe120ad">print</a>() const</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>scaling</b> (defined in <a class="el" href="structCoulombPotential.html">CoulombPotential</a>)</td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structCoulombPotential.html#a473da1d6d1bec713062203fa277ab41d">type</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structCoulombPotential.html#a6093448409198d2ce44f559856499bf2">versionNumber</a></td><td class="entry"><a class="el" href="structCoulombPotential.html">CoulombPotential</a></td><td class="entry"></td></tr>
 </table></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

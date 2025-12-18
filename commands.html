@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -104,40 +104,42 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <div class="contents">
 <div class="textblock"><h1>Table of Contents</h1>
 <ul>
-<li>Input sections</li>
-<li>General options<ul>
-<li>Simulation types</li>
-<li>Simulation duration</li>
-<li>Restart and crash-recovery</li>
-<li>Printing options</li>
+<li><a class="el" href="commands.html#input-sections">Input sections</a></li>
+<li><a class="el" href="commands.html#general-options">General options</a><ul>
+<li><a class="el" href="commands.html#simulation-types">Simulation types</a></li>
+<li><a class="el" href="commands.html#simulation-duration">Simulation duration</a></li>
+<li><a class="el" href="commands.html#restart-and-crash-recovery">Restart and crash-recovery</a></li>
+<li><a class="el" href="commands.html#printing-options">Printing options</a></li>
+<li><a class="el" href="commands.html#parameter-tuning">Parameter tuning</a></li>
+<li><a class="el" href="commands.html#systems-components">Systems &amp; Components</a></li>
 </ul>
 </li>
-<li>System options<ul>
-<li>Operating conditions and thermostat/barostat-parameters</li>
-<li>Box/Framework options</li>
-<li>Force field definitions</li>
-<li>System `MC`-moves</li>
-<li>Molecular dynamics parameters</li>
-<li>Options to measure properties<ul>
-<li>Output pdb-movies</li>
-<li>Histogram of the energy</li>
-<li>Histogram of the number of molecules</li>
-<li>Radial Distribution Function (RDF) force-based</li>
-<li>Radial Distribution Function (RDF) conventional</li>
-<li>Mean-Squared Displacement (MSD) order-N</li>
-<li>Density grids</li>
+<li><a class="el" href="commands.html#system-options">System options</a><ul>
+<li><a class="el" href="commands.html#operating-conditions-and-thermostatbarostat-parameters">Operating conditions and thermostat/barostat-parameters</a></li>
+<li><a class="el" href="commands.html#boxframework-options">Box/Framework options</a></li>
+<li><a class="el" href="commands.html#force-field-definitions">Force field definitions</a></li>
+<li><a class="el" href="commands.html#system-mc-moves">System `MC`-moves</a></li>
+<li><a class="el" href="commands.html#molecular-dynamics-parameters">Molecular dynamics parameters</a></li>
+<li><a class="el" href="commands.html#options-to-measure-properties">Options to measure properties</a><ul>
+<li><a class="el" href="commands.html#output-pdb-movies">Output pdb-movies</a></li>
+<li><a class="el" href="commands.html#histogram-of-the-energy">Histogram of the energy</a></li>
+<li><a class="el" href="commands.html#histogram-of-the-number-of-molecules">Histogram of the number of molecules</a></li>
+<li><a class="el" href="commands.html#radial-distribution-function-rdf-force-based">Radial Distribution Function (RDF) force-based</a></li>
+<li><a class="el" href="commands.html#radial-distribution-function-rdf-conventional">Radial Distribution Function (RDF) conventional</a></li>
+<li><a class="el" href="commands.html#mean-squared-displacement-msd-order-n">Mean-Squared Displacement (MSD) order-N</a></li>
+<li><a class="el" href="commands.html#density-grids">Density grids</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li>Component options<ul>
-<li>Component properties</li>
-<li>Component **`MC`**-moves</li>
+<li><a class="el" href="commands.html#component-options">Component options</a><ul>
+<li><a class="el" href="commands.html#component-properties">Component properties</a></li>
+<li><a class="el" href="commands.html#component-mc-moves">Component **`MC`**-moves</a></li>
 </ul>
 </li>
 </ul>
 <hr  />
-<h1>Input sections</h1>
+<h1>Input sections <a class="anchor" id="input-sections"></a></h1>
 <div class="fragment"><div class="line">{</div>
 <div class="line">  &quot;SimulationType&quot; : &quot;MolecularDynamics&quot;,</div>
 <div class="line">  &quot;NumberOfCycles&quot; : 100000,</div>
@@ -172,41 +174,41 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <div class="line">  ]    </div>
 <div class="line">}</div>
 </div><!-- fragment --><hr  />
-<h1>General options</h1>
-<h2>Simulation types</h2>
+<h1>General options <a class="anchor" id="general-options"></a></h1>
+<h2>Simulation types <a class="anchor" id="simulation-types"></a></h2>
 <ul>
 <li><code>"SimulationType" : "MonteCarlo"</code> Starts the Monte Carlo part of <code>RASPA</code>. The particular ensemble is not specified but implicitly deduced from the specified Monte Carlo moves. Note that a <code>MD</code>-move can be used for hybrid <code>MC</code>/<code>MD</code>.</li>
 <li><code>"SimulationType" : "MolecularDynamics"</code> Starts the Molecular Dynamics part of <code>RASPA</code>. The ensemble must be explicitly specified.</li>
 </ul>
-<h2>Simulation duration</h2>
+<h2>Simulation duration <a class="anchor" id="simulation-duration"></a></h2>
 <ul>
 <li><code>"NumberOfCycles" : integer</code> The number of cycles for the production run. For Monte Carlo a cycle consists of $N$ steps, where $N$ is the amount of molecules with a minimum of 20 steps. This means that on average during each cycle on each molecule a Monte Carlo move has been attempted (either successful or unsuccessful). For MD the number of cycles is simply the amount of integration steps.</li>
 <li><code>"NumberOfInitializationCycles": integer</code> The number of cycles used to initialize the system using Monte Carlo. This can be used for both Monte Carlo as well as Molecular Dynamics to quickly minimize the positions of the atoms in the system.</li>
 <li><code>"NumberOfEquilibrationCycles" : integer</code> For Molecular Dynamics it is the number of MD steps to equilibrate the velocities in the systems. After this equilibration the production run is started. For Monte Carlo, in particular <code>CFCMC</code>, the equilibration-phase is used to measure the biasing factors, using Wang-Landau estimation.</li>
 </ul>
-<h2>Restart and crash-recovery</h2>
+<h2>Restart and crash-recovery <a class="anchor" id="restart-and-crash-recovery"></a></h2>
 <ul>
 <li><code>"RestartFile" : boolean</code> Reads the positions, velocities, and force from the directory 'RestartInitial'. Any creation of molecules in the 'simulation.input' file will be in addition and after this first read from file. This is useful to load initial positions of cations for example, and after that create adsorbates. The restart file is written at 'PrintEvery' intervals.</li>
 <li><code>"ContinueAfterCrash" : boolean</code> Write a binary file containing the complete status of the program. The file name is 'restart_data.bin'. With this option to <code>true</code> the presence of this file will result in continuation from the point where the program was at the moment of outputting this file. The file can be quite big (several hundreds of megabytes) and will be outputted every 'WriteBinaryRestartFileEvery' cycles.</li>
 <li><code>"WriteBinaryRestartFileEvery" : integer</code> The output frequency (i.e. every <code>int</code> cycles) of writing the crash-recovery file.</li>
 </ul>
-<h2>Printing options</h2>
+<h2>Printing options <a class="anchor" id="printing-options"></a></h2>
 <ul>
 <li><code>"PrintEvery" : integer</code> Prints the loadings (when a framework is present) and energies every <code>int</code> cycles. For MD information like energy conservation and stress are printed.</li>
 </ul>
-<h2>Parameter tuning</h2>
+<h2>Parameter tuning <a class="anchor" id="parameter-tuning"></a></h2>
 <ul>
 <li><code>"RescaleWangLandauEvery" : integer</code> Determines the frequency of updates for optimizing the λ parameter in for example Continuous Fractional <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> Monte Carlo during the equilibration phase of the simulation.</li>
 <li><code>"OptimizeMCMovesEvery" : integer</code> Determines the frequency of updating the maximum change in the Monte Carlo moves towards an optimal acceptance ratio (default: 0.5). For Translation, the maximum displacement is optimized, for rotation the maximum angle, for hybrid MC the maximum timestep etc.</li>
 </ul>
-<h2>Systems &amp; Components</h2>
+<h2>Systems &amp; Components <a class="anchor" id="systems-components"></a></h2>
 <ul>
 <li><code>"Systems" : list</code> List of system settings, each containing a dictionary with possible key-value pairs described below. Multiple systems can be owned by one process and Monte Carlo moves starting with Gibbs and parallel tempering act on two systems.</li>
 <li><code>"Components" : list</code> List of component settings, each containing a dictionary with possible key-value pairs described below.</li>
 </ul>
 <hr  />
-<h1><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> options</h1>
-<h2>Operating conditions and thermostat/barostat-parameters</h2>
+<h1><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> options <a class="anchor" id="system-options"></a></h1>
+<h2>Operating conditions and thermostat/barostat-parameters <a class="anchor" id="operating-conditions-and-thermostatbarostat-parameters"></a></h2>
 <ul>
 <li><code>"ExternalTemperature" : floating-point-number</code> The external temperature in Kelvin for the system. From this, the system beta is calculated, which is central in all statistics. Default: <code>298</code></li>
 <li><code>"ExternalPressure" : floating-point-number</code> The external pressure in Pascal for the system. Default: <code>0</code></li>
@@ -214,7 +216,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"NumberOfYoshidaSuzukiSteps" : integer</code> The number of Yoshida/Suzuki multiple timesteps. Default: <code>5</code></li>
 <li><code>"TimeScaleParameterThermostat" : floating-point-number</code> The time scale on which the system thermostat evolves. Default: <code>0.15</code></li>
 </ul>
-<h2>Box/Framework options</h2>
+<h2>Box/Framework options <a class="anchor" id="boxframework-options"></a></h2>
 <ul>
 <li><code>"Type" : string</code> Sets the system type. The type string can be:<ul>
 <li><code>"Box"</code> Sets the system to a simulation cell where the lengths and angles of the cell can be explicitely be specified.</li>
@@ -233,7 +235,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </ul>
 </li>
 </ul>
-<h2>Force field definitions</h2>
+<h2>Force field definitions <a class="anchor" id="force-field-definitions"></a></h2>
 <ul>
 <li><code>"ForceField" : string</code> Reads in the force field file <code>string.json</code>, Note that if this file is in the working directory then this will be read and used instead of: <pre class="fragment">${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
 </pre></li>
@@ -248,13 +250,13 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </ul>
 </li>
 </ul>
-<h2><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> <code>MC</code>-moves</h2>
+<h2><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> <code>MC</code>-moves <a class="anchor" id="system-mc-moves"></a></h2>
 <ul>
 <li><code>"VolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a volume-change. Rigid molecules are scaled by center-of-mass, while flexible molecules and the framework is atomically scaled.</li>
 <li><code>"GibbVolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a Gibbs volume-change <code>MC</code> move during a Gibbs ensemble simulation. The total volume of the two boxes (usually one for the gas phase, one for the liquid phase) remains constant, but the individual volume of the boxes are changed. The volumes are changed by a random change in $\ln(V_I/V_{II})$.</li>
 <li><code>"GibbVolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a Hybrid MC move. A hybrid MC move propagates the Hamiltonian via a short Molecular Dynamics simulation and accepts the new state based on the drift.</li>
 </ul>
-<h2>Molecular dynamics parameters</h2>
+<h2>Molecular dynamics parameters <a class="anchor" id="molecular-dynamics-parameters"></a></h2>
 <ul>
 <li><code>"TimeStep" : floating-point-number</code> The time step in picoseconds for <code>MD</code> integration. Default value: <code>0.0005</code></li>
 <li><code>"Ensemble" : string</code> Sets the ensemble. The ensemble string can be:<ul>
@@ -263,14 +265,14 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </ul>
 </li>
 </ul>
-<h2>Options to measure properties</h2>
-<h3>Output pdb-movies</h3>
+<h2>Options to measure properties <a class="anchor" id="options-to-measure-properties"></a></h2>
+<h3>Output pdb-movies <a class="anchor" id="output-pdb-movies"></a></h3>
 <p><code>"OutputPDBMovie" : boolean</code></p>
 <p>Sets whether or not to output simulation snapshots to pdb movies. Output is written to the directory <code>movies</code>.</p>
 <ul>
 <li><code>"SampleMovieEvery" : integer</code> Sample the movie every <code>int</code> cycles. Default: <code>1</code></li>
 </ul>
-<h3>Histogram of the energy</h3>
+<h3>Histogram of the energy <a class="anchor" id="histogram-of-the-energy"></a></h3>
 <p><code>"ComputeEnergyHistogram" : boolean</code></p>
 <p>Sets whether or not to compute a histogram of the energy for the current system. For example, during adsorption it keeps track of the total energy, the VDW energy, the Coulombic energy, and the polarization energy.\ Output is written to the directory <code>energy_histogram</code>.</p>
 <ul>
@@ -280,7 +282,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"LowerLimitEnergyHistogram" : floating-point-number</code> The lower limit of the histogram. Default: <code>-5000</code></li>
 <li><code>"UpperLimitEnergyHistogram" : floating-point-number</code> The upper limit of the histogram. Default: <code>1000</code></li>
 </ul>
-<h3>Histogram of the number of molecules</h3>
+<h3>Histogram of the number of molecules <a class="anchor" id="histogram-of-the-number-of-molecules"></a></h3>
 <p><code>"ComputeNumberOfMoleculesHistogram" : boolean</code></p>
 <p>Sets whether or not to compute the histograms of the number of molecules for the current system. In open ensembles the number of molecules fluctuates.\ Output is written to the directory <code>number_of_molecules_histogram</code>.</p>
 <ul>
@@ -289,7 +291,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"LowerLimitNumberOfMoleculesHistogram" : floating-point-number</code> The lower limit of the histograms. Default: <code>0</code></li>
 <li><code>"UpperLimitNumberOfMoleculesHistogram" : floating-point-number</code> The upper limit of the histograms. Default: <code>200</code></li>
 </ul>
-<h3>Radial Distribution Function (RDF) force-based</h3>
+<h3>Radial Distribution Function (RDF) force-based <a class="anchor" id="radial-distribution-function-rdf-force-based"></a></h3>
 <p><code>"ComputeRDF" : boolean</code></p>
 <p>Sets whether or not to compute the radial distribution function (RDF).\ Output is written to the directory <code>rdf</code>.</p>
 <ul>
@@ -298,7 +300,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"NumberOfBinsRDF" : integer</code> Sets the number of elements of the rdf. Default: <code>128</code></li>
 <li><code>"UpperLimitRDF" : floating-point-number</code> The upper limit of the rdf. Default: <code>15.0</code></li>
 </ul>
-<h3>Radial Distribution Function (RDF) conventional</h3>
+<h3>Radial Distribution Function (RDF) conventional <a class="anchor" id="radial-distribution-function-rdf-conventional"></a></h3>
 <p><code>"ComputeConventionalRDF" : boolean</code></p>
 <p>Sets whether or not to compute the radial distribution function (RDF). Output is written to the directory <code>conventional_rdf</code>.</p>
 <ul>
@@ -307,7 +309,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"NumberOfBinsConventionalRDF" : integer</code> Sets the number of elements of the rdf. Default: <code>128</code></li>
 <li><code>"UpperLimitConventionalRDF" : floating-point-number</code> The upper limit of the rdf. Default: <code>15.0</code></li>
 </ul>
-<h3>Mean-Squared Displacement (MSD) order-N</h3>
+<h3>Mean-Squared Displacement (MSD) order-N <a class="anchor" id="mean-squared-displacement-msd-order-n"></a></h3>
 <p><code>"ComputeMSD" : boolean</code></p>
 <p>Sets whether or not to compute the mean-squared displacement (MSD). Output is written to the directory <code>msd</code>.</p>
 <ul>
@@ -315,18 +317,29 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"WriteMSDEvery" : integer</code> Output the msd every <code>int</code> cycles. Default: <code>5000</code></li>
 <li><code>"NumberOfBlockElementsMSD" : integer</code> The number of elements per block of the msd. Default: <code>25.0</code></li>
 </ul>
-<h3>Density grids</h3>
+<h3>Density grids <a class="anchor" id="density-grids"></a></h3>
 <p><code>"ComputeDensityGrid" : boolean</code></p>
 <p>Sets whether or not to compute the density grids. Output is written to the directory <code>density_grids</code>.</p>
 <ul>
 <li><code>"SampleDensityGridEvery" : integer</code> Sample the density grids every <code>int</code> cycles. Default: <code>10</code></li>
 <li><code>"WriteDensityGridEvery" : integer</code> Output the density grids every <code>int</code> cycles. Default: <code>5000</code></li>
 <li><code>"DensityGridSize" : [integer, integer, integer]</code> Sets the size of the density grids. Default: <code>[128, 128, 128]</code></li>
+<li><code>"DensityGridBinning" : string</code> Sets the binning strategy used to accumulate the density grids:<ul>
+<li><code>"Standard"</code>\ Uses conventional histogram binning, where each particle contributes fully to the voxel in which it resides. Default: <code>"Standard"</code></li>
+<li><code>"Equitable"</code>\ Uses equitable binning, where each particle contributes fractionally to neighboring voxels based on its position. This produces smoother density grids and reduces discretization artifacts, especially for fine grids.</li>
 </ul>
-<hr  />
-<h1><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> options</h1>
-<h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> properties</h2>
-<ul>
+</li>
+<li><code>"DensityGridPseudoAtomsList" : [string, string, ...]</code> Restricts the density grid calculation to a subset of pseudo atoms belonging to a given component. When specified, separate density grids are generated for each listed pseudo atom type instead of a single combined grid for the component. If not specified, all pseudo atoms of the component are accumulated into a single density grid. This option is useful for resolving atom specific adsorption behaviour within a molecule, for example separating carbon and oxygen sites in CO<sub>2.</sub></li>
+</ul>
+<p><sub></p><hr  />
+<p></sub></p>
+<p><sub></p><h1><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> options <a class="anchor" id="component-options"></a></h1>
+<p></sub></p>
+<p><sub></sub></p>
+<p><sub></p><h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> properties <a class="anchor" id="component-properties"></a></h2>
+<p></sub></p>
+<p><sub></sub></p>
+<p><sub></p><ul>
 <li><code>"Name" : string</code> The descriptive name of the component.</li>
 <li><code>"MolFraction" : floating-point-number</code> The mol fraction of this component in the mixture. The values can be specified relative to other components, as the fractions are normalized afterwards. The partial pressures for each component are computed from the total pressure and the mol fraction per component.</li>
 <li><code>"FugacityCoefficient" : floating-point-number</code> The fugacity coefficient for the current component. For values 0 (or by not specifying this line), the fugacity coefficients are automatically computed using the Peng-Robinson equation of state. Note the critical pressure, critical temperature, and acentric factor need to be specified in the molecule file.</li>
@@ -343,8 +356,11 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"LambdaBiasFileName" : string</code> Pointing this parameter to a json file containing preset λ values allows optimized CFCMC simulations to be run without Wang-Landau estimation of the biasing weights.</li>
 <li><code>"ThermodynamicIntegration" : boolean</code> Boolean switch to determine whether to do a thermodynamic integration over dU/dλ for the fractional component.</li>
 </ul>
-<h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> **<code>MC</code>**-moves</h2>
-<ul>
+<p></sub></p>
+<p><sub></p><h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> **<code>MC</code>**-moves <a class="anchor" id="component-mc-moves"></a></h2>
+<p></sub></p>
+<p><sub></sub></p>
+<p><sub></p><ul>
 <li><code>"TranslationProbability" : floating-point-number</code> The relative probability to attempt a translation move for the current component. A random displacement is chosen in the allowed directions (see 'TranslationDirection'). Note that the internal configuration of the molecule is unchanged by this move. The maximum displacement is scaled during the simulation to achieve an acceptance ratio of 50%.</li>
 <li><code>"RandomTranslationProbability" : floating-point-number</code> The relative probability to attempt a random translation move for the current component. The displacement is chosen such that any position in the box can reached. It is therefore similar as reinsertion, but 'reinsertion' changes the internal conformation of a molecule and uses biasing.</li>
 <li><code>"RotationProbability" : floating-point-number</code> The relative probability to attempt a random rotation move for the current component. The rotation is around the starting bead. A random vector on a sphere is generated, and the rotation is random around this vector.</li>
@@ -362,6 +378,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 -   &lt;tt&gt;Gibbs_CFCMC_SwapProbability" : floating-point-number</code> The relative probability to attempt a Gibbs swap MC move for the current component using the <code>CFCMC</code> scheme.</li>
 <li><code>"WidomProbability" : floating-point-number</code> The relative probability to attempt a Widom particle insertion move for the current component. The Widom particle insertion moves measure the chemical potential and can be directly related to Henry coefficients and heats of adsorption. </li>
 </ul>
+<p></sub></p>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->

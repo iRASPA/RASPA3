@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -116,10 +116,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a1c75509f19920a18fa01552be5cf905b" id="r_a1c75509f19920a18fa01552be5cf905b"><td class="memItemLeft" align="right" valign="top"><a id="a1c75509f19920a18fa01552be5cf905b" name="a1c75509f19920a18fa01552be5cf905b"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>WriteLammpsData</b> (std::size_t <a class="el" href="structWriteLammpsData.html#a925d53c25dbfcc9df151c22f2d55c695">systemId</a>, std::size_t <a class="el" href="structWriteLammpsData.html#a3adf79be87628ede09d5fe976d43576e">sampleEvery</a>)</td></tr>
 <tr class="separator:a1c75509f19920a18fa01552be5cf905b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a50b532e9da7a32b3fc4c174f9f1f9e8c" id="r_a50b532e9da7a32b3fc4c174f9f1f9e8c"><td class="memItemLeft" align="right" valign="top"><a id="a50b532e9da7a32b3fc4c174f9f1f9e8c" name="a50b532e9da7a32b3fc4c174f9f1f9e8c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>update</b> (std::size_t currentCycle, std::span&lt; const <a class="el" href="structComponent.html">Component</a> &gt; components, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; atomPositions, const <a class="el" href="structSimulationBox.html">SimulationBox</a> simulationBox, const <a class="el" href="structForceField.html">ForceField</a> forceField, std::vector&lt; std::size_t &gt; numberOfIntegerMoleculesPerComponent, std::optional&lt; <a class="el" href="structFramework.html">Framework</a> &gt; framework)</td></tr>
-<tr class="memdesc:a50b532e9da7a32b3fc4c174f9f1f9e8c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write data to LAMMPS file. <br /></td></tr>
-<tr class="separator:a50b532e9da7a32b3fc4c174f9f1f9e8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a238cb9efccc471c86f0fcbe2eb309542" id="r_a238cb9efccc471c86f0fcbe2eb309542"><td class="memItemLeft" align="right" valign="top"><a id="a238cb9efccc471c86f0fcbe2eb309542" name="a238cb9efccc471c86f0fcbe2eb309542"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>update</b> (std::size_t currentCycle, std::span&lt; const <a class="el" href="structComponent.html">Component</a> &gt; components, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; atomData, std::span&lt; const <a class="el" href="structMolecule.html">Molecule</a> &gt; moleculeData, const <a class="el" href="structSimulationBox.html">SimulationBox</a> simulationBox, const <a class="el" href="structForceField.html">ForceField</a> forceField, std::vector&lt; std::size_t &gt; numberOfIntegerMoleculesPerComponent, std::optional&lt; <a class="el" href="structFramework.html">Framework</a> &gt; framework)</td></tr>
+<tr class="memdesc:a238cb9efccc471c86f0fcbe2eb309542"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write data to LAMMPS file. <br /></td></tr>
+<tr class="separator:a238cb9efccc471c86f0fcbe2eb309542"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>

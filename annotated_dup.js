@@ -1,5 +1,8 @@
 var annotated_dup =
 [
+    [ "ChargeEquilibration", null, [
+      [ "ChargeEquilbrationElementData", "structChargeEquilibration_1_1ChargeEquilbrationElementData.html", null ]
+    ] ],
     [ "Potentials", null, [
       [ "EnergyFactor", "structPotentials_1_1EnergyFactor.html", null ],
       [ "GradientFactor", "structPotentials_1_1GradientFactor.html", null ],
@@ -8,10 +11,11 @@ var annotated_dup =
       [ "TricubicDerivativeFactor", "structPotentials_1_1TricubicDerivativeFactor.html", null ],
       [ "TriquinticDerivativeFactor", "structPotentials_1_1TriquinticDerivativeFactor.html", null ]
     ] ],
-    [ "std", "namespacestd.html", [
+    [ "std", null, [
       [ "hash< MultiSiteIsotherm >", "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html", null ]
     ] ],
     [ "Atom", "structAtom.html", "structAtom" ],
+    [ "BanVlugtPoreSizeDistribution", "structBanVlugtPoreSizeDistribution.html", null ],
     [ "BendBendPotential", "structBendBendPotential.html", "structBendBendPotential" ],
     [ "BendPotential", "structBendPotential.html", "structBendPotential" ],
     [ "BendTorsionPotential", "structBendTorsionPotential.html", "structBendTorsionPotential" ],
@@ -20,12 +24,9 @@ var annotated_dup =
     [ "BondBondPotential", "structBondBondPotential.html", "structBondBondPotential" ],
     [ "BondPotential", "structBondPotential.html", "structBondPotential" ],
     [ "BondTorsionPotential", "structBondTorsionPotential.html", "structBondTorsionPotential" ],
-    [ "Breakthrough", "structBreakthrough.html", null ],
-    [ "BreakthroughSimulation", "structBreakthroughSimulation.html", null ],
     [ "CBMCMoveStatistics", "structCBMCMoveStatistics.html", null ],
     [ "ChainGrowData", "structChainGrowData.html", null ],
     [ "ChainRetraceData", "structChainRetraceData.html", null ],
-    [ "ChargeEquilbrationElementData", "structChargeEquilbrationElementData.html", null ],
     [ "ChiralCenter", "structChiralCenter.html", "structChiralCenter" ],
     [ "CIFReader", "structCIFReader.html", "structCIFReader" ],
     [ "Component", "structComponent.html", "structComponent" ],

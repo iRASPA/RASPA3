@@ -1,0 +1,9 @@
+<map id="ChargeEquilibration::ChargeEquilbrationElementData" name="ChargeEquilibration::ChargeEquilbrationElementData">
+<area shape="rect" id="Node000001" title=" " alt="" coords="89,197,328,237"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="26,102,151,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="115,134,188,195,184,199,112,139"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,5,172,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="91,59,91,102,86,102,86,59"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="175,95,322,135"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="238,149,219,198,214,196,234,147"/>
+</map>

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -123,7 +123,7 @@ $(document).ready(function(){initNavTree('structure.html',''); initResizable(); 
 </div>
  <h1>MC Moves and MD Integrators</h1>
 <p>The general structure of a call to an MC move or to an MD integrator is actually quite similar. The <code><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a></code> gets a call from the simulation routine to perform either a Monte Carlo move or MD integration step.</p>
-<p>For the Monte Carlo move, it will first call <code>performRandomMove</code>, which will, based on the given probabilities per move, pick a random move. This move proposes a new state and calls <code>Interactions</code> routines, which calculate the energy difference. The <code>Interactions</code> routine splits up the energy into the different summed parts (internal, framework-molecule, molecule-molecule, etc.) and those routines loop over the relevant subselections of atoms and call <code>Potentials</code>. <code>Potentials</code> are functions that calculate the actual energy based on a distance and a set of parameters, such as the Lennard-Jones energy. As soon as this calculation has finished, the Monte Carlo move now calculates the transition probability between states and then will randomly either accept or reject the new state with the right probability. If the state is accepted the <code>atomPositions</code> and / or <code>simulationBox</code> are updated and the energy difference is returned and added to the energy accounting object <code>runningEnergies</code>.</p>
+<p>For the Monte Carlo move, it will first call <code>performRandomMove</code>, which will, based on the given probabilities per move, pick a random move. This move proposes a new state and calls <code>Interactions</code> routines, which calculate the energy difference. The <code>Interactions</code> routine splits up the energy into the different summed parts (internal, framework-molecule, molecule-molecule, etc.) and those routines loop over the relevant subselections of atoms and call <code>Potentials</code>. <code>Potentials</code> are functions that calculate the actual energy based on a distance and a set of parameters, such as the Lennard-Jones energy. As soon as this calculation has finished, the Monte Carlo move now calculates the transition probability between states and then will randomly either accept or reject the new state with the right probability. If the state is accepted the <code>atomData</code> and / or <code>simulationBox</code> are updated and the energy difference is returned and added to the energy accounting object <code>runningEnergies</code>.</p>
 <div class="image">
 <img src="struct_mcmove.png" alt=""/>
 </div>

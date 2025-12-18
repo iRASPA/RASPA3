@@ -1,9 +1,0 @@
-<map id="ChargeEquilbrationElementData" name="ChargeEquilbrationElementData">
-<area shape="rect" id="Node000001" title=" " alt="" coords="34,183,265,208"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="31,95,118,120"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,129,141,180,137,184,92,132"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="5,5,144,45"/>
-<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="77,59,77,94,72,94,72,59"/>
-<area shape="rect" id="Node000004" title=" " alt="" coords="143,95,308,120"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="208,132,162,184,158,180,204,129"/>
-</map>

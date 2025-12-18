@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['manual_0',['manual',['../manual_main.html',1,'Manual'],['../md_docs_2manual.html',1,'User Manual']]]
+  ['grids_0',['Examples Density Grids',['../examples_density_grids.html',1,'examples']]]
 ];

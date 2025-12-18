@@ -1,15 +1,13 @@
 <map id="CoulombPotential" name="CoulombPotential">
-<area shape="rect" id="Node000001" title="Represents a Coulomb potential between two particles." alt="" coords="919,109,1057,134"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="439,5,593,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="607,30,744,48,820,62,895,80,962,106,960,111,894,85,819,67,743,53,606,35"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="363,69,669,109"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="683,98,918,114,918,119,683,103"/>
-<area shape="rect" id="Node000004" title=" " alt="" coords="439,133,593,173"/>
-<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="606,149,742,143,894,132,918,129,919,135,895,137,743,148,607,154"/>
-<area shape="rect" id="Node000005" title=" " alt="" coords="405,198,627,253"/>
-<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="641,214,765,197,830,183,894,165,932,150,965,132,968,136,935,154,896,171,832,188,766,202,642,219"/>
-<area shape="rect" id="Node000006" title=" " alt="" coords="193,213,280,238"/>
-<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="294,223,405,223,405,228,294,228"/>
-<area shape="rect" id="Node000007" title=" " alt="" coords="5,205,144,245"/>
-<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="157,223,193,223,193,228,157,228"/>
+<area shape="rect" id="Node000001" title="Represents a Coulomb potential between two particles." alt="" coords="835,77,973,102"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="397,5,551,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="565,32,682,47,811,67,848,74,847,79,810,72,681,52,564,38"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="397,69,551,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="564,87,834,87,834,92,564,92"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="363,134,585,189"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="598,141,810,107,846,99,847,105,811,112,599,147"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="193,149,280,174"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="294,159,363,159,363,164,294,164"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="5,141,144,181"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="157,159,193,159,193,164,157,164"/>
 </map>

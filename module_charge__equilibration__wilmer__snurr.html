@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,6 +100,7 @@ $(document).ready(function(){initNavTree('module_charge__equilibration__wilmer__
 
 <div class="header">
   <div class="summary">
+<a href="#classes">Classes</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a> &#124;
@@ -108,6 +109,11 @@ $(document).ready(function(){initNavTree('module_charge__equilibration__wilmer__
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structChargeEquilibration_1_1ChargeEquilbrationElementData.html">ChargeEquilibration::ChargeEquilbrationElementData</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
 <tr class="memitem:abb563087e2fa4a3d8d34ce4660a67414" id="r_abb563087e2fa4a3d8d34ce4660a67414"><td class="memItemLeft" align="right" valign="top"><a id="abb563087e2fa4a3d8d34ce4660a67414" name="abb563087e2fa4a3d8d34ce4660a67414"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : std::size_t { <b>NonPeriodic</b> = 0
@@ -122,18 +128,29 @@ Functions</h2></td></tr>
 <tr class="memitem:ace3d2ead52777e2d26d4d1686f67d777" id="r_ace3d2ead52777e2d26d4d1686f67d777"><td class="memItemLeft" align="right" valign="top"><a id="ace3d2ead52777e2d26d4d1686f67d777" name="ace3d2ead52777e2d26d4d1686f67d777"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>ChargeEquilibration::computeChargeEquilibration</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;box, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, ChargeEquilibration::Type type)</td></tr>
 <tr class="separator:ace3d2ead52777e2d26d4d1686f67d777"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b83c3b690b91396df056df416e92916" id="r_a3b83c3b690b91396df056df416e92916"><td class="memItemLeft" align="right" valign="top"><a id="a3b83c3b690b91396df056df416e92916" name="a3b83c3b690b91396df056df416e92916"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ChargeEquilibration::referenceTableX</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t pseudo_atom_type, std::size_t index)</td></tr>
+<tr class="separator:a3b83c3b690b91396df056df416e92916"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a97b2600708888d124aa82ff8fcd6a4be" id="r_a97b2600708888d124aa82ff8fcd6a4be"><td class="memItemLeft" align="right" valign="top"><a id="a97b2600708888d124aa82ff8fcd6a4be" name="a97b2600708888d124aa82ff8fcd6a4be"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ChargeEquilibration::referenceTableJ</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t pseudo_atom_type, std::size_t index)</td></tr>
+<tr class="separator:a97b2600708888d124aa82ff8fcd6a4be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a17aaaacd22db347b97f22ad374909cb5" id="r_a17aaaacd22db347b97f22ad374909cb5"><td class="memItemLeft" align="right" valign="top"><a id="a17aaaacd22db347b97f22ad374909cb5" name="a17aaaacd22db347b97f22ad374909cb5"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ChargeEquilibration::referenceTableXc</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t pseudo_atom_type, std::size_t index)</td></tr>
+<tr class="separator:a17aaaacd22db347b97f22ad374909cb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:aa293f86d7019612d555c4c25fb2abe5a" id="r_aa293f86d7019612d555c4c25fb2abe5a"><td class="memItemLeft" align="right" valign="top"><a id="aa293f86d7019612d555c4c25fb2abe5a" name="aa293f86d7019612d555c4c25fb2abe5a"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>label</b></td></tr>
-<tr class="separator:aa293f86d7019612d555c4c25fb2abe5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5019397e6525487b389d51dfd70824ca" id="r_a5019397e6525487b389d51dfd70824ca"><td class="memItemLeft" align="right" valign="top"><a id="a5019397e6525487b389d51dfd70824ca" name="a5019397e6525487b389d51dfd70824ca"></a>
+<tr class="memitem:a8279a9459a6fc64ceb89464c11d31f0d" id="r_a8279a9459a6fc64ceb89464c11d31f0d"><td class="memItemLeft" align="right" valign="top"><a id="a8279a9459a6fc64ceb89464c11d31f0d" name="a8279a9459a6fc64ceb89464c11d31f0d"></a>
+std::string_view&#160;</td><td class="memItemRight" valign="bottom"><b>label</b></td></tr>
+<tr class="separator:a8279a9459a6fc64ceb89464c11d31f0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba7d9079324a12feeda19dff912de048" id="r_aba7d9079324a12feeda19dff912de048"><td class="memItemLeft" align="right" valign="top"><a id="aba7d9079324a12feeda19dff912de048" name="aba7d9079324a12feeda19dff912de048"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>electronAffinity</b></td></tr>
-<tr class="separator:a5019397e6525487b389d51dfd70824ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9b740fde8f86d38e3a3bc81eed12e22e" id="r_a9b740fde8f86d38e3a3bc81eed12e22e"><td class="memItemLeft" align="right" valign="top"><a id="a9b740fde8f86d38e3a3bc81eed12e22e" name="a9b740fde8f86d38e3a3bc81eed12e22e"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ionizationEnergy</b></td></tr>
-<tr class="separator:a9b740fde8f86d38e3a3bc81eed12e22e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:aba7d9079324a12feeda19dff912de048"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0518a5beb49577ae88a5a89fc7460791" id="r_a0518a5beb49577ae88a5a89fc7460791"><td class="memItemLeft" align="right" valign="top"><a id="a0518a5beb49577ae88a5a89fc7460791" name="a0518a5beb49577ae88a5a89fc7460791"></a>
+std::array&lt; double, 10 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ionizationEnergy</b></td></tr>
+<tr class="separator:a0518a5beb49577ae88a5a89fc7460791"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abfad00bbc2a55be7538a708f0e40855c" id="r_abfad00bbc2a55be7538a708f0e40855c"><td class="memItemLeft" align="right" valign="top">constexpr std::array&lt; ChargeEquilbrationElementData, 1 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="charge__equilibration__wilmer__snurr_8ixx.html#abfad00bbc2a55be7538a708f0e40855c">ChargeEquilibration::chargeEquilbrationElementData</a></td></tr>
+<tr class="separator:abfad00bbc2a55be7538a708f0e40855c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>

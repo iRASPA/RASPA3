@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['units_0',['units',['../examples_reduced_units.html',1,'Examples Reduced Units'],['../units.html',1,'Units']]],
-  ['user_20manual_1',['User Manual',['../md_docs_2manual.html',1,'']]],
-  ['using_20conda_2',['Installing using Conda',['../installing_using_conda.html',1,'installing']]]
+  ['source_0',['Installing from Source',['../installing_from_source.html',1,'installing']]],
+  ['structure_20of_20the_20raspa_20code_1',['Appendix: Structure of the RASPA Code',['../structure.html',1,'md_docs_2manual']]]
 ];

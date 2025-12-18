@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -123,7 +123,8 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
  Prof. Randall Q. Snurr, Northwestern University<br  />
  Dr. David Dubbeldam, University of Amsterdam</p>
 <h1>Contributors</h1>
-<p>Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation discussion<br  />
+<p>Olivier Marchand, equitable binning and site resolved density grid support<br  />
+ Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation discussion<br  />
  Anserme, better README.md and packaging</p>
 <h1>Citing RASPA3</h1>
 <p>Y.A. Ran, S. Sharma, S.R.G. Balestra, Z. Li, S. Calero, T.J.H. Vlugt, R.Q. Snurr, D. Dubbeldam, _"RASPA3: A Monte Carlo code for computing adsorption and diffusion in nanoporous materials and thermodynamics properties of fluids"_, <b>2024</b>, J. Chem. Phys., 161, 114106, <a href="https://doi.org/10.1063/5.0226249">DOI</a></p>
@@ -148,14 +149,16 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <li>tail-corrections for CFCMC</li>
 <li>grids for rigid frameworks</li>
 <li>writing and reading restart-files</li>
+<li>external field interpolation grids</li>
 </ul>
 <h1>Experimental</h1>
 <ul>
-<li>flexible molecules</li>
+<li>flexible molecules (CBMC)</li>
 <li>partial insertion move</li>
 </ul>
 <h1>Todo-list</h1>
 <ul>
+<li>flexible molecules (MD)</li>
 <li>zeo++-type calculations</li>
 <li>flexible frameworks</li>
 <li>reaction ensemble</li>

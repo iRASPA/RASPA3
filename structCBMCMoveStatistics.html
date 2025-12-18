@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.13</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -129,14 +129,11 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a03e8006628a74c5c4c98e16f7076fcbb" id="r_a03e8006628a74c5c4c98e16f7076fcbb"><td class="memItemLeft" align="right" valign="top"><a id="a03e8006628a74c5c4c98e16f7076fcbb" name="a03e8006628a74c5c4c98e16f7076fcbb"></a>
 std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
 <tr class="separator:a03e8006628a74c5c4c98e16f7076fcbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9aaa9dbb3c95d858ef4275cf694345af" id="r_a9aaa9dbb3c95d858ef4275cf694345af"><td class="memItemLeft" align="right" valign="top"><a id="a9aaa9dbb3c95d858ef4275cf694345af" name="a9aaa9dbb3c95d858ef4275cf694345af"></a>
-<a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bondLengthChange</b> {.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.3)}</td></tr>
+<tr class="memitem:a9aaa9dbb3c95d858ef4275cf694345af" id="r_a9aaa9dbb3c95d858ef4275cf694345af"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCBMCMoveStatistics.html#a9aaa9dbb3c95d858ef4275cf694345af">bondLengthChange</a></td></tr>
 <tr class="separator:a9aaa9dbb3c95d858ef4275cf694345af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a046c9e41b36af3d227af9db53816bdda" id="r_a046c9e41b36af3d227af9db53816bdda"><td class="memItemLeft" align="right" valign="top"><a id="a046c9e41b36af3d227af9db53816bdda" name="a046c9e41b36af3d227af9db53816bdda"></a>
-<a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bendAngleChange</b> {.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)}</td></tr>
+<tr class="memitem:a046c9e41b36af3d227af9db53816bdda" id="r_a046c9e41b36af3d227af9db53816bdda"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCBMCMoveStatistics.html#a046c9e41b36af3d227af9db53816bdda">bendAngleChange</a></td></tr>
 <tr class="separator:a046c9e41b36af3d227af9db53816bdda"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a09ce508abe21b13139ab564f836b5b09" id="r_a09ce508abe21b13139ab564f836b5b09"><td class="memItemLeft" align="right" valign="top"><a id="a09ce508abe21b13139ab564f836b5b09" name="a09ce508abe21b13139ab564f836b5b09"></a>
-<a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>conePositionChange</b> {.maxChange = double(0.15), .lowerLimit = double(0.01), .upperLimit = double(0.4)}</td></tr>
+<tr class="memitem:a09ce508abe21b13139ab564f836b5b09" id="r_a09ce508abe21b13139ab564f836b5b09"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCBMCMoveStatistics.html#a09ce508abe21b13139ab564f836b5b09">conePositionChange</a></td></tr>
 <tr class="separator:a09ce508abe21b13139ab564f836b5b09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -148,6 +145,55 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structCBMCMoveStatistics.html">CBMCMoveStatistics</a> &amp;p)</td></tr>
 <tr class="separator:a9d52f807208e806a478781d2730bc6b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a046c9e41b36af3d227af9db53816bdda" name="a046c9e41b36af3d227af9db53816bdda"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a046c9e41b36af3d227af9db53816bdda">&#9670;&#160;</a></span>bendAngleChange</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt;double&gt; CBMCMoveStatistics::bendAngleChange</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">      .maxChange = double(0.3), .lowerLimit = double(0.01), .upperLimit = double(0.5)}</div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="a9aaa9dbb3c95d858ef4275cf694345af" name="a9aaa9dbb3c95d858ef4275cf694345af"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9aaa9dbb3c95d858ef4275cf694345af">&#9670;&#160;</a></span>bondLengthChange</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt;double&gt; CBMCMoveStatistics::bondLengthChange</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">      .maxChange = double(0.3), .lowerLimit = double(0.01), .upperLimit = double(0.5)}</div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="a09ce508abe21b13139ab564f836b5b09" name="a09ce508abe21b13139ab564f836b5b09"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09ce508abe21b13139ab564f836b5b09">&#9670;&#160;</a></span>conePositionChange</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt;double&gt; CBMCMoveStatistics::conePositionChange</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">      .maxChange = double(0.3), .lowerLimit = double(0.01), .upperLimit = double(0.5)}</div>
+</div><!-- fragment -->
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/cbmc/flexible_molecules/<b>cbmc_statistics.ixx</b></li>
 </ul>
