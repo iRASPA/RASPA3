@@ -191,6 +191,45 @@
       }
     },
     {
+      "name": "linux_conda_gcc",
+      "description": "Sets compilers, build type",
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CONDA": true,
+        "CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/gcc",
+        "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/g++",
+        "CMAKE_EXE_LINKER_FLAGS": "-L$env{CONDA_PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-L$env{CONDA_PREFIX}/lib",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -DNDEBUG -g -O3 -ffast-math",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "OpenMP_C_LIB_NAMES": "libgomp",
+        "OpenMP_CXX_LIB_NAMES": "libgomp",
+        "OpenMP_libgomp_LIBRARY": "$env{CONDA_PREFIX}/lib/libgomp.so",
+        "BLA_VENDOR": "Generic",
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": true,
+        "BUILD_CLI" : true,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT" : false,
+        "BUILD_TESTING_FOUNDATIONKIT" : false,
+        "BUILD_TESTING_SYMMETRYKIT" : false,
+        "BUILD_TESTING_RASPAKIT" : true,
+        "BUILD_TESTING_RASPA3" : false,
+        "BUILD_LIBTORCH": false,
+        "BUILD_PYTHON": false,
+        "BLA_SIZEOF_INTEGER": "4"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": ["Linux"]
+        }
+      }
+    },
+    {
       "name": "linux_conda_raspa3",
       "description": "Sets compilers, build type",
       "inherits": ["base"],
