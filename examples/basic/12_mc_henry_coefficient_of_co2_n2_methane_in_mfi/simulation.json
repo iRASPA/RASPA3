@@ -13,7 +13,7 @@
       "NumberOfUnitCells" : [2, 2, 2],
       "ExternalTemperature" : 300.0,
       "ExternalPressure" : 1.0e5,
-      "ChargeMethod" : "None"
+      "ChargeMethod" : "Ewald"
     }
   ],
 

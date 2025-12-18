@@ -1,4 +1,7 @@
 {
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
   "PseudoAtoms" :
   [
     {
@@ -7,7 +10,7 @@
       "print_to_output" : true,
       "element" : "O",
       "print_as" : "O",
-      "mass" : 28.0855,
+      "mass" : 15.9994,
       "charge" : -1.025,
       "source" : "P. Bai et al., J. Phys. Chem. C 2013, 117, 24375-24387"
     },
@@ -116,8 +119,5 @@
       "parameters" : [158.5, 3.72],
       "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
     }
-  ],
-  "MixingRule" : "Lorentz-Berthelot",
-  "TruncationMethod" : "shifted",
-  "TailCorrections" : false
+  ]
 }
