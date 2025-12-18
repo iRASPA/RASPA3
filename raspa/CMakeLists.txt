@@ -3,11 +3,19 @@ project(raspalib)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 include(FetchContent)
-FetchContent_Declare(
+if (CONDA)
+  FetchContent_Declare(
+      pybind11
+      GIT_REPOSITORY https://github.com/pybind/pybind11
+      GIT_TAG        v3.0.1
+  )
+else()
+  FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
     GIT_TAG        v2.10.4
-)
+  )
+endif()
 
 FetchContent_GetProperties(pybind11)
 if(NOT pybind11_POPULATED)
