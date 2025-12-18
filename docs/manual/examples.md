@@ -6,4 +6,5 @@
 - \subpage examples_advanced
 - \subpage examples_auxillary
 - \subpage examples_reduced_units
+- \subpage examples_density_grids
 
