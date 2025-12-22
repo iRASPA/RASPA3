@@ -59,7 +59,7 @@ class argument_required_exception : public std::exception
   {
     exception_message = "Option `" + option_name + "` requires an argument, but none is given.";
   }
-  const char *what() const throw() { return exception_message.c_str(); }
+  const char *what() const throw() override { return exception_message.c_str(); }
 };
 
 class unknown_option_exception : public std::exception
@@ -71,7 +71,7 @@ class unknown_option_exception : public std::exception
   {
     exception_message = "Option `" + option_name + "` is unknown.";
   }
-  const char *what() const throw() { return exception_message.c_str(); }
+  const char *what() const throw() override { return exception_message.c_str(); }
 };
 
 class help_requested_exception : public std::exception
@@ -80,7 +80,7 @@ class help_requested_exception : public std::exception
 
  public:
   explicit help_requested_exception() {};
-  const char *what() const throw() { return exception_message.c_str(); }
+  const char *what() const throw() override { return exception_message.c_str(); }
 };
 
 namespace util

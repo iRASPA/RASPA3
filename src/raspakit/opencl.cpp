@@ -16,6 +16,7 @@ module;
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
+#define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #elif _WIN32

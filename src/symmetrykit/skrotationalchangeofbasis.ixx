@@ -38,7 +38,7 @@ export struct SKRotationalChangeOfBasis
 
 export inline SKSeitzIntegerMatrix operator*(const SKRotationalChangeOfBasis& a, const SKSeitzIntegerMatrix& b)
 {
-  SKRotationMatrix rotationMatrix = SKRotationMatrix(a.inverseRotationMatrix * b.rotation * a.rotationMatrix);
+  SKRotationMatrix rotationMatrix = a.inverseRotationMatrix * b.rotation * a.rotationMatrix;
   int3 translationVector = a.inverseRotationMatrix * b.translation;
   return SKSeitzIntegerMatrix(rotationMatrix, translationVector);
 }

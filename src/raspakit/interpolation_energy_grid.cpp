@@ -3539,7 +3539,7 @@ InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox
         numberOfCells(numberOfGridPoints.x - 1, numberOfGridPoints.y - 1, numberOfGridPoints.z -1),
         order(order),
         data(std::to_underlying(order) *
-             static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+             (numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
 {
 }
 
@@ -4012,13 +4012,13 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 =
           std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                   static_cast<std::size_t>(numberOfCells.x - 1));
+                   numberOfCells.x - 1);
       std::size_t y0 =
           std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                   static_cast<std::size_t>(numberOfCells.y - 1));
+                   numberOfCells.y - 1);
       std::size_t z0 =
           std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                   static_cast<std::size_t>(numberOfCells.z - 1));
+                   numberOfCells.z - 1);
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
@@ -4078,11 +4078,11 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;
@@ -4143,11 +4143,11 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;
@@ -4287,11 +4287,11 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;
@@ -4372,11 +4372,11 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;
@@ -4541,11 +4541,11 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;
@@ -4626,11 +4626,11 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
       std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                                static_cast<std::size_t>(numberOfCells.x - 1));
+                                numberOfCells.x - 1);
       std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                                static_cast<std::size_t>(numberOfCells.y - 1));
+                                numberOfCells.y - 1);
       std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                                static_cast<std::size_t>(numberOfCells.z - 1));
+                                numberOfCells.z - 1);
 
       // Determine upper boundary
       std::size_t x1 = x0 + 1;

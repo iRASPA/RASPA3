@@ -193,6 +193,8 @@ std::string BondBendPotential::print() const
           "[A]\n",
           identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
           parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
+    default:
+      std::unreachable();
   }
 }
 
@@ -216,6 +218,8 @@ double BondBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, 
       return 0.0;
     case BondBendType::TruncatedVessal:
       return 0.0;
+    default:
+      std::unreachable();
   }
 }
 

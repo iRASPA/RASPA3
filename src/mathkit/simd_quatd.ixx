@@ -124,6 +124,12 @@ struct std::formatter<simd_quatd> : std::formatter<std::string_view>
   }
 };
 
-export void to_json(nlohmann::json& j, const simd_quatd& q) { j = nlohmann::json{q.ix, q.iy, q.iz, q.r}; }
+export void to_json(nlohmann::json& j, const simd_quatd& q)
+{ 
+  j = nlohmann::json{q.ix, q.iy, q.iz, q.r};
+}
 
-export void from_json(const nlohmann::json& j, simd_quatd& q) { j.get_to(q); }
+export void from_json(const nlohmann::json& j, simd_quatd& q) 
+{ 
+  j.get_to(q);
+}

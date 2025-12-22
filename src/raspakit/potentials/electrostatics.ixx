@@ -9,6 +9,7 @@ module;
 #include <cstddef>
 #include <iostream>
 #include <numbers>
+#include <utility>
 #endif
 
 export module potential_electrostatics;
@@ -63,7 +64,8 @@ export namespace Potentials
       return 0.0;
     }
     default:
-      break;
+      return 0.0;
   }
+  std::unreachable();
 };
 }  // namespace Potentials

@@ -171,8 +171,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // apply acceptance/rejection rule
   if (random.uniform() < std::exp(-systemA.beta * deltaU +
-                                  (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
-                                  (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
+                                  ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
+                                  ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     // Accept the move: update systems A and B with new configurations and energies
     systemA.mc_moves_statistics.addAccepted(move);

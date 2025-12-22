@@ -21,6 +21,7 @@ module;
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
+#define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #elif _WIN32
@@ -31,6 +32,7 @@ module;
 
 #ifdef USE_STD_IMPORT
 #define CL_TARGET_OPENCL_VERSION 120
+#define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #elif _WIN32
@@ -116,7 +118,7 @@ Tessellation::~Tessellation()
 
 void Tessellation::run(const ForceField& forceField, const Framework& framework)
 {
-  double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
+  //double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
   double cutoff = forceField.cutOffFrameworkVDW;
   double3x3 unitCell = framework.simulationBox.cell;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
@@ -151,7 +153,7 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
   }
 
-  std::vector<int32_t> output_data(static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.x));
+  std::vector<int32_t> output_data(grid_size.x * grid_size.y * grid_size.x);
 
   if (positions.size() > 0)
   {

@@ -263,7 +263,7 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
     TT.assignSubmatrix(0, 0, T.submatrix(1, 1, r - 2, _rows));
     TT.assignSubmatrix(r - 2, 0, T.submatrix(r - 1, 1, _rows - r + 2, _rows));
   }
-  RingMatrix AA = RingMatrix(Apad.submatrix(1, 1, _rows, _columns));
+  RingMatrix AA = Apad.submatrix(1, 1, _rows, _columns);
 
   // Extract rank profile  FIX
   rp = std::vector<std::size_t>(

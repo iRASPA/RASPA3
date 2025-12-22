@@ -433,7 +433,7 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
     std::print("The algorithm computing SVD failed to converge.\n");
   }
 
-  double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
+  //double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
   double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
   double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
 
@@ -487,7 +487,7 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
     std::print("The algorithm computing SVD failed to converge.\n");
   }
 
-  double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
+  //double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
   double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
   double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
 

@@ -38,6 +38,8 @@ CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, Coulo
   {
     case CoulombType::Coulomb:
       break;
+    default:
+      std::unreachable();
   }
 }
 
@@ -48,6 +50,8 @@ std::string CoulombPotential::print() const
     case CoulombType::Coulomb:
       return std::format("{} - {} : COULOMB p_0={:g} [{}], p_1={:g} [{}] scaling: {} [-]\n", identifiers[0], identifiers[1],
                          chargeA, "e", chargeB, "e", scaling);
+    default:
+      std::unreachable();
   }
 }
 
@@ -61,6 +65,8 @@ double CoulombPotential::calculateEnergy(const double3 &posA, const double3 &pos
   {
     case CoulombType::Coulomb:
       return scaling * Units::CoulombicConversionFactor * chargeA * chargeB / r;
+    default:
+      std::unreachable();
   }
 }
 

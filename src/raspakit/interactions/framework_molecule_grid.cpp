@@ -312,6 +312,8 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
 
               third_derivative_fractional[0][1][2]};
   }
+
+  std::unreachable();
 }
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
@@ -841,4 +843,6 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
 
               sixth_derivative_fractional[0][0][1][1][2][2]};
   };
+
+  std::unreachable();
 }

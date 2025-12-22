@@ -23,7 +23,7 @@ import skrotationmatrix;
 SKRotationalChangeOfBasis::SKRotationalChangeOfBasis(SKRotationMatrix rotationMatrix)
 {
   this->rotationMatrix = rotationMatrix;
-  this->inverseRotationMatrix = SKRotationMatrix(rotationMatrix.inverse());
+  this->inverseRotationMatrix = rotationMatrix.inverse();
 }
 
 SKRotationalChangeOfBasis::SKRotationalChangeOfBasis(SKRotationMatrix rotationMatrix,

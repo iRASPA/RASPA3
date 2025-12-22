@@ -97,7 +97,7 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
   for (std::size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
   {
     bin = numberOfIntegerMoleculesPerComponent[i] - range.first;
-    if (bin >= 0 && bin < numberOfBins)
+    if (bin < numberOfBins)
     {
       bookKeepingEnergyHistogram[blockIndex][bin][i] += weight;
     }

@@ -41,25 +41,25 @@ void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t curr
 
   bin = static_cast<std::size_t>((energy.x * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(range.second - range.first));
-  if (bin >= 0 && bin < numberOfBins)
+  if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].x += weight;
   }
   bin = static_cast<std::size_t>((energy.y * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(range.second - range.first));
-  if (bin >= 0 && bin < numberOfBins)
+  if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].y += weight;
   }
   bin = static_cast<std::size_t>((energy.z * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(range.second - range.first));
-  if (bin >= 0 && bin < numberOfBins)
+  if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].z += weight;
   }
   bin = static_cast<std::size_t>((energy.w * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(range.second - range.first));
-  if (bin >= 0 && bin < numberOfBins)
+  if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].w += weight;
   }

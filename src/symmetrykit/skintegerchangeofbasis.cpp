@@ -30,7 +30,7 @@ SKIntegerChangeOfBasis SKIntegerChangeOfBasis::inverse()
 SKTransformationMatrix SKIntegerChangeOfBasis::operator*(const SKTransformationMatrix& right) const
 {
   return this->_inverseChangeOfBasis * right * this->_changeOfBasis /
-         int(this->_inverseChangeOfBasisDeterminant * this->_changeOfBasisDeterminant);
+         (this->_inverseChangeOfBasisDeterminant * this->_changeOfBasisDeterminant);
 }
 
 double3 SKIntegerChangeOfBasis::operator*(const double3& right) const

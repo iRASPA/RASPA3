@@ -834,7 +834,7 @@ algorithmStart:
       (SKSymmetryCell::isEqualTo(xi, B) && SKSymmetryCell::isSmallerThen(2.0 * eta, zeta)) ||
       (SKSymmetryCell::isEqualTo(xi, -B) && SKSymmetryCell::isSmallerThen(zeta, 0.0)))
   {
-    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(0, -int(sign(xi)), 1));
+    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(0, -sign(xi), 1));
     // assert(matrixC.determinant() == 1);
     changeOfBasisMatrix = changeOfBasisMatrix * matrixC;
 
@@ -850,7 +850,7 @@ algorithmStart:
       (SKSymmetryCell::isEqualTo(eta, A) && SKSymmetryCell::isSmallerThen(2.0 * xi, zeta)) ||
       (SKSymmetryCell::isEqualTo(eta, -A) && SKSymmetryCell::isSmallerThen(zeta, 0.0)))
   {
-    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(-int(sign(eta)), 0, 1));
+    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(-sign(eta), 0, 1));
     // assert(matrixC.determinant() == 1);
     changeOfBasisMatrix = changeOfBasisMatrix * matrixC;
 
@@ -866,7 +866,7 @@ algorithmStart:
       (SKSymmetryCell::isEqualTo(zeta, A) && SKSymmetryCell::isSmallerThen(2.0 * xi, eta)) ||
       (SKSymmetryCell::isEqualTo(zeta, -A) && SKSymmetryCell::isSmallerThen(eta, 0.0)))
   {
-    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(-int(sign(zeta)), 1, 0), int3(0, 0, 1));
+    SKTransformationMatrix matrixC = SKTransformationMatrix(int3(1, 0, 0), int3(-sign(zeta), 1, 0), int3(0, 0, 1));
     // assert(matrixC.determinant() == 1);
     changeOfBasisMatrix = changeOfBasisMatrix * matrixC;
 

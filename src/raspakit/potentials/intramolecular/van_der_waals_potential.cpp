@@ -42,6 +42,8 @@ VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifier
     case VanDerWaalsType::LennardJones:
       parameters[0] *= Units::KelvinToEnergy;
       break;
+    default:
+      std::unreachable();
   }
 }
 
@@ -52,6 +54,8 @@ std::string VanDerWaalsPotential::print() const
     case VanDerWaalsType::LennardJones:
       return std::format("{} - {} : LENNARD_JONES p_0/k_B={:g} [K], p_1={:g} [Å], scaling/k_B={:g}\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], scaling);
+    default:
+      std::unreachable();
   }
 }
 
@@ -73,6 +77,8 @@ double VanDerWaalsPotential::calculateEnergy(const double3 &posA, const double3 
       rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       return scaling * 4.0 * parameters[0] * (temp * (temp - 1.0));
+    default:
+      std::unreachable();
   }
 }
 

@@ -516,7 +516,7 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
 {
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
-  std::size_t leastOccuringAtomType;
+  std::size_t leastOccuringAtomType{};
   if (allowPartialOccupancies)
   {
     reducedAtoms = atoms;
