@@ -54,7 +54,7 @@ import interpolation_energy_grid;
 {
   RunningEnergy energySum{};
 
-  const double overlapCriteria = forceField.energyOverlapCriteria;
+  //const double overlapCriteria = forceField.energyOverlapCriteria;
 
   if (hasExternalField)
   {

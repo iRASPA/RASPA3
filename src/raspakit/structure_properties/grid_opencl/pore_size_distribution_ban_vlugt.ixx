@@ -37,19 +37,20 @@ import std;
 
 
 import int3;
+import uint3;
 import framework;
 import forcefield;
 
 export struct BanVlugtPoreSizeDistribution
 {
-  int3 grid_size;
+  uint3 grid_size;
 
   cl_program PSDProgram;
   cl_kernel PSDKernel;
   static const char* PSDKernelSource;
   size_t PSDWorkGroupSize;
 
-  BanVlugtPoreSizeDistribution(int3 grid_size);
+  BanVlugtPoreSizeDistribution(uint3 grid_size);
   ~BanVlugtPoreSizeDistribution();
 
   void run(const ForceField &forceField, const Framework &framework);

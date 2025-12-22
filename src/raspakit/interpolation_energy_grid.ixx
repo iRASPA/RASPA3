@@ -30,6 +30,7 @@ import std;
 
 import archive;
 import int3;
+import uint3;
 import double3;
 import double3x3;
 import stringutils;
@@ -45,14 +46,14 @@ export struct InterpolationEnergyGrid
 
   SimulationBox unitCellBox;
   double3 origin;
-  int3 numberOfGridPoints;
-  int3 numberOfCells;
+  uint3 numberOfGridPoints;
+  uint3 numberOfCells;
   ForceField::InterpolationScheme order;
   std::vector<double> data;
 
   InterpolationEnergyGrid() {}
 
-  InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, int3 numberOfGridPoints, ForceField::InterpolationScheme order);
+  InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceField::InterpolationScheme order);
 
   constexpr static std::make_signed_t<std::size_t> num_points_interpolation{6};
 
@@ -68,7 +69,7 @@ export struct InterpolationEnergyGrid
 
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField);
 
-  static const int3 parseExternalFieldGridDimensions(const std::string& filename);
+  static const uint3 parseExternalFieldGridDimensions(const std::string& filename);
 
   /**
    * \brief Parses external field grid based on the provided CUBE file.

@@ -56,6 +56,8 @@ import std;
 #endif
 
 import opencl;
+import int3;
+import uint3;
 import float4;
 import double4;
 import forcefield;
@@ -249,7 +251,7 @@ EnergyOpenCLSurfaceArea::~EnergyOpenCLSurfaceArea()
   }
 }
 
-void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework &framework, int3 grid_size)
+void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework &framework, uint3 grid_size)
 {
   float isoValue = 0.0;
 
@@ -318,12 +320,12 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   }
 
   std::size_t index = 0;
-  for (int k = 0; k < grid_size.z; ++k)
+  for (std::size_t k = 0; k < grid_size.z; ++k)
   {
-    for (int j = 0; j < grid_size.y; ++j)
+    for (std::size_t j = 0; j < grid_size.y; ++j)
     {
       // X various the fastest (contiguous in x)
-      for (int i = 0; i < grid_size.x; ++i)
+      for (std::size_t i = 0; i < grid_size.x; ++i)
       {
         double3 position =
             correction * double3(double(i) / double(grid_size.x - 1), double(j) / double(grid_size.y - 1),
@@ -561,7 +563,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   //===================================================================================================================================
 
   cl_float clIsoValue = cl_float(isoValue);
-  cl_int4 clDimensions = {{grid_size.x, grid_size.y, grid_size.z, 1}};
+  cl_int4 clDimensions = {{static_cast<int32_t>(grid_size.x), static_cast<int32_t>(grid_size.y), static_cast<int32_t>(grid_size.z), 1}};
 
   clSetKernelArg(classifyCubesKernel, 0, sizeof(cl_mem), &images[0]);
   clSetKernelArg(classifyCubesKernel, 1, sizeof(cl_mem), &rawData);

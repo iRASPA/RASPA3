@@ -46,6 +46,8 @@ module interpolation_energy_grid;
 import std;
 #endif
 
+import int3;
+import uint3;
 import double3;
 import double3x3;
 import stringutils;
@@ -3530,7 +3532,7 @@ import interactions_external_field_grid;
   return X;
 }
 
-InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, int3 numberOfGridPoints, ForceField::InterpolationScheme order)
+InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceField::InterpolationScheme order)
       : unitCellBox(unitCellBox),
         origin(origin),
         numberOfGridPoints(numberOfGridPoints),
@@ -3541,7 +3543,7 @@ InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox
 {
 }
 
-const int3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
+const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
 {
   int3 gridDims;
   double ax, ay, az, bx, by, bz, cx, cy, cz;  // dummy variables currently
@@ -3592,14 +3594,14 @@ const int3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::
 
   if (gridDims.x < 0 && gridDims.y < 0 && gridDims.z < 0)
   {
-    gridDims = {-1 * gridDims.x, -1 * gridDims.y, -1 * gridDims.z};
+    return {static_cast<std::size_t>(-1 * gridDims.x), static_cast<std::size_t>(-1 * gridDims.y), static_cast<std::size_t>(-1 * gridDims.z)};
   }
   else
   {
-    throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only poisitive, not mixed");
+    throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only positive, not mixed");
   }
 
-  return gridDims;
+  std::unreachable();
 }
 
 /**
@@ -3613,7 +3615,7 @@ const int3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::
  */
 const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
 {
-  int3 gridDims = parseExternalFieldGridDimensions(filename);
+  uint3 gridDims = parseExternalFieldGridDimensions(filename);
 
   std::ifstream infile(filename);
 
@@ -3625,7 +3627,7 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
 
   std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
   double value{};
-  for (int i = 0; i < gridDims.x * gridDims.y * gridDims.z; i++)
+  for (std::size_t i = 0; i < gridDims.x * gridDims.y * gridDims.z; i++)
   {
     if (!(infile >> value)){
       throw std::runtime_error("Unexpected end of cube data: " + filename);
@@ -4008,15 +4010,15 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      std::make_signed_t<std::size_t> x0 =
-          std::min(static_cast<std::make_signed_t<std::size_t>>(s.x * static_cast<double>(numberOfCells.x)),
-                   static_cast<std::make_signed_t<std::size_t>>(numberOfCells.x - 1));
-      std::make_signed_t<std::size_t> y0 =
-          std::min(static_cast<std::make_signed_t<std::size_t>>(s.y * static_cast<double>(numberOfCells.y)),
-                   static_cast<std::make_signed_t<std::size_t>>(numberOfCells.y - 1));
-      std::make_signed_t<std::size_t> z0 =
-          std::min(static_cast<std::make_signed_t<std::size_t>>(s.z * static_cast<double>(numberOfCells.z)),
-                   static_cast<std::make_signed_t<std::size_t>>(numberOfCells.z - 1));
+      std::size_t x0 =
+          std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                   static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 =
+          std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                   static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 =
+          std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                   static_cast<std::size_t>(numberOfCells.z - 1));
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
@@ -4035,25 +4037,28 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       {
         zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
-        std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
-        if (lp < 0) lp += numberOfGridPoints.z;
-        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+        std::make_signed_t<std::size_t> lp = static_cast<std::make_signed_t<std::size_t>>(z0) + l0 + mstart;
+        if (lp < 0) lp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z);
+        if (lp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z)) 
+          lp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z);
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
           yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
-          std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
-          if (kp < 0) kp += numberOfGridPoints.y;
-          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+          std::make_signed_t<std::size_t> kp = static_cast<std::make_signed_t<std::size_t>>(y0) + k0 + mstart;
+          if (kp < 0) kp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y);
+          if (kp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y))
+            kp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y);
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
             xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
-            std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
-            if (jp < 0) jp += numberOfGridPoints.x;
-            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+            std::make_signed_t<std::size_t> jp = static_cast<std::make_signed_t<std::size_t>>(x0) + j0 + mstart;
+            if (jp < 0) jp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
+            if (jp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x))
+              jp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
 
             yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
@@ -4243,7 +4248,8 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
         std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
         if (lp < 0) lp += numberOfGridPoints.z;
-        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+        if (lp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z)) 
+          lp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z);
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
@@ -4251,15 +4257,17 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
           std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
           if (kp < 0) kp += numberOfGridPoints.y;
-          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+          if (kp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y))
+            kp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y);
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
             xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
             std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
-            if (jp < 0) jp += numberOfGridPoints.x;
-            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+            if (jp < 0) jp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
+            if (jp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x))
+              jp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
 
             yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
@@ -4493,24 +4501,27 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
         zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
         std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
-        if (lp < 0) lp += numberOfGridPoints.z;
-        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+        if (lp < 0) lp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z);
+        if (lp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z)) 
+          lp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.z);
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
           yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
           std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
-          if (kp < 0) kp += numberOfGridPoints.y;
-          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+          if (kp < 0) kp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y);
+          if (kp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y))
+            kp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.y);
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
             xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
             std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
-            if (jp < 0) jp += numberOfGridPoints.x;
-            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+            if (jp < 0) jp += static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
+            if (jp >= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x))
+              jp -= static_cast<std::make_signed_t<std::size_t>>(numberOfGridPoints.x);
 
             yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
@@ -4766,7 +4777,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 }
 
 void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const SimulationBox &simulationBox,
-                                      const ForceField &forceField)
+                                      [[maybe_unused]] const ForceField &forceField)
 {
   std::filesystem::create_directory("interpolation_grids");
 
@@ -4780,12 +4791,12 @@ void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const Simulation
   std::print(ostream, "Written by RASPA-3\n");
   std::print(ostream, "{} {} {} {}\n", 1, origin.x, origin.y, origin.z);
 
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / numberOfGridPoints.x, cell.ay / numberOfGridPoints.x,
-             cell.az / numberOfGridPoints.x);
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / numberOfGridPoints.y, cell.by / numberOfGridPoints.y,
-             cell.bz / numberOfGridPoints.y);
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / numberOfGridPoints.z, cell.cy / numberOfGridPoints.z,
-             cell.cz / numberOfGridPoints.z);
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / static_cast<double>(numberOfGridPoints.x), 
+      cell.ay / static_cast<double>(numberOfGridPoints.x), cell.az / static_cast<double>(numberOfGridPoints.x));
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / static_cast<double>(numberOfGridPoints.y), 
+      cell.by / static_cast<double>(numberOfGridPoints.y), cell.bz / static_cast<double>(numberOfGridPoints.y));
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / static_cast<double>(numberOfGridPoints.z), 
+      cell.cy / static_cast<double>(numberOfGridPoints.z), cell.cz / static_cast<double>(numberOfGridPoints.z));
 
   // work around: needs to be 1 atom for iRASPA
   std::print(ostream, "1 0.0 0.0 0.0 0.0\n");

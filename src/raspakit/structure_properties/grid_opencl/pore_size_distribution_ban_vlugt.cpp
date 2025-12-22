@@ -48,6 +48,8 @@ import std;
 #endif
 
 import opencl;
+import int3;
+import uint3;
 import float4;
 import double2;
 import double3;
@@ -64,7 +66,7 @@ import units;
 //import mdspan;
 #endif
 
-BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(int3 grid_size):
+BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):
   grid_size(grid_size)
 {
   if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
@@ -78,7 +80,7 @@ BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(int3 grid_size):
     err = clBuildProgram(PSDProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      size_t len;
+      std::size_t len;
       char buffer[2048];
       clGetProgramBuildInfo(PSDProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
       std::string message = std::format("Pore size distribution (Ban, Vlugt): OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__, __LINE__, std::string(buffer));
@@ -88,7 +90,7 @@ BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(int3 grid_size):
     PSDKernel = clCreateKernel(PSDProgram, "PSD", &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__ , __LINE__));}
 
-    err = clGetKernelWorkGroupInfo(PSDKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &PSDWorkGroupSize, nullptr);
+    err = clGetKernelWorkGroupInfo(PSDKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(std::size_t), &PSDWorkGroupSize, nullptr);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));}
   }
 }
@@ -120,9 +122,9 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
   std::vector<cl_float4> pos(positions.size());
   std::vector<cl_float> sigma(positions.size());
 
-  std::vector<cl_float4> output_data(static_cast<size_t>(grid_size.x * grid_size.y * grid_size.z));
+  std::vector<cl_float4> output_data(static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.z));
 
-  size_t nGrid = grid_size.x * grid_size.y * grid_size.z;
+  std::size_t nGrid = grid_size.x * grid_size.y * grid_size.z;
   std::vector<int> pore_sizes_host(nGrid, std::bit_cast<int>(0.0f));
   cl_mem pore_sizes = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
                                     sizeof(int) * nGrid, pore_sizes_host.data(), &err);
@@ -175,20 +177,20 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
     err |= clSetKernelArg(PSDKernel,  7, sizeof(cl_int3), &numberOfReplicas);
     err |= clSetKernelArg(PSDKernel,  8, sizeof(cl_int3), &grid_size);
 
-    size_t global_work_size[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z)};
+    std::size_t global_work_size[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y), static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), PSDKernel, 3, nullptr, global_work_size, nullptr, 0, nullptr, nullptr);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel PSDKernel failed at {} line {}\n", __FILE__, __LINE__));}
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    size_t originRawData[3] = {0,0,0};
-    size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z)};
+    //std::size_t originRawData[3] = {0,0,0};
+    //std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y), static_cast<std::size_t>(grid_size.z)};
 
     err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), pore_sizes, CL_TRUE, 0,
                          sizeof(int) * nGrid, pore_sizes_host.data(), 0, nullptr, nullptr);
 
     std::vector<float> pore_sizes_float(nGrid);
-    for (size_t i = 0; i < nGrid; ++i)
+    for (std::size_t i = 0; i < nGrid; ++i)
       pore_sizes_float[i] = *reinterpret_cast<float*>(&pore_sizes_host[i]);
 
     clFinish(OpenCL::clCommandQueue.value());
@@ -209,13 +211,13 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
   myfile.open(framework.name + ".PSD_ban_vlugt.gpu.txt");
   std::print(myfile, "# Pore size distribution using Ban, Vlugt method\n");
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-  for (size_t k = 0; k < static_cast<size_t>(grid_size.z); ++k)
+  for (std::size_t k = 0; k < static_cast<std::size_t>(grid_size.z); ++k)
   {
-    for (size_t j = 0; j < static_cast<size_t>(grid_size.y); ++j)
+    for (std::size_t j = 0; j < static_cast<std::size_t>(grid_size.y); ++j)
     {
-      for (size_t i = 0; i < static_cast<size_t>(grid_size.x); ++i)
+      for (std::size_t i = 0; i < static_cast<std::size_t>(grid_size.x); ++i)
       {
-        size_t idx = i + j * grid_size.x + k * grid_size.x * grid_size.y;
+        std::size_t idx = i + j * grid_size.x + k * grid_size.x * grid_size.y;
         float pore_size = std::bit_cast<float>(pore_sizes_host[idx]);
         std::print(myfile,"{} {} {} {}\n", i, j, k, pore_size);
       }

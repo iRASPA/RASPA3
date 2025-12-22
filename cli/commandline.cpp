@@ -35,6 +35,7 @@ import std;
 
 import archive;
 import int3;
+import uint3;
 import double3;
 import threadpool;
 import hdf5;
@@ -154,7 +155,7 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<ForceField> forceField;
   bool is_zeolite{false};
   bool is_mof{true};
-  int3 gridSize{128, 128, 128};
+  uint3 gridSize{128, 128, 128};
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
@@ -213,22 +214,22 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--energy"}, argparser::no_argument, "Use energy-based methods",
            [&use_energy_methods](std::string const &) { use_energy_methods = true; })
       .reg({"--128"}, argparser::no_argument, "Use low-accuracy 128x128x128 grid",
-           [&gridSize](std::string const &) { gridSize = int3(128, 128, 128); })
+           [&gridSize](std::string const &) { gridSize = uint3(128, 128, 128); })
       .reg({"--256"}, argparser::no_argument, "Use medium-accuracy 256x256x256 grid",
-           [&gridSize](std::string const &) { gridSize = int3(256, 256, 256); })
+           [&gridSize](std::string const &) { gridSize = uint3(256, 256, 256); })
       .reg({"--512"}, argparser::no_argument, "Use high-accuracy 512x512x512 grid",
-           [&gridSize](std::string const &) { gridSize = int3(512, 512, 512); })
+           [&gridSize](std::string const &) { gridSize = uint3(512, 512, 512); })
       .reg({"--grid-size"}, argparser::required_argument, "Set size of grid: 'X Y Z'",
            [&gridSize](std::string const &arg)
            {
              std::istringstream iss(arg);
-             int x, y, z;
+             std::size_t x, y, z;
              if (!(iss >> x >> y >> z))
              {
                throw std::runtime_error(
                    "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
              }
-             gridSize = int3(x, y, z);
+             gridSize = uint3(x, y, z);
            })
       .reg({"-s", "--surface-area"}, argparser::no_argument, "Compute surface area",
            [&state](std::string const &) { state.set(State::SurfaceArea); })

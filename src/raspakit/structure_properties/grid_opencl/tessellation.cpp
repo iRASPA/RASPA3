@@ -64,7 +64,7 @@ import units;
 //import mdspan;
 #endif
 
-Tessellation::Tessellation(int3 grid_size) : grid_size(grid_size)
+Tessellation::Tessellation(uint3 grid_size) : grid_size(grid_size)
 {
   if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {

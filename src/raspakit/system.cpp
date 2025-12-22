@@ -47,6 +47,7 @@ import archive;
 import randomnumbers;
 import stringutils;
 import int3;
+import uint3;
 import double3;
 import double3x3;
 import double3x3x3;
@@ -2244,7 +2245,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream)
     {
 
       // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
-      int3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
+      uint3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
 
       externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
                                                       numberOfExternalFieldGridPoints, forceField.interpolationScheme);
@@ -2390,7 +2391,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
   if (framework.has_value())
   {
-    int3 numberOfCoulombGridPoints{};
+    uint3 numberOfCoulombGridPoints{};
     if (forceField.numberOfVDWGridPoints.has_value())
     {
       numberOfCoulombGridPoints = forceField.numberOfCoulombGridPoints.value();
@@ -2399,11 +2400,11 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
     {
       const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
       numberOfCoulombGridPoints.x =
-          static_cast<std::int32_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
       numberOfCoulombGridPoints.y =
-          static_cast<std::int32_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
       numberOfCoulombGridPoints.z =
-          static_cast<std::int32_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
     }
 
     // also create a Charge grid when needed
@@ -2420,7 +2421,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
                                                        framework.value(), forceField.cutOffCoulomb, 0);
     }
 
-    int3 numberOfVDWGridPoints{};
+    uint3 numberOfVDWGridPoints{};
     if (forceField.numberOfVDWGridPoints.has_value())
     {
       numberOfVDWGridPoints = forceField.numberOfVDWGridPoints.value();
@@ -2428,9 +2429,9 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
     else
     {
       const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
-      numberOfVDWGridPoints.x = static_cast<std::int32_t>(perpendicular_widths.x / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.y = static_cast<std::int32_t>(perpendicular_widths.y / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.z = static_cast<std::int32_t>(perpendicular_widths.z / forceField.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.x = static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.y = static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.z = static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingVDWGrid + 0.5);
     }
 
     for (const std::size_t& index : forceField.gridPseudoAtomIndices)

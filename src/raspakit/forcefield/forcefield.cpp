@@ -83,6 +83,33 @@ int3 parseInt3(const std::string& item, auto json)
       std::format("[Input reader]: key '{}', value {} should be array of 3 integer  numbers\n", item, json.dump()));
 }
 
+uint3 parseUint3(const std::string& item, auto json)
+{
+  if (json.is_array())
+  {
+    if (json.size() != 3)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
+    }
+    uint3 value{};
+    try
+    {
+      value.x = json[0].template get<std::size_t>();
+      value.y = json[1].template get<std::size_t>();
+      value.z = json[2].template get<std::size_t>();
+      return value;
+    }
+    catch (nlohmann::json::exception& ex)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
+    }
+  }
+  throw std::runtime_error(
+      std::format("[Input reader]: key '{}', value {} should be array of 3 integer  numbers\n", item, json.dump()));
+}
+
 double3 parseDouble3(const std::string& item, auto json)
 {
   if (json.is_array())
@@ -690,15 +717,15 @@ ForceField::ForceField(std::string filePath)
 
   if (parsed_data.contains("NumberOfVDWGridPoints"))
   {
-    numberOfVDWGridPoints = parseInt3("NumberOfVDWGridPoints", parsed_data["NumberOfVDWGridPoints"]);
+    numberOfVDWGridPoints = parseUint3("NumberOfVDWGridPoints", parsed_data["NumberOfVDWGridPoints"]);
   }
   if (parsed_data.contains("NumberOfCoulombGridPoints"))
   {
-    numberOfCoulombGridPoints = parseInt3("NumberOfCoulombGridPoints", parsed_data["NumberOfCoulombGridPoints"]);
+    numberOfCoulombGridPoints = parseUint3("NumberOfCoulombGridPoints", parsed_data["NumberOfCoulombGridPoints"]);
   }
   if (parsed_data.contains("NumberOfExternalFieldGridPoints"))
   {
-    numberOfExternalFieldGridPoints = parseInt3("NumberOfExternalFieldGridPoints", parsed_data["NumberOfExternalFieldGridPoints"]);
+    numberOfExternalFieldGridPoints = parseUint3("NumberOfExternalFieldGridPoints", parsed_data["NumberOfExternalFieldGridPoints"]);
   }
 
   if (parsed_data.contains("NumberOfGridTestPoints"))
@@ -904,8 +931,8 @@ void ForceField::preComputeTailCorrection()
         double cut_off_vdw = cutOffVDW(i, j);
         VDWParameters::Type potentialType = data[i * numberOfPseudoAtoms + j].type;
         double4 parameters = data[i * numberOfPseudoAtoms + j].parameters;
-        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(potentialType, parameters, cut_off_vdw, i, j);
-        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(potentialType, parameters, cut_off_vdw, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(potentialType, parameters, cut_off_vdw);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(potentialType, parameters, cut_off_vdw);
       }
     }
   }

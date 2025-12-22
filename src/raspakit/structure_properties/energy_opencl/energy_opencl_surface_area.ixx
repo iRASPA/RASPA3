@@ -39,6 +39,7 @@ import std;
 #endif
 
 import int3;
+import uint3;
 import double2;
 import double3;
 import double4;
@@ -66,5 +67,5 @@ export struct EnergyOpenCLSurfaceArea
   size_t traverseHPKernelWorkGroupSize[10];
   static std::string marchingCubesKernelSource;
 
-  void run(const ForceField &forceField, const Framework &framework, int3 grid_size);
+  void run(const ForceField &forceField, const Framework &framework, uint3 grid_size);
 };

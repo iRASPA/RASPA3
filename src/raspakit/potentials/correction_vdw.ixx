@@ -33,7 +33,7 @@ export namespace Potentials
  *
  * \return The calculated VDW potential correction.
  */
-inline double potentialCorrectionVDW(VDWParameters::Type potentialType, double4 &parameters, double cutOffVDW, const std::size_t& typeA, const std::size_t& typeB)
+inline double potentialCorrectionVDW(VDWParameters::Type potentialType, double4 &parameters, double cutOffVDW)
 {
   switch (potentialType)
   {

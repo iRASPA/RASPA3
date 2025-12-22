@@ -129,7 +129,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 {
   RunningEnergy energySum;
 
-  const double overlapCriteria = forceField.energyOverlapCriteria;
+  //const double overlapCriteria = forceField.energyOverlapCriteria;
 
   if (hasExternalField)
   {

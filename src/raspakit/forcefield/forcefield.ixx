@@ -33,6 +33,7 @@ import archive;
 import double4;
 import double3;
 import int3;
+import uint3;
 import pseudo_atom;
 import vdwparameters;
 import json;
@@ -147,8 +148,8 @@ export struct ForceField
   std::vector<std::size_t> gridPseudoAtomIndices;
   double spacingVDWGrid{0.15};
   double spacingCoulombGrid{0.15};
-  std::optional<int3> numberOfVDWGridPoints{};
-  std::optional<int3> numberOfCoulombGridPoints{};
+  std::optional<uint3> numberOfVDWGridPoints{};
+  std::optional<uint3> numberOfCoulombGridPoints{};
   std::size_t numberOfGridTestPoints{100000};
   bool interpolationSchemeAuto{true};
   InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
@@ -158,7 +159,7 @@ export struct ForceField
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
   bool useExternalFieldGrid{ true };
   std::string externalFieldGridFileName{ "external_field.cube" };
-  int3 numberOfExternalFieldGridPoints{8, 8, 8};
+  uint3 numberOfExternalFieldGridPoints{8, 8, 8};
   bool writeExternalFieldInterpolationGrid{ false };
 
   /**

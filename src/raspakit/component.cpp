@@ -1390,7 +1390,7 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
           
           [[maybe_unused]] VDWParameters::Type potentialType = forceField(typeA, typeB).type;
           double4 parameters = forceField(typeA, typeB).parameters;
-          double shift = forceField(typeA, typeB).shift;
+          //double shift = forceField(typeA, typeB).shift;
 
           // FIX: unit conversion
           VanDerWaalsPotential potential = VanDerWaalsPotential(

@@ -40,19 +40,20 @@ import std;
 #endif
 
 import int3;
+import uint3;
 import framework;
 import forcefield;
 
 export struct Tessellation
 {
-  int3 grid_size;
+  uint3 grid_size;
 
   cl_program tessellationProgram;
   cl_kernel tessellationKernel;
   static const char *tessellationKernelSource;
   std::size_t tessellationWorkGroupSize;
 
-  Tessellation(int3 grid_size);
+  Tessellation(uint3 grid_size);
   ~Tessellation();
 
   void run(const ForceField &forceField, const Framework &framework);
