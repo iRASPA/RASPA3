@@ -11,6 +11,15 @@ module;
 #include <vector>
 #endif
 
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+
 export module mc_opencl_surface_area;
 
 #ifdef USE_STD_IMPORT
@@ -22,10 +31,13 @@ import forcefield;
 
 export struct MC_OpenCL_SurfaceArea
 {
-  std::vector<double> data;
+  cl_program surfaceAreaProgram;
+  cl_kernel surfaceAreaKernel;
+  static const char* surfaceAreaKernelSource;
+  size_t surfaceAreaWorkGroupSize;
 
-  MC_OpenCL_SurfaceArea() {};
+  MC_OpenCL_SurfaceArea();
 
-  void run(const ForceField &forceField, const Framework &framework, double probe_distance,
-           std::string probe_pseudo_atom, std::size_t number_of_iterations) const;
+  void run(const ForceField &forceField, const Framework &framework, double wellDepthFactor,
+           std::string probePseudoAtom, std::size_t numberOfSlices) const;
 };

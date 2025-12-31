@@ -196,6 +196,7 @@ export struct Framework
   std::vector<Atom> makeSuperCell(int3 numberOfCells) const;
 
   std::vector<double3> fractionalAtomPositionsUnitCell() const;
+  std::vector<double3> cartesianAtomPositionsUnitCell() const;
   std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField &forceField) const;
 
   std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position,

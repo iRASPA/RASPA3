@@ -156,6 +156,7 @@ void CommandLine::run(int argc, char *argv[])
   bool is_zeolite{false};
   bool is_mof{true};
   uint3 gridSize{128, 128, 128};
+  int number_of_slices{ 1024 };
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
@@ -230,6 +231,18 @@ void CommandLine::run(int argc, char *argv[])
                    "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
              }
              gridSize = uint3(x, y, z);
+           })
+      .reg({"--number-of-slices"}, argparser::required_argument, "Set number of slices",
+           [&number_of_slices](std::string const &arg)
+           {
+             std::istringstream iss(arg);
+             std::size_t x;
+             if (!(iss >> x))
+             {
+               throw std::runtime_error(
+                   "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
+             }
+             number_of_slices = x;
            })
       .reg({"-s", "--surface-area"}, argparser::no_argument, "Compute surface area",
            [&state](std::string const &) { state.set(State::SurfaceArea); })
@@ -380,8 +393,8 @@ void CommandLine::run(int argc, char *argv[])
 
         if (use_gpu)
         {
-          EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework, gridSize);
+          MC_OpenCL_SurfaceArea sa;
+          sa.run(forceField.value(), framework, 1.0, "Ar", number_of_slices);
         }
       }
 

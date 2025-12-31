@@ -81,7 +81,7 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
 
   std::ofstream myfile;
   myfile.open(framework.name + ".mc.sa.cpu.txt");
-  std::print(myfile, "# Surface area using Mont Carlo-based method\n");
+  std::print(myfile, "# Surface area using Monte Carlo-based method\n");
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
   myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /

@@ -132,6 +132,17 @@ export struct VDWParameters
     shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
   }
 
+  double strengthParameter() const
+  {
+    switch (type)
+    {
+      case Type::LennardJones:
+        return parameters.x;
+      default:
+        return 0.0;
+    }
+  };
+
   double sizeParameter() const
   {
     switch (type)

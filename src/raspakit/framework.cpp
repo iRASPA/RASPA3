@@ -429,6 +429,19 @@ std::vector<double3> Framework::fractionalAtomPositionsUnitCell() const
   return positions;
 }
 
+std::vector<double3> Framework::cartesianAtomPositionsUnitCell() const
+{
+  std::vector<double3> positions;
+  positions.reserve(unitCellAtoms.size());
+
+  for (const Atom& atom : unitCellAtoms)
+  {
+    positions.push_back(atom.position);
+  }
+
+  return positions;
+}
+
 std::vector<double2> Framework::atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const
 {
   std::vector<double2> parameters;
