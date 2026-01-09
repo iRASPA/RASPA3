@@ -17,6 +17,7 @@ module;
 #include <string>
 #include <vector>
 #include <numeric>
+#include <chrono>
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
