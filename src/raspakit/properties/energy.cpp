@@ -900,41 +900,41 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
                        { return prefactor * block.frameworkComponentEnergy(l, k).totalInter.energy; });
         status["Framework-Molecule"][pair]["total"]["block"] = tmp;
         status["Framework-Molecule"][pair]["total"]["mean"] =
-            prefactor * computedAverage.first.frameworkComponentEnergy(k, l).totalInter.energy;
+            prefactor * computedAverage.first.frameworkComponentEnergy(l, k).totalInter.energy;
         status["Framework-Molecule"][pair]["total"]["confidence"] =
-            prefactor * computedAverage.second.frameworkComponentEnergy(k, l).totalInter.energy;
+            prefactor * computedAverage.second.frameworkComponentEnergy(l, k).totalInter.energy;
 
         std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
                        { return prefactor * block.frameworkComponentEnergy(l, k).VanDerWaals.energy; });
         status["Framework-Molecule"][pair]["vanDerWaals"]["block"] = tmp;
         status["Framework-Molecule"][pair]["vanDerWaals"]["mean"] =
-            prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaals.energy;
+            prefactor * computedAverage.first.frameworkComponentEnergy(l, k).VanDerWaals.energy;
         status["Framework-Molecule"][pair]["vanDerWaals"]["confidence"] =
-            prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaals.energy;
+            prefactor * computedAverage.second.frameworkComponentEnergy(l, k).VanDerWaals.energy;
 
         std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
                        { return prefactor * block.frameworkComponentEnergy(l, k).VanDerWaalsTailCorrection.energy; });
         status["Framework-Molecule"][pair]["tailCorrection"]["block"] = tmp;
         status["Framework-Molecule"][pair]["tailCorrection"]["mean"] =
-            prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+            prefactor * computedAverage.first.frameworkComponentEnergy(l, k).VanDerWaalsTailCorrection.energy;
         status["Framework-Molecule"][pair]["tailCorrection"]["confidence"] =
-            prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+            prefactor * computedAverage.second.frameworkComponentEnergy(l, k).VanDerWaalsTailCorrection.energy;
 
         std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
                        { return prefactor * block.frameworkComponentEnergy(l, k).CoulombicReal.energy; });
         status["Framework-Molecule"][pair]["coulombReal"]["block"] = tmp;
         status["Framework-Molecule"][pair]["coulombReal"]["mean"] =
-            prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicReal.energy;
+            prefactor * computedAverage.first.frameworkComponentEnergy(l, k).CoulombicReal.energy;
         status["Framework-Molecule"][pair]["coulombReal"]["confidence"] =
-            prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicReal.energy;
+            prefactor * computedAverage.second.frameworkComponentEnergy(l, k).CoulombicReal.energy;
 
         std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
                        { return prefactor * block.frameworkComponentEnergy(l, k).CoulombicFourier.energy; });
         status["Framework-Molecule"][pair]["coulombFourier"]["block"] = tmp;
         status["Framework-Molecule"][pair]["coulombFourier"]["mean"] =
-            prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicFourier.energy;
+            prefactor * computedAverage.first.frameworkComponentEnergy(l, k).CoulombicFourier.energy;
         status["Framework-Molecule"][pair]["coulombFourier"]["confidence"] =
-            prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicFourier.energy;
+            prefactor * computedAverage.second.frameworkComponentEnergy(l, k).CoulombicFourier.energy;
       }
     }
   }
