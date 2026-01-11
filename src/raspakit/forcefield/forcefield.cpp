@@ -457,6 +457,28 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
+  if (parsed_data.contains("CutOffVDW"))
+  {
+    if (parsed_data["CutOffVDW"].is_string())
+    {
+      std::string cutOffString = parsed_data["CutOffVDW"].get<std::string>();
+
+      if (caseInSensStringCompare(cutOffString, "auto"))
+      {
+        cutOffFrameworkVDWAutomatic = true;
+        cutOffMoleculeVDWAutomatic = true;
+      }
+    }
+
+    if (parsed_data["CutOffVDW"].is_number_float())
+    {
+      cutOffFrameworkVDWAutomatic = false;
+      cutOffMoleculeVDWAutomatic = false;
+      cutOffFrameworkVDW = parsed_data["CutOffVDW"].get<double>();
+      cutOffMoleculeVDW = parsed_data["CutOffVDW"].get<double>();
+    }
+  }
+
   if (parsed_data.contains("CutOffFrameworkVDW"))
   {
     if (parsed_data["CutOffFrameworkVDW"].is_string())
