@@ -1437,6 +1437,28 @@
       }
     },
     {
+      "name": "linux-x86_64-corei7-ubuntu-24",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=corei7 -ffast-math",
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-corei7-avx-ubuntu-24",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=corei7-avx -ffast-math",
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
       "name": "linux-x86_64-core-avx2-ubuntu-24",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
