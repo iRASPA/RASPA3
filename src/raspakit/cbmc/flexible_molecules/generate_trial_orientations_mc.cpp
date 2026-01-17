@@ -75,9 +75,6 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
                          ? 120.0 * Units::DegreesToRadians
                          : intraMolecularInteractions.bends.front().generateBendAngle(random, beta);
 
-      bond_length = 1.54;
-      angle = 120.0 * Units::DegreesToRadians;
-
       double3 vec = random.randomVectorOnCone(last_bond_vector, angle);
 
       chain_atoms[next_bead].position = chain_atoms[currentBead].position + bond_length * vec;
@@ -167,37 +164,47 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
         std::size_t selected_next_bead_index = random.uniform_integer(0, nextBeads.size() - 1);
         std::size_t selected_next_bead = nextBeads[selected_next_bead_index];
 
+        std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, selected_next_bead);
+
+        if(!bond.has_value())
+        {
+          throw std::runtime_error(std::format("CBMC: bond-potential can not be found (internal error)\n"));
+        }
+
         double3 current_bond_vector = chain_atoms[selected_next_bead].position - chain_atoms[currentBead].position;
         double current_bond_length = current_bond_vector.length();
 
         double3 saved_current_position = chain_atoms[selected_next_bead].position;
 
-        double max_change = component.cbmc_moves_statistics[currentBead].bondLengthChange.maxChange;
-        double new_bond_length = current_bond_length + (2.0 * random.uniform() - 1.0) * max_change;
-
-        double ratio = new_bond_length / current_bond_length;
-        chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + ratio * current_bond_vector;
-
-        double new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
-
-        double energy_difference = new_bond_energy - current_bond_energy;
-
-        component.cbmc_moves_statistics[currentBead].bondLengthChange.constructed += 1;
-        component.cbmc_moves_statistics[currentBead].bondLengthChange.totalConstructed += 1;
-
-
-        if (random.uniform() < ratio * ratio * std::exp(-beta * energy_difference))
+        if(bond->type != BondType::Fixed)
         {
-          // update component statistics
-          current_bond_energy += energy_difference;
+          double max_change = component.cbmc_moves_statistics[currentBead].bondLengthChange.maxChange;
+          double new_bond_length = current_bond_length + (2.0 * random.uniform() - 1.0) * max_change;
 
-          component.cbmc_moves_statistics[currentBead].bondLengthChange.accepted += 1;
-          component.cbmc_moves_statistics[currentBead].bondLengthChange.totalAccepted += 1;
+          double ratio = new_bond_length / current_bond_length;
+          chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + ratio * current_bond_vector;
+
+          double new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
+
+          double energy_difference = new_bond_energy - current_bond_energy;
+
+          component.cbmc_moves_statistics[currentBead].bondLengthChange.constructed += 1;
+          component.cbmc_moves_statistics[currentBead].bondLengthChange.totalConstructed += 1;
+
+          if (random.uniform() < ratio * ratio * std::exp(-beta * energy_difference))
+          {
+            // update component statistics
+            current_bond_energy += energy_difference;
+
+            component.cbmc_moves_statistics[currentBead].bondLengthChange.accepted += 1;
+            component.cbmc_moves_statistics[currentBead].bondLengthChange.totalAccepted += 1;
+          }
+          else
+          {
+            chain_atoms[selected_next_bead].position = saved_current_position;
+          }
         }
-        else
-        {
-          chain_atoms[selected_next_bead].position = saved_current_position;
-        }
+        
 #if defined(DEBUG)
         double old_angle = double3::angle(chain_atoms[previousBead].position, chain_atoms[currentBead].position,
                                           saved_current_position);

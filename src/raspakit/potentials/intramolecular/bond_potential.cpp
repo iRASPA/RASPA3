@@ -292,7 +292,8 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
   {
     case BondType::None:
     case BondType::Fixed:
-      return std::abs(r - parameters[0]) < 1e-10 ? 0.0 : std::numeric_limits<double>::max();
+      return std::abs(r - parameters[0]) < 1e-10 ? 0.0 : 0.0;
+      //return std::abs(r - parameters[0]) < 1e-10 ? 0.0 : std::numeric_limits<double>::max();
     case BondType::Harmonic:
       // 0.5 * p0 * SQR(r - p1);
       // ===============================================
