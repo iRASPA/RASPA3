@@ -94,15 +94,20 @@ Framework::Framework(std::size_t currentFramework, const ForceField& forceField,
 
     mass = 0.0;
     netCharge = 0.0;
-    smallestCharge = std::numeric_limits<double>::max();
-    largestCharge = std::numeric_limits<double>::lowest();
-    for (const Atom& atom : atoms)
+    smallestCharge = 0.0;
+    largestCharge = 0.0;
+    if(!atoms.empty())
     {
-      std::size_t atomType = static_cast<std::size_t>(atom.type);
-      mass += forceField.pseudoAtoms[atomType].mass;
-      netCharge += atom.charge;
-      if (atom.charge > largestCharge) largestCharge = atom.charge;
-      if (atom.charge < smallestCharge) smallestCharge = atom.charge;
+      smallestCharge = std::numeric_limits<double>::max();
+      largestCharge = std::numeric_limits<double>::lowest();
+      for (const Atom& atom : atoms)
+      {
+        std::size_t atomType = static_cast<std::size_t>(atom.type);
+        mass += forceField.pseudoAtoms[atomType].mass;
+        netCharge += atom.charge;
+        if (atom.charge > largestCharge) largestCharge = atom.charge;
+        if (atom.charge < smallestCharge) smallestCharge = atom.charge;
+      }
     }
 
     for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
@@ -175,16 +180,21 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
 
   mass = 0.0;
   netCharge = 0.0;
-  smallestCharge = std::numeric_limits<double>::max();
-  largestCharge = std::numeric_limits<double>::lowest();
-  for (const Atom& atom : atoms)
+  smallestCharge = 0.0;
+  largestCharge = 0.0;
+  if(!atoms.empty())
   {
-    std::size_t atomType = static_cast<std::size_t>(atom.type);
-    mass += forceField.pseudoAtoms[atomType].mass;
-    netCharge += atom.charge;
+    smallestCharge = std::numeric_limits<double>::max();
+    largestCharge = std::numeric_limits<double>::lowest();
+    for (const Atom& atom : atoms)
+    {
+      std::size_t atomType = static_cast<std::size_t>(atom.type);
+      mass += forceField.pseudoAtoms[atomType].mass;
+      netCharge += atom.charge;
 
-    if (atom.charge > largestCharge) largestCharge = atom.charge;
-    if (atom.charge < smallestCharge) smallestCharge = atom.charge;
+      if (atom.charge > largestCharge) largestCharge = atom.charge;
+      if (atom.charge < smallestCharge) smallestCharge = atom.charge;
+    }
   }
 
   for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
