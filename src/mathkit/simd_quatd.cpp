@@ -14,6 +14,7 @@ module;
 #include <map>
 #include <numbers>
 #include <string>
+#include <print>
 #endif
 
 module simd_quatd;
@@ -45,6 +46,25 @@ simd_quatd simd_quatd::fromAxisAngle(double angle, double3 axis)
 {
   double s = std::sin(0.5 * angle);
   return simd_quatd(std::cos(0.5 * angle), double3{s * axis.x, s * axis.y, s * axis.z});
+}
+
+// https://raw.org/proof/quaternion-from-two-vectors/
+// https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/minorlogic.htm
+simd_quatd simd_quatd::fromTwoVectors(double3 a, double3 b)
+{
+  double d = double3::dot(a, b);
+  double3 w = double3::cross(a, b);
+
+  double qw = d + std::sqrt(double3::dot(a,a) * double3::dot(b,b));
+
+  if(qw < 1e-8) // close to opposite and parallel
+  {
+    w = double3(std::copysign(a[2], a[0]), std::copysign(a[2], a[1]),
+                -std::copysign(a[0], a[2]) - std::copysign(a[1], a[2]));
+    return simd_quatd(0.0, w).normalized();
+  }
+
+  return simd_quatd(qw, w).normalized();
 }
 
 simd_quatd simd_quatd::normalized()

@@ -428,7 +428,7 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   std::vector<double> work(static_cast<std::size_t>(lwork));
   dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
-  if (info > 0)
+  if (info != 0)
   {
     std::print("The algorithm computing SVD failed to converge.\n");
   }
@@ -449,8 +449,13 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   return result;
 }
 
+double3x3 double3x3::computeRotationMatrix(double3 a, double3 b)
+{
+  return double3x3(simd_quatd::fromTwoVectors(a,b));
+}
+
 // compute the rotation matrix to map 'vec_i' onto 'vec_j'
-double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
+double3x3 double3x3::computeRotationMatrixSVD(double3 vec_i, double3 vec_j)
 {
   double3x3 H{};
 
@@ -482,12 +487,12 @@ double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
   std::vector<double> work(static_cast<std::size_t>(lwork));
   dgesvd_(&jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
-  if (info > 0)
+  if (info != 0)
   {
-    std::print("The algorithm computing SVD failed to converge.\n");
+    // fall back in case Lapack has numerical problems
+    return double3x3::computeRotationMatrix(vec_i, vec_j);
   }
 
-  //double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
   double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
   double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
 

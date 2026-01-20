@@ -38,6 +38,7 @@ export union simd_quatd
   simd_quatd(double real, double3 imag);
   simd_quatd(double3 EulerAngles);
   static simd_quatd fromAxisAngle(double angle, double3 axis);
+  static simd_quatd fromTwoVectors(double3 a, double3 b);
   double3 EulerAngles();
   simd_quatd normalized();
   simd_quatd inverse() { return simd_quatd(-ix, -iy, -iz, r); }

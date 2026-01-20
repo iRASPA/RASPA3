@@ -138,15 +138,56 @@ TEST(double3x3, Test_quaternion)
   }
 }*/
 
-TEST(double3x3, Test_rotation_matrix_from_svd)
+TEST(double3x3, Test_rotation_matrix)
 {
   RandomNumber random(std::nullopt);
 
-  for (std::size_t i = 0; i < 10000; ++i)
+  for (std::size_t i = 0; i < 10000000; ++i)
   {
     double3 a = random.randomVectorOnUnitSphere();
     double3 b = random.randomVectorOnUnitSphere();
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(a, b);
+
+    double3 c = rotation_matrix * a;
+
+    EXPECT_NEAR(c.x, b.x, 1e-4);
+    EXPECT_NEAR(c.y, b.y, 1e-4);
+    EXPECT_NEAR(c.z, b.z, 1e-4);
+  }
+
+
+  std::vector<std::pair<double3, double3>> edge_cases{
+    {{1.0, 0.0, 0.0}, { 1.0, 0.0, 0.0}},
+    {{0.0, 1.0, 0.0}, { 0.0, 1.0, 0.0}},
+    {{0.0, 0.0, 1.0}, { 0.0, 0.0, 1.0}},
+    {{1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}},
+    {{0.0, 1.0, 0.0}, { 0.0,-1.0, 0.0}},
+    {{0.0, 0.0, 1.0}, { 0.0, 0.0,-1.0}}
+  };
+
+  for (std::pair<double3, double3> &edge_case: edge_cases)
+  {
+    double3 a = edge_case.first.normalized();
+    double3 b = edge_case.second.normalized();
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(a, b);
+
+    double3 c = rotation_matrix * a;
+
+    EXPECT_NEAR(c.x, b.x, 1e-4);
+    EXPECT_NEAR(c.y, b.y, 1e-4);
+    EXPECT_NEAR(c.z, b.z, 1e-4);
+  }
+}
+
+TEST(double3x3, Test_rotation_matrix_from_svd)
+{
+  RandomNumber random(std::nullopt);
+
+  for (std::size_t i = 0; i < 100000; ++i)
+  {
+    double3 a = random.randomVectorOnUnitSphere();
+    double3 b = random.randomVectorOnUnitSphere();
+    double3x3 rotation_matrix = double3x3::computeRotationMatrixSVD(a, b);
 
     double3 c = rotation_matrix * a;
 
