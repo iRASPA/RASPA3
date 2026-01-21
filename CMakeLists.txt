@@ -18,7 +18,7 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(raspa3
-  VERSION 3.0.20
+  VERSION 3.0.21
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
