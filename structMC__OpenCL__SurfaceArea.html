@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,32 +102,35 @@ $(document).ready(function(){initNavTree('structMC__OpenCL__SurfaceArea.html',''
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="structMC__OpenCL__SurfaceArea-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">MC_OpenCL_SurfaceArea Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_mc__opencl__surface__area.html">mc_opencl_surface_area</a></div></div></div>
 </div><!--header-->
 <div class="contents">
-<div class="dynheader">
-Collaboration diagram for MC_OpenCL_SurfaceArea:</div>
-<div class="dyncontent">
-<div class="center"><img src="structMC__OpenCL__SurfaceArea__coll__graph.png" border="0" usemap="#aMC__OpenCL__SurfaceArea_coll__map" alt="Collaboration graph"/></div>
-<map name="aMC__OpenCL__SurfaceArea_coll__map" id="aMC__OpenCL__SurfaceArea_coll__map">
-<area shape="rect" title=" " alt="" coords="5,93,192,119"/>
-<area shape="rect" title=" " alt="" coords="16,5,181,31"/>
-<area shape="poly" title=" " alt="" coords="101,45,101,93,96,93,96,45"/>
-</map>
-<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aa362aab71de292827ba0a5c3d1deeed1" id="r_aa362aab71de292827ba0a5c3d1deeed1"><td class="memItemLeft" align="right" valign="top"><a id="aa362aab71de292827ba0a5c3d1deeed1" name="aa362aab71de292827ba0a5c3d1deeed1"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double probe_distance, std::string probe_pseudo_atom, std::size_t number_of_iterations) const</td></tr>
-<tr class="separator:aa362aab71de292827ba0a5c3d1deeed1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab64d6549b31ffdb85f0e4c6883648710" id="r_ab64d6549b31ffdb85f0e4c6883648710"><td class="memItemLeft" align="right" valign="top"><a id="ab64d6549b31ffdb85f0e4c6883648710" name="ab64d6549b31ffdb85f0e4c6883648710"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double wellDepthFactor, std::string probePseudoAtom, std::size_t numberOfSlices) const</td></tr>
+<tr class="separator:ab64d6549b31ffdb85f0e4c6883648710"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a9ce709731bd535e09f8ecab97df7070d" id="r_a9ce709731bd535e09f8ecab97df7070d"><td class="memItemLeft" align="right" valign="top"><a id="a9ce709731bd535e09f8ecab97df7070d" name="a9ce709731bd535e09f8ecab97df7070d"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
-<tr class="separator:a9ce709731bd535e09f8ecab97df7070d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a626ab8df4722294682616163b140c249" id="r_a626ab8df4722294682616163b140c249"><td class="memItemLeft" align="right" valign="top"><a id="a626ab8df4722294682616163b140c249" name="a626ab8df4722294682616163b140c249"></a>
+cl_program&#160;</td><td class="memItemRight" valign="bottom"><b>surfaceAreaProgram</b></td></tr>
+<tr class="separator:a626ab8df4722294682616163b140c249"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeeb20021bc509041976f172fd86628ef" id="r_aeeb20021bc509041976f172fd86628ef"><td class="memItemLeft" align="right" valign="top"><a id="aeeb20021bc509041976f172fd86628ef" name="aeeb20021bc509041976f172fd86628ef"></a>
+cl_kernel&#160;</td><td class="memItemRight" valign="bottom"><b>surfaceAreaKernel</b></td></tr>
+<tr class="separator:aeeb20021bc509041976f172fd86628ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a0268ab68ea4c04ef4592f23117d8a2" id="r_a7a0268ab68ea4c04ef4592f23117d8a2"><td class="memItemLeft" align="right" valign="top"><a id="a7a0268ab68ea4c04ef4592f23117d8a2" name="a7a0268ab68ea4c04ef4592f23117d8a2"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>surfaceAreaWorkGroupSize</b></td></tr>
+<tr class="separator:a7a0268ab68ea4c04ef4592f23117d8a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a1454ca88828327a2658ac0815207c179" id="r_a1454ca88828327a2658ac0815207c179"><td class="memItemLeft" align="right" valign="top"><a id="a1454ca88828327a2658ac0815207c179" name="a1454ca88828327a2658ac0815207c179"></a>
+static const char *&#160;</td><td class="memItemRight" valign="bottom"><b>surfaceAreaKernelSource</b></td></tr>
+<tr class="separator:a1454ca88828327a2658ac0815207c179"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/structure_properties/monte_carlo_opencl/<b>surface_area.ixx</b></li>

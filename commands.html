@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -117,7 +117,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><a class="el" href="commands.html#system-options">System options</a><ul>
 <li><a class="el" href="commands.html#operating-conditions-and-thermostatbarostat-parameters">Operating conditions and thermostat/barostat-parameters</a></li>
 <li><a class="el" href="commands.html#boxframework-options">Box/Framework options</a></li>
-<li><a class="el" href="commands.html#force-field-definitions">Force field definitions</a></li>
+<li><a class="el" href="commands.html#force-field-definition">Force field definition</a></li>
 <li><a class="el" href="commands.html#system-mc-moves">System `MC`-moves</a></li>
 <li><a class="el" href="commands.html#molecular-dynamics-parameters">Molecular dynamics parameters</a></li>
 <li><a class="el" href="commands.html#options-to-measure-properties">Options to measure properties</a><ul>
@@ -132,6 +132,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </li>
 </ul>
 </li>
+<li><a class="el" href="commands.html#force-field-options">Force field options</a></li>
 <li><a class="el" href="commands.html#component-options">Component options</a><ul>
 <li><a class="el" href="commands.html#component-properties">Component properties</a></li>
 <li><a class="el" href="commands.html#component-mc-moves">Component **`MC`**-moves</a></li>
@@ -235,20 +236,10 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </ul>
 </li>
 </ul>
-<h2>Force field definitions <a class="anchor" id="force-field-definitions"></a></h2>
+<h2>Force field definition <a class="anchor" id="force-field-definition"></a></h2>
 <ul>
 <li><code>"ForceField" : string</code> Reads in the force field file <code>string.json</code>, Note that if this file is in the working directory then this will be read and used instead of: <pre class="fragment">${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
 </pre></li>
-<li><code>"CutOffFrameworkVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials for framework-molecule interactions. Interactions longer then this distance are omitted from the energy and force computations.</li>
-<li><code>"CutOffMoleculeVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials for molecule-molecule interactions. Interactions longer then this distance are omitted from the energy and force computations.</li>
-<li><code>"CutOffVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials. Interactions longer then this distance are omitted from the energy and force computations. The option <code>CutOffVDW</code> implies setting both <code>CutOffFrameworkVDW</code> and <code>CutOffMoleculeVDW</code>.</li>
-<li><code>"CutOffCoulombic" : floating-point-number</code> The cutoff of the charge-charge potential. The potential is truncated at the cutoff. No tail-corrections are (or can be) applied. The only way to include the long-range part is to use 'ChargeMethod Ewald'. The parameter is also used in combination with the Ewald precision to compute the number of wave vectors and Ewald parameter $\alpha$. For the Ewald summation using rather large unit cells, a charge-charge cutoff of about half the smallest box-length would be advisable in order to avoid the use of an excessive amount of wave-vectors in Fourier space. For non-Ewald methods the cutoff should be as large as possible (greater than about 30 Å).</li>
-<li><code>"CutOff" : floating-point-number</code> Implies setting <code>CutOffFrameworkVDW</code>, <code>CutOffMoleculeVDW</code>, and <code>CutOffCoulomb</code></li>
-<li><code>"ChargeMethod" : string</code> Sets the method to compute charges. The string can be:<ul>
-<li><code>"None"</code> Skips the entire charge calculation and should only be used when all adsorbates do not contain any charges.</li>
-<li><code>"Ewald"</code> Switches on the Ewald summation for the charge calculation.</li>
-</ul>
-</li>
 </ul>
 <h2><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> <code>MC</code>-moves <a class="anchor" id="system-mc-moves"></a></h2>
 <ul>
@@ -333,6 +324,58 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 </ul>
 <p><sub></p><hr  />
 <p></sub></p>
+<p><sub></p><h1>Force field options <a class="anchor" id="force-field-options"></a></h1>
+<p></sub></p>
+<p><sub></sub></p>
+<p><sub></p><ul>
+<li><code>"MixingRule" : string</code><ul>
+<li><code>"Lorentz-Berthelot"</code>\ A combination rule using geometric mean for the strength-parameter and mean for the size-parameter. For Lennard-Jones: \begin{align} \varepsilon_{ij}&amp;=\sqrt{\varepsilon_i \varepsilon_j}\ \sigma{ij}&amp;=\frac{\sigma_i \sigma_j}{2} \end{align}</li>
+<li><code>"Jorgensen"</code>\ A combination rule using geometric means. For Lennard-Jones: \begin{align} \varepsilon_{ij}&amp;=\sqrt{\varepsilon_i \varepsilon_j}\ \sigma{ij}&amp;=\sqrt{\sigma_i \sigma_j} \end{align}</li>
+</ul>
+</li>
+<li><code>"TruncationMethod" : string</code><ul>
+<li><code>"truncated"</code>\ Truncates the potential at the cutoff.</li>
+<li><code>"shifted"</code>\ Truncates the potential at the cutoff and shifts the potential so that the potential energy become zero at the cutoff radius.</li>
+</ul>
+</li>
+<li><code>"TailCorrections" : boolean</code> Whether or not to apply tailcorrections.</li>
+<li><code>"CutOffFrameworkVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials for framework-molecule interactions. Interactions longer then this distance are omitted from the energy and force computations.</li>
+<li><code>"CutOffMoleculeVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials for molecule-molecule interactions. Interactions longer then this distance are omitted from the energy and force computations.</li>
+<li><code>"CutOffVDW" : floating-point-number</code> The cutoff of the Van der Waals potentials. Interactions longer then this distance are omitted from the energy and force computations. The option <code>CutOffVDW</code> implies setting both <code>CutOffFrameworkVDW</code> and <code>CutOffMoleculeVDW</code>.</li>
+<li><code>"CutOffCoulombic" : floating-point-number</code> The cutoff of the charge-charge potential. The potential is truncated at the cutoff. No tail-corrections are (or can be) applied. The only way to include the long-range part is to use 'ChargeMethod Ewald'. The parameter is also used in combination with the Ewald precision to compute the number of wave vectors and Ewald parameter $\alpha$. For the Ewald summation using rather large unit cells, a charge-charge cutoff of about half the smallest box-length would be advisable in order to avoid the use of an excessive amount of wave-vectors in Fourier space. For non-Ewald methods the cutoff should be as large as possible (greater than about 30 Å).</li>
+<li><code>"CutOff" : floating-point-number</code> Implies setting <code>CutOffFrameworkVDW</code>, <code>CutOffMoleculeVDW</code>, and <code>CutOffCoulomb</code></li>
+<li><code>"ChargeMethod" : string</code> Sets the method to compute charges. The string can be:<ul>
+<li><code>"None"</code> Skips the entire charge calculation and should only be used when all adsorbates do not contain any charges.</li>
+<li><code>"Ewald"</code> Switches on the Ewald summation for the charge calculation.</li>
+</ul>
+</li>
+<li><code>"PseudoAtoms" : list</code> List of pseudo-atoms with<ul>
+<li><code>"name" : string</code></li>
+<li><code>"framework" : boolean</code></li>
+<li><code>"print_to_output" : boolean</code></li>
+<li><code>"element" : string</code></li>
+<li><code>"print_as" : string</code></li>
+<li><code>"mass" : floating-point-number</code></li>
+<li><code>"charge" : floating-point-number</code></li>
+<li><code>"source" : string</code></li>
+</ul>
+</li>
+<li><code>"SelfInteractions" : list</code> List of self-interactions with<ul>
+<li><code>"name" : string</code></li>
+<li><code>"type" : string</code></li>
+<li><code>"parameters" : [floating-point-number]</code></li>
+<li><code>"source" : string</code></li>
+</ul>
+</li>
+<li><code>"BinaryInteractions" : []</code> List of binary-interactions with<ul>
+<li><code>"names": [string, string]</code></li>
+<li><code>"type": string</code></li>
+<li><code>"parameters": [floating-point-number]</code> <h1>- <code>"source": string</code> </h1>
+</li>
+</ul>
+</li>
+</ul>
+<p></sub></p>
 <p><sub></p><h1><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> options <a class="anchor" id="component-options"></a></h1>
 <p></sub></p>
 <p><sub></sub></p>
@@ -357,7 +400,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"ThermodynamicIntegration" : boolean</code> Boolean switch to determine whether to do a thermodynamic integration over dU/dλ for the fractional component.</li>
 </ul>
 <p></sub></p>
-<p><sub></p><h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> **<code>MC</code>**-moves <a class="anchor" id="component-mc-moves"></a></h2>
+<p><sub></p><h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> <code>MC</code>-moves <a class="anchor" id="component-mc-moves"></a></h2>
 <p></sub></p>
 <p><sub></sub></p>
 <p><sub></p><ul>

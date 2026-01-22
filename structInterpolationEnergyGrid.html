@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.18</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -124,9 +124,9 @@ Collaboration diagram for InterpolationEnergyGrid:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a4fbe8a3d0b0eec85c6a49055524f8623" id="r_a4fbe8a3d0b0eec85c6a49055524f8623"><td class="memItemLeft" align="right" valign="top"><a id="a4fbe8a3d0b0eec85c6a49055524f8623" name="a4fbe8a3d0b0eec85c6a49055524f8623"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationEnergyGrid</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> unitCellBox, double3 origin, int3 numberOfGridPoints, ForceField::InterpolationScheme order)</td></tr>
-<tr class="separator:a4fbe8a3d0b0eec85c6a49055524f8623"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6eedf9707576ec88edd1be31e798c79b" id="r_a6eedf9707576ec88edd1be31e798c79b"><td class="memItemLeft" align="right" valign="top"><a id="a6eedf9707576ec88edd1be31e798c79b" name="a6eedf9707576ec88edd1be31e798c79b"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationEnergyGrid</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceField::InterpolationScheme order)</td></tr>
+<tr class="separator:a6eedf9707576ec88edd1be31e798c79b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a73d6e95d41ed0aa59e97511b6595e788" id="r_a73d6e95d41ed0aa59e97511b6595e788"><td class="memItemLeft" align="right" valign="top"><a id="a73d6e95d41ed0aa59e97511b6595e788" name="a73d6e95d41ed0aa59e97511b6595e788"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>makeExternalFieldInterpolationGrid</b> (std::ostream &amp;stream, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox)</td></tr>
 <tr class="separator:a73d6e95d41ed0aa59e97511b6595e788"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -148,9 +148,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (std:
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:acf29b4f9ce57192d65afca2c362bad7b" id="r_acf29b4f9ce57192d65afca2c362bad7b"><td class="memItemLeft" align="right" valign="top"><a id="acf29b4f9ce57192d65afca2c362bad7b" name="acf29b4f9ce57192d65afca2c362bad7b"></a>
-static const int3&#160;</td><td class="memItemRight" valign="bottom"><b>parseExternalFieldGridDimensions</b> (const std::string &amp;filename)</td></tr>
-<tr class="separator:acf29b4f9ce57192d65afca2c362bad7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac63b84e2bade152a90bc2200c62236f7" id="r_ac63b84e2bade152a90bc2200c62236f7"><td class="memItemLeft" align="right" valign="top"><a id="ac63b84e2bade152a90bc2200c62236f7" name="ac63b84e2bade152a90bc2200c62236f7"></a>
+static const uint3&#160;</td><td class="memItemRight" valign="bottom"><b>parseExternalFieldGridDimensions</b> (const std::string &amp;filename)</td></tr>
+<tr class="separator:ac63b84e2bade152a90bc2200c62236f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abcefdd923928f1e86e134b2b35de3da0" id="r_abcefdd923928f1e86e134b2b35de3da0"><td class="memItemLeft" align="right" valign="top">static const std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structInterpolationEnergyGrid.html#abcefdd923928f1e86e134b2b35de3da0">parseExternalFieldGridCube</a> (const std::string &amp;filename)</td></tr>
 <tr class="memdesc:abcefdd923928f1e86e134b2b35de3da0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses external field grid based on the provided CUBE file.  <br /></td></tr>
 <tr class="separator:abcefdd923928f1e86e134b2b35de3da0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -166,12 +166,12 @@ std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumbe
 <tr class="memitem:add4a3c7b6c73acde69604b6c14149994" id="r_add4a3c7b6c73acde69604b6c14149994"><td class="memItemLeft" align="right" valign="top"><a id="add4a3c7b6c73acde69604b6c14149994" name="add4a3c7b6c73acde69604b6c14149994"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>origin</b></td></tr>
 <tr class="separator:add4a3c7b6c73acde69604b6c14149994"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8872bff3512775953d170a5484d422b" id="r_ac8872bff3512775953d170a5484d422b"><td class="memItemLeft" align="right" valign="top"><a id="ac8872bff3512775953d170a5484d422b" name="ac8872bff3512775953d170a5484d422b"></a>
-int3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfGridPoints</b></td></tr>
-<tr class="separator:ac8872bff3512775953d170a5484d422b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7f0d8faeb839f9ead4a301d289047b13" id="r_a7f0d8faeb839f9ead4a301d289047b13"><td class="memItemLeft" align="right" valign="top"><a id="a7f0d8faeb839f9ead4a301d289047b13" name="a7f0d8faeb839f9ead4a301d289047b13"></a>
-int3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCells</b></td></tr>
-<tr class="separator:a7f0d8faeb839f9ead4a301d289047b13"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85573bc980897d830ceea9cf8b14dd59" id="r_a85573bc980897d830ceea9cf8b14dd59"><td class="memItemLeft" align="right" valign="top"><a id="a85573bc980897d830ceea9cf8b14dd59" name="a85573bc980897d830ceea9cf8b14dd59"></a>
+uint3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfGridPoints</b></td></tr>
+<tr class="separator:a85573bc980897d830ceea9cf8b14dd59"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9e44cec688a30a2c3270f81fab87b0be" id="r_a9e44cec688a30a2c3270f81fab87b0be"><td class="memItemLeft" align="right" valign="top"><a id="a9e44cec688a30a2c3270f81fab87b0be" name="a9e44cec688a30a2c3270f81fab87b0be"></a>
+uint3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCells</b></td></tr>
+<tr class="separator:a9e44cec688a30a2c3270f81fab87b0be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae21c237ddb317449a87e91f50e280000" id="r_ae21c237ddb317449a87e91f50e280000"><td class="memItemLeft" align="right" valign="top"><a id="ae21c237ddb317449a87e91f50e280000" name="ae21c237ddb317449a87e91f50e280000"></a>
 ForceField::InterpolationScheme&#160;</td><td class="memItemRight" valign="bottom"><b>order</b></td></tr>
 <tr class="separator:ae21c237ddb317449a87e91f50e280000"><td class="memSeparator" colspan="2">&#160;</td></tr>
