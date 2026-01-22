@@ -135,7 +135,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><a class="el" href="commands.html#force-field-options">Force field options</a></li>
 <li><a class="el" href="commands.html#component-options">Component options</a><ul>
 <li><a class="el" href="commands.html#component-properties">Component properties</a></li>
-<li><a class="el" href="commands.html#component-mc-moves">Component **`MC`**-moves</a></li>
+<li><a class="el" href="commands.html#component-mc-moves">Component `MC`-moves</a></li>
 </ul>
 </li>
 </ul>
@@ -329,13 +329,13 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <p><sub></sub></p>
 <p><sub></p><ul>
 <li><code>"MixingRule" : string</code><ul>
-<li><code>"Lorentz-Berthelot"</code>\ A combination rule using geometric mean for the strength-parameter and mean for the size-parameter. For Lennard-Jones: \begin{align} \varepsilon_{ij}&amp;=\sqrt{\varepsilon_i \varepsilon_j}\ \sigma{ij}&amp;=\frac{\sigma_i \sigma_j}{2} \end{align}</li>
-<li><code>"Jorgensen"</code>\ A combination rule using geometric means. For Lennard-Jones: \begin{align} \varepsilon_{ij}&amp;=\sqrt{\varepsilon_i \varepsilon_j}\ \sigma{ij}&amp;=\sqrt{\sigma_i \sigma_j} \end{align}</li>
+<li><code>"Lorentz-Berthelot"</code> A combination rule using geometric mean for the strength-parameter and mean for the size-parameter. For Lennard-Jones: \begin{equation} \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j} \end{equation} \begin{equation} \sigma{ij}=\frac{\sigma_i \sigma_j}{2} \end{equation}</li>
+<li><code>"Jorgensen"</code> A combination rule using geometric means. For Lennard-Jones: \begin{equation} \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j} \end{equation} \begin{equation} \sigma{ij}=\sqrt{\sigma_i \sigma_j} \end{equation}</li>
 </ul>
 </li>
 <li><code>"TruncationMethod" : string</code><ul>
-<li><code>"truncated"</code>\ Truncates the potential at the cutoff.</li>
-<li><code>"shifted"</code>\ Truncates the potential at the cutoff and shifts the potential so that the potential energy become zero at the cutoff radius.</li>
+<li><code>"truncated"</code> Truncates the potential at the cutoff.</li>
+<li><code>"shifted"</code> Truncates the potential at the cutoff and shifts the potential so that the potential energy become zero at the cutoff radius.</li>
 </ul>
 </li>
 <li><code>"TailCorrections" : boolean</code> Whether or not to apply tailcorrections.</li>
@@ -349,7 +349,8 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"Ewald"</code> Switches on the Ewald summation for the charge calculation.</li>
 </ul>
 </li>
-<li><code>"PseudoAtoms" : list</code> List of pseudo-atoms with<ul>
+<li><code>"PseudoAtoms" : list</code> <br  />
+ List of pseudo-atoms with<ul>
 <li><code>"name" : string</code></li>
 <li><code>"framework" : boolean</code></li>
 <li><code>"print_to_output" : boolean</code></li>
@@ -360,21 +361,25 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <li><code>"source" : string</code></li>
 </ul>
 </li>
-<li><code>"SelfInteractions" : list</code> List of self-interactions with<ul>
+<li><code>"SelfInteractions" : list</code> <br  />
+ List of self-interactions with<ul>
 <li><code>"name" : string</code></li>
 <li><code>"type" : string</code></li>
 <li><code>"parameters" : [floating-point-number]</code></li>
 <li><code>"source" : string</code></li>
 </ul>
 </li>
-<li><code>"BinaryInteractions" : []</code> List of binary-interactions with<ul>
+<li><code>"BinaryInteractions" : []</code> <br  />
+ List of binary-interactions with<ul>
 <li><code>"names": [string, string]</code></li>
 <li><code>"type": string</code></li>
-<li><code>"parameters": [floating-point-number]</code> <h1>- <code>"source": string</code> </h1>
-</li>
+<li><code>"parameters": [floating-point-number]</code></li>
+<li><code>"source": string</code></li>
 </ul>
 </li>
 </ul>
+<p></sub></p>
+<p><sub></p><hr  />
 <p></sub></p>
 <p><sub></p><h1><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> options <a class="anchor" id="component-options"></a></h1>
 <p></sub></p>
