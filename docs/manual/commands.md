@@ -15,7 +15,7 @@
 * [System options](#system-options)
   * [Operating conditions and thermostat/barostat-parameters](#operating-conditions-and-thermostatbarostat-parameters)
   * [Box/Framework options](#boxframework-options)
-  * [Force field definitions](#force-field-definitions)
+  * [Force field definition](#force-field-definition)
   * [System `MC`-moves](#system-mc-moves)
   * [Molecular dynamics parameters](#molecular-dynamics-parameters)
   * [Options to measure properties](#options-to-measure-properties)
@@ -26,9 +26,10 @@
     * [Radial Distribution Function (RDF) conventional](#radial-distribution-function-rdf-conventional)
     * [Mean-Squared Displacement (MSD) order-N](#mean-squared-displacement-msd-order-n)
     * [Density grids](#density-grids)
+* [Force field options](#force-field-options)
 * [Component options](#component-options)
   * [Component properties](#component-properties)
-  * [Component **`MC`**-moves](#component-mc-moves)
+  * [Component `MC`-moves](#component-mc-moves)
 <!-- TOC -->
 
 ----------------------------------------------------------------------------------
@@ -240,7 +241,7 @@
         scheme of Wilmer and Snurr. The charges are symmetrized over the
         asymmetric atoms.
 
-### Force field definitions  <a name="force-field-definitions"></a>
+### Force field definition  <a name="force-field-definition"></a>
 
 -   `"ForceField" : string`
     Reads in the force field file `string.json`, Note that if this file
@@ -249,47 +250,6 @@
 
         ${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
 
--   `"CutOffFrameworkVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials for framework-molecule
-    interactions. Interactions longer then this distance are omitted
-    from the energy and force computations.
-
--   `"CutOffMoleculeVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials for molecule-molecule
-    interactions. Interactions longer then this distance are omitted
-    from the energy and force computations.
-
--   `"CutOffVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials. Interactions longer then
-    this distance are omitted from the energy and force computations.
-    The option `CutOffVDW` implies setting both `CutOffFrameworkVDW` and
-    `CutOffMoleculeVDW`.
-
--   `"CutOffCoulombic" : floating-point-number`
-    The cutoff of the charge-charge potential. The potential is
-    truncated at the cutoff. No tail-corrections are (or can be)
-    applied. The only way to include the long-range part is to use
-    'ChargeMethod Ewald'. The parameter is also used in combination with
-    the Ewald precision to compute the number of wave vectors and Ewald
-    parameter $\alpha$. For the Ewald summation using rather large unit
-    cells, a charge-charge cutoff of about half the smallest box-length
-    would be advisable in order to avoid the use of an excessive amount
-    of wave-vectors in Fourier space. For non-Ewald methods the cutoff
-    should be as large as possible (greater than about 30 Å).
-
--   `"CutOff" : floating-point-number`
-    Implies setting `CutOffFrameworkVDW`, `CutOffMoleculeVDW`, and
-    `CutOffCoulomb`
-
--   `"ChargeMethod" : string` Sets the method to compute charges. The
-    string can be:
-
-    -   `"None"`
-        Skips the entire charge calculation and should only be used when
-        all adsorbates do not contain any charges.
-
-    -   `"Ewald"`
-        Switches on the Ewald summation for the charge calculation.
 
 ### System `MC`-moves  <a name="system-mc-moves"></a>
 
@@ -487,6 +447,106 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
 
 ----------------------------------------------------------------------------------
 
+## Force field options  <a name="force-field-options"></a>
+
+-   `"MixingRule" : string`
+    -   `"Lorentz-Berthelot"`
+        A combination rule using geometric mean for the strength-parameter and mean for the size-parameter. For Lennard-Jones:
+        \begin{equation}
+        \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j}
+        \end{equation}
+        \begin{equation}
+        \sigma_{ij}=\frac{\sigma_i+\sigma_j}{2}
+        \end{equation}
+
+    -   `"Jorgensen"`
+        A combination rule using geometric means. For Lennard-Jones:
+        \begin{equation}
+        \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j}
+        \end{equation}
+        \begin{equation}
+        \sigma_{ij}=\sqrt{\sigma_i \sigma_j}
+        \end{equation}
+
+-   `"TruncationMethod" : string`
+    -   `"truncated"` 
+        Truncates the potential at the cutoff.
+    -   `"shifted"` 
+        Truncates the potential at the cutoff and shifts the potential so that the potential energy become zero at the cutoff radius.
+
+-   `"TailCorrections" : boolean`
+    Whether or not to apply tailcorrections.
+
+-   `"CutOffFrameworkVDW" : floating-point-number`
+    The cutoff of the Van der Waals potentials for framework-molecule
+    interactions. Interactions longer then this distance are omitted
+    from the energy and force computations.
+
+-   `"CutOffMoleculeVDW" : floating-point-number`
+    The cutoff of the Van der Waals potentials for molecule-molecule
+    interactions. Interactions longer then this distance are omitted
+    from the energy and force computations.
+
+-   `"CutOffVDW" : floating-point-number`
+    The cutoff of the Van der Waals potentials. Interactions longer then
+    this distance are omitted from the energy and force computations.
+    The option `CutOffVDW` implies setting both `CutOffFrameworkVDW` and
+    `CutOffMoleculeVDW`.
+
+-   `"CutOffCoulombic" : floating-point-number`
+    The cutoff of the charge-charge potential. The potential is
+    truncated at the cutoff. No tail-corrections are (or can be)
+    applied. The only way to include the long-range part is to use
+    'ChargeMethod Ewald'. The parameter is also used in combination with
+    the Ewald precision to compute the number of wave vectors and Ewald
+    parameter $\alpha$. For the Ewald summation using rather large unit
+    cells, a charge-charge cutoff of about half the smallest box-length
+    would be advisable in order to avoid the use of an excessive amount
+    of wave-vectors in Fourier space. For non-Ewald methods the cutoff
+    should be as large as possible (greater than about 30 Å).
+
+-   `"CutOff" : floating-point-number`
+    Implies setting `CutOffFrameworkVDW`, `CutOffMoleculeVDW`, and
+    `CutOffCoulomb`
+
+-   `"ChargeMethod" : string` Sets the method to compute charges. The
+    string can be:
+
+    -   `"None"`
+        Skips the entire charge calculation and should only be used when
+        all adsorbates do not contain any charges.
+
+    -   `"Ewald"`
+        Switches on the Ewald summation for the charge calculation.
+
+-   `"PseudoAtoms" : list` <br>
+    List of pseudo-atoms with
+    - `"name" : string`
+    - `"framework" : boolean`
+    - `"print_to_output" : boolean`
+    - `"element" : string`
+    - `"print_as" : string`
+    - `"mass" : floating-point-number`
+    - `"charge" :  floating-point-number`
+    - `"source" : string`
+
+
+-   `"SelfInteractions" : list` <br>
+    List of self-interactions with
+    - `"name" : string`
+    - `"type" : string`
+    - `"parameters" : [floating-point-number]`
+    - `"source" : string`
+
+-   `"BinaryInteractions" : []` <br>
+    List of binary-interactions with
+    - `"names": [string, string]`
+    - `"type": string`
+    - `"parameters": [floating-point-number]`
+    - `"source": string`
+
+----------------------------------------------------------------------------------
+
 ## Component options  <a name="component-options"></a>
 
 ### Component properties  <a name="component-properties"></a>
@@ -556,7 +616,7 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
     Boolean switch to determine whether to do a thermodynamic integration
     over dU/dλ for the fractional component.
 
-### Component **`MC`**-moves  <a name="component-mc-moves"></a>
+### Component `MC`-moves  <a name="component-mc-moves"></a>
 
 -   `"TranslationProbability" : floating-point-number`
     The relative probability to attempt a translation move for the
