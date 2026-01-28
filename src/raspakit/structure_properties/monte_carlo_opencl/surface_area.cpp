@@ -296,7 +296,6 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
             dr.z = dot(cellc, t);
             dr.w = 0.0f;
 
-
             float rr = dot(dr, dr);
 
             if(rr < sigma[jatom] * sigma[jatom])
@@ -316,7 +315,6 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
       }
     }
 
-    
     output[ iatom ] = (counted / total) * 4.0 * M_PI * radius_i * radius_i;
   }
 }
