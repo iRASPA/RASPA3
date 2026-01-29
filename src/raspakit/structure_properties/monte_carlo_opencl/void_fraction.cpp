@@ -16,6 +16,8 @@ module;
 #include <tuple>
 #include <vector>
 #include <chrono>
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -23,7 +25,6 @@ module;
 #include <CL/cl.h>
 #else
 #include <CL/opencl.h>
-#endif
 #endif
 
 module mc_opencl_void_fraction;

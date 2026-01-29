@@ -115,8 +115,6 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
   std::vector<cl_float> sigma(numberOfAtoms);
 
 
-  std::vector<cl_int> output(histogram_size);
-
   time_begin = std::chrono::system_clock::now();
 
   for (size_t i = 0; i < numberOfAtoms; i++)
@@ -177,12 +175,13 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
 
   cl_int number_of_atoms = cl_int(numberOfAtoms);
   cl_int number_of_inner_steps_parameter = cl_int(number_of_inner_steps);
-  cl_float histogram_range = cl_int(15.0);
+  cl_float histogram_range = cl_int(10.0);
   cl_int histogram_size_parameter = cl_int(histogram_size);
 
 
 
   std::vector<double> histogram(histogram_size);
+  std::vector<double> histogram_cummulative(histogram_size);
   double deltaR = 10.0 / static_cast<double>(histogram_size);
 
   for(std::size_t i = 0; i < numberOfIterations; ++i)
@@ -196,8 +195,8 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
     std::vector<cl_float4> random_cartesian_positions(number_of_random_position);
     for (size_t j = 0; j < number_of_random_position; j++)
     {
-      double3 fractional_position = {random.uniform(), random.uniform(), random.uniform()};
-      double3 cartesian_position =  unit_cell * fractional_position;
+      fractional_position = {random.uniform(), random.uniform(), random.uniform()};
+      cartesian_position =  unit_cell * fractional_position;
       random_cartesian_positions[j] = {{cl_float(cartesian_position.x), cl_float(cartesian_position.y), cl_float(cartesian_position.z), 0.0f}};
     }
     cl_mem random_cartesian_positions_mem =
@@ -263,10 +262,14 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
 
     if(largest_radius[0] >= 0.0f)
     {
-      std::size_t index = static_cast<double>(largest_radius[0]) / deltaR;
+      std::size_t index = static_cast<std::size_t>(static_cast<double>(largest_radius[0]) / deltaR);
       if(index >= 0 && index < histogram_size)
       {
         histogram[index]++;
+        for(std::size_t k = 0; k <= index; ++k)
+        {
+           histogram_cummulative[k]++;
+        }
       }
     }
 
@@ -275,17 +278,32 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
   }
   clFinish(OpenCL::clCommandQueue.value());
 
-  for(std::size_t index = 0; int data_point: histogram)
+  time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> timing = time_end - time_begin;
+
+  std::ofstream myfile;
+  myfile.open(framework.name + ".mc.psd.gpu.txt");
+  std::print(myfile, "# Pore-size distribution using Mont Carlo-based method\n");
+  std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
+
+  myfile << "# column 1: diameter d [A]\n";
+  myfile << "# column 2: pore size distribution\n";
+  myfile << "# column 3: cummulative pore volume\n";
+  myfile << "# value at d=0 is related to the void-fraction\n";
+
+  double normalization = 1.0 / static_cast<double>(numberOfIterations);
+  for(std::size_t index = 0; index < histogram_size; ++index)
   {
-    std::print("{} {}\n", 2.0*deltaR*(index+0.5), data_point);
-    index++;
+    std::print(myfile, "{} {} {}\n", 2.0 * deltaR * (static_cast<double>(index) + 0.5), 
+               histogram[index] * normalization,
+               histogram_cummulative[index] * normalization);
   }
 
+  myfile.close();
 }
 
 const char* MC_OpenCL_PoreSizeDistribution::poreSizeDistributionKernelSource = R"foo(
-
-//#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
 // Function to perform the atomic max
 // https://stackoverflow.com/questions/18950732/atomic-max-for-floats-in-opencl
@@ -368,7 +386,7 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
   float4 ds;
 
   // check overlap with other atoms
-  float radius = 1000.0;
+  float radius = 0.0;
   if(CheckSphereOverLap(posA, &radius, numberOfFrameworkAtoms, frameworkPositions, 
                      inverse_cella, inverse_cellb, inverse_cellc,
                      cella, cellb, cellc, sigma)) return;
