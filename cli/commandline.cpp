@@ -152,6 +152,7 @@ void CommandLine::run(int argc, char *argv[])
   std::bitset<CommandLine::State::Last> state;
   std::string input_files;
   std::size_t number_of_iterations{10000};
+  std::optional<std::size_t> number_of_inner_steps;
   std::optional<ForceField> forceField;
   bool is_zeolite{false};
   bool is_mof{true};
@@ -175,6 +176,11 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "Set number of iterations",  // will be displayed in help
            [&number_of_iterations](std::string const &arg) { number_of_iterations = std::stoul(arg); })
+      .reg({"-M", "--number-of-inner-steps"},
+           "NUM_INNER_ITERATIONS",  // will be used in help to illustrate the argument
+           argparser::required_argument,
+           "Set number of inner steps",  // will be displayed in help
+           [&number_of_inner_steps](std::string const &arg) { number_of_inner_steps = std::stoul(arg); })
       .reg({"-p", "--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
@@ -457,13 +463,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations);
+          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations);
+          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps);
         }
       }
 

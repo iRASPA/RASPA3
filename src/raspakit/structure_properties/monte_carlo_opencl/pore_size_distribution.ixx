@@ -9,6 +9,7 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <optional>
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
@@ -36,10 +37,13 @@ export struct MC_OpenCL_PoreSizeDistribution
   static const char* poreSizeDistributionKernelSource;
   size_t poreSizeDistributionWorkGroupSize;
 
-  std::vector<double> data;
+  std::size_t numberOfBins;
+  std::vector<double> histogram;
+  std::vector<double> histogram_cummulative;
 
   MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins);
+  ~MC_OpenCL_PoreSizeDistribution();
 
   void run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-           std::size_t number_of_iterations);
+           std::size_t number_of_iterations, std::optional<std::size_t> numberOfInnerSteps);
 };

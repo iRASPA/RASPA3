@@ -50,7 +50,8 @@ import forcefield;
 import atom;
 
 
-MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins) : data(numberOfBins) 
+MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins) : numberOfBins(numberOfBins),
+             histogram(numberOfBins), histogram_cummulative(numberOfBins)
 {
   if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
@@ -91,16 +92,26 @@ MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numbe
   }
 };
 
+MC_OpenCL_PoreSizeDistribution::~MC_OpenCL_PoreSizeDistribution()
+{
+  if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
+  {
+    clReleaseKernel(poreSizeDistributionKernel);
+    clReleaseProgram(poreSizeDistributionProgram);
+  }
+}
 
-void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forceField,
-                                         [[maybe_unused]] const Framework &framework,
-                                         [[maybe_unused]] double wellDepthFactor,
-                                         [[maybe_unused]] std::size_t numberOfIterations)
+
+void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
+                                         const Framework &framework,
+                                         double wellDepthFactor,
+                                         std::size_t numberOfIterations,
+                                         std::optional<std::size_t> numberOfInnerSteps)
 {
   RandomNumber random{std::nullopt};
   cl_int err;
   std::chrono::system_clock::time_point time_begin, time_end;
-  std::size_t number_of_inner_steps{ 100000 };
+  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
   std::size_t histogram_size{ 1000 };
 
   size_t global_work_size = (number_of_inner_steps + poreSizeDistributionWorkGroupSize - 1) & ~(poreSizeDistributionWorkGroupSize - 1);
@@ -175,14 +186,8 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
 
   cl_int number_of_atoms = cl_int(numberOfAtoms);
   cl_int number_of_inner_steps_parameter = cl_int(number_of_inner_steps);
-  cl_float histogram_range = cl_int(10.0);
-  cl_int histogram_size_parameter = cl_int(histogram_size);
 
-
-
-  std::vector<double> histogram(histogram_size);
-  std::vector<double> histogram_cummulative(histogram_size);
-  double deltaR = 10.0 / static_cast<double>(histogram_size);
+  double delta_r = 10.0 / static_cast<double>(numberOfBins);
 
   for(std::size_t i = 0; i < numberOfIterations; ++i)
   {
@@ -236,14 +241,12 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
     err |= clSetKernelArg(poreSizeDistributionKernel,  4, sizeof(cl_float4), &posA);
     err |= clSetKernelArg(poreSizeDistributionKernel,  5, sizeof(cl_int), &number_of_atoms);
     err |= clSetKernelArg(poreSizeDistributionKernel,  6, sizeof(cl_int), &number_of_inner_steps_parameter);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  7, sizeof(cl_float), &histogram_range);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  8, sizeof(cl_int), &histogram_size_parameter);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  9, sizeof(cl_float4), &clCella);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 10, sizeof(cl_float4), &clCellb);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 11, sizeof(cl_float4), &clCellc);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 12, sizeof(cl_float4), &inverse_clCella);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 13, sizeof(cl_float4), &inverse_clCellb);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 14, sizeof(cl_float4), &inverse_clCellc);
+    err |= clSetKernelArg(poreSizeDistributionKernel,  7, sizeof(cl_float4), &clCella);
+    err |= clSetKernelArg(poreSizeDistributionKernel,  8, sizeof(cl_float4), &clCellb);
+    err |= clSetKernelArg(poreSizeDistributionKernel,  9, sizeof(cl_float4), &clCellc);
+    err |= clSetKernelArg(poreSizeDistributionKernel, 10, sizeof(cl_float4), &inverse_clCella);
+    err |= clSetKernelArg(poreSizeDistributionKernel, 11, sizeof(cl_float4), &inverse_clCellb);
+    err |= clSetKernelArg(poreSizeDistributionKernel, 12, sizeof(cl_float4), &inverse_clCellc);
 
     err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), poreSizeDistributionKernel, 1, nullptr, &global_work_size,
                                   &poreSizeDistributionWorkGroupSize, 0, nullptr, nullptr);
@@ -262,8 +265,8 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
 
     if(largest_radius[0] >= 0.0f)
     {
-      std::size_t index = static_cast<std::size_t>(static_cast<double>(largest_radius[0]) / deltaR);
-      if(index >= 0 && index < histogram_size)
+      std::size_t index = static_cast<std::size_t>(static_cast<double>(largest_radius[0]) / delta_r);
+      if(index >= 0 && index < numberOfBins)
       {
         histogram[index]++;
         for(std::size_t k = 0; k <= index; ++k)
@@ -277,6 +280,9 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
     clReleaseMemObject(largest_radius_mem);
   }
   clFinish(OpenCL::clCommandQueue.value());
+
+  clReleaseMemObject(inputSigma);
+  clReleaseMemObject(framework_positions_mem);
 
   time_end = std::chrono::system_clock::now();
 
@@ -295,7 +301,7 @@ void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forc
   double normalization = 1.0 / static_cast<double>(numberOfIterations);
   for(std::size_t index = 0; index < histogram_size; ++index)
   {
-    std::print(myfile, "{} {} {}\n", 2.0 * deltaR * (static_cast<double>(index) + 0.5), 
+    std::print(myfile, "{} {} {}\n", 2.0 * delta_r * (static_cast<double>(index) + 0.5), 
                histogram[index] * normalization,
                histogram_cummulative[index] * normalization);
   }
@@ -373,8 +379,6 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
                                           const float4 posA,
                                           const int numberOfFrameworkAtoms,
                                           const int numberOfInnerSteps,
-                                          const float histogramRange,
-                                          const int histogramSize,
                                           const float4 cella,
                                           const float4 cellb,
                                           const float4 cellc,

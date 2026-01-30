@@ -34,49 +34,55 @@ import framework;
 import forcefield;
 import atom;
 
-void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-                                  std::size_t number_of_iterations)
+void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework &framework, double wellDepthFactor,
+                                  std::size_t numberOfIterations, std::optional<std::size_t> numberOfInnerSteps)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
 
+  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
+
   time_begin = std::chrono::system_clock::now();
 
-  double delta_r = 10.0 / static_cast<double>(data.size());
+  double delta_r = 10.0 / static_cast<double>(numberOfBins);
 
-  for (std::size_t i = 0; i < number_of_iterations; ++i)
+  for (std::size_t i = 0; i < numberOfIterations; ++i)
   {
     double3 sA = double3(random.uniform(), random.uniform(), random.uniform());
     double3 posA = framework.simulationBox.cell * sA;
 
-    if (!framework.computeLargestNonOverlappingFreeRadius(forceField, posA, well_depth_factor).has_value()) continue;
+    if (!framework.computeLargestNonOverlappingFreeRadius(forceField, posA, wellDepthFactor).has_value()) continue;
 
     double largest_radius = std::numeric_limits<double>::lowest();
-    for (std::size_t j = 0; j < number_of_iterations; ++j)
+    for (std::size_t j = 0; j < number_of_inner_steps; ++j)
     {
       double3 sB = double3(random.uniform(), random.uniform(), random.uniform());
       double3 posB = framework.simulationBox.cell * sB;
 
       std::optional<double> radius =
-          framework.computeLargestNonOverlappingFreeRadius(forceField, posB, well_depth_factor);
+          framework.computeLargestNonOverlappingFreeRadius(forceField, posB, wellDepthFactor);
 
       if (!radius.has_value()) continue;
 
       double3 dr = posA - posB;
       dr = framework.simulationBox.applyPeriodicBoundaryConditions(dr);
-      double r = std::sqrt(double3::dot(dr, dr));
+      double rr = double3::dot(dr, dr);
 
-      if (r > radius.value()) continue;
+      if (rr > radius.value() * radius.value()) continue;
 
       largest_radius = std::max(largest_radius, radius.value());
     }
 
-    std::size_t index = static_cast<std::size_t>(largest_radius / delta_r);
-    if (index < data.size())
+    if(largest_radius >= 0.0)
     {
-      for (std::size_t k = 0; k <= index; ++k)
+      std::size_t index = static_cast<std::size_t>(largest_radius / delta_r);
+      if(index >= 0 && index < numberOfBins)
       {
-        data[k] += 1.0;
+        histogram[index]++;
+        for(std::size_t k = 0; k <= index; ++k)
+        {
+           histogram_cummulative[k]++;
+        }
       }
     }
   }
@@ -89,25 +95,18 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
   myfile.open(framework.name + ".mc.psd.cpu.txt");
   std::print(myfile, "# Pore-size distribution using Mont Carlo-based method\n");
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
-  double normalization = 1.0 / static_cast<double>(10000);
   myfile << "# column 1: diameter d [A]\n";
-  myfile << "# column 2: cumulative pore volume\n";
-  myfile << "# column 3: PSD\n";
+  myfile << "# column 2: PSD\n";
+  myfile << "# column 3: cumulative pore volume\n";
   myfile << "# value at d=0 is related to the void-fraction\n";
 
-  for (std::size_t i = 0; i < data.size(); ++i)
+  double normalization = 1.0 / static_cast<double>(numberOfIterations);
+  for(std::size_t index = 0; index < numberOfBins; ++index)
   {
-    if (data[i] > 0)
-    {
-      double derivative{};
-      if ((i > 2) && (i < data.size() - 2))
-      {
-        derivative = (-data[i + 2] + 8.0 * data[i + 1] - 8.0 * data[i - 1] + data[i - 2]) / (12.0 * delta_r);
-      }
-
-      myfile << 2.0 * delta_r * (static_cast<double>(i) + 0.5) << " " << normalization * data[i] << " "
-             << normalization * -derivative << "\n";
-    }
+    std::print(myfile, "{} {} {}\n", 2.0 * delta_r * (static_cast<double>(index) + 0.5),
+               histogram[index] * normalization,
+               histogram_cummulative[index] * normalization);
   }
+
   myfile.close();
 }

@@ -9,6 +9,7 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <optional>
 #endif
 
 export module mc_pore_size_distribution;
@@ -22,10 +23,12 @@ import forcefield;
 
 export struct MC_PoreSizeDistribution
 {
-  std::vector<double> data;
+  std::size_t numberOfBins;
+  std::vector<double> histogram;
+  std::vector<double> histogram_cummulative;
 
-  MC_PoreSizeDistribution(std::size_t numberOfBins) : data(numberOfBins) {};
+  MC_PoreSizeDistribution(std::size_t numberOfBins) : numberOfBins(numberOfBins), histogram(numberOfBins), histogram_cummulative(numberOfBins) {};
 
   void run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-           std::size_t number_of_iterations);
+           std::size_t number_of_iterations, std::optional<std::size_t> numberOfInnerSteps);
 };
