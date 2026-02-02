@@ -34,7 +34,7 @@ import component;
 import system;
 import mc_moves_widom;
 
-void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, std::size_t number_of_iterations)
+void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, std::optional<std::size_t> numberOfIterations)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -54,9 +54,12 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {helium}, {}, {0}, 5);
 
+
+  std::size_t number_of_iterations = numberOfIterations.value_or(100000);
+
   double no_overlap{};
   double count{};
-  for (std::size_t i = 0; i < 20 * number_of_iterations; ++i)
+  for (std::size_t i = 0; i < number_of_iterations; ++i)
   {
     double3 s = double3(random.uniform(), random.uniform(), random.uniform());
     double3 pos = framework.simulationBox.cell * s;

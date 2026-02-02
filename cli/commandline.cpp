@@ -24,6 +24,7 @@ module;
 #include <span>
 #include <string_view>
 #include <vector>
+#include <tuple>
 #include "mdspanwrapper.h"
 #endif
 
@@ -41,6 +42,7 @@ import threadpool;
 import hdf5;
 import input_reader;
 import framework;
+import vdwparameters;
 import forcefield;
 import opencl;
 import mc_void_fraction;
@@ -53,6 +55,7 @@ import energy_opencl_void_fraction;
 import energy_opencl_surface_area;
 import energy_void_fraction;
 import energy_surface_area;
+import integration_opencl_surface_area;
 import getopt;
 import tessellation;
 import interpolation_energy_grid;
@@ -67,7 +70,8 @@ import libtorch_test;
 ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool tailCorrections, bool useEwald)
 {
   return ForceField(
-      {{"Si", true, 28.0855, 2.05, 0.0, 14, false},
+      {{"-", false, 0.0, 0.0, 0.0, 0, false},
+       {"Si", true, 28.0855, 2.05, 0.0, 14, false},
        {"O", true, 15.999, -1.025, 0.0, 8, false},
        {"He", false, 4.002602, 0.0, 0.0, 2, false},
        {"Ar", false, 39.948, 0.0, 0.0, 18, false},
@@ -80,27 +84,29 @@ ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool t
 
 ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailCorrections, bool useEwald)
 {
-  return ForceField({{"O", false, 15.999, 0.0, 0.0, 8, false},         {"N", false, 14.0067, 0.0, 0.0, 7, false},
-                     {"C", false, 12.011, 0.0, 0.0, 6, false},         {"F", false, 18.998403, 0.0, 0.0, 9, false},
-                     {"B", false, 10.811, 0.0, 0.0, 5, false},         {"P", false, 30.973762, 0.0, 0.0, 15, false},
-                     {"S", false, 32.065, 0.0, 0.0, 16, false},        {"Cl", false, 35.453, 0.0, 0.0, 17, false},
-                     {"Br", false, 79.904, 0.0, 0.0, 35, false},       {"H", false, 1.00784, 0.0, 0.0, 1, false},
-                     {"Al", false, 26.981539, 0.0, 0.0, 13, false},    {"Si", false, 28.0855, 0.0, 0.0, 14, false},
-                     {"Zn", false, 65.38, 0.0, 0.0, 30, false},        {"Be", false, 9.012182, 0.0, 0.0, 4, false},
-                     {"Cr", false, 51.9961, 0.0, 0.0, 24, false},      {"Fe", false, 55.845, 0.0, 0.0, 26, false},
-                     {"Mn", false, 54.938044, 0.0, 0.0, 25, false},    {"Cu", false, 63.546, 0.0, 0.0, 29, false},
-                     {"Co", false, 58.933195, 0.0, 0.0, 27, false},    {"Ga", false, 72.64, 0.0, 0.0, 32, false},
-                     {"Ti", false, 47.867, 0.0, 0.0, 22, false},       {"Sc", false, 44.955912, 0.0, 0.0, 21, false},
-                     {"V", false, 50.9415, 0.0, 0.0, 23, false},       {"Ni", false, 58.6934, 0.0, 0.0, 28, false},
-                     {"Zr", false, 91.224, 0.0, 0.0, 40, false},       {"Mg", false, 24.305, 0.0, 0.0, 12, false},
-                     {"Ne", false, 20.1797, 0.0, 0.0, 10, false},      {"Ag", false, 107.8682, 0.0, 0.0, 47, false},
-                     {"In", false, 114.818, 0.0, 0.0, 49, false},      {"Cd", false, 112.41, 0.0, 0.0, 48, false},
-                     {"Sb", false, 121.76, 0.0, 0.0, 51, false},       {"Te", false, 127.6, 0.0, 0.0, 52, false},
-                     {"He", false, 4.002602, 0.0, 0.0, 2, false},      {"Ar", false, 39.948, 0.0, 0.0, 18, false},
+  return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
+                     {"O",  true, 15.999, 0.0, 0.0, 8, false},         {"N",  true, 14.0067, 0.0, 0.0, 7, false},
+                     {"C",  true, 12.011, 0.0, 0.0, 6, false},         {"F",  true, 18.998403, 0.0, 0.0, 9, false},
+                     {"B",  true, 10.811, 0.0, 0.0, 5, false},         {"P",  true, 30.973762, 0.0, 0.0, 15, false},
+                     {"S",  true, 32.065, 0.0, 0.0, 16, false},        {"Cl", true, 35.453, 0.0, 0.0, 17, false},
+                     {"Br", true, 79.904, 0.0, 0.0, 35, false},        {"H",  true, 1.00784, 0.0, 0.0, 1, false},
+                     {"Al", true, 26.981539, 0.0, 0.0, 13, false},     {"Si", true, 28.0855, 0.0, 0.0, 14, false},
+                     {"Zn", true, 65.38, 0.0, 0.0, 30, false},         {"Be", true, 9.012182, 0.0, 0.0, 4, false},
+                     {"Cr", true, 51.9961, 0.0, 0.0, 24, false},       {"Fe", true, 55.845, 0.0, 0.0, 26, false},
+                     {"Mn", true, 54.938044, 0.0, 0.0, 25, false},     {"Cu", true, 63.546, 0.0, 0.0, 29, false},
+                     {"Co", true, 58.933195, 0.0, 0.0, 27, false},     {"Ga", true, 72.64, 0.0, 0.0, 32, false},
+                     {"Ti", true, 47.867, 0.0, 0.0, 22, false},        {"Sc", true, 44.955912, 0.0, 0.0, 21, false},
+                     {"V",  true, 50.9415, 0.0, 0.0, 23, false},       {"Ni", true, 58.6934, 0.0, 0.0, 28, false},
+                     {"Zr", true, 91.224, 0.0, 0.0, 40, false},        {"Mg", true, 24.305, 0.0, 0.0, 12, false},
+                     {"Ne", true, 20.1797, 0.0, 0.0, 10, false},       {"Ag", true, 107.8682, 0.0, 0.0, 47, false},
+                     {"In", true, 114.818, 0.0, 0.0, 49, false},       {"Cd", true, 112.41, 0.0, 0.0, 48, false},
+                     {"Sb", true, 121.76, 0.0, 0.0, 51, false},        {"Te", true, 127.6, 0.0, 0.0, 52, false},
+                     {"He", false, 4.002602, 0.0, 0.0, 2, false},      {"Ar", true, 39.948, 0.0, 0.0, 18, false},
                      {"CH4", false, 16.04246, 0.0, 0.0, 6, false},     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
                     //{{ 48.1581,  3.03315},
-                    {{53.0, 3.30},               // O
+                    {{1.0, 1.0},                 // custom
+                     {53.0, 3.30},               // O
                      {38.9492, 3.26256},         // N
                      {47.8562, 3.47299},         // C
                      {36.4834, 3.0932},          // F
@@ -147,12 +153,20 @@ void CommandLine::run(int argc, char *argv[])
   bool use_gridbased_methods{false};
   bool use_monte_carlo_methods{false};
   bool use_energy_methods{false};
+  bool use_integration_methods{false};
   bool use_cpu{false};
   bool use_gpu{false};
   std::bitset<CommandLine::State::Last> state;
   std::string input_files;
-  std::size_t number_of_iterations{10000};
-  std::optional<std::size_t> number_of_inner_steps;
+  std::optional<std::size_t> number_of_iterations{};
+  std::optional<std::size_t> number_of_inner_steps{};
+  std::optional<double> minimum_range{};
+  std::optional<double> maximum_range{};
+  std::optional<std::string> probe_atom_name{};
+  std::optional<double> probe_size{};
+  std::optional<double> probe_strength{};
+  double well_depth_factor{ 1.0 };
+  double iso_value{ 0.0 };
   std::optional<ForceField> forceField;
   bool is_zeolite{false};
   bool is_mof{true};
@@ -175,17 +189,17 @@ void CommandLine::run(int argc, char *argv[])
            "NUM_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of iterations",  // will be displayed in help
-           [&number_of_iterations](std::string const &arg) { number_of_iterations = std::stoul(arg); })
+           [&number_of_iterations](std::string const &arg) { std::print("arg: {}\n",arg); number_of_iterations = std::stoul(arg); std::print("arg: {}\n",arg); })
       .reg({"-M", "--number-of-inner-steps"},
            "NUM_INNER_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of inner steps",  // will be displayed in help
-           [&number_of_inner_steps](std::string const &arg) { number_of_inner_steps = std::stoul(arg); })
-      .reg({"-p", "--threads"},
+           [&number_of_inner_steps](std::string const &arg) { std::print("arg: {}\n",arg); number_of_inner_steps = std::stoul(arg); std::print("arg: {}\n",arg); })
+      .reg({"--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of threads",  // will be displayed in help
-           [&num_threads](std::string const &arg) { num_threads = std::stoul(arg); })
+           [&num_threads](std::string const &arg) { std::print("arg: {}\n",arg); num_threads = std::stoul(arg); })
       .reg({"-f", "--force-field"},
            "FILE_NAME",  // will be used in help to illustrate the argument
            argparser::required_argument,
@@ -220,6 +234,8 @@ void CommandLine::run(int argc, char *argv[])
            [&use_monte_carlo_methods](std::string const &) { use_monte_carlo_methods = true; })
       .reg({"--energy"}, argparser::no_argument, "Use energy-based methods",
            [&use_energy_methods](std::string const &) { use_energy_methods = true; })
+      .reg({"--integration"}, argparser::no_argument, "Use integration-based methods",
+           [&use_integration_methods](std::string const &) { use_integration_methods = true; })
       .reg({"--128"}, argparser::no_argument, "Use low-accuracy 128x128x128 grid",
            [&gridSize](std::string const &) { gridSize = uint3(128, 128, 128); })
       .reg({"--256"}, argparser::no_argument, "Use medium-accuracy 256x256x256 grid",
@@ -238,6 +254,34 @@ void CommandLine::run(int argc, char *argv[])
              }
              gridSize = uint3(x, y, z);
            })
+      .reg({"--minimum-range"},
+           argparser::required_argument,
+           "Minimum range", 
+           [&minimum_range](std::string const &arg) { minimum_range = std::stod(arg); })
+      .reg({"--maximum-range"},
+           argparser::required_argument,
+           "Maximum range", 
+           [&maximum_range](std::string const &arg) { maximum_range = std::stod(arg); })
+      .reg({"--probe-atom-name"},
+           argparser::required_argument,
+           "The name of the probe atom", 
+           [&probe_atom_name](std::string const &arg) { probe_atom_name = arg; })
+      .reg({"--probe-size-parameter"},
+           argparser::required_argument,
+           "The size of the probe atom", 
+           [&probe_size](std::string const &arg) { probe_size = std::stod(arg); })
+      .reg({"--probe-stength-parameter"},
+           argparser::required_argument,
+           "The strength of the probe atom", 
+           [&probe_strength](std::string const &arg) { probe_strength = std::stod(arg); })
+      .reg({"--use-well-depth-as-size"},
+           argparser::no_argument,
+           "Uses the well-depth location (1.1225 times sigma) as the size of the atom", 
+           [&well_depth_factor](std::string const &) { well_depth_factor = std::pow(2.0, 1.0 / 6.0); })
+      .reg({"--iso-value"},
+           argparser::required_argument,
+           "Sets the isovalue for the iso-surface energy surfaces", 
+           [&iso_value](std::string const &arg) { iso_value = std::stod(arg); })
       .reg({"--number-of-slices"}, argparser::required_argument, "Set number of slices",
            [&number_of_slices](std::string const &arg)
            {
@@ -346,6 +390,15 @@ void CommandLine::run(int argc, char *argv[])
       }
     }
 
+    // Handle custom probe size
+    if(probe_size.has_value())
+    {
+      forceField->data.front() = VDWParameters(probe_strength.value_or(1.0), probe_size.value());
+      forceField->applyMixingRule();
+      forceField->preComputePotentialShift();
+      forceField->preComputeTailCorrection();
+    }
+
     Framework framework =
         Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
 
@@ -394,13 +447,22 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_SurfaceArea sa;
-          sa.run(forceField.value(), framework, 1.0, "Ar", number_of_iterations);
+
+          if(probe_size.has_value())
+          {
+            probe_atom_name = "-";
+          }
+          sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_SurfaceArea sa;
-          sa.run(forceField.value(), framework, 1.0, "Ar", number_of_slices);
+          if(probe_size.has_value())
+          {
+            probe_atom_name = "-";
+          }
+          sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
         }
       }
 
@@ -409,13 +471,44 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergySurfaceArea sa;
-          sa.run(forceField.value(), framework);
+          if(probe_size.has_value())
+          {
+            probe_atom_name = "-";
+          }
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"));
         }
 
         if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework, gridSize);
+          if(probe_size.has_value())
+          {
+            probe_atom_name = "-";
+          }
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), gridSize);
+        }
+      }
+
+      if (use_integration_methods)
+      {
+        if (use_cpu)
+        {
+          //EnergySurfaceArea sa;
+          //if(probe_size.has_value())
+          //{
+          //  probe_atom_name = "-";
+          //}
+          //sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"));
+        }
+
+        if (use_gpu)
+        {
+          Integration_OpenCL_SurfaceArea sa;
+          if(probe_size.has_value())
+          {
+            probe_atom_name = "-";
+          }
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), number_of_slices);
         }
       }
     }
@@ -457,19 +550,18 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::PSD))
     {
-      std::cout << "Compute PSD" << std::endl;
       if (use_monte_carlo_methods)
       {
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps);
+          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps, maximum_range);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps);
+          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps, maximum_range);
         }
       }
 

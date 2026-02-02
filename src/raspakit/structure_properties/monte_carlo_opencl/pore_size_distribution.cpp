@@ -105,8 +105,9 @@ MC_OpenCL_PoreSizeDistribution::~MC_OpenCL_PoreSizeDistribution()
 void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
                                          const Framework &framework,
                                          double wellDepthFactor,
-                                         std::size_t numberOfIterations,
-                                         std::optional<std::size_t> numberOfInnerSteps)
+                                         std::optional<std::size_t> numberOfIterations,
+                                         std::optional<std::size_t> numberOfInnerSteps,
+                                         std::optional<double> maximumRange)
 {
   RandomNumber random{std::nullopt};
   cl_int err;
@@ -187,9 +188,11 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   cl_int number_of_atoms = cl_int(numberOfAtoms);
   cl_int number_of_inner_steps_parameter = cl_int(number_of_inner_steps);
 
-  double delta_r = 10.0 / static_cast<double>(numberOfBins);
+  double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
-  for(std::size_t i = 0; i < numberOfIterations; ++i)
+  std::size_t number_of_iterations = numberOfIterations.value_or(10000);
+
+  for(std::size_t i = 0; i < number_of_iterations; ++i)
   {
     double3 fractional_position = {random.uniform(), random.uniform(), random.uniform()};
     double3 cartesian_position =  unit_cell * fractional_position;
@@ -298,7 +301,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   myfile << "# column 3: cummulative pore volume\n";
   myfile << "# value at d=0 is related to the void-fraction\n";
 
-  double normalization = 1.0 / static_cast<double>(numberOfIterations);
+  double normalization = 1.0 / static_cast<double>(number_of_iterations);
   for(std::size_t index = 0; index < histogram_size; ++index)
   {
     std::print(myfile, "{} {} {}\n", 2.0 * delta_r * (static_cast<double>(index) + 0.5), 

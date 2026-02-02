@@ -9,6 +9,8 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <optional>
+#include <tuple>
 #endif
 
 export module mc_surface_area;
@@ -26,6 +28,6 @@ export struct MC_SurfaceArea
 
   MC_SurfaceArea() {};
 
-  void run(const ForceField &forceField, const Framework &framework, double probe_distance,
-           std::string probe_pseudo_atom, std::size_t number_of_iterations) const;
+  void run(const ForceField &forceField, const Framework &framework, double wellDepthFactor,
+           std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnerSteps) const;
 };

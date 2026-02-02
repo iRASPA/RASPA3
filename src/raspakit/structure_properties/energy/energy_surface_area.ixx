@@ -24,5 +24,6 @@ export struct EnergySurfaceArea
 {
   EnergySurfaceArea();
 
-  void run(const ForceField &forceField, const Framework &framework);
+  void run(const ForceField &forceField, const Framework &framework, double isoValue,
+                         std::string probePseudoAtom);
 };

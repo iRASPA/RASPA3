@@ -44,11 +44,16 @@ import units;
 
 EnergySurfaceArea::EnergySurfaceArea() {};
 
-void EnergySurfaceArea::run(const ForceField& forceField, const Framework& framework)
+void EnergySurfaceArea::run(const ForceField& forceField, const Framework& framework, double isoValue,
+                         std::string probePseudoAtom)
 {
-  double isoValue = 0.0;
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
+  if (!probeType.has_value())
+  {
+    throw std::runtime_error(std::format("MC_SurfaceArea: Unknown probe-atom type\n"));
+  }
+
   int3 grid_size = int3(128, 128, 128);
-  double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
   double cutoff = forceField.cutOffFrameworkVDW;
   double3x3 unitCell = framework.simulationBox.cell;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
@@ -100,13 +105,16 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
         for (std::size_t i = 0; i < numberOfAtoms; i++)
         {
           double3 position = correction * positions[i];
-          double2 currentPotentialParameters = potentialParameters[i];
+
+          std::size_t atomType = static_cast<std::size_t>(framework.unitCellAtoms[i].type);
+          double size_parameter = forceField(probeType.value(), atomType).sizeParameter();
+          double strength_parameter = forceField(probeType.value(), atomType).strengthParameter();
 
           // use 4 x epsilon for a probe epsilon of unity
-          double epsilon = 4.0 * std::sqrt(currentPotentialParameters.x * probeParameter.x);
+          double epsilon = 4.0 * strength_parameter;
 
           // mixing rule for the atom and the probe
-          double sigma = 0.5 * (currentPotentialParameters.y + probeParameter.y);
+          double sigma = size_parameter;
 
           for (std::size_t j = 0; j < static_cast<std::size_t>(totalNumberOfReplicas); j++)
           {
@@ -214,6 +222,7 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
   std::ofstream myfile;
   myfile.open(framework.name + ".energy.sa.cpu.txt");
   std::print(myfile, "# Surface area using energy-based method\n");
+  std::print(myfile, "# Probe atom: {} iso-value: {} sigma: {}\n", probePseudoAtom, isoValue, forceField[probeType.value()].sizeParameter());
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
   myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /

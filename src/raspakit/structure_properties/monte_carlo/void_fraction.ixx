@@ -9,6 +9,7 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <optional>
 #endif
 
 export module mc_void_fraction;
@@ -26,5 +27,5 @@ export struct MC_VoidFraction
 
   MC_VoidFraction() {};
 
-  void run(const ForceField &forceField, const Framework &framework, std::size_t number_of_iterations);
+  void run(const ForceField &forceField, const Framework &framework, std::optional<std::size_t> numberOfIterations);
 };

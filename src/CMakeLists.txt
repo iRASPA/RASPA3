@@ -26,6 +26,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy_opencl/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/grid_opencl/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration/*.cpp
   ${PROJECT_SOURCE_DIR}/utilitykit/*.cpp)
 
 file(GLOB SRC_IXX_FILES
@@ -54,6 +55,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy_opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/grid_opencl/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration/*.ixx
   ${PROJECT_SOURCE_DIR}/utilitykit/*.ixx)
 
 #set(PCH_HEADER "${PROJECT_SOURCE_DIR}/pch.h")

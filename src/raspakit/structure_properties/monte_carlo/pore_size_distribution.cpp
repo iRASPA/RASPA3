@@ -35,7 +35,8 @@ import forcefield;
 import atom;
 
 void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework &framework, double wellDepthFactor,
-                                  std::size_t numberOfIterations, std::optional<std::size_t> numberOfInnerSteps)
+                                  std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnerSteps,
+                                  std::optional<double> maximumRange)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -44,9 +45,11 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
 
   time_begin = std::chrono::system_clock::now();
 
-  double delta_r = 10.0 / static_cast<double>(numberOfBins);
+  double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
-  for (std::size_t i = 0; i < numberOfIterations; ++i)
+  std::size_t number_of_iterations = numberOfIterations.value_or(10000);
+
+  for (std::size_t i = 0; i < number_of_iterations; ++i)
   {
     double3 sA = double3(random.uniform(), random.uniform(), random.uniform());
     double3 posA = framework.simulationBox.cell * sA;
@@ -100,7 +103,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
   myfile << "# column 3: cumulative pore volume\n";
   myfile << "# value at d=0 is related to the void-fraction\n";
 
-  double normalization = 1.0 / static_cast<double>(numberOfIterations);
+  double normalization = 1.0 / static_cast<double>(number_of_iterations);
   for(std::size_t index = 0; index < numberOfBins; ++index)
   {
     std::print(myfile, "{} {} {}\n", 2.0 * delta_r * (static_cast<double>(index) + 0.5),
