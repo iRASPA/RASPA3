@@ -55,6 +55,7 @@ import energy_opencl_void_fraction;
 import energy_opencl_surface_area;
 import energy_void_fraction;
 import energy_surface_area;
+import integration_surface_area;
 import integration_opencl_surface_area;
 import getopt;
 import tessellation;
@@ -151,6 +152,7 @@ void CommandLine::run(int argc, char *argv[])
   // variables modified by command-line switches
   unsigned long num_threads = 1;
   bool use_gridbased_methods{false};
+  bool use_geometric_methods{false};
   bool use_monte_carlo_methods{false};
   bool use_energy_methods{false};
   bool use_integration_methods{false};
@@ -171,7 +173,7 @@ void CommandLine::run(int argc, char *argv[])
   bool is_zeolite{false};
   bool is_mof{true};
   uint3 gridSize{128, 128, 128};
-  int number_of_slices{ 1024 };
+  std::optional<std::size_t> number_of_slices{ };
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
@@ -217,24 +219,30 @@ void CommandLine::run(int argc, char *argv[])
              std::cout << OpenCL::printBestOpenCLDevice();
              std::exit(0);
            })
+      .reg({"-s", "--surface-area"}, argparser::no_argument, "Compute surface area",
+           [&state](std::string const &) { state.set(State::SurfaceArea); })
+      .reg({"-v", "--void-fraction"}, argparser::no_argument, "Compute void fraction",
+           [&state](std::string const &) { state.set(State::VoidFraction); })
+      .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
+           [&state](std::string const &) { state.set(State::PSD); })
+      .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
+           "Use pore size distribution method from Ban, Vlugt paper",
+           [&state](std::string const &){state.set(State::PSD_BV);})
+      .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
+           [&state](std::string const &) { state.set(State::TessellationComputation); })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
            [&is_zeolite](std::string const &) { is_zeolite = true; })
       .reg({"--mof"}, argparser::no_argument, "Use generic MOF model (TraPPE zeo)",
            [&is_mof](std::string const &) { is_mof = true; })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
-      .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
-           [&state](std::string const &) { state.set(State::TessellationComputation); })
-      .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
-           "Use pore size distribution method from Ban, Vlugt paper",
-           [&state](std::string const &){state.set(State::PSD_BV);})
-      .reg({"--cpu"}, argparser::no_argument, "Compute on the gpu", [&use_cpu](std::string const &) { use_cpu = true; })
-      .reg({"--gpu"}, argparser::no_argument, "Compute on the gpu", [&use_gpu](std::string const &) { use_gpu = true; })
-      .reg({"--monte-carlo"}, argparser::no_argument, "Use Monte Carlo-based methods",
-           [&use_monte_carlo_methods](std::string const &) { use_monte_carlo_methods = true; })
+      .reg({"--geometric"}, argparser::no_argument, "Use geometric methods",
+           [&use_geometric_methods](std::string const &) { use_geometric_methods = true; })
       .reg({"--energy"}, argparser::no_argument, "Use energy-based methods",
            [&use_energy_methods](std::string const &) { use_energy_methods = true; })
-      .reg({"--integration"}, argparser::no_argument, "Use integration-based methods",
+      .reg({"--monte-carlo"}, argparser::no_argument, "Use Monte Carlo algorithm",
+           [&use_monte_carlo_methods](std::string const &) { use_monte_carlo_methods = true; })
+      .reg({"--integration"}, argparser::no_argument, "Use integration algorithm",
            [&use_integration_methods](std::string const &) { use_integration_methods = true; })
       .reg({"--128"}, argparser::no_argument, "Use low-accuracy 128x128x128 grid",
            [&gridSize](std::string const &) { gridSize = uint3(128, 128, 128); })
@@ -270,7 +278,7 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "The size of the probe atom", 
            [&probe_size](std::string const &arg) { probe_size = std::stod(arg); })
-      .reg({"--probe-stength-parameter"},
+      .reg({"--probe-strength-parameter"},
            argparser::required_argument,
            "The strength of the probe atom", 
            [&probe_strength](std::string const &arg) { probe_strength = std::stod(arg); })
@@ -294,12 +302,6 @@ void CommandLine::run(int argc, char *argv[])
              }
              number_of_slices = x;
            })
-      .reg({"-s", "--surface-area"}, argparser::no_argument, "Compute surface area",
-           [&state](std::string const &) { state.set(State::SurfaceArea); })
-      .reg({"-v", "--void-fraction"}, argparser::no_argument, "Compute void fraction",
-           [&state](std::string const &) { state.set(State::VoidFraction); })
-      .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
-           [&state](std::string const &) { state.set(State::PSD); })
       .reg({"-e", "--energy-grid-computation"}, argparser::required_argument,
            "Compute Energy grid for given list of pseudo atoms",
            [&state, &pseudoAtomsGrid](std::string const &arg)
@@ -324,6 +326,8 @@ void CommandLine::run(int argc, char *argv[])
            [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::LennardJones; })
       .reg({"--Ewald"}, argparser::no_argument, "Set interpolation energy grid to Ewald",
            [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::EwaldReal; })
+      .reg({"--cpu"}, argparser::no_argument, "Compute on the gpu", [&use_cpu](std::string const &) { use_cpu = true; })
+      .reg({"--gpu"}, argparser::no_argument, "Compute on the gpu", [&use_gpu](std::string const &) { use_gpu = true; })
       // register positional arguments
       .pos("INPUT_CIF_FILE",        // will be used in help to illustrate the argument
            "Set CIF file to read",  // will be displayed in help
@@ -442,27 +446,53 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::cout << "Compute surface area" << std::endl;
 
-      if (use_monte_carlo_methods)
+      if (use_geometric_methods)
       {
-        if (use_cpu)
+        if (use_monte_carlo_methods)
         {
-          MC_SurfaceArea sa;
-
-          if(probe_size.has_value())
+          if (use_cpu)
           {
-            probe_atom_name = "-";
+            MC_SurfaceArea sa;
+
+            if(probe_size.has_value())
+            {
+              probe_atom_name = "-";
+            }
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
           }
-          sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
+
+          if (use_gpu)
+          {
+            MC_OpenCL_SurfaceArea sa;
+            if(probe_size.has_value())
+            {
+              probe_atom_name = "-";
+            }
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
+          }
         }
 
-        if (use_gpu)
+        if (use_integration_methods)
         {
-          MC_OpenCL_SurfaceArea sa;
-          if(probe_size.has_value())
+          if (use_cpu)
           {
-            probe_atom_name = "-";
+            Integration_SurfaceArea sa;
+            if(probe_size.has_value())
+            {
+              probe_atom_name = "-";
+            }
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
           }
-          sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
+
+          if (use_gpu)
+          {
+            Integration_OpenCL_SurfaceArea sa;
+            if(probe_size.has_value())
+            {
+              probe_atom_name = "-";
+            }
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
+          }
         }
       }
 
@@ -486,29 +516,6 @@ void CommandLine::run(int argc, char *argv[])
             probe_atom_name = "-";
           }
           sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), gridSize);
-        }
-      }
-
-      if (use_integration_methods)
-      {
-        if (use_cpu)
-        {
-          //EnergySurfaceArea sa;
-          //if(probe_size.has_value())
-          //{
-          //  probe_atom_name = "-";
-          //}
-          //sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"));
-        }
-
-        if (use_gpu)
-        {
-          Integration_OpenCL_SurfaceArea sa;
-          if(probe_size.has_value())
-          {
-            probe_atom_name = "-";
-          }
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), number_of_slices);
         }
       }
     }

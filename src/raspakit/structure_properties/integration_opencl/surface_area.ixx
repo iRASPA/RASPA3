@@ -9,6 +9,7 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <optional>
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
@@ -20,7 +21,7 @@ module;
 #include <CL/opencl.h>
 #endif
 
-export module mc_opencl_surface_area;
+export module integration_opencl_surface_area;
 
 #ifdef USE_STD_IMPORT
 import std;
@@ -29,15 +30,15 @@ import std;
 import framework;
 import forcefield;
 
-export struct MC_OpenCL_SurfaceArea
+export struct Integration_OpenCL_SurfaceArea
 {
   cl_program surfaceAreaProgram;
   cl_kernel surfaceAreaKernel;
   static const char* surfaceAreaKernelSource;
   size_t surfaceAreaWorkGroupSize;
 
-  MC_OpenCL_SurfaceArea();
+  Integration_OpenCL_SurfaceArea();
 
-  void run(const ForceField &forceField, const Framework &framework, double wellDepthFactor, std::string probePseudoAtom,
-           std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnerSteps) const;
+  void run(const ForceField &forceField, const Framework &framework, double wellDepthFactor,
+           std::string probePseudoAtom, std::optional<std::size_t> numberOfSlices) const;
 };
