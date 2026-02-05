@@ -14,6 +14,7 @@ module;
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <ranges>
 #endif
 
 module skspacegroup;
@@ -44,9 +45,33 @@ import skrotationalchangeofbasis;
 import skseitzintegermatrix;
 import skintegersymmetryoperationset;
 
-std::string simplified(std::string a) { return a; };
+// https://stackoverflow.com/questions/66897068/can-trim-of-a-string-be-done-inplace-with-c20-ranges
+std::string simplified(const std::string &a)
+{
+  std::string s = a;
+  auto not_space = [](unsigned char c){ return !std::isspace(c); };
 
-std::string toLower(std::string a) { return a; }
+    // erase the the spaces at the back first
+    // so we don't have to do extra work
+    s.erase(
+        std::ranges::find_if(s | std::views::reverse, not_space).base(),
+        s.end());
+
+    // erase the spaces at the front
+    s.erase(
+        s.begin(),
+        std::ranges::find_if(s, not_space));
+
+    return s;
+}
+
+std::string toLower(const std::string &a)
+{
+  std::string data = a;
+  std::transform(data.begin(), data.end(), data.begin(),
+    [](unsigned char c){ return std::tolower(c); });
+  return data;
+}
 
 SKSpaceGroup::SKSpaceGroup(std::size_t HallNumber)
 {

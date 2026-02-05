@@ -22,6 +22,18 @@ import std;
 import std.compat;
 #endif
 
+export inline std::string simplified(std::string a) { return a; };
+
+export inline std::string toLower(const std::string &a)
+{
+  std::string data = a;
+  std::transform(data.begin(), data.end(), data.begin(),
+    [](unsigned char c){ return std::tolower(c); });
+  return data;
+}
+
+
+
 export inline bool caseInSensStringCompare(const std::string& lhs, const std::string& rhs)
 {
   return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),

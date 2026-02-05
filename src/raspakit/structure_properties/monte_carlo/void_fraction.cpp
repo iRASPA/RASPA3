@@ -27,6 +27,7 @@ import std;
 import double3;
 import double3x3;
 import randomnumbers;
+import skspacegroupdatabase;
 import atom;
 import framework;
 import forcefield;
@@ -34,7 +35,7 @@ import component;
 import system;
 import mc_moves_widom;
 
-void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, std::optional<std::size_t> numberOfIterations)
+void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -78,6 +79,11 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
   std::ofstream myfile;
   myfile.open(framework.name + ".mc.vf.cpu.txt");
   std::print(myfile, "# Void-fraction using Mont Carlo-based method\n");
+  std::print(myfile, "# Framework: {}\n", framework.name);
+  std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
+  std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
+  std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+  std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   myfile << no_overlap / count << std::endl;
   myfile.close();

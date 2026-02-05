@@ -45,6 +45,7 @@ import double4;
 import float4;
 import double3x3;
 import randomnumbers;
+import skspacegroupdatabase;
 import framework;
 import forcefield;
 import atom;
@@ -294,6 +295,11 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   std::ofstream myfile;
   myfile.open(framework.name + ".mc.psd.gpu.txt");
   std::print(myfile, "# Pore-size distribution using Mont Carlo-based method\n");
+  std::print(myfile, "# Framework: {}\n", framework.name);
+  std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
+  std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
+  std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+  std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
 
   myfile << "# column 1: diameter d [A]\n";

@@ -401,6 +401,7 @@ void CommandLine::run(int argc, char *argv[])
       forceField->applyMixingRule();
       forceField->preComputePotentialShift();
       forceField->preComputeTailCorrection();
+      probe_atom_name = "-";
     }
 
     Framework framework =
@@ -454,20 +455,12 @@ void CommandLine::run(int argc, char *argv[])
           {
             MC_SurfaceArea sa;
 
-            if(probe_size.has_value())
-            {
-              probe_atom_name = "-";
-            }
             sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            if(probe_size.has_value())
-            {
-              probe_atom_name = "-";
-            }
             sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
           }
         }
@@ -477,20 +470,12 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            if(probe_size.has_value())
-            {
-              probe_atom_name = "-";
-            }
             sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            if(probe_size.has_value())
-            {
-              probe_atom_name = "-";
-            }
             sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
           }
         }
@@ -501,20 +486,12 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergySurfaceArea sa;
-          if(probe_size.has_value())
-          {
-            probe_atom_name = "-";
-          }
           sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"));
         }
 
         if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          if(probe_size.has_value())
-          {
-            probe_atom_name = "-";
-          }
           sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), gridSize);
         }
       }
@@ -529,7 +506,7 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_VoidFraction vf;
-          vf.run(forceField.value(), framework, number_of_iterations);
+          vf.run(forceField.value(), framework, probe_atom_name.value_or("He"), number_of_iterations);
         }
 
         if (use_gpu)

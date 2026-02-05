@@ -27,5 +27,5 @@ export struct MC_VoidFraction
 
   MC_VoidFraction() {};
 
-  void run(const ForceField &forceField, const Framework &framework, std::optional<std::size_t> numberOfIterations);
+  void run(const ForceField &forceField, const Framework &framework, std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations);
 };

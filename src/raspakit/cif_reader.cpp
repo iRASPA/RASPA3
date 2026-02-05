@@ -43,6 +43,7 @@ CIFReader::CIFReader(const std::string& content, const ForceField& forceField)
   {
     std::string tempString;
 
+
     // scan to first keyword
     _previousScanLocation = _scanner.scanLocation();
     if (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
@@ -66,7 +67,7 @@ CIFReader::CIFReader(const std::string& content, const ForceField& forceField)
       {
         parseSymmetry(keyword);
       }
-      else if (keyword.starts_with(std::string("_symmetry_space_group")))
+      else if (keyword.starts_with(std::string("_space_group")))
       {
         parseSymmetry(keyword);
       }

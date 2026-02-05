@@ -59,6 +59,7 @@ import std;
 import opencl;
 import float4;
 import double4;
+import skspacegroupdatabase;
 import forcefield;
 import framework;
 import units;
@@ -411,6 +412,11 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
     std::ofstream myfile;
     myfile.open(framework.name + ".energy.vf.gpu.txt");
     std::print(myfile, "# Void-fraction using energy-based method\n");
+    std::print(myfile, "# Framework: {}\n", framework.name);
+    std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
+    std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
+    std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+    std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
     std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
     myfile << fraction / (static_cast<double>(grid_size.x) * static_cast<double>(grid_size.y) *
                           static_cast<double>(grid_size.z))
