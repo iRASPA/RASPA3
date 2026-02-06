@@ -78,8 +78,17 @@ ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool t
        {"Ar", false, 39.948, 0.0, 0.0, 18, false},
        {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
        {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-       {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
-      {{1.0, 1.0}, {22.0, 2.30}, {53.0, 3.30}, {10.9, 2.64}, {124.070, 3.38}, {158.5, 3.72}, {29.933, 2.745}, {85.671, 3.017}},
+       {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
+       {"N", false, 14.00674, 0.0, 0.0, 6, false}},
+      {{1.0, 1.0}, 
+      {22.0, 2.30}, 
+      {53.0, 3.30}, 
+      {10.9, 2.64},
+      {124.070, 3.38},
+      {158.5, 3.72},
+      {29.933, 2.745},
+      {85.671, 3.017},
+      {91.5, 3.681}},
       ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 
