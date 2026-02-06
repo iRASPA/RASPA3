@@ -107,7 +107,7 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
                     //{{ 48.1581,  3.03315},
                     {{1.0, 1.0},                 // custom
-                     {53.0, 3.30},               // O
+                     {48.1581, 3.03315},         // O
                      {38.9492, 3.26256},         // N
                      {47.8562, 3.47299},         // C
                      {36.4834, 3.0932},          // F
@@ -119,7 +119,7 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {7.64893, 2.84642},         // H
                      {155.998, 3.91105},         // Al
                      {155.998, 3.80414},         // Si
-                     {62.3988584, 2.461553158},  // Zn
+                     {27.677074, 4.04},          // Zn
                      {42.7736, 2.44552},         // Be
                      {7.54829, 2.69319},         // Cr
                      {6.54185, 2.5943},          // Fe
