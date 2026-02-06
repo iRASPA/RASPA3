@@ -5,6 +5,7 @@ module;
 #include <cstddef>
 #include <optional>
 #include <vector>
+#include <string>
 #endif
 
 export module energy_surface_area;
