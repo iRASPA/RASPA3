@@ -234,15 +234,19 @@ void Integration_OpenCL_SurfaceArea::run(const ForceField &forceField,
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
-  std::print(myfile, "# Probe atom: {} well-depth-factor: {} sigma: {}\n", probePseudoAtom, wellDepthFactor, forceField[probeType.value()].sizeParameter());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
+  std::print(myfile, "# Probe atom: {} well-depth-factor: {} sigma: {}\n", probePseudoAtom, wellDepthFactor, forceField[probeType.value()].sizeParameter());
   std::print(myfile, "# Number of integration points per atom: {}\n", (number_of_slices + 1) * number_of_slices);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-  myfile << accumulated_surface_area << " [A^2]" << std::endl;
+  myfile << accumulated_surface_area << " [Å²]" << std::endl;
+  myfile << 1.0e4 * accumulated_surface_area / framework.simulationBox.volume << " [m²/cm³]" << std::endl;
   myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /
                 framework.unitCellMass
-         << " [m^2/g]" << std::endl;
-  myfile << 1.0e4 * accumulated_surface_area / framework.simulationBox.volume << " [m^2/cm^3]" << std::endl;
+         << " [m²/g]" << std::endl;
 
   myfile.close();
 }

@@ -755,7 +755,13 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
   std::print(myfile, "# Probe atom: {} iso-value: {} sigma: {}\n", probePseudoAtom, isoValue, forceField[probeType.value()].sizeParameter());
+  std::print(myfile, "# Grid size: {}x{}x{}\n", grid_size.x, grid_size.y, grid_size.z);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
   myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /

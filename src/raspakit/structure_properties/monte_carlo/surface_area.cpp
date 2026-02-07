@@ -48,8 +48,8 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
     throw std::runtime_error(std::format("MC_SurfaceArea: Unknown probe-atom type\n"));
   }
 
-  std::size_t number_of_iterations = numberOfIterations.value_or(1000);
-  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
+  std::size_t number_of_iterations = numberOfIterations.value_or(100);
+  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(1000);
 
   double accumulated_surface_area{};
   for (std::size_t i = 0; i < number_of_iterations; ++i)
@@ -95,15 +95,19 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass / 
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
   std::print(myfile, "# Probe atom: {} well-depth-factor: {} sigma: {}\n", probePseudoAtom, wellDepthFactor, forceField[probeType.value()].sizeParameter());
   std::print(myfile, "# Number of iterations: {}\n", number_of_iterations);
-  std::print(myfile, "# Number of inner-steps: {}\n", number_of_inner_steps);
+  std::print(myfile, "# Number of inner-steps (sample points per atom): {}\n", number_of_inner_steps);
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
-  myfile << accumulated_surface_area / static_cast<double>(number_of_iterations) << " [A^2]" << std::endl;
+  myfile << accumulated_surface_area / static_cast<double>(number_of_iterations) << " [Å²]" << std::endl;
+  myfile << 1.0e4 * (accumulated_surface_area / static_cast<double>(number_of_iterations)) / framework.simulationBox.volume << " [m²/cm³]" << std::endl;
   myfile << (accumulated_surface_area / static_cast<double>(number_of_iterations)) * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /
                 framework.unitCellMass
-         << " [m^2/g]" << std::endl;
-  myfile << 1.0e4 * (accumulated_surface_area / static_cast<double>(number_of_iterations)) / framework.simulationBox.volume << " [m^2/cm^3]" << std::endl;
+         << " [m²/g]" << std::endl;
 
   myfile.close();
 }

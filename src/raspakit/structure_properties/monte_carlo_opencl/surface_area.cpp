@@ -103,7 +103,7 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
   }
 
   std::size_t number_of_iterations = numberOfIterations.value_or(100);
-  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(1000);
+  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
 
   double3x3 unit_cell = framework.simulationBox.cell;
   double3x3 inverse_unit_cell = framework.simulationBox.inverseCell;
@@ -188,11 +188,22 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
   cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
   cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
 
+
+  std::size_t number_of_random_unit_vectors{number_of_inner_steps};
+  std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
+  cl_mem random_unit_vectors_mem =
+          clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) *  random_unit_vectors.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
   cl_int end_index = cl_int(numberOfAtoms);
   cl_int number_of_slices = cl_int(number_of_inner_steps);
 
   err = clSetKernelArg(surfaceAreaKernel, 0, sizeof(cl_mem), &inputPos);
   err |= clSetKernelArg(surfaceAreaKernel, 1, sizeof(cl_mem), &inputSigma);
+  err |= clSetKernelArg(surfaceAreaKernel, 2, sizeof(cl_mem), &random_unit_vectors_mem);
   err |= clSetKernelArg(surfaceAreaKernel, 3, sizeof(cl_mem), &outputArray);
   err |= clSetKernelArg(surfaceAreaKernel, 4, sizeof(cl_int), &end_index);
   err |= clSetKernelArg(surfaceAreaKernel, 5, sizeof(cl_int), &number_of_slices);
@@ -203,24 +214,17 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
   err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellb);
   err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverse_clCellc);
 
+
   double accumulated_surface_area{};
   for(std::size_t i = 0; i < number_of_iterations; ++i)
   {
-    // upload random Cartesian positions
-    std::size_t number_of_random_unit_vectors{number_of_inner_steps};
-    std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
     for (size_t j = 0; j < number_of_random_unit_vectors; j++)
     {
       double3 vec = random.randomVectorOnUnitSphere();
       random_unit_vectors[j] = {{cl_float(vec.x), cl_float(vec.y), cl_float(vec.z), 0.0f}};
     }
-    cl_mem random_unit_vectors_mem =
-          clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) *  random_unit_vectors.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
 
+    // upload random Cartesian positions
     err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), random_unit_vectors_mem, CL_TRUE, 0, sizeof(float4) * random_unit_vectors.size(),
                                  random_unit_vectors.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -228,14 +232,12 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
       throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    err |= clSetKernelArg(surfaceAreaKernel, 2, sizeof(cl_mem), &random_unit_vectors_mem);
     err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), surfaceAreaKernel, 1, nullptr, &global_work_size,
                                   &surfaceAreaWorkGroupSize, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed (err: {}) {} : {}\n", err, __FILE__, __LINE__));
     }
-
 
     // Read the buffer back to the array
     err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputArray, CL_TRUE, 0, output.size() * sizeof(float),
@@ -248,10 +250,11 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
     double surface_area = std::accumulate(output.begin(), output.end(), 0.0);
     accumulated_surface_area += surface_area;
 
-    clReleaseMemObject(random_unit_vectors_mem);
   }
 
   clFinish(OpenCL::clCommandQueue.value());
+
+  clReleaseMemObject(random_unit_vectors_mem);
 
 
   time_end = std::chrono::system_clock::now();
@@ -266,16 +269,20 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
   std::print(myfile, "# Probe atom: {} well-depth-factor: {} sigma: {}\n", probePseudoAtom, wellDepthFactor, forceField[probeType.value()].sizeParameter());
   std::print(myfile, "# Number of iterations: {}\n", number_of_iterations);
-  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
-  std::print(myfile, "# Number of inner-steps: {}\n", number_of_inner_steps);
+  std::print(myfile, "# Number of inner-steps (sample points per atom): {}\n", number_of_inner_steps);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-  myfile << accumulated_surface_area / static_cast<double>(number_of_iterations)  << " [A^2]" << std::endl;
+  myfile << accumulated_surface_area / static_cast<double>(number_of_iterations)  << " [Å²]" << std::endl;
+  myfile << 1.0e4 * (accumulated_surface_area / static_cast<double>(number_of_iterations)) / framework.simulationBox.volume << " [m²/cm³]" << std::endl;
   myfile << (accumulated_surface_area / static_cast<double>(number_of_iterations)) * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /
                 framework.unitCellMass
-         << " [m^2/g]" << std::endl;
-  myfile << 1.0e4 * (accumulated_surface_area / static_cast<double>(number_of_iterations)) / framework.simulationBox.volume << " [m^2/cm^3]" << std::endl;
+         << " [m²/g]" << std::endl;
 
   myfile.close();
 }
