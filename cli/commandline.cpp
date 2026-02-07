@@ -464,13 +464,13 @@ void CommandLine::run(int argc, char *argv[])
           {
             MC_SurfaceArea sa;
 
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_iterations, number_of_inner_steps);
           }
         }
 
@@ -479,13 +479,13 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("Ar"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_slices);
           }
         }
       }
@@ -495,13 +495,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergySurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"));
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("N2"));
         }
 
         if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("Ar"), gridSize);
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("N2"), gridSize);
         }
       }
     }
