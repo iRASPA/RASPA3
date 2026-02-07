@@ -79,7 +79,7 @@ ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool t
        {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
        {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
        {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
-       {"N", false, 14.00674, 0.0, 0.0, 6, false}},
+       {"N2", false, 14.00674, 0.0, 0.0, 6, false}},
       {{1.0, 1.0}, 
       {22.0, 2.30}, 
       {53.0, 3.30}, 
@@ -113,8 +113,7 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {"Sb", true, 121.76, 0.0, 0.0, 51, false},        {"Te", true, 127.6, 0.0, 0.0, 52, false},
                      {"He", false, 4.002602, 0.0, 0.0, 2, false},      {"Ar", true, 39.948, 0.0, 0.0, 18, false},
                      {"CH4", false, 16.04246, 0.0, 0.0, 6, false},     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
-                    //{{ 48.1581,  3.03315},
+                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}, {"N2", false, 14.00674, 0.0, 0.0, 6, false}},
                     {{1.0, 1.0},                 // custom
                      {48.1581, 3.03315},         // O
                      {38.9492, 3.26256},         // N
@@ -152,7 +151,8 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {124.070, 3.38},            // Ar
                      {158.5, 3.72},              // CH4
                      {29.933, 2.745},            // C_co2
-                     {85.671, 3.017}},           // O_co2
+                     {85.671, 3.017},            // O_co2
+                     {91.5, 3.681}},             // N2
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 
