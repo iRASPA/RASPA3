@@ -38,7 +38,7 @@ module mc_opencl_pore_size_distribution;
 import std;
 #endif
 
-import opencl;
+import units;
 import double2;
 import double3;
 import double4;
@@ -49,6 +49,7 @@ import skspacegroupdatabase;
 import framework;
 import forcefield;
 import atom;
+import opencl;
 
 
 MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins) : numberOfBins(numberOfBins),
@@ -113,7 +114,10 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   RandomNumber random{std::nullopt};
   cl_int err;
   std::chrono::system_clock::time_point time_begin, time_end;
+
+  std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
+
   std::size_t histogram_size{ 1000 };
 
   size_t global_work_size = (number_of_inner_steps + poreSizeDistributionWorkGroupSize - 1) & ~(poreSizeDistributionWorkGroupSize - 1);
@@ -191,7 +195,6 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
 
   double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
-  std::size_t number_of_iterations = numberOfIterations.value_or(10000);
 
   for(std::size_t i = 0; i < number_of_iterations; ++i)
   {
@@ -295,13 +298,18 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   std::ofstream myfile;
   myfile.open(framework.name + ".mc.psd.gpu.txt");
   std::print(myfile, "# Pore-size distribution using Mont Carlo-based method\n");
-  std::print(myfile, "# Framework: {}\n", framework.name);
   std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
+  std::print(myfile, "# Number of iterations: {}\n", number_of_iterations);
+  std::print(myfile, "# Number of inner-steps (sample points per atom): {}\n", number_of_inner_steps);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-
   myfile << "# column 1: diameter d [A]\n";
   myfile << "# column 2: pore size distribution\n";
   myfile << "# column 3: cummulative pore volume\n";
