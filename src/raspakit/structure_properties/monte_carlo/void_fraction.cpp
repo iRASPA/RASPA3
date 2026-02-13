@@ -34,27 +34,21 @@ import forcefield;
 import component;
 import system;
 import mc_moves_widom;
+import units;
 
-void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations)
+void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, double wellDepthFactor, std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
 
   time_begin = std::chrono::system_clock::now();
 
-  std::optional<std::size_t> probeType = forceField.findPseudoAtom("He");
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
   if (!probeType.has_value())
   {
-    throw std::runtime_error(std::format("MC_SurfaceArea: Unknown probe-atom type\n"));
+    throw std::runtime_error(std::format("MC_VoidFraction: Unknown probe-atom type\n"));
   }
-
-  Component helium = Component(
-      0, forceField, "helium", 5.2, 228000.0, -0.39,
-      {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(probeType.value()), 0, false, false)}, {}, {}, 5, 21);
-
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {helium}, {}, {0}, 5);
-
 
   std::size_t number_of_iterations = numberOfIterations.value_or(100000);
 
@@ -63,9 +57,10 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
   for (std::size_t i = 0; i < number_of_iterations; ++i)
   {
     double3 s = double3(random.uniform(), random.uniform(), random.uniform());
-    double3 pos = framework.simulationBox.cell * s;
+    double3 cartesian_position = framework.simulationBox.cell * s;
 
-    if (!framework.computeVanDerWaalsRadiusOverlap(forceField, pos))
+    if (!framework.computeOverlap(forceField, cartesian_position, wellDepthFactor, probeType.value(), -1))
+    //if (!framework.computeVanDerWaalsRadiusOverlap(forceField, cartesian_position))
     {
       no_overlap += 1.0;
     }
@@ -84,6 +79,13 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
+  std::print(myfile, "# Probe atom: {} well-depth-factor: {} sigma: {}\n", probePseudoAtom, wellDepthFactor, forceField[probeType.value()].sizeParameter());
+  std::print(myfile, "# Number of iterations: {}\n", number_of_iterations);
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   myfile << no_overlap / count << std::endl;
   myfile.close();

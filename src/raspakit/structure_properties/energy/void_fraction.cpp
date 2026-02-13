@@ -25,6 +25,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <optional>
 #include "mdspanwrapper.h"
 #endif
 
@@ -36,110 +37,86 @@ import std;
 
 import opencl;
 import float4;
+import double2;
 import double4;
+import randomnumbers;
 import skspacegroupdatabase;
 import forcefield;
 import framework;
+import simulationbox;
+import atom;
+import potential_energy_vdw;
+import energy_factor;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
 
-EnergyVoidFraction::EnergyVoidFraction() {};
-
-EnergyVoidFraction::~EnergyVoidFraction() {}
-
-void EnergyVoidFraction::run(const ForceField &forceField, const Framework &framework)
+void EnergyVoidFraction::run(const ForceField &forceField, const Framework &framework, std::string probePseudoAtom, 
+                             std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps)
 {
-  int3 grid_size = int3(128, 128, 128);
-  double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
-  double cutoff = forceField.cutOffFrameworkVDW;
-  double3x3 unitCell = framework.simulationBox.cell;
-  int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
-  std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
-  std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
+  RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
+
+  std::optional<std::size_t> probe_type = forceField.findPseudoAtom(probePseudoAtom);
+  if (!probe_type.has_value())
+  {
+    throw std::runtime_error(std::format("MC_SurfaceArea: Unknown probe-atom type\n"));
+  }
+
+  std::size_t number_of_iterations = numberOfIterations.value_or(1000);
+  std::size_t number_of_inner_steps = numberOfInnersteps.value_or(1000);
 
   time_begin = std::chrono::system_clock::now();
 
-  std::size_t numberOfAtoms = positions.size();
-  int temp = grid_size.x * grid_size.y * grid_size.z;
+  double cutoff = forceField.cutOffFrameworkVDW;
+  int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
+  SimulationBox simulation_box = framework.simulationBox.scaled(numberOfReplicas);
+  double3x3 simulation_cell = simulation_box.cell;
 
-  std::vector<double> outputData = std::vector<double>(static_cast<std::size_t>(temp));
-
-  double3 correction =
-      double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
-
-  double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0], double(numberOfReplicas.y) * unitCell[1],
-                                    double(numberOfReplicas.z) * unitCell[2]);
-
-  int totalNumberOfReplicas = numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z;
-  std::vector<double3> replicaVector(static_cast<std::size_t>(totalNumberOfReplicas));
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfReplicas.x); i++)
+  double sumBoltzmannWeight{};
+  std::size_t count{};
+  for (std::size_t l = 0; l < number_of_iterations; ++l)
   {
-    for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfReplicas.y); j++)
+    for (std::size_t m = 0; m < number_of_inner_steps; ++m)
     {
-      for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfReplicas.z); k++)
-      {
-        replicaVector[index] =
-            double3((double(i) / double(numberOfReplicas.x)), (double(j) / double(numberOfReplicas.y)),
-                    (double(k) / double(numberOfReplicas.z)));
-        index += 1;
-      }
-    }
-  }
+      double3 random_position = {random.uniform(), random.uniform(), random.uniform()};
 
-  for (std::size_t z = 0; z < static_cast<std::size_t>(grid_size.z); z++)
-  {
-    for (std::size_t y = 0; y < static_cast<std::size_t>(grid_size.y); y++)
-    {
-      for (std::size_t x = 0; x < static_cast<std::size_t>(grid_size.x); x++)
+      double energy = 0.0;
+      for (const Atom &atom: framework.fractionalUnitCellAtoms)
       {
-        double3 gridPosition =
-            correction * double3(double(x) / double(grid_size.x - 1), double(y) / double(grid_size.y - 1),
-                                 double(z) / double(grid_size.z - 1));
-
-        double value = 0.0;
-        for (std::size_t i = 0; i < numberOfAtoms; i++)
+        std::size_t typeB = atom.type;
+        for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfReplicas.x); i++)
         {
-          double3 position = correction * positions[i];
-          double2 currentPotentialParameters = potentialParameters[i];
-
-          // use 4 x epsilon for a probe epsilon of unity
-          double epsilon = 4.0 * std::sqrt(currentPotentialParameters.x * probeParameter.x);
-
-          // mixing rule for the atom and the probe
-          double sigma = 0.5 * (currentPotentialParameters.y + probeParameter.y);
-
-          for (std::size_t j = 0; j < static_cast<std::size_t>(totalNumberOfReplicas); j++)
+          for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfReplicas.y); j++)
           {
-            double3 ds = gridPosition - position - replicaVector[j];
-            ds.x -= std::rint(ds.x);
-            ds.y -= std::rint(ds.y);
-            ds.z -= std::rint(ds.z);
-            double3 dr = replicaCell * ds;
-
-            double rr = dr.x * dr.x + dr.y * dr.y + dr.z * dr.z;
-            if (rr < 12.0 * 12.0)
+            for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfReplicas.z); k++)
             {
-              double sigma2rr = sigma * sigma / rr;
-              double rri3 = sigma2rr * sigma2rr * sigma2rr;
-              value += epsilon * (rri3 * (rri3 - 1.0));
+              double3 translation(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+              double3 ds = (random_position - atom.position + translation) / numberOfReplicas;
+
+              ds.x -= std::rint(ds.x);
+              ds.y -= std::rint(ds.y);
+              ds.z -= std::rint(ds.z);
+
+              double3 dr = simulation_cell * ds;
+
+              double rr = double3::dot(dr, dr);
+              if (rr < cutoff * cutoff)
+              {
+                Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+                  forceField, 0, 0, 1.0, 1.0, rr, probe_type.value(), typeB);
+
+                energy += energyFactor.energy;
+              }
             }
           }
         }
-
-        outputData[x + y * static_cast<std::size_t>(grid_size.x) +
-                   z * static_cast<std::size_t>(grid_size.x * grid_size.y)] += std::min(value, 10000000.0);
       }
-    }
-  }
 
-  double sumBoltzmannWeight = 0.0;
-  for (const double &value : outputData)
-  {
-    sumBoltzmannWeight += std::exp(-(1.0 / (Units::KB * 298.0) * value));
+      sumBoltzmannWeight += std::exp(-(1.0 / (Units::KB * 298.0) * energy));
+      count++;
+    }
   }
 
   time_end = std::chrono::system_clock::now();
@@ -154,7 +131,17 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
   std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
   std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
   std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+  std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+  std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+  std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+      (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
+  std::print(myfile, "# Probe atom: {} strength-value/kʙ: {} [K] size-value: {} [Å]\n", probePseudoAtom, 
+      forceField[probe_type.value()].strengthParameter() * Units::EnergyToKelvin, 
+      forceField[probe_type.value()].sizeParameter());
+  std::print(myfile, "# Cutoff: {} Å\n", cutoff);
+  std::print(myfile, "# Number of unit cells: {}x{}x{}\n", numberOfReplicas.x, numberOfReplicas.y, numberOfReplicas.z);
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
-  myfile << sumBoltzmannWeight / static_cast<double>(grid_size.x * grid_size.y * grid_size.z) << std::endl;
+  myfile << sumBoltzmannWeight / static_cast<double>(count) << std::endl;
   myfile.close();
 }

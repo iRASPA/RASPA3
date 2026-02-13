@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <array>
+#include <string>
 #include <cstddef>
 #include <optional>
 #include <vector>
@@ -22,8 +23,8 @@ import framework;
 
 export struct EnergyVoidFraction
 {
-  EnergyVoidFraction();
-  ~EnergyVoidFraction();
+  EnergyVoidFraction() {};
 
-  void run(const ForceField &forceField, const Framework &framework);
+  void run(const ForceField &forceField, const Framework &framework, std::string probePseudoAtom,
+           std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps);
 };

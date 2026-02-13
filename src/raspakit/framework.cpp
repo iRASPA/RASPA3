@@ -269,27 +269,33 @@ void Framework::expandDefinedAtomsToUnitCell()
   SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
 
   // expand the fractional atoms based on the space-group
-  std::vector<Atom> expandAtoms{};
-  expandAtoms.reserve(definedAtoms.size() * 256);
+  std::vector<Atom> fractional_expanded_atoms{};
+  std::vector<Atom> cartesian_expanded_atoms{};
+  fractional_expanded_atoms.reserve(definedAtoms.size() * 256);
+  cartesian_expanded_atoms.reserve(definedAtoms.size() * 256);
 
   for (Atom atomCopy : definedAtoms)
   {
     std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
     for (const double3& pos : listOfPositions)
     {
+      atomCopy.position = pos.fract();
+      fractional_expanded_atoms.push_back(atomCopy);
+
       atomCopy.position = simulationBox.cell * pos.fract();
-      expandAtoms.push_back(atomCopy);
+      cartesian_expanded_atoms.push_back(atomCopy);
     }
   }
 
   // eliminate duplicates
   unitCellAtoms.clear();
-  for (std::size_t i = 0; i < expandAtoms.size(); ++i)
+  fractionalUnitCellAtoms.clear();
+  for (std::size_t i = 0; i < cartesian_expanded_atoms.size(); ++i)
   {
     bool overLap = false;
-    for (std::size_t j = i + 1; j < expandAtoms.size(); ++j)
+    for (std::size_t j = i + 1; j < cartesian_expanded_atoms.size(); ++j)
     {
-      double3 dr = expandAtoms[i].position - expandAtoms[j].position;
+      double3 dr = cartesian_expanded_atoms[i].position - cartesian_expanded_atoms[j].position;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double rr = double3::dot(dr, dr);
       if (rr < 0.1)
@@ -300,7 +306,8 @@ void Framework::expandDefinedAtomsToUnitCell()
     }
     if (!overLap)
     {
-      unitCellAtoms.push_back(expandAtoms[i]);
+      fractionalUnitCellAtoms.push_back(fractional_expanded_atoms[i]);
+      unitCellAtoms.push_back(cartesian_expanded_atoms[i]);
     }
   }
 }

@@ -274,6 +274,8 @@ export inline double3 operator*(const double& a, const double3& b) { return doub
 
 export inline double3 operator/(const double3& a, double b) { return double3(a.x / b, a.y / b, a.z / b); }
 
+export inline double3 operator/(const double3& a, int3 b) { return double3(a.x / static_cast<double>(b.x), a.y / static_cast<double>(b.y), a.z / static_cast<double>(b.z)); }
+
 export inline double3 sqrt(const double3& a) { return double3(std::sqrt(a.x), std::sqrt(a.y), std::sqrt(a.z)); }
 
 export double3 clamp(double3 value, double3 low, double3 high)

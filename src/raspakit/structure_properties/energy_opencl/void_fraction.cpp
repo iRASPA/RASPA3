@@ -57,6 +57,7 @@ import std;
 #endif
 
 import opencl;
+import uint3;
 import float4;
 import double4;
 import skspacegroupdatabase;
@@ -148,9 +149,8 @@ EnergyOpenCLVoidFraction::~EnergyOpenCLVoidFraction()
   }
 }
 
-void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework& framework)
+void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework& framework, [[maybe_unused]] std::string probePseudoAtom, uint3 gridSize)
 {
-  int3 grid_size = int3(128, 128, 128);
   double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
   double cutoff = forceField.cutOffFrameworkVDW;
   double3x3 unitCell = framework.simulationBox.cell;
@@ -165,7 +165,7 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
   // ==================================================================================================================================================================
 
   size_t numberOfAtoms = positions.size();
-  size_t temp = static_cast<size_t>(grid_size.x * grid_size.y * grid_size.z);
+  size_t temp = static_cast<size_t>(gridSize.x * gridSize.y * gridSize.z);
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size
@@ -203,16 +203,16 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
     }
 
     size_t index = 0;
-    for (int k = 0; k < grid_size.z; ++k)
+    for (std::size_t k = 0; k < gridSize.z; ++k)
     {
-      for (int j = 0; j < grid_size.y; ++j)
+      for (std::size_t j = 0; j < gridSize.y; ++j)
       {
         // X various the fastest (contiguous in x)
-        for (int i = 0; i < grid_size.x; ++i)
+        for (std::size_t i = 0; i < gridSize.x; ++i)
         {
           double3 position =
-              correction * double3(double(i) / double(grid_size.x - 1), double(j) / double(grid_size.y - 1),
-                                   double(k) / double(grid_size.z - 1));
+              correction * double3(double(i) / double(gridSize.x - 1), double(j) / double(gridSize.y - 1),
+                                   double(k) / double(gridSize.z - 1));
           gridPositions[index] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), cl_float(0.0)}};
           ++index;
         }
@@ -417,9 +417,14 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
     std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
     std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
     std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+    std::print(myfile, "# Number of framework atoms: {}\n", framework.unitCellAtoms.size());
+    std::print(myfile, "# Framework volume: {} [Å³]\n", framework.simulationBox.volume);
+    std::print(myfile, "# Framework mass: {} [g/mol]\n", framework.unitCellMass);
+    std::print(myfile, "# Framework density: {} [kg/m³]\n", 1e-3 * framework.unitCellMass /
+        (framework.simulationBox.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
     std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-    myfile << fraction / (static_cast<double>(grid_size.x) * static_cast<double>(grid_size.y) *
-                          static_cast<double>(grid_size.z))
+    myfile << fraction / (static_cast<double>(gridSize.x) * static_cast<double>(gridSize.y) *
+                          static_cast<double>(gridSize.z))
            << std::endl;
     myfile.close();
 

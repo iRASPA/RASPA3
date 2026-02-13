@@ -74,12 +74,12 @@ ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool t
       {{"-", false, 0.0, 0.0, 0.0, 0, false},
        {"Si", true, 28.0855, 2.05, 0.0, 14, false},
        {"O", true, 15.999, -1.025, 0.0, 8, false},
-       {"He", false, 4.002602, 0.0, 0.0, 2, false},
-       {"Ar", false, 39.948, 0.0, 0.0, 18, false},
-       {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
-       {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-       {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
-       {"N2", false, 14.00674, 0.0, 0.0, 6, false}},
+       {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
+       {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
+       {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
+       {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+       {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
+       {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
       {{1.0, 1.0}, 
       {22.0, 2.30}, 
       {53.0, 3.30}, 
@@ -127,12 +127,12 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {"Cd", true, 112.41, 0.0, 0.0, 48, false},
                      {"Sb", true, 121.76, 0.0, 0.0, 51, false},        
                      {"Te", true, 127.6, 0.0, 0.0, 52, false},
-                     {"He", false, 4.002602, 0.0, 0.0, 2, false},      
-                     {"Ar", true, 39.948, 0.0, 0.0, 18, false},
-                     {"CH4", false, 16.04246, 0.0, 0.0, 6, false},     
-                     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}, 
-                     {"N2", false, 14.00674, 0.0, 0.0, 6, false}},
+                     {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},      
+                     {"probe-Ar", true, 39.948, 0.0, 0.0, 18, false},
+                     {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},     
+                     {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+                     {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false}, 
+                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
                     {{1.0, 1.0},                 // custom
                      {48.1581, 3.03315},         // O
                      {38.9492, 3.26256},         // N
@@ -289,7 +289,7 @@ ForceField CommandLine::forceFieldZeoPlusPlus(double rc, bool shifted, bool tail
                      {"Hs", false, 1.0, 0.0, 0.0, 1, false},
                      {"Mt", false, 1.0, 0.0, 0.0, 1, false},
                      {"Ds", false, 1.0, 0.0, 0.0, 1, false},
-                     {"N2", false, 14.00674, 0.0, 0.0, 6, false}},
+                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
                     {{1.0, 2.0 * 1.00},                 // custom
                      {1.0, 2.0 * 1.09},
                      {1.0, 2.0 * 1.09},
@@ -535,7 +535,7 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--probe-atom-name"},
            argparser::required_argument,
            "The name of the probe atom", 
-           [&probe_atom_name](std::string const &arg) { probe_atom_name = arg; })
+           [&probe_atom_name](std::string const &arg) { probe_atom_name = "probe-" + arg; })
       .reg({"--probe-size-parameter"},
            argparser::required_argument,
            "The size of the probe atom", 
@@ -721,13 +721,13 @@ void CommandLine::run(int argc, char *argv[])
           {
             MC_SurfaceArea sa;
 
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
           }
         }
 
@@ -736,13 +736,13 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
           }
         }
       }
@@ -752,13 +752,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergySurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("N2"));
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("probe-N2"));
         }
 
         if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("N2"), gridSize);
+          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("probe-N2"), gridSize);
         }
       }
     }
@@ -772,13 +772,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_VoidFraction vf;
-          vf.run(forceField.value(), framework, probe_atom_name.value_or("He"), number_of_iterations);
+          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
         {
           EnergyOpenCLVoidFraction vf;
-          vf.run(forceField.value(), framework);
+          //vf.run(forceField.value(), framework);
         }
       }
 
@@ -787,13 +787,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergyVoidFraction vf;
-          vf.run(forceField.value(), framework);
+          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
         {
           EnergyOpenCLVoidFraction vf;
-          vf.run(forceField.value(), framework);
+          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), gridSize);
         }
       }
     }
@@ -805,13 +805,13 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
         }
       }
 
