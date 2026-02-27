@@ -5,6 +5,7 @@ module;
 #include <cstddef>
 #include <optional>
 #include <vector>
+#include <string>
 #endif
 
 #define CL_TARGET_OPENCL_VERSION 120
