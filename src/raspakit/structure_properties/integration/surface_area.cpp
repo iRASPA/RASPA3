@@ -17,6 +17,7 @@ module;
 #include <print>
 #include <string>
 #include <vector>
+#include <cmath>
 #endif
 
 module integration_surface_area;
