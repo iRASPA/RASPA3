@@ -1,9 +1,9 @@
 # CMakeLists.txt
-#cmake_minimum_required(VERSION 4.0.3)
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 4.0.3)
 
-#set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
-#set(CMAKE_CXX_MODULE_STD 1)
+# cmake_minimum_required(VERSION 3.29)
+# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
+# set(CMAKE_CXX_MODULE_STD 1)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -25,13 +25,14 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-add_definitions( -DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
-#add_definitions( -DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
-#add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
-#add_definitions(-DVERSION=${PROJECT_VERSION})
+add_definitions(-DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
 
+# add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
+
+# add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
+# add_definitions(-DVERSION=${PROJECT_VERSION})
 find_package(ZLIB)
-find_package(BLAS)
+find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
@@ -41,7 +42,7 @@ include_directories(${OpenCL_INCLUDE_DIRS})
 
 set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
 
-set(CLANG_WARNINGS  -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -Wno-unknown-warning-option)
+set(CLANG_WARNINGS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -Wno-unknown-warning-option)
 
 set(GCC_WARNINGS -Wall -Wextra -Wmisleading-indentation -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
 
@@ -55,7 +56,7 @@ endif()
 
 if(BUILD_LIBTORCH)
   find_package(Torch REQUIRED)
-  add_definitions( -DBUILD_LIBTORCH -Wno-invalid-specialization)
+  add_definitions(-DBUILD_LIBTORCH -Wno-invalid-specialization)
   message("TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
   include_directories(
     "${TORCH_INCLUDE_DIRS}" # libtorch headers
@@ -64,8 +65,8 @@ endif()
 
 include(FetchContent)
 FetchContent_Declare(voro++
-      GIT_REPOSITORY https://github.com/chr1shr/voro.git
-      EXCLUDE_FROM_ALL)
+  GIT_REPOSITORY https://github.com/chr1shr/voro.git
+  EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(voro++)
 
 if(BUILD_TESTING)
@@ -73,13 +74,14 @@ if(BUILD_TESTING)
 
   include(FetchContent)
   FetchContent_Declare(googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.16.0
-        EXCLUDE_FROM_ALL)
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.16.0
+    EXCLUDE_FROM_ALL)
+
   # For Windows: Prevent overriding the parent project's compiler/linker settings
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
-  
+
   include(GoogleTest)
 
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
@@ -87,6 +89,77 @@ if(BUILD_TESTING)
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+function(raspa_target_link_libraries target_name)
+  if(CONDA)
+    target_link_libraries(${PROJECT_NAME}
+      PUBLIC
+      libs::raspakit
+      ${BLAS_LIBRARIES}
+      ${LAPACK_LIBRARIES}
+      ${HDF5_LIBRARIES}
+      voro++
+      ${TORCH_LIBRARIES}
+      OpenMP::OpenMP_CXX
+      OpenCL::OpenCL
+      ZLIB::ZLIB
+      -lpthread)
+  elseif(LINUX)
+    target_link_libraries(${PROJECT_NAME}
+      PUBLIC
+      libs::raspakit
+      -static-libgcc
+      ${BLAS_LIBRARIES}
+      ${LAPACK_LIBRARIES}
+      ${HDF5_CXX_LIBRARIES}
+      ${HDF5_LIBRARIES}
+      voro++
+      ${TORCH_LIBRARIES}
+      OpenMP::OpenMP_CXX
+      OpenCL::OpenCL
+      -nostdlib++
+      -l:libc++.a
+      -l:libc++abi.a
+      -lm
+      -ldl
+      ${ZLIB_LIBRARIES}
+      -lpthread)
+  elseif(WIN32)
+    target_link_libraries(${PROJECT_NAME}
+      PUBLIC
+      libs::raspakit
+      ${BLAS_LIBRARIES}
+      ${LAPACK_LIBRARIES}
+      ${HDF5_CXX_LIBRARIES}
+      voro++
+      ${TORCH_LIBRARIES}
+      OpenMP::OpenMP_CXX
+      OpenCL::OpenCL
+      -nostdlib++
+      ${ZLIB_LIBRARIES})
+  elseif(APPLE)
+    target_link_libraries(${PROJECT_NAME}
+      PUBLIC
+      libs::raspakit
+      ${BLAS_LIBRARIES}
+      ${LAPACK_LIBRARIES}
+      voro++
+      ${TORCH_LIBRARIES}
+      $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
+      $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
+      $ENV{HOMEBREW_PREFIX}/lib/libaec.a
+      $ENV{HOMEBREW_PREFIX}/lib/libsz.a
+      $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
+      OpenCL::OpenCL
+      ${ZLIB_LIBRARIES}
+      -static-libstdc++
+      -nostdlib++
+      $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
+      $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
+      $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/unwind/libunwind.a
+      -lpthread)
+  endif()
+endfunction()
 
 add_subdirectory(src)
 
