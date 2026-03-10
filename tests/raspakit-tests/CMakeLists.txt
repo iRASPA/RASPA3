@@ -30,7 +30,12 @@ add_executable(unit_tests_raspakit
   rotation_matrix.cpp
   main.cpp)
 
-raspa_target_link_libraries(${PROJECT_NAME})
+raspa_target_link_libraries(unit_tests_raspakit)
+target_link_libraries(unit_tests_raspakit PUBLIC
+                      GTest::gtest
+                      GTest::gtest_main
+                      GTest::gmock
+                      GTest::gmock_main)
 
 gtest_add_tests(TARGET unit_tests_raspakit TEST_SUFFIX .noArgs TEST_LIST noArgsTests)
 

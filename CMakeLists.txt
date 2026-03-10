@@ -1,5 +1,5 @@
 # CMakeLists.txt
-cmake_minimum_required(VERSION 4.0.3)
+cmake_minimum_required(VERSION 3.29)
 
 # cmake_minimum_required(VERSION 3.29)
 # set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
@@ -92,7 +92,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 function(raspa_target_link_libraries target_name)
   if(CONDA)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}
@@ -105,7 +105,7 @@ function(raspa_target_link_libraries target_name)
       ZLIB::ZLIB
       -lpthread)
   elseif(LINUX)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       -static-libgcc
@@ -125,7 +125,7 @@ function(raspa_target_link_libraries target_name)
       ${ZLIB_LIBRARIES}
       -lpthread)
   elseif(WIN32)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}
@@ -138,7 +138,7 @@ function(raspa_target_link_libraries target_name)
       -nostdlib++
       ${ZLIB_LIBRARIES})
   elseif(APPLE)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}

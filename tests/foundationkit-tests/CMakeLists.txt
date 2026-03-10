@@ -2,7 +2,12 @@ add_executable(unit_tests_foundationkit
   archive.cpp
   main.cpp)
 
-raspa_target_link_libraries(${PROJECT_NAME})
+raspa_target_link_libraries(unit_tests_foundationkit)
+target_link_libraries(unit_tests_foundationkit PUBLIC
+                      GTest::gtest
+                      GTest::gtest_main
+                      GTest::gmock
+                      GTest::gmock_main)
 
 gtest_add_tests(TARGET unit_tests_foundationkit TEST_SUFFIX .noArgs TEST_LIST noArgsTests)
 
