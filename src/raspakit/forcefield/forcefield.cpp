@@ -1539,3 +1539,42 @@ void ForceField::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& 
     }
   }
 }
+
+ForceField ForceField::makeZeoliteForceField(double rc, bool shifted, bool tailCorrections, bool useEwald)
+{
+  return ForceField(
+      {{"-", false, 0.0, 0.0, 0.0, 0, false},
+       {"Si", true, 28.0855, 2.05, 0.0, 14, false},
+       {"Al", true, 26.982, 2.05, 0.0, 13, false},
+       {"O", true, 15.999, -1.025, 0.0, 8, false},
+       {"Na+", false, 12.0, 1.0, 0.0, 6, false},
+       {"Cl-", false, 15.9994, -1.0, 0.0, 8, false},
+       {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
+       {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+       {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
+       {"Ow", false, 15.9996, 0.0, 0.0, 8, false},
+       {"Hw", false, 1.0008, 0.241, 0.0, 1, false},
+       {"Lw", false, 0.0, -0.241, 0.0, 0, false},
+       {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
+       {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
+       {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
+       {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
+      {{1.0, 1.0},
+       {22.0, 2.30},
+       {22.0, 2.30},
+       {53.0, 3.30},
+       {15.0966, 2.65755},
+       {142.562, 3.51932},
+       {158.5, 3.72},
+       {29.933, 2.745},
+       {85.671, 3.017},
+       {89.633, 3.097},
+       {0.0, 1.0},
+       {0.0, 1.0},
+       {10.9, 2.64},
+       {124.070, 3.38},
+       {158.5, 3.72},
+       {91.5, 3.681}},
+       ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
+}
+

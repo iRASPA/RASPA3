@@ -21,7 +21,6 @@ import int3;
 import double3;
 import double3x3;
 import randomnumbers;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -40,9 +39,9 @@ import mc_moves_move_types;
 
 TEST(MC_NVT_DRIFT, translation)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Translation, 1.0);
@@ -114,9 +113,9 @@ TEST(MC_NVT_DRIFT, translation)
 
 TEST(MC_NVT_DRIFT, random_translation)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);
@@ -188,9 +187,9 @@ TEST(MC_NVT_DRIFT, random_translation)
 
 TEST(MC_NVT_DRIFT, rotation)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Rotation, 1.0);
@@ -262,9 +261,9 @@ TEST(MC_NVT_DRIFT, rotation)
 
 TEST(MC_NVT_DRIFT, random_rotation)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomRotation, 1.0);
@@ -336,9 +335,9 @@ TEST(MC_NVT_DRIFT, random_rotation)
 
 TEST(MC_NVT_DRIFT, reinsertion)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
@@ -410,9 +409,9 @@ TEST(MC_NVT_DRIFT, reinsertion)
 
 TEST(MC_NVT_DRIFT, translation_rotation_reinsertion)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Translation, 1.0);
@@ -486,9 +485,9 @@ TEST(MC_NVT_DRIFT, translation_rotation_reinsertion)
 
 TEST(MC_NVT_DRIFT, random_translation_random_rotation_reinsertion)
 {
-  const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);

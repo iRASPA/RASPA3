@@ -19,7 +19,6 @@ import int3;
 import double3;
 import double3x3;
 import simd_quatd;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -42,12 +41,12 @@ import interpolation_energy_grid;
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -115,12 +114,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -188,12 +187,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 
 TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeWater(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeWater(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 

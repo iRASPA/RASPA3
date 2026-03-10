@@ -400,6 +400,11 @@ export struct Component
    * \return A string representing the Component.
    */
   std::string repr() const;
+
+  static Component makeMethane(const ForceField &forceField, std::size_t id = 0);
+  static Component makeCO2(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  static Component makeWater(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  static Component makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q);
 };
 
 /**

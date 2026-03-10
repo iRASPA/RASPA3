@@ -19,7 +19,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -45,9 +44,9 @@ import energy_status;
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -112,9 +111,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_gradient_cartesian_me
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -167,9 +166,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_hessian_cartesian_met
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_third_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -228,9 +227,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_third_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fourth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -296,9 +295,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fourth_derivative_car
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fifth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -369,9 +368,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fifth_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_sixth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -455,9 +454,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_sixth_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_Txxyyzz_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework framework = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 
@@ -761,9 +760,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fractional_to_Cartesi
 {
   double tolerance = 1e-3;
 
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework framework = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 

@@ -16,7 +16,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -37,13 +36,13 @@ import interactions_ewald;
 
 TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, SimulationBox(10.0, 10.0, 10.0), 300.0, 1e4, 1.0, {}, {c}, {}, {2}, 5);
 
@@ -69,14 +68,14 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
 
 TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
-  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
+  Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
 
   System system = System(0, forceField, SimulationBox(10.0, 10.0, 10.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
 
@@ -157,14 +156,14 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
 
 TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -191,14 +190,14 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
 
 TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -225,14 +224,14 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
 
 TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(1, 1, 1));
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -259,14 +258,14 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
 
 TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -293,14 +292,14 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
 
 TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
-  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
+  Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
 
   System system =
       System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);

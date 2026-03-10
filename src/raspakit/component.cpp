@@ -1719,3 +1719,88 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 }
 
 std::string Component::repr() const { return std::string("Component test"); }
+
+Component Component::makeMethane(const ForceField &forceField, std::size_t id)
+{
+  std::optional<std::size_t> type_ch4 = forceField.findPseudoAtom("CH4");
+  if (!type_ch4.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
+  }
+
+  return Component(id, forceField, "methane", 190.564, 45599200, 0.01142, 
+                   {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), static_cast<std::uint8_t>(id), false, false)},
+                   {}, {}, 5, 21);
+}
+
+Component Component::makeCO2(const ForceField &forceField, std::size_t id, bool useCharges)
+{
+  const double qC = useCharges ? 0.6512 : 0.0;
+  const double qO = useCharges ? -0.3256 : 0.0;
+
+  std::optional<std::size_t> type_c_co2 = forceField.findPseudoAtom("C_co2");
+  if (!type_c_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "C_co2"));
+  }
+
+  std::optional<std::size_t> type_o_co2 = forceField.findPseudoAtom("O_co2");
+  if (!type_o_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O_co2"));
+  }
+
+  return Component(
+      id, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      {Atom({0, 0,  1.149},  qO, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), static_cast<std::uint8_t>(id), false, false), 
+       Atom({0, 0,  0.000},  qC, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom({0, 0, -1.149},  qO, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), static_cast<std::uint8_t>(id), false, false)},
+      {}, {}, 5, 21);
+}
+
+Component Component::makeWater(const ForceField &forceField, std::size_t id, bool useCharges)
+{
+  const double qh = useCharges ? 0.241 : 0.0;
+  const double ql = useCharges ? -0.241 : 0.0;
+
+  std::optional<std::size_t> type_ow = forceField.findPseudoAtom("Ow");
+  if (!type_ow.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Ow"));
+  }
+
+  std::optional<std::size_t> type_hw = forceField.findPseudoAtom("Hw");
+  if (!type_hw.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Hw"));
+  }
+
+  std::optional<std::size_t> type_lw = forceField.findPseudoAtom("Lw");
+  if (!type_lw.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Lw"));
+  }
+
+  return Component(
+      id, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ow.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, static_cast<std::uint16_t>(type_hw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, static_cast<std::uint16_t>(type_hw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, static_cast<std::uint16_t>(type_lw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, static_cast<std::uint16_t>(type_lw.value()), static_cast<std::uint8_t>(id), false, false)},
+      {}, {}, 5, 21);
+}
+
+Component Component::makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q)
+{
+  return Component(id, forceField, std::string{name}, 0.0, 0.0, 0.0, 
+                   {Atom({0, 0, 0}, q, 1.0, 0, static_cast<std::uint16_t>(type), static_cast<std::uint8_t>(id), false, false)}, {},
+                   {}, 5, 21);
+}
+

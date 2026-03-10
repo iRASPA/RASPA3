@@ -13,6 +13,10 @@ module;
 #include <print>
 #include <string>
 #include <type_traits>
+#include <filesystem>
+#include <exception>
+#include <iterator>
+#include <fstream>
 #endif
 
 export module stringutils;
@@ -86,3 +90,26 @@ export inline std::string addExtension(const std::string& fileName, const std::s
     return fileName + extension;
   }
 }
+
+export std::string readFileContent(const std::string &fileName, const std::string &extension)
+{
+  std::string file_name_string = addExtension(fileName, extension);
+
+  std::filesystem::path path = std::filesystem::path(file_name_string);
+  if (!std::filesystem::exists(path))
+  {
+    const char* env_p = std::getenv("RASPA_DIR");
+    path = std::filesystem::path(env_p) / file_name_string;
+  }
+
+  if (!std::filesystem::exists(path))
+  {
+    throw std::runtime_error(std::format("File '{}' not found\n", file_name_string));
+  }
+
+  std::ifstream t(path);
+  std::string file_content((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+
+  return file_content;
+}
+

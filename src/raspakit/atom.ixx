@@ -49,7 +49,7 @@ export struct Atom
   double scalingVDW{1.0};         ///< Scaling factor for van der Waals interactions.
   double scalingCoulomb{1.0};     ///< Scaling factor for Coulomb interactions.
   std::uint32_t moleculeId{0};    ///< Identifier for the molecule this atom belongs to.
-  std::uint16_t type{0};          ///< Type identifier of the atom.
+  std::uint16_t type{0};          ///< Pseudo-atom type identifier of the atom.
   std::uint8_t componentId{0};    ///< Component identifier within the system.
   std::uint8_t groupId : 4;       ///< Group identifier, defaults to false.
   std::uint8_t isFractional : 4;  ///< Fractional or not, defaults to false.
@@ -194,6 +194,18 @@ export struct Atom
                componentId, groupId);
 
     return stream.str();
+  }
+};
+
+export struct AtomTypeEqual
+{
+  constexpr bool operator()(const Atom& a, const Atom& b) const
+  {
+    return a.type == b.type;
+  }
+  std::size_t operator() (const Atom &atom) const noexcept
+  {
+   return static_cast<std::size_t>(atom.type);
   }
 };
 

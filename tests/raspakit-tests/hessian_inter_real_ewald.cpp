@@ -17,7 +17,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -38,9 +37,9 @@ import energy_status;
 
 TEST(hessian_inter_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -97,9 +96,9 @@ TEST(hessian_inter_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_
 
 TEST(hessian_inter_real_ewald, Test_gradient_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -156,9 +155,9 @@ TEST(hessian_inter_real_ewald, Test_gradient_fractional_methane_in_CHA_triclinic
 
 TEST(hessian_inter_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
@@ -231,9 +230,9 @@ TEST(hessian_inter_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1
 
 TEST(hessian_inter_real_ewald, Test_hessian_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 

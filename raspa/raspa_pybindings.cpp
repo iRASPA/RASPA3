@@ -41,6 +41,7 @@ import int3;
 import double3;
 import double3x3;
 import atom;
+import cif_reader;
 import simulationbox;
 import pseudo_atom;
 import vdwparameters;
@@ -140,22 +141,19 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Framework> framework(m, "Framework");
 
-  pybind11::enum_<Framework::UseChargesFrom>(framework, "UseChargesFrom")
-      .value("PseudoAtoms", Framework::UseChargesFrom::PseudoAtoms)
-      .value("CIF_File", Framework::UseChargesFrom::CIF_File)
-      .value("ChargeEquilibration", Framework::UseChargesFrom::ChargeEquilibration);
+  pybind11::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom")
+      .value("PseudoAtoms", CIFReader::UseChargesFrom::PseudoAtoms)
+      .value("CIF_File", CIFReader::UseChargesFrom::CIF_File)
+      .value("ChargeEquilibration", CIFReader::UseChargesFrom::ChargeEquilibration);
+
 
   framework
-      .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, std::vector<Atom>,
-                          int3>(),
+      .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, const std::vector<Atom> &,
+                          const std::vector<Atom> &, int3>(),
            pybind11::arg("frameworkId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
-           pybind11::arg("simulationBox"), pybind11::arg("spaceGroupHallNumber"), pybind11::arg("definedAtoms"),
+           pybind11::arg("simulationBox"), pybind11::arg("spaceGroupHallNumber"), 
+           pybind11::arg("definedAtoms"), pybind11::arg("fractionalUnitCellAtoms"),
            pybind11::arg("numberOfUnitCells"))
-      .def(pybind11::init<std::size_t, const ForceField &, const std::string &, std::optional<const std::string>, int3,
-                          Framework::UseChargesFrom>(),
-           pybind11::arg("frameworkId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
-           pybind11::arg("fileName"), pybind11::arg("numberOfUnitCells"),
-           pybind11::arg("useChargesFrom") = Framework::UseChargesFrom::PseudoAtoms)
       .def_readonly("name", &Framework::name)
       .def("__repr__", &Framework::repr);
 

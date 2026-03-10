@@ -16,7 +16,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -51,7 +50,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -117,7 +116,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   forceField.numberOfWaveVectors = int3(8, 8, 8);
   forceField.omitInterInteractions = true;
 
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -166,9 +165,9 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   double tolerance = 1e-5;
 
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = true;

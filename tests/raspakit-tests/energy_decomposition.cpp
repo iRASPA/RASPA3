@@ -17,7 +17,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -41,10 +40,10 @@ import interpolation_energy_grid;
 
 TEST(energy_decomposition, CO2_Methane_in_Box)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
 
   System system =
       System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {methane, co2}, {}, {15, 30}, 5);
@@ -61,11 +60,11 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
 
 TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
 
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
-  Component co2_2 = TestFactories::makeCO2(forceField, 2, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
+  Component co2_2 = Component::makeCO2(forceField, 2, true);
 
   System system =
       System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {co2, co2_2}, {}, {15, 30}, 5);
@@ -100,10 +99,10 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 
 TEST(energy_decomposition, CO2_Methane_in_Framework)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {10, 15}, 5);
 

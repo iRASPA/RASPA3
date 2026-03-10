@@ -70,7 +70,8 @@ TEST(grids, Test_CHA_grid)
   std::cout << forceField.printPseudoAtomStatus();
   std::cout << forceField.printForceFieldStatus();
 
-  Framework framework = Framework(0, forceField, "IRMOF-1",
+  const string fileContent = Framework::readFileContent("IRMOF-1");
+  Framework framework = Framework(0, forceField, fileContent,
                                   SimulationBox(25.832, 25.832, 25.832, 90.0 * std::numbers::pi / 180.0,
                                                 120.0 * std::numbers::pi / 180.0, 90.0 * std::numbers::pi / 180.0),
                                   523,

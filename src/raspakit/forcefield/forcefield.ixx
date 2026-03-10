@@ -370,4 +370,6 @@ export struct ForceField
    * of only known keys.
    */
   static const std::set<std::string, InsensitiveCompare> options;
+
+  static ForceField makeZeoliteForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
 };

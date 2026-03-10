@@ -28,6 +28,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <unordered_set>
 #endif
 
 #if !defined(_WIN32)
@@ -63,110 +64,32 @@ import cif_reader;
 import move_statistics;
 import bond_potential;
 import json;
-import charge_equilibration_wilmer_snurr;
 
 // default constructor, needed for binary restart-file
 Framework::Framework() {}
 
-// create Component in 'inputreader.cpp'
-Framework::Framework(std::size_t currentFramework, const ForceField& forceField, const std::string& componentName,
-                     std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
-                     Framework::UseChargesFrom useChargesFrom) noexcept(false)
-    : frameworkId(currentFramework), name(componentName), filenameData(fileName), useChargesFrom(useChargesFrom)
-{
-  if (filenameData.has_value())
-  {
-    readFramework(forceField, filenameData.value());
 
-    double cutOff = forceField.cutOffFrameworkVDW;
-    const int3 minimum_number_of_unit_cells = simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
-
-    this->numberOfUnitCells = numberOfUnitCells.value_or(minimum_number_of_unit_cells);
-
-    makeSuperCell();
-
-    unitCellMass = 0.0;
-    for (const Atom& atom : unitCellAtoms)
-    {
-      std::size_t atomType = static_cast<std::size_t>(atom.type);
-      unitCellMass += forceField.pseudoAtoms[atomType].mass;
-    }
-
-    mass = 0.0;
-    netCharge = 0.0;
-    smallestCharge = 0.0;
-    largestCharge = 0.0;
-    if(!atoms.empty())
-    {
-      smallestCharge = std::numeric_limits<double>::max();
-      largestCharge = std::numeric_limits<double>::lowest();
-      for (const Atom& atom : atoms)
-      {
-        std::size_t atomType = static_cast<std::size_t>(atom.type);
-        mass += forceField.pseudoAtoms[atomType].mass;
-        netCharge += atom.charge;
-        if (atom.charge > largestCharge) largestCharge = atom.charge;
-        if (atom.charge < smallestCharge) smallestCharge = atom.charge;
-      }
-    }
-
-    for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
-    {
-      unitCellAtoms[i].componentId = static_cast<std::uint8_t>(currentFramework);
-      unitCellAtoms[i].moleculeId = 0;
-    }
-  }
-}
-
-// create programmatically an 'framework' component
-Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string fileName,
-                     SimulationBox simulationBox, std::size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
+Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string structureName,
+                     SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
+                     const std::vector<Atom> &definedAtoms, const std::vector<Atom> &fractionalUnitCellAtoms,
                      int3 numberOfUnitCells) noexcept(false)
     : simulationBox(simulationBox),
       spaceGroupHallNumber(spaceGroupHallNumber),
       numberOfUnitCells(numberOfUnitCells),
       frameworkId(frameworkId),
-      name(fileName),
-      filenameData(fileName),
-      useChargesFrom(UseChargesFrom::PseudoAtoms),
-      definedAtoms(definedAtoms)
+      name(structureName),
+      definedAtoms(definedAtoms),
+      fractionalUnitCellAtoms(fractionalUnitCellAtoms)
 {
   for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
-    // definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
-    definedAtoms[i].moleculeId = 0;
+    this->definedAtoms[i].moleculeId = 0;
   }
 
-  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
+  unitCellAtoms = fractionalUnitCellAtoms;
+  for(std::size_t i = 0; i < fractionalUnitCellAtoms.size(); ++i)
   {
-    for (Atom& atom : definedAtoms)
-    {
-      atom.charge = forceField.pseudoAtoms[atom.type].charge;
-    }
-  }
-
-  expandDefinedAtomsToUnitCell();
-
-  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
-  {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
-                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
-
-    std::vector<std::size_t> countCharge(definedAtoms.size());
-    std::vector<double> sumCharge(definedAtoms.size());
-    for (const Atom& atom : unitCellAtoms)
-    {
-      ++countCharge[atom.moleculeId];
-      sumCharge[atom.moleculeId] += atom.charge;
-    }
-    for (std::size_t i = 0; i < definedAtoms.size(); ++i)
-    {
-      definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
-    }
-    for (Atom& atom : unitCellAtoms)
-    {
-      atom.charge = definedAtoms[atom.moleculeId].charge;
-    }
+    unitCellAtoms[i].position = simulationBox.cell * fractionalUnitCellAtoms[i].position;
   }
 
   makeSuperCell();
@@ -202,115 +125,20 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
     unitCellAtoms[i].componentId = static_cast<std::uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
   }
+
+  determineUniqueAtomTypes();
 }
 
-void Framework::readFramework(const ForceField& forceField, const std::string& fileName)
+void Framework::determineUniqueAtomTypes()
 {
-  const char* env_p = std::getenv("RASPA_DIR");
+  std::unordered_set<Atom, AtomTypeEqual, AtomTypeEqual> atom_types(atoms.begin(), atoms.end());
 
-  std::string frameworkFileName = addExtension(fileName, ".cif");
-
-  std::filesystem::path frameworkPathfile = std::filesystem::path(frameworkFileName);
-  if (!std::filesystem::exists(frameworkPathfile)) frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
-
-  if (!std::filesystem::exists(frameworkPathfile))
-    throw std::runtime_error(std::format("File '{}' not found\n", frameworkFileName));
-
-  std::ifstream t(frameworkPathfile);
-  std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-
-  CIFReader parser = CIFReader(fileContent, forceField);
-  simulationBox = parser.simulationBox;
-  definedAtoms = parser.fractionalAtoms;
-  spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
-
-  for (std::size_t i = 0; i < definedAtoms.size(); ++i)
-  {
-    // definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
-    definedAtoms[i].moleculeId = 0;
-  }
-
-  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
-  {
-    for (Atom& atom : definedAtoms)
-    {
-      atom.charge = forceField.pseudoAtoms[atom.type].charge;
-    }
-  }
-
-  // expand the fractional atoms based on the space-group
-  expandDefinedAtomsToUnitCell();
-
-  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
-  {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
-                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
-
-    std::vector<std::size_t> countCharge(definedAtoms.size());
-    std::vector<double> sumCharge(definedAtoms.size());
-    for (const Atom& atom : unitCellAtoms)
-    {
-      ++countCharge[atom.moleculeId];
-      sumCharge[atom.moleculeId] += atom.charge;
-    }
-    for (std::size_t i = 0; i < definedAtoms.size(); ++i)
-    {
-      definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
-    }
-    for (Atom& atom : unitCellAtoms)
-    {
-      atom.charge = definedAtoms[atom.moleculeId].charge;
-    }
-  }
+  uniqueAtomTypes.reserve(atom_types.size());
+  std::transform(atom_types.begin(), atom_types.end(), std::inserter(uniqueAtomTypes, uniqueAtomTypes.begin()), [](const Atom &atom) {
+     return static_cast<std::size_t>(atom.type);
+  });
 }
 
-void Framework::expandDefinedAtomsToUnitCell()
-{
-  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
-
-  // expand the fractional atoms based on the space-group
-  std::vector<Atom> fractional_expanded_atoms{};
-  std::vector<Atom> cartesian_expanded_atoms{};
-  fractional_expanded_atoms.reserve(definedAtoms.size() * 256);
-  cartesian_expanded_atoms.reserve(definedAtoms.size() * 256);
-
-  for (Atom atomCopy : definedAtoms)
-  {
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
-    for (const double3& pos : listOfPositions)
-    {
-      atomCopy.position = pos.fract();
-      fractional_expanded_atoms.push_back(atomCopy);
-
-      atomCopy.position = simulationBox.cell * pos.fract();
-      cartesian_expanded_atoms.push_back(atomCopy);
-    }
-  }
-
-  // eliminate duplicates
-  unitCellAtoms.clear();
-  fractionalUnitCellAtoms.clear();
-  for (std::size_t i = 0; i < cartesian_expanded_atoms.size(); ++i)
-  {
-    bool overLap = false;
-    for (std::size_t j = i + 1; j < cartesian_expanded_atoms.size(); ++j)
-    {
-      double3 dr = cartesian_expanded_atoms[i].position - cartesian_expanded_atoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
-      {
-        overLap = true;
-        break;
-      }
-    }
-    if (!overLap)
-    {
-      fractionalUnitCellAtoms.push_back(fractional_expanded_atoms[i]);
-      unitCellAtoms.push_back(cartesian_expanded_atoms[i]);
-    }
-  }
-}
 
 void Framework::makeSuperCell()
 {
@@ -506,18 +334,18 @@ std::string Framework::printStatus(const ForceField& forceField) const
                definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z,
                definedAtoms[i].charge);
   }
-  switch (useChargesFrom)
-  {
-    case UseChargesFrom::PseudoAtoms:
-      std::print(stream, "    use charge from: pseudo-atoms\n");
-      break;
-    case UseChargesFrom::CIF_File:
-      std::print(stream, "    use charge from: CIF-file\n");
-      break;
-    case UseChargesFrom::ChargeEquilibration:
-      std::print(stream, "    use charge from: charge-equilibration method\n");
-      break;
-  }
+  //switch (useChargesFrom)
+  //{
+  //  case UseChargesFrom::PseudoAtoms:
+  //    std::print(stream, "    use charge from: pseudo-atoms\n");
+  //    break;
+  //  case UseChargesFrom::CIF_File:
+  //    std::print(stream, "    use charge from: CIF-file\n");
+  //    break;
+  //  case UseChargesFrom::ChargeEquilibration:
+  //    std::print(stream, "    use charge from: charge-equilibration method\n");
+  //    break;
+  //}
   std::print(stream, "    net charge:                 {:>12.5f} [e]\n", netCharge);
   std::print(stream, "    smallest charge:            {:>12.5f} [e]\n", smallestCharge);
   std::print(stream, "    largest charge:             {:>12.5f} [e]\n", largestCharge);
@@ -562,14 +390,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
 
   archive << c.frameworkId;
   archive << c.name;
-  archive << c.filenameData;
   archive << c.filename;
 
   archive << c.rigid;
 
   archive << c.mass;
 
-  archive << c.useChargesFrom;
   archive << c.netCharge;
   archive << c.smallestCharge;
   archive << c.largestCharge;
@@ -620,14 +446,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
 
   archive >> c.frameworkId;
   archive >> c.name;
-  archive >> c.filenameData;
   archive >> c.filename;
 
   archive >> c.rigid;
 
   archive >> c.mass;
 
-  archive >> c.useChargesFrom;
   archive >> c.netCharge;
   archive >> c.smallestCharge;
   archive >> c.largestCharge;
@@ -694,3 +518,194 @@ std::string Framework::repr() const
 
   return stream.str();
 }
+
+Framework Framework::makeFAU(const ForceField &forceField, int3 replicate)
+{
+  std::optional<std::size_t> type_si = forceField.findPseudoAtom("Si");
+  if (!type_si.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Si"));
+  }
+
+  std::optional<std::size_t> type_o = forceField.findPseudoAtom("O");
+  if (!type_o.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O"));
+  }
+
+  std::size_t space_group_hall_number = 526;
+  SimulationBox simulation_box = SimulationBox(24.2576, 24.2576, 24.2576);
+  std::vector<Atom> fractional_atoms_asymmetric_unit_cell{
+    Atom({-0.05392, 0.1253, 0.03589}, 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom({0, -0.10623, 0.10623}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom({-0.00323, -0.00323, 0.14066}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom({0.0757, 0.0757, -0.03577}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom({0.07063, 0.07063, 0.32115}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false)
+  };
+  std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
+
+  return Framework(0, forceField, "FAU", simulation_box, space_group_hall_number,
+                   fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
+}
+
+Framework Framework::makeITQ29(const ForceField &forceField, int3 replicate)
+{
+  std::optional<std::size_t> type_si = forceField.findPseudoAtom("Si");
+  if (!type_si.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Si"));
+  }
+
+  std::optional<std::size_t> type_o = forceField.findPseudoAtom("O");
+  if (!type_o.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O"));
+  }
+
+
+
+  std::size_t space_group_hall_number = 517;
+  SimulationBox simulation_box = SimulationBox(11.8671, 11.8671, 11.8671);
+  std::vector<Atom> fractional_atoms_asymmetric_unit_cell{
+    Atom({0.3683, 0.1847, 0}, 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom({0.5, 0.2179, 0}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom({0.2939, 0.2939, 0}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom({0.3429, 0.1098, 0.1098}, -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false)
+  };
+  std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
+
+  return Framework(0, forceField, "ITQ-29", simulation_box, space_group_hall_number,
+                   fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
+}
+
+Framework Framework::makeMFI(const ForceField &forceField, int3 replicate)
+{
+  std::optional<std::size_t> type_si = forceField.findPseudoAtom("Si");
+  if (!type_si.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Si"));
+  }
+
+  std::optional<std::size_t> type_o = forceField.findPseudoAtom("O");
+  if (!type_o.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O"));
+  }
+
+  std::size_t space_group_hall_number = 292;
+  SimulationBox simulation_box = SimulationBox(20.022, 19.899, 13.383);
+  std::vector<Atom> fractional_atoms_asymmetric_unit_cell{
+    Atom(double3(0.42238, 0.0565, -0.33598), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.30716, 0.02772, -0.1893), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.27911, 0.06127, 0.0312), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.12215, 0.06298, 0.0267), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.07128, 0.02722, -0.18551), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.18641, 0.05896, -0.32818), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.42265, -0.1725, -0.32718), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.30778, -0.13016, -0.18548), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.27554, -0.17279, 0.03109), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.12058, -0.1731, 0.02979), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.07044, -0.13037, -0.182), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.18706, -0.17327, -0.31933), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.3726, 0.0534, -0.2442), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.3084, 0.0587, -0.0789), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.2007, 0.0592, 0.0289), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.0969, 0.0611, -0.0856), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1149, 0.0541, -0.2763), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.2435, 0.0553, -0.246), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.3742, -0.1561, -0.2372), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.3085, -0.1552, -0.0728), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.198, -0.1554, 0.0288), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.091, -0.1614, -0.0777), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1169, -0.1578, -0.2694), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.2448, -0.1594, -0.2422), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.3047, -0.051, -0.1866), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.0768, -0.0519, -0.1769), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.4161, 0.1276, -0.3896), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.4086, -0.0017, -0.4136), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.402, -0.1314, -0.4239), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1886, 0.1298, -0.3836), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.194, 0.0007, -0.4082), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1951, -0.1291, -0.419), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(-0.0037, 0.0502, -0.208), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(-0.004, -0.1528, -0.2078), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.4192, -0.25, -0.354), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1884, -0.25, -0.3538), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.2883, -0.25, 0.0579), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.1085, -0.25, 0.0611), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+  };
+  std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
+
+  return Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), space_group_hall_number,
+                   fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
+}
+
+Framework Framework::makeCHA(const ForceField &forceField, int3 replicate)
+{
+  std::optional<std::size_t> type_si = forceField.findPseudoAtom("Si");
+  if (!type_si.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Si"));
+  }
+
+  std::optional<std::size_t> type_o = forceField.findPseudoAtom("O");
+  if (!type_o.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O"));
+  }
+  std::size_t space_group_hall_number = 1;
+  SimulationBox simulation_box = SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
+                                 94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0);
+  std::vector<Atom> fractional_atoms_asymmetric_unit_cell{
+    Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, static_cast<std::uint16_t>(type_si.value()), 0, false, false),
+    Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false),
+    Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, static_cast<std::uint16_t>(type_o.value()), 0, false, false)
+  };
+  std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
+
+  return Framework(0, forceField, "CHA", simulation_box, space_group_hall_number,
+                   fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
+}
+
+

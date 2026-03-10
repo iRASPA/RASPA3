@@ -17,7 +17,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 
 import units;
 import atom;
@@ -41,9 +40,9 @@ import cbmc_interactions_intermolecular;
 
 TEST(cbmc_interactions, framework_molecule_1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
-  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
@@ -66,9 +65,9 @@ TEST(cbmc_interactions, framework_molecule_1)
 
 TEST(cbmc_interactions, framework_molecule_2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
-  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();

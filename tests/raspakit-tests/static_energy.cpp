@@ -15,7 +15,6 @@ import std;
 
 import int3;
 import double3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -33,9 +32,9 @@ import interactions_ewald;
 
 TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = Component::makeCO2(forceField, 0, true);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -61,9 +60,9 @@ TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 
 TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
@@ -89,13 +88,13 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 
 TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, false, true, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, true, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();

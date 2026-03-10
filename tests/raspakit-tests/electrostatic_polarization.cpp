@@ -16,7 +16,6 @@ import std;
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -37,7 +36,7 @@ import energy_status;
 /*
 TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = false;

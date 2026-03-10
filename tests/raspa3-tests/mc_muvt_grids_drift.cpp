@@ -22,7 +22,6 @@ import int3;
 import double3;
 import double3x3;
 import randomnumbers;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -47,10 +46,10 @@ import mc_moves_move_types;
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertion)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -136,10 +135,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -225,10 +224,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -314,10 +313,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -403,10 +402,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -492,10 +491,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -581,10 +580,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
@@ -670,10 +669,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
 
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
   probabilities_co2.setProbability(MoveTypes::Translation, 1.0);

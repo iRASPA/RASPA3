@@ -21,7 +21,6 @@ import int3;
 import double3;
 import double3x3;
 import randomnumbers;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -40,10 +39,10 @@ import mc_moves_move_types;
 
 TEST(MC_NVT_GRIDS_DRIFT, translation)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Translation, 1.0);
@@ -115,10 +114,10 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
 
 TEST(MC_NVT_GRIDS_DRIFT, random_translation)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);
@@ -190,10 +189,10 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
 
 TEST(MC_NVT_GRIDS_DRIFT, rotation)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Rotation, 1.0);
@@ -265,10 +264,10 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
 
 TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomRotation, 1.0);
@@ -340,10 +339,10 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
 
 TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
@@ -415,10 +414,10 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
 
 TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::Translation, 1.0);
@@ -492,10 +491,10 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
 
 TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
-  Framework f = TestFactories::makeFAU(forceField, int3(1, 1, 1));
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);

@@ -156,6 +156,7 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
   double3x3 unitCell = framework.simulationBox.cell;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
+  std::print("check: {}\n", positions.size());
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
   std::chrono::system_clock::time_point time_begin, time_end;
 
@@ -184,6 +185,8 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
 
   double3 correction =
       double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
+
+  std::print("numberOfAtoms: {}\n", numberOfAtoms);
 
   if (numberOfAtoms > 0)
   {

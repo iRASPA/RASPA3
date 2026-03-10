@@ -39,11 +39,14 @@ import int3;
 import uint3;
 import double3;
 import threadpool;
+import stringutils;
 import hdf5;
 import input_reader;
 import framework;
 import vdwparameters;
 import forcefield;
+import cif_reader;
+import atom;
 import opencl;
 import mc_void_fraction;
 import mc_surface_area;
@@ -649,6 +652,7 @@ void CommandLine::run(int argc, char *argv[])
       if (is_zeolite)
       {
         forceField = forceField.value_or(defaultForceFieldZeolite(12.0, false, false, false));
+        forceField->printForceFieldStatus();
       }
       else if (is_zeopp)
       {
@@ -670,8 +674,12 @@ void CommandLine::run(int argc, char *argv[])
       probe_atom_name = "-";
     }
 
-    Framework framework =
-        Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
+    const std::string file_content = readFileContent(stem, ".cif");
+
+    auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readString(file_content, forceField.value(), CIFReader::UseChargesFrom::CIF_File);
+
+    Framework framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                                    defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
 
     if (state.test(CommandLine::State::TessellationComputation))
     {

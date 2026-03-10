@@ -65,6 +65,7 @@ import property_msd;
 import property_vacf;
 import write_lammps_data;
 import thermostat;
+import cif_reader;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -922,22 +923,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      Framework::UseChargesFrom useChargesFrom{Framework::UseChargesFrom::PseudoAtoms};
+      CIFReader::UseChargesFrom useChargesFrom{CIFReader::UseChargesFrom::PseudoAtoms};
       if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
       {
         std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
 
         if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
         {
-          useChargesFrom = Framework::UseChargesFrom::PseudoAtoms;
+          useChargesFrom = CIFReader::UseChargesFrom::PseudoAtoms;
         }
         if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
         {
-          useChargesFrom = Framework::UseChargesFrom::CIF_File;
+          useChargesFrom = CIFReader::UseChargesFrom::CIF_File;
         }
         if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
         {
-          useChargesFrom = Framework::UseChargesFrom::ChargeEquilibration;
+          useChargesFrom = CIFReader::UseChargesFrom::ChargeEquilibration;
         }
       }
 
@@ -1063,9 +1064,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
 
-        std::optional<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(),
-                                                                   frameworkNameString, frameworkNameString,
-                                                                   jsonNumberOfUnitCells, useChargesFrom)};
+        const std::string file_content = readFileContent(frameworkNameString, ".cif");
+
+        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readString(file_content, forceField, useChargesFrom);
+
+        Framework framework = Framework(0, forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
+                                        defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
+
+        std::optional<Framework> jsonFrameworkComponents{framework};
 
         // create system
         systems[systemId] =
