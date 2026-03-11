@@ -62,12 +62,5 @@ enum State : std::uint8_t
   Last = 10
 };
 
-ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
-                                    bool useEwald = false);
-ForceField defaultForceFieldMOF(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
-                                bool useEwald = false);
-ForceField forceFieldZeoPlusPlus(double rc = 12.0, bool shifted = false, bool tailCorrections = false,
-                                 bool useEwald = false);
-
 void run(int argc, char* argv[]);
 }  // namespace CommandLine

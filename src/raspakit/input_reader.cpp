@@ -25,6 +25,7 @@ module;
 #include <sstream>
 #include <streambuf>
 #include <vector>
+#include <expected>
 #endif
 
 module input_reader;
@@ -1066,18 +1067,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         const std::string file_content = readFileContent(frameworkNameString, ".cif");
 
-        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readString(file_content, forceField, useChargesFrom);
+        //auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readCIFString(file_content, forceField, useChargesFrom);
+        if(const auto cif = CIFReader::readCIFString(file_content, forceField, useChargesFrom); cif.has_value())
+        {
+          auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+          Framework framework = Framework(0, forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
+                                          defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
 
-        Framework framework = Framework(0, forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
-                                        defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
+          std::optional<Framework> jsonFrameworkComponents{framework};
 
-        std::optional<Framework> jsonFrameworkComponents{framework};
-
-        // create system
-        systems[systemId] =
-            System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
-                   jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+          // create system
+          systems[systemId] =
+              System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
+                     jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
+                     jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+        }
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {

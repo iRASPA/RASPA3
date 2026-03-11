@@ -20,6 +20,7 @@ module;
 #include <string>
 #include <vector>
 #include <tuple>
+#include <expected>
 #endif
 
 module cif_reader;
@@ -43,8 +44,8 @@ CIFReader::CIFReader(const std::string& content)
 {
 }
 
-std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>> 
-  CIFReader::readString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom)
+auto CIFReader::readCIFString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom) ->
+                              std::expected<std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>, CIFReader::ParseError>
 {
   CIFReader cif_reader(content);
 
@@ -84,7 +85,7 @@ std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>
       }
       else if (keyword.starts_with(std::string("loop_")))
       {
-        cif_reader.parseLoop(keyword, forceField);
+        if(auto loop = cif_reader.parseLoop(keyword, forceField); !loop.has_value()) return std::unexpected(loop.error());
       }
       else if (keyword.starts_with("#"))
       {
@@ -135,7 +136,7 @@ std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>
   //}
 
 
-  return {simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms, atoms};
+  return std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>{simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms, atoms};
 }
 
 void CIFReader::parseLine([[maybe_unused]] std::string& string) {}
@@ -225,7 +226,7 @@ void CIFReader::skipComment()
   scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString);
 }
 
-void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField)
+std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField)
 {
   std::string tempString;
   std::string::const_iterator previousScanLocation;
@@ -305,7 +306,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
             // TODO: add pseudoAtom if not found
             if (!index1.has_value())
             {
-              throw std::runtime_error(std::format("[cif reader]: atom type {} not recognized\n", value2));
+              return std::unexpected(CIFReader::ParseError::invalidForceField);
+              //throw std::runtime_error(std::format("[cif reader]: atom type {} not recognized\n", value2));
             }
 
             if (index1.has_value())
@@ -423,6 +425,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
       }
     }
   } while (value1);
+
+  return std::expected<void, CIFReader::ParseError>();
 }
 
 std::optional<std::string> CIFReader::parseValue()

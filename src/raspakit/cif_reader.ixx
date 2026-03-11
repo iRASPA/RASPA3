@@ -10,6 +10,7 @@ module;
 #include <string>
 #include <vector>
 #include <tuple>
+#include <expected>
 #endif
 
 export module cif_reader;
@@ -48,6 +49,12 @@ export struct CIFReader
     ChargeEquilibration = 2  ///< Compute charges using charge equilibration methods.
   };
 
+  enum class ParseError : std::size_t
+  {
+    invalidInput = 0,
+    invalidForceField = 1
+  };
+
   /**
    * \brief Constructs a CIFReader with the given CIF content and force field.
    *
@@ -59,8 +66,8 @@ export struct CIFReader
    */
   CIFReader(const std::string& content);
 
-  static std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>> 
-    readString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom);
+  static auto readCIFString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom) ->
+    std::expected<std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>, CIFReader::ParseError>;
 
 
   /**
@@ -125,7 +132,7 @@ export struct CIFReader
    * \param string The loop line from the CIF content.
    * \param forceField The force field used for interpreting atom types.
    */
-  void parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField);
+  std::expected<void, ParseError> parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField);
 
   /**
    * \brief Skips over comment lines in the CIF content.

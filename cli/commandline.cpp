@@ -71,343 +71,6 @@ import libtorch_test;
 //import mdspan;
 #endif
 
-ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField(
-      {{"-", false, 0.0, 0.0, 0.0, 0, false},
-       {"Si", true, 28.0855, 2.05, 0.0, 14, false},
-       {"O", true, 15.999, -1.025, 0.0, 8, false},
-       {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
-       {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
-       {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
-       {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-       {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
-       {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-      {{1.0, 1.0}, 
-      {22.0, 2.30}, 
-      {53.0, 3.30}, 
-      {10.9, 2.64},
-      {124.070, 3.38},
-      {158.5, 3.72},
-      {29.933, 2.745},
-      {85.671, 3.017},
-      {91.5, 3.681}},
-      ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
-}
-
-ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
-                     {"O",  true, 15.999, 0.0, 0.0, 8, false},         
-                     {"N",  true, 14.0067, 0.0, 0.0, 7, false},
-                     {"C",  true, 12.011, 0.0, 0.0, 6, false},         
-                     {"F",  true, 18.998403, 0.0, 0.0, 9, false},
-                     {"B",  true, 10.811, 0.0, 0.0, 5, false},         
-                     {"P",  true, 30.973762, 0.0, 0.0, 15, false},
-                     {"S",  true, 32.065, 0.0, 0.0, 16, false},        
-                     {"Cl", true, 35.453, 0.0, 0.0, 17, false},
-                     {"Br", true, 79.904, 0.0, 0.0, 35, false},        
-                     {"H",  true, 1.00784, 0.0, 0.0, 1, false},
-                     {"Al", true, 26.981539, 0.0, 0.0, 13, false},     
-                     {"Si", true, 28.0855, 0.0, 0.0, 14, false},
-                     {"Zn", true, 65.38, 0.0, 0.0, 30, false},         
-                     {"Be", true, 9.012182, 0.0, 0.0, 4, false},
-                     {"Cr", true, 51.9961, 0.0, 0.0, 24, false},       
-                     {"Fe", true, 55.845, 0.0, 0.0, 26, false},
-                     {"Mn", true, 54.938044, 0.0, 0.0, 25, false},     
-                     {"Cu", true, 63.546, 0.0, 0.0, 29, false},
-                     {"Co", true, 58.933195, 0.0, 0.0, 27, false},     
-                     {"Ga", true, 72.64, 0.0, 0.0, 32, false},
-                     {"Ti", true, 47.867, 0.0, 0.0, 22, false},        
-                     {"Sc", true, 44.955912, 0.0, 0.0, 21, false},
-                     {"V",  true, 50.9415, 0.0, 0.0, 23, false},       
-                     {"Ni", true, 58.6934, 0.0, 0.0, 28, false},
-                     {"Zr", true, 91.224, 0.0, 0.0, 40, false},        
-                     {"Mg", true, 24.305, 0.0, 0.0, 12, false},
-                     {"Ne", true, 20.1797, 0.0, 0.0, 10, false},       
-                     {"Ag", true, 107.8682, 0.0, 0.0, 47, false},
-                     {"In", true, 114.818, 0.0, 0.0, 49, false},       
-                     {"Cd", true, 112.41, 0.0, 0.0, 48, false},
-                     {"Sb", true, 121.76, 0.0, 0.0, 51, false},        
-                     {"Te", true, 127.6, 0.0, 0.0, 52, false},
-                     {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},      
-                     {"probe-Ar", true, 39.948, 0.0, 0.0, 18, false},
-                     {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},     
-                     {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false}, 
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-                    {{1.0, 1.0},                 // custom
-                     {48.1581, 3.03315},         // O
-                     {38.9492, 3.26256},         // N
-                     {47.8562, 3.47299},         // C
-                     {36.4834, 3.0932},          // F
-                     {47.8058, 3.58141},         // B
-                     {161.03, 3.69723},          // P
-                     {173.107, 3.59032},         // S
-                     {142.562, 3.51932},         // Cl
-                     {186.191, 3.51905},         // Br
-                     {7.64893, 2.84642},         // H
-                     {155.998, 3.91105},         // Al
-                     {155.998, 3.80414},         // Si
-                     {27.677074, 4.04},          // Zn
-                     {42.7736, 2.44552},         // Be
-                     {7.54829, 2.69319},         // Cr
-                     {6.54185, 2.5943},          // Fe
-                     {6.54185, 2.63795},         // Mn
-                     {2.5161, 3.11369},          // Cu
-                     {7.04507, 2.55866},         // Co
-                     {208.836, 3.90481},         // Ga
-                     {8.55473, 2.8286},          // Ti
-                     {9.56117, 2.93551},         // Sc
-                     {8.05151, 2.80099},         // V
-                     {7.54829, 2.52481},         // Ni
-                     {34.7221, 2.78317},         // Zr
-                     {55.8574, 2.69141},         // Mg
-                     {21.1352, 2.88918},         // Ne
-                     {18.1159, 2.80455},         // Ag
-                     {301.428, 3.97608},         // In
-                     {114.734, 2.53728},         // Cd
-                     {225.946, 3.93777},         // Sb
-                     {200.281, 3.98232},         // Te
-                     {10.9, 2.64},               // He
-                     {124.070, 3.38},            // Ar
-                     {158.5, 3.72},              // CH4
-                     {29.933, 2.745},            // C_co2
-                     {85.671, 3.017},            // O_co2
-                     {91.5, 3.681}},             // N2
-                    ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
-}
-
-ForceField CommandLine::forceFieldZeoPlusPlus(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField({{"-",  false, 0.0, 0.0, 0.0, 0, false},
-                     {"H",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"D",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"He", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Li", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Be", false, 1.0, 0.0, 0.0, 1, false},
-                     {"B",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"C",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"N",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"O",  false, 15.999, 0.0, 0.0, 1, false},
-                     {"F",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ne", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Na", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Al", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Si", false, 28.0855, 0.0, 0.0, 1, false},
-                     {"P",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"S",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cl", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ar", false, 1.0, 0.0, 0.0, 1, false},
-                     {"K",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ca", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sc", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ti", false, 1.0, 0.0, 0.0, 1, false},
-                     {"V",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fe", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Co", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ni", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Zn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ga", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ge", false, 1.0, 0.0, 0.0, 1, false},
-                     {"As", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Se", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Br", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Kr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Y",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Zr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Nb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mo", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tc", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ru", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rh", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ag", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"In", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Te", false, 1.0, 0.0, 0.0, 1, false},
-                     {"I",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Xe", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cs", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ba", false, 1.0, 0.0, 0.0, 1, false},
-                     {"La", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ce", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Nd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Eu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Gd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Dy", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ho", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Er", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Yb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Lu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ta", false, 1.0, 0.0, 0.0, 1, false},
-                     {"W",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Re", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Os", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ir", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pt", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Au", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tl", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bi", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Po", false, 1.0, 0.0, 0.0, 1, false},
-                     {"At", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ra", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ac", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Th", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pa", false, 1.0, 0.0, 0.0, 1, false},
-                     {"U",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Np", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Am", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bk", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Es", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Md", false, 1.0, 0.0, 0.0, 1, false},
-                     {"No", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Lr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Db", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bh", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hs", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mt", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ds", false, 1.0, 0.0, 0.0, 1, false},
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-                    {{1.0, 2.0 * 1.00},                 // custom
-                     {1.0, 2.0 * 1.09},
-                     {1.0, 2.0 * 1.09},
-                     {1.0, 2.0 * 1.40},
-                     {1.0, 2.0 * 1.82},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.70},
-                     {1.0, 2.0 * 1.55},
-                     {1.0, 2.0 * 1.52},
-                     {1.0, 2.0 * 1.47},
-                     {1.0, 2.0 * 1.54},
-                     {1.0, 2.0 * 2.27},
-                     {1.0, 2.0 * 1.73},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.10},
-                     {1.0, 2.0 * 1.80},
-                     {1.0, 2.0 * 1.80},
-                     {1.0, 2.0 * 1.75},
-                     {1.0, 2.0 * 1.88},
-                     {1.0, 2.0 * 2.75},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.63},
-                     {1.0, 2.0 * 1.40},
-                     {1.0, 2.0 * 1.39},
-                     {1.0, 2.0 * 1.87},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.85},
-                     {1.0, 2.0 * 1.90},
-                     {1.0, 2.0 * 1.85},
-                     {1.0, 2.0 * 2.02},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.63},
-                     {1.0, 2.0 * 1.72},
-                     {1.0, 2.0 * 1.58},
-                     {1.0, 2.0 * 1.93},
-                     {1.0, 2.0 * 2.17},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.06},
-                     {1.0, 2.0 * 1.98},
-                     {1.0, 2.0 * 2.16},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.72},
-                     {1.0, 2.0 * 1.66},
-                     {1.0, 2.0 * 1.55},
-                     {1.0, 2.0 * 1.96},
-                     {1.0, 2.0 * 2.02},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.86},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {91.5, 3.681}},             // N2
-                    ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
- }
 
 void CommandLine::run(int argc, char *argv[])
 {
@@ -431,15 +94,14 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<double> probe_strength{};
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
-  std::optional<ForceField> forceField;
-  bool is_zeolite{false};
-  bool is_mof{true};
-  bool is_zeopp{false};
   uint3 gridSize{128, 128, 128};
   std::optional<std::size_t> number_of_slices{ };
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
+  std::optional<ForceField> forceField{};
+  Framework framework{};
+
 
   // definition of command-line switches
   using argparser = argparser::argparser;
@@ -494,11 +156,11 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
            [&state](std::string const &) { state.set(State::TessellationComputation); })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
-           [&is_zeolite](std::string const &) { is_zeolite = true; })
+           [&forceField](std::string const &) { forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);; })
       .reg({"--mof"}, argparser::no_argument, "Use generic MOF model (TraPPE zeo)",
-           [&is_mof](std::string const &) { is_mof = true; })
+           [&forceField](std::string const &) { forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false); })
       .reg({"--zeo++"}, argparser::no_argument, "Use zeo++ radii",
-           [&is_zeopp](std::string const &) { is_zeopp = true; })
+           [&forceField](std::string const &) { forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false); })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
       .reg({"--geometric"}, argparser::no_argument, "Use geometric methods",
@@ -646,21 +308,49 @@ void CommandLine::run(int argc, char *argv[])
 
     std::string stem = std::filesystem::path(filename).stem().string();
 
-    // if no force-field specified, use the default one
-    if (!forceField.has_value())
+    const std::string file_content = readFileContent(stem, ".cif");
+
+    if(forceField.has_value())
     {
-      if (is_zeolite)
+      // Case: force field has been manually selected
+      if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(), CIFReader::UseChargesFrom::CIF_File); cif.has_value())
       {
-        forceField = forceField.value_or(defaultForceFieldZeolite(12.0, false, false, false));
-        forceField->printForceFieldStatus();
+        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+        framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
       }
-      else if (is_zeopp)
+      else if (cif.error() == CIFReader::ParseError::invalidForceField)
       {
-        forceField = forceField.value_or(forceFieldZeoPlusPlus(12.0, false, false, false));
+        std::print("invalid forcefield\n");
+        std::exit(-1);
       }
-      else
+    }
+    else
+    {
+      // Case: auto-detect force field
+      // First: try with zeolite force field
+      ForceField trial_zeolite_force_field = ForceField::makeZeoliteForceField(12.0, true, false, false);
+      if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field, CIFReader::UseChargesFrom::CIF_File); zeolite_cif.has_value())
       {
-        forceField = forceField.value_or(defaultForceFieldMOF(12.0, false, false, false));
+        forceField = trial_zeolite_force_field;
+        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = zeolite_cif.value();
+        framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
+      }
+      else if (zeolite_cif.error() == CIFReader::ParseError::invalidForceField)
+      {
+        // Second: try with general MOF force field
+        ForceField trial_mof_force_field = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+        if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field, CIFReader::UseChargesFrom::CIF_File); mof_cif.has_value())
+        {
+          forceField = trial_mof_force_field;
+          auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
+          framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                                defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
+        }
+        else if (mof_cif.error() == CIFReader::ParseError::invalidForceField)
+        {
+        }
       }
     }
 
@@ -673,13 +363,6 @@ void CommandLine::run(int argc, char *argv[])
       forceField->preComputeTailCorrection();
       probe_atom_name = "-";
     }
-
-    const std::string file_content = readFileContent(stem, ".cif");
-
-    auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readString(file_content, forceField.value(), CIFReader::UseChargesFrom::CIF_File);
-
-    Framework framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
-                                    defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
 
     if (state.test(CommandLine::State::TessellationComputation))
     {

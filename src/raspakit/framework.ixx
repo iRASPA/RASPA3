@@ -64,24 +64,6 @@ export struct Framework
   Framework();
 
   /**
-   * \brief Constructs a Framework from a file with specified parameters.
-   *
-   * Initializes a Framework using data from a specified file, setting up the simulation
-   * box, atoms, and other properties based on the provided force field and unit cell
-   * information.
-   *
-   * \param currentComponent Identifier for the current framework component.
-   * \param forceField Reference to the force field containing pseudo-atom definitions.
-   * \param componentName Name of the framework component.
-   * \param fileName Optional file name containing framework data (e.g., a CIF file).
-   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
-   * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
-   */
-  //Framework(std::size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-  //          const std::string &fileName, std::optional<int3> numberOfUnitCells,
-  //          Framework::UseChargesFrom useChargesFrom) noexcept(false);
-
-  /**
    * \brief Constructs a Framework programmatically with specified parameters.
    *
    * Initializes a Framework using provided simulation box, space group number, defined atoms,
