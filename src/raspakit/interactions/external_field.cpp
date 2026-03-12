@@ -89,11 +89,84 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
             double4 b{0.0, 0.0, 11.0, 0.6};
             double4 y0{0.0, 0.5, 1.5, 1.0};
             double4 c{-10.0, -10.0, -6.5, 0.7};
+            energyFactor.energy = 0.0;
             for (std::size_t i = 0; i < 4; ++i)
             {
               energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
                                                      b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
                                                      c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.y), std::abs(w.z));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
             }
           }
           break;
@@ -168,6 +241,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double4 b{0.0, 0.0, 11.0, 0.6};
             double4 y0{0.0, 0.5, 1.5, 1.0};
             double4 c{-10.0, -10.0, -6.5, 0.7};
+            energyFactor.energy = 0.0;
             for (std::size_t i = 0; i < 4; ++i)
             {
               energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
@@ -179,6 +253,78 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
           case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
             energyFactor.energy = posA.x * posA.y * posA.z;
             break;
+          case ForceField::PotentialEnergySurfaceType::CylinderX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.y), std::abs(w.z));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.x), std::abs(w.z));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.x), std::abs(w.y));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
           default:
             break;
         }
@@ -234,6 +380,114 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
           case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
             energyFactor.energy = posA.x * posA.y * posA.z;
             break;
+          case ForceField::PotentialEnergySurfaceType::CylinderX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < 100.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleX:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.y), std::abs(w.z));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.x), std::abs(w.z));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double r = std::max(std::abs(w.x), std::abs(w.y));
+            if(r < 10.0)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
           default:
             break;
         }

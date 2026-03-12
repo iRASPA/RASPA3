@@ -41,15 +41,15 @@ RunningEnergy Integrators::velocityVerlet(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent)
 {
-  //// apply thermo for temperature control
-  //if (thermostat.has_value())
-  //{
-  //  // Adjust velocities using Nose-Hoover thermostat
-  //  double UKineticTranslation = 0.0; //Integrators::computeTranslationalKineticEnergy(moleculeData);
-  //  double UKineticRotation = 0.0; //Integrators::computeRotationalKineticEnergy(moleculeData, components);
-  //  std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-  //  scaleVelocities(moleculeData, scaling);
-  //}
+  // apply thermo for temperature control
+  if (thermostat.has_value())
+  {
+    // Adjust velocities using Nose-Hoover thermostat
+    double UKineticTranslation = 0.0; //Integrators::computeTranslationalKineticEnergy(moleculeData);
+    double UKineticRotation = 0.0; //Integrators::computeRotationalKineticEnergy(moleculeData, components);
+    std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
+    scaleVelocities(moleculeData, scaling);
+  }
 
   // Start timing the integration step
   // NOTE: moved from first statement to here as workaround for parsing error in llvm 21.1.1

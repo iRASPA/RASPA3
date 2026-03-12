@@ -727,6 +727,11 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
+  if (parsed_data.contains("UseExternalFieldGrid"))
+  {
+    useExternalFieldGrid = parsed_data.value("UseExternalFieldGrid", parsed_data["UseExternalFieldGrid"]);
+  }
+
   if (parsed_data.contains("SpacingVDWGrid"))
   {
     spacingVDWGrid = parsed_data.value("SpacingVDWGrid", parsed_data["SpacingVDWGrid"]);
@@ -808,6 +813,30 @@ ForceField::ForceField(std::string filePath)
     if (caseInSensStringCompare(potentialEnergySurfaceString, "GonzalezSchlegel"))
     {
       potentialEnergySurfaceType = PotentialEnergySurfaceType::GonzalezSchlegel;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderX"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderX;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderY"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderY;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderZ"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderZ;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleX"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleX;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleY"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleY;
+    }
+    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleZ"))
+    {
+      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleZ;
     }
   }
 

@@ -121,8 +121,9 @@ import interpolation_energy_grid;
  *
  *  Detailed description starts here.
  */
-System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T,
-               std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
+System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
+               double T, std::optional<double> P, double heliumVoidFraction,
+               std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
                std::optional<std::size_t> sampleMoviesEvery)
@@ -146,7 +147,7 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
       idealGasEnergiesPerComponent(c.size()),
       forceField(forcefield),
-      hasExternalField(false),
+      hasExternalField(hasExternalField),
       numberOfPseudoAtoms(c.size(), std::vector<std::size_t>(forceField.pseudoAtoms.size())),
       totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
       atomData({}),
@@ -2243,7 +2244,6 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream)
   {
     if(forceField.useExternalFieldGrid)
     {
-
       // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
       uint3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
 

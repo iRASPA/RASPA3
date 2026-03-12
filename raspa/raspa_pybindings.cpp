@@ -235,12 +235,13 @@ PYBIND11_MODULE(raspalib, m)
       .def("__repr__", &PropertyLoading::repr);
 
   pybind11::class_<System>(m, "System")
-      .def(pybind11::init<std::size_t, ForceField, std::optional<SimulationBox>, double, std::optional<double>, double,
+      .def(pybind11::init<std::size_t, ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
                           std::vector<std::size_t>, std::size_t, MCMoveProbabilities, std::optional<std::size_t>>(),
            pybind11::arg("systemId"), pybind11::arg("forceField"), pybind11::arg("simulationBox") = std::nullopt,
-           pybind11::arg("externalTemperature"), pybind11::arg("externalPressure") = std::nullopt,
-           pybind11::arg("heliumVoidFraction") = 0.0, pybind11::arg("frameworkComponents") = std::vector<Framework>(),
+           pybind11::arg("hasExternalField") = false, pybind11::arg("externalTemperature"), 
+           pybind11::arg("externalPressure") = std::nullopt, pybind11::arg("heliumVoidFraction") = 0.0,
+           pybind11::arg("frameworkComponents") = std::vector<Framework>(),
            pybind11::arg("components"), pybind11::arg("initialPositions") = std::vector<std::vector<double3>>(),
            pybind11::arg("initialNumberOfMolecules") = std::vector<std::size_t>(), pybind11::arg("numberOfBlocks") = 5,
            pybind11::arg("systemProbabilities") = MCMoveProbabilities(),

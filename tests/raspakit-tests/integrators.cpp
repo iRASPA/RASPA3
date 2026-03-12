@@ -90,7 +90,7 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
   Component c = Component::makeCO2(forceField, 0, false);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Molecule> moleculeData(system.moleculeData);
 

@@ -47,7 +47,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CH
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -114,7 +114,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -169,7 +169,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -230,7 +230,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fourth_derivative_cartesian_meth
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -298,7 +298,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fifth_derivative_cartesian_metha
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -371,7 +371,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_sixth_derivative_cartesian_metha
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -456,7 +456,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -761,7 +761,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fractional_to_Cartesian_methane_
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 

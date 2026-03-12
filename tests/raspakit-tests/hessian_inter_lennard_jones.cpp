@@ -41,7 +41,7 @@ TEST(hessian_inter_lennard_jones, Test_gradient_cartesian_methane_in_CHA_triclin
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -100,7 +100,7 @@ TEST(hessian_inter_lennard_jones, Test_gradient_fractional_methane_in_CHA_tricli
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -159,7 +159,7 @@ TEST(hessian_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA_triclini
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -234,7 +234,7 @@ TEST(hessian_inter_lennard_jones, Test_hessian_fractional_methane_in_CHA_triclin
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 

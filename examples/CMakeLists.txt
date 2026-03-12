@@ -49,6 +49,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/5_mc_adsorption_of_c2h2_in_cpl_1_split_density_equitable_binning/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/6_mc_adsorption_of_co2_in_calf_20_split_density_equitable_binning/run)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_field/1_mc_water_in_cylinder_channel/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_field/2_mc_water_in_square_channel/run)
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples

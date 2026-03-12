@@ -119,8 +119,9 @@ export struct System
    * \param systemProbabilities The move probabilities for the Monte Carlo simulation.
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
-  System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
-         double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
+  System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
+         double T, std::optional<double> P, double heliumVoidFraction, 
+         std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<std::size_t> sampleMoviesEvery = std::nullopt);

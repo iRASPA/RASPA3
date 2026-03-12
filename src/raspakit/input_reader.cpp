@@ -994,6 +994,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
       }
 
+      bool hasExternalField = false;
+      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
+      {
+        hasExternalField = value["ExternalField"].get<bool>();
+      }
+
       std::optional<SimulationBox> restart_simulation_box{};
       if (value.contains("RestartFileName") && value["RestartFileName"].is_string())
       {
@@ -1038,6 +1044,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+
       if (caseInSensStringCompare(typeString, "Framework"))
       {
         // Parse framework options
@@ -1078,7 +1085,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
           // create system
           systems[systemId] =
-              System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
+              System(systemId, forceFields[systemId].value(), std::nullopt, hasExternalField, T, P, heliumVoidFraction,
                      jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
                      jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
         }
@@ -1099,7 +1106,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         boxAngles = boxAngles * (std::numbers::pi / 180.0);
 
-        // create system
         if (!forceFields[systemId].has_value())
         {
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
@@ -1111,7 +1117,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           simulationBox = restart_simulation_box.value();
         }
 
-        systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {},
+        systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, hasExternalField, T, P, 1.0, {},
                                    jsonComponents[systemId], jsonRestartFilePositions[systemId],
                                    jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
       }
@@ -1138,10 +1144,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<std::size_t>();
       }
 
-      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
-      {
-        systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
-      }
 
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
       {

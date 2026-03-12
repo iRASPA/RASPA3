@@ -48,7 +48,7 @@ TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
   Component c = TestFactories::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);

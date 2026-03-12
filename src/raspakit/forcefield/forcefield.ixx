@@ -80,7 +80,13 @@ export struct ForceField
     ExponentialNonPolynomialTestFunction = 7,
     MullerBrown = 8,
     Eckhardt = 9,
-    GonzalezSchlegel = 10  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    GonzalezSchlegel = 10,  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    CylinderX = 11,
+    CylinderY = 12,
+    CylinderZ = 13,
+    RectangleX = 14,
+    RectangleY = 15,
+    RectangleZ = 16
   };
 
   enum class InterpolationGridType : std::size_t

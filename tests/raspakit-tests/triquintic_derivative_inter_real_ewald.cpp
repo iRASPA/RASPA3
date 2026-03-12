@@ -48,7 +48,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_gradient_cartesian_me
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -115,7 +115,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_hessian_cartesian_met
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -170,7 +170,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_third_derivative_cart
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -231,7 +231,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fourth_derivative_car
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -298,7 +298,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fifth_derivative_cart
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -372,7 +372,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_sixth_derivative_cart
   Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -458,7 +458,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_Txxyyzz_fractional_me
   Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -764,7 +764,7 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fractional_to_Cartesi
   Framework framework = Framework::makeCHA(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
+  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
