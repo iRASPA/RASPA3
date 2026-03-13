@@ -167,6 +167,7 @@ export struct ForceField
   std::string externalFieldGridFileName{ "external_field.cube" };
   uint3 numberOfExternalFieldGridPoints{8, 8, 8};
   bool writeExternalFieldInterpolationGrid{ false };
+  double4 externalFieldGeometryParameters{5.0, 5.0, 0.0, 0.0};
 
   /**
    * \brief Default constructor for the ForceField struct.

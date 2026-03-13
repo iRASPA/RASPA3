@@ -1,0 +1,30 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 1000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 100,
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [24.83, 24.83, 24.83],
+      "ExternalTemperature" : 298.0,
+      "ExternalField" : true,
+      "ChargeMethod" : "Ewald",
+      "OutputPDBMovie" : false,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "water",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 100
+    }
+  ]
+}

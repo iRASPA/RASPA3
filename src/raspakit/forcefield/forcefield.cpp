@@ -840,6 +840,24 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
+  if (parsed_data.contains("ExternalFieldCylinderRadius"))
+  {
+    double radius = parsed_data.value("ExternalFieldCylinderRadius", parsed_data["ExternalFieldCylinderRadius"]);
+    externalFieldGeometryParameters.x = radius;
+  }
+
+  if (parsed_data.contains("ExternalFieldRectangularChannelWidth"))
+  {
+    double width = parsed_data.value("ExternalFieldRectangularChannelWidth", parsed_data["ExternalFieldRectangularChannelWidth"]);
+    externalFieldGeometryParameters.x = width;
+  }
+
+  if (parsed_data.contains("ExternalFieldRectangularChannelHeight"))
+  {
+    double height = parsed_data.value("ExternalFieldRectangularChannelHeight", parsed_data["ExternalFieldRectangularChannelHeight"]);
+    externalFieldGeometryParameters.y = height;
+  }
+
   if (parsed_data.contains("ExternalPotentialEnergySurfaceOrigin"))
   {
     potentialEnergySurfaceOrigin = parseDouble3("ExternalPotentialEnergySurfaceOrigin", parsed_data["ExternalPotentialEnergySurfaceOrigin"]);
@@ -1405,6 +1423,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.externalFieldGridFileName;
   archive << f.numberOfExternalFieldGridPoints;
   archive << f.writeExternalFieldInterpolationGrid;
+  archive << f.externalFieldGeometryParameters;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1479,6 +1498,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.externalFieldGridFileName;
   archive >> f.numberOfExternalFieldGridPoints;
   archive >> f.writeExternalFieldInterpolationGrid;
+  archive >> f.externalFieldGeometryParameters;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1554,6 +1574,9 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
                                                                                    "NumberOfExternalFieldGridPoints",
                                                                                    "UseExternalFieldGrid",
                                                                                    "ExternalFieldPotentialEnergySurface",
+                                                                                   "ExternalFieldCylinderRadius",
+                                                                                   "ExternalFieldRectangularChannelWidth",
+                                                                                   "ExternalFieldRectangularChannelHeight",
                                                                                    "ExternalPotentialEnergySurfaceOrigin",
                                                                                    "WriteExternalFieldInterpolationGrid",
                                                                                    "InterpolationScheme"};

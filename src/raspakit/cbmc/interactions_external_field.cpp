@@ -54,7 +54,7 @@ import interpolation_energy_grid;
 {
   RunningEnergy energySum{};
 
-  //const double overlapCriteria = forceField.energyOverlapCriteria;
+  double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
 
   if (hasExternalField)
   {
@@ -120,7 +120,7 @@ import interpolation_energy_grid;
 
               double3 w = double3::cross(posA - cylinder_begin, v);
               double distance_squared = w.length_squared();
-              if(distance_squared < 100.0)
+              if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
               {
                 energyFactor.energy = 0.0;
               }
@@ -138,7 +138,7 @@ import interpolation_energy_grid;
 
               double3 w = double3::cross(posA - cylinder_begin, v);
               double distance_squared = w.length_squared();
-              if(distance_squared < 100.0)
+              if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
               {
                 energyFactor.energy = 0.0;
               }
@@ -156,7 +156,7 @@ import interpolation_energy_grid;
 
               double3 w = double3::cross(posA - cylinder_begin, v);
               double distance_squared = w.length_squared();
-              if(distance_squared < 100.0)
+              if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
               {
                 energyFactor.energy = 0.0;
               }
@@ -173,14 +173,13 @@ import interpolation_energy_grid;
               double3 v = (cylinder_end - cylinder_begin).normalized();
 
               double3 w = double3::cross(posA - cylinder_begin, v);
-              double r = std::max(std::abs(w.y), std::abs(w.z));
-              if(r < 10.0)
+              if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
               {
                 energyFactor.energy = 0.0;
               }
               else
               {
-                energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+                return std::nullopt;
               }
             }
             break;
@@ -191,14 +190,13 @@ import interpolation_energy_grid;
               double3 v = (cylinder_end - cylinder_begin).normalized();
 
               double3 w = double3::cross(posA - cylinder_begin, v);
-              double r = std::max(std::abs(w.x), std::abs(w.z));
-              if(r < 10.0)
+              if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
               {
                 energyFactor.energy = 0.0;
               }
               else
               {
-                energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+                return std::nullopt;
               }
             }
             break;
@@ -209,14 +207,13 @@ import interpolation_energy_grid;
               double3 v = (cylinder_end - cylinder_begin).normalized();
 
               double3 w = double3::cross(posA - cylinder_begin, v);
-              double r = std::max(std::abs(w.x), std::abs(w.y));
-              if(r < 10.0)
+              if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
               {
                 energyFactor.energy = 0.0;
               }
               else
               {
-                energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+                return std::nullopt;
               }
             }
             break;

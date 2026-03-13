@@ -51,6 +51,8 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
   {
     if (moleculeAtoms.empty()) return;
 
+    double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
+
     for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
     {
       [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
@@ -106,7 +108,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -124,7 +126,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -142,7 +144,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -159,8 +161,41 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.y), std::abs(w.z));
-            if(r < 10.0)
+            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::RectangleZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            if(std::abs(w.x) < externalFieldGeometryParameters.x && std::abs(w.y) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -202,10 +237,10 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 {
   RunningEnergy energySum;
 
-  //const double overlapCriteria = forceField.energyOverlapCriteria;
-
   if (hasExternalField)
   {
+    double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
+
     for (std::span<const Atom>::iterator it1 = newatoms.begin(); it1 != newatoms.end(); ++it1)
     {
       [[maybe_unused]] double3 posA = it1->position;
@@ -261,7 +296,43 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderY:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
+            {
+              energyFactor.energy = 0.0;
+            }
+            else
+            {
+              return std::nullopt;
+            }
+          }
+          break;
+          case ForceField::PotentialEnergySurfaceType::CylinderZ:
+          {
+            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
+            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
+            double3 v = (cylinder_end - cylinder_begin).normalized();
+
+            double3 w = double3::cross(posA - cylinder_begin, v);
+            double distance_squared = w.length_squared();
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -278,8 +349,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.y), std::abs(w.z));
-            if(r < 10.0)
+            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -296,8 +366,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.x), std::abs(w.z));
-            if(r < 10.0)
+            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -314,8 +383,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.x), std::abs(w.y));
-            if(r < 10.0)
+            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -388,7 +456,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -406,7 +474,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -424,7 +492,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
             double3 w = double3::cross(posA - cylinder_begin, v);
             double distance_squared = w.length_squared();
-            if(distance_squared < 100.0)
+            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
             {
               energyFactor.energy = 0.0;
             }
@@ -441,8 +509,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.y), std::abs(w.z));
-            if(r < 10.0)
+            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -459,8 +526,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.x), std::abs(w.z));
-            if(r < 10.0)
+            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
@@ -477,8 +543,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
             double3 v = (cylinder_end - cylinder_begin).normalized();
 
             double3 w = double3::cross(posA - cylinder_begin, v);
-            double r = std::max(std::abs(w.x), std::abs(w.y));
-            if(r < 10.0)
+            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
             {
               energyFactor.energy = 0.0;
             }
