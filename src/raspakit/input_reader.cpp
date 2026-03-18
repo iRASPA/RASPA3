@@ -1074,8 +1074,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         const std::string file_content = readFileContent(frameworkNameString, ".cif");
 
-        //auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = CIFReader::readCIFString(file_content, forceField, useChargesFrom);
-        if(const auto cif = CIFReader::readCIFString(file_content, forceField, useChargesFrom); cif.has_value())
+        if(const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom); cif.has_value())
         {
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
           Framework framework = Framework(0, forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
@@ -1088,6 +1087,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               System(systemId, forceFields[systemId].value(), std::nullopt, hasExternalField, T, P, heliumVoidFraction,
                      jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
                      jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+        }
+        else if (cif.error() == CIFReader::ParseError::invalidInput)
+        {
+          std::print("Invalid input\n");
+          std::exit(-1);
+        }
+        else if (cif.error() == CIFReader::ParseError::invalidForceField)
+        {
+          std::print("not all atoms defined in CIF-file\n");
+          std::exit(-1);
         }
       }
       else if (caseInSensStringCompare(typeString, "Box"))
