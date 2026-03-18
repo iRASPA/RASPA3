@@ -1516,7 +1516,7 @@
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-ubuntu-25",
+      "name": "linux-x86_64-core-avx2-ubuntu-26",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1527,7 +1527,7 @@
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-ubuntu-25",
+      "name": "linux-x86_64-skylake-avx512-ubuntu-26",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1852,7 +1852,7 @@
       }
     },
     {
-      "name": "linux-aarch64-ubuntu-25",
+      "name": "linux-aarch64-ubuntu-26",
       "description": "Sets compilers, build type",
       "inherits": "linux-aarch64",
       "cacheVariables": {
