@@ -1,9 +1,8 @@
 # CMakeLists.txt
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 4.0.3)
 
-# cmake_minimum_required(VERSION 3.29)
-# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
-# set(CMAKE_CXX_MODULE_STD 1)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
+set(CMAKE_CXX_MODULE_STD 1)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -25,12 +24,8 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-add_definitions(-DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
+add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
 
-# add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
-
-# add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
-# add_definitions(-DVERSION=${PROJECT_VERSION})
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
@@ -120,6 +115,7 @@ function(raspa_target_link_libraries target_name)
       -nostdlib++
       -l:libc++.a
       -l:libc++abi.a
+      -l:libunwind.a
       -lm
       -ldl
       ${ZLIB_LIBRARIES}

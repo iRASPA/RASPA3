@@ -1035,6 +1035,8 @@
         "PACKAGE_INSTALL_PREFIX": "/usr",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/x86_64-unknown-linux-gnu/libc++.modules.json",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
         "BUILD_APP": true,
         "BUILD_CLI": true,
         "BUILD_LIBTORCH": false,
