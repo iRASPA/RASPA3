@@ -1366,6 +1366,28 @@
       }
     },
     {
+      "name": "linux-x86_64-core-avx2-redhat-10",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-redhat-10",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
       "name": "linux-x86_64-core-avx2-redhat-9",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
@@ -1880,6 +1902,17 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-18/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-redhat-10",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },

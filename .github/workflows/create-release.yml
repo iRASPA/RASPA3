@@ -112,38 +112,8 @@ jobs:
 
 # x86_64 linux avx2
 # =====================================================================================================================
- 
-  linux-x86_64-core-avx2-rocky-9-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    container:
-      image: ghcr.io/iraspa/rocky-9-llvm-20:latest
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-      - name: configure-cmake-raspa
-        shell: bash
-        run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-9
-      - name: create-raspa-rpm-package
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.core-avx2.rpm
-          asset_content_type: application/octet-stream
-
+#
+  
   linux-x86_64-core-avx2-almalinux-9-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -173,37 +143,6 @@ jobs:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el9.x86_64.core-avx2.rpm
-          asset_content_type: application/octet-stream
-
-  linux-x86_64-core-avx2-rocky-8-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    container:
-      image: ghcr.io/iraspa/rocky-8-llvm-20:latest
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-      - name: configure-cmake-raspa
-        shell: bash
-        run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-8
-      - name: create-raspa-rpm-package
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-almalinux-8-job:
@@ -236,6 +175,100 @@ jobs:
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el8.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
+ 
+  linux-x86_64-core-avx2-rocky-10-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-10-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-10
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el10.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el10.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el10.x86_64.core-avx2.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-core-avx2-rocky-9-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-9-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-9
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.core-avx2.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-core-avx2-rocky-8-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-8-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-8
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.core-avx2.rpm
+          asset_content_type: application/octet-stream
+
 
   linux-x86_64-core-avx2-rocky-7-job:
     runs-on: ubuntu-latest
@@ -244,7 +277,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/rocky-7-llvm-20:latest
+          image: ghcr.io/iraspa/rocky-7-x86_64_llvm-22:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -261,32 +294,6 @@ jobs:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.el7.x86_64.core-avx2.rpm
-          asset_content_type: application/octet-stream
-
-  linux-x86_64-core-avx2-centos-6-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    steps:
-      - name: configure-cmake-raspa
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/iraspa/centos-6-llvm-20:latest
-          options: -v ${{ github.workspace }}:/tmp2
-          run: |
-            git clone https://github.com/iraspa/raspa3
-            cd raspa3
-            cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-6
-            ninja -C ${{github.workspace}}/build package
-            cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm /tmp2
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el6.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-ubuntu-26-job:
@@ -1033,37 +1040,6 @@ jobs:
 # x86_64 linux avx512
 # =====================================================================================================================
 
-  linux-x86_64-skylake-avx512-rocky-9-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    container:
-      image: ghcr.io/iraspa/rocky-9-llvm-20:latest
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-      - name: configure-cmake-raspa
-        shell: bash
-        run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-9
-      - name: create-raspa-rpm-package
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.skylake-avx512.rpm
-          asset_content_type: application/octet-stream
-
   linux-x86_64-skylake-avx512-almalinux-9-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -1093,37 +1069,6 @@ jobs:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el9.x86_64.skylake-avx512.rpm
-          asset_content_type: application/octet-stream
-
-  linux-x86_64-skylake-avx512-rocky-8-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    container:
-      image: ghcr.io/iraspa/rocky-8-llvm-20:latest
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-      - name: configure-cmake-raspa
-        shell: bash
-        run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-8
-      - name: create-raspa-rpm-package
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-almalinux-8-job:
@@ -1157,6 +1102,99 @@ jobs:
           asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el8.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
+  linux-x86_64-skylake-avx512-rocky-10-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-10-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-10
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el10.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el10.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el10.x86_64.skylake-avx512.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-skylake-avx512-rocky-9-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-9-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-9
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.skylake-avx512.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-skylake-avx512-rocky-8-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-8-x86_64-llvm-22:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-8
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.skylake-avx512.rpm
+          asset_content_type: application/octet-stream
+
   linux-x86_64-skylake-avx512-rocky-7-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -1164,7 +1202,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/rocky-7-llvm-20:latest
+          image: ghcr.io/iraspa/rocky-7-x86_64-llvm-22:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -1183,31 +1221,6 @@ jobs:
           asset_name: raspa-${{ github.event.inputs.version }}-1.el7.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
-  linux-x86_64-skylake-avx512-centos-6-job:
-    runs-on: ubuntu-latest
-    needs: release-job
-    steps:
-      - name: configure-cmake-raspa
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/iraspa/centos-6-llvm-20:latest
-          options: -v ${{ github.workspace }}:/tmp2
-          run: |
-            git clone https://github.com/iraspa/raspa3
-            cd raspa3
-            cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-6
-            ninja -C ${{github.workspace}}/build package
-            cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm /tmp2
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.el6.x86_64.skylake-avx512.rpm
-          asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-ubuntu-26-job:
     runs-on: ubuntu-latest
