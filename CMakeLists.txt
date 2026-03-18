@@ -17,7 +17,7 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(raspa3
-  VERSION 3.0.21
+  VERSION 3.0.22
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
@@ -30,6 +30,7 @@ find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
+set(HDF5_USE_STATIC_LIBRARIES TRUE)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
