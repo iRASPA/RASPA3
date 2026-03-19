@@ -1,8 +1,8 @@
 # CMakeLists.txt
-cmake_minimum_required(VERSION 4.0.3)
+cmake_minimum_required(VERSION 4.3.0)
 
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
-set(CMAKE_CXX_MODULE_STD 1)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -24,13 +24,13 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+#add_definitions( -DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
 add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
 
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
-set(HDF5_USE_STATIC_LIBRARIES TRUE)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
@@ -59,11 +59,6 @@ if(BUILD_LIBTORCH)
   )
 endif()
 
-include(FetchContent)
-FetchContent_Declare(voro++
-  GIT_REPOSITORY https://github.com/chr1shr/voro.git
-  EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(voro++)
 
 if(BUILD_TESTING)
   enable_testing()
@@ -71,18 +66,18 @@ if(BUILD_TESTING)
   include(FetchContent)
   FetchContent_Declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.16.0
+    GIT_TAG v1.17.0
     EXCLUDE_FROM_ALL)
 
   # For Windows: Prevent overriding the parent project's compiler/linker settings
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
-
   include(GoogleTest)
 
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 endif()
+
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
@@ -160,6 +155,12 @@ endfunction()
 
 add_subdirectory(src)
 
+include(FetchContent)
+FetchContent_Declare(voro++
+  GIT_REPOSITORY https://github.com/chr1shr/voro.git
+  EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(voro++)
+
 if(BUILD_APP)
   add_subdirectory(data)
   add_subdirectory(examples)
@@ -176,6 +177,7 @@ if(BUILD_DOXYGEN)
 endif()
 
 add_subdirectory(packaging)
+
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
