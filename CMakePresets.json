@@ -666,11 +666,9 @@
       }
     },
     {
-      "name": "macos-x64-core-avx2",
+      "name": "macos-x86_64",
       "description": "Sets compilers, build type",
-      "inherits": [
-        "base"
-      ],
+      "inherits": "base",
       "cacheVariables": {
         "CMAKE_OSX_ARCHITECTURES": "x86_64",
         "CMAKE_BUILD_TYPE": "Release",
@@ -679,23 +677,24 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/local/opt/llvm/lib/c++/libc++.modules.json",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
+        "HDF5_USE_STATIC_LIBRARIES": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP": true,
         "BUILD_CLI": true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_PYTHON": true,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT": true,
         "BUILD_TESTING_FOUNDATIONKIT": true,
         "BUILD_TESTING_SYMMETRYKIT": true,
         "BUILD_TESTING_RASPAKIT": true,
         "BUILD_TESTING_RASPA3": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
       },
       "vendor": {
@@ -704,6 +703,16 @@
             "macOS"
           ]
         }
+      }
+    },
+    {
+      "name": "macos-x64-core-avx2",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "macos-x86_64"
+      ],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
       }
     },
     {
@@ -720,41 +729,10 @@
       "name": "macos-x64-skylake-avx512",
       "description": "Sets compilers, build type",
       "inherits": [
-        "base"
+        "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "x86_64",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_LINKER_TYPE": "LLD",
-        "CMAKE_INSTALL_PREFIX": "/usr/local",
-        "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
-        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
-        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_MAC_PACKAGE": false,
-        "BUILD_APP": true,
-        "BUILD_CLI": true,
-        "BUILD_TESTING": true,
-        "BUILD_TESTING_MATHKIT": true,
-        "BUILD_TESTING_FOUNDATIONKIT": true,
-        "BUILD_TESTING_SYMMETRYKIT": true,
-        "BUILD_TESTING_RASPAKIT": true,
-        "BUILD_TESTING_RASPA3": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": false,
-        "BLA_SIZEOF_INTEGER": "4"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "hostOS": [
-            "macOS"
-          ]
-        }
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
       }
     },
     {
@@ -771,80 +749,20 @@
       "name": "macos-x64-debug",
       "description": "Sets compilers, build type",
       "inherits": [
-        "base"
+        "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "x86_64",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_LINKER_TYPE": "LLD",
-        "CMAKE_INSTALL_PREFIX": "/usr/local",
-        "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
-        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
-        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_MAC_PACKAGE": false,
-        "BUILD_APP": true,
-        "BUILD_CLI": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": false,
-        "BUILD_TESTING_MATHKIT": false,
-        "BUILD_TESTING_FOUNDATIONKIT": false,
-        "BUILD_TESTING_SYMMETRYKIT": false,
-        "BUILD_TESTING_RASPAKIT": false,
-        "BUILD_TESTING_RASPA3": false,
-        "BLA_SIZEOF_INTEGER": "4"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "hostOS": [
-            "macOS"
-          ]
-        }
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
       }
     },
     {
       "name": "macos-x64-profile",
       "description": "Sets compilers, build type",
       "inherits": [
-        "base"
+        "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "x86_64",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_LINKER_TYPE": "LLD",
-        "CMAKE_INSTALL_PREFIX": "/usr/local",
-        "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
-        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
-        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_MAC_PACKAGE": false,
-        "BUILD_APP": true,
-        "BUILD_CLI": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": false,
-        "BUILD_TESTING_MATHKIT": false,
-        "BUILD_TESTING_FOUNDATIONKIT": false,
-        "BUILD_TESTING_SYMMETRYKIT": false,
-        "BUILD_TESTING_RASPAKIT": false,
-        "BUILD_TESTING_RASPA3": false,
-        "BLA_SIZEOF_INTEGER": "4"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "hostOS": [
-            "macOS"
-          ]
-        }
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
       }
     },
     {
@@ -861,6 +779,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/opt/homebrew/opt/llvm/lib/c++/libc++.modules.json",
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
@@ -905,34 +824,12 @@
       "name": "macos-apple-silicon-profile",
       "description": "Sets compilers, build type",
       "inherits": [
-        "base"
+        "macos-apple-silicon"
       ],
       "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_LINKER_TYPE": "LLD",
-        "CMAKE_INSTALL_PREFIX": "/usr/local",
-        "PACKAGE_INSTALL_PREFIX": "/usr/local",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target arm64-apple-macos11.7 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
-        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
-        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_MAC_PACKAGE": false,
-        "BUILD_APP": true,
-        "BUILD_CLI": true,
-        "BUILD_PYTHON": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": false,
-        "BUILD_TESTING_MATHKIT": true,
-        "BUILD_TESTING_FOUNDATIONKIT": false,
-        "BUILD_TESTING_SYMMETRYKIT": false,
-        "BUILD_TESTING_RASPAKIT": false,
-        "BUILD_TESTING_RASPA3": false,
-        "BLA_SIZEOF_INTEGER": "4"
+        "BUILD_TESTING": false
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -940,6 +837,17 @@
             "macOS"
           ]
         }
+      }
+    },
+    {
+      "name": "macos-apple-silicon-debug",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "macos-apple-silicon"
+      ],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false
       }
     },
     {
@@ -960,47 +868,6 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
-        "BUILD_APP": true,
-        "BUILD_CLI": true,
-        "BUILD_PYTHON": true,
-        "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": true,
-        "BUILD_TESTING_MATHKIT": true,
-        "BUILD_TESTING_FOUNDATIONKIT": true,
-        "BUILD_TESTING_SYMMETRYKIT": true,
-        "BUILD_TESTING_RASPAKIT": true,
-        "BUILD_TESTING_RASPA3": true,
-        "BLA_SIZEOF_INTEGER": "4"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "hostOS": [
-            "macOS"
-          ]
-        }
-      }
-    },
-    {
-      "name": "macos-apple-silicon-debug",
-      "description": "Sets compilers, build type",
-      "inherits": [
-        "base"
-      ],
-      "cacheVariables": {
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_LINKER_TYPE": "LLD",
-        "CMAKE_INSTALL_PREFIX": "/usr/local",
-        "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false,
-        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
-        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
-        "HDF5_USE_STATIC_LIBRARIES": true,
-        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_MAC_PACKAGE": true,
         "BUILD_APP": true,
         "BUILD_CLI": true,
         "BUILD_PYTHON": true,
