@@ -709,7 +709,9 @@
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_OSX_SYSROOT": "macosx",
         "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/local/opt/llvm/lib/c++/libc++.modules.json",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
         "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
         "HDF5_USE_STATIC_LIBRARIES": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
@@ -742,7 +744,7 @@
         "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -ffast-math"
       }
     },
     {
@@ -762,7 +764,7 @@
         "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math"
       }
     },
     {
@@ -782,7 +784,7 @@
         "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined"
       }
     },
     {
@@ -792,7 +794,7 @@
         "macos-x86_64"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk"
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math"
       }
     },
     {
@@ -809,11 +811,14 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OSX_SYSROOT": "macosx",
         "CMAKE_CXX_STDLIB_MODULES_JSON": "/opt/homebrew/opt/llvm/lib/c++/libc++.modules.json",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
@@ -857,7 +862,7 @@
         "macos-apple-silicon"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target arm64-apple-macos11.7 -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "BUILD_TESTING": false
       },
@@ -876,7 +881,7 @@
         "macos-apple-silicon"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false
       }
     },
@@ -893,7 +898,7 @@
         "CMAKE_CXX_COMPILER": "g++-15",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -g -O3 -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -D_LIBCPP_DISABLE_AVAILABILITY -g -O3 -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
