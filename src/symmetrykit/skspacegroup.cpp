@@ -46,7 +46,7 @@ import skseitzintegermatrix;
 import skintegersymmetryoperationset;
 
 // https://stackoverflow.com/questions/66897068/can-trim-of-a-string-be-done-inplace-with-c20-ranges
-std::string simplified(const std::string &a)
+inline std::string simplified(const std::string &a)
 {
   std::string s = a;
   auto not_space = [](unsigned char c){ return !std::isspace(c); };
@@ -65,7 +65,7 @@ std::string simplified(const std::string &a)
     return s;
 }
 
-std::string toLower(const std::string &a)
+inline std::string toLower(const std::string &a)
 {
   std::string data = a;
   std::transform(data.begin(), data.end(), data.begin(),
