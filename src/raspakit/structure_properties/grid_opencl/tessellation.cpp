@@ -63,7 +63,7 @@ import component;
 import system;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 Tessellation::Tessellation(uint3 grid_size) : grid_size(grid_size)

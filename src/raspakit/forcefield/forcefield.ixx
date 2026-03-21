@@ -345,6 +345,19 @@ export struct ForceField
    */
   struct InsensitiveCompare
   {
+inline int SGA_stricmp(const char *a, const char *b) const {
+  int ca, cb;
+  do {
+     ca = * (unsigned char *)a;
+     cb = * (unsigned char *)b;
+     ca = std::tolower(std::toupper(ca));
+     cb = std::tolower(std::toupper(cb));
+     a++;
+     b++;
+   } while (ca == cb && ca != '\0');
+   return ca - cb;
+}
+
     /**
      * \brief Compares two strings in a case-insensitive manner.
      *
@@ -360,7 +373,7 @@ export struct ForceField
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
       return _stricmp(a.c_str(), b.c_str()) < 0;
 #else
-      return strcasecmp(a.c_str(), b.c_str()) < 0;
+      return SGA_stricmp(a.c_str(), b.c_str()) < 0;
 #endif
     }
   };

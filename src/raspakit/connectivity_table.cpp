@@ -34,7 +34,7 @@ import std;
 import archive;
 import stringutils;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 #ifdef BLAS_ILP64

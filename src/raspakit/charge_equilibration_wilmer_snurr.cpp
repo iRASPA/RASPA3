@@ -33,6 +33,9 @@ import double3x3;
 import skelement;
 import atom;
 import simulationbox;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+import mdspan;
+#endif
 
 extern "C"
 {

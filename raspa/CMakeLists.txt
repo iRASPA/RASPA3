@@ -1,6 +1,10 @@
 project(raspalib)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+if(UNIX AND DEFINED ENV{CONDA_BUILD_CROSS_COMPILATION})
+  find_package(Python3 REQUIRED COMPONENTS Development)
+else()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+endif()
 
 include(FetchContent)
 

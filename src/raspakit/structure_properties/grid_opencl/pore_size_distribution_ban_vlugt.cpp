@@ -65,7 +65,7 @@ import component;
 import system;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):

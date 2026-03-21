@@ -29,6 +29,16 @@ export module archive;
 import std;
 #endif
 
+template<std::integral T>
+constexpr T byteswap(T value) noexcept
+{
+    static_assert(std::has_unique_object_representations_v<T>, 
+                  "T may not have padding bits");
+    auto value_representation = std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
+    std::ranges::reverse(value_representation);
+    return std::bit_cast<T>(value_representation);
+}
+
 // on linux uint64_t is unsigned long        8
 //          size_t   is unsigned long        8
 //          size_t is an alias for uint64_t
@@ -114,7 +124,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -124,7 +134,7 @@ class Archive
     std::int16_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::int16_t));
     return *this;
@@ -139,7 +149,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -149,7 +159,7 @@ class Archive
     std::uint16_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint16_t));
     return *this;
@@ -164,7 +174,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -174,7 +184,7 @@ class Archive
     std::int32_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::int32_t));
     return *this;
@@ -189,7 +199,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -199,7 +209,7 @@ class Archive
     std::uint32_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint32_t));
     return *this;
@@ -214,7 +224,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -224,7 +234,7 @@ class Archive
     std::int64_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::int64_t));
     return *this;
@@ -240,7 +250,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -250,7 +260,7 @@ class Archive
     std::uint64_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint64_t));
     return *this;
@@ -266,7 +276,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -276,7 +286,7 @@ class Archive
     std::size_t w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::size_t));
     return *this;
@@ -292,7 +302,7 @@ class Archive
     }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v);
+      v = byteswap(v);
     }
     return *this;
   }
@@ -302,7 +312,7 @@ class Archive
     std::make_signed_t<std::size_t> w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
-      w = std::byteswap(w);
+      w = byteswap(w);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(std::make_signed_t<std::size_t>));
     return *this;

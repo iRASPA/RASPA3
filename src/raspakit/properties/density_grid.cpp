@@ -43,7 +43,7 @@ import stringutils;
 import framework;
 import component;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 // Gaussian cube file are stored row-order (std::layout_right)
