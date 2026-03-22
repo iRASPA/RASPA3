@@ -1,33 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include <string>
-#include <filesystem>
-#include "mdspanwrapper.h"
-#endif
-
 #ifdef BLAS_ILP64
 typedef long long blas_int;
 #else
@@ -42,9 +14,7 @@ extern "C"
 
 module interpolation_energy_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import uint3;

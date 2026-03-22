@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <vector>
-#endif
-
 module indexpath;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 IndexPath::IndexPath() { _path.reserve(10); }
 

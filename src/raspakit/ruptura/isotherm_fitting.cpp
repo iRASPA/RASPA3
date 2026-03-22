@@ -1,41 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <bitset>
-#include <chrono>
 #include <climits>
-#include <cmath>
-#include <cstddef>
-#include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <optional>
-#include <print>
-#include <sstream>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <climits>
-#endif
 
 module isotherm_fitting;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import stringutils;

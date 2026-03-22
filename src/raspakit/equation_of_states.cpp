@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <vector>
-#endif
-
 module equation_of_states;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import units;

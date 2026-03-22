@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdlib>
-#include <map>
-#include <set>
-#include <string>
-#include <type_traits>
-#include <vector>
-#endif
-
 module skelement;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 SKElement::SKElement() {}
 

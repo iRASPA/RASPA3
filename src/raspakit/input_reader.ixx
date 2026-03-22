@@ -1,36 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <complex>
-#include <cstddef>
-#include <cstring>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <locale>
-#include <map>
-#include <optional>
-#include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
 #include <string.h>
-#endif
 
 export module input_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 

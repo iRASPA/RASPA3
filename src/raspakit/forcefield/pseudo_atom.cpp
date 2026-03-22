@@ -1,36 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <type_traits>
-#include <vector>
-#endif
-
 module pseudo_atom;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 

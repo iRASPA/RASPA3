@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <any>
-#include <cstddef>
-#include <optional>
-#include <string>
-#include <variant>
-#include <vector>
-#endif
-
 export module ringmatrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3x3;
 

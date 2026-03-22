@@ -1,30 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <ostream>
-#include <print>
-#include <span>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <vector>
-#endif
-
 export module double3x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

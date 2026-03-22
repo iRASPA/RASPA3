@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <numeric>
-#include <vector>
-#endif
-
 module int3x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import ring;
 import int3;

@@ -1,41 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <unordered_map>
-#include <vector>
-#endif
-
 module vdwparameters;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;

@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <print>
-#include <span>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_interactions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import atom;
 import molecule;

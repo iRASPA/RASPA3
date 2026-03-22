@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <iterator>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module scanner;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import characterset;
 

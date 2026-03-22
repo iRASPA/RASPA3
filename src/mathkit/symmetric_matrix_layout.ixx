@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 export module symmetric_matrix_layout;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export struct layout_symmetric_matrix
 {

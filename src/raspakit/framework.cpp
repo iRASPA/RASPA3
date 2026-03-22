@@ -1,45 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <limits>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#include <vector>
-#include <unordered_set>
-#endif
-
 #if !defined(_WIN32)
 #include <assert.h>
 #endif
 
 module framework;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;

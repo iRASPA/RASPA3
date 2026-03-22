@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <vector>
-#endif
-
 export module monte_carlo_transition_matrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import threadpool;

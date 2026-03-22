@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <source_location>
-#include <utility>
-#include <vector>
-#endif
-
 module averages;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 

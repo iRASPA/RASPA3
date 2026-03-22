@@ -1,15 +1,8 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <vector>
-#endif
-
 export module float3x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import float3;
 import simd_quatd;

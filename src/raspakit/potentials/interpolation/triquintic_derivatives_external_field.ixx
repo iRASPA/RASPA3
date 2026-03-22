@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <iostream>
-#endif
-
 export module triquintic_derivatives_external_field;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 

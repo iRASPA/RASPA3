@@ -1,33 +1,6 @@
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <bitset>
-#include <complex>
-#include <cstddef>
-#include <deque>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <locale>
-#include <mutex>
-#include <optional>
-#include <ranges>
-#include <semaphore>
-#include <span>
-#include <string_view>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
 #include <locale.h>
-#endif
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import threadpool;

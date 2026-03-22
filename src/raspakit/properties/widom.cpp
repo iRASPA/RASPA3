@@ -1,35 +1,6 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module property_widom;
-
-#ifdef USE_STD_IMPORT
-import std;
-#endif
 
 import archive;
 import int3;

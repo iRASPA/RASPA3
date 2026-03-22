@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <vector>
-#endif
-
 module multi_site_isotherm;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import special_functions;

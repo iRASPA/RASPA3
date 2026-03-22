@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <istream>
-#include <ostream>
-#include <print>
-#include <sstream>
-#include <type_traits>
-#endif
-
 export module molecule;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

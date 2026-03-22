@@ -1,35 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#endif
-
 export module double4;
 
-// #if defined(WIN32)
-//     import <intrin.h>;
-// #elif defined(__AVX__)
-//     import <immintrin.h>;
-// #endif
-
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 
 export union double4
 {
-  //    #ifdef __AVX__
-  //      __m256d value;
-  //    #endif
   double v[4];
   struct
   {

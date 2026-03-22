@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#endif
-
 export module potential_gradient_coulomb;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double4;
 

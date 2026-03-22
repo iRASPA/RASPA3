@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <format>
-#include <iostream>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module lammps_io;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import component;

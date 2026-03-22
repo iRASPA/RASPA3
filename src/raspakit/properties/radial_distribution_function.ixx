@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_rdf;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import atom;

@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <sstream>
-#include <vector>
-#endif
-
 module property_energy_histogram;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double4;
 import archive;

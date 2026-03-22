@@ -1,34 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <utility>
-#include <vector>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <cstdlib>
-#endif
-
 module randomnumbers;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -132,7 +106,7 @@ simd_quatd RandomNumber::randomSimdQuatd()
 simd_quatd RandomNumber::smallRandomQuaternion(double angleRange)
 {
   double3 randomDirection = randomVectorOnUnitSphere();
-  double angle = angleRange * 2.0 * ((double(rand()) / RAND_MAX) - 0.5);
+  double angle = angleRange * 2.0 * (uniform() - 0.5);
   return simd_quatd::fromAxisAngle(angle, randomDirection).normalized();
 }
 

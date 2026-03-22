@@ -1,38 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <bitset>
-#include <complex>
-#include <cstddef>
-#include <deque>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <locale>
-#include <mutex>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <semaphore>
-#include <span>
-#include <string_view>
-#include <vector>
-#include <tuple>
-#include "mdspanwrapper.h"
-#endif
-
 module commandline;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;

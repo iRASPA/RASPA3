@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <optional>
-#include <print>
-#include <span>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 export module intra_molecular_potentials;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3x3;

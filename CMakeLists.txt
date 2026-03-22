@@ -24,8 +24,7 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-#add_definitions( -DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
-add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
+add_definitions(-DVERSION=${PROJECT_VERSION})
 
 find_package(ZLIB)
 find_package(BLAS REQUIRED)

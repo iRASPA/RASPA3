@@ -1,15 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <string>
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -21,9 +11,7 @@ module;
 
 export module opencl;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export namespace OpenCL
 {

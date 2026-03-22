@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
-#include <string>
-#endif
-
 export module skonethirdseitzmatrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export class SKOneThirdSeitzMatrix
 {

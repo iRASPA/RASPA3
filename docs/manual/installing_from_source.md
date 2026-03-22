@@ -8,10 +8,10 @@
 
 | Package                | Min. version |
 | ---------------------- | ------------ |
-| clang/clang++          | 18           |
-| cmake                  | 3.28         |
+| clang/clang++          | 19           |
+| cmake                  | 4.3.0        |
 | ninja                  | 1.11         |
-| python                 | 3.11         |
+| python                 | 3.10         |
 | pybind11               | 2.12         |
 | BLAS + LAPACK          | 64‑bit ints  |
 | HDF5                   | 1.12         |

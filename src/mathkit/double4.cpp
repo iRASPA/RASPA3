@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <fstream>
-#include <map>
-#include <vector>
-#endif
-
 module double4;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 

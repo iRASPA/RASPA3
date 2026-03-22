@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <iostream>
-#include <locale>
-#include <map>
-#include <memory>
-#include <optional>
-#include <string>
-#include <vector>
-#endif
-
 module skposcarparser;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import skelement;
 import skatom;

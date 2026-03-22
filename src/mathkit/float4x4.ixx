@@ -1,19 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#endif
-
 export module float4x4;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import float3;
 import float4;

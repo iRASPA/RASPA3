@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <numeric>
-#include <string>
-#include <vector>
-#endif
-
 export module special_functions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export extern double li2(double x);
 export extern double hypergeometric2F1(double a, double b, double c, double z);

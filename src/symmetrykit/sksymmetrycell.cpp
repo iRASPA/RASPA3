@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cfloat>
-#include <cmath>
-#include <cstddef>
-#include <iterator>
-#include <numbers>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module sksymmetrycell;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;

@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <numeric>
-#endif
-
 module cubic;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 int signR(double Z)
 {

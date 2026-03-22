@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <span>
-#include <streambuf>
-#include <string>
-#include <vector>
-#endif
-
 module write_lammps_data;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

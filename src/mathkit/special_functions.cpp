@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <bitset>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <iostream>
-#include <limits>
-#endif
-
 module special_functions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 // routine by Alexander Voigt
 // https://arxiv.org/abs/2201.01678

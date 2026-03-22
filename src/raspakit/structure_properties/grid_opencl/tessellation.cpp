@@ -1,25 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <tuple>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -29,25 +9,10 @@ module;
 #else
 #include <CL/opencl.h>
 #endif
-
-#ifdef USE_STD_IMPORT
-#define CL_TARGET_OPENCL_VERSION 120
-#define CL_SILENCE_DEPRECATION
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#elif _WIN32
-#include <CL/cl.h>
-#else
-#include <CL/opencl.h>
-#endif
-#endif
-
 
 module tessellation;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import float4;

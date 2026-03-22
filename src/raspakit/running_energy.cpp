@@ -1,34 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module running_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import units;
 import archive;

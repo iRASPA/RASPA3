@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <cstddef>
-#include <optional>
-#include <span>
-#endif
-
 module integrators_compute;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import atom;

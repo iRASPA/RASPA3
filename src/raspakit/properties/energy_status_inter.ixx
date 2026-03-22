@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <print>
-#include <sstream>
-#include <string>
-#endif
-
 export module energy_status_inter;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import energy_factor;

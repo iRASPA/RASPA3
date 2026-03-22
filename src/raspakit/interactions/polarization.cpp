@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#include <span>
-#include <type_traits>
-#include <vector>
-#endif
-
 module interactions_polarization;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;

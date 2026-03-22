@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <exception>
-#include <iostream>
-#include <numbers>
-#include <string>
-#include <vector>
-#endif
-
 export module isotherm;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import special_functions;
 import randomnumbers;

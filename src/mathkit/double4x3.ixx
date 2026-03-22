@@ -1,18 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#endif
-
 export module double4x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double4;

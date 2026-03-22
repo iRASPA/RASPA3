@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <ostream>
-#include <string>
-#include <string_view>
-#include <utility>
-#endif
-
 export module double3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import bool3;

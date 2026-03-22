@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <numbers>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#endif
-
 module cbmc_move_statistics;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 static std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
 {

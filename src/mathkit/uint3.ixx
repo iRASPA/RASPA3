@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cctype>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <tuple>
-#endif
-
 export module uint3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import hashcombine;
 import archive;

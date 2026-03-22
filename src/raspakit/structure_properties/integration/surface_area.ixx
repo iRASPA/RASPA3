@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <print>
-#include <string>
-#include <vector>
-#include <optional>
-#include <tuple>
-#endif
-
 export module integration_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import framework;
 import forcefield;

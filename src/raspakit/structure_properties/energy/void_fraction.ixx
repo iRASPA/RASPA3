@@ -1,18 +1,8 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <string>
-#include <cstddef>
-#include <optional>
-#include <vector>
-#endif
-
 export module energy_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double2;

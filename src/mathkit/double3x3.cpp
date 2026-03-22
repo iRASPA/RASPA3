@@ -1,25 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <fstream>
-#include <map>
-#include <numbers>
-#include <ostream>
-#include <print>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 #define sqr(x) ((x) * (x))
 #define SIGN(a, b) ((b) >= 0.0 ? std::fabs(a) : -std::fabs(a))
 
@@ -41,9 +21,7 @@ extern "C"
 
 module double3x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3x3;
 import simd_quatd;

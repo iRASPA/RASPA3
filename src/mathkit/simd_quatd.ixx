@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <string>
-#include <string_view>
-#include <vector>
-#endif
-
 export module simd_quatd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import archive;

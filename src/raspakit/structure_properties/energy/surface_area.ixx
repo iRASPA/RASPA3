@@ -1,18 +1,8 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <vector>
-#include <string>
-#endif
-
 export module energy_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double2;

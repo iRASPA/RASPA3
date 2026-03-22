@@ -1,40 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <ios>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include <functional>
-#endif
-
 module monte_carlo;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import hardware_info;

@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <istream>
-#include <ostream>
-#include <print>
-#include <sstream>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#include <string>
-#include "mdspanwrapper.h"
-#endif
-
 export module interpolation_energy_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;
