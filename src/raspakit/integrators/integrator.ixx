@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <vector>
-#endif
-
 export module integrators;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import atom;

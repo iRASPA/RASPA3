@@ -1,47 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <span>
-#include <streambuf>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <vector>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#include "mdspanwrapper.h"
-#endif
-
 module system;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;

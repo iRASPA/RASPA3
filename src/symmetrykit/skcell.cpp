@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdlib>
-#include <memory>
-#include <numbers>
-#include <vector>
-#endif
-
 module skcell;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import bool3;

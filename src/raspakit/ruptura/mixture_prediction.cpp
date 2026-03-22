@@ -1,33 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iomanip>
-#include <iostream>
-#include <limits>
-#include <numeric>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module mixture_prediction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import atom;

@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <string>
-#include <utility>
-#include <vector>
-#if !defined(_WIN32)
-#include <assert.h>
-#endif
-#endif
-
 export module enthalpy_of_adsorption;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import matrix;
 import archive;

@@ -1,35 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 module property_density_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;

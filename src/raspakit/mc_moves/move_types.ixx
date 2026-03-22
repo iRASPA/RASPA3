@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <map>
-#include <string>
-#include <unordered_set>
-#endif
-
 export module mc_moves_move_types;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export enum class MoveTypes : std::size_t {
   Translation = 0,

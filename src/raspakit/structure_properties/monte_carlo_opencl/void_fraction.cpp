@@ -1,23 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <tuple>
-#include <vector>
-#include <chrono>
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -29,9 +11,7 @@ module;
 
 module mc_opencl_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import double2;

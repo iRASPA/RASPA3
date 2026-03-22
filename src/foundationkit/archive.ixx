@@ -1,34 +1,11 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <bit>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <functional>
-#include <iostream>
-#include <istream>
-#include <map>
-#include <unordered_map>
-#include <ostream>
-#include <ranges>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module archive;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
+
+// not yet implemented in stdlibc++
 template<std::integral T>
 constexpr T byteswap(T value) noexcept
 {

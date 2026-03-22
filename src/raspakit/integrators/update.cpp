@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <span>
-#include <vector>
-#endif
-
 module integrators_update;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import double3;

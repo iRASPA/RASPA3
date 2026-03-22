@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module cbmc_generate_trialorientations_mc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import atom;
 import double3x3;

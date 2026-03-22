@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <limits>
-#endif
-
 export module hashcombine;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 // https://stackoverflow.com/questions/35985960/c-why-is-boosthash-combine-the-best-way-to-combine-hash-values/50978188
 

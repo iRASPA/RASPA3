@@ -1,30 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <exception>
-#endif
-
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #define H5_BUILT_AS_DYNAMIC_LIB 1
 #endif
 
-#include "H5Cpp.h"
+#include <H5Cpp.h>
 
 export module hdf5;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 /*!
  * \brief HDF5 writer class.

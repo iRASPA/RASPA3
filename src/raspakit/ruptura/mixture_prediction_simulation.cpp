@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <numeric>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module mixture_prediction_simulation;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import hardware_info;

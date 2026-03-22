@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <tuple>
-#include <utility>
-#endif
-
 export module skboundingbox;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double4x4;
 import double3;

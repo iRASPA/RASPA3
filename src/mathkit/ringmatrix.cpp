@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <limits>
-#include <variant>
-#include <vector>
-#endif
-
 module ringmatrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import ring;
 import int3x3;

@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#endif
-
 module simulationbox;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import double3x3;

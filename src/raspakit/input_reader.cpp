@@ -1,38 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <ios>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <set>
-#include <sstream>
-#include <streambuf>
-#include <vector>
-#include <expected>
-#endif
-
 module input_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import stringutils;

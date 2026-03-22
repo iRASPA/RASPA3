@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <span>
-#endif
-
 export module mc_moves_identity_change;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import running_energy;

@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module running_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import scaling;

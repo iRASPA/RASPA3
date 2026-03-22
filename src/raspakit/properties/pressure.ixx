@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_pressure;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3x3;

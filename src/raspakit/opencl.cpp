@@ -1,20 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <format>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -27,9 +12,7 @@ module;
 
 module opencl;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 std::optional<cl_context> OpenCL::clContext = std::nullopt;
 std::optional<cl_device_id> OpenCL::clDeviceId = std::nullopt;

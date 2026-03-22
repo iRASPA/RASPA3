@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <numbers>
-#include <vector>
-#endif
-
 module float3x3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import simd_quatd;
 import float3;

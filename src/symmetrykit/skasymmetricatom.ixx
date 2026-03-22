@@ -1,25 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdlib>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-#endif
-
 class SKAtomCopy;
 
 export module skatom:skasymmetricatom;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import bool3;
 import double3;

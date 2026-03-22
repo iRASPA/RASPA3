@@ -1,32 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <iostream>
-#include <numbers>
-#include <span>
-#include <vector>
-#include <array>
-#include "mdspanwrapper.h"
-#endif
-
 #if !defined(_WIN32)
 #include <assert.h>
 #endif
 
 module charge_equilibration_wilmer_snurr;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;

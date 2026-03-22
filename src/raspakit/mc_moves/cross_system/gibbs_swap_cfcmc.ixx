@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#endif
-
 export module mc_moves_gibbs_swap_cfcmc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import randomnumbers;

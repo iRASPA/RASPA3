@@ -1,19 +1,6 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <random>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import double3;
 import double4;

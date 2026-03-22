@@ -1,33 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <cmath>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <tuple>
-#include <expected>
-#endif
-
 module cif_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import skspacegroup;

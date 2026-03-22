@@ -1,33 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <ostream>
-#include <set>
 #include <string>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <string>
-#endif
 
 export module forcefield;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double4;

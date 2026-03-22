@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <cstddef>
-#include <vector>
-#endif
-
 module matrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue)
     : _rows(rows), _columns(columns), _grid(rows * columns)

@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <future>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <thread>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_interactions_intermolecular;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import energy_status;
 import potential_energy_vdw;

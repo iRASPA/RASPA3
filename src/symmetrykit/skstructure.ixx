@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdlib>
-#include <memory>
-#include <optional>
-#include <set>
-#include <string>
-#include <vector>
-#endif
-
 export module skstructure;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;

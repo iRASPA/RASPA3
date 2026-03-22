@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_vacf;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

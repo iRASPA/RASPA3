@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <ostream>
-#include <vector>
-#include <print>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <stdio.h>
-#endif
-
 export module polint;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export namespace Interpolation
 {
@@ -54,7 +35,7 @@ void polint(const std::array<double, N> &xa, const std::array<double, N> &ya, do
       w = c[i + 1] - d[i];
       if ((den = ho - hp) == 0.0)
       {
-        fprintf(stderr, "Error in routine polint\n");
+        std::print("Error in routine polint\n");
         std::exit(0);
       }
       den = w / den;

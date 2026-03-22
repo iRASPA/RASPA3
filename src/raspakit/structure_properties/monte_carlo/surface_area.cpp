@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <string>
-#include <vector>
-#endif
-
 module mc_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import atom;

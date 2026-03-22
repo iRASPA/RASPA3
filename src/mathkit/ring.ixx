@@ -1,19 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <tuple>
-#endif
-
 export module ring;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export struct Ring
 {

@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <iostream>
-#endif
-
 export module potential_energy_vdw;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import vdwparameters;
 import forcefield;

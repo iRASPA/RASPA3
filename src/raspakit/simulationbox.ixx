@@ -1,30 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <istream>
-#include <map>
-#include <numbers>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#endif
-
 export module simulationbox;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 

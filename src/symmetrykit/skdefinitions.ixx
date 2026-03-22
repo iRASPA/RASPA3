@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
-#include <type_traits>
-#endif
-
 export module skdefinitions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export enum class Symmorphicity : std::size_t { asymmorphic = 0, symmorphic = 1, hemisymmorphic = 2 };
 

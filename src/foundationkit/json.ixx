@@ -1,68 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>  // all_of, find, for_each
-#include <any>
-#include <array>    // array
-#include <cassert>  // assert
-#include <cctype>   // isdigit
-#include <cerrno>   // errno, ERANGE
-#include <clocale>  // localeconv
-#include <cmath>    // ldexp
-#include <compare>  // partial_ordering
-#include <cstddef>
-#include <cstdint>    // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstdio>     // snprintf
-#include <cstdlib>    // strtof, strtod, strtold, strtoll, strtoull
-#include <cstring>    // memcpy
-#include <exception>  // exception
-#include <filesystem>
-#include <forward_list>  // forward_list
-#include <functional>
-#include <functional>        // hash, less
-#include <initializer_list>  // initializer_list
-#include <iomanip>           // setfill, setw
-#include <iosfwd>            // istream, ostream
-#include <iostream>
-#include <istream>   // istream
-#include <iterator>  // random_access_iterator_tag
-#include <limits>    // numeric_limits
-#include <map>       // map
-#include <memory>    // unique_ptr
-#include <numeric>   // accumulate
-#include <optional>
-#include <ranges>     // enable_borrowed_range
-#include <stdexcept>  // runtime_error
-#include <string>     // char_traits, string
-#include <string_view>
-#include <tuple>  // tuple, make_tuple
-#include <type_traits>
-#include <type_traits>    // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
-#include <unordered_map>  // unordered_map
-#include <utility>        // declval, forward, move, pair, swap
-#include <valarray>       // valarray
-#include <vector>         // vector
-#include <version>
-#ifndef JSON_NO_IO
-#include <iosfwd>  // ostream
-#endif             // JSON_NO_IO
-#endif
-
 #include <errno.h>
 #include <stdio.h>
-
 #include <cassert>  // assert
 
 export module json;
 
-#ifdef USE_STD_IMPORT
 import std;
 import std.compat;
-#endif
 
 import stringutils;
 

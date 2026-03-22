@@ -1,34 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -37,25 +8,11 @@ module;
 #include <CL/cl.h>
 #else
 #include <CL/opencl.h>
-#endif
-
-#ifdef USE_STD_IMPORT
-#define CL_TARGET_OPENCL_VERSION 120
-#define CL_SILENCE_DEPRECATION
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#elif _WIN32
-#include <CL/cl.h>
-#else
-#include <CL/opencl.h>
-#endif
 #endif
 
 module energy_opencl_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import int3;
@@ -66,9 +23,6 @@ import skspacegroupdatabase;
 import forcefield;
 import framework;
 import units;
-#if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
-#endif
 
 EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
 {

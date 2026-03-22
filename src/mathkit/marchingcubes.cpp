@@ -11,24 +11,9 @@
 
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <iostream>
-#include <limits>
-#include <memory>
-#endif
-
 module marching_cubes;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;

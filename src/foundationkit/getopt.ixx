@@ -27,25 +27,9 @@
 
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstdlib>
-#include <exception>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <unordered_map>
-#include <vector>
-#endif
-
 export module getopt;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 export namespace argparser
 {

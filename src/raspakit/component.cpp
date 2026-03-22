@@ -1,45 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <unordered_map>
-#include <numeric>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 #if !defined(_WIN32)
 #include <assert.h>
 #endif
 
 module component;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import simd_quatd;

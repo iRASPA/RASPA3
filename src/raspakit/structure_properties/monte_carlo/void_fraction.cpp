@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;

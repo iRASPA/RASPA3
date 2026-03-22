@@ -1,13 +1,5 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <vector>
-#include <string>
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -15,24 +7,11 @@ module;
 #include <CL/cl.h>
 #else
 #include <CL/opencl.h>
-#endif
-
-#ifdef USE_STD_IMPORT
-#define CL_TARGET_OPENCL_VERSION 120
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#elif _WIN32
-#include <CL/cl.h>
-#else
-#include <CL/opencl.h>
-#endif
 #endif
 
 export module energy_opencl_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import uint3;

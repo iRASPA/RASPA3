@@ -1,17 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <print>
-#include <string>
-#include <vector>
-#include <optional>
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -23,9 +11,7 @@ module;
 
 export module mc_opencl_pore_size_distribution;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import framework;
 import forcefield;

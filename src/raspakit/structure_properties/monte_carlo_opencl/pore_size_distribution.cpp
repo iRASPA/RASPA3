@@ -1,27 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <vector>
-#include <chrono>
-#include <thread>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -34,9 +12,7 @@ module;
 
 module mc_opencl_pore_size_distribution;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import units;
 import double2;

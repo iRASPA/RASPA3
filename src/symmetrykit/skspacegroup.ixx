@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <unordered_set>
-#include <vector>
-#endif
-
 export module skspacegroup;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;

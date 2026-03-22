@@ -1,33 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cmath>
-#include <cstddef>
-#include <deque>
-#include <future>
-#include <iostream>
-#include <limits>
-#include <numbers>
-#include <optional>
-#include <semaphore>
-#include <span>
-#include <thread>
-#include <utility>
-#include <vector>
-#endif
-
 module interactions_framework_molecule_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double4;

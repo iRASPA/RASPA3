@@ -1,31 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <unordered_map>
-#include <source_location>
-#include <sstream>
-#include <vector>
-#include <iostream>
-#include <sstream>
-#include <print>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 module mc_moves_probabilities;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import mc_moves_move_types;

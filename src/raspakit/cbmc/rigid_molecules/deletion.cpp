@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_rigid_deletion;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import component;

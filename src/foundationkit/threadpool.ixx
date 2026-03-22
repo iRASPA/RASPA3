@@ -1,41 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <atomic>
-#include <chrono>
-#include <cmath>
-#include <concepts>
-#include <cstddef>
-#include <deque>
-#include <exception>
-#include <functional>
-#include <future>
-#include <iostream>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <queue>
-#include <semaphore>
-#include <stop_token>
-#include <thread>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 #if __has_include(<omp.h>)
 #include <omp.h>
 #endif
 
 export module threadpool;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 // https://github.com/DeveloperPaul123/thread-pool
 namespace ThreadPool

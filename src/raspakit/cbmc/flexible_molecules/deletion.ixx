@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <numbers>
-#include <optional>
-#include <span>
-#include <vector>
-#endif
-
 export module cbmc_flexible_deletion;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import atom;
 import double3x3;
