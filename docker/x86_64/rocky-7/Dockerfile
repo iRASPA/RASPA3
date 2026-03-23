@@ -8,15 +8,24 @@ RUN \
   yum update -y && \
   yum install -y https://cmcc.mirrors.ustc.edu.cn/centos-vault/centos/7.9.2009/sclo/x86_64/rh/Packages/d/devtoolset-8-gcc-8.3.1-3.2.el7.x86_64.rpm https://cmcc.mirrors.ustc.edu.cn/centos-vault/centos/7.9.2009/sclo/x86_64/rh/Packages/d/devtoolset-8-gcc-c%2B%2B-8.3.1-3.2.el7.x86_64.rpm https://cmcc.mirrors.ustc.edu.cn/centos-vault/centos/7.9.2009/sclo/x86_64/rh/Packages/d/devtoolset-8-binutils-2.30-55.el7.2.x86_64.rpm https://cmcc.mirrors.ustc.edu.cn/centos-vault/centos/7.9.2009/sclo/x86_64/rh/Packages/d/devtoolset-8-libstdc%2B%2B-devel-8.3.1-3.2.el7.x86_64.rpm https://cmcc.mirrors.ustc.edu.cn/centos-vault/centos/7.9.2009/sclo/x86_64/rh/Packages/d/devtoolset-8-runtime-8.1-1.el7.x86_64.rpm && \
   yum install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64  && \
-  yum install -y --setopt=install_weak_deps=False openssl-devel && \
   yum install -y --setopt=install_weak_deps=False wget git && \
   yum install -y --setopt=install_weak_deps=False rpm-build && \
   yum install -y --setopt=install_weak_deps=False make binutils-devel gcc-c++ libstdc++-devel && \
   yum install -y --setopt=install_weak_deps=False epel-release && \
   yum install -y --setopt=install_weak_deps=False ocl-icd-devel && \
-  yum install -y --setopt=install_weak_deps=False fftw-devel && \
-  yum -y install perl-Data-Dumper && \
+  yum install -y --setopt=install_weak_deps=False fftw-devel libomp && \
+  yum -y install perl-Data-Dumper perl-IPC-Cmd perl-Pod-Html && \
   source /opt/rh/devtoolset-8/enable && \
+  rm -rf Python-3.8.19* && \
+  wget https://github.com/openssl/openssl/releases/download/openssl-3.0.8/openssl-3.0.8.tar.gz && \
+  tar xvf openssl-3.0.8.tar.gz && \
+  cd openssl-3.0*/ && \
+  ./config && \
+  make -j 16 && \
+  make install && \
+  cd .. && \
+  export PATH=/usr/local/openssl/bin:${PATH}  && \
+  export LD_LIBRARY_PATH=/usr/local/openssl/lib:${LD_LIBRARY_PATH} && \
   wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz && \
   tar xzf Python-3.8.19.tgz && \
   cd Python-3.8.19 && \
@@ -24,29 +33,28 @@ RUN \
   make altinstall && \
   ln -sfn /usr/local/bin/python3.8 /usr/bin/python3.8 && \
   cd .. && \
-  rm -rf Python-3.8.19* && \
-  wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz && \
-  tar -zxf cmake-3.31.6.tar.gz && \
-  cd cmake-3.31.6 && \
+  wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0.tar.gz && \
+  tar -zxf cmake-4.3.0.tar.gz && \
+  cd cmake-4.3.0 && \
   ./bootstrap && \
   nice -n20 make -j 32 && \
   make install && \
   cd .. &&\
-  rm -rf cmake-3.31.6 && \
-  /bin/rm -f cmake-3.31.6.tar.gz && \
-  wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.12.1.tar.gz && \
-  tar -zxf v1.12.1.tar.gz && \
-  cd ninja-1.12.1 && \
+  rm -rf cmake-4.3.0 && \
+  /bin/rm -f cmake-4.3.0.tar.gz && \
+  wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.13.2.tar.gz && \
+  tar -zxf v1.13.2.tar.gz && \
+  cd ninja-1.13.2 && \
   cmake -Bbuild-cmake && \
   cmake --build build-cmake && \
   cmake --install build-cmake && \
   cd .. && \
-  rm -rf ninja-1.12.1 && \
-  /bin/rm -f v1.12.1.tar.gz && \
+  rm -rf ninja-1.13.2 && \
+  /bin/rm -f v1.13.2.tar.gz && \
   yum clean all && \
-  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-20.1.2.tar.gz && \
-  tar -zxf llvmorg-20.1.2.tar.gz && \
-  cd llvm-project-llvmorg-20.1.2 && \
+  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-22.1.1.tar.gz && \
+  tar -zxf llvmorg-22.1.1.tar.gz && \
+  cd llvm-project-llvmorg-22.1.1 && \
   cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang;lld;openmp" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include  -DLIBOMP_ENABLE_SHARED=OFF && \
   ninja -C build && \
   ninja -C build install && \

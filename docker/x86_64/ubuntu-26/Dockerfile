@@ -1,4 +1,4 @@
-FROM debian:11.11
+FROM ubuntu:26.04
 
 RUN \
   apt-get update && \
@@ -7,21 +7,10 @@ RUN \
   apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg && \
   apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev && \
   apt-get install -y --no-install-recommends liblapack-dev libomp5 && \
-  apt-get install -y --no-install-recommends make clang && \
+  apt-get install -y --no-install-recommends clang make && \
   apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev && \
   apt-get install -y --no-install-recommends ocl-icd-opencl-dev && \
   apt-get install -y --no-install-recommends libfftw3-dev && \
-  export CC=clang && \
-  export CXX=clang++ && \
-  wget https://github.com/openssl/openssl/releases/download/openssl-3.0.8/openssl-3.0.8.tar.gz && \
-  tar xvf openssl-3.0.8.tar.gz && \
-  cd openssl-3.0*/ && \
-  ./config && \
-  make -j 16 && \
-  make install && \
-  cd .. && \
-  export PATH=/usr/local/openssl/bin:${PATH}  && \
-  export LD_LIBRARY_PATH=/usr/local/openssl/lib:${LD_LIBRARY_PATH} && \
   wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0.tar.gz && \
   tar -zxvf cmake-4.3.0.tar.gz && \
   cd cmake-4.3.0 && \
@@ -43,13 +32,7 @@ RUN \
   wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-22.1.1.tar.gz && \
   tar -zxvf llvmorg-22.1.1.tar.gz && \
   cd llvm-project-llvmorg-22.1.1 && \
-  cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="clang;lld" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include && \
-  ninja -C build && \
-  ninja -C build install && \
-  rm -rf build && \
-  export CC=clang && \
-  export CXX=clang++ && \
-  cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCMAKE_CC_COMPILER=clang  -DCMAKE_CXX_COMPILER=clang++  -DLLVM_ENABLE_PROJECTS="clang;lld;openmp" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include && \
+  cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="clang;lld;openmp" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;compiler-rt;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include && \
   ninja -C build && \
   ninja -C build install && \
   cd .. && \

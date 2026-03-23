@@ -11,27 +11,27 @@ RUN \
   apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev && \
   apt-get install -y --no-install-recommends ocl-icd-opencl-dev && \
   apt-get install -y --no-install-recommends libfftw3-dev && \
-  wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz && \
-  tar -zxvf cmake-3.31.6.tar.gz && \
-  cd cmake-3.31.6 && \
+  wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0.tar.gz && \
+  tar -zxvf cmake-4.3.0.tar.gz && \
+  cd cmake-4.3.0 && \
   ./bootstrap && \
   nice -n20 make -j 32 && \
   make install && \
   cd .. &&\
-  rm -rf cmake-3.31.6 && \
-  rm cmake-3.31.6.tar.gz && \
-  wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.12.1.tar.gz && \
-  tar -zxvf v1.12.1.tar.gz && \
-  cd ninja-1.12.1 && \
+  rm -rf cmake-4.3.0 && \
+  rm cmake-4.3.0.tar.gz && \
+  wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.13.2.tar.gz && \
+  tar -zxvf v1.13.2.tar.gz && \
+  cd ninja-1.13.2 && \
   cmake -Bbuild-cmake && \
   cmake --build build-cmake && \
   cmake --install build-cmake && \
   cd .. && \
-  rm -rf ninja-1.12.1 && \
-  rm  v1.12.1.tar.gz && \
-  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-20.1.2.tar.gz && \
-  tar -zxvf llvmorg-20.1.2.tar.gz && \
-  cd llvm-project-llvmorg-20.1.2 && \
+  rm -rf ninja-1.13.2 && \
+  rm  v1.13.2.tar.gz && \
+  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-22.1.1.tar.gz && \
+  tar -zxvf llvmorg-22.1.1.tar.gz && \
+  cd llvm-project-llvmorg-22.1.1 && \
   cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="clang;lld;openmp" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include && \
   ninja -C build && \
   ninja -C build install && \

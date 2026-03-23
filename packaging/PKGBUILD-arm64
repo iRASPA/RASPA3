@@ -3,7 +3,7 @@ pkgname=raspa
 pkgver=3.0.22
 pkgrel=1
 pkgdesc="Molecular simulation code for adsorption and diffusion in nanoporours materials."
-arch=('x86_64')
+arch=('aarch64')
 url="https://www.iraspa.org"
 license=('MIT')
 makedepends=()
@@ -12,7 +12,7 @@ source=(raspa3.tar.gz)
 md5sums=('SKIP')
 
 build() {
-  cmake -B build --preset linux-x86_64-skylake-avx512-archlinux -DCMAKE_INSTALL_PREFIX=${pkgdir}/usr -DCMAKE_POLICY_VERSION_MINIMUM=3.5 
+  cmake -B build --preset linux-aarch64-archlinux -DCMAKE_INSTALL_PREFIX=${pkgdir}/usr -DCMAKE_POLICY_VERSION_MINIMUM=3.5 
   cmake --build build
 }
 
