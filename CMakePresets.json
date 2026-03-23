@@ -1452,6 +1452,28 @@
       }
     },
     {
+      "name": "linux-x86_64-core-avx2-archlinux",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-archlinux",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
       "name": "linux-x86_64-core-avx2-opensuse-leap-15.2",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
@@ -1593,28 +1615,6 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLA_SIZEOF_INTEGER": "4"
-      }
-    },
-    {
-      "name": "linux-x86_64-core-avx2-archlinux",
-      "description": "Sets compilers, build type",
-      "inherits": "linux-x86_64",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
-        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
-        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BLA_SIZEOF_INTEGER": "8"
-      }
-    },
-    {
-      "name": "linux-x86_64-skylake-avx512-archlinux",
-      "description": "Sets compilers, build type",
-      "inherits": "linux-x86_64",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
-        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
-        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
@@ -1951,6 +1951,17 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-archlinux",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "BLA_SIZEOF_INTEGER": "8"
       }
     }
