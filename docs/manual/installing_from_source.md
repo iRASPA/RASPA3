@@ -23,7 +23,7 @@
 git clone https://github.com/raspa3/raspa3.git
 cd raspa3
 conda env create -f env.yml
-conda activate raspa
+conda activate raspa3
 cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3
 ninja -C build
 ninja -C build install      # optional
