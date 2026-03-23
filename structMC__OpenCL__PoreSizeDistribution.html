@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,6 +102,7 @@ $(document).ready(function(){initNavTree('structMC__OpenCL__PoreSizeDistribution
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="structMC__OpenCL__PoreSizeDistribution-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">MC_OpenCL_PoreSizeDistribution Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_mc__opencl__pore__size__distribution.html">mc_opencl_pore_size_distribution</a></div></div></div>
 </div><!--header-->
@@ -111,9 +112,9 @@ Collaboration diagram for MC_OpenCL_PoreSizeDistribution:</div>
 <div class="dyncontent">
 <div class="center"><img src="structMC__OpenCL__PoreSizeDistribution__coll__graph.png" border="0" usemap="#aMC__OpenCL__PoreSizeDistribution_coll__map" alt="Collaboration graph"/></div>
 <map name="aMC__OpenCL__PoreSizeDistribution_coll__map" id="aMC__OpenCL__PoreSizeDistribution_coll__map">
-<area shape="rect" title=" " alt="" coords="5,93,244,119"/>
+<area shape="rect" title=" " alt="" coords="5,108,244,133"/>
 <area shape="rect" title=" " alt="" coords="42,5,207,31"/>
-<area shape="poly" title=" " alt="" coords="127,45,127,93,122,93,122,45"/>
+<area shape="poly" title=" " alt="" coords="127,45,127,108,122,108,122,45"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -122,15 +123,36 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a279da6d6f56606448510ad159c1a2d02" id="r_a279da6d6f56606448510ad159c1a2d02"><td class="memItemLeft" align="right" valign="top"><a id="a279da6d6f56606448510ad159c1a2d02" name="a279da6d6f56606448510ad159c1a2d02"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>MC_OpenCL_PoreSizeDistribution</b> (std::size_t numberOfBins)</td></tr>
 <tr class="separator:a279da6d6f56606448510ad159c1a2d02"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d46a7dd49c1ed1e2b8e63497d998cc1" id="r_a0d46a7dd49c1ed1e2b8e63497d998cc1"><td class="memItemLeft" align="right" valign="top"><a id="a0d46a7dd49c1ed1e2b8e63497d998cc1" name="a0d46a7dd49c1ed1e2b8e63497d998cc1"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double well_depth_factor, std::size_t number_of_iterations)</td></tr>
-<tr class="separator:a0d46a7dd49c1ed1e2b8e63497d998cc1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28d23fdde7b0261bcf10ed0c98ba880b" id="r_a28d23fdde7b0261bcf10ed0c98ba880b"><td class="memItemLeft" align="right" valign="top"><a id="a28d23fdde7b0261bcf10ed0c98ba880b" name="a28d23fdde7b0261bcf10ed0c98ba880b"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double wellDepthFactor, std::optional&lt; std::size_t &gt; numberOfIterations, std::optional&lt; std::size_t &gt; numberOfInnerSteps, std::optional&lt; double &gt; maximumRange)</td></tr>
+<tr class="separator:a28d23fdde7b0261bcf10ed0c98ba880b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:adc52f87e8b1aa48f589b55e854c624cb" id="r_adc52f87e8b1aa48f589b55e854c624cb"><td class="memItemLeft" align="right" valign="top"><a id="adc52f87e8b1aa48f589b55e854c624cb" name="adc52f87e8b1aa48f589b55e854c624cb"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
-<tr class="separator:adc52f87e8b1aa48f589b55e854c624cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13964343e660105d1f3fa85dffc8c7bb" id="r_a13964343e660105d1f3fa85dffc8c7bb"><td class="memItemLeft" align="right" valign="top"><a id="a13964343e660105d1f3fa85dffc8c7bb" name="a13964343e660105d1f3fa85dffc8c7bb"></a>
+cl_program&#160;</td><td class="memItemRight" valign="bottom"><b>poreSizeDistributionProgram</b></td></tr>
+<tr class="separator:a13964343e660105d1f3fa85dffc8c7bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cbe7ab08147bb9e152370be8e60b1be" id="r_a4cbe7ab08147bb9e152370be8e60b1be"><td class="memItemLeft" align="right" valign="top"><a id="a4cbe7ab08147bb9e152370be8e60b1be" name="a4cbe7ab08147bb9e152370be8e60b1be"></a>
+cl_kernel&#160;</td><td class="memItemRight" valign="bottom"><b>poreSizeDistributionKernel</b></td></tr>
+<tr class="separator:a4cbe7ab08147bb9e152370be8e60b1be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05520bd4f9c65e0db4a17b8be07f70df" id="r_a05520bd4f9c65e0db4a17b8be07f70df"><td class="memItemLeft" align="right" valign="top"><a id="a05520bd4f9c65e0db4a17b8be07f70df" name="a05520bd4f9c65e0db4a17b8be07f70df"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>poreSizeDistributionWorkGroupSize</b></td></tr>
+<tr class="separator:a05520bd4f9c65e0db4a17b8be07f70df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85bff03961033009c0e086b0141232da" id="r_a85bff03961033009c0e086b0141232da"><td class="memItemLeft" align="right" valign="top"><a id="a85bff03961033009c0e086b0141232da" name="a85bff03961033009c0e086b0141232da"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
+<tr class="separator:a85bff03961033009c0e086b0141232da"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28593cf0b0032afcc3adb3d90bd8c98c" id="r_a28593cf0b0032afcc3adb3d90bd8c98c"><td class="memItemLeft" align="right" valign="top"><a id="a28593cf0b0032afcc3adb3d90bd8c98c" name="a28593cf0b0032afcc3adb3d90bd8c98c"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>histogram</b></td></tr>
+<tr class="separator:a28593cf0b0032afcc3adb3d90bd8c98c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a256d5da2db5bf258ba700e8083fad459" id="r_a256d5da2db5bf258ba700e8083fad459"><td class="memItemLeft" align="right" valign="top"><a id="a256d5da2db5bf258ba700e8083fad459" name="a256d5da2db5bf258ba700e8083fad459"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>histogram_cummulative</b></td></tr>
+<tr class="separator:a256d5da2db5bf258ba700e8083fad459"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:ac936cb20041c07b8ad7c2806a87df096" id="r_ac936cb20041c07b8ad7c2806a87df096"><td class="memItemLeft" align="right" valign="top"><a id="ac936cb20041c07b8ad7c2806a87df096" name="ac936cb20041c07b8ad7c2806a87df096"></a>
+static const char *&#160;</td><td class="memItemRight" valign="bottom"><b>poreSizeDistributionKernelSource</b></td></tr>
+<tr class="separator:ac936cb20041c07b8ad7c2806a87df096"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/structure_properties/monte_carlo_opencl/<b>pore_size_distribution.ixx</b></li>

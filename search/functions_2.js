@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['cifreader_0',['CIFReader',['../structCIFReader.html#a62763eaa2f920f40339dca496c4617e3',1,'CIFReader']]],
+  ['cifreader_0',['CIFReader',['../structCIFReader.html#a86f45710e52f3eb0bfc46515285347d6',1,'CIFReader']]],
   ['clear_1',['clear',['../structMoveStatistics.html#a064af0c06c2e743f37b0af66e30f63dc',1,'MoveStatistics']]],
   ['clearcmatrix_2',['clearCMatrix',['../structTransitionMatrix.html#aee862fe0ae56f0d464954bd428f9d06d',1,'TransitionMatrix']]],
   ['cleartimingstatistics_3',['clearTimingStatistics',['../structMCMoveCpuTime.html#a6926ecb53802e176874c33878f49ddc1',1,'MCMoveCpuTime']]],

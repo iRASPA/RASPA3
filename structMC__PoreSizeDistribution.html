@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -111,9 +111,9 @@ Collaboration diagram for MC_PoreSizeDistribution:</div>
 <div class="dyncontent">
 <div class="center"><img src="structMC__PoreSizeDistribution__coll__graph.png" border="0" usemap="#aMC__PoreSizeDistribution_coll__map" alt="Collaboration graph"/></div>
 <map name="aMC__PoreSizeDistribution_coll__map" id="aMC__PoreSizeDistribution_coll__map">
-<area shape="rect" title=" " alt="" coords="5,93,188,119"/>
+<area shape="rect" title=" " alt="" coords="5,108,188,133"/>
 <area shape="rect" title=" " alt="" coords="14,5,179,31"/>
-<area shape="poly" title=" " alt="" coords="99,45,99,93,94,93,94,45"/>
+<area shape="poly" title=" " alt="" coords="99,45,99,108,94,108,94,45"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -122,15 +122,21 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a772cb1fb753d5fb162fb2f68bcb75ad2" id="r_a772cb1fb753d5fb162fb2f68bcb75ad2"><td class="memItemLeft" align="right" valign="top"><a id="a772cb1fb753d5fb162fb2f68bcb75ad2" name="a772cb1fb753d5fb162fb2f68bcb75ad2"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>MC_PoreSizeDistribution</b> (std::size_t numberOfBins)</td></tr>
 <tr class="separator:a772cb1fb753d5fb162fb2f68bcb75ad2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b2d2ce64085e4977e7d179bd790d8b1" id="r_a6b2d2ce64085e4977e7d179bd790d8b1"><td class="memItemLeft" align="right" valign="top"><a id="a6b2d2ce64085e4977e7d179bd790d8b1" name="a6b2d2ce64085e4977e7d179bd790d8b1"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double well_depth_factor, std::size_t number_of_iterations)</td></tr>
-<tr class="separator:a6b2d2ce64085e4977e7d179bd790d8b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0989f1ba3398c25e81e2ed5a05d84caf" id="r_a0989f1ba3398c25e81e2ed5a05d84caf"><td class="memItemLeft" align="right" valign="top"><a id="a0989f1ba3398c25e81e2ed5a05d84caf" name="a0989f1ba3398c25e81e2ed5a05d84caf"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double wellDepthFactor, std::optional&lt; std::size_t &gt; numberOfIterations, std::optional&lt; std::size_t &gt; numberOfInnerSteps, std::optional&lt; double &gt; maximumRange)</td></tr>
+<tr class="separator:a0989f1ba3398c25e81e2ed5a05d84caf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:af92553356ad3dc84ceb8ebe1c4a4ecf1" id="r_af92553356ad3dc84ceb8ebe1c4a4ecf1"><td class="memItemLeft" align="right" valign="top"><a id="af92553356ad3dc84ceb8ebe1c4a4ecf1" name="af92553356ad3dc84ceb8ebe1c4a4ecf1"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
-<tr class="separator:af92553356ad3dc84ceb8ebe1c4a4ecf1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a41a4705e8736132d922b5379416564b9" id="r_a41a4705e8736132d922b5379416564b9"><td class="memItemLeft" align="right" valign="top"><a id="a41a4705e8736132d922b5379416564b9" name="a41a4705e8736132d922b5379416564b9"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
+<tr class="separator:a41a4705e8736132d922b5379416564b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45e1d3358be3a3233c51ce0130fac6df" id="r_a45e1d3358be3a3233c51ce0130fac6df"><td class="memItemLeft" align="right" valign="top"><a id="a45e1d3358be3a3233c51ce0130fac6df" name="a45e1d3358be3a3233c51ce0130fac6df"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>histogram</b></td></tr>
+<tr class="separator:a45e1d3358be3a3233c51ce0130fac6df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69aa3b3154ba814f233a06d7c3f9ae8a" id="r_a69aa3b3154ba814f233a06d7c3f9ae8a"><td class="memItemLeft" align="right" valign="top"><a id="a69aa3b3154ba814f233a06d7c3f9ae8a" name="a69aa3b3154ba814f233a06d7c3f9ae8a"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>histogram_cummulative</b></td></tr>
+<tr class="separator:a69aa3b3154ba814f233a06d7c3f9ae8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/structure_properties/monte_carlo/<b>pore_size_distribution.ixx</b></li>

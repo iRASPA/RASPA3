@@ -1,6 +1,22 @@
 var searchData=
 [
-  ['hasfractionalmolecule_0',['hasFractionalMolecule',['../structComponent.html#a32fe825d2bb33fc17242e6ddd5ae6d37',1,'Component']]],
-  ['heatcapacityconversionfactor_1',['HeatCapacityConversionFactor',['../structUnits.html#a40d6da0d05b1c200ddf6e99b1ac93aac',1,'Units']]],
-  ['histogram_2',['histogram',['../structTransitionMatrix.html#acd23f03be7ed02a1c02314ab619d15eb',1,'TransitionMatrix']]]
+  ['id_0',['id',['../structReaction.html#aacb45fe6e2dfd7eff19b2607023bf2ca',1,'Reaction']]],
+  ['idealgasenergy_1',['idealGasEnergy',['../structComponent.html#a516b8ead93f363496dcdcc7859aac59e',1,'Component']]],
+  ['idealgasrosenbluthweight_2',['idealGasRosenbluthWeight',['../structComponent.html#aabb30dcbf69b0ed5ea3df3189d137039',1,'Component']]],
+  ['identifiers_3',['identifiers',['../structBendBendPotential.html#ad4741d35fe0ffd5aa25a7fecf1558b72',1,'BendBendPotential::identifiers'],['../structBendPotential.html#a59ec70e460e5da6bf9adad054e5c29cc',1,'BendPotential::identifiers'],['../structBendTorsionPotential.html#ad12c8bb76cd373ff8f1a6c9a24e85688',1,'BendTorsionPotential::identifiers'],['../structBondBendPotential.html#a0668b639c921229935ab6fbb68775292',1,'BondBendPotential::identifiers'],['../structBondBondPotential.html#a1672a4a3d68576a96508378118d9f5de',1,'BondBondPotential::identifiers'],['../structBondPotential.html#aa99fc4c85645d89cc8f922e5f55f3f81',1,'BondPotential::identifiers'],['../structBondTorsionPotential.html#ab4d2f4761e43e2692ac2eb5aba8ce658',1,'BondTorsionPotential::identifiers'],['../structCoulombPotential.html#a9f0daebb574bd637f283d05e1eeeece1',1,'CoulombPotential::identifiers'],['../structInversionBendPotential.html#a887d46a6de951c8c51d705fd77722fd2',1,'InversionBendPotential::identifiers'],['../structOutOfPlaneBendPotential.html#aaefdf881a83b18e9aa79fe9e0e9dd0c5',1,'OutOfPlaneBendPotential::identifiers'],['../structTorsionPotential.html#a17bcf52692f6664281ea75a9b427b521',1,'TorsionPotential::identifiers'],['../structUreyBradleyPotential.html#ab3e2e14b3745239025efc0a5836b0eed',1,'UreyBradleyPotential::identifiers'],['../structVanDerWaalsPotential.html#a153d27b640d08053fd3d5d70b4998230',1,'VanDerWaalsPotential::identifiers']]],
+  ['impropertorsions_4',['ImproperTorsions',['../structFramework.html#adadd52be918d14011e259a06fa255011',1,'Framework']]],
+  ['inertiavector_5',['inertiaVector',['../structComponent.html#a0203b634c556adb6f461e56b4ccc3af1',1,'Component']]],
+  ['initialnumberofmolecules_6',['initialNumberOfMolecules',['../structComponent.html#a185c14114d569e02eb4b493588e93521',1,'Component']]],
+  ['inputstring_7',['inputString',['../structInputReader.html#a41eda75f00d9415d2e775501ce9808af',1,'InputReader']]],
+  ['intracoul_8',['intraCoul',['../structRunningEnergy.html#a30b1ec533ad027497b2d4d9bed936ddd',1,'RunningEnergy']]],
+  ['intracoulomb_9',['intraCoulomb',['../structFramework.html#a423032cb355899ebf9f1372ecf3994c7',1,'Framework']]],
+  ['intramolecularpotentials_10',['intraMolecularPotentials',['../structComponent.html#a02900c0e4936214aabbacda286cff056',1,'Component']]],
+  ['intravdw_11',['intravdw',['../structFramework.html#a64784c841a5a4feba2cdb6b38e8a8a8f',1,'Framework::intraVDW'],['../structRunningEnergy.html#a6e4b1176212f678c23bd5bc7f8d3d3af',1,'RunningEnergy::intraVDW']]],
+  ['inverseinertiavector_12',['inverseInertiaVector',['../structComponent.html#a968417688263e19e11c6ebafb80d54c0',1,'Component']]],
+  ['inversionbends_13',['inversionBends',['../structFramework.html#ad14b767fd4cd06c6ef204eb4471d7b46',1,'Framework']]],
+  ['invmass_14',['invMass',['../structMolecule.html#acb1704646872ce5c98ad93cddabd2b08',1,'Molecule']]],
+  ['iscarriergas_15',['isCarrierGas',['../structComponent.html#ab3ffea792d45bdeb913c7fbec63f272f',1,'Component']]],
+  ['isfractional_16',['isFractional',['../structAtom.html#a514e1bcfdb9e09531756bb77933adf6d',1,'Atom']]],
+  ['isotherm_17',['isotherm',['../structComponent.html#a5078016b338c5ce128074445efcf8e32',1,'Component']]],
+  ['isothermalcompressibilityconversionfactor_18',['IsothermalCompressibilityConversionFactor',['../structUnits.html#a4245d253543ae589f2ed24274c546156',1,'Units']]]
 ];

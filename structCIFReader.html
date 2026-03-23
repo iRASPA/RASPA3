@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,7 +100,9 @@ $(document).ready(function(){initNavTree('structCIFReader.html',''); initResizab
 
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="structCIFReader-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">CIFReader Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_cif__reader.html">cif_reader</a></div></div></div>
@@ -114,23 +116,32 @@ Collaboration diagram for CIFReader:</div>
 <div class="dyncontent">
 <div class="center"><img src="structCIFReader__coll__graph.png" border="0" usemap="#aCIFReader_coll__map" alt="Collaboration graph"/></div>
 <map name="aCIFReader_coll__map" id="aCIFReader_coll__map">
-<area shape="rect" title="Handles the parsing of CIF (Crystallographic Information File) data." alt="" coords="210,196,299,221"/>
-<area shape="rect" title=" " alt="" coords="5,93,136,133"/>
-<area shape="poly" title=" " alt="" coords="78,146,84,159,92,170,112,180,141,188,210,200,209,205,140,194,110,185,89,174,79,162,73,148"/>
-<area shape="rect" title=" " alt="" coords="169,101,325,126"/>
-<area shape="poly" title=" " alt="" coords="251,139,256,196,251,196,246,140"/>
-<area shape="rect" href="structAtom.html" title="Represents an atom in the simulation system." alt="" coords="218,5,275,31"/>
-<area shape="poly" title=" " alt="" coords="249,44,249,101,244,101,244,44"/>
-<area shape="rect" href="structSimulationBox.html" title="Represents a simulation box used in simulations." alt="" coords="349,101,467,126"/>
-<area shape="poly" title=" " alt="" coords="398,139,384,158,367,174,334,192,300,202,299,197,332,187,364,170,380,154,393,136"/>
+<area shape="rect" title="Handles the parsing of CIF (Crystallographic Information File) data." alt="" coords="39,181,128,207"/>
+<area shape="rect" title=" " alt="" coords="5,93,161,119"/>
+<area shape="poly" title=" " alt="" coords="86,133,86,181,81,181,81,133"/>
+<area shape="rect" href="structAtom.html" title="Represents an atom in the simulation system." alt="" coords="55,5,112,31"/>
+<area shape="poly" title=" " alt="" coords="86,45,86,93,81,93,81,45"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a8e48387245a107f3230ffd52afb92df6" id="r_a8e48387245a107f3230ffd52afb92df6"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6">UseChargesFrom</a> : std::size_t { <a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6a1b64f85b4080ce169a2c5d231f54c386">PseudoAtoms</a> = 0
+, <a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6a315b9155fb3fda0df99195810574e8a5">CIF_File</a> = 1
+, <a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6a31c3ebb741cdfa0661ca2e821e2c7dde">ChargeEquilibration</a> = 2
+ }</td></tr>
+<tr class="memdesc:a8e48387245a107f3230ffd52afb92df6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration for specifying the source of atomic charges.  <a href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6">More...</a><br /></td></tr>
+<tr class="separator:a8e48387245a107f3230ffd52afb92df6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a651e21f5b87a8afe1cadb1813a56292e" id="r_a651e21f5b87a8afe1cadb1813a56292e"><td class="memItemLeft" align="right" valign="top"><a id="a651e21f5b87a8afe1cadb1813a56292e" name="a651e21f5b87a8afe1cadb1813a56292e"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>ParseError</b> : std::size_t { <b>invalidInput</b> = 0
+, <b>invalidForceField</b> = 1
+ }</td></tr>
+<tr class="separator:a651e21f5b87a8afe1cadb1813a56292e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a62763eaa2f920f40339dca496c4617e3" id="r_a62763eaa2f920f40339dca496c4617e3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#a62763eaa2f920f40339dca496c4617e3">CIFReader</a> (const std::string &amp;content, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField)</td></tr>
-<tr class="memdesc:a62763eaa2f920f40339dca496c4617e3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structCIFReader.html" title="Handles the parsing of CIF (Crystallographic Information File) data.">CIFReader</a> with the given CIF content and force field.  <br /></td></tr>
-<tr class="separator:a62763eaa2f920f40339dca496c4617e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86f45710e52f3eb0bfc46515285347d6" id="r_a86f45710e52f3eb0bfc46515285347d6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#a86f45710e52f3eb0bfc46515285347d6">CIFReader</a> (const std::string &amp;content)</td></tr>
+<tr class="memdesc:a86f45710e52f3eb0bfc46515285347d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structCIFReader.html" title="Handles the parsing of CIF (Crystallographic Information File) data.">CIFReader</a> with the given CIF content and force field.  <br /></td></tr>
+<tr class="separator:a86f45710e52f3eb0bfc46515285347d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4f1806ba1825c6b9c671f0bec7cb5794" id="r_a4f1806ba1825c6b9c671f0bec7cb5794"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#a4f1806ba1825c6b9c671f0bec7cb5794">parseLine</a> (std::string &amp;string)</td></tr>
 <tr class="memdesc:a4f1806ba1825c6b9c671f0bec7cb5794"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses a generic line from the CIF content.  <br /></td></tr>
 <tr class="separator:a4f1806ba1825c6b9c671f0bec7cb5794"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -149,9 +160,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aba0973110e4dd6b69b46d6b0d68bb06b" id="r_aba0973110e4dd6b69b46d6b0d68bb06b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#aba0973110e4dd6b69b46d6b0d68bb06b">parseName</a> (std::string &amp;string)</td></tr>
 <tr class="memdesc:aba0973110e4dd6b69b46d6b0d68bb06b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses the name section of the CIF content.  <br /></td></tr>
 <tr class="separator:aba0973110e4dd6b69b46d6b0d68bb06b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ade568451dea60c5e379bd9054d495c34" id="r_ade568451dea60c5e379bd9054d495c34"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#ade568451dea60c5e379bd9054d495c34">parseLoop</a> (std::string &amp;string, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField)</td></tr>
-<tr class="memdesc:ade568451dea60c5e379bd9054d495c34"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses loop constructs within the CIF content.  <br /></td></tr>
-<tr class="separator:ade568451dea60c5e379bd9054d495c34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a581662a2cc2bff171cb5f176ac9c58b7" id="r_a581662a2cc2bff171cb5f176ac9c58b7"><td class="memItemLeft" align="right" valign="top">std::expected&lt; void, ParseError &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#a581662a2cc2bff171cb5f176ac9c58b7">parseLoop</a> (std::string &amp;string, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField)</td></tr>
+<tr class="memdesc:a581662a2cc2bff171cb5f176ac9c58b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses loop constructs within the CIF content.  <br /></td></tr>
+<tr class="separator:a581662a2cc2bff171cb5f176ac9c58b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acfe205358579b54357c90076c9a8d32e" id="r_acfe205358579b54357c90076c9a8d32e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCIFReader.html#acfe205358579b54357c90076c9a8d32e">skipComment</a> ()</td></tr>
 <tr class="memdesc:acfe205358579b54357c90076c9a8d32e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Skips over comment lines in the CIF content.  <br /></td></tr>
 <tr class="separator:acfe205358579b54357c90076c9a8d32e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -171,59 +182,94 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a0289369fc9c000f8d448f413e73916e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scans and retrieves a string value from the CIF content.  <br /></td></tr>
 <tr class="separator:a0289369fc9c000f8d448f413e73916e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a7a53baa3b66d3af823ff44c4700935a6" id="r_a7a53baa3b66d3af823ff44c4700935a6"><td class="memItemLeft" align="right" valign="top"><a id="a7a53baa3b66d3af823ff44c4700935a6" name="a7a53baa3b66d3af823ff44c4700935a6"></a>
+static auto&#160;</td><td class="memItemRight" valign="bottom"><b>readCIFString</b> (const std::string &amp;content, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, <a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6">CIFReader::UseChargesFrom</a> useChargesFrom) -&gt; std::expected&lt; std::tuple&lt; <a class="el" href="structSimulationBox.html">SimulationBox</a>, std::size_t, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;, CIFReader::ParseError &gt;</td></tr>
+<tr class="separator:a7a53baa3b66d3af823ff44c4700935a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67494ea7d9949f095909b618bb68c3eb" id="r_a67494ea7d9949f095909b618bb68c3eb"><td class="memItemLeft" align="right" valign="top"><a id="a67494ea7d9949f095909b618bb68c3eb" name="a67494ea7d9949f095909b618bb68c3eb"></a>
+static std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>expandDefinedAtomsToUnitCell</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulation_box, std::size_t <a class="el" href="structCIFReader.html#a3eeeebdb01e1475397f2c7ac7d3f3030">spaceGroupHallNumber</a>, const std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &amp;definedAtoms)</td></tr>
+<tr class="separator:a67494ea7d9949f095909b618bb68c3eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a9bf6d6cb3720731d74028be292c47ee0" id="r_a9bf6d6cb3720731d74028be292c47ee0"><td class="memItemLeft" align="right" valign="top"><a id="a9bf6d6cb3720731d74028be292c47ee0" name="a9bf6d6cb3720731d74028be292c47ee0"></a>
-Scanner&#160;</td><td class="memItemRight" valign="bottom"><b>_scanner</b></td></tr>
-<tr class="memdesc:a9bf6d6cb3720731d74028be292c47ee0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scanner object for navigating through the CIF content. <br /></td></tr>
-<tr class="separator:a9bf6d6cb3720731d74028be292c47ee0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a029f5f1d39d0d3ac34f1cf6534e1675b" id="r_a029f5f1d39d0d3ac34f1cf6534e1675b"><td class="memItemLeft" align="right" valign="top"><a id="a029f5f1d39d0d3ac34f1cf6534e1675b" name="a029f5f1d39d0d3ac34f1cf6534e1675b"></a>
-std::string::const_iterator&#160;</td><td class="memItemRight" valign="bottom"><b>_previousScanLocation</b></td></tr>
-<tr class="memdesc:a029f5f1d39d0d3ac34f1cf6534e1675b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterator pointing to the previous scan location. <br /></td></tr>
-<tr class="separator:a029f5f1d39d0d3ac34f1cf6534e1675b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ae7b998ea7961f5670bafbae20e892f" id="r_a6ae7b998ea7961f5670bafbae20e892f"><td class="memItemLeft" align="right" valign="top"><a id="a6ae7b998ea7961f5670bafbae20e892f" name="a6ae7b998ea7961f5670bafbae20e892f"></a>
+Scanner&#160;</td><td class="memItemRight" valign="bottom"><b>scanner</b></td></tr>
+<tr class="memdesc:a6ae7b998ea7961f5670bafbae20e892f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scanner object for navigating through the CIF content. <br /></td></tr>
+<tr class="separator:a6ae7b998ea7961f5670bafbae20e892f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3280d0e6e6c55cffa45f595fab54c51d" id="r_a3280d0e6e6c55cffa45f595fab54c51d"><td class="memItemLeft" align="right" valign="top"><a id="a3280d0e6e6c55cffa45f595fab54c51d" name="a3280d0e6e6c55cffa45f595fab54c51d"></a>
 std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>fractionalAtoms</b></td></tr>
 <tr class="memdesc:a3280d0e6e6c55cffa45f595fab54c51d"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of atoms with fractional coordinates. <br /></td></tr>
 <tr class="separator:a3280d0e6e6c55cffa45f595fab54c51d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a599d6c872d3266e626c69564d90c6a69" id="r_a599d6c872d3266e626c69564d90c6a69"><td class="memItemLeft" align="right" valign="top"><a id="a599d6c872d3266e626c69564d90c6a69" name="a599d6c872d3266e626c69564d90c6a69"></a>
-<a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><b>simulationBox</b></td></tr>
-<tr class="memdesc:a599d6c872d3266e626c69564d90c6a69"><td class="mdescLeft">&#160;</td><td class="mdescRight">The simulation box defined by cell parameters. <br /></td></tr>
-<tr class="separator:a599d6c872d3266e626c69564d90c6a69"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a279a73f3c92144e43f29ce937ea63f66" id="r_a279a73f3c92144e43f29ce937ea63f66"><td class="memItemLeft" align="right" valign="top"><a id="a279a73f3c92144e43f29ce937ea63f66" name="a279a73f3c92144e43f29ce937ea63f66"></a>
-std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>_spaceGroupHallNumber</b></td></tr>
-<tr class="memdesc:a279a73f3c92144e43f29ce937ea63f66"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional space group Hall number. <br /></td></tr>
-<tr class="separator:a279a73f3c92144e43f29ce937ea63f66"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae39a214f3d2b3feec4280565f5565e3f" id="r_ae39a214f3d2b3feec4280565f5565e3f"><td class="memItemLeft" align="right" valign="top"><a id="ae39a214f3d2b3feec4280565f5565e3f" name="ae39a214f3d2b3feec4280565f5565e3f"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_a</b></td></tr>
-<tr class="memdesc:ae39a214f3d2b3feec4280565f5565e3f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length a. <br /></td></tr>
-<tr class="separator:ae39a214f3d2b3feec4280565f5565e3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa91e8f75cecf8fb0e3d2d0b0d442a603" id="r_aa91e8f75cecf8fb0e3d2d0b0d442a603"><td class="memItemLeft" align="right" valign="top"><a id="aa91e8f75cecf8fb0e3d2d0b0d442a603" name="aa91e8f75cecf8fb0e3d2d0b0d442a603"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_b</b></td></tr>
-<tr class="memdesc:aa91e8f75cecf8fb0e3d2d0b0d442a603"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length b. <br /></td></tr>
-<tr class="separator:aa91e8f75cecf8fb0e3d2d0b0d442a603"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3bf89270e9f634d03b355734a4233e61" id="r_a3bf89270e9f634d03b355734a4233e61"><td class="memItemLeft" align="right" valign="top"><a id="a3bf89270e9f634d03b355734a4233e61" name="a3bf89270e9f634d03b355734a4233e61"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_c</b></td></tr>
-<tr class="memdesc:a3bf89270e9f634d03b355734a4233e61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length c. <br /></td></tr>
-<tr class="separator:a3bf89270e9f634d03b355734a4233e61"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1b341eaabc6ce2cffb40c86fc87b68a0" id="r_a1b341eaabc6ce2cffb40c86fc87b68a0"><td class="memItemLeft" align="right" valign="top"><a id="a1b341eaabc6ce2cffb40c86fc87b68a0" name="a1b341eaabc6ce2cffb40c86fc87b68a0"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_alpha</b></td></tr>
-<tr class="memdesc:a1b341eaabc6ce2cffb40c86fc87b68a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle alpha in degrees. <br /></td></tr>
-<tr class="separator:a1b341eaabc6ce2cffb40c86fc87b68a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4c665e0faa99e34c1f6ee00a6f018e0a" id="r_a4c665e0faa99e34c1f6ee00a6f018e0a"><td class="memItemLeft" align="right" valign="top"><a id="a4c665e0faa99e34c1f6ee00a6f018e0a" name="a4c665e0faa99e34c1f6ee00a6f018e0a"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_beta</b></td></tr>
-<tr class="memdesc:a4c665e0faa99e34c1f6ee00a6f018e0a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle beta in degrees. <br /></td></tr>
-<tr class="separator:a4c665e0faa99e34c1f6ee00a6f018e0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4a6a7c98b7496c883dfc9a1b63cb7faa" id="r_a4a6a7c98b7496c883dfc9a1b63cb7faa"><td class="memItemLeft" align="right" valign="top"><a id="a4a6a7c98b7496c883dfc9a1b63cb7faa" name="a4a6a7c98b7496c883dfc9a1b63cb7faa"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>_gamma</b></td></tr>
-<tr class="memdesc:a4a6a7c98b7496c883dfc9a1b63cb7faa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle gamma in degrees. <br /></td></tr>
-<tr class="separator:a4a6a7c98b7496c883dfc9a1b63cb7faa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3eeeebdb01e1475397f2c7ac7d3f3030" id="r_a3eeeebdb01e1475397f2c7ac7d3f3030"><td class="memItemLeft" align="right" valign="top"><a id="a3eeeebdb01e1475397f2c7ac7d3f3030" name="a3eeeebdb01e1475397f2c7ac7d3f3030"></a>
+std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spaceGroupHallNumber</b></td></tr>
+<tr class="memdesc:a3eeeebdb01e1475397f2c7ac7d3f3030"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional space group Hall number. <br /></td></tr>
+<tr class="separator:a3eeeebdb01e1475397f2c7ac7d3f3030"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5503f2257339145502fe3f9c3096b1fe" id="r_a5503f2257339145502fe3f9c3096b1fe"><td class="memItemLeft" align="right" valign="top"><a id="a5503f2257339145502fe3f9c3096b1fe" name="a5503f2257339145502fe3f9c3096b1fe"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>a</b></td></tr>
+<tr class="memdesc:a5503f2257339145502fe3f9c3096b1fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length a. <br /></td></tr>
+<tr class="separator:a5503f2257339145502fe3f9c3096b1fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a685d91feda1eef7d9210910b2479ae96" id="r_a685d91feda1eef7d9210910b2479ae96"><td class="memItemLeft" align="right" valign="top"><a id="a685d91feda1eef7d9210910b2479ae96" name="a685d91feda1eef7d9210910b2479ae96"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>b</b></td></tr>
+<tr class="memdesc:a685d91feda1eef7d9210910b2479ae96"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length b. <br /></td></tr>
+<tr class="separator:a685d91feda1eef7d9210910b2479ae96"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7149b4da5211b6f5b838b0d3292e492f" id="r_a7149b4da5211b6f5b838b0d3292e492f"><td class="memItemLeft" align="right" valign="top"><a id="a7149b4da5211b6f5b838b0d3292e492f" name="a7149b4da5211b6f5b838b0d3292e492f"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>c</b></td></tr>
+<tr class="memdesc:a7149b4da5211b6f5b838b0d3292e492f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell length c. <br /></td></tr>
+<tr class="separator:a7149b4da5211b6f5b838b0d3292e492f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cf19cdb14a1afe1228b3cc920a28f01" id="r_a4cf19cdb14a1afe1228b3cc920a28f01"><td class="memItemLeft" align="right" valign="top"><a id="a4cf19cdb14a1afe1228b3cc920a28f01" name="a4cf19cdb14a1afe1228b3cc920a28f01"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>alpha</b></td></tr>
+<tr class="memdesc:a4cf19cdb14a1afe1228b3cc920a28f01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle alpha in degrees. <br /></td></tr>
+<tr class="separator:a4cf19cdb14a1afe1228b3cc920a28f01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b7d8ee8dacb96ba0b7ce64eb00ed397" id="r_a9b7d8ee8dacb96ba0b7ce64eb00ed397"><td class="memItemLeft" align="right" valign="top"><a id="a9b7d8ee8dacb96ba0b7ce64eb00ed397" name="a9b7d8ee8dacb96ba0b7ce64eb00ed397"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>beta</b></td></tr>
+<tr class="memdesc:a9b7d8ee8dacb96ba0b7ce64eb00ed397"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle beta in degrees. <br /></td></tr>
+<tr class="separator:a9b7d8ee8dacb96ba0b7ce64eb00ed397"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af22592d56fbfbf063c452141313287ec" id="r_af22592d56fbfbf063c452141313287ec"><td class="memItemLeft" align="right" valign="top"><a id="af22592d56fbfbf063c452141313287ec" name="af22592d56fbfbf063c452141313287ec"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>gamma</b></td></tr>
+<tr class="memdesc:af22592d56fbfbf063c452141313287ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell angle gamma in degrees. <br /></td></tr>
+<tr class="separator:af22592d56fbfbf063c452141313287ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Handles the parsing of CIF (Crystallographic Information File) data. </p>
 <p>The <a class="el" href="structCIFReader.html" title="Handles the parsing of CIF (Crystallographic Information File) data.">CIFReader</a> struct is responsible for reading and interpreting CIF content, extracting relevant information such as atomic positions, simulation box parameters, and symmetry details. It utilizes a Scanner to navigate through the CIF content and populates structures like fractionalAtoms and simulationBox based on the parsed data. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="a62763eaa2f920f40339dca496c4617e3" name="a62763eaa2f920f40339dca496c4617e3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a62763eaa2f920f40339dca496c4617e3">&#9670;&#160;</a></span>CIFReader()</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a8e48387245a107f3230ffd52afb92df6" name="a8e48387245a107f3230ffd52afb92df6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8e48387245a107f3230ffd52afb92df6">&#9670;&#160;</a></span>UseChargesFrom</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structCIFReader.html#a8e48387245a107f3230ffd52afb92df6">CIFReader::UseChargesFrom</a> : std::size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration for specifying the source of atomic charges. </p>
+<p>UseChargesFrom defines the source from which atomic charges should be obtained. Options include using charges from pseudo-atoms, the CIF file, or by performing charge equilibration calculations. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8e48387245a107f3230ffd52afb92df6a1b64f85b4080ce169a2c5d231f54c386" name="a8e48387245a107f3230ffd52afb92df6a1b64f85b4080ce169a2c5d231f54c386"></a>PseudoAtoms&#160;</td><td class="fielddoc"><p>Use charges from pseudo-atoms defined in the force field. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a8e48387245a107f3230ffd52afb92df6a315b9155fb3fda0df99195810574e8a5" name="a8e48387245a107f3230ffd52afb92df6a315b9155fb3fda0df99195810574e8a5"></a>CIF_File&#160;</td><td class="fielddoc"><p>Use charges specified in the CIF file. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a8e48387245a107f3230ffd52afb92df6a31c3ebb741cdfa0661ca2e821e2c7dde" name="a8e48387245a107f3230ffd52afb92df6a31c3ebb741cdfa0661ca2e821e2c7dde"></a>ChargeEquilibration&#160;</td><td class="fielddoc"><p>Compute charges using charge equilibration methods. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a86f45710e52f3eb0bfc46515285347d6" name="a86f45710e52f3eb0bfc46515285347d6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a86f45710e52f3eb0bfc46515285347d6">&#9670;&#160;</a></span>CIFReader()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -232,18 +278,8 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>_gamma</b></td></tr
           <td class="memname">CIFReader::CIFReader </td>
           <td>(</td>
           <td class="paramtype">const std::string &amp;&#160;</td>
-          <td class="paramname"><em>content</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
+          <td class="paramname"><em>content</em></td><td>)</td>
           <td></td>
-          <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
-          <td class="paramname"><em>forceField</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -369,14 +405,14 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>_gamma</b></td></tr
 
 </div>
 </div>
-<a id="ade568451dea60c5e379bd9054d495c34" name="ade568451dea60c5e379bd9054d495c34"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ade568451dea60c5e379bd9054d495c34">&#9670;&#160;</a></span>parseLoop()</h2>
+<a id="a581662a2cc2bff171cb5f176ac9c58b7" name="a581662a2cc2bff171cb5f176ac9c58b7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a581662a2cc2bff171cb5f176ac9c58b7">&#9670;&#160;</a></span>parseLoop()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void CIFReader::parseLoop </td>
+          <td class="memname">std::expected&lt; void, ParseError &gt; CIFReader::parseLoop </td>
           <td>(</td>
           <td class="paramtype">std::string &amp;&#160;</td>
           <td class="paramname"><em>string</em>, </td>

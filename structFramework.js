@@ -1,19 +1,11 @@
 var structFramework =
 [
-    [ "UseChargesFrom", "structFramework.html#ab50a57d40879663e918566c32fdf8a3e", [
-      [ "PseudoAtoms", "structFramework.html#ab50a57d40879663e918566c32fdf8a3ea1b64f85b4080ce169a2c5d231f54c386", null ],
-      [ "CIF_File", "structFramework.html#ab50a57d40879663e918566c32fdf8a3ea315b9155fb3fda0df99195810574e8a5", null ],
-      [ "ChargeEquilibration", "structFramework.html#ab50a57d40879663e918566c32fdf8a3ea31c3ebb741cdfa0661ca2e821e2c7dde", null ]
-    ] ],
     [ "Framework", "structFramework.html#ad6e5ec2ae2d5b1309b75065911b29bb5", null ],
-    [ "Framework", "structFramework.html#a0d3ccfbe69f3ea43a821b6838811f498", null ],
-    [ "Framework", "structFramework.html#ad2fbc8aefaa23d01e264b4b498944ff5", null ],
-    [ "expandDefinedAtomsToUnitCell", "structFramework.html#a5233b6bd6e7b32e8247e921a30ed3bd7", null ],
+    [ "Framework", "structFramework.html#a56d99608c689f813ba5fb54078279586", null ],
     [ "jsonStatus", "structFramework.html#a9010afb68992da3d1af28c9d001f3b86", null ],
     [ "makeSuperCell", "structFramework.html#a168c49f456383c575b9f350b7473214b", null ],
     [ "printBreakthroughStatus", "structFramework.html#aa3079de3f2f2bb15eea31fca562c8fdb", null ],
     [ "printStatus", "structFramework.html#a4250dcc25dc2e97e2e8b1f6cc976ce27", null ],
-    [ "readFramework", "structFramework.html#ad1c7cabc83fe53d359c45e66f94b4800", null ],
     [ "repr", "structFramework.html#a2607e53083250ade6622ac4486b3110e", null ],
     [ "atoms", "structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc", null ],
     [ "bendBends", "structFramework.html#a59feb222eab8f63e7eeee3d3218e9ec5", null ],
@@ -26,7 +18,7 @@ var structFramework =
     [ "definedAtoms", "structFramework.html#a475dae055516622ba4a8e3d473badb1f", null ],
     [ "excludedIntraCoulomb", "structFramework.html#ac42912bbd546cbd5dc40c13766e3f304", null ],
     [ "filename", "structFramework.html#af10e1803eb1c32bfa8c08a9b8b6e7fba", null ],
-    [ "filenameData", "structFramework.html#a348df2598cb6c7039384a0e8cad71f7d", null ],
+    [ "fractionalUnitCellAtoms", "structFramework.html#a66440c72e59f168d54ed065120825503", null ],
     [ "frameworkId", "structFramework.html#ab34db0b26cb8464992c1cbfb6b1ef7f3", null ],
     [ "ImproperTorsions", "structFramework.html#adadd52be918d14011e259a06fa255011", null ],
     [ "intraCoulomb", "structFramework.html#a423032cb355899ebf9f1372ecf3994c7", null ],
@@ -47,6 +39,5 @@ var structFramework =
     [ "unitCellAtoms", "structFramework.html#ac9045e4dea0148298f7c8158f7d54674", null ],
     [ "unitCellMass", "structFramework.html#a0ce70b3d086431b6779b2856ce1002ac", null ],
     [ "UreyBradley", "structFramework.html#ab46dc1a4ad93dce1cd946090a5cc1ece", null ],
-    [ "useChargesFrom", "structFramework.html#a2b7400ee595aac7dc2e7ceb43a81b7ec", null ],
     [ "versionNumber", "structFramework.html#a9e6e81f0e1dd71c7a98e7d2c0597bf6d", null ]
 ];

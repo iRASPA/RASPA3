@@ -15,6 +15,7 @@ var annotated_dup =
       [ "hash< MultiSiteIsotherm >", "structstd_1_1hash_3_01MultiSiteIsotherm_01_4.html", null ]
     ] ],
     [ "Atom", "structAtom.html", "structAtom" ],
+    [ "AtomTypeEqual", "structAtomTypeEqual.html", null ],
     [ "BanVlugtPoreSizeDistribution", "structBanVlugtPoreSizeDistribution.html", null ],
     [ "BendBendPotential", "structBendBendPotential.html", "structBendBendPotential" ],
     [ "BendPotential", "structBendPotential.html", "structBendPotential" ],
@@ -47,6 +48,8 @@ var annotated_dup =
     [ "Framework", "structFramework.html", "structFramework" ],
     [ "InputDataSystem", "structInputDataSystem.html", "structInputDataSystem" ],
     [ "InputReader", "structInputReader.html", "structInputReader" ],
+    [ "Integration_OpenCL_SurfaceArea", "structIntegration__OpenCL__SurfaceArea.html", null ],
+    [ "Integration_SurfaceArea", "structIntegration__SurfaceArea.html", null ],
     [ "IntegratorsCPUTime", "structIntegratorsCPUTime.html", null ],
     [ "InterpolationEnergyGrid", "structInterpolationEnergyGrid.html", null ],
     [ "InversionBendPotential", "structInversionBendPotential.html", "structInversionBendPotential" ],

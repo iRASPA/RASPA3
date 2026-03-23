@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -177,6 +177,14 @@ Public Types</h2></td></tr>
 &#160;&#160;<b>MullerBrown</b> = 8
 , <b>Eckhardt</b> = 9
 , <b>GonzalezSchlegel</b> = 10
+, <b>CylinderX</b> = 11
+, <br />
+&#160;&#160;<b>CylinderY</b> = 12
+, <b>CylinderZ</b> = 13
+, <b>RectangleX</b> = 14
+, <b>RectangleY</b> = 15
+, <br />
+&#160;&#160;<b>RectangleZ</b> = 16
 <br />
  }</td></tr>
 <tr class="separator:a5769c5da4bd71f318edc7a1cbb9d10d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -267,6 +275,15 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ac21ee3abedbcf19043b71662487aee64" id="r_ac21ee3abedbcf19043b71662487aee64"><td class="memItemLeft" align="right" valign="top">static std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#ac21ee3abedbcf19043b71662487aee64">findPseudoAtom</a> (const std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt; <a class="el" href="structForceField.html#aba31b1a2878451120cd0812ae8e8642f">pseudoAtoms</a>, const std::string &amp;name)</td></tr>
 <tr class="memdesc:ac21ee3abedbcf19043b71662487aee64"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the index of a pseudo-atom by name in a given list.  <br /></td></tr>
 <tr class="separator:ac21ee3abedbcf19043b71662487aee64"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5be6599eab7c00bc2199e2e8c611c38b" id="r_a5be6599eab7c00bc2199e2e8c611c38b"><td class="memItemLeft" align="right" valign="top"><a id="a5be6599eab7c00bc2199e2e8c611c38b" name="a5be6599eab7c00bc2199e2e8c611c38b"></a>
+static <a class="el" href="structForceField.html">ForceField</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeZeoliteForceField</b> (double rc=12.0, bool shifted=true, bool <a class="el" href="structForceField.html#a2ffc7f07b5a3ec9130049ed5eb978129">tailCorrections</a>=false, bool useEwald=false)</td></tr>
+<tr class="separator:a5be6599eab7c00bc2199e2e8c611c38b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a97a0eaf1327a045ea9d425893afcb75f" id="r_a97a0eaf1327a045ea9d425893afcb75f"><td class="memItemLeft" align="right" valign="top"><a id="a97a0eaf1327a045ea9d425893afcb75f" name="a97a0eaf1327a045ea9d425893afcb75f"></a>
+static <a class="el" href="structForceField.html">ForceField</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeMetalOrganicFrameworkForceField</b> (double rc=12.0, bool shifted=true, bool <a class="el" href="structForceField.html#a2ffc7f07b5a3ec9130049ed5eb978129">tailCorrections</a>=false, bool useEwald=false)</td></tr>
+<tr class="separator:a97a0eaf1327a045ea9d425893afcb75f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2cb4a97d588e16ce359f53ff3b386ee8" id="r_a2cb4a97d588e16ce359f53ff3b386ee8"><td class="memItemLeft" align="right" valign="top"><a id="a2cb4a97d588e16ce359f53ff3b386ee8" name="a2cb4a97d588e16ce359f53ff3b386ee8"></a>
+static <a class="el" href="structForceField.html">ForceField</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeZeoPlusPlusForceField</b> (double rc=12.0, bool shifted=true, bool <a class="el" href="structForceField.html#a2ffc7f07b5a3ec9130049ed5eb978129">tailCorrections</a>=false, bool useEwald=false)</td></tr>
+<tr class="separator:a2cb4a97d588e16ce359f53ff3b386ee8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -438,6 +455,9 @@ uint3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfExternalFiel
 <tr class="memitem:a86ea5df86de0886ca72b5e677e38fc14" id="r_a86ea5df86de0886ca72b5e677e38fc14"><td class="memItemLeft" align="right" valign="top"><a id="a86ea5df86de0886ca72b5e677e38fc14" name="a86ea5df86de0886ca72b5e677e38fc14"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>writeExternalFieldInterpolationGrid</b> { false }</td></tr>
 <tr class="separator:a86ea5df86de0886ca72b5e677e38fc14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad62e306a7a083087d381aae294581b4d" id="r_ad62e306a7a083087d381aae294581b4d"><td class="memItemLeft" align="right" valign="top"><a id="ad62e306a7a083087d381aae294581b4d" name="ad62e306a7a083087d381aae294581b4d"></a>
+double4&#160;</td><td class="memItemRight" valign="bottom"><b>externalFieldGeometryParameters</b> {5.0, 5.0, 0.0, 0.0}</td></tr>
+<tr class="separator:ad62e306a7a083087d381aae294581b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>

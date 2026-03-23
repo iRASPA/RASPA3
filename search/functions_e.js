@@ -7,7 +7,7 @@ var searchData=
   ['parseexternalfieldgridcube_4',['parseExternalFieldGridCube',['../structInterpolationEnergyGrid.html#abcefdd923928f1e86e134b2b35de3da0',1,'InterpolationEnergyGrid']]],
   ['parsefitting_5',['parseFitting',['../structInputReader.html#aecd6ed6ed7111634ddf48a24f0abcd54',1,'InputReader']]],
   ['parseline_6',['parseLine',['../structCIFReader.html#a4f1806ba1825c6b9c671f0bec7cb5794',1,'CIFReader']]],
-  ['parseloop_7',['parseLoop',['../structCIFReader.html#ade568451dea60c5e379bd9054d495c34',1,'CIFReader']]],
+  ['parseloop_7',['parseLoop',['../structCIFReader.html#a581662a2cc2bff171cb5f176ac9c58b7',1,'CIFReader']]],
   ['parsemixtureprediction_8',['parseMixturePrediction',['../structInputReader.html#a02b6512855ead67e9e8c7a9b0d45c421',1,'InputReader']]],
   ['parsemolecularsimulations_9',['parseMolecularSimulations',['../structInputReader.html#a538c6d8d75fbf3622adb8cc26fe88393',1,'InputReader']]],
   ['parsename_10',['parseName',['../structCIFReader.html#aba0973110e4dd6b69b46d6b0d68bb06b',1,'CIFReader']]],

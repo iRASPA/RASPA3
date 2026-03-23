@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,6 +102,7 @@ $(document).ready(function(){initNavTree('structComponent.html',''); initResizab
   <div class="summary">
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="structComponent-members.html">List of all members</a>  </div>
@@ -318,6 +319,21 @@ std::vector&lt; std::vector&lt; std::size_t &gt; &gt;&#160;</td><td class="memIt
 <tr class="memitem:aeeda438752491b095b04b162f1d539ff" id="r_aeeda438752491b095b04b162f1d539ff"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#aeeda438752491b095b04b162f1d539ff">repr</a> () const</td></tr>
 <tr class="memdesc:aeeda438752491b095b04b162f1d539ff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a>.  <br /></td></tr>
 <tr class="separator:aeeda438752491b095b04b162f1d539ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:af8d394086e39edb2c3cea5c0565a1f26" id="r_af8d394086e39edb2c3cea5c0565a1f26"><td class="memItemLeft" align="right" valign="top"><a id="af8d394086e39edb2c3cea5c0565a1f26" name="af8d394086e39edb2c3cea5c0565a1f26"></a>
+static <a class="el" href="structComponent.html">Component</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeMethane</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t id=0)</td></tr>
+<tr class="separator:af8d394086e39edb2c3cea5c0565a1f26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a44d45146e7ff37f76731ad70f9058acb" id="r_a44d45146e7ff37f76731ad70f9058acb"><td class="memItemLeft" align="right" valign="top"><a id="a44d45146e7ff37f76731ad70f9058acb" name="a44d45146e7ff37f76731ad70f9058acb"></a>
+static <a class="el" href="structComponent.html">Component</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeCO2</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t id=0, bool useCharges=true)</td></tr>
+<tr class="separator:a44d45146e7ff37f76731ad70f9058acb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a17c329051d37304ff02e6e19977e1a6a" id="r_a17c329051d37304ff02e6e19977e1a6a"><td class="memItemLeft" align="right" valign="top"><a id="a17c329051d37304ff02e6e19977e1a6a" name="a17c329051d37304ff02e6e19977e1a6a"></a>
+static <a class="el" href="structComponent.html">Component</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeWater</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t id=0, bool useCharges=true)</td></tr>
+<tr class="separator:a17c329051d37304ff02e6e19977e1a6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d9870e164a7e33f73518a26661c7dcd" id="r_a2d9870e164a7e33f73518a26661c7dcd"><td class="memItemLeft" align="right" valign="top"><a id="a2d9870e164a7e33f73518a26661c7dcd" name="a2d9870e164a7e33f73518a26661c7dcd"></a>
+static <a class="el" href="structComponent.html">Component</a>&#160;</td><td class="memItemRight" valign="bottom"><b>makeIon</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t id, std::string_view <a class="el" href="structComponent.html#a46343549452bda5ee9752f7a9bc15efb">name</a>, std::size_t <a class="el" href="structComponent.html#a18de93d5a176aa3cd6dc6724788dfacb">type</a>, double q)</td></tr>
+<tr class="separator:a2d9870e164a7e33f73518a26661c7dcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>

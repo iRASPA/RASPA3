@@ -153,6 +153,8 @@ var modules_dup =
     [ "energy_opencl_void_fraction", "module_energy__opencl__void__fraction.html", "module_energy__opencl__void__fraction" ],
     [ "pore_size_distribution_ban_vlugt", "module_pore__size__distribution__ban__vlugt.html", "module_pore__size__distribution__ban__vlugt" ],
     [ "tessellation", "module_tessellation.html", "module_tessellation" ],
+    [ "integration_surface_area", "module_integration__surface__area.html", "module_integration__surface__area" ],
+    [ "integration_opencl_surface_area", "module_integration__opencl__surface__area.html", "module_integration__opencl__surface__area" ],
     [ "mc_pore_size_distribution", "module_mc__pore__size__distribution.html", "module_mc__pore__size__distribution" ],
     [ "mc_surface_area", "module_mc__surface__area.html", "module_mc__surface__area" ],
     [ "mc_void_fraction", "module_mc__void__fraction.html", "module_mc__void__fraction" ],

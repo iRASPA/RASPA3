@@ -1,12 +1,24 @@
 var searchData=
 [
-  ['_5fa_0',['_a',['../structCIFReader.html#ae39a214f3d2b3feec4280565f5565e3f',1,'CIFReader']]],
-  ['_5falpha_1',['_alpha',['../structCIFReader.html#a1b341eaabc6ce2cffb40c86fc87b68a0',1,'CIFReader']]],
-  ['_5fb_2',['_b',['../structCIFReader.html#aa91e8f75cecf8fb0e3d2d0b0d442a603',1,'CIFReader']]],
-  ['_5fbeta_3',['_beta',['../structCIFReader.html#a4c665e0faa99e34c1f6ee00a6f018e0a',1,'CIFReader']]],
-  ['_5fc_4',['_c',['../structCIFReader.html#a3bf89270e9f634d03b355734a4233e61',1,'CIFReader']]],
-  ['_5fgamma_5',['_gamma',['../structCIFReader.html#a4a6a7c98b7496c883dfc9a1b63cb7faa',1,'CIFReader']]],
-  ['_5fpreviousscanlocation_6',['_previousScanLocation',['../structCIFReader.html#a029f5f1d39d0d3ac34f1cf6534e1675b',1,'CIFReader']]],
-  ['_5fscanner_7',['_scanner',['../structCIFReader.html#a9bf6d6cb3720731d74028be292c47ee0',1,'CIFReader']]],
-  ['_5fspacegrouphallnumber_8',['_spaceGroupHallNumber',['../structCIFReader.html#a279a73f3c92144e43f29ce937ea63f66',1,'CIFReader']]]
+  ['a_0',['a',['../structCIFReader.html#a5503f2257339145502fe3f9c3096b1fe',1,'CIFReader']]],
+  ['accelerationconversionfactor_1',['AccelerationConversionFactor',['../structUnits.html#a850ea61419c41c68e5e461cf98475c56',1,'Units']]],
+  ['accepted_2',['accepted',['../structMoveStatistics.html#a799069d5dbb12fdb5b51227f3baf2ca4',1,'MoveStatistics']]],
+  ['acentricfactor_3',['acentricFactor',['../structComponent.html#a61be6b113448c6c1e5a5763528a8dcdb',1,'Component']]],
+  ['allcounts_4',['allCounts',['../structMoveStatistics.html#a1eceaa46f9b9ba66c5eb3a6824aa98be',1,'MoveStatistics']]],
+  ['alpha_5',['alpha',['../structCIFReader.html#a4cf19cdb14a1afe1228b3cc920a28f01',1,'CIFReader']]],
+  ['amountofexcessmolecules_6',['amountOfExcessMolecules',['../structComponent.html#a8057a8d75af4e0a5ec9091a4be153ec0',1,'Component']]],
+  ['angstrom_7',['Angstrom',['../structUnits.html#a3548d73ceb799c38cffca511355bbc6b',1,'Units']]],
+  ['angstromcubed_8',['AngstromCubed',['../structUnits.html#aaeb7399c67376bd80a25d8f9ebabd5e9',1,'Units']]],
+  ['atmtobar_9',['AtmToBar',['../structUnits.html#adc9a61843a7de96f0ab8c66669d3d401',1,'Units']]],
+  ['atmtokpa_10',['AtmTokPa',['../structUnits.html#a14c2d6cd6c619a1df5c749417d61fd1b',1,'Units']]],
+  ['atmtopa_11',['AtmToPa',['../structUnits.html#a441d54c2fd74f39c7795d310d0e7ea2f',1,'Units']]],
+  ['atmtotorr_12',['AtmToTorr',['../structUnits.html#ae6ca36c1a78effc472e16e004832a4d2',1,'Units']]],
+  ['atomicmassunit_13',['AtomicMassUnit',['../structUnits.html#abc575ca8bd257ccccecd321aa6e3c439',1,'Units']]],
+  ['atomicnumber_14',['atomicNumber',['../structPseudoAtom.html#a39d393bf27ffb4e119044bc600d5b82c',1,'PseudoAtom']]],
+  ['atomindex_15',['atomIndex',['../structMolecule.html#abf58540516f717f884a45164522bdb77',1,'Molecule']]],
+  ['atoms_16',['atoms',['../structComponent.html#af7ca684104452c143bb5be2d91654de3',1,'Component::atoms'],['../structFramework.html#a641c45786b6458fe6b43215bb5cb6ffc',1,'Framework::atoms']]],
+  ['automaticewald_17',['automaticEwald',['../structForceField.html#abf5cc2af0745da32eaa15935ac71c65e',1,'ForceField']]],
+  ['averagerosenbluthweights_18',['averageRosenbluthWeights',['../structComponent.html#a371290e41662794fbd284fe60bf2745a',1,'Component']]],
+  ['avogadroconstant_19',['AvogadroConstant',['../structUnits.html#a87e95ae2d47550be077a34f30fb0cb36',1,'Units']]],
+  ['axialdispersioncoefficient_20',['axialDispersionCoefficient',['../structComponent.html#a94286dab5dd62994168deb8993467449',1,'Component']]]
 ];

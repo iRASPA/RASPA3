@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['usechargesfrom_0',['UseChargesFrom',['../structFramework.html#ab50a57d40879663e918566c32fdf8a3e',1,'Framework']]]
+  ['usechargesfrom_0',['UseChargesFrom',['../structCIFReader.html#a8e48387245a107f3230ffd52afb92df6',1,'CIFReader']]]
 ];

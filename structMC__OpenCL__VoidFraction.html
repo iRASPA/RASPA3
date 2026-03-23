@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.21</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,6 +102,7 @@ $(document).ready(function(){initNavTree('structMC__OpenCL__VoidFraction.html','
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="structMC__OpenCL__VoidFraction-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">MC_OpenCL_VoidFraction Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_mc__opencl__void__fraction.html">mc_opencl_void_fraction</a></div></div></div>
 </div><!--header-->
@@ -125,9 +126,24 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> (const <a cla
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
+<tr class="memitem:ab907dcae0e52d1c93c233c3594db418d" id="r_ab907dcae0e52d1c93c233c3594db418d"><td class="memItemLeft" align="right" valign="top"><a id="ab907dcae0e52d1c93c233c3594db418d" name="ab907dcae0e52d1c93c233c3594db418d"></a>
+cl_program&#160;</td><td class="memItemRight" valign="bottom"><b>voidFractionProgram</b></td></tr>
+<tr class="separator:ab907dcae0e52d1c93c233c3594db418d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ec4e315596ceedc08e0d6cd49d10e2a" id="r_a5ec4e315596ceedc08e0d6cd49d10e2a"><td class="memItemLeft" align="right" valign="top"><a id="a5ec4e315596ceedc08e0d6cd49d10e2a" name="a5ec4e315596ceedc08e0d6cd49d10e2a"></a>
+cl_kernel&#160;</td><td class="memItemRight" valign="bottom"><b>voidFractionKernel</b></td></tr>
+<tr class="separator:a5ec4e315596ceedc08e0d6cd49d10e2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9d25e751a787d9cb78747e778434320e" id="r_a9d25e751a787d9cb78747e778434320e"><td class="memItemLeft" align="right" valign="top"><a id="a9d25e751a787d9cb78747e778434320e" name="a9d25e751a787d9cb78747e778434320e"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>voidFractionWorkGroupSize</b></td></tr>
+<tr class="separator:a9d25e751a787d9cb78747e778434320e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa15d41c1af502c3511cb3c24e488c60c" id="r_aa15d41c1af502c3511cb3c24e488c60c"><td class="memItemLeft" align="right" valign="top"><a id="aa15d41c1af502c3511cb3c24e488c60c" name="aa15d41c1af502c3511cb3c24e488c60c"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
 <tr class="separator:aa15d41c1af502c3511cb3c24e488c60c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:aae34dcb8edd87e3bc872778eb2542b6b" id="r_aae34dcb8edd87e3bc872778eb2542b6b"><td class="memItemLeft" align="right" valign="top"><a id="aae34dcb8edd87e3bc872778eb2542b6b" name="aae34dcb8edd87e3bc872778eb2542b6b"></a>
+static const char *&#160;</td><td class="memItemRight" valign="bottom"><b>voidFractionKernelSource</b></td></tr>
+<tr class="separator:aae34dcb8edd87e3bc872778eb2542b6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/structure_properties/monte_carlo_opencl/<b>void_fraction.ixx</b></li>
