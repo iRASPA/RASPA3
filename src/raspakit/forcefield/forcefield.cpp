@@ -1153,14 +1153,13 @@ std::string ForceField::printForceFieldStatus() const
                      tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
           break;
         case VDWParameters::Type::Morse:
-          std::print(stream, "{:8} - {:8} {:14} D{}: {:9.5f} [{}], a{}: {:8.5f} [{}]\n", pseudoAtoms[i].name,
+          std::print(stream, "{:8} - {:8} {:14} D{}: {:9.5f} [{}], a:  {:8.5f} [{}⁻¹]\n", pseudoAtoms[i].name,
                      pseudoAtoms[j].name, "Morse", Units::displayedUnitOfEnergyConversionString,
                      Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
-                     Units::displayedUnitOfEnergyString, Units::displayedUnitOfEnergyConversionString,
-                     Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.y,
-                     Units::displayedUnitOfEnergyString);
-          std::print(stream, "{:34} r0 {:9.5f} [{}]\n", std::string(""), data[i * numberOfPseudoAtoms + j].parameters.z,
+                     Units::displayedUnitOfEnergyString, data[i * numberOfPseudoAtoms + j].parameters.y,
                      Units::displayedUnitOfLengthString);
+          std::print(stream, "{:34} r0     {:9.5f} [{}]\n", std::string(""),
+                     data[i * numberOfPseudoAtoms + j].parameters.z, Units::displayedUnitOfLengthString);
           break;
         case VDWParameters::Type::None:
           std::print(stream, "{:8} - {:8} None\n", pseudoAtoms[i].name, pseudoAtoms[j].name);
