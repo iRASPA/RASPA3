@@ -17,7 +17,7 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(raspa3
-  VERSION 3.0.22
+  VERSION 3.0.23
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
@@ -88,6 +88,7 @@ FetchContent_MakeAvailable(voro++)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
 set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
+set(HDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16 OFF CACHE BOOL "Build static libraries" FORCE)
 FetchContent_Declare(hdf5
   GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
     GIT_TAG 2.1.1

@@ -46,6 +46,7 @@ def increment_version(current_version, part):
 def main(new_version_or_part):
     pyproject_file = "pyproject.toml"
     cmake_file = "CMakeLists.txt"
+    pkgbuild_arm_file = "packaging/PKGBUILD-arm64"
     pkgbuild_core_file = "packaging/PKGBUILD-core-avx2"
     pkgbuild_skyl_file = "packaging/PKGBUILD-skylake-avx512"
     makefilemanual_file = "src/makefile-manual"
@@ -78,6 +79,7 @@ def main(new_version_or_part):
 
     bump_version(pyproject_file, pyproject_pattern, new_pyproject_version)
     bump_version(cmake_file, cmake_pattern, new_cmake_version)
+    bump_version(pkgbuild_arm_file, pkgbuild_pattern, new_pkgbuild_version)
     bump_version(pkgbuild_core_file, pkgbuild_pattern, new_pkgbuild_version)
     bump_version(pkgbuild_skyl_file, pkgbuild_pattern, new_pkgbuild_version)
     bump_version(makefilemanual_file, makefilemanual_pattern, new_makefilemanual_version)
