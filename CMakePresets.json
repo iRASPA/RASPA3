@@ -1023,7 +1023,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-linux-gnu/libomp.so.5",
-        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/llvm-21/lib/libc++.modules.json",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1043,7 +1042,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-linux-gnu/libomp.so.5",
-        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/llvm-21/lib/libc++.modules.json",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
