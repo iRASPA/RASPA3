@@ -1515,6 +1515,28 @@
       }
     },
     {
+      "name": "linux-x86_64-core-avx2-opensuse-leap-16.0",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM19, libedit0, libomp19-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-opensuse-leap-16.0",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
       "name": "linux-x86_64-core-avx2-opensuse-leap-15.2",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
@@ -1584,6 +1606,9 @@
       "name": "linux-x86_64-core-avx2-opensuse-leap-15.5",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1595,6 +1620,9 @@
       "name": "linux-x86_64-skylake-avx512-opensuse-leap-15.5",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1606,6 +1634,9 @@
       "name": "linux-x86_64-core-avx2-opensuse-leap-15.6",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1617,6 +1648,9 @@
       "name": "linux-x86_64-skylake-avx512-opensuse-leap-15.6",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1629,15 +1663,14 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libedit0, libomp-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1646,15 +1679,14 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libedit0, libomp-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1691,51 +1723,127 @@
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-35",
+      "name": "linux-x86_64-core-avx2-fedora-44",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-35",
+      "name": "linux-x86_64-skylake-avx512-fedora-44",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-36",
+      "name": "linux-x86_64-core-avx2-fedora-43",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-36",
+      "name": "linux-x86_64-skylake-avx512-fedora-43",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-37",
+      "name": "linux-x86_64-core-avx2-fedora-42",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-fedora-42",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-core-avx2-fedora-41",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-fedora-41",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-core-avx2-fedora-40",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-fedora-40",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-core-avx2-fedora-39",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1746,7 +1854,7 @@
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-37",
+      "name": "linux-x86_64-skylake-avx512-fedora-39",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1779,7 +1887,7 @@
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-39",
+      "name": "linux-x86_64-core-avx2-fedora-37",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1790,7 +1898,7 @@
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-39",
+      "name": "linux-x86_64-skylake-avx512-fedora-37",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
@@ -1801,50 +1909,46 @@
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-40",
+      "name": "linux-x86_64-core-avx2-fedora-36",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
-        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-40",
+      "name": "linux-x86_64-skylake-avx512-fedora-36",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
-        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-core-avx2-fedora-41",
+      "name": "linux-x86_64-core-avx2-fedora-35",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
-        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
     {
-      "name": "linux-x86_64-skylake-avx512-fedora-41",
+      "name": "linux-x86_64-skylake-avx512-fedora-35",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
-        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -2030,6 +2134,158 @@
         "LAPACK_LIBRARIES": "/usr/lib/liblapack64.so.3",
         "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/aarch64-unknown-linux-gnu/libc++.modules.json",
         "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-44",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-43",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-42",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-41",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-40",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-39",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-38",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-37",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-fedora-36",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-aarch64-opensuse-tumbleweed",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libedit0, libomp-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
+      "name": "linux-aarch64-opensuse-leap-16.0",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
+      "name": "linux-aarch64-opensuse-leap-15.6",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+       "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "BLA_SIZEOF_INTEGER": "4"
       }
     }
   ]
