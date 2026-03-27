@@ -1458,8 +1458,8 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BLAS_LIBRARIES": "/usr/lib/x86_64-linux-gnu/libblas.so.3",
-        "LAPACK_LIBRARIES": "/usr/lib/x86_64-linux-gnu/liblapack.so.3",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1479,8 +1479,8 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BLAS_LIBRARIES": "/usr/lib/x86_64-linux-gnu/libblas.so.3",
-        "LAPACK_LIBRARIES": "/usr/lib/x86_64-linux-gnu/liblapack.so.3",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
@@ -1694,6 +1694,9 @@
       "name": "linux-x86_64-core-avx2-redhat-6",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1710,6 +1713,9 @@
       "name": "linux-x86_64-skylake-avx512-redhat-6",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
@@ -1718,7 +1724,7 @@
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLA_SIZEOF_INTEGER": "4"
       }
     },
