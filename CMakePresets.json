@@ -558,7 +558,7 @@
         "OpenMP_CXX_FLAGS": "/openmp::lvm",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "C:/Program Files/Microsoft Visual Studio/2022/Community/Vc/Tools/Llvm/ARM64/lib/libomp.lib",
+        "OpenMP_libomp_LIBRARY": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/lib/arm64/libomp.lib",
         "BLAS_LIBRARIES": "C:/vcpkg/installed/ARM64-windows-static/lib/openblas.lib",
         "LAPACK_LIBRARIES": "C:/vcpkg/installed/ARM64-windows-static/lib/lapack.lib;C:/vcpkg/installed/ARM64-windows-static/lib/libf2c.lib",
         "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/ARM64-windows-static/include",
@@ -1452,7 +1452,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1473,7 +1473,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1700,7 +1700,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1719,7 +1719,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, glibc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",

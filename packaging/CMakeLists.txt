@@ -97,8 +97,8 @@ include(InstallRequiredSystemLibraries)
 
 if(OpenMP_FOUND)
   INSTALL(FILES "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}/bin/libomp.dll" DESTINATION bin COMPONENT app)
+  #  INSTALL(FILES "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Redist/MSVC/14.44.35112/debug_nonredist/arm64/Microsoft.VC143.OpenMP.LLVM/libomp140.aarch64.dll" DESTINATION bin COMPONENT app)
 endif()
-
 
 endif()
 
