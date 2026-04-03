@@ -66,10 +66,10 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
                        std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
                        std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
-                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
-                       std::size_t numberOfBlocks, bool outputToFiles)
+                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems, 
+                       std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
-      random(randomSeed),
+      random(RandomNumber(randomSeed)),
       numberOfCycles(numberOfCycles),
       numberOfInitializationCycles(numberOfInitializationCycles),
       numberOfEquilibrationCycles(numberOfEquilibrationCycles),

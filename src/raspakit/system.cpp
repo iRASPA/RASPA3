@@ -35,6 +35,7 @@ import energy_status;
 import energy_status_inter;
 import energy_status_intra;
 import property_simulationbox;
+import average_energy_type;
 import property_energy;
 import property_pressure;
 import property_loading;
@@ -86,8 +87,7 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
                double T, std::optional<double> P, double heliumVoidFraction,
                std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
-               std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
-               std::optional<std::size_t> sampleMoviesEvery)
+               std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities)
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -166,11 +166,6 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
                       P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
-
-  if (sampleMoviesEvery.has_value())
-  {
-    samplePDBMovie = SampleMovie(id, sampleMoviesEvery.value());
-  }
 }
 
 System::System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f,
@@ -1337,7 +1332,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     }
   }
 
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.result();
   std::print(stream, "Total potential energy{}  {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.totalEnergy.energy,
              conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy,
@@ -1469,7 +1464,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.result();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
              conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
              conv * energyData.second.totalEnergy.energy);
@@ -1718,7 +1713,8 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (samplePDBMovie.has_value())
   {
-    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), currentCycle);
+    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), 
+                           components, numberOfMoleculesPerComponent, currentCycle);
   }
 
   if (writeLammpsData.has_value())

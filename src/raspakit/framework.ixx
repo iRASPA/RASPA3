@@ -49,13 +49,31 @@ export struct Framework
    * \param componentName Name of the framework component.
    * \param simulationBox Simulation box defining the unit cell dimensions.
    * \param spaceGroupHallNumber Space group number according to the Hall notation.
-   * \param definedAtoms Vector of atoms defining the positions and types within the unit cell.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param fractionalAtoms Vector of atoms defining the fractional positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
   Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
             SimulationBox simulationBox, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms,
             const std::vector<Atom> &fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
 
+  /**
+   * \brief Constructs a Framework programmatically with specified parameters.
+   *
+   * Initializes a Framework using provided simulation box, space group number, defined atoms,
+   * and unit cell information, allowing for programmatic creation of frameworks without file input.
+   *
+   * \param componentId Identifier for the framework component.
+   * \param forceField Reference to the force field containing pseudo-atom definitions.
+   * \param componentName Name of the framework component.
+   * \param simulationBox Simulation box defining the unit cell dimensions.
+   * \param spaceGroupHallNumber Space group number according to the Hall notation.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
+   */
+  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
+            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
+            const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 

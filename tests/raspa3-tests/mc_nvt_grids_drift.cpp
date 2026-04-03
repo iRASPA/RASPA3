@@ -64,10 +64,8 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -139,10 +137,8 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -214,10 +210,8 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -289,10 +283,8 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -364,10 +356,8 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -441,10 +431,8 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -518,10 +506,8 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();

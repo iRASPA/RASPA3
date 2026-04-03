@@ -4,19 +4,20 @@ export module property_energy_histogram;
 
 import std;
 
-import double4;
-
 import archive;
 import averages;
 import simulationbox;
+import average_energy_type;
 
 inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
+
 export struct PropertyEnergyHistogram
 {
+
   PropertyEnergyHistogram() {};
 
   PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> range,
@@ -27,7 +28,7 @@ export struct PropertyEnergyHistogram
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         bookKeepingEnergyHistogram(
-            std::vector<std::vector<double4>>(numberOfBlocks, std::vector<double4>(numberOfBins))),
+            std::vector<std::vector<AverageEnergyType>>(numberOfBlocks, std::vector<AverageEnergyType>(numberOfBins))),
         numberOfCounts(numberOfBlocks)
   {
   }
@@ -39,15 +40,17 @@ export struct PropertyEnergyHistogram
   std::pair<double, double> range;
   std::size_t sampleEvery;
   std::size_t writeEvery;
-  std::vector<std::vector<double4>> bookKeepingEnergyHistogram;
+  std::vector<std::vector<AverageEnergyType>> bookKeepingEnergyHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
 
-  void addSample(std::size_t blockIndex, std::size_t currentCycle, double4 energy, const double &weight);
+  void addSample(std::size_t blockIndex, std::size_t currentCycle, AverageEnergyType energy, const double &weight);
 
-  std::vector<double4> averagedProbabilityHistogram(std::size_t blockIndex) const;
-  std::vector<double4> averagedProbabilityHistogram() const;
-  std::pair<std::vector<double4>, std::vector<double4>> averageProbabilityHistogram() const;
+  std::vector<AverageEnergyType> averagedProbabilityHistogram(std::size_t blockIndex) const;
+  std::vector<AverageEnergyType> averagedProbabilityHistogram() const;
+
+  std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>> result() const;
+  std::vector<double> bins() const;
 
   void writeOutput(std::size_t systemId, std::size_t currentCycle);
 

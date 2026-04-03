@@ -144,11 +144,6 @@ export struct SimulationBox
         s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz +
                                                                                       ((dr.z >= 0.0) ? 0.5 : -0.5))) *
                          cell.cz;
-        /*
-        s.x = dr.x - cell.ax * std::rint(dr.x * inverseCell.ax);
-        s.y = dr.y - cell.by * std::rint(dr.y * inverseCell.by);
-        s.z = dr.z - cell.cz * std::rint(dr.z * inverseCell.cz);
-        */
         return s;
       }
       default:
@@ -163,6 +158,25 @@ export struct SimulationBox
         return r;
       }
     }
+  }
+
+  ALWAYS_INLINE inline double3 mapToBox(const double3& dr) const
+  {
+    double3 s = inverseCell * dr;
+    s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
+    s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
+    s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
+
+    s.x -= std::rint(s.x);
+    s.y -= std::rint(s.y);
+    s.z -= std::rint(s.z);
+    if (s.x < 0.0) s.x += 1.0;
+    if (s.y < 0.0) s.y += 1.0;
+    if (s.z < 0.0) s.z += 1.0;
+
+    // compute value in variable first to avoid microsoft compiler bug
+    double3 r = cell * s;
+    return r;
   }
 
   /**

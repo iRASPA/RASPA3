@@ -21,7 +21,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
 {
   std::ostringstream stream;
 
-  std::pair<EnergyStatus, EnergyStatus> computedAverage = averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> computedAverage = result();
 
   std::print(stream, "Energy averages and statistics:\n");
   std::print(stream, "===============================================================================\n\n");
@@ -808,7 +808,7 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
 {
   nlohmann::json status;
 
-  std::pair<EnergyStatus, EnergyStatus> computedAverage = averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> computedAverage = result();
   std::vector<EnergyStatus> blockEnergies = blockEnergy();
 
   for (std::size_t k = 0; k < components.size(); k++)

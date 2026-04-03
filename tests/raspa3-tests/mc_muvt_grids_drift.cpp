@@ -84,10 +84,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -173,10 +171,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -262,10 +258,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -351,10 +345,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -440,10 +432,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -529,10 +519,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -618,10 +606,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -707,10 +693,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  RandomNumber randomSeed(std::nullopt);
-
   MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();

@@ -70,7 +70,7 @@ export struct PropertyEnergy
     return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
-  std::pair<EnergyStatus, EnergyStatus> averageEnergy() const
+  std::pair<EnergyStatus, EnergyStatus> result() const
   {
     EnergyStatus average = averagedEnergy();
 
@@ -95,6 +95,7 @@ export struct PropertyEnergy
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
+
     return std::make_pair(average, confidenceIntervalError);
   }
 

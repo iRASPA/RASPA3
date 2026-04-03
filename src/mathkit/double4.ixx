@@ -44,14 +44,18 @@ export union double4
   double4 operator-() const { return double4(-this->x, -this->y, -this->z, -this->w); }
   double4& operator+=(const double4& b)
   {
-    this->x += b.x, this->y += b.y, this->z += b.z;
+    this->x += b.x;
+    this->y += b.y;
+    this->z += b.z;
     this->w += b.w;
     return *this;
   }
   double4& operator-=(const double4& b)
   {
-    this->x -= b.x, this->y -= b.y, this->z -= b.z;
-    this->w += b.w;
+    this->x -= b.x;
+    this->y -= b.y;
+    this->z -= b.z;
+    this->w -= b.w;
     return *this;
   }
 

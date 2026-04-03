@@ -1419,7 +1419,13 @@ systems[systemId].propertyDensityGrid = PropertyDensityGrid(
             sampleMovieEvery = value["SampleMovieEvery"].get<std::size_t>();
           }
 
-          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery);
+          bool restrict_to_box{true};
+          if (value.contains("RestrictMoviePositionsToBox") && value["RestrictMoviePositionsToBox"].is_boolean())
+          {
+            restrict_to_box = value["RestrictMoviePositionsToBox"].get<bool>();
+          }
+
+          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery, restrict_to_box);
         }
       }
 
@@ -1698,6 +1704,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "DensityGridBinning",
     "OutputPDBMovie",
     "SampleMovieEvery",
+    "RestrictMoviePositionsToBox",
     "WriteLammpsData",
     "WriteLammpsDataEvery",
     "Ensemble",

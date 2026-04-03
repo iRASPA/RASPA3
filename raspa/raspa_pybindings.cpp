@@ -39,7 +39,9 @@ import std;
 
 import int3;
 import double3;
+import double4;
 import double3x3;
+import units;
 import atom;
 import cif_reader;
 import simulationbox;
@@ -50,6 +52,7 @@ import running_energy;
 import mc_moves_probabilities;
 import mc_moves_move_types;
 import move_statistics;
+import cif_reader;
 import framework;
 import component;
 import system;
@@ -58,9 +61,23 @@ import monte_carlo;
 import input_reader;
 import property_loading;
 import loadings;
+import energy_factor;
+import energy_status;
+import sample_movies;
+import property_energy;
+import average_energy_type;
+import property_energy_histogram;
 import property_lambda_probability_histogram;
 import connectivity_table;
 import intra_molecular_potentials;
+
+
+template<typename T>
+std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)
+{
+  return std::make_pair(a * b.first, a * b.second);
+}
+
 
 PYBIND11_MODULE(raspalib, m)
 {
@@ -77,6 +94,14 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("x", &double3::x)
       .def_readwrite("y", &double3::y)
       .def_readwrite("z", &double3::z);
+
+  pybind11::class_<double4>(m, "double4")
+      .def(pybind11::init<double, double, double, double>(), pybind11::arg("x") = 0.0, pybind11::arg("y") = 0.0,
+           pybind11::arg("z") = 0.0, pybind11::arg("w") = 0.0)
+      .def_readwrite("x", &double4::x)
+      .def_readwrite("y", &double4::y)
+      .def_readwrite("z", &double4::z)
+      .def_readwrite("w", &double4::w);
 
   pybind11::class_<RandomNumber>(m, "RandomNumber").def(pybind11::init<std::size_t>(), pybind11::arg("seed") = 12);
 
@@ -130,6 +155,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("cutOffCoulomb") = 12.0, pybind11::arg("shifted") = true,
            pybind11::arg("tailCorrections") = false, pybind11::arg("useCharge") = true)
       .def(pybind11::init<std::string>(), pybind11::arg("fileName") = "force_field.json")
+      .def("findPseudoAtom", static_cast<std::optional<std::size_t> (ForceField::*)(const std::string &) const>(&ForceField::findPseudoAtom))
       .def("__repr__", &ForceField::repr)
       .def_readonly("pseudoAtoms", &ForceField::pseudoAtoms)
       .def_readonly("vdwParameters", &ForceField::data)
@@ -139,6 +165,10 @@ PYBIND11_MODULE(raspalib, m)
       .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
       .export_values();
 
+  pybind11::class_<CIFReader> cifReader(m, "CIFReader");
+  cifReader
+      .def("expandDefinedAtomsToUnitCell", &CIFReader::expandDefinedAtomsToUnitCell);
+
   pybind11::class_<Framework> framework(m, "Framework");
 
   pybind11::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom")
@@ -146,15 +176,15 @@ PYBIND11_MODULE(raspalib, m)
       .value("CIF_File", CIFReader::UseChargesFrom::CIF_File)
       .value("ChargeEquilibration", CIFReader::UseChargesFrom::ChargeEquilibration);
 
-
   framework
-      .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, const std::vector<Atom> &,
+      .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, 
                           const std::vector<Atom> &, int3>(),
            pybind11::arg("frameworkId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
            pybind11::arg("simulationBox"), pybind11::arg("spaceGroupHallNumber"), 
-           pybind11::arg("definedAtoms"), pybind11::arg("fractionalUnitCellAtoms"),
+           pybind11::arg("definedAtoms"), 
            pybind11::arg("numberOfUnitCells"))
       .def_readonly("name", &Framework::name)
+      .def("print", &Framework::printStatus)
       .def("__repr__", &Framework::repr);
 
   pybind11::class_<MCMoveProbabilities>(m, "MCMoveProbabilities")
@@ -215,6 +245,8 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("name", &Component::name)
       .def_readonly("lambdaGC", &Component::lambdaGC)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
+      .def_readwrite("blockingPockets", &Component::blockingPockets)
+      .def("printStatus", &Component::printStatus)
       .def("__repr__", &Component::repr);
 
   pybind11::class_<Loadings>(m, "Loadings")
@@ -227,6 +259,10 @@ PYBIND11_MODULE(raspalib, m)
                                                                 std::optional<double>, std::optional<int3>) const>(
                               &Loadings::printStatus));
 
+  pybind11::class_<SampleMovie>(m, "SampleMovie")
+      .def(pybind11::init<std::size_t, std::size_t, bool>(),
+           pybind11::arg("systemId"), pybind11::arg("sampleEvery"), pybind11::arg("restrictToBox") = true);
+
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
       .def(pybind11::init<std::size_t, std::size_t>())
       .def("averageLoading", &PropertyLoading::averageLoading)
@@ -234,24 +270,52 @@ PYBIND11_MODULE(raspalib, m)
       .def("writeAveragesStatistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
 
+  pybind11::class_<Potentials::EnergyFactor>(m, "EnergyFactor")
+      .def_readonly("energy", &Potentials::EnergyFactor::energy)
+      .def_readonly("dUdlambda", &Potentials::EnergyFactor::dUdlambda);
+
+  pybind11::class_<EnergyStatus>(m, "EnergyStatus")
+      .def_readwrite("totalEnergy", &EnergyStatus::totalEnergy);
+
+  // convert result to units of Kelvin
+  pybind11::class_<PropertyEnergy>(m, "PropertyEnergy")
+      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();});
+
+  pybind11::class_<AverageEnergyType>(m, "AverageEnergyType")
+      .def(pybind11::init<double, double, double, double>(), 
+           pybind11::arg("totalEnergy") = 0.0, pybind11::arg("VanDerWaalsEnergy") = 0.0,
+           pybind11::arg("CoulombEnergy") = 0.0, pybind11::arg("polarizationEnergy") = 0.0)
+      .def_readwrite("totalEnergy", &AverageEnergyType::totalEnergy)
+      .def_readwrite("VanDerWaalsEnergy", &AverageEnergyType::VanDerWaalsEnergy)
+      .def_readwrite("CoulombEnergy", &AverageEnergyType::CoulombEnergy)
+      .def_readwrite("polarizationEnergy", &AverageEnergyType::polarizationEnergy);
+
+  // results in units of Kelvin
+  pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
+    energy_histogram
+      .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>())
+      .def("result", &PropertyEnergyHistogram::result);
+
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<std::size_t, ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
-                          std::vector<std::size_t>, std::size_t, MCMoveProbabilities, std::optional<std::size_t>>(),
+                          std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
            pybind11::arg("systemId"), pybind11::arg("forceField"), pybind11::arg("simulationBox") = std::nullopt,
            pybind11::arg("hasExternalField") = false, pybind11::arg("externalTemperature"), 
            pybind11::arg("externalPressure") = std::nullopt, pybind11::arg("heliumVoidFraction") = 0.0,
            pybind11::arg("frameworkComponents") = std::vector<Framework>(),
            pybind11::arg("components"), pybind11::arg("initialPositions") = std::vector<std::vector<double3>>(),
            pybind11::arg("initialNumberOfMolecules") = std::vector<std::size_t>(), pybind11::arg("numberOfBlocks") = 5,
-           pybind11::arg("systemProbabilities") = MCMoveProbabilities(),
-           pybind11::arg("sampleMoviesEvery") = std::nullopt)
+           pybind11::arg("systemProbabilities") = MCMoveProbabilities())
       .def("computeTotalEnergies", &System::computeTotalEnergies)
       .def("frameworkMass", &System::frameworkMass)
       .def_readonly("inputPressure", &System::input_pressure)
       .def_readonly("components", &System::components)
       .def_readonly("loadings", &System::loadings)
       .def_readonly("averageLoadings", &System::averageLoadings)
+      .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
+      .def_readwrite("averageEnergyHistogram", &System::averageEnergyHistogram)
+      .def_readwrite("averageEnergies", &System::averageEnergies)
       .def_readwrite("atomData", &System::atomData)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
@@ -284,12 +348,12 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<MonteCarlo> mc(m, "MonteCarlo");
   mc.def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        std::vector<System> &, RandomNumber &, std::size_t, bool>(),
+                        std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
          pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),
          pybind11::arg("numberOfEquilibrationCycles") = 0, pybind11::arg("printEvery") = 5000,
          pybind11::arg("writeBinaryRestartEvery") = 5000, pybind11::arg("rescaleWangLandauEvery") = 1000,
          pybind11::arg("optimizeMCMovesEvery") = 100, pybind11::arg("systems"),
-         pybind11::arg("randomSeed") = RandomNumber(12), pybind11::arg("numberOfBlocks") = 5,
+         pybind11::arg("randomSeed") = std::nullopt, pybind11::arg("numberOfBlocks") = 5,
          pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
       .def("run", &MonteCarlo::run)

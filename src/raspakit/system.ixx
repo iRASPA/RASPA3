@@ -98,8 +98,7 @@ export struct System
          double T, std::optional<double> P, double heliumVoidFraction, 
          std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
-         std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
-         std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
+         std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
   System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
          std::optional<Framework> framework, std::vector<Component> components);

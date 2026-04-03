@@ -96,6 +96,15 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
   determineUniqueAtomTypes();
 }
 
+Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string structureName,
+                     SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
+                     const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false):
+           Framework(frameworkId, forceField, structureName, simulationBox, spaceGroupHallNumber, definedAtoms,
+                     CIFReader::expandDefinedAtomsToUnitCell(simulationBox, spaceGroupHallNumber, definedAtoms),
+                     numberOfUnitCells)
+{
+}
+
 void Framework::determineUniqueAtomTypes()
 {
   std::unordered_set<Atom, AtomTypeEqual, AtomTypeEqual> atom_types(atoms.begin(), atoms.end());
