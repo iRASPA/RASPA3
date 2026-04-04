@@ -1403,7 +1403,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
           }
 
-systems[systemId].propertyDensityGrid = PropertyDensityGrid(
+          systems[systemId].propertyDensityGrid = PropertyDensityGrid(
               systems[systemId].framework ? 1 : 0, systems[systemId].components.size(), densityGridSize,
               sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm, binning);
         }

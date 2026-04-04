@@ -595,38 +595,36 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       }
     }
 
-    if (outputToFiles)
+    for (System& system : systems)
     {
-      for (System& system : systems)
+      if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
-        if (system.propertyConventionalRadialDistributionFunction.has_value())
-        {
-          system.propertyConventionalRadialDistributionFunction->writeOutput(
-              system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-              currentCycle);
-        }
+        system.propertyConventionalRadialDistributionFunction->writeOutput(
+            system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            currentCycle);
+      }
 
-        if (system.propertyRadialDistributionFunction.has_value())
-        {
-          system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
-                                                                 system.simulationBox.volume,
-                                                                 system.totalNumberOfPseudoAtoms, currentCycle);
-        }
-        if (system.propertyDensityGrid.has_value())
-        {
-          system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                  system.framework, system.components, currentCycle);
-        }
-        if (system.averageEnergyHistogram.has_value())
-        {
-          system.averageEnergyHistogram->writeOutput(system.systemId, currentCycle);
-        }
-        if (system.averageNumberOfMoleculesHistogram.has_value())
-        {
-          system.averageNumberOfMoleculesHistogram->writeOutput(system.systemId, system.components, currentCycle);
-        }
+      if (system.propertyRadialDistributionFunction.has_value())
+      {
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+                                                               system.simulationBox.volume,
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+      }
+      if (system.propertyDensityGrid.has_value())
+      {
+        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+                                                system.framework, system.components, currentCycle);
+      }
+      if (system.averageEnergyHistogram.has_value())
+      {
+        system.averageEnergyHistogram->writeOutput(system.systemId, currentCycle);
+      }
+      if (system.averageNumberOfMoleculesHistogram.has_value())
+      {
+        system.averageNumberOfMoleculesHistogram->writeOutput(system.systemId, system.components, currentCycle);
       }
     }
+    
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {

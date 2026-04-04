@@ -68,6 +68,7 @@ import property_energy;
 import average_energy_type;
 import property_energy_histogram;
 import property_lambda_probability_histogram;
+import property_density_grid;
 import connectivity_table;
 import intra_molecular_potentials;
 
@@ -110,9 +111,10 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("moleculeMoleculeVDW", &RunningEnergy::moleculeMoleculeVDW)
       .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW);
 
+
   pybind11::class_<Atom>(m, "Atom")
       .def(pybind11::init<>())
-      .def(pybind11::init<double3, double, double, uint32_t, uint16_t, uint8_t, bool, bool>(),
+      .def(pybind11::init<double3, double, double, std::uint32_t, std::uint16_t, std::uint8_t,  std::uint8_t ,  std::uint8_t >(),
            pybind11::arg("position"), pybind11::arg("charge") = 0.0, pybind11::arg("lambda") = 0.0,
            pybind11::arg("moleculeId") = 0, pybind11::arg("type") = 0, pybind11::arg("componentId") = 0,
            pybind11::arg("groupId") = 0, pybind11::arg("isFractional") = 0)
@@ -290,6 +292,29 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("CoulombEnergy", &AverageEnergyType::CoulombEnergy)
       .def_readwrite("polarizationEnergy", &AverageEnergyType::polarizationEnergy);
 
+
+  pybind11::class_<PropertyDensityGrid> property_energy_grid(m, "PropertyDensityGrid");
+
+  pybind11::enum_<PropertyDensityGrid::Normalization>(property_energy_grid, "Normalization")
+      .value("Max", PropertyDensityGrid::Normalization::Max)
+      .value("NumberDensity", PropertyDensityGrid::Normalization::NumberDensity)
+      .export_values();
+
+  pybind11::enum_<PropertyDensityGrid::Binning>(property_energy_grid, "Binning")
+      .value("Max", PropertyDensityGrid::Binning::Standard)
+      .value("NumberDensity", PropertyDensityGrid::Binning::Equitable)
+      .export_values();
+
+  property_energy_grid.def(pybind11::init<std::size_t, std::size_t, int3, std::size_t, 
+                                          std::size_t, std::vector<std::size_t>,
+                                          PropertyDensityGrid::Normalization, PropertyDensityGrid::Binning>(),
+           pybind11::arg("numberOfFrameworks"), pybind11::arg("numberOfComponents"),
+           pybind11::arg("numberOfGridPoints"), pybind11::arg("sampleEvery"), 
+           pybind11::arg("writeEvery"), pybind11::arg("densityGridPseudoAtomsList"),
+           pybind11::arg("normalizationType") = PropertyDensityGrid::Normalization::Max,
+           pybind11::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
+
+
   // results in units of Kelvin
   pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
@@ -316,6 +341,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
       .def_readwrite("averageEnergyHistogram", &System::averageEnergyHistogram)
       .def_readwrite("averageEnergies", &System::averageEnergies)
+      .def_readwrite("propertyDensityGrid", &System::propertyDensityGrid)
       .def_readwrite("atomData", &System::atomData)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
