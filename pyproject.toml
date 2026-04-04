@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "raspa"
-version = "3.0.23"
+version = "3.0.24"
 description = "A general purpose classical simulation package"
 authors = [
     { name = "Drs. Youri Ran, University of Amsterdam" },
@@ -22,7 +22,7 @@ readme = "README.md"
 
 
 [tool.scikit-build]
-cmake.version = ">=3.28"
+cmake.version = ">=4.3.0"
 cmake.build-type = "Release"
 cmake.args = [
     "--preset=python",
