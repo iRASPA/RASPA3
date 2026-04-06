@@ -83,7 +83,7 @@ export struct PropertyLoading
     return summedBlocks.first / std::max(1.0, summedBlocks.second);;
   }
 
-  std::pair<Loadings, Loadings> averageLoading() const
+  std::pair<Loadings, Loadings> result() const
   {
     Loadings average = averagedLoading();
 

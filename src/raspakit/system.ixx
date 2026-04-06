@@ -39,6 +39,8 @@ import property_energy_histogram;
 import property_number_of_molecules_histogram;
 import property_msd;
 import property_vacf;
+import property_number_of_molecules_evolution;
+import property_volume_evolution;
 import multi_site_isotherm;
 import pressure_range;
 import units;
@@ -234,6 +236,9 @@ export struct System
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
   std::optional<WriteLammpsData> writeLammpsData;
 
+  std::optional<PropertyNumberOfMoleculesEvolution> propertyNumberOfMoleculesEvolution;
+  std::optional<PropertyVolumeEvolution> propertyVolumeEvolution;
+
   // Breakthrough settings
   std::size_t columnNumberOfGridPoints{100};
   double columnTotalPressure{1e5};
@@ -386,6 +391,7 @@ export struct System
   bool insideBlockedPockets(const Component &component, std::span<const Atom> molecule_atoms) const;
 
   void sampleProperties(std::size_t currentBlock, std::size_t currentCycle);
+  void samplePropertiesEvolution(std::size_t absoluteCurrentCycle);
 
   void writeCPUTimeStatistics(std::ostream &stream) const;
 

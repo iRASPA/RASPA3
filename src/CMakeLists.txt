@@ -19,6 +19,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/intramolecular/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/interpolation/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/properties_time_evolution/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo/*.cpp
@@ -49,6 +50,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/intramolecular/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/interpolation/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/properties_time_evolution/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo/*.ixx

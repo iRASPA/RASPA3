@@ -39,8 +39,8 @@ export struct PropertyConventionalRadialDistributionFunction
   std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
                                                    std::size_t atomTypeB) const;
   std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
-  std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
-                                                                                  std::size_t atomTypeB) const;
+  std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
+                                                             std::size_t atomTypeB) const;
 
   std::size_t numberOfBlocks;
   std::size_t numberOfPseudoAtoms;

@@ -94,6 +94,7 @@ export struct MonteCarlo
   std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
 
   std::size_t currentCycle{0};                                      ///< Current cycle number.
+  std::size_t absoluteCurrentCycle{0};                              ///< Current overall cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
   std::vector<System> systems;              ///< Vector of systems to simulate.

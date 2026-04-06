@@ -20,6 +20,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/embed.h>
 
 #include <exception>
 
@@ -69,6 +70,10 @@ import average_energy_type;
 import property_energy_histogram;
 import property_lambda_probability_histogram;
 import property_density_grid;
+import property_conventional_rdf;
+import property_rdf;
+import property_number_of_molecules_evolution;
+import property_volume_evolution;
 import connectivity_table;
 import intra_molecular_potentials;
 
@@ -78,7 +83,6 @@ std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)
 {
   return std::make_pair(a * b.first, a * b.second);
 }
-
 
 PYBIND11_MODULE(raspalib, m)
 {
@@ -214,6 +218,8 @@ PYBIND11_MODULE(raspalib, m)
       .def("normalizedAverageProbabilityHistogram",
            &PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram);
 
+
+
   pybind11::class_<ConnectivityTable>(m, "ConnectivityTable").def(pybind11::init<>());
 
   pybind11::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials").def(pybind11::init<>());
@@ -251,9 +257,12 @@ PYBIND11_MODULE(raspalib, m)
       .def("printStatus", &Component::printStatus)
       .def("__repr__", &Component::repr);
 
+
   pybind11::class_<Loadings>(m, "Loadings")
       .def(pybind11::init<std::size_t>())
       .def_readonly("numberOfMolecules", &Loadings::numberOfMolecules)
+      .def_readonly("numberDensities", &Loadings::numberDensities)
+      .def_readonly("inverseNumberDensities", &Loadings::inverseNumberDensities)
       .def("printStatus",
            static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
                &Loadings::printStatus))
@@ -267,7 +276,7 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
       .def(pybind11::init<std::size_t, std::size_t>())
-      .def("averageLoading", &PropertyLoading::averageLoading)
+      .def("result", &PropertyLoading::result)
       .def("averageLoadingNumberOfMolecules", &PropertyLoading::averageLoadingNumberOfMolecules)
       .def("writeAveragesStatistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
@@ -321,6 +330,32 @@ PYBIND11_MODULE(raspalib, m)
       .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>())
       .def("result", &PropertyEnergyHistogram::result);
 
+  pybind11::class_<PropertyConventionalRadialDistributionFunction> conv_rdf(m, "PropertyConventionalRadialDistributionFunction");
+    conv_rdf.def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+                 pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfPseudoAtoms"),
+                 pybind11::arg("numberOfBins"), pybind11::arg("range"),
+                 pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
+       .def("result", &PropertyConventionalRadialDistributionFunction::result);
+
+  pybind11::class_<PropertyRadialDistributionFunction> rdf(m, "PropertyRadialDistributionFunction");
+    rdf.def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+            pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfPseudoAtoms"),
+            pybind11::arg("numberOfBins"), pybind11::arg("range"),
+            pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
+       .def("result", &PropertyRadialDistributionFunction::result);
+
+  pybind11::class_<PropertyNumberOfMoleculesEvolution>(m, "PropertyNumberOfMoleculesEvolution")
+    .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
+            pybind11::arg("numberOfCycles"), pybind11::arg("numberOfComponents"),
+            pybind11::arg("sampleEvery"), pybind11::arg("writeEvery") = std::nullopt)
+      .def_readonly("result", &PropertyNumberOfMoleculesEvolution::result);
+
+  pybind11::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
+    .def(pybind11::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
+            pybind11::arg("numberOfCycles"), pybind11::arg("sampleEvery"), 
+            pybind11::arg("writeEvery") = std::nullopt)
+      .def_readonly("result", &PropertyVolumeEvolution::result);
+
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<std::size_t, ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
@@ -341,7 +376,11 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
       .def_readwrite("averageEnergyHistogram", &System::averageEnergyHistogram)
       .def_readwrite("averageEnergies", &System::averageEnergies)
-      .def_readwrite("propertyDensityGrid", &System::propertyDensityGrid)
+      .def_readwrite("densityGrid", &System::propertyDensityGrid)
+      .def_readwrite("conventionalRadialDistributionFunction", &System::propertyConventionalRadialDistributionFunction)
+      .def_readwrite("radialDistributionFunction", &System::propertyRadialDistributionFunction)
+      .def_readwrite("propertyNumberOfMoleculesEvolution", &System::propertyNumberOfMoleculesEvolution)
+      .def_readwrite("propertyVolumeEvolution", &System::propertyVolumeEvolution)
       .def_readwrite("atomData", &System::atomData)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);

@@ -21,7 +21,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   {
     const double toMolePerKg = 1000.0 / frameworkMass.value();
 
-    std::pair<Loadings, Loadings> loadingAverage = averageLoading();
+    std::pair<Loadings, Loadings> loadingAverage = result();
 
     int3 number_of_unit_cells = numberOfUnitCells.value_or(int3{1, 1, 1});
     double to_molecules_per_unit_cell =
@@ -106,7 +106,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     const double densityConversionFactor =
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
-    std::pair<Loadings, Loadings> loadingAverage = averageLoading();
+    std::pair<Loadings, Loadings> loadingAverage = result();
 
     std::print(stream, "Densities\n");
     std::print(stream, "===============================================================================\n\n");
@@ -151,7 +151,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
 
 std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(std::size_t comp) const
 {
-  std::pair<Loadings, Loadings> loadingAverage = averageLoading();
+  std::pair<Loadings, Loadings> loadingAverage = result();
   return {loadingAverage.first.numberOfMolecules[comp], loadingAverage.second.numberOfMolecules[comp]};
 }
 

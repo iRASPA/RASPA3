@@ -297,11 +297,16 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
     }
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
     performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -389,11 +394,16 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
     }
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
     performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -542,7 +552,7 @@ void MonteCarlo::production(std::function<void()> call_back_function)
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
@@ -553,6 +563,7 @@ void MonteCarlo::production(std::function<void()> call_back_function)
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
         std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();

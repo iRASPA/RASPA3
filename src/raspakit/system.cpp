@@ -1259,7 +1259,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
+  std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
   for (const Component& c : components)
   {
     std::print(stream, "{}",
@@ -1536,7 +1536,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
+  std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
   for (const Component& c : components)
   {
     std::print(stream, "{}",
@@ -1771,6 +1771,19 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
   mc_moves_cputime.propertySampling += (t2 - t1);
+}
+
+
+void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
+{
+  if (propertyNumberOfMoleculesEvolution.has_value())
+  {
+    propertyNumberOfMoleculesEvolution->addSample(absoluteCurrentCycle, numberOfIntegerMoleculesPerComponent);
+  }
+  if (propertyVolumeEvolution.has_value())
+  {
+    propertyVolumeEvolution->addSample(absoluteCurrentCycle, simulationBox.volume);
+  }
 }
 
 void System::writeCPUTimeStatistics(std::ostream& stream) const
@@ -3141,6 +3154,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyVACF;
   archive << s.writeLammpsData;
 
+  archive << s.propertyNumberOfMoleculesEvolution;
+
   archive << s.columnNumberOfGridPoints;
   archive << s.columnTotalPressure;
   archive << s.columnPressureGradient;
@@ -3283,6 +3298,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
   archive >> s.writeLammpsData;
+
+  archive >> s.propertyNumberOfMoleculesEvolution;
 
   archive >> s.columnNumberOfGridPoints;
   archive >> s.columnTotalPressure;

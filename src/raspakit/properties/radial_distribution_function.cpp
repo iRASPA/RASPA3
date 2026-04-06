@@ -154,7 +154,7 @@ std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHisto
   return average;
 }
 
-std::pair<std::vector<double>, std::vector<double>> PropertyRadialDistributionFunction::averageProbabilityHistogram(
+std::pair<std::vector<double>, std::vector<double>> PropertyRadialDistributionFunction::result(
     std::size_t atomTypeA, std::size_t atomTypeB) const
 {
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
@@ -209,7 +209,7 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
         stream_rdf_output << "# column 2: normalize rdf []\n";
         stream_rdf_output << "# column 3: error normalize rdf []\n";
 
-        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+        auto [average, error] = result(atomTypeA, atomTypeB);
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
