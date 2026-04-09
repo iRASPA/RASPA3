@@ -1,0 +1,17 @@
+import os
+import site
+
+RASPA_DIR = os.path.join(site.getsitepackages()[0], "raspalib")
+SHARE_DIR = os.path.join(site.getsitepackages()[0], "share", "raspalib")
+RASPA_VERSION = "3.0.24"
+
+
+class RaspaError(Exception):
+    """Custom exception class for Raspa errors."""
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
+def popSelf(d):
+    return {key: val for key, val in d.items() if key != "self"}

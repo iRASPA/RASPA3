@@ -118,10 +118,10 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Atom>(m, "Atom")
       .def(pybind11::init<>())
-      .def(pybind11::init<double3, double, double, std::uint32_t, std::uint16_t, std::uint8_t,  std::uint8_t ,  std::uint8_t >(),
-           pybind11::arg("position"), pybind11::arg("charge") = 0.0, pybind11::arg("lambda") = 0.0,
+      .def(pybind11::init<double3, double, double, std::uint32_t, std::uint16_t, std::uint8_t, std::uint8_t, std::uint8_t>(),
+           pybind11::arg("position"), pybind11::arg("charge") = 0.0, pybind11::arg("scaling") = 0.0,
            pybind11::arg("moleculeId") = 0, pybind11::arg("type") = 0, pybind11::arg("componentId") = 0,
-           pybind11::arg("groupId") = 0, pybind11::arg("isFractional") = 0)
+           pybind11::arg("groupId") = false, pybind11::arg("isFractional") = false)
       .def_readwrite("position", &Atom::position)
       .def("__repr__", &Atom::repr);
 
@@ -235,21 +235,15 @@ PYBIND11_MODULE(raspalib, m)
   component
       .def(pybind11::init<std::size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>,
                           const ConnectivityTable &, const Potentials::IntraMolecularPotentials &, std::size_t,
-                          std::size_t, const MCMoveProbabilities &, std::optional<double>, bool>(),
+                          std::size_t, const MCMoveProbabilities &, std::optional<double>, bool, std::vector<double4>>(),
            pybind11::arg("componentId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
            pybind11::arg("criticalTemperature"), pybind11::arg("criticalPressure"), pybind11::arg("acentricFactor"),
-           pybind11::arg("definedAtoms"), pybind11::arg("connectivitytable") = ConnectivityTable(),
+           pybind11::arg("definedAtoms") = std::vector<Atom>(), pybind11::arg("connectivityTable") = ConnectivityTable(),
            pybind11::arg("intraMolecularPotentials") = Potentials::IntraMolecularPotentials(),
            pybind11::arg("numberOfBlocks") = 5, pybind11::arg("numberOfLambdaBins") = 41,
-           pybind11::arg("particleProbabilities"), pybind11::arg("fugacityCoefficient") = std::nullopt,
-           pybind11::arg("thermodynamicIntegration") = false)
-      .def(pybind11::init<Component::Type, std::size_t, const ForceField &, std::string &, std::string, std::size_t,
-                          std::size_t, const MCMoveProbabilities &, std::optional<double>, bool>(),
-           pybind11::arg("type") = Component::Type::Adsorbate, pybind11::arg("componentId"),
-           pybind11::arg("forceField"), pybind11::arg("componentName"), pybind11::arg("fileName"),
-           pybind11::arg("numberOfBlocks") = 5, pybind11::arg("numberOfLambdaBins") = 41,
-           pybind11::arg("particleProbabilities") = MCMoveProbabilities(),
-           pybind11::arg("fugacityCoefficient") = std::nullopt, pybind11::arg("thermodynamicIntegration") = false)
+           pybind11::arg("particleProbabilities") = MCMoveProbabilities(), pybind11::arg("fugacityCoefficient") = std::nullopt,
+           pybind11::arg("thermodynamicIntegration") = false,
+           pybind11::arg("blockingPockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
       .def_readonly("lambdaGC", &Component::lambdaGC)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
@@ -310,8 +304,8 @@ PYBIND11_MODULE(raspalib, m)
       .export_values();
 
   pybind11::enum_<PropertyDensityGrid::Binning>(property_energy_grid, "Binning")
-      .value("Max", PropertyDensityGrid::Binning::Standard)
-      .value("NumberDensity", PropertyDensityGrid::Binning::Equitable)
+      .value("Standard", PropertyDensityGrid::Binning::Standard)
+      .value("Equitable", PropertyDensityGrid::Binning::Equitable)
       .export_values();
 
   property_energy_grid.def(pybind11::init<std::size_t, std::size_t, int3, std::size_t, 
@@ -327,7 +321,9 @@ PYBIND11_MODULE(raspalib, m)
   // results in units of Kelvin
   pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
-      .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>())
+      .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>(),
+                 pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfBins"), pybind11::arg("valueRange"),
+                 pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
       .def("result", &PropertyEnergyHistogram::result);
 
   pybind11::class_<PropertyConventionalRadialDistributionFunction> conv_rdf(m, "PropertyConventionalRadialDistributionFunction");
@@ -363,7 +359,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("systemId"), pybind11::arg("forceField"), pybind11::arg("simulationBox") = std::nullopt,
            pybind11::arg("hasExternalField") = false, pybind11::arg("externalTemperature"), 
            pybind11::arg("externalPressure") = std::nullopt, pybind11::arg("heliumVoidFraction") = 0.0,
-           pybind11::arg("frameworkComponents") = std::vector<Framework>(),
+           pybind11::arg("frameworkComponents") = std::nullopt,
            pybind11::arg("components"), pybind11::arg("initialPositions") = std::vector<std::vector<double3>>(),
            pybind11::arg("initialNumberOfMolecules") = std::vector<std::size_t>(), pybind11::arg("numberOfBlocks") = 5,
            pybind11::arg("systemProbabilities") = MCMoveProbabilities())
@@ -372,7 +368,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("inputPressure", &System::input_pressure)
       .def_readonly("components", &System::components)
       .def_readonly("loadings", &System::loadings)
-      .def_readonly("averageLoadings", &System::averageLoadings)
+      .def_readwrite("averageLoadings", &System::averageLoadings)
       .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
       .def_readwrite("averageEnergyHistogram", &System::averageEnergyHistogram)
       .def_readwrite("averageEnergies", &System::averageEnergies)

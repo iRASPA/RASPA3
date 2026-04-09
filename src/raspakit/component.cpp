@@ -87,7 +87,8 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
                      double P_c, double w, std::vector<Atom> atomList, const ConnectivityTable &connectivityTable,
                      const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
                      std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
-                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
+                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration,
+                     std::vector<double4> blockingPockets) noexcept(false)
     : type(Type::Adsorbate),
       componentId(componentId),
       name(componentName),
@@ -101,7 +102,8 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
-      averageRosenbluthWeights(numberOfBlocks)
+      averageRosenbluthWeights(numberOfBlocks),
+      blockingPockets(blockingPockets)
 {
   totalMass = 0.0;
   netCharge = 0.0;

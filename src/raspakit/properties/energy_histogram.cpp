@@ -15,26 +15,26 @@ void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t curr
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  bin = static_cast<std::size_t>((energy.totalEnergy * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(range.second - range.first));
+  bin = static_cast<std::size_t>((energy.totalEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+                                 std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].totalEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(range.second - range.first));
+  bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+                                 std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].VanDerWaalsEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.CoulombEnergy * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(range.second - range.first));
+  bin = static_cast<std::size_t>((energy.CoulombEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+                                 std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].CoulombEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.polarizationEnergy * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(range.second - range.first));
+  bin = static_cast<std::size_t>((energy.polarizationEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+                                 std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].polarizationEnergy += weight;
@@ -75,8 +75,8 @@ std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<Aver
   std::vector<double> bins(numberOfBins);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
-    bins[bin] = static_cast<double>(bin) * std::fabs(range.second - range.first) / static_cast<double>(numberOfBins) +
-        range.first;
+    bins[bin] = static_cast<double>(bin) * std::fabs(valueRange.second - valueRange.first) / static_cast<double>(numberOfBins) +
+        valueRange.first;
   }
 
 
@@ -155,8 +155,8 @@ std::vector<double> PropertyEnergyHistogram::bins() const
   std::vector<double> bins(numberOfBins);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
-    bins[bin] = static_cast<double>(bin) * std::fabs(range.second - range.first) / static_cast<double>(numberOfBins) +
-        range.first;
+    bins[bin] = static_cast<double>(bin) * std::fabs(valueRange.second - valueRange.first) / static_cast<double>(numberOfBins) +
+        valueRange.first;
   }
   return bins;
 }
@@ -169,7 +169,7 @@ std::string PropertyEnergyHistogram::printSettings() const
   std::print(stream, "    sample every: {}\n", sampleEvery);
   std::print(stream, "    write every: {}\n", writeEvery);
   std::print(stream, "    number of bins: {}\n", numberOfBins);
-  std::print(stream, "    range: ({}) - ({})\n", range.first, range.second);
+  std::print(stream, "    valueRange: ({}) - ({})\n", valueRange.first, valueRange.second);
   std::print(stream, "\n");
 
   return stream.str();
@@ -181,7 +181,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << hist.numberOfBlocks;
   archive << hist.numberOfBins;
-  archive << hist.range;
+  archive << hist.valueRange;
   archive << hist.sampleEvery;
   archive << hist.writeEvery;
   archive << hist.bookKeepingEnergyHistogram;
@@ -208,7 +208,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
 
   archive >> hist.numberOfBlocks;
   archive >> hist.numberOfBins;
-  archive >> hist.range;
+  archive >> hist.valueRange;
   archive >> hist.sampleEvery;
   archive >> hist.writeEvery;
   archive >> hist.bookKeepingEnergyHistogram;

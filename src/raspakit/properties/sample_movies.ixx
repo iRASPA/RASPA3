@@ -15,15 +15,15 @@ export struct SampleMovie
   std::uint64_t versionNumber{1};
 
   SampleMovie() {};
-  SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictoToBox);
+  SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox);
 
   void update(const ForceField& forceField, std::size_t systemId, const SimulationBox simulationBox,
-              const std::span<Atom> atomData, const std::vector<Component> components,
-              const std::vector<std::size_t> numberOfMoleculesPerComponent,
+              const std::span<Atom> atomData, const std::vector<Component> &components,
+              const std::vector<std::size_t> &numberOfMoleculesPerComponent,
               std::size_t currentCycle);
 
   std::size_t sampleEvery{10};
-  bool restrictoToBox;
+  bool restrictToBox;
 
   int modelNumber{1};
 

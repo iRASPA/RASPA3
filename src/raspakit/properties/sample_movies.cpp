@@ -14,16 +14,16 @@ import forcefield;
 import units;
 import skelement;
 
-SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictoToBox) : 
-                         sampleEvery(sampleEvery), restrictoToBox(restrictoToBox)
+SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox) : 
+                         sampleEvery(sampleEvery), restrictToBox(restrictToBox)
 {
   std::filesystem::create_directory("movies");
   std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
 }
 
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
-                         std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
-                         const std::vector<std::size_t> numberOfMoleculesPerComponent,
+                         std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
+                         const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                          std::size_t currentCycle)
 {
   if (currentCycle % sampleEvery == 0)
@@ -40,12 +40,13 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
     for (std::size_t l = 0; l != components.size(); ++l)
     {
       std::size_t size = components[l].atoms.size();
+
       for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
         std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
 
         double3 shift_to_unit_box{};
-        if(restrictoToBox)
+        if(restrictToBox)
         {
           double3 com = components[l].computeCenterOfMass(span);
           double3 com_pbc = simulationBox.mapToBox(com);

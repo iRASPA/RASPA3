@@ -107,7 +107,7 @@
         "BUILD_TESTING_RASPAKIT": true,
         "BUILD_TESTING_RASPA3": true,
         "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": false,
+        "BUILD_PYTHON": true,
         "BUILD_DOXYGEN": false,
         "BUILD_BENCHMARKS": false
       },
@@ -709,7 +709,7 @@
         "BUILD_APP": true,
         "BUILD_CLI": true,
         "BUILD_LIBTORCH": false,
-        "BUILD_PYTHON": true,
+        "BUILD_PYTHON": false,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT": true,
         "BUILD_TESTING_FOUNDATIONKIT": true,
@@ -817,7 +817,7 @@
         "BUILD_CLI": true,
         "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": true,
+        "BUILD_TESTING": false,
         "BUILD_TESTING_MATHKIT": true,
         "BUILD_TESTING_FOUNDATIONKIT": true,
         "BUILD_TESTING_SYMMETRYKIT": true,
@@ -892,7 +892,7 @@
         "BUILD_MAC_PACKAGE": false,
         "BUILD_APP": true,
         "BUILD_CLI": true,
-        "BUILD_PYTHON": true,
+        "BUILD_PYTHON": false,
         "BUILD_LIBTORCH": false,
         "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT": true,
@@ -1002,7 +1002,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1021,7 +1021,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1040,7 +1040,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=corei7 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1059,7 +1059,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=corei7-avx -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1078,7 +1078,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1097,7 +1097,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1116,7 +1116,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1135,7 +1135,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1154,7 +1154,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1173,7 +1173,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1192,7 +1192,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1211,7 +1211,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1230,7 +1230,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1249,7 +1249,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1268,7 +1268,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1287,7 +1287,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1306,13 +1306,14 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-linux-gnu/libomp.so.5",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1325,13 +1326,14 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas3, liblapack3 , libquadmath0, libgfortran3, libgcc1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-linux-gnu/libomp.so.5",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1341,7 +1343,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1357,7 +1359,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1373,7 +1375,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1389,7 +1391,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1408,7 +1410,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1430,7 +1432,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1452,7 +1454,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1460,7 +1462,8 @@
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1473,7 +1476,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "lapack, blas, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -1481,7 +1484,8 @@
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1496,7 +1500,8 @@
         "BLAS_LIBRARIES": "/usr/lib/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib/liblapack64.so.3",
         "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/x86_64-unknown-linux-gnu/libc++.modules.json",
-        "BLA_SIZEOF_INTEGER": "8"
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1511,7 +1516,8 @@
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/lib/x86_64-unknown-linux-gnu/libc++.modules.json",
-        "BLA_SIZEOF_INTEGER": "8"
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1522,7 +1528,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM19, libedit0, libomp19-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1533,7 +1540,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1544,7 +1552,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1566,7 +1575,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1577,7 +1587,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1588,7 +1599,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1599,7 +1611,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1613,7 +1626,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1627,7 +1641,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1641,7 +1656,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1655,7 +1671,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1671,7 +1688,8 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1687,7 +1705,8 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1700,13 +1719,14 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1719,13 +1739,14 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "epel-release, lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "lapack, blas, libgfortran, glibc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -1735,7 +1756,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1747,7 +1768,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1759,7 +1780,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1771,7 +1792,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1783,7 +1804,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1795,7 +1816,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1807,7 +1828,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1819,7 +1840,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1831,7 +1852,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1843,7 +1864,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -1855,7 +1876,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1866,7 +1887,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1877,7 +1898,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1888,7 +1909,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1899,7 +1920,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1910,7 +1931,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1921,7 +1942,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1932,7 +1953,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1943,7 +1964,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -1954,7 +1975,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, fftw-libs-double",
         "BLA_SIZEOF_INTEGER": "8"
       }
     },
@@ -2003,7 +2024,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3, libsz2",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3, libsz2",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2023,7 +2044,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2042,7 +2063,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2061,7 +2082,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2080,7 +2101,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_DEB_PACKAGE": true,
-        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "python3, libblas64-3, liblapack64-3 , libgfortran5, libgcc-s1, libomp5, libc6, zlib1g, ocl-icd-libopencl1, libfftw3-double3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2099,7 +2120,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2118,7 +2139,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas, lapack, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
         "OpenMP_C_FLAGS": "-fopenmp",
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
@@ -2149,7 +2170,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2161,7 +2182,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2173,7 +2194,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2185,7 +2206,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2197,7 +2218,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2209,7 +2230,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2221,7 +2242,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2233,7 +2254,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2245,7 +2266,7 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
-        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
+        "CPACK_RPM_PACKAGE_DEPENDS": "python3, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8"
       }
@@ -2263,7 +2284,8 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib64/libomp.so",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -2277,7 +2299,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     },
     {
@@ -2291,7 +2314,8 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DBLAS_ILP64 -DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
-        "BLA_SIZEOF_INTEGER": "4"
+        "BLA_SIZEOF_INTEGER": "4",
+        "BUILD_PYTHON": false
       }
     }
   ]
