@@ -36,7 +36,7 @@ class System(RaspaBase):
         heliumVoidFraction: float = 0.29,
         frameworkComponents: Framework = None,
         components: list[Component] = [],
-        initialPositions: list[Tuple[float, float, float]] = [],
+        initialPositions: list[tuple[float, float, float]] = [],
         initialNumberOfMolecules: list[int] = [],
         numberOfBlocks: int = 5,
         systemProbabilities: MCMoveProbabilities = MCMoveProbabilities()

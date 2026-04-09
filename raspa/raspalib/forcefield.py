@@ -22,7 +22,7 @@ class ForceField(RaspaBase):
     def __init__(
         self,
         pseudoAtoms: list[PseudoAtom] = None,
-        parameters: list[VDWParameter] = None,
+        parameters: list[VDWParameters] = None,
         mixingRule: Literal["Lorentz_Berthelot"] = "Lorentz_Berthelot",
         cutOffFrameworkVDW: float = 12.0,
         cutOffMoleculeVDW: float = 12.0,

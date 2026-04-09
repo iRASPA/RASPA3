@@ -66,21 +66,21 @@ class MonteCarlo(RaspaBase):
         self._cpp_obj.run()
 
     def initialize(self,
-                   call_back_function: Callable = None):
+                   call_back_function: callable = None):
         """
         Runs just the initialization.
         """
         self._cpp_obj.initialize(call_back_function)
 
     def equilibrate(self, 
-                    call_back_function: Callable = None):
+                    call_back_function: callable = None):
         """
         Runs just the equilibration.
         """
         self._cpp_obj.equilibrate(call_back_function)
 
     def production(self,
-                   call_back_function: Callable = None):
+                   call_back_function: callable = None):
         """
         Runs just the production.
         """
