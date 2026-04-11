@@ -393,6 +393,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         atom.groupId = std::uint8_t{1};
       }
 
+      systemA.updateMoleculeAtomInformation();
+      systemB.updateMoleculeAtomInformation();
+
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
       return std::make_pair(energyDifferenceA, energyDifferenceB);
@@ -566,6 +569,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
+
+      systemA.updateMoleculeAtomInformation();
+      systemB.updateMoleculeAtomInformation();
 
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }
