@@ -9,83 +9,67 @@ import mc_moves_move_types;
 
 void MCMoveStatistics::clearMoveStatistics()
 {
-  for (auto& [moveType, statistics] : statsMapDouble)
+  for(auto& stat: stats)
   {
-    statistics.clear();
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    statistics.clear();
+    std::visit([](auto&& s){ s.clear(); }, stat);
   }
 }
 
 void MCMoveStatistics::optimizeMCMoves()
 {
-  for (auto& [moveType, statistics] : statsMapDouble)
+  for(auto& stat: stats)
   {
-    statistics.optimizeAcceptance();
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    statistics.optimizeAcceptance();
+    std::visit([](auto&& s){ s.optimizeAcceptance(); }, stat);
   }
 }
 
 void MCMoveStatistics::addAllCounts(const MoveTypes& move)
 {
-  if (statsMapDouble.find(move) != statsMapDouble.end())
-  {
-    statsMapDouble[move].allCounts += 1;
-  }
-  else
-  {
-    statsMapDouble3[move].allCounts += 1;
-  }
+  std::visit([](auto&& s){ s.allCounts += 1; }, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addTrial(const MoveTypes& move)
 {
-  statsMapDouble[move].counts += 1;
-  statsMapDouble[move].totalCounts += 1;
+  std::visit([](auto&& s){ s.counts += 1; s.totalCounts += 1;}, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addTrial(const MoveTypes& move, std::size_t direction)
 {
-  statsMapDouble3[move].counts[direction] += 1;
-  statsMapDouble3[move].totalCounts[direction] += 1;
+  if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
+  {
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).counts[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalCounts[direction] += 1;
+  }
 }
 
 void MCMoveStatistics::addConstructed(const MoveTypes& move)
 {
-  statsMapDouble[move].constructed += 1;
-  statsMapDouble[move].totalConstructed += 1;
+  std::visit([](auto&& s){ s.constructed += 1; }, stats[std::to_underlying(move)]);
+  std::visit([](auto&& s){ s.totalConstructed += 1; }, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addConstructed(const MoveTypes& move, std::size_t direction)
 {
-  statsMapDouble3[move].constructed[direction] += 1;
-  statsMapDouble3[move].totalConstructed[direction] += 1;
+  if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
+  {
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).constructed[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalConstructed[direction] += 1;
+  }
 }
 
 void MCMoveStatistics::addAccepted(const MoveTypes& move)
 {
-  statsMapDouble[move].accepted += 1;
-  statsMapDouble[move].totalAccepted += 1;
+  std::visit([](auto&& s){ s.accepted += 1; }, stats[std::to_underlying(move)]);
+  std::visit([](auto&& s){ s.totalAccepted += 1; }, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addAccepted(const MoveTypes& move, std::size_t direction)
 {
-  statsMapDouble3[move].accepted[direction] += 1;
-  statsMapDouble3[move].totalAccepted[direction] += 1;
-}
-
-double MCMoveStatistics::getMaxChange(const MoveTypes& move) { return statsMapDouble[move].maxChange; }
-
-void MCMoveStatistics::setMaxChange(const MoveTypes& move, double value) { statsMapDouble[move].maxChange = value; }
-
-double MCMoveStatistics::getMaxChange(const MoveTypes& move, std::size_t direction)
-{
-  return statsMapDouble3[move].maxChange[direction];
+  if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
+  {
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).accepted[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalAccepted[direction] += 1;
+  }
 }
 
 static std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
@@ -149,19 +133,14 @@ static nlohmann::json jsonStatistics(const MoveStatistics<double3>& move)
 const std::string MCMoveStatistics::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
-  for (auto& [moveType, statistics] : statsMapDouble)
+  for(std::size_t i = 0; i != stats.size(); ++i)
   {
-    if (statistics.totalCounts > 0.0)
-    {
-      std::print(stream, "{}", formatStatistics(moveNames[moveType], statistics));
-    }
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    if (statistics.totalCounts.x > 0.0)
-    {
-      std::print(stream, "{}", formatStatistics(moveNames[moveType], statistics));
-    }
+    std::visit([&stream, i](auto&& s){
+        if(s.allCounts > 0)
+        {
+          std::print(stream, "{}", formatStatistics(moveNames[i], s)); 
+        }
+    }, stats[i]);
   }
   return stream.str();
 }
@@ -171,25 +150,17 @@ const std::string MCMoveStatistics::writeMCMoveStatistics(std::size_t countTotal
   std::ostringstream stream;
 
   std::size_t summed = 0;
-  for (auto& [moveType, statistics] : statsMapDouble)
+  for (std::size_t i = 0; i != stats.size(); ++i)
   {
-    double moveCount = static_cast<double>(statistics.allCounts);
-    if (moveCount > 0.0)
-    {
-      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
-                 100.0 * moveCount / static_cast<double>(countTotal));
-      summed += statistics.allCounts;
-    }
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    double moveCount = static_cast<double>(statistics.allCounts);
-    if (moveCount > 0.0)
-    {
-      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
-                 100.0 * moveCount / static_cast<double>(countTotal));
-      summed += statistics.allCounts;
-    }
+    std::visit([&stream, i, &summed, countTotal](auto&& s){  
+        std::size_t moveCount = s.allCounts;
+        if (moveCount > 0)
+        {
+          std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[i], moveCount,
+                     100.0 * static_cast<double>(moveCount) / static_cast<double>(countTotal));
+          summed += s.allCounts;
+        }
+      }, stats[i]);
   }
 
   std::print(stream, "\n");
@@ -203,19 +174,11 @@ const std::string MCMoveStatistics::writeMCMoveStatistics(std::size_t countTotal
 const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
 {
   nlohmann::json status;
-  for (auto& [moveType, statistics] : statsMapDouble)
+  for (std::size_t i = 0; i != stats.size(); ++i)
   {
-    if (statistics.totalCounts > 0.0)
-    {
-      status[moveNames[moveType]] = jsonStatistics(statistics);
-    }
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    if (statistics.totalCounts.x > 0.0)
-    {
-      status[moveNames[moveType]] = jsonStatistics(statistics);
-    }
+    std::visit([i, &status](auto&& s){  
+       status[moveNames[i]] = jsonStatistics(s);
+      }, stats[i]);
   }
   return status;
 }
@@ -223,8 +186,7 @@ const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMoveStatistics& p)
 {
   archive << p.versionNumber;
-  archive << p.statsMapDouble;
-  archive << p.statsMapDouble3;
+  archive << p.stats;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -243,8 +205,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatis
     throw std::runtime_error(std::format("Invalid version reading 'MCMoveProbabilitiesSystem' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
-  archive >> p.statsMapDouble;
-  archive >> p.statsMapDouble3;
+  archive >> p.stats;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

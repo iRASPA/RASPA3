@@ -581,7 +581,7 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
   std::print(stream, "    Move probabilities:\n");
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
-    std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[moveType] + ":", probability);
+    std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[std::to_underlying(moveType)] + ":", probability);
   }
   std::print(stream, "\n");
 
@@ -814,8 +814,8 @@ nlohmann::json Component::jsonStatus() const
   std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
-    moves[moveNames[moveType]] = probability;
-  }
+    moves[moveNames[std::to_underlying(moveType)]] = probability;
+  } 
   status["moveProbabilities"] = moves;
 
   status["n_bonds"] = intraMolecularPotentials.bonds.size();

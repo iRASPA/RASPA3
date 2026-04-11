@@ -399,6 +399,39 @@ class Archive
     return *this;
   }
 
+  template <class T1, class T2>
+  Archive& operator>>(std::variant<T1, T2>& v)
+  {
+    std::size_t index{};
+    *this >> index;
+    if(index == 0)
+    {
+      *this >> get<0>(v);
+    }
+    if(index == 1)
+    {
+      *this >> get<1>(v);
+    }
+    return *this;
+  }
+
+  template <class T1, class T2>
+  const Archive& operator<<(const std::variant<T1, T2>& v)
+  {
+    std::size_t index = v.index();
+    *this << index;
+    if(index == 0)
+    {
+      *this << get<0>(v);
+    }
+    if(index == 1)
+    {
+      *this << get<1>(v);
+    }
+    return *this;
+  }
+
+
   template <class T, std::size_t size>
   Archive& operator>>(std::array<T, size>& v)
   {
