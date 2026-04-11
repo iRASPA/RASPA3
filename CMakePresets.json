@@ -2305,7 +2305,8 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "python3, python3-numpy, blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat, fftw-libs-double",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
-        "BLA_SIZEOF_INTEGER": "8"
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": false
       }
     },
     {
