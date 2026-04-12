@@ -38,7 +38,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::PartialReinsertionCBMC;
+  Move::Types move = Move::Types::PartialReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
   if (component.partialReinsertionFixedAtoms.empty())

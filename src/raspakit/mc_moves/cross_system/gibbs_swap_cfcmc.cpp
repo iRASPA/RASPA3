@@ -35,7 +35,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::GibbsSwapCFCMC;
+  Move::Types move = Move::Types::GibbsSwapCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
 

@@ -107,7 +107,7 @@ void MonteCarlo::run()
           system.containsTheFractionalMolecule = false;
 
         // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
-        if (system.mc_moves_probabilities.getProbability(MoveTypes::HybridMC) > 0.0 &&
+        if (system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 &&
             system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
         {
           system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;

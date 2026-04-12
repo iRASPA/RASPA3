@@ -31,7 +31,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                                                                     std::size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::GibbsSwapCBMC;
+  Move::Types move = Move::Types::GibbsSwapCBMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
 

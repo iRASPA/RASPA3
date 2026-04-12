@@ -35,7 +35,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                                                                          std::size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::Swap;
+  Move::Types move = Move::Types::Swap;
   Component& component = system.components[selectedComponent];
 
   // Initialize selected molecule and update swap insertion move counts.

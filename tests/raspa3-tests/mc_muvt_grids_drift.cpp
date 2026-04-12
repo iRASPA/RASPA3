@@ -36,10 +36,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Swap, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Swap, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -48,19 +48,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Swap, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Swap, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -123,10 +123,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCBMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -135,19 +135,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCBMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -210,10 +210,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -222,19 +222,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -297,10 +297,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -309,19 +309,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -384,10 +384,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -396,19 +396,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -471,10 +471,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -483,19 +483,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -558,10 +558,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -570,19 +570,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,
@@ -645,10 +645,10 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_co2.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -657,19 +657,19 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
                             {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
 
   MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
   Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(MoveTypes::Translation, 1.0);
-  probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities_water.setProbability(Move::Types::Translation, 1.0);
+  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component water = Component(
       2, forceField, "water", 0.0, 0.0, 0.0,

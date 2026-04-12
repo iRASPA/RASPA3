@@ -35,7 +35,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                                                           bool insertionDisabled, bool deletionDisabled)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::SwapCFCMC;
+  Move::Types move = Move::Types::SwapCFCMC;
   Component& component = system.components[selectedComponent];
 
   // Retrieve lambda parameters and select a new lambda bin for the move
@@ -591,8 +591,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCFCMC]["ExternalField"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCFCMC]["ExternalField"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCFCMC]["ExternalField"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCFCMC]["ExternalField"] += (time_end - time_begin);
     }
     else
     {
@@ -609,8 +609,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCFCMC]["Framework"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCFCMC]["Framework"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCFCMC]["Framework"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCFCMC]["Framework"] += (time_end - time_begin);
     }
     else
     {
@@ -626,8 +626,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCFCMC]["Molecule"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCFCMC]["Molecule"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCFCMC]["Molecule"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCFCMC]["Molecule"] += (time_end - time_begin);
     }
     else
     {
@@ -644,8 +644,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCFCMC]["Ewald"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCFCMC]["Ewald"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCFCMC]["Ewald"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCFCMC]["Ewald"] += (time_end - time_begin);
     }
     else
     {
@@ -663,8 +663,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCFCMC]["Tail"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCFCMC]["Tail"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCFCMC]["Tail"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCFCMC]["Tail"] += (time_end - time_begin);
     }
     else
     {

@@ -577,11 +577,11 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
   std::print(stream, "    Net-charge:      {:12.8f} [e]\n", netCharge);
   std::print(stream, "\n");
 
-  const std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  const std::unordered_map<Move::Types, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   std::print(stream, "    Move probabilities:\n");
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
-    std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[std::to_underlying(moveType)] + ":", probability);
+    std::print(stream, "    {:<30} {:8.6f} [-]\n", Move::moveNames[std::to_underlying(moveType)] + ":", probability);
   }
   std::print(stream, "\n");
 
@@ -811,10 +811,10 @@ nlohmann::json Component::jsonStatus() const
   }
 
   nlohmann::json moves;
-  std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  std::unordered_map<Move::Types, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   for (auto &[moveType, probability] : normalizedProbabilities)
   {
-    moves[moveNames[std::to_underlying(moveType)]] = probability;
+    moves[Move::moveNames[std::to_underlying(moveType)]] = probability;
   } 
   status["moveProbabilities"] = moves;
 

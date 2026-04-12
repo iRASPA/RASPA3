@@ -20,7 +20,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/embed.h>
+#include <pybind11/native_enum.h>
 
 #include <exception>
 
@@ -53,6 +53,7 @@ import running_energy;
 import mc_moves_probabilities;
 import mc_moves_move_types;
 import move_statistics;
+import mc_moves_statistics;
 import cif_reader;
 import framework;
 import component;
@@ -213,8 +214,8 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
-      .def_readonly("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
-      .def_readonly("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+      .def_readwrite("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
+      .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
       .def("normalizedAverageProbabilityHistogram",
            &PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram);
 
@@ -223,6 +224,44 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<ConnectivityTable>(m, "ConnectivityTable").def(pybind11::init<>());
 
   pybind11::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials").def(pybind11::init<>());
+
+  pybind11::class_<MoveStatistics<double>>(m, "MoveStatisticsDouble")
+    .def_readonly("counts", &MoveStatistics<double>::counts)
+    .def_readonly("constructed", &MoveStatistics<double>::constructed)
+    .def_readonly("accepted", &MoveStatistics<double>::accepted)
+    .def_readonly("allCounts", &MoveStatistics<double>::allCounts)
+    .def_readonly("totalCounts", &MoveStatistics<double>::totalCounts)
+    .def_readonly("totalConstructed", &MoveStatistics<double>::totalConstructed)
+    .def_readonly("totalAccepted", &MoveStatistics<double>::totalAccepted)
+    .def_readonly("maxChange", &MoveStatistics<double>::maxChange)
+    .def_readonly("targetAcceptance", &MoveStatistics<double>::targetAcceptance)
+    .def_readonly("lowerLimit", &MoveStatistics<double>::lowerLimit)
+    .def_readonly("upperLimit", &MoveStatistics<double>::upperLimit)
+    .def_readonly("optimize", &MoveStatistics<double>::optimize);
+
+  pybind11::class_<MoveStatistics<double3>>(m, "MoveStatisticsDouble3")
+    .def_readonly("counts", &MoveStatistics<double3>::counts)
+    .def_readonly("constructed", &MoveStatistics<double3>::constructed)
+    .def_readonly("accepted", &MoveStatistics<double3>::accepted)
+    .def_readonly("allCounts", &MoveStatistics<double3>::allCounts)
+    .def_readonly("totalCounts", &MoveStatistics<double3>::totalCounts)
+    .def_readonly("totalConstructed", &MoveStatistics<double3>::totalConstructed)
+    .def_readonly("totalAccepted", &MoveStatistics<double3>::totalAccepted)
+    .def_readonly("maxChange", &MoveStatistics<double3>::maxChange)
+    .def_readonly("targetAcceptance", &MoveStatistics<double3>::targetAcceptance)
+    .def_readonly("lowerLimit", &MoveStatistics<double3>::lowerLimit)
+    .def_readonly("upperLimit", &MoveStatistics<double3>::upperLimit)
+    .def_readonly("optimize", &MoveStatistics<double3>::optimize);
+
+  pybind11::class_<Move> move(m, "Move");
+    move.def(pybind11::init());
+  pybind11::native_enum<Move::Types>(move, "Types", "enum.IntEnum")
+      .value("Translation", Move::Types::Translation)
+      .finalize();
+
+  pybind11::class_<MCMoveStatistics>(m, "MCMoveStatistics")
+    //.def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
+    .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
 
   // define before component init to prevent failing default argument
   pybind11::class_<Component> component(m, "Component");
@@ -245,7 +284,8 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("thermodynamicIntegration") = false,
            pybind11::arg("blockingPockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
-      .def_readonly("lambdaGC", &Component::lambdaGC)
+      .def_readwrite("lambdaGC", &Component::lambdaGC)
+      .def_readwrite("lambdaGibbs", &Component::lambdaGibbs)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
       .def_readwrite("blockingPockets", &Component::blockingPockets)
       .def("printStatus", &Component::printStatus)

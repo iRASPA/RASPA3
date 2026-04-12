@@ -35,7 +35,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
                                                                         std::size_t selectedMolecule)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::Swap;
+  Move::Types move = Move::Types::Swap;
   Component& component = system.components[selectedComponent];
 
   // Increment swap deletion move counts for the selected component

@@ -27,7 +27,7 @@ export struct MCMoveCpuTime
 
   std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
 
-  std::array<std::map<std::string, std::chrono::duration<double>>, std::to_underlying(MoveTypes::Count)> timingMap;
+  std::array<std::map<std::string, std::chrono::duration<double>>, std::to_underlying(Move::Types::Count)> timingMap;
 
   std::chrono::duration<double> propertySampling{0.0};            ///< Time spent on property sampling.
   std::chrono::duration<double> energyPressureComputation{0.0};   ///< Time spent on energy and pressure computations.
@@ -107,7 +107,7 @@ export struct MCMoveCpuTime
 
   MCMoveCpuTime(const MCMoveCpuTime&) = default;
 
-  std::map<std::string, std::chrono::duration<double>>& operator[](const MoveTypes& move) { return timingMap[std::to_underlying(move)]; }
+  std::map<std::string, std::chrono::duration<double>>& operator[](const Move::Types& move) { return timingMap[std::to_underlying(move)]; }
 
   inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
   {

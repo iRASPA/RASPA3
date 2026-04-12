@@ -35,7 +35,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
 {
   double3 s, displacement{};
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::RandomTranslation;
+  Move::Types move = Move::Types::RandomTranslation;
   Component &component = system.components[selectedComponent];
 
   // Select a random direction (0: x, 1: y, 2: z)

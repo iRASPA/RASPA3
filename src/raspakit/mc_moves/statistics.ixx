@@ -18,63 +18,68 @@ export struct MCMoveStatistics
   bool operator==(MCMoveStatistics const&) const = default;
 
   std::array<std::variant<MoveStatistics<double>, MoveStatistics<double3>>, 
-             std::to_underlying(MoveTypes::Count)> stats{};
+             std::to_underlying(Move::Types::Count)> stats{};
+
+  const std::variant<MoveStatistics<double>, MoveStatistics<double3>> &operator[](Move::Types i) const
+  {
+    return stats[std::to_underlying(i)];
+  }
 
   MCMoveStatistics()
   {
-    stats[std::to_underlying(MoveTypes::Translation)] =
+    stats[std::to_underlying(Move::Types::Translation)] =
         MoveStatistics<double3>{.maxChange = double3(1.0), .lowerLimit = double3(0.01), .upperLimit = double3(1.5)};
-    stats[std::to_underlying(MoveTypes::RandomTranslation)] = MoveStatistics<double3>{};
-    stats[std::to_underlying(MoveTypes::Rotation)] =
+    stats[std::to_underlying(Move::Types::RandomTranslation)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::Rotation)] =
         MoveStatistics<double3>{.maxChange = double3(1.0), .lowerLimit = double3(0.01), .upperLimit = double3(1.5)};
-    stats[std::to_underlying(MoveTypes::RandomRotation)] = MoveStatistics<double3>{};
-    stats[std::to_underlying(MoveTypes::Swap)] = MoveStatistics<double3>{};
-    stats[std::to_underlying(MoveTypes::SwapCBMC)] = MoveStatistics<double3>{};
-    stats[std::to_underlying(MoveTypes::SwapCFCMC)] = MoveStatistics<double3>{
+    stats[std::to_underlying(Move::Types::RandomRotation)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::Swap)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::SwapCBMC)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::SwapCFCMC)] = MoveStatistics<double3>{
         .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
-    stats[std::to_underlying(MoveTypes::SwapCBCFCMC)] = MoveStatistics<double3>{
+    stats[std::to_underlying(Move::Types::SwapCBCFCMC)] = MoveStatistics<double3>{
         .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
-    stats[std::to_underlying(MoveTypes::GibbsSwapCFCMC)] = MoveStatistics<double3>{
+    stats[std::to_underlying(Move::Types::GibbsSwapCFCMC)] = MoveStatistics<double3>{
         .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
 
-    stats[std::to_underlying(MoveTypes::VolumeChange)] =
+    stats[std::to_underlying(Move::Types::VolumeChange)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
-    stats[std::to_underlying(MoveTypes::ReinsertionCBMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::PartialReinsertionCBMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::IdentityChangeCBMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::GibbsVolume)] =
+    stats[std::to_underlying(Move::Types::ReinsertionCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::PartialReinsertionCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::IdentityChangeCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::GibbsVolume)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
-    stats[std::to_underlying(MoveTypes::GibbsSwapCBMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::Widom)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::WidomCFCMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::WidomCBCFCMC)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::ParallelTempering)] = MoveStatistics<double>{};
-    stats[std::to_underlying(MoveTypes::HybridMC)] =
+    stats[std::to_underlying(Move::Types::GibbsSwapCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::Widom)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::WidomCFCMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::WidomCBCFCMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::ParallelTempering)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::HybridMC)] =
         MoveStatistics<double>{.maxChange = 0.0005, .lowerLimit = 0.000001, .upperLimit = 0.01};
   };
 
   void clearMoveStatistics();
   void optimizeMCMoves();
 
-  void addAllCounts(const MoveTypes& move);
-  void addTrial(const MoveTypes& move);
-  void addTrial(const MoveTypes& move, std::size_t direction);
-  void addConstructed(const MoveTypes& move);
-  void addConstructed(const MoveTypes& move, std::size_t direction);
-  void addAccepted(const MoveTypes& move);
-  void addAccepted(const MoveTypes& move, std::size_t direction);
+  void addAllCounts(const Move::Types& move);
+  void addTrial(const Move::Types& move);
+  void addTrial(const Move::Types& move, std::size_t direction);
+  void addConstructed(const Move::Types& move);
+  void addConstructed(const Move::Types& move, std::size_t direction);
+  void addAccepted(const Move::Types& move);
+  void addAccepted(const Move::Types& move, std::size_t direction);
 
-  double getMaxChange(const MoveTypes& move)
+  double getMaxChange(const Move::Types& move)
   {
     return std::get<MoveStatistics<double>>(stats[std::to_underlying(move)]).maxChange;
   }
 
-  double getMaxChange(const MoveTypes& move, std::size_t direction)
+  double getMaxChange(const Move::Types& move, std::size_t direction)
   {
     return std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).maxChange[direction];
   }
 
-  void setMaxChange(const MoveTypes& move, double value) 
+  void setMaxChange(const Move::Types& move, double value) 
   {
     std::get<MoveStatistics<double>>(stats[std::to_underlying(move)]).maxChange = value;
   };

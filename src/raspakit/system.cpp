@@ -799,16 +799,16 @@ void System::determineSwappableComponents()
 {
   for (Component& component : components)
   {
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::Swap) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0)
+    if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
 
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -829,10 +829,10 @@ void System::determineFractionalComponents()
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
-    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCBCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCBCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -840,7 +840,7 @@ void System::determineFractionalComponents()
     }
 
     // Gibbs
-    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -2175,7 +2175,7 @@ std::string System::writeMCMoveStatistics() const
                  component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
+    if (component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0)
     {
       double imposedChemicalPotential =
           std::log(beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure) / beta;

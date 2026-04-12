@@ -31,7 +31,7 @@ import mc_moves_move_types;
 double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
 {
   std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  MoveTypes move = MoveTypes::Widom;
+  Move::Types move = Move::Types::Widom;
   Component& component = system.components[selectedComponent];
   std::chrono::system_clock::time_point t1, t2;
 

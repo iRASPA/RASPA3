@@ -22,7 +22,7 @@ import interpolation_energy_grid;
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::HybridMC;
+  Move::Types move = Move::Types::HybridMC;
 
   system.mc_moves_statistics.addTrial(move);
 

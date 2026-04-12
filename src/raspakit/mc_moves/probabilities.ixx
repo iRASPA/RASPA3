@@ -26,17 +26,17 @@ export struct MCMoveProbabilities
                       double hybridMCProbability = 0.0);
 
   // use .at such that access is const
-  double getProbability(const MoveTypes &move) const { return probabilities.at(move); };
-  void setProbability(const MoveTypes &move, double probability) { probabilities[move] = probability; };
+  double getProbability(const Move::Types &move) const { return probabilities.at(move); };
+  void setProbability(const Move::Types &move, double probability) { probabilities[move] = probability; };
 
-  const std::unordered_map<MoveTypes, double> normalizedMap() const;
+  const std::unordered_map<Move::Types, double> normalizedMap() const;
   void removeRedundantMoves();
-  MoveTypes sample(RandomNumber &random);
+  Move::Types sample(RandomNumber &random);
 
   void join(const MCMoveProbabilities &other);
 
   // vector of unnormalized probabilities (not necessary due to std::discrete_distribution)
-  std::unordered_map<MoveTypes, double> probabilities{};
+  std::unordered_map<Move::Types, double> probabilities{};
 
   std::string repr();
 

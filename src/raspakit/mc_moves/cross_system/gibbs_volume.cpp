@@ -33,7 +33,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
                                                                                  System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::GibbsVolume;
+  Move::Types move = Move::Types::GibbsVolume;
 
   systemA.mc_moves_statistics.addTrial(move);
   systemB.mc_moves_statistics.addTrial(move);

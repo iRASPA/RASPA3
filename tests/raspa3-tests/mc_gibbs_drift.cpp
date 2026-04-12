@@ -28,7 +28,7 @@ TEST(MC_GIBBS_DRIFT, translation_rotation_reinsertion_volume)
   const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Translation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),

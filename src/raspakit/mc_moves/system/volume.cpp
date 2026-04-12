@@ -31,7 +31,7 @@ import mc_moves_move_types;
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::VolumeChange;
+  Move::Types move = Move::Types::VolumeChange;
 
   // Update volume move counts
   system.mc_moves_statistics.addTrial(move);

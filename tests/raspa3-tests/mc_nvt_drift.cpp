@@ -29,7 +29,7 @@ TEST(MC_NVT_DRIFT, translation)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Translation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -101,7 +101,7 @@ TEST(MC_NVT_DRIFT, random_translation)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);
+  probabilities.setProbability(Move::Types::RandomTranslation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -173,7 +173,7 @@ TEST(MC_NVT_DRIFT, rotation)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -245,7 +245,7 @@ TEST(MC_NVT_DRIFT, random_rotation)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::RandomRotation, 1.0);
+  probabilities.setProbability(Move::Types::RandomRotation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -317,7 +317,7 @@ TEST(MC_NVT_DRIFT, reinsertion)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -389,9 +389,9 @@ TEST(MC_NVT_DRIFT, translation_rotation_reinsertion)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::Translation, 1.0);
-  probabilities.setProbability(MoveTypes::Rotation, 1.0);
-  probabilities.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -463,9 +463,9 @@ TEST(MC_NVT_DRIFT, random_translation_random_rotation_reinsertion)
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::RandomTranslation, 1.0);
-  probabilities.setProbability(MoveTypes::RandomRotation, 1.0);
-  probabilities.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
+  probabilities.setProbability(Move::Types::RandomTranslation, 1.0);
+  probabilities.setProbability(Move::Types::RandomRotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),

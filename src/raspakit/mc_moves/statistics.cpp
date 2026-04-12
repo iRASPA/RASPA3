@@ -23,17 +23,17 @@ void MCMoveStatistics::optimizeMCMoves()
   }
 }
 
-void MCMoveStatistics::addAllCounts(const MoveTypes& move)
+void MCMoveStatistics::addAllCounts(const Move::Types& move)
 {
   std::visit([](auto&& s){ s.allCounts += 1; }, stats[std::to_underlying(move)]);
 }
 
-void MCMoveStatistics::addTrial(const MoveTypes& move)
+void MCMoveStatistics::addTrial(const Move::Types& move)
 {
   std::visit([](auto&& s){ s.counts += 1; s.totalCounts += 1;}, stats[std::to_underlying(move)]);
 }
 
-void MCMoveStatistics::addTrial(const MoveTypes& move, std::size_t direction)
+void MCMoveStatistics::addTrial(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
@@ -42,13 +42,13 @@ void MCMoveStatistics::addTrial(const MoveTypes& move, std::size_t direction)
   }
 }
 
-void MCMoveStatistics::addConstructed(const MoveTypes& move)
+void MCMoveStatistics::addConstructed(const Move::Types& move)
 {
   std::visit([](auto&& s){ s.constructed += 1; }, stats[std::to_underlying(move)]);
   std::visit([](auto&& s){ s.totalConstructed += 1; }, stats[std::to_underlying(move)]);
 }
 
-void MCMoveStatistics::addConstructed(const MoveTypes& move, std::size_t direction)
+void MCMoveStatistics::addConstructed(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
@@ -57,13 +57,13 @@ void MCMoveStatistics::addConstructed(const MoveTypes& move, std::size_t directi
   }
 }
 
-void MCMoveStatistics::addAccepted(const MoveTypes& move)
+void MCMoveStatistics::addAccepted(const Move::Types& move)
 {
   std::visit([](auto&& s){ s.accepted += 1; }, stats[std::to_underlying(move)]);
   std::visit([](auto&& s){ s.totalAccepted += 1; }, stats[std::to_underlying(move)]);
 }
 
-void MCMoveStatistics::addAccepted(const MoveTypes& move, std::size_t direction)
+void MCMoveStatistics::addAccepted(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
@@ -138,7 +138,7 @@ const std::string MCMoveStatistics::writeMCMoveStatistics() const
     std::visit([&stream, i](auto&& s){
         if(s.allCounts > 0)
         {
-          std::print(stream, "{}", formatStatistics(moveNames[i], s)); 
+          std::print(stream, "{}", formatStatistics(Move::moveNames[i], s)); 
         }
     }, stats[i]);
   }
@@ -156,7 +156,7 @@ const std::string MCMoveStatistics::writeMCMoveStatistics(std::size_t countTotal
         std::size_t moveCount = s.allCounts;
         if (moveCount > 0)
         {
-          std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[i], moveCount,
+          std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", Move::moveNames[i], moveCount,
                      100.0 * static_cast<double>(moveCount) / static_cast<double>(countTotal));
           summed += s.allCounts;
         }
@@ -177,7 +177,7 @@ const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
   for (std::size_t i = 0; i != stats.size(); ++i)
   {
     std::visit([i, &status](auto&& s){  
-       status[moveNames[i]] = jsonStatistics(s);
+       status[Move::moveNames[i]] = jsonStatistics(s);
       }, stats[i]);
   }
   return status;

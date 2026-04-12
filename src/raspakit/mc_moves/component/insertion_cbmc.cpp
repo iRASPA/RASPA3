@@ -35,7 +35,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
                                                                              std::size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::SwapCBMC;
+  Move::Types move = Move::Types::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
   // Update move counts statistics for swap insertion move

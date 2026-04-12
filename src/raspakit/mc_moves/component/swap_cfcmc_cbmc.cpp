@@ -38,7 +38,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 {
   // Initialize time points for performance measurement
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::SwapCBCFCMC;
+  Move::Types move = Move::Types::SwapCBCFCMC;
   Component& component = system.components[selectedComponent];
 
   // Reference to the lambda histogram for the selected component
@@ -560,8 +560,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["ExternalField"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["ExternalField"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCBCFCMC]["ExternalField"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCBCFCMC]["ExternalField"] += (time_end - time_begin);
     }
     else
     {
@@ -578,8 +578,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Framework"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Framework"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Framework"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Framework"] += (time_end - time_begin);
     }
     else
     {
@@ -598,8 +598,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Molecule"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Molecule"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Molecule"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Molecule"] += (time_end - time_begin);
     }
     else
     {
@@ -619,8 +619,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
-      component.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Ewald"] += (time_end - time_begin);
-      system.mc_moves_cputime[MoveTypes::WidomCBCFCMC]["Ewald"] += (time_end - time_begin);
+      component.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Ewald"] += (time_end - time_begin);
+      system.mc_moves_cputime[Move::Types::WidomCBCFCMC]["Ewald"] += (time_end - time_begin);
     }
     else
     {

@@ -31,7 +31,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
                                                                                        System &systemA, System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::ParallelTempering;
+  Move::Types move = Move::Types::ParallelTempering;
 
   // Update swap move counts for both systems
   systemA.mc_moves_statistics.addTrial(move);

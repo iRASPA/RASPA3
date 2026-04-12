@@ -35,7 +35,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                                                                             std::size_t selectedMolecule)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::SwapCBMC;
+  Move::Types move = Move::Types::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
   // Increment the count of swap deletion moves for the selected component

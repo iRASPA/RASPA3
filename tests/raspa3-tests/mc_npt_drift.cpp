@@ -28,7 +28,7 @@ TEST(MC_NPT_DRIFT, translation_rotation_reinsertion_volume)
   const ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
-  probabilities.setProbability(MoveTypes::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Translation, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
@@ -53,7 +53,7 @@ TEST(MC_NPT_DRIFT, translation_rotation_reinsertion_volume)
                                     95.0 * (std::numbers::pi / 180.0), 75.0 * (std::numbers::pi / 180.0));
 
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(MoveTypes::VolumeChange, 0.01);
+  systemProbabilities.setProbability(Move::Types::VolumeChange, 0.01);
 
   System system =
       System(0, forceField, box, 300.0, 1e4, 1.0, {}, {co2, methane, water}, {10, 15, 8}, 5, systemProbabilities);

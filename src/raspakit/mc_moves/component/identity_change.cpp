@@ -37,7 +37,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::ReinsertionCBMC;
+  Move::Types move = Move::Types::ReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
   // Increment move counts for reinsertion CBMC statistics.
