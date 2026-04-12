@@ -923,6 +923,15 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
   return status;
 }
 
+std::string PropertyEnergy::repr() const
+{
+  std::ostringstream stream;
+
+  std::print("{}\n", bookKeepingEnergyStatus[0].first.repr());
+
+  return stream.str();
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e)
 {
   archive << e.versionNumber;

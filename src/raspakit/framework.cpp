@@ -471,6 +471,7 @@ std::string Framework::repr() const
   std::ostringstream stream;
 
   std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
+  std::print(stream, "    number of unit cells: {}x{}x{}\n", numberOfUnitCells.x, numberOfUnitCells.y, numberOfUnitCells.z);
 
   std::print(stream, "    number Of Atoms:  {}\n", unitCellAtoms.size());
   std::print(stream, "    net charge:       {:12.5f} [e]\n", netCharge);

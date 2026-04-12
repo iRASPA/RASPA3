@@ -231,6 +231,8 @@ export struct EnergyStatus
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyStatus& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyStatus& e);
+
+  std::string repr() const;
 };
 
 export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& b)

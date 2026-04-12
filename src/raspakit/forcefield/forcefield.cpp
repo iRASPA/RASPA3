@@ -1135,6 +1135,18 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
              Units::displayedUnitOfEnergyString);
 
+  switch(mixingRule)
+  {
+    case ForceField::MixingRule::Lorentz_Berthelot:
+      std::print(stream, "Mixing-rule: Lorentz-Berthelot\n");
+      break;
+    case ForceField::MixingRule::Jorgensen:
+      std::print(stream, "Mixing-rule: Jorgensen\n");
+      break;
+    default:
+      std::unreachable();
+  }
+
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)

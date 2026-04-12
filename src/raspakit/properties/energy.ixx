@@ -114,4 +114,6 @@ export struct PropertyEnergy
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergy &e);
+
+  std::string repr() const;
 };

@@ -116,23 +116,25 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<RunningEnergy>(m, "RunningEnergy")
       .def(pybind11::init<>())
       .def_readwrite("moleculeMoleculeVDW", &RunningEnergy::moleculeMoleculeVDW)
-      .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW);
+      .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW)
+      .def("__repr__", &RunningEnergy::repr);
 
 
   pybind11::class_<Atom>(m, "Atom")
       .def(pybind11::init<>())
       .def(pybind11::init<double3, double, double, std::uint32_t, std::uint16_t, std::uint8_t, std::uint8_t, std::uint8_t>(),
-           pybind11::arg("position"), pybind11::arg("charge") = 0.0, pybind11::arg("scaling") = 0.0,
+           pybind11::arg("position"), pybind11::arg("charge") = 0.0, pybind11::arg("scaling") = 1.0,
            pybind11::arg("moleculeId") = 0, pybind11::arg("type") = 0, pybind11::arg("componentId") = 0,
            pybind11::arg("groupId") = false, pybind11::arg("isFractional") = false)
       .def_readwrite("position", &Atom::position)
       .def("__repr__", &Atom::repr);
 
   pybind11::class_<SimulationBox> simulationBox(m, "SimulationBox");
-  pybind11::enum_<SimulationBox::Type>(simulationBox, "Type")
+  pybind11::native_enum<SimulationBox::Type>(simulationBox, "SimulationBoxType", "enum.IntEnum")
       .value("Rectangular", SimulationBox::Type::Rectangular)
       .value("Triclinic", SimulationBox::Type::Triclinic)
-      .export_values();
+      .export_values()
+      .finalize();
   simulationBox
       .def(pybind11::init<double, double, double>(), pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"))
       .def(pybind11::init<double, double, double, double, double, double>(), pybind11::arg("a"), pybind11::arg("b"),
@@ -156,23 +158,23 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("source") = "");
 
   pybind11::class_<ForceField> forceField(m, "ForceField");
+  pybind11::native_enum<ForceField::MixingRule>(forceField, "MixingRule", "enum.IntEnum")
+      .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
+      .value("Jorgensen", ForceField::MixingRule::Jorgensen)
+      .finalize();
   forceField
       .def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, double, double,
                           double, bool, bool, bool>(),
-           pybind11::arg("pseudoAtoms"), pybind11::arg("parameters"), pybind11::arg("mixingRule"),
+           pybind11::arg("pseudoAtoms"), pybind11::arg("parameters"), 
+           pybind11::arg("mixingRule") = ForceField::MixingRule::Lorentz_Berthelot,
            pybind11::arg("cutOffFrameworkVDW") = 12.0, pybind11::arg("cutOffMoleculeVDW") = 12.0,
            pybind11::arg("cutOffCoulomb") = 12.0, pybind11::arg("shifted") = true,
            pybind11::arg("tailCorrections") = false, pybind11::arg("useCharge") = true)
-      .def(pybind11::init<std::string>(), pybind11::arg("fileName") = "force_field.json")
       .def("findPseudoAtom", static_cast<std::optional<std::size_t> (ForceField::*)(const std::string &) const>(&ForceField::findPseudoAtom))
       .def("__repr__", &ForceField::repr)
       .def_readonly("pseudoAtoms", &ForceField::pseudoAtoms)
       .def_readonly("vdwParameters", &ForceField::data)
       .def_readwrite("useCharge", &ForceField::useCharge);
-
-  pybind11::enum_<ForceField::MixingRule>(forceField, "MixingRule")
-      .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
-      .export_values();
 
   pybind11::class_<CIFReader> cifReader(m, "CIFReader");
   cifReader
@@ -326,11 +328,14 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("dUdlambda", &Potentials::EnergyFactor::dUdlambda);
 
   pybind11::class_<EnergyStatus>(m, "EnergyStatus")
-      .def_readwrite("totalEnergy", &EnergyStatus::totalEnergy);
+      .def_readwrite("totalEnergy", &EnergyStatus::totalEnergy)
+      .def("__repr__", &EnergyStatus::repr);
 
   // convert result to units of Kelvin
   pybind11::class_<PropertyEnergy>(m, "PropertyEnergy")
-      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();});
+      //.def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();});
+      .def("result", &PropertyEnergy::result)
+      .def("__repr__", &PropertyEnergy::repr);
 
   pybind11::class_<AverageEnergyType>(m, "AverageEnergyType")
       .def(pybind11::init<double, double, double, double>(), 
@@ -600,6 +605,82 @@ struct type_caster<double3>
         value.x = seq[0].cast<double>();
         value.y = seq[1].cast<double>();
         value.z = seq[2].cast<double>();
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
+template <>
+struct type_caster<double4> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(double4, io_name("Sequence[float]", "tuple[float, float, float,float]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const double4 &number, return_value_policy /*policy*/, handle /*parent*/) {
+      return pybind11::make_tuple(number.x, number.y, number.z, number.w).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `double4` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/) 
+  {
+    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
+    {
+      value.x = src.cast<double>();
+      value.y = src.cast<double>();
+      value.z = src.cast<double>();
+      value.w = src.cast<double>();
+      return true;
+    }
+
+    // Check if handle is a Sequence
+    if (pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+
+      // Check if exactly one value are in the Sequence
+      if (seq.size() == 1)
+      {
+        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
+        {
+          return false;
+        }
+
+        value.x = seq[0].cast<double>();
+        value.y = seq[0].cast<double>();
+        value.z = seq[0].cast<double>();
+        value.w = seq[0].cast<double>();
+        return true;
+      }
+
+      // Check if exactly three values are in the Sequence
+      if (seq.size() == 4)
+      {
+        // Check if each element is either a float or an int
+        for (auto item : seq) 
+        {
+          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
+          {
+            return false;
+          }
+        }
+        value.x = seq[0].cast<double>();
+        value.y = seq[1].cast<double>();
+        value.z = seq[2].cast<double>();
+        value.w = seq[3].cast<double>();
         return true;
       }
     }
