@@ -41,7 +41,6 @@ class Atom(RaspaBase):
         """
         super().__init__(**popSelf(locals()))
 
-        self._settings["position"] = raspalib.double3(*self._settings["position"])
         self._cpp_obj = raspalib.Atom(**self.cpp_args())
 
     @property

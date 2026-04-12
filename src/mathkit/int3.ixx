@@ -79,6 +79,14 @@ export union int3
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const int3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, int3& vec);
 
+  inline std::string repr() const
+  {
+    std::ostringstream stream;
+
+    std::print(stream, "[{}, {}, {}]", x, y, z);
+
+    return stream.str();
+  }
 };
 
 export inline int3 operator+(int3 lhs, const int3& rhs) { return int3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z); }

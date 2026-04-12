@@ -92,14 +92,16 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("z") = 0)
       .def_readwrite("x", &int3::x)
       .def_readwrite("y", &int3::y)
-      .def_readwrite("z", &int3::z);
+      .def_readwrite("z", &int3::z)
+      .def("__repr__", &int3::repr);
 
   pybind11::class_<double3>(m, "double3")
       .def(pybind11::init<double, double, double>(), pybind11::arg("x") = 0.0, pybind11::arg("y") = 0.0,
            pybind11::arg("z") = 0.0)
       .def_readwrite("x", &double3::x)
       .def_readwrite("y", &double3::y)
-      .def_readwrite("z", &double3::z);
+      .def_readwrite("z", &double3::z)
+      .def("__repr__", &double3::repr);
 
   pybind11::class_<double4>(m, "double4")
       .def(pybind11::init<double, double, double, double>(), pybind11::arg("x") = 0.0, pybind11::arg("y") = 0.0,
@@ -150,7 +152,7 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<PseudoAtom>(m, "PseudoAtom")
       .def(pybind11::init<std::string, bool, double, double, double, std::size_t, bool, std::string>(),
            pybind11::arg("name"), pybind11::arg("frameworkType"), pybind11::arg("mass"), pybind11::arg("charge"),
-           pybind11::arg("polarizability") = 0.0, pybind11::arg("atomicNumber"), pybind11::arg("printToPDB") = true,
+           pybind11::arg("polarizability") = 0.0, pybind11::arg("atomicNumber") = 1, pybind11::arg("printToPDB") = true,
            pybind11::arg("source") = "");
 
   pybind11::class_<ForceField> forceField(m, "ForceField");
@@ -221,9 +223,11 @@ PYBIND11_MODULE(raspalib, m)
 
 
 
-  pybind11::class_<ConnectivityTable>(m, "ConnectivityTable").def(pybind11::init<>());
+  pybind11::class_<ConnectivityTable>(m, "ConnectivityTable")
+    .def(pybind11::init<>());
 
-  pybind11::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials").def(pybind11::init<>());
+  pybind11::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials")
+    .def(pybind11::init<>());
 
   pybind11::class_<MoveStatistics<double>>(m, "MoveStatisticsDouble")
     .def_readonly("counts", &MoveStatistics<double>::counts)
@@ -233,13 +237,14 @@ PYBIND11_MODULE(raspalib, m)
     .def_readonly("totalCounts", &MoveStatistics<double>::totalCounts)
     .def_readonly("totalConstructed", &MoveStatistics<double>::totalConstructed)
     .def_readonly("totalAccepted", &MoveStatistics<double>::totalAccepted)
-    .def_readonly("maxChange", &MoveStatistics<double>::maxChange)
-    .def_readonly("targetAcceptance", &MoveStatistics<double>::targetAcceptance)
-    .def_readonly("lowerLimit", &MoveStatistics<double>::lowerLimit)
-    .def_readonly("upperLimit", &MoveStatistics<double>::upperLimit)
-    .def_readonly("optimize", &MoveStatistics<double>::optimize);
+    .def_readwrite("maxChange", &MoveStatistics<double>::maxChange)
+    .def_readwrite("targetAcceptance", &MoveStatistics<double>::targetAcceptance)
+    .def_readwrite("lowerLimit", &MoveStatistics<double>::lowerLimit)
+    .def_readwrite("upperLimit", &MoveStatistics<double>::upperLimit)
+    .def_readwrite("optimize", &MoveStatistics<double>::optimize);
 
   pybind11::class_<MoveStatistics<double3>>(m, "MoveStatisticsDouble3")
+    //.def_property_readonly("counts", [](MoveStatistics<double3> const &s) { return std::vector<double>{s.counts.x, s.counts.y, s.counts.z};})
     .def_readonly("counts", &MoveStatistics<double3>::counts)
     .def_readonly("constructed", &MoveStatistics<double3>::constructed)
     .def_readonly("accepted", &MoveStatistics<double3>::accepted)
@@ -247,21 +252,22 @@ PYBIND11_MODULE(raspalib, m)
     .def_readonly("totalCounts", &MoveStatistics<double3>::totalCounts)
     .def_readonly("totalConstructed", &MoveStatistics<double3>::totalConstructed)
     .def_readonly("totalAccepted", &MoveStatistics<double3>::totalAccepted)
-    .def_readonly("maxChange", &MoveStatistics<double3>::maxChange)
-    .def_readonly("targetAcceptance", &MoveStatistics<double3>::targetAcceptance)
-    .def_readonly("lowerLimit", &MoveStatistics<double3>::lowerLimit)
-    .def_readonly("upperLimit", &MoveStatistics<double3>::upperLimit)
-    .def_readonly("optimize", &MoveStatistics<double3>::optimize);
+    .def_readwrite("maxChange", &MoveStatistics<double3>::maxChange)
+    .def_readwrite("targetAcceptance", &MoveStatistics<double3>::targetAcceptance)
+    .def_readwrite("lowerLimit", &MoveStatistics<double3>::lowerLimit)
+    .def_readwrite("upperLimit", &MoveStatistics<double3>::upperLimit)
+    .def_readwrite("optimize", &MoveStatistics<double3>::optimize);
 
   pybind11::class_<Move> move(m, "Move");
     move.def(pybind11::init());
   pybind11::native_enum<Move::Types>(move, "Types", "enum.IntEnum")
       .value("Translation", Move::Types::Translation)
+      .export_values()
       .finalize();
 
   pybind11::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-    //.def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
-    .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
+    .def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
+    //.def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
 
   // define before component init to prevent failing default argument
   pybind11::class_<Component> component(m, "Component");
@@ -397,10 +403,10 @@ PYBIND11_MODULE(raspalib, m)
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
                           std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
            pybind11::arg("systemId"), pybind11::arg("forceField"), pybind11::arg("simulationBox") = std::nullopt,
-           pybind11::arg("hasExternalField") = false, pybind11::arg("externalTemperature"), 
+           pybind11::arg("hasExternalField") = false, pybind11::arg("externalTemperature") = 298.0, 
            pybind11::arg("externalPressure") = std::nullopt, pybind11::arg("heliumVoidFraction") = 0.0,
            pybind11::arg("frameworkComponents") = std::nullopt,
-           pybind11::arg("components"), pybind11::arg("initialPositions") = std::vector<std::vector<double3>>(),
+           pybind11::arg("components") = std::vector<Component>(), pybind11::arg("initialPositions") = std::vector<std::vector<double3>>(),
            pybind11::arg("initialNumberOfMolecules") = std::vector<std::size_t>(), pybind11::arg("numberOfBlocks") = 5,
            pybind11::arg("systemProbabilities") = MCMoveProbabilities())
       .def("computeTotalEnergies", &System::computeTotalEnergies)
@@ -453,7 +459,7 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),
          pybind11::arg("numberOfEquilibrationCycles") = 0, pybind11::arg("printEvery") = 5000,
          pybind11::arg("writeBinaryRestartEvery") = 5000, pybind11::arg("rescaleWangLandauEvery") = 1000,
-         pybind11::arg("optimizeMCMovesEvery") = 100, pybind11::arg("systems"),
+         pybind11::arg("optimizeMCMovesEvery") = 100, pybind11::arg("systems") = std::vector<System>(),
          pybind11::arg("randomSeed") = std::nullopt, pybind11::arg("numberOfBlocks") = 5,
          pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
@@ -474,3 +480,133 @@ PYBIND11_MODULE(raspalib, m)
       .value("Production", MonteCarlo::SimulationStage::Production)
       .export_values();
 }
+
+namespace pybind11 {
+namespace detail {
+
+template <>
+struct type_caster<int3> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(int3, io_name("Sequence[int]", "tuple[int, int, int]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const int3 &number, return_value_policy /*policy*/, handle /*parent*/) 
+  {
+      return pybind11::make_tuple(number.x, number.y, number.z).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `int3` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/)
+  {
+    // Check if handle is a Sequence
+    if (!pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      return false;
+    }
+    auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+    // Check if exactly two values are in the Sequence
+    if (seq.size() != 3) 
+    {
+      return false;
+    }
+    // Check if each element is either an int
+    for (auto item : seq)
+    {
+      if (!pybind11::isinstance<pybind11::int_>(item))
+      {
+        return false;
+      }
+    }
+    value.x = seq[0].cast<std::int32_t>();
+    value.y = seq[1].cast<std::int32_t>();
+    value.z = seq[2].cast<std::int32_t>();
+    return true;
+  }
+};
+
+template <>
+struct type_caster<double3> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(double3, io_name("Sequence[float]", "tuple[float, float, float]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const double3 &number, return_value_policy /*policy*/, handle /*parent*/) {
+      return pybind11::make_tuple(number.x, number.y, number.z).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `double3` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/) 
+  {
+    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
+    {
+      value.x = src.cast<double>();
+      value.y = src.cast<double>();
+      value.z = src.cast<double>();
+      return true;
+    }
+
+    // Check if handle is a Sequence
+    if (pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+
+      // Check if exactly one value are in the Sequence
+      if (seq.size() == 1)
+      {
+        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
+        {
+          return false;
+        }
+
+        value.x = seq[0].cast<double>();
+        value.y = seq[0].cast<double>();
+        value.z = seq[0].cast<double>();
+        return true;
+      }
+
+      // Check if exactly three values are in the Sequence
+      if (seq.size() == 3)
+      {
+        // Check if each element is either a float or an int
+        for (auto item : seq) 
+        {
+          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
+          {
+            return false;
+          }
+        }
+        value.x = seq[0].cast<double>();
+        value.y = seq[1].cast<double>();
+        value.z = seq[2].cast<double>();
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
+} // namespace detail
+} // namespace pybind11

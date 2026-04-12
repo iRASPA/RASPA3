@@ -243,6 +243,16 @@ export union double3
   std::string to_string();
   friend void to_json(nlohmann::json&, const double3&);
   friend void from_json(const nlohmann::json&, double3&);
+
+  inline std::string repr() const
+  {
+    std::ostringstream stream;
+
+    std::print(stream, "[{}, {}, {}]", x, y, z);
+
+    return stream.str();
+  }
+
 };
 
 export inline double3 operator*(const double3& a, const double3& b) { return double3(a.x * b.x, a.y * b.y, a.z * b.z); }

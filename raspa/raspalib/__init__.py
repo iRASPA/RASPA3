@@ -24,3 +24,6 @@ from .property_loading import PropertyLoading
 from .property_number_of_molecules_evolution import PropertyNumberOfMoleculesEvolution
 from .property_volume_evolution import PropertyVolumeEvolution
 from .property_density_grid import PropertyDensityGrid
+from .property_lambda_probability_histogram import PropertyLambdaProbabilityHistogram
+from .move import Move
+from .move_statistics_double3 import MoveStatisticsDouble3
