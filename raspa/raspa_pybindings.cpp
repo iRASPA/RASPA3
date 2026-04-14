@@ -133,7 +133,6 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::native_enum<SimulationBox::Type>(simulationBox, "SimulationBoxType", "enum.IntEnum")
       .value("Rectangular", SimulationBox::Type::Rectangular)
       .value("Triclinic", SimulationBox::Type::Triclinic)
-      .export_values()
       .finalize();
   simulationBox
       .def(pybind11::init<double, double, double>(), pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"))
@@ -162,9 +161,8 @@ PYBIND11_MODULE(raspalib, m)
       .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
       .value("Jorgensen", ForceField::MixingRule::Jorgensen)
       .finalize();
-  forceField
-      .def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, double, double,
-                          double, bool, bool, bool>(),
+  forceField.def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, 
+                 double, double, double, bool, bool, bool>(),
            pybind11::arg("pseudoAtoms"), pybind11::arg("parameters"), 
            pybind11::arg("mixingRule") = ForceField::MixingRule::Lorentz_Berthelot,
            pybind11::arg("cutOffFrameworkVDW") = 12.0, pybind11::arg("cutOffMoleculeVDW") = 12.0,
@@ -182,10 +180,11 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Framework> framework(m, "Framework");
 
-  pybind11::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom")
+  pybind11::native_enum<CIFReader::UseChargesFrom>(framework, "UseChargesFrom", "enum.IntEnum")
       .value("PseudoAtoms", CIFReader::UseChargesFrom::PseudoAtoms)
       .value("CIF_File", CIFReader::UseChargesFrom::CIF_File)
-      .value("ChargeEquilibration", CIFReader::UseChargesFrom::ChargeEquilibration);
+      .value("ChargeEquilibration", CIFReader::UseChargesFrom::ChargeEquilibration)
+      .finalize();
 
   framework
       .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, 
@@ -264,20 +263,38 @@ PYBIND11_MODULE(raspalib, m)
     move.def(pybind11::init());
   pybind11::native_enum<Move::Types>(move, "Types", "enum.IntEnum")
       .value("Translation", Move::Types::Translation)
-      .export_values()
+      .value("RandomTranslation", Move::Types::RandomTranslation)
+      .value("Rotation", Move::Types::Rotation)
+      .value("RandomRotation", Move::Types::RandomRotation)
+      .value("VolumeChange", Move::Types::VolumeChange)
+      .value("ReinsertionCBMC", Move::Types::ReinsertionCBMC)
+      .value("PartialReinsertionCBMC", Move::Types::PartialReinsertionCBMC)
+      .value("IdentityChangeCBMC", Move::Types::IdentityChangeCBMC)
+      .value("Swap", Move::Types::Swap)
+      .value("SwapCBMC", Move::Types::SwapCBMC)
+      .value("SwapCFCMC", Move::Types::SwapCFCMC)
+      .value("SwapCBCFCMC", Move::Types::SwapCBCFCMC)
+      .value("GibbsVolume", Move::Types::GibbsVolume)
+      .value("GibbsSwapCBMC", Move::Types::GibbsSwapCBMC)
+      .value("GibbsSwapCFCMC", Move::Types::GibbsSwapCFCMC)
+      .value("Widom", Move::Types::Widom)
+      .value("WidomCFCMC", Move::Types::WidomCFCMC)
+      .value("WidomCBCFCMC", Move::Types::WidomCBCFCMC)
+      .value("ParallelTempering", Move::Types::ParallelTempering)
+      .value("HybridMC", Move::Types::HybridMC)
       .finalize();
 
   pybind11::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-    .def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
-    //.def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
+    //.def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
+    .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
 
   // define before component init to prevent failing default argument
   pybind11::class_<Component> component(m, "Component");
 
-  pybind11::enum_<Component::Type>(component, "Type")
+  pybind11::native_enum<Component::Type>(component, "Type", "enum.IntEnum")
       .value("Adsorbate", Component::Type::Adsorbate)
       .value("Cation", Component::Type::Cation)
-      .export_values();
+      .finalize();
 
   component
       .def(pybind11::init<std::size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>,
@@ -333,8 +350,7 @@ PYBIND11_MODULE(raspalib, m)
 
   // convert result to units of Kelvin
   pybind11::class_<PropertyEnergy>(m, "PropertyEnergy")
-      //.def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();});
-      .def("result", &PropertyEnergy::result)
+      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();})
       .def("__repr__", &PropertyEnergy::repr);
 
   pybind11::class_<AverageEnergyType>(m, "AverageEnergyType")
@@ -349,15 +365,15 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyDensityGrid> property_energy_grid(m, "PropertyDensityGrid");
 
-  pybind11::enum_<PropertyDensityGrid::Normalization>(property_energy_grid, "Normalization")
+  pybind11::native_enum<PropertyDensityGrid::Normalization>(property_energy_grid, "Normalization", "enum.IntEnum")
       .value("Max", PropertyDensityGrid::Normalization::Max)
       .value("NumberDensity", PropertyDensityGrid::Normalization::NumberDensity)
-      .export_values();
+      .finalize();
 
-  pybind11::enum_<PropertyDensityGrid::Binning>(property_energy_grid, "Binning")
+  pybind11::native_enum<PropertyDensityGrid::Binning>(property_energy_grid, "Binning", "enum.IntEnum")
       .value("Standard", PropertyDensityGrid::Binning::Standard)
       .value("Equitable", PropertyDensityGrid::Binning::Equitable)
-      .export_values();
+      .finalize();
 
   property_energy_grid.def(pybind11::init<std::size_t, std::size_t, int3, std::size_t, 
                                           std::size_t, std::vector<std::size_t>,
@@ -446,7 +462,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("forceField", &InputReader::forceField)
       .def_readonly("systems", &InputReader::systems);
 
-  pybind11::enum_<InputReader::SimulationType>(inputReader, "SimulationType")
+  pybind11::native_enum<InputReader::SimulationType>(inputReader, "SimulationType", "enum.IntEnum")
       .value("MonteCarlo", InputReader::SimulationType::MonteCarlo)
       .value("MonteCarloTransitionMatrix", InputReader::SimulationType::MonteCarloTransitionMatrix)
       .value("MolecularDynamics", InputReader::SimulationType::MolecularDynamics)
@@ -456,7 +472,7 @@ PYBIND11_MODULE(raspalib, m)
       .value("MixturePrediction", InputReader::SimulationType::MixturePrediction)
       .value("Fitting", InputReader::SimulationType::Fitting)
       .value("ParallelTempering", InputReader::SimulationType::ParallelTempering)
-      .export_values();
+      .finalize();
 
   pybind11::class_<MonteCarlo> mc(m, "MonteCarlo");
   mc.def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
@@ -478,12 +494,12 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("systems", &MonteCarlo::systems)
       .def_readwrite("simulationStage", &MonteCarlo::simulationStage);
 
-  pybind11::enum_<MonteCarlo::SimulationStage>(mc, "SimulationStage")
+  pybind11::native_enum<MonteCarlo::SimulationStage>(mc, "SimulationStage", "enum.IntEnum")
       .value("Uninitialized", MonteCarlo::SimulationStage::Uninitialized)
       .value("Initialization", MonteCarlo::SimulationStage::Initialization)
       .value("Equilibration", MonteCarlo::SimulationStage::Equilibration)
       .value("Production", MonteCarlo::SimulationStage::Production)
-      .export_values();
+      .finalize();
 }
 
 namespace pybind11 {

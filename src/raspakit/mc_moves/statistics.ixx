@@ -20,14 +20,9 @@ export struct MCMoveStatistics
   std::array<std::variant<MoveStatistics<double>, MoveStatistics<double3>>, 
              std::to_underlying(Move::Types::Count)> stats{};
 
-  //const std::variant<MoveStatistics<double>, MoveStatistics<double3>> &operator[](Move::Types i) const
-  //{
-  //  return stats[std::to_underlying(i)];
-  //}
-
-  const std::variant<MoveStatistics<double>, MoveStatistics<double3>> &operator[](std::size_t i) const
+  const std::variant<MoveStatistics<double>, MoveStatistics<double3>> &operator[](Move::Types i) const
   {
-    return stats[i];
+    return stats[std::to_underlying(i)];
   }
 
   MCMoveStatistics()
