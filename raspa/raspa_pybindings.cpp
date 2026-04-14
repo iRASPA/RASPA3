@@ -60,6 +60,7 @@ import component;
 import system;
 import randomnumbers;
 import monte_carlo;
+import molecular_dynamics;
 import input_reader;
 import property_loading;
 import loadings;
@@ -75,6 +76,7 @@ import property_conventional_rdf;
 import property_rdf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
+import property_widom;
 import connectivity_table;
 import intra_molecular_potentials;
 
@@ -219,9 +221,7 @@ PYBIND11_MODULE(raspalib, m)
       .def(pybind11::init<>())
       .def_readwrite("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
       .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
-      .def("normalizedAverageProbabilityHistogram",
-           &PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram);
-
+      .def("result", &PropertyLambdaProbabilityHistogram::result);
 
 
   pybind11::class_<ConnectivityTable>(m, "ConnectivityTable")
@@ -309,10 +309,11 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("thermodynamicIntegration") = false,
            pybind11::arg("blockingPockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
-      .def_readwrite("lambdaGC", &Component::lambdaGC)
-      .def_readwrite("lambdaGibbs", &Component::lambdaGibbs)
+      .def_readwrite("lambdaHistogram", &Component::lambdaGC)
+      .def_readonly("mc_moves_probabilities", &Component::mc_moves_probabilities)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
       .def_readwrite("blockingPockets", &Component::blockingPockets)
+      .def_readwrite("averageRosenbluthWeights", &Component::averageRosenbluthWeights)
       .def("printStatus", &Component::printStatus)
       .def("__repr__", &Component::repr);
 
@@ -419,6 +420,8 @@ PYBIND11_MODULE(raspalib, m)
             pybind11::arg("writeEvery") = std::nullopt)
       .def_readonly("result", &PropertyVolumeEvolution::result);
 
+  pybind11::class_<PropertyWidom>(m, "PropertyWidom");
+
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<std::size_t, ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
@@ -448,34 +451,9 @@ PYBIND11_MODULE(raspalib, m)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
-  pybind11::class_<InputReader> inputReader(m, "InputReader");
-  inputReader.def(pybind11::init<const std::string>(), pybind11::arg("fileName") = "simulation.json")
-      .def_readonly("numberOfBlocks", &InputReader::numberOfBlocks)
-      .def_readonly("numberOfCycles", &InputReader::numberOfCycles)
-      .def_readonly("numberOfInitializationCycles", &InputReader::numberOfInitializationCycles)
-      .def_readonly("numberOfEquilibrationCycles", &InputReader::numberOfEquilibrationCycles)
-      .def_readonly("printEvery", &InputReader::printEvery)
-      .def_readonly("writeBinaryRestartEvery", &InputReader::writeBinaryRestartEvery)
-      .def_readonly("rescaleWangLandauEvery", &InputReader::rescaleWangLandauEvery)
-      .def_readonly("optimizeMCMovesEvery", &InputReader::optimizeMCMovesEvery)
-      .def_readonly("writeEvery", &InputReader::writeEvery)
-      .def_readonly("forceField", &InputReader::forceField)
-      .def_readonly("systems", &InputReader::systems);
 
-  pybind11::native_enum<InputReader::SimulationType>(inputReader, "SimulationType", "enum.IntEnum")
-      .value("MonteCarlo", InputReader::SimulationType::MonteCarlo)
-      .value("MonteCarloTransitionMatrix", InputReader::SimulationType::MonteCarloTransitionMatrix)
-      .value("MolecularDynamics", InputReader::SimulationType::MolecularDynamics)
-      .value("Minimization", InputReader::SimulationType::Minimization)
-      .value("Test", InputReader::SimulationType::Test)
-      .value("Breakthrough", InputReader::SimulationType::Breakthrough)
-      .value("MixturePrediction", InputReader::SimulationType::MixturePrediction)
-      .value("Fitting", InputReader::SimulationType::Fitting)
-      .value("ParallelTempering", InputReader::SimulationType::ParallelTempering)
-      .finalize();
-
-  pybind11::class_<MonteCarlo> mc(m, "MonteCarlo");
-  mc.def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
+  pybind11::class_<MonteCarlo>(m, "MonteCarlo")
+      .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
                         std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
          pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),
          pybind11::arg("numberOfEquilibrationCycles") = 0, pybind11::arg("printEvery") = 5000,
@@ -485,21 +463,27 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
       .def("run", &MonteCarlo::run)
-      .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
-      //.def("initialize", [](MonteCarlo& self, const pybind11::function& callback) {try {self.initialize(callback);} catch (...) {std::print("here\n");}},
-      //     pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
-      .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
-      .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}))
+      .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
       .def("cycle", &MonteCarlo::performCycle)
-      .def_readonly("systems", &MonteCarlo::systems)
-      .def_readwrite("simulationStage", &MonteCarlo::simulationStage);
+      .def_readonly("systems", &MonteCarlo::systems);
 
-  pybind11::native_enum<MonteCarlo::SimulationStage>(mc, "SimulationStage", "enum.IntEnum")
-      .value("Uninitialized", MonteCarlo::SimulationStage::Uninitialized)
-      .value("Initialization", MonteCarlo::SimulationStage::Initialization)
-      .value("Equilibration", MonteCarlo::SimulationStage::Equilibration)
-      .value("Production", MonteCarlo::SimulationStage::Production)
-      .finalize();
+  pybind11::class_<MolecularDynamics>(m, "MolecularDynamics")
+    .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
+                        std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+         pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),
+         pybind11::arg("numberOfEquilibrationCycles") = 0, pybind11::arg("printEvery") = 5000,
+         pybind11::arg("writeBinaryRestartEvery") = 5000, pybind11::arg("rescaleWangLandauEvery") = 1000,
+         pybind11::arg("optimizeMCMovesEvery") = 100, pybind11::arg("systems") = std::vector<System>(),
+         pybind11::arg("randomSeed") = std::nullopt, pybind11::arg("numberOfBlocks") = 5,
+         pybind11::arg("outputToFiles") = false)
+      .def("run", &MolecularDynamics::run)
+      .def("initialize", &MolecularDynamics::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("equilibrate", &MolecularDynamics::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("production", &MolecularDynamics::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def_readonly("systems", &MolecularDynamics::systems);
+
 }
 
 namespace pybind11 {

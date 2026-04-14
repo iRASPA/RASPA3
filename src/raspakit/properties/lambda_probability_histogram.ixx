@@ -154,7 +154,7 @@ export struct PropertyLambdaProbabilityHistogram
   void WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase,
                            bool containsTheFractionalMolecule, double value = 1.0);
 
-  std::pair<std::vector<double>, std::vector<double>> normalizedAverageProbabilityHistogram();
+  std::pair<std::vector<double>, std::vector<double>> result();
 
   std::string writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential,
                                       std::optional<double> imposedFugacity) const;

@@ -149,7 +149,7 @@ export struct MonteCarlo
    * Sets up the simulation systems, writes initial output, and runs
    * the specified number of initialization cycles.
    */
-  void initialize(std::function<void()> call_back_function = []{});
+  void initialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Performs the equilibration stage of the simulation.
@@ -157,14 +157,14 @@ export struct MonteCarlo
    * Equilibrates the systems by running the specified number of equilibration cycles,
    * and adjusts Wang-Landau biasing factors.
    */
-  void equilibrate(std::function<void()> call_back_function = []{});
+  void equilibrate(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Performs the production stage of the simulation.
    *
    * Runs the main simulation cycles, collects statistics, and samples properties.
    */
-  void production(std::function<void()> call_back_function = []{});
+  void production(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Generates the final output of the simulation.

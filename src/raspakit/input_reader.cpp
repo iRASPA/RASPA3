@@ -32,6 +32,8 @@ import property_rdf;
 import property_density_grid;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
+import property_volume_evolution;
+import property_number_of_molecules_evolution;
 import property_msd;
 import property_vacf;
 import write_lammps_data;
@@ -1205,6 +1207,56 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("ComputeNumberOfMoleculesEvolution") &&
+          value["ComputeNumberOfMoleculesEvolution"].is_boolean())
+      {
+        if (value["ComputeNumberOfMoleculesEvolution"].get<bool>())
+        {
+          std::size_t sample_number_of_molecules_every{1};
+          if (value.contains("SampleNumberOfMoleculesEvolutionEvery") &&
+              value["SampleNumberOfMoleculesEvolutionEvery"].is_number_unsigned())
+          {
+            sample_number_of_molecules_every = value["SampleNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
+          }
+
+          std::size_t write_number_of_molecules_evolution_every{5000};
+          if (value.contains("WriteNumberOfMoleculesEvolutionEvery") &&
+              value["WriteNumberOfMoleculesEvolutionEvery"].is_number_unsigned())
+          {
+            write_number_of_molecules_evolution_every = value["WriteNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
+          }
+
+          systems[systemId].propertyNumberOfMoleculesEvolution = 
+              PropertyNumberOfMoleculesEvolution(numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
+                                      systems[systemId].components.size(), sample_number_of_molecules_every, write_number_of_molecules_evolution_every);
+        }
+      }
+
+      if (value.contains("ComputeVolumeEvolution") &&
+          value["ComputeVolumeEvolution"].is_boolean())
+      {
+        if (value["ComputeVolumeEvolution"].get<bool>())
+        {
+          std::size_t sample_volume_evolution_every{1};
+          if (value.contains("SampleVolumeEvolutionEvery") &&
+              value["SampleVolumeEvolutionEvery"].is_number_unsigned())
+          {
+            sample_volume_evolution_every = value["SampleVolumeEvolutionEvery"].get<std::size_t>();
+          }
+
+          std::size_t write_volume_evolution_every{5000};
+          if (value.contains("writeVolumeEvolutionEvery") &&
+              value["writeVolumeEvolutionEvery"].is_number_unsigned())
+          {
+            write_volume_evolution_every = value["writeVolumeEvolutionEvery"].get<std::size_t>();
+          }
+
+          systems[systemId].propertyVolumeEvolution = 
+              PropertyVolumeEvolution(numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
+                                      sample_volume_evolution_every, write_volume_evolution_every);
+        }
+      }
+
       if (value.contains("ComputeRDF") && value["ComputeRDF"].is_boolean())
       {
         if (value["ComputeRDF"].get<bool>())
@@ -1705,6 +1757,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OutputPDBMovie",
     "SampleMovieEvery",
     "RestrictMoviePositionsToBox",
+    "ComputeNumberOfMoleculesEvolution",
+    "ComputeVolumeEvolution",
     "WriteLammpsData",
     "WriteLammpsDataEvery",
     "Ensemble",

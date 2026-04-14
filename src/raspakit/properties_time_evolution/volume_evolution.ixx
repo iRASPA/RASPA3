@@ -32,6 +32,8 @@ export struct PropertyVolumeEvolution
 
   void addSample(std::size_t absoluteCurrentCycle, double currentVolume);
 
+  void writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle);
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyVolumeEvolution &hist);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyVolumeEvolution &hist);

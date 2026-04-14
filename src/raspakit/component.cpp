@@ -577,11 +577,11 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
   std::print(stream, "    Net-charge:      {:12.8f} [e]\n", netCharge);
   std::print(stream, "\n");
 
-  const std::unordered_map<Move::Types, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  const std::vector<double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   std::print(stream, "    Move probabilities:\n");
-  for (auto &[moveType, probability] : normalizedProbabilities)
+  for (std::size_t i = 0; i < normalizedProbabilities.size(); ++i)
   {
-    std::print(stream, "    {:<30} {:8.6f} [-]\n", Move::moveNames[std::to_underlying(moveType)] + ":", probability);
+    std::print(stream, "    {:<30} {:8.6f} [-]\n", Move::moveNames[i] + ":", normalizedProbabilities[i]);
   }
   std::print(stream, "\n");
 
@@ -811,12 +811,8 @@ nlohmann::json Component::jsonStatus() const
   }
 
   nlohmann::json moves;
-  std::unordered_map<Move::Types, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
-  for (auto &[moveType, probability] : normalizedProbabilities)
-  {
-    moves[Move::moveNames[std::to_underlying(moveType)]] = probability;
-  } 
-  status["moveProbabilities"] = moves;
+  std::vector<double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  status["moveProbabilities"] = normalizedProbabilities;
 
   status["n_bonds"] = intraMolecularPotentials.bonds.size();
   std::vector<std::string> bondTypes(intraMolecularPotentials.bonds.size());

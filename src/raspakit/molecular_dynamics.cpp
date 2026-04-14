@@ -52,7 +52,8 @@ import interpolation_energy_grid;
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
 MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
-    : numberOfCycles(reader.numberOfCycles),
+    : random(reader.randomSeed),
+      numberOfCycles(reader.numberOfCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
@@ -60,8 +61,28 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
-      random(reader.randomSeed),
       estimation(reader.numberOfBlocks, reader.numberOfCycles)
+{
+}
+
+MolecularDynamics::MolecularDynamics(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
+                       std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
+                       std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
+                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems,
+                       std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
+    : outputToFiles(outputToFiles),
+      random(RandomNumber(randomSeed)),
+      numberOfCycles(numberOfCycles),
+      numberOfInitializationCycles(numberOfInitializationCycles),
+      numberOfEquilibrationCycles(numberOfEquilibrationCycles),
+      printEvery(printEvery),
+      writeRestartEvery(5000),
+      writeBinaryRestartEvery(writeBinaryRestartEvery),
+      rescaleWangLandauEvery(rescaleWangLandauEvery),
+      optimizeMCMovesEvery(optimizeMCMovesEvery),
+      systems(systems),
+      outputJsons(systems.size()),
+      estimation(numberOfBlocks, numberOfCycles)
 {
 }
 
@@ -116,7 +137,7 @@ void MolecularDynamics::createInterpolationGrids()
   }
 }
 
-void MolecularDynamics::initialize()
+void MolecularDynamics::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::size_t totalNumberOfMolecules{0uz};
   std::size_t totalNumberOfComponents{0uz};
@@ -220,6 +241,14 @@ void MolecularDynamics::initialize()
       }
     }
 
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
     if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
       for (System& system : systems)
@@ -245,7 +274,7 @@ void MolecularDynamics::initialize()
   }
 }
 
-void MolecularDynamics::equilibrate()
+void MolecularDynamics::equilibrate(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
@@ -318,6 +347,14 @@ void MolecularDynamics::equilibrate()
       }
     }
 
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
     if (currentCycle % rescaleWangLandauEvery == 0uz)
     {
       for (System& system : systems)
@@ -355,7 +392,7 @@ void MolecularDynamics::equilibrate()
   }
 }
 
-void MolecularDynamics::production()
+void MolecularDynamics::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::system_clock::time_point t1, t2;
   double minBias{0.0};
@@ -465,6 +502,14 @@ void MolecularDynamics::production()
         std::ostream stream(streams[system.systemId].rdbuf());
         std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
         std::flush(stream);
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
       }
     }
 
@@ -631,12 +676,16 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
 {
   archive << mc.versionNumber;
 
+  archive << mc.outputToFiles;
+  archive << mc.random;
+
   archive << mc.numberOfCycles;
   archive << mc.numberOfSteps;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
 
   archive << mc.printEvery;
+  archive << mc.writeRestartEvery;
   archive << mc.writeBinaryRestartEvery;
   archive << mc.rescaleWangLandauEvery;
   archive << mc.optimizeMCMovesEvery;
@@ -645,8 +694,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << mc.simulationStage;
 
   archive << mc.systems;
-  archive << mc.random;
-
   archive << mc.fractionalMoleculeSystem;
 
   archive << mc.estimation;
@@ -667,12 +714,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
                                          location.line(), location.file_name()));
   }
 
+  archive >> mc.outputToFiles;
+  archive >> mc.random;
+
   archive >> mc.numberOfCycles;
   archive >> mc.numberOfSteps;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
 
   archive >> mc.printEvery;
+  archive >> mc.writeRestartEvery;
   archive >> mc.writeBinaryRestartEvery;
   archive >> mc.rescaleWangLandauEvery;
   archive >> mc.optimizeMCMovesEvery;
@@ -681,8 +732,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> mc.simulationStage;
 
   archive >> mc.systems;
-  archive >> mc.random;
-
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;

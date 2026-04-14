@@ -12,9 +12,31 @@ void PropertyVolumeEvolution::addSample(std::size_t absoluteCurrentCycle, double
 {
   if(absoluteCurrentCycle % sampleEvery == 0uz)
   {
-    result.at(absoluteCurrentCycle / sampleEvery) = currentVolume;
+    std::size_t index = absoluteCurrentCycle / sampleEvery;
+    if(index < result.size())
+    {
+      result[index] = currentVolume;
+    }
   }
 }
+
+void PropertyVolumeEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle)
+{
+  if(!writeEvery.has_value()) return;
+
+  if (absoluteCurrentCycle % writeEvery.value() != 0uz) return;
+
+  std::filesystem::create_directory("volume_evolution");
+
+  std::ofstream stream_output(std::format("volume_evolution/volume_evolution.s{}.txt", systemId));
+
+  std::size_t currentIndex = absoluteCurrentCycle / sampleEvery;
+  for(std::size_t index = 0; index < std::min(currentIndex, result.size()); ++index)
+  {
+    stream_output << std::format("{}\n", result[index]);
+  }
+}
+
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyVolumeEvolution &evolution)
 {

@@ -1,4 +1,5 @@
 import enum
+import collections.abc
 
 class PseudoAtom():
     """
@@ -15,7 +16,7 @@ class PseudoAtom():
         atomicNumber: int = 8,
         printToPDB: bool = True,
         source: str = "-"
-    ):
+    ) -> None:
         ...
         """
         Initialize the PseudoAtom object with provided parameters.
@@ -37,7 +38,7 @@ class VDWParameters():
     A class representing Van der Waals parameters in RASPA.
     """
 
-    def __init__(self, epsilon: float, sigma: float):
+    def __init__(self, epsilon: float, sigma: float) -> None:
         ...
         """
         Initialize the VDWParameter object with provided parameters.
@@ -62,8 +63,21 @@ class Atom():
         componentId: int = 0,
         groupId: bool = 0,
         isFractional: bool = 0
-    ):
+    ) -> None:
         ...
+        """
+        Initialize the Atom object with provided parameters.
+
+        Args:
+            position (tuple[float, float, float]): The position of the atom as a 3-element tuple.
+            charge (float): The charge of the atom.
+            scaling (float, optional): The lambda value of the atom. Default is 1.0.
+            moleculeId (int, optional): The molecule ID of the atom. Default is 0.
+            type (int, optional): The type of the atom. Default is 0.
+            componentId (int, optional): The component ID of the atom. Default is 0.
+            groupId (bool, optional): The group ID of the atom. Default is false.
+            isFractional (bool, optional): The isFractional ID of the atom. Default is false.
+        """
 
 
 class ForceField():
@@ -82,8 +96,8 @@ class ForceField():
 
     def __init__(
         self,
-        pseudoAtoms: list[PseudoAtom] = None,
-        parameters: list[VDWParameters] = None,
+        pseudoAtoms: collections.abc.Sequence[PseudoAtom] = None,
+        parameters: collections.abc.Sequence[VDWParameters] = None,
         mixingRule: MixingRule = MixingRule.Lorentz_Berthelot,
         cutOffFrameworkVDW: float = 12.0,
         cutOffMoleculeVDW: float = 12.0,
@@ -91,13 +105,13 @@ class ForceField():
         shifted: bool = False,
         tailCorrections: bool = False,
         useCharge=True,
-    ):
+    ) -> None:
         """
         Initialize the ForceField object with provided parameters.
 
         Args:
-            pseudoAtoms (list[PseudoAtom], optional): A list of pseudo atoms. Default is None.
-            parameters (list[VDWParameter], optional): A list of Van der Waals parameters. Default is None.
+            pseudoAtoms (Sequence[PseudoAtom], optional): A list of pseudo atoms. Default is None.
+            parameters (Sequence[VDWParameter], optional): A list of Van der Waals parameters. Default is None.
             mixingRule (enum(MixingRule), optional): The mixing rule. Default is "Lorentz_Berthelot".
             cutOffFrameworkVDW (float, optional): The framework-molecule Van der Waals cut-off distance. Default is 12.0.
             cutOffMoleculeVDW (float, optional): The molecule-molecule Van der Waaks cut-off distance. Default is 12.0.
@@ -106,6 +120,14 @@ class ForceField():
             tailCorrections (bool, optional): Whether to apply tail corrections. Default is False.
             useCharge (bool, optional): Whether to compute electrostatics or not.
         """
+
+    @property
+    def pseudoAtoms(self) -> collections.abc.Sequence[PseudoAtom]:
+        ...
+
+    @property
+    def vdwParameters(self) -> collections.abc.Sequence[VDWParameters]:
+        ...
 
 
 class MCMoveProbabilities():
@@ -136,7 +158,7 @@ class MCMoveProbabilities():
         widomCBCFCMCProbability: float = 0.0,
         parallelTemperingProbability: float = 0.0,
         hybridMCProbability: float = 0.0
-    ):
+    ) -> None:
         ...
         """
         Initialize a particle mc moves object that holds all probabilities for moves. It will be normalized after init.
@@ -163,6 +185,7 @@ class MCMoveProbabilities():
             probabilityParallelTemperingSwap (float, optional): _description_. Defaults to 0.0.
         """
 
+
 class ConnectivityTable():
     """
     A class representing a component in RASPA.
@@ -170,12 +193,10 @@ class ConnectivityTable():
 
     def __init__(
         self
-    ):
+    ) -> None:
         ...
         """
         Initialize the ConnectivityTable object.
-
-        Args:
         """
 
 class IntraMolecularPotentials():
@@ -185,14 +206,190 @@ class IntraMolecularPotentials():
 
     def __init__(
         self
-    ):
+    ) -> None:
         ...
         """
         Initialize the IntraMolecularPotentials object with provided parameters.
-
-        Args:
         """
 
+class Move:
+    """
+    This is my move class.
+    """
+    def __init__(self) -> None:
+        ...
+
+    class Types(enum.IntEnum):
+        """
+        An enumeration for the supported Monte Carlo moves.
+
+        - Translation: A randomly picked particle will be translated [0...maxChange) randomly in x, y, or z.
+        - RandomTranslation:  A randomly picked particle will be translated [0...box-length) randomly in x, y, or z.
+        - Rotation:
+        - RandomRotation:
+        - VolumeChange:
+        - ReinsertionCBMC:
+        - PartialReinsertionCBMC:
+        - IdentityChangeCBMC:
+        - Swap:
+        - SwapCBMC:
+        - SwapCFCMC:
+        - SwapCBCFCMC:
+        - GibbsVolume:
+        - GibbsSwapCBMC:
+        - GibbsSwapCFCMC:
+        - Widom:
+        - WidomCFCMC:
+        - WidomCBCFCMC:
+        - ParallelTempering:
+        - HybridMC:
+        """
+        def __init__(self) -> None:
+            ...
+
+        Translation = 0
+        RandomTranslation = 1
+        Rotation = 2
+        RandomRotation = 3
+        VolumeChange = 4
+        ReinsertionCBMC = 5
+        PartialReinsertionCBMC = 6
+        IdentityChangeCBMC = 7
+        Swap = 8
+        SwapCBMC = 9
+        SwapCFCMC = 10
+        SwapCBCFCMC = 11
+        GibbsVolume = 12
+        GibbsSwapCBMC = 13
+        GibbsSwapCFCMC = 14
+        Widom = 15
+        WidomCFCMC = 16
+        WidomCBCFCMC = 17
+        ParallelTempering = 18
+        HybridMC = 19
+
+class MoveStatisticsDouble():
+    """
+    A class representing a move-statistics<double> in RASPA.
+    """
+    def __init__(
+        self
+    ) -> None:
+        ...
+        """
+        Initialize the MoveStatisticsDouble object.
+        """
+
+    @property
+    def accepted(self) -> float:
+        ...
+    @property
+    def allCounts(self) -> int:
+        ...
+    @property
+    def constructed(self) -> float:
+        ...
+    @property
+    def counts(self) -> float:
+        ...
+    @property
+    def lowerLimit(self) -> float:
+        ...
+    @lowerLimit.setter
+    def lowerLimit(self, arg0: float) -> None:
+        ...
+    @property
+    def maxChange(self) -> float:
+        ...
+    @maxChange.setter
+    def maxChange(self, arg0: float) -> None:
+        ...
+    @property
+    def targetAcceptance(self) -> float:
+        ...
+    @targetAcceptance.setter
+    def targetAcceptance(self, arg0: float) -> None:
+        ...
+    @property
+    def totalAccepted(self) -> float:
+        ...
+    @property
+    def totalConstructed(self) -> float:
+        ...
+    @property
+    def totalCounts(self) -> float:
+        ...
+    @property
+    def upperLimit(self) -> float:
+        ...
+    @upperLimit.setter
+    def upperLimit(self, arg0: float) -> None:
+        ...
+
+class MoveStatisticsDouble3():
+    """
+    A class representing a move-statistics<double3> in RASPA.
+    """
+    def __init__(
+        self
+    ) -> None:
+        ...
+        """
+        Initialize the MoveStatisticsDouble3 object.
+        """
+
+    @property
+    def accepted(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def allCounts(self) -> int:
+        ...
+    @property
+    def constructed(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def counts(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def lowerLimit(self) -> tuple[float, float, float]:
+        ...
+    @lowerLimit.setter
+    def lowerLimit(self, arg0: tuple[float, float, float]) -> None:
+        ...
+    @property
+    def maxChange(self) -> tuple[float, float, float]:
+        ...
+    @maxChange.setter
+    def maxChange(self, arg0: tuple[float, float, float]) -> None:
+        ...
+    @property
+    def targetAcceptance(self) -> tuple[float, float, float]:
+        ...
+    @targetAcceptance.setter
+    def targetAcceptance(self, arg0: tuple[float, float, float]) -> None:
+        ...
+    @property
+    def totalAccepted(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def totalConstructed(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def totalCounts(self) -> tuple[float, float, float]:
+        ...
+    @property
+    def upperLimit(self) -> tuple[float, float, float]:
+        ...
+    @upperLimit.setter
+    def upperLimit(self, arg0: tuple[float, float, float]) -> None:
+        ...
+
+class MCMoveStatistics:
+    """
+    A class representing a the move statistics in RASPA.
+    """
+    def __getitem__(self, arg0: Move.Types) -> MoveStatisticsDouble | MoveStatisticsDouble3:
+        ...
 
 class Component():
     """
@@ -207,16 +404,16 @@ class Component():
         criticalTemperature: float,
         criticalPressure: float,
         acentricFactor: float,
-        definedAtoms: list[Atom] = [],
+        definedAtoms: collections.abc.Sequence[Atom] = [],
         connectivityTable: ConnectivityTable = ConnectivityTable(),
         intraMolecularPotentials: IntraMolecularPotentials = IntraMolecularPotentials(),
         numberOfBlocks: int = 5,
         numberOfLambdaBins: int = 21,
         particleProbabilities: MCMoveProbabilities = MCMoveProbabilities(),
-        fugacityCoefficient: float = None,
+        fugacityCoefficient: float | None = None,
         thermodynamicIntegration: bool = False,
-        blockingPockets: list[tuple[float, float, float, float]] = []
-    ):
+        blockingPockets: collections.abc.Sequence[tuple[float, float, float, float]] = []
+    ) -> None:
         ...
         """
         Initialize the Component object with provided parameters. 
@@ -228,21 +425,81 @@ class Component():
             criticalTemperature (float, optional): The critical temperature. Default is None.
             criticalPressure (float, optional): The critical pressure. Default is None.
             acentricFactor (float, optional): The acentric factor. Default is None.
-            definedAtoms (list[Atom], optional): A list of defined atoms. Default is None.
+            definedAtoms (Sequence[Atom], optional): A list of defined atoms. Default is None.
             connectivityTable (ConnectivityTable, optional): The connectivity table of the atoms. Default is empty.
             intraMolecularPotentials (IntraMolecularPotentials, optional): The intra molecular potentials. Default is none.
             numberOfBlocks (int, optional): The number of blocks for the simulation. Default is 5.
             numberOfLambdaBins (int, optional): The number of lambda bins. Default is 21.
-            particleProbabilities (MCMoveProbabilitiesParticles, optional): The particle move probabilities. Default is a new instance of MCMoveProbabilitiesParticles.
+            particleProbabilities (MCMoveProbabilities, optional): The particle move probabilities. Default is a new instance of MCMoveProbabilities
             fugacityCoefficient (float, optional): The fugacity coefficient. Default is None.
             thermodynamicIntegration (bool, optional): Whether to use thermodynamic integration. Default is False.
-            blockingPockets (list[tuple[float, float, float, float]]): List of blocking-pockets
+            blockingPockets (Sequence[tuple[float, float, float, float]]): List of blocking-pockets
         """
 
-class SimulationBox():
-    def __init__(self, a: float, b: float, c: float):
+    @property
+    def blockingPockets(self) -> collections.abc.Sequence[tuple[float, float, float, float]]:
         ...
 
+    @blockingPockets.setter
+    def blockingPockets(self, arg0: collections.abc.Sequence[tuple[float, float, float, float]]) -> None:
+        ...
+
+    @property
+    def mc_moves_statistics(self) -> MCMoveStatistics:
+        ...
+    """
+        Get the move-statistics
+
+        Returns:
+            MCMoveStatistics: The statistics for each of the moves.
+        """
+
+    @property
+    def lambdaHistogram(self) -> PropertyLambdaProbabilityHistogram:
+        ...
+    """
+        Get the lambda-histogram-statistics
+
+        Returns:
+            PropertyLambdaProbabilityHistogram: The lambda histogram.
+        """
+
+
+class SimulationBox():
+    """
+    A class representing simulation box in RASPA.
+    """
+
+    class SimulationBoxType(enum.IntEnum):
+        Rectangular: int = 0
+        Triclinic: int = 1
+
+    @typing.overload
+    def __init__(self, a: float, b: float, c: float) -> None:
+        ...
+        """
+        Initialize a particle mc moves object that holds all probabilities for moves. It will be normalized after init.
+
+        Args:
+            a (float): The a-length of the box cell.
+            b (float): The b-length of the box cell.
+            c (float): The c-length of the box cell.
+        """
+
+    @typing.overload
+    def __init__(self, a: float, b: float, c: float. alpha: float, beta: float, gamma: float) -> None:
+        ...
+        """
+        Initialize a particle mc moves object that holds all probabilities for moves. It will be normalized after init.
+
+        Args:
+            a (float): The a-length of the box cell.
+            b (float): The b-length of the box cell.
+            c (float): The c-length of the box cell.
+            alpha (float): The alpha-angle in degrees of the box cell.
+            beta (float): The beta-angle in degrees of the box cell.
+            gamma (float): The gamma-angle in degrees of the box cell.
+        """
 
 
 
@@ -259,9 +516,9 @@ class Framework():
         componentName: str,
         simulationBox: SimulationBox,
         spaceGroupHallNumber: int = None,
-        definedAtoms: list[Atom] = None,
-        numberOfUnitCells: list[int] = [1, 1, 1],
-    ):
+        definedAtoms: collections.abc.Sequence[Atom] = None,
+        numberOfUnitCells: collections.abc.Sequence[int] = [1, 1, 1],
+    ) -> None:
         ...
         """
         Initialize the Framework object with provided parameters.
@@ -272,8 +529,8 @@ class Framework():
             componentName (str): The name of the component.
             simulationBox (SimulationBox): The unit cell box. 
             spaceGroupHallNumber (int, optional): The space group Hall number. Default is None.
-            definedAtoms (list[Atom], optional): A list of defined atoms. Default is None.
-            numberOfUnitCells (list[int], optional): The number of unit cells in each dimension. Default is [1, 1, 1].
+            definedAtoms (Sequence[Atom], optional): A list of defined atoms. Default is None.
+            numberOfUnitCells (Sequence[int], optional): The number of unit cells in each dimension. Default is [1, 1, 1].
         """
 
 
@@ -286,18 +543,18 @@ class System():
         self,
         systemId: int,
         forceField: ForceField,
-        simulationBox: SimulationBox = None,
+        simulationBox: SimulationBox | None = None,
         hasExternalField: bool = False,
         externalTemperature: float = 300.0,
-        externalPressure: float = None,
+        externalPressure: float | None = None,
         heliumVoidFraction: float = 0.29,
-        frameworkComponents: Framework = None,
-        components: list[Component] = [],
-        initialPositions: list[tuple[float, float, float]] = [],
-        initialNumberOfMolecules: list[int] = [],
+        frameworkComponents: Framework | None = None,
+        components: collections.abc.Sequence[Component] = [],
+        initialPositions: collections.abc.Sequence[tuple[float, float, float]] = [],
+        initialNumberOfMolecules: collections.abc.Sequence[int] = [],
         numberOfBlocks: int = 5,
         systemProbabilities: MCMoveProbabilities = MCMoveProbabilities()
-    ):
+    ) -> None:
         ...
         """
         Initialize the System object with provided parameters.
@@ -310,12 +567,29 @@ class System():
             externalPressure (float | None): The pressure of the system. Default is None.
             heliumVoidFraction (float): The helium void-fraction of the system.
             frameworkComponents (Framework | None, optional): The framework component if present. Default is None.
-            components (list[Component]): A list of components in the system.
-            initialPositions (list[int]): A list of initial positions. Default is empty list.
-            initialNumberOfMolecules (list[int]): A list of initial number of molecules for each component.
+            components (Sequence[Component]): A list of components in the system.
+            initialPositions (Sequence[int]): A list of initial positions. Default is empty list.
+            initialNumberOfMolecules (Sequence[int]): A list of initial number of molecules for each component.
             numberOfBlocks (int, optional): The number of blocks for the simulation. Default is 5.
             systemProbabilities (MCMoveProbabilitiesSystem, optional): The move probabilities system. Default is a new instance of MCMoveProbabilitiesSystem.
         """
+
+    @property
+    def components(self) -> collections.abc.Sequence[Component]:
+        ...
+        """
+        Get the list of components.
+
+        Returns:
+            Sequence[Component]: The list of components.
+        """
+
+    def frameworkMass(self) -> float | None:
+        ...
+
+    @property
+    def loadings(self) -> Loadings:
+        ...
 
     @property
     def averageEnergies(self) -> PropertyEnergy:
@@ -338,15 +612,15 @@ class MonteCarlo():
         numberOfCycles: int = 0,
         numberOfInitializationCycles: int = 0,
         numberOfEquilibrationCycles: int = 0,
-        printEvery: int = 1000,
+        printEvery: int = 5000,
         writeBinaryRestartEvery: int = 5000,
         rescaleWangLandauEvery: int = 5000,
         optimizeMCMovesEvery: int = 5000,
-        systems: list[System] = [],
-        randomSeed: int = None,
+        systems: collections.abc.Sequence[System] = [],
+        randomSeed: int | None = None,
         numberOfBlocks: int = 5,
         outputToFiles: bool = False
-    ):
+    ) -> None:
         ...
         """
         Initializes a Monte Carlo object.
@@ -356,23 +630,86 @@ class MonteCarlo():
             numberOfInitializationCycles (int, optional): _description_. Defaults to 0.
             numberOfEquilibrationCycles (int, optional): _description_. Defaults to 0.
             numberOfEquilibrationCycles (int, optional): _description_. Defaults to 0.
-            printEvery (int, optional): _description_. Defaults to 1000.
-            writeBinaryRestartEvery (int, optional): _description_. Defaults to 100.
-            rescaleWangLandauEvery (int, optional): _description_. Defaults to 100.
-            optimizeMCMovesEvery (int, optional): _description_. Defaults to 100.
-            systems (list[System], optional): _description_. Defaults to None.
+            printEvery (int, optional): _description_. Defaults to 5000.
+            writeBinaryRestartEvery (int, optional): _description_. Defaults to 5000.
+            rescaleWangLandauEvery (int, optional): _description_. Defaults to 5000.
+            optimizeMCMovesEvery (int, optional): _description_. Defaults to 5000.
+            systems (Sequence[System], optional): _description_. Defaults to None.
             randomSeed (int, optional): _description_. Defaults to a random integer.
             numberOfBlocks (int, optional): _description_. Defaults to 5.
         """
-   @property
-    def systems(self) -> list[System]:
+    def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+    def initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+    def production(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+    def run(self) -> None:
+        ...
+
+    @property
+    def systems(self) -> collections.abc.Sequence[System]:
         ...
         """
-        Get the positions of the atoms in the system.
+        Get the list of systems.
 
         Returns:
-            np.ndarray: An array of atom positions.
+            Sequence[System]: The list of systems.
         """
+
+class MolecularDynamics():
+    """
+    A class representing a Molecular Dynamics simulation in RASPA.
+    """
+
+    def __init__(
+        self,
+        numberOfCycles: int = 0,
+        numberOfInitializationCycles: int = 0,
+        numberOfEquilibrationCycles: int = 0,
+        printEvery: int = 5000,
+        writeBinaryRestartEvery: int = 5000,
+        rescaleWangLandauEvery: int = 5000,
+        optimizeMCMovesEvery: int = 5000,
+        systems: collections.abc.Sequence[System] = [],
+        randomSeed: int | None = None,
+        numberOfBlocks: int = 5,
+        outputToFiles: bool = False
+    ) -> None:
+        ...
+        """
+        Initializes a Moelcular Dynamics object.
+
+        Args:
+            numberOfCycles (int, optional): _description_. Defaults to 0.
+            numberOfInitializationCycles (int, optional): _description_. Defaults to 0.
+            numberOfEquilibrationCycles (int, optional): _description_. Defaults to 0.
+            numberOfEquilibrationCycles (int, optional): _description_. Defaults to 0.
+            printEvery (int, optional): _description_. Defaults to 5000.
+            writeBinaryRestartEvery (int, optional): _description_. Defaults to 5000.
+            rescaleWangLandauEvery (int, optional): _description_. Defaults to 5000.
+            optimizeMCMovesEvery (int, optional): _description_. Defaults to 5000.
+            systems (Sequence[System], optional): _description_. Defaults to None.
+            randomSeed (int, optional): _description_. Defaults to a random integer.
+            numberOfBlocks (int, optional): _description_. Defaults to 5.
+        """
+    def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+    def initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+    def production(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        ...
+
+    @property
+    def systems(self) -> collections.abc.Sequence[System]:
+        ...
+        """
+        Get the list of systems.
+
+        Returns:
+            Sequence[System]: The list of systems.
+        """
+
 
 class Loadings():
     """
@@ -381,19 +718,31 @@ class Loadings():
 
     def __init__(
         self,
-        numberOfMolecules: list[int],
-        numberDensities: list[float],
-        inverseNumberDensities: list[float]
-    ):
+        numberOfMolecules: collections.abc.Sequence[int],
+        numberDensities: collections.abc.Sequence[float],
+        inverseNumberDensities: collections.abc.Sequence[float]
+    ) -> None:
         ...
         """
         Initialize the Loadings object with provided parameters.
 
         Args:
-            numberOfMolecules (list[int]): The number of molecules for each component
-            numberDensities (list[float]): The number density for each component
-            inverseNumberDensities (list[float]): The inverse number-density for each component
+            numberOfMolecules (Sequence[int]): The number of molecules for each component
+            numberDensities (Sequence[float]): The number density for each component
+            inverseNumberDensities (Sequence[float]): The inverse number-density for each component
         """
+
+    @property
+    def inverseNumberDensities(self) -> collections.abc.Sequence[float]:
+        ...
+
+    @property
+    def numberDensities(self) -> collections.abc.Sequence[float]:
+        ...
+
+    @property
+    def numberOfMolecules(self) -> collections.abc.Sequence[float]:
+        ...
 
 
 class SampleMovie():
@@ -406,7 +755,7 @@ class SampleMovie():
         systemId: int,
         sampleEvery: int = 1,
         restrictToBox: bool = True
-    ):
+    ) -> None:
         ...
         """
         Initialize the SampleMovie  object with provided parameters.
@@ -426,7 +775,7 @@ class EnergyFactor():
         self,
         energy: float,
         dUdlambda: float
-    ):
+    ) -> None:
         ...
         """
         Initialize the  object with provided parameters.
@@ -443,7 +792,7 @@ class EnergyStatus():
 
     def __init__(
         self
-    ):
+    ) -> None:
         ...
         """
         Initialize the  object with provided parameters.
@@ -473,7 +822,7 @@ class AverageEnergyType():
         VanDerWaalsEnergy: float,
         CoulombEnergy: float,
         polarizationEnergy: float
-    ):
+    ) -> None:
         ...
         """
         Initialize object with provided parameters.
@@ -484,6 +833,18 @@ class AverageEnergyType():
             CoulombEnergy (float): The Coulomb energy.
             polarizationEnergy (float): The polarization energy.
         """
+    @property
+    def CoulombEnergy(self) -> float:
+        ...
+    @property
+    def VanDerWaalsEnergy(self) -> float:
+        ...
+    @property
+    def polarizationEnergy(self) -> float:
+        ...
+    @property
+    def totalEnergy(self) -> float:
+        ...
 
 class PropertyEnergy():
     """
@@ -496,7 +857,7 @@ class PropertyEnergy():
         numberOfExternalFields: int,
         numberOfFrameworks: int,
         numberOfComponents: int
-    ):
+    ) -> None:
         ...
         """
         Initialize the PropertyEnergy object with provided parameters.
@@ -527,7 +888,7 @@ class PropertyEnergyHistogram(RaspaBase):
         valueRange: tuple[float, float],
         sampleEvery: int = 1,
         writeEvery: int = 5000
-    ):
+    ) -> None:
         ...
         """
         Initialize the PropertyEnergyHistogram object with provided parameters.
@@ -550,7 +911,7 @@ class PropertyLoading():
         self,
         numberOfBlocks: int,
         numberOfComponents: int
-    ):
+    ) -> None:
         ...
         """
         Initialize the PropertyLoading object with provided parameters.
@@ -559,6 +920,11 @@ class PropertyLoading():
             numberOfBlocks (int): The number of blocks.
             numberOfComponents (int): The number of components.
         """
+
+    def averageLoadingNumberOfMolecules(self, arg0: int) -> tuple[float, float]:
+        ...
+    def result(self) -> tuple[Loadings, Loadings]:
+        ...
 
 class PropertyNumberOfMoleculesEvolution(RaspaBase):
     """
@@ -570,8 +936,8 @@ class PropertyNumberOfMoleculesEvolution(RaspaBase):
         numberOfCycles: int,
         numberOfComponents: int,
         sampleEvery: int,
-        writeEvery: int = None
-    ):
+        writeEvery: int | None = None
+    ) -> None:
         ...
         """
         Initialize the PropertyNumberOfMoleculesEvolution object with provided parameters.
@@ -583,6 +949,11 @@ class PropertyNumberOfMoleculesEvolution(RaspaBase):
             writeEvery (int): The write frequency.
         """
 
+    @property
+    def result(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
+        ...
+
+
 class PropertyVolumeEvolution():
     """
     A class representing a a volume-evolution property in RASPA.
@@ -592,8 +963,8 @@ class PropertyVolumeEvolution():
         self,
         numberOfCycles: int,
         sampleEvery: int,
-        writeEvery: int = None
-    ):
+        writeEvery: int | None = None
+    ) -> None:
         ...
         """
         Initialize the PropertyVolumeEvolution object with provided parameters.
@@ -604,10 +975,22 @@ class PropertyVolumeEvolution():
             writeEvery (int): The write frequency.
         """
 
+    @property
+    def result(self) -> collections.abc.Sequence[float]:
+        ...
+
 class PropertyDensityGrid():
     """
     A class representing a density-grid property in RASPA.
     """
+
+    class Binning(enum.IntEnum):
+        Standard: int = 0
+        Equitable: int = 1
+
+    class Normalization(enum.IntEnum):
+        Max: int = 0
+        NumberDensity: int = 1
 
     def __init__(
         self,
@@ -616,10 +999,10 @@ class PropertyDensityGrid():
         numberOfGridPoints: tuple[int, int, int] = (128, 128, 128),
         sampleEvery: int  = 1,
         writeEvery: int = 5000,
-        densityGridPseudoAtomsList: list[str] = [],
-        normalizationType: Literal["Max"] = "Max",
-        binningMode: Literal["Standard"] = "Standard"
-    ):
+        densityGridPseudoAtomsList: collections.abc.Sequence[str] = [],
+        normalizationType: PropertyDensityGrid.Normalization = Normalization.Max
+        binningMode: PropertyDensityGrid.Binning = Binning.Standard
+    ) -> None:
         ...
         """
         Initialize the PropertyDensityGrid object with provided parameters.
@@ -629,7 +1012,7 @@ class PropertyDensityGrid():
             numberOfComponents (int): The number of components.
             numberOfGridPoints (tuple[int, int, int]): The number of grid points.
             sampleEvery (int): The sample frequency.
-            densityGridPseudoAtomsList (list[str]): List of pseudo-atoms.
+            densityGridPseudoAtomsList (Sequence[str]): List of pseudo-atoms.
             normalizationType (): The normalization type
             binningMode (): The binning mode
         """
@@ -643,7 +1026,7 @@ class PropertyLambdaProbabilityHistogram():
         self,
         numberOfBlocks: int,
         numberOfSamplePoints: int
-    ):
+    ) -> None:
         ...
         """
         Initialize the PropertyEnergyHistogram object with provided parameters.
@@ -653,26 +1036,30 @@ class PropertyLambdaProbabilityHistogram():
             numberOfSamplePoints (int): The number of sample points.
         """
 
-class Move:
-    class Types(enum.IntEnum):
-        Translation = 0
-        RandomTranslation = 1
-        Rotation = 2
+    def normalizedAverageProbabilityHistogram(self) -> tuple[collections.abc.Sequence[float], collections.abc.Sequence[float]]:
+        ...
+
+    @property
+    def biasFactor(self) -> collections.abc.Sequence[float]:
+        ...
+
+    @biasFactor.setter
+    def biasFactor(self, arg0: collections.abc.Sequence[float]) -> None:
+        ...
+
+    @property
+    def histogram(self) -> collections.abc.Sequence[float]:
+        ...
+
+
+class PropertyWidom():
+    """
+    A class representing a Widom-insertion property in RASPA.
+    """
 
     def __init__(self) -> None:
         ...
-
-class MoveStatisticsDouble3():
-    """
-    A class representing a move-statistics<double3> in RASPA.
-    """
-
-    def __init__(
-        self
-    ):
         """
-        Initialize the MoveStatisticsDouble3 object with provided parameters.
-
-        Args:
+        Initialize the PropertyWidom object.
         """
 

@@ -275,7 +275,7 @@ void MonteCarlo::performCycle()
   }
 }
 
-void MonteCarlo::initialize(std::function<void()> call_back_function)
+void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::system_clock::time_point t1, t2;
 
@@ -322,12 +322,14 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
           std::flush(stream);
         }
       }
+    }
 
+    if (currentCycle % callBackEvery == 0uz)
+    {
       if(call_back_function)
       {
         call_back_function();
       }
-       
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
@@ -354,6 +356,18 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
       }
     }
 
+    for (System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
+      }
+    }
+
     if (currentCycle % writeRestartEvery == 0uz)
     {
       // write restart
@@ -375,7 +389,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
   }
 }
 
-void MonteCarlo::equilibrate(std::function<void()> call_back_function)
+void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::system_clock::time_point t1, t2;
 
@@ -420,6 +434,10 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
         }
 
       }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
       if(call_back_function)
       {
         call_back_function();
@@ -454,6 +472,18 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
                 std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system.systemId));
           }
         }
+      }
+    }
+
+    for (System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
       }
     }
 
@@ -494,7 +524,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
   }
 }
 
-void MonteCarlo::production(std::function<void()> call_back_function)
+void MonteCarlo::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   double minBias{0uz};
   std::chrono::system_clock::time_point t1, t2;
@@ -592,6 +622,10 @@ void MonteCarlo::production(std::function<void()> call_back_function)
           std::flush(stream);
         }
       }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
       if(call_back_function)
       {
         call_back_function();
@@ -633,6 +667,18 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       if (system.averageNumberOfMoleculesHistogram.has_value())
       {
         system.averageNumberOfMoleculesHistogram->writeOutput(system.systemId, system.components, currentCycle);
+      }
+    }
+
+    for (System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system.systemId, absoluteCurrentCycle);
       }
     }
     

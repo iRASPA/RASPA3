@@ -15,8 +15,33 @@ void PropertyNumberOfMoleculesEvolution::addSample(std::size_t absoluteCurrentCy
   {
     for(std::size_t i = 0; i != numberOfIntegerMoleculesPerComponent.size(); ++i)
     {
-      result.at(i).at(absoluteCurrentCycle / sampleEvery) = numberOfIntegerMoleculesPerComponent[i];
+      std::size_t index = absoluteCurrentCycle / sampleEvery;
+      if(index < result[i].size())
+      {
+        result[i][index] = numberOfIntegerMoleculesPerComponent[i];
+      }
     }
+  }
+}
+
+void PropertyNumberOfMoleculesEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle)
+{
+  if(!writeEvery.has_value()) return;
+
+  if (absoluteCurrentCycle % writeEvery.value() != 0uz) return;
+
+  std::filesystem::create_directory("number_of_molecules_evolution");
+
+  std::ofstream stream_output(std::format("number_of_molecules_evolution/number_of_molecules_evolution.s{}.txt", systemId));
+
+  std::size_t currentIndex = absoluteCurrentCycle / sampleEvery;
+  for(std::size_t index = 0; index < std::min(currentIndex, result[0].size()); ++index)
+  {
+    for(std::size_t i = 0; i < numberOfComponents; ++i)
+    {
+      stream_output << std::format("{} ", result[i][index]);
+    }
+    stream_output << "\n";
   }
 }
 
@@ -24,6 +49,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 {
   archive << evolution.versionNumber;
 
+  archive << evolution.numberOfComponents;
   archive << evolution.sampleEvery;
   archive << evolution.writeEvery;
   archive << evolution.totalSamples;
@@ -47,6 +73,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyNumb
                                          location.line(), location.file_name()));
   }
 
+  archive >> evolution.numberOfComponents;
   archive >> evolution.sampleEvery;
   archive >> evolution.writeEvery;
   archive >> evolution.totalSamples;

@@ -13,6 +13,7 @@ import mc_moves;
 import input_reader;
 import energy_status;
 import archive;
+import json;
 
 /**
  * \brief Represents a molecular dynamics simulation.
@@ -59,13 +60,37 @@ export struct MolecularDynamics
    */
   MolecularDynamics(InputReader &reader) noexcept;
 
+  /**
+   * \brief Constructs a MolecularDynamicso object with specified simulation parameters.
+   *
+   * \param numberOfCycles Number of production cycles.
+   * \param numberOfInitializationCycles Number of initialization cycles.
+   * \param numberOfEquilibrationCycles Number of equilibration cycles.
+   * \param printEvery Frequency of printing status reports.
+   * \param writeBinaryRestartEvery Frequency of writing binary restart files.
+   * \param rescaleWangLandauEvery Frequency of rescaling Wang-Landau factors.
+   * \param optimizeMCMovesEvery Frequency of optimizing MC moves.
+   * \param systems Vector of System objects to simulate.
+   * \param randomSeed Random number generator seed.
+   * \param numberOfBlocks Number of blocks for error estimation.
+   */
+  MolecularDynamics(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
+                    std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
+                    std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, std::vector<System> &systems,
+                    std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles = false);
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  
+  bool outputToFiles{true};
+  RandomNumber random;             ///< Random number generator.
 
   std::size_t numberOfCycles;                ///< Total number of production cycles.
   std::size_t numberOfSteps;                 ///< Total number of steps performed.
   std::size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  
   std::size_t printEvery;                    ///< Frequency of printing output.
+  std::size_t writeRestartEvery;             ///< Frequency of writing restart files. 
   std::size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.
@@ -74,11 +99,12 @@ export struct MolecularDynamics
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current stage of the simulation.
 
   std::vector<System> systems;              ///< Vector of systems in the simulation.
-  RandomNumber random;                      ///< Random number generator.
   std::size_t fractionalMoleculeSystem{0};  ///< Index of the system where the fractional molecule is located.
 
   std::vector<std::ofstream> streams;  ///< Output file streams for each system.
-
+  std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.
+  std::vector<nlohmann::json> outputJsons;       ///< Output data in JSON format.
+                                                 ///
   BlockErrorEstimation estimation;  ///< Object for block error estimation.
 
   std::chrono::duration<double> totalSimulationTime{0};  ///< Total simulation time.
@@ -104,21 +130,21 @@ export struct MolecularDynamics
    *
    * Performs the initialization stage, setting up initial conditions and variables.
    */
-  void initialize();
+  void initialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Equilibrates the simulation.
    *
    * Performs the equilibration stage, allowing the system to reach equilibrium.
    */
-  void equilibrate();
+  void equilibrate(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Runs the production stage of the simulation.
    *
    * Performs the main simulation cycles and collects data.
    */
-  void production();
+  void production(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Outputs the simulation results.

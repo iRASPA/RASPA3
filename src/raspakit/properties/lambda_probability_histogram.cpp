@@ -67,7 +67,7 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram()
+PropertyLambdaProbabilityHistogram::result()
 {
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
