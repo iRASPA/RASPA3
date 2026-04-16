@@ -8,7 +8,7 @@ endif()
 
 include(FetchContent)
 
-if(CONDA)
+if(CONDA OR APPLE)
   FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
