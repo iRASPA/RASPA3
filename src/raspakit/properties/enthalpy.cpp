@@ -32,7 +32,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
     {
       std::size_t index = swappableComponents[k];
       double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
-      std::print(stream, "Component {} [{}]\n", components[index].componentId, components[index].name);
+      std::print(stream, "Component {} [{}]\n", index, components[index].name);
       std::print(stream, "-------------------------------------------------------------------------------\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {

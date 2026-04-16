@@ -1244,7 +1244,7 @@ TEST(nist_water_1, Test_NIST_water_400_triclinic)
   const double kvecz = forceField.numberOfWaveVectors.z * 2.0 * std::numbers::pi / box.cell.cz;
   forceField.reciprocalCutOffSquared = std::max({kvecx * kvecx, kvecy * kvecy, kvecz * kvecz}) * 1.00001;
 
-  Component c = Component(0, forceField, "H2O", 304.1282, 7377300.0, 0.22394,
+  Component c = Component(forceField, "H2O", 304.1282, 7377300.0, 0.22394,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                            // uint8_t componentId, uint8_t groupId
                            Atom(double3(0.00000, -0.06461, 0.00000), -0.84760, 1.0, 0, 0, 0, false, false),

@@ -47,9 +47,9 @@ import property_msd;
 import energy_factor;
 import running_energy;
 import threadpool;
-import isotherm;
-import multi_site_isotherm;
-import pressure_range;
+//import isotherm;
+//import multi_site_isotherm;
+//import pressure_range;
 import bond_potential;
 import move_statistics;
 import mc_moves_probabilities;
@@ -459,7 +459,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           bool groupId = components[componentId].lambdaGC.computeDUdlambda;
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, 
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox, 
               interpolationGrids, externalFieldInterpolationGrid,
               framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 0.0,
@@ -529,7 +529,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
               framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 1.0,
               false, false);
@@ -543,6 +543,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
       insertMolecule(componentId, growData->molecule, growData->atom);
     }
+
     componentId++;
   }
 }
@@ -790,7 +791,7 @@ std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent)
 
 void System::determineSwappableComponents()
 {
-  for (Component& component : components)
+  for (std::size_t componentId{0}; Component& component : components)
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
@@ -808,8 +809,10 @@ void System::determineSwappableComponents()
 
     if (component.swappable)
     {
-      swappableComponents.push_back(component.componentId);
+      swappableComponents.push_back(componentId);
     }
+
+    ++componentId;
   }
 }
 
@@ -999,18 +1002,18 @@ std::string System::writeNumberOfPseudoAtoms() const
   std::print(stream, "Number of pseudo-atoms\n");
   std::print(stream, "===============================================================================\n\n");
 
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId = 0; const Component& c : components)
   {
-    std::print(stream, "Component {:3d} ({})\n", c.componentId, c.name);
+    std::print(stream, "Component {:3d} ({})\n", componentId, c.name);
     std::print(stream, "-------------------------------------------------------------------------------\n");
-    for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : numberOfPseudoAtoms[i])
+    for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : numberOfPseudoAtoms[componentId])
     {
       std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
                  number_of_pseudo_atoms);
       ++index;
     }
     std::print(stream, "\n");
-    ++i;
+    ++componentId;
   }
 
   std::print(stream, "Total number of pseudo-atoms:\n");
@@ -1039,7 +1042,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
@@ -1048,25 +1051,26 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {:3d} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {:3d} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
+                 lambda, occupancy, averageOccupancy);
     }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
   }
   std::print(stream, "\n");
 
@@ -1089,7 +1093,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId = 0; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
@@ -1097,26 +1101,27 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
                  c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
                  c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
   }
   std::print(stream, "\n");
 
@@ -1181,7 +1186,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
 
   std::print(stream, "\n");
 
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
@@ -1189,26 +1194,27 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
                  c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
                  c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
   }
   std::print(stream, "\n");
 
@@ -1229,7 +1235,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
@@ -1237,27 +1243,29 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
                  c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
                  c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
-  for (const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
+                                    loadingData.first, loadingData.second, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -1506,7 +1514,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              conv * energyData.second.intraEnergy.total().energy);
 
   std::print(stream, "\n");
-  for (std::size_t i = 0; const Component& c : components)
+  for (std::size_t componentId = 0; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
@@ -1514,27 +1522,29 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
                  c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
+                 lambda, occupancy, averageOccupancy);
     }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
-  for (const Component& c : components)
+  for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
+                                    loadingData.first, loadingData.second, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
   }
   std::print(stream, "\n");
 
@@ -1612,9 +1622,11 @@ std::string System::writeComponentStatus() const
   {
     std::print(stream, "{}", framework->printStatus(forceField));
   }
-  for (const Component& component : components)
+  for (std::size_t componentId{0}; const Component& component : components)
   {
-    std::print(stream, "{}", component.printStatus(forceField, input_pressure));
+    std::print(stream, "{}", component.printStatus(componentId, forceField, input_pressure));
+
+    ++componentId;
   }
   std::print(stream, "\n\n\n\n");
 
@@ -1692,16 +1704,18 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 
-  for (Component& component : components)
+  for (std::size_t componentId{0}; Component& component : components)
   {
     double componentDensity =
-        static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
+        static_cast<double>(numberOfIntegerMoleculesPerComponent[componentId]) / simulationBox.volume;
 
     double lambda = component.lambdaGC.lambdaValue();
     double dudlambda = runningEnergies.dudlambda(lambda);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
+
+    ++componentId;
   }
 
   if (samplePDBMovie.has_value())
@@ -3147,21 +3161,21 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 
   archive << s.propertyNumberOfMoleculesEvolution;
 
-  archive << s.columnNumberOfGridPoints;
-  archive << s.columnTotalPressure;
-  archive << s.columnPressureGradient;
-  archive << s.columnVoidFraction;
-  archive << s.columnParticleDensity;
-  archive << s.columnEntranceVelocity;
-  archive << s.columnLength;
-  archive << s.columnTimeStep;
-  archive << s.columnNumberOfTimeSteps;
-  archive << s.columnAutoNumberOfTimeSteps;
-  archive << s.mixturePredictionMethod;
-  archive << s.pressure_range;
-  archive << s.numberOfCarrierGases;
-  archive << s.carrierGasComponent;
-  archive << s.maxIsothermTerms;
+  //archive << s.columnNumberOfGridPoints;
+  //archive << s.columnTotalPressure;
+  //archive << s.columnPressureGradient;
+  //archive << s.columnVoidFraction;
+  //archive << s.columnParticleDensity;
+  //archive << s.columnEntranceVelocity;
+  //archive << s.columnLength;
+  //archive << s.columnTimeStep;
+  //archive << s.columnNumberOfTimeSteps;
+  //archive << s.columnAutoNumberOfTimeSteps;
+  //archive << s.mixturePredictionMethod;
+  //archive << s.pressure_range;
+  //archive << s.numberOfCarrierGases;
+  //archive << s.carrierGasComponent;
+  //archive << s.maxIsothermTerms;
 
   archive << s.interpolationGrids;
 
@@ -3290,21 +3304,21 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
   archive >> s.propertyNumberOfMoleculesEvolution;
 
-  archive >> s.columnNumberOfGridPoints;
-  archive >> s.columnTotalPressure;
-  archive >> s.columnPressureGradient;
-  archive >> s.columnVoidFraction;
-  archive >> s.columnParticleDensity;
-  archive >> s.columnEntranceVelocity;
-  archive >> s.columnLength;
-  archive >> s.columnTimeStep;
-  archive >> s.columnNumberOfTimeSteps;
-  archive >> s.columnAutoNumberOfTimeSteps;
-  archive >> s.mixturePredictionMethod;
-  archive >> s.pressure_range;
-  archive >> s.numberOfCarrierGases;
-  archive >> s.carrierGasComponent;
-  archive >> s.maxIsothermTerms;
+  //archive >> s.columnNumberOfGridPoints;
+  //archive >> s.columnTotalPressure;
+  //archive >> s.columnPressureGradient;
+  //archive >> s.columnVoidFraction;
+  //archive >> s.columnParticleDensity;
+  //archive >> s.columnEntranceVelocity;
+  //archive >> s.columnLength;
+  //archive >> s.columnTimeStep;
+  //archive >> s.columnNumberOfTimeSteps;
+  //archive >> s.columnAutoNumberOfTimeSteps;
+  //archive >> s.mixturePredictionMethod;
+  //archive >> s.pressure_range;
+  //archive >> s.numberOfCarrierGases;
+  //archive >> s.carrierGasComponent;
+  //archive >> s.maxIsothermTerms;
 
   archive >> s.interpolationGrids;
 

@@ -24,7 +24,7 @@ export namespace CBMC
 {
 // insertion
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeSwapInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -43,7 +43,7 @@ export namespace CBMC
 
 // reinsertion grow
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeReinsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -62,7 +62,7 @@ export namespace CBMC
 
 // partial reinsertion grow
 [[nodiscard]] std::optional<ChainGrowData> growMoleculePartialReinsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -82,7 +82,7 @@ export namespace CBMC
 
 // identity change insertion
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeIdentityChangeInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,

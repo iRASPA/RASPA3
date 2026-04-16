@@ -298,10 +298,10 @@ PYBIND11_MODULE(raspalib, m)
       .finalize();
 
   component
-      .def(pybind11::init<std::size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>,
+      .def(pybind11::init<const ForceField &, std::string, double, double, double, std::vector<Atom>,
                           const ConnectivityTable &, const Potentials::IntraMolecularPotentials &, std::size_t,
                           std::size_t, const MCMoveProbabilities &, std::optional<double>, bool, std::vector<double4>>(),
-           pybind11::arg("componentId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
+           pybind11::arg("forceField"), pybind11::arg("componentName"),
            pybind11::arg("criticalTemperature"), pybind11::arg("criticalPressure"), pybind11::arg("acentricFactor"),
            pybind11::arg("definedAtoms") = std::vector<Atom>(), pybind11::arg("connectivityTable") = ConnectivityTable(),
            pybind11::arg("intraMolecularPotentials") = Potentials::IntraMolecularPotentials(),
@@ -323,13 +323,13 @@ PYBIND11_MODULE(raspalib, m)
       .def(pybind11::init<std::size_t>())
       .def_readonly("numberOfMolecules", &Loadings::numberOfMolecules)
       .def_readonly("numberDensities", &Loadings::numberDensities)
-      .def_readonly("inverseNumberDensities", &Loadings::inverseNumberDensities)
-      .def("printStatus",
-           static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
-               &Loadings::printStatus))
-      .def("printStatus", static_cast<std::string (Loadings::*)(const Component &, const Loadings &, const Loadings &,
-                                                                std::optional<double>, std::optional<int3>) const>(
-                              &Loadings::printStatus));
+      .def_readonly("inverseNumberDensities", &Loadings::inverseNumberDensities);
+      //.def("printStatus",
+      //     static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
+      //         &Loadings::printStatus))
+      //.def("printStatus", static_cast<std::string (Loadings::*)(const Component &, const Loadings &, const Loadings &,
+      //                                                          std::optional<double>, std::optional<int3>) const>(
+      //                        &Loadings::printStatus));
 
   pybind11::class_<SampleMovie>(m, "SampleMovie")
       .def(pybind11::init<std::size_t, std::size_t, bool>(),

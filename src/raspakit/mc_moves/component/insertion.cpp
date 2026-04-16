@@ -44,7 +44,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
   // Generate a trial molecule with a random position inside the simulation box.
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      component.equilibratedMoleculeRandomInBox(random, system.simulationBox);
+      component.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
 
   std::vector<double3> electricFieldMoleculeNew(trialMolecule.second.size());
 

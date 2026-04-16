@@ -25,7 +25,6 @@ import skcell;
 import skspacegroup;
 import forcefield;
 import atom;
-import multi_site_isotherm;
 import simulationbox;
 import cif_reader;
 import move_statistics;

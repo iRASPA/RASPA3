@@ -52,7 +52,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
   intraMolecularPotentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0})};
 
   Component c = Component(
-      0, forceField, "propane", 369.825, 4247660.0, 0.1524,
+      forceField, "propane", 369.825, 4247660.0, 0.1524,
       {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false), Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 2, 0, false, false),
        Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)},
       connectivityTable, intraMolecularPotentials, 5, 21);

@@ -34,7 +34,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     {
       const double toMgPerG = 1000.0 * components[i].totalMass / frameworkMass.value();
 
-      std::print(stream, "Component {} ({})\n", components[i].componentId, components[i].name);
+      std::print(stream, "Component {} ({})\n", i, components[i].name);
 
       for (std::size_t j = 0; j < bookKeepingLoadings.size(); ++j)
       {
@@ -113,7 +113,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
 
     for (std::size_t i = 0; i < components.size(); ++i)
     {
-      std::print(stream, "Component {} ({})\n", components[i].componentId, components[i].name);
+      std::print(stream, "Component {} ({})\n", i, components[i].name);
 
       for (std::size_t j = 0; j < bookKeepingLoadings.size(); ++j)
       {

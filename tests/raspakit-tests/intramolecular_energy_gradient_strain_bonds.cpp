@@ -46,7 +46,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
   intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54})};
 
   Component c = Component(
-      0, forceField, "ethane", 305.33, 4871800.0, 0.0993,
+      forceField, "ethane", 305.33, 4871800.0, 0.0993,
       {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false), Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)},
       connectivityTable, intraMolecularPotentials, 5, 21);
 

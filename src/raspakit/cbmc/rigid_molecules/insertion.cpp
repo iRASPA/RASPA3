@@ -26,7 +26,7 @@ import component;
 import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, const Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -42,10 +42,11 @@ import interpolation_energy_grid;
   {
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = CBMC::rotateRandomlyAround(orientation, molecule_atoms, starting_bead);
+
     double3 com = component.computeCenterOfMass(randomlyRotatedAtoms);
 
     trialPositions[i] = {
-        Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+        Molecule(com, orientation, component.totalMass, selectedComponent, component.definedAtoms.size()),
         randomlyRotatedAtoms};
   };
 

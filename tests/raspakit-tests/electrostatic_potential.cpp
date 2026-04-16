@@ -41,28 +41,28 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
   forceField.omitInterPolarization = false;
   forceField.omitInterInteractions = false;
 
-  Component c1 = Component(0, forceField, "t1", 0.0, 0.0, 0.0,
+  Component c1 = Component(forceField, "t1", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false),
                            },
                            {}, {}, 5, 21);
-  Component c2 = Component(1, forceField, "t2", 0.0, 0.0, 0.0,
+  Component c2 = Component(forceField, "t2", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 1, 1, false, false),
                            },
                            {}, {}, 5, 21);
-  Component c3 = Component(2, forceField, "t3", 0.0, 0.0, 0.0,
+  Component c3 = Component(forceField, "t3", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 2, 2, 2, false, false),
                            },
                            {}, {}, 5, 21);
-  Component c4 = Component(3, forceField, "t4", 0.0, 0.0, 0.0,
+  Component c4 = Component(forceField, "t4", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
@@ -216,7 +216,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
   Framework framework = Framework(0, forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
                                   atoms, atoms, {1, 1, 1});
 
-  Component c4 = Component(0, forceField, "t4", 0.0, 0.0, 0.0,
+  Component c4 = Component(forceField, "t4", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
@@ -323,7 +323,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
   Framework framework = Framework(0, forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
                                   atoms, atoms, {1, 1, 1});
 
-  Component c3 = Component(0, forceField, "t3", 0.0, 0.0, 0.0,
+  Component c3 = Component(forceField, "t3", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
@@ -331,7 +331,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
                            },
                            {}, {}, 5, 21);
 
-  Component c4 = Component(1, forceField, "t4", 0.0, 0.0, 0.0,
+  Component c4 = Component(forceField, "t4", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional

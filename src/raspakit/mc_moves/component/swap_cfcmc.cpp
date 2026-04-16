@@ -158,7 +158,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     // Generate trial molecule for insertion
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
-        component.equilibratedMoleculeRandomInBox(random, system.simulationBox);
+        component.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
 
     if ((system.insideBlockedPockets(component, trialMolecule.second)))
     {

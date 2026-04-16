@@ -41,7 +41,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+  Component CO2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 2, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 3, 0, false, false)},
@@ -106,7 +106,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+  Component CO2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
                             {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 2, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 3, 0, false, false)},

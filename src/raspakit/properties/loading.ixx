@@ -113,7 +113,8 @@ export struct PropertyLoading
 
   std::pair<double, double> averageLoadingNumberOfMolecules(std::size_t comp) const;
 
-  std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass,
+  std::string writeAveragesStatistics(std::vector<Component> components, 
+                                      std::optional<double> frameworkMass, 
                                       std::optional<int3> numberOfUnitCells) const;
 
   /**

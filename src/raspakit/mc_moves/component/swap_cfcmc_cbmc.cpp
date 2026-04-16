@@ -187,7 +187,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, component, system.hasExternalField, system.forceField, system.simulationBox, 
+        random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
         system.interpolationGrids, system.externalFieldInterpolationGrid,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule, newLambda,

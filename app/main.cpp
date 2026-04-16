@@ -9,9 +9,9 @@ import monte_carlo_transition_matrix;
 import molecular_dynamics;
 //import breakthrough;
 //import breakthrough_simulation;
-import mixture_prediction_simulation;
-import isotherm_fitting_simulation;
-import multi_site_isotherm;
+//import mixture_prediction_simulation;
+//import isotherm_fitting_simulation;
+//import multi_site_isotherm;
 import opencl;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
@@ -112,14 +112,14 @@ int main(int argc, char* argv[])
       }
       case InputReader::SimulationType::MixturePrediction:
       {
-        MixturePredictionSimulation mixture(inputReader);
-        mixture.run();
+        //MixturePredictionSimulation mixture(inputReader);
+        //mixture.run();
         break;
       }
       case InputReader::SimulationType::Fitting:
       {
-        IsothermFittingSimulation fitting(inputReader);
-        fitting.run();
+        //IsothermFittingSimulation fitting(inputReader);
+        //fitting.run();
         break;
       }
       default:

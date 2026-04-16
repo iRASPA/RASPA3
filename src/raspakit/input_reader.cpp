@@ -19,9 +19,6 @@ import double4;
 import units;
 import sample_movies;
 import threadpool;
-import isotherm;
-import multi_site_isotherm;
-import pressure_range;
 import mc_moves_probabilities;
 import mc_moves_move_types;
 import reaction;
@@ -1431,17 +1428,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // Post-compute
   // ========================================================
 
-  for (std::size_t i = 0uz; i < systems.size(); ++i)
-  {
-    systems[i].maxIsothermTerms = 0uz;
-    if (!systems[i].components.empty())
-    {
-      std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
-          systems[i].components.begin(), systems[i].components.end(),
-          [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
-      systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
-    }
-  }
+  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  //{
+  //  systems[i].maxIsothermTerms = 0uz;
+  //  if (!systems[i].components.empty())
+  //  {
+  //    std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
+  //        systems[i].components.begin(), systems[i].components.end(),
+  //        [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
+  //    systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
+  //  }
+  //}
 
   if (simulationType == SimulationType::MonteCarloTransitionMatrix)
   {
@@ -1515,37 +1512,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
-  for (std::size_t i = 0uz; i < systems.size(); ++i)
-  {
-    systems[i].numberOfCarrierGases = 0uz;
-    systems[i].carrierGasComponent = 0uz;
-    for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-    {
-      if (systems[i].components[j].isCarrierGas)
-      {
-        systems[i].carrierGasComponent = j;
-        std::vector<double> values{1.0, 0.0};
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
-        systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
-        systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
+  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  //{
+  //  systems[i].numberOfCarrierGases = 0uz;
+  //  systems[i].carrierGasComponent = 0uz;
+  //  for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //  {
+  //    if (systems[i].components[j].isCarrierGas)
+  //    {
+  //      systems[i].carrierGasComponent = j;
+  //      std::vector<double> values{1.0, 0.0};
+  //      const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
+  //      systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
+  //      systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
 
-        systems[i].numberOfCarrierGases++;
-      }
-    }
+  //      systems[i].numberOfCarrierGases++;
+  //    }
+  //  }
 
-    if (simulationType == SimulationType::Breakthrough)
-    {
-      if (systems[i].numberOfCarrierGases == 0uz)
-      {
-        throw std::runtime_error("Error [Breakthrough]: no carrier gas component present\n");
-      }
-      if (systems[i].numberOfCarrierGases > 1)
-      {
-        throw std::runtime_error(
-            "Error [Breakthrough]: multiple carrier gas component present (there can be only one)\n");
-      }
-    }
-  }
+  //  if (simulationType == SimulationType::Breakthrough)
+  //  {
+  //    if (systems[i].numberOfCarrierGases == 0uz)
+  //    {
+  //      throw std::runtime_error("Error [Breakthrough]: no carrier gas component present\n");
+  //    }
+  //    if (systems[i].numberOfCarrierGases > 1)
+  //    {
+  //      throw std::runtime_error(
+  //          "Error [Breakthrough]: multiple carrier gas component present (there can be only one)\n");
+  //    }
+  //  }
+  //}
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {

@@ -10,24 +10,25 @@ import stringutils;
 import component;
 import units;
 
-std::string Loadings::printStatus(const Component &comp, std::optional<double> frameworkMass,
+std::string Loadings::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+                                  double componentAmountOfExcessMolecules, std::optional<double> frameworkMass,
                                   std::optional<int3> numberOfUnitCells) const
 {
   std::ostringstream stream;
 
   if (frameworkMass.has_value())
   {
-    std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
+    std::print(stream, "Component {} ({})\n", componentId, componentName);
 
     const double toMolePerKg = 1000.0 / frameworkMass.value();
-    const double toMgPerG = 1000.0 * comp.totalMass / frameworkMass.value();
+    const double toMgPerG = 1000.0 * componentTotalMass / frameworkMass.value();
 
     int3 number_of_unit_cells = numberOfUnitCells.value_or(int3{1, 1, 1});
     double to_molecules_per_unit_cell =
         1.0 / (static_cast<double>(number_of_unit_cells.x * number_of_unit_cells.y * number_of_unit_cells.z));
 
-    double loading = numberOfMolecules[comp.componentId];
-    double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
+    double loading = numberOfMolecules[componentId];
+    double excess_loading = numberOfMolecules[componentId] - componentAmountOfExcessMolecules;
     switch (Units::unitSystem)
     {
       case Units::System::RASPA:
@@ -53,18 +54,18 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
     const double densityConversionFactor =
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
-    std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
+    std::print(stream, "Component {} ({})\n", componentId, componentName);
     switch (Units::unitSystem)
     {
       case Units::System::RASPA:
-        std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[comp.componentId]);
-        std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[comp.componentId]);
+        std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[componentId]);
+        std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[componentId]);
         std::print(stream, "    density:          {: .6e} kg/m^3\n",
-                   densityConversionFactor * comp.totalMass * numberDensities[comp.componentId]);
+                   densityConversionFactor * componentTotalMass * numberDensities[componentId]);
         break;
       case Units::System::ReducedUnits:
-        std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[comp.componentId]);
-        std::print(stream, "    number density:   {: .6e} molec./{}^3\n", numberDensities[comp.componentId],
+        std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[componentId]);
+        std::print(stream, "    number density:   {: .6e} molec./{}^3\n", numberDensities[componentId],
                    Units::displayedUnitOfLengthString);
         break;
     }
@@ -73,29 +74,30 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
   return stream.str();
 }
 
-std::string Loadings::printStatus(const Component &comp, const Loadings &average, const Loadings &error,
+std::string Loadings::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+                                  double componentAmountOfExcessMolecules, const Loadings &average, const Loadings &error,
                                   std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const
 {
   std::ostringstream stream;
 
   if (frameworkMass)
   {
-    std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
+    std::print(stream, "Component {} ({})\n", componentId, componentName);
 
     const double toMolePerKg = 1000.0 / frameworkMass.value();
-    const double toMgPerKg = 1000.0 * comp.totalMass / frameworkMass.value();
+    const double toMgPerKg = 1000.0 * componentTotalMass / frameworkMass.value();
 
     int3 number_of_unit_cells = numberOfUnitCells.value_or(int3{1, 1, 1});
     double to_molecules_per_unit_cell =
         1.0 / (static_cast<double>(number_of_unit_cells.x * number_of_unit_cells.y * number_of_unit_cells.z));
 
-    double loading = numberOfMolecules[comp.componentId];
-    double loading_avg = average.numberOfMolecules[comp.componentId];
-    double loading_error = error.numberOfMolecules[comp.componentId];
+    double loading = numberOfMolecules[componentId];
+    double loading_avg = average.numberOfMolecules[componentId];
+    double loading_error = error.numberOfMolecules[componentId];
 
-    double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
-    double excess_loading_avg = average.numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
-    double excess_loading_error = error.numberOfMolecules[comp.componentId];
+    double excess_loading = numberOfMolecules[componentId] - componentAmountOfExcessMolecules;
+    double excess_loading_avg = average.numberOfMolecules[componentId] - componentAmountOfExcessMolecules;
+    double excess_loading_error = error.numberOfMolecules[componentId];
 
     switch (Units::unitSystem)
     {
@@ -133,28 +135,28 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
     const double densityConversionFactor =
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
-    std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
+    std::print(stream, "Component {} ({})\n", componentId, componentName);
     switch (Units::unitSystem)
     {
       case Units::System::RASPA:
         std::print(stream, "    molecules:      {:.6e} molecules  ({:.6e} +/- {:.6e})\n",
-                   numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
-                   error.numberOfMolecules[comp.componentId]);
+                   numberOfMolecules[componentId], average.numberOfMolecules[componentId],
+                   error.numberOfMolecules[componentId]);
         std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",
-                   numberDensities[comp.componentId], average.numberDensities[comp.componentId],
-                   error.numberDensities[comp.componentId]);
+                   numberDensities[componentId], average.numberDensities[componentId],
+                   error.numberDensities[componentId]);
         std::print(stream, "    density:        {:.6e} kg/m^3     ({:.6e} +/- {:.6e})\n",
-                   densityConversionFactor * comp.totalMass * numberDensities[comp.componentId],
-                   densityConversionFactor * comp.totalMass * average.numberDensities[comp.componentId],
-                   densityConversionFactor * comp.totalMass * error.numberDensities[comp.componentId]);
+                   densityConversionFactor * componentTotalMass * numberDensities[componentId],
+                   densityConversionFactor * componentTotalMass * average.numberDensities[componentId],
+                   densityConversionFactor * componentTotalMass * error.numberDensities[componentId]);
         break;
       case Units::System::ReducedUnits:
         std::print(stream, "    molecules:      {:.6e} molecules  ({:.6e} +/- {:.6e})\n",
-                   numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
-                   error.numberOfMolecules[comp.componentId]);
+                   numberOfMolecules[componentId], average.numberOfMolecules[componentId],
+                   error.numberOfMolecules[componentId]);
         std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n",
-                   numberDensities[comp.componentId], Units::displayedUnitOfLengthString,
-                   average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
+                   numberDensities[componentId], Units::displayedUnitOfLengthString,
+                   average.numberDensities[componentId], error.numberDensities[componentId]);
         break;
     }
   }

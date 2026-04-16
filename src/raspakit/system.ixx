@@ -41,11 +41,8 @@ import property_msd;
 import property_vacf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
-import multi_site_isotherm;
-import pressure_range;
 import units;
 import bond_potential;
-import isotherm;
 import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -245,11 +242,6 @@ export struct System
   double columnTimeStep{0.0005};
   std::size_t columnNumberOfTimeSteps{0};
   bool columnAutoNumberOfTimeSteps{true};
-  MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{MultiSiteIsotherm::PredictionMethod::IAST};
-  PressureRange pressure_range;
-  std::size_t numberOfCarrierGases{0};
-  std::size_t carrierGasComponent{0};
-  std::size_t maxIsothermTerms{0};
 
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
   std::optional<InterpolationEnergyGrid> externalFieldInterpolationGrid;

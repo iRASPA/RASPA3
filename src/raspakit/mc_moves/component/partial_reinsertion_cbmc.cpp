@@ -71,7 +71,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculePartialReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, 
+      random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
       system.interpolationGrids, system.externalFieldInterpolationGrid,
       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, beads_already_placed);

@@ -15,8 +15,6 @@ import atom;
 import forcefield;
 import simulationbox;
 import property_widom;
-import isotherm;
-import multi_site_isotherm;
 import bond_potential;
 import json;
 

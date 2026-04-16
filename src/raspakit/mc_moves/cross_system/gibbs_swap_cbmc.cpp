@@ -54,7 +54,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, componentA, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
+      random, componentA, selectedComponent, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
       systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, 
       systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
       systemA.beta, growType, cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA, newMoleculeIndex, 1.0, false,

@@ -50,9 +50,11 @@ export struct Loadings
 
   double& operator()(std::size_t compA) { return numberOfMolecules[compA]; }
 
-  std::string printStatus(const Component& compA, std::optional<double> frameworkMass,
+  std::string printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+                          double componentAmountOfExcessMolecules, std::optional<double> frameworkMass,
                           std::optional<int3> numberOfUnitCells) const;
-  std::string printStatus(const Component& compA, const Loadings& average, const Loadings& error,
+  std::string printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+                          double componentAmountOfExcessMolecules, const Loadings& average, const Loadings& error,
                           std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const;
 
   inline Loadings& operator+=(const Loadings& b)

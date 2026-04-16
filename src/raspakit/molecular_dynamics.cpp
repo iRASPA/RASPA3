@@ -663,10 +663,11 @@ void MolecularDynamics::output()
     std::print(stream, "Production run CPU timings of the MD simulation\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (const Component& component : system.components)
+    for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+      ++componentId;
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
     std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics(totalSimulationTime));
