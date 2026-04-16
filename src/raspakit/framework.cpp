@@ -35,14 +35,13 @@ import json;
 Framework::Framework() {}
 
 
-Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string structureName,
+Framework::Framework(const ForceField& forceField, std::string structureName,
                      SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
                      const std::vector<Atom> &definedAtoms, const std::vector<Atom> &fractionalUnitCellAtoms,
                      int3 numberOfUnitCells) noexcept(false)
     : simulationBox(simulationBox),
       spaceGroupHallNumber(spaceGroupHallNumber),
       numberOfUnitCells(numberOfUnitCells),
-      frameworkId(frameworkId),
       name(structureName),
       definedAtoms(definedAtoms),
       fractionalUnitCellAtoms(fractionalUnitCellAtoms)
@@ -88,17 +87,17 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
 
   for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
-    unitCellAtoms[i].componentId = static_cast<std::uint8_t>(frameworkId);
+    unitCellAtoms[i].componentId = static_cast<std::uint8_t>(0);
     unitCellAtoms[i].moleculeId = 0;
   }
 
   determineUniqueAtomTypes();
 }
 
-Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string structureName,
+Framework::Framework(const ForceField& forceField, std::string structureName,
                      SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
                      const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false):
-           Framework(frameworkId, forceField, structureName, simulationBox, spaceGroupHallNumber, definedAtoms,
+           Framework(forceField, structureName, simulationBox, spaceGroupHallNumber, definedAtoms,
                      CIFReader::expandDefinedAtomsToUnitCell(simulationBox, spaceGroupHallNumber, definedAtoms),
                      numberOfUnitCells)
 {
@@ -281,7 +280,7 @@ std::string Framework::printStatus(const ForceField& forceField) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
+  std::print(stream, "Framework {} [{}]\n\n", 0, name);
 
   std::print(stream, "    Box:     {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ax, simulationBox.cell.bx,
              simulationBox.cell.cx);
@@ -339,7 +338,7 @@ nlohmann::json Framework::jsonStatus() const
 {
   nlohmann::json status;
   status["name"] = name;
-  status["id"] = frameworkId;
+  status["id"] = 0;
   status["mass"] = mass;
 
   // TODO I feel that the masses, positions and charges belong in the hdf5.
@@ -363,7 +362,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.spaceGroupHallNumber;
   archive << c.numberOfUnitCells;
 
-  archive << c.frameworkId;
   archive << c.name;
   archive << c.filename;
 
@@ -419,7 +417,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.spaceGroupHallNumber;
   archive >> c.numberOfUnitCells;
 
-  archive >> c.frameworkId;
   archive >> c.name;
   archive >> c.filename;
 
@@ -469,7 +466,7 @@ std::string Framework::repr() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
+  std::print(stream, "Framework {} [{}]\n\n", 0, name);
   std::print(stream, "    number of unit cells: {}x{}x{}\n", numberOfUnitCells.x, numberOfUnitCells.y, numberOfUnitCells.z);
 
   std::print(stream, "    number Of Atoms:  {}\n", unitCellAtoms.size());
@@ -522,7 +519,7 @@ Framework Framework::makeFAU(const ForceField &forceField, int3 replicate)
   };
   std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
 
-  return Framework(0, forceField, "FAU", simulation_box, space_group_hall_number,
+  return Framework(forceField, "FAU", simulation_box, space_group_hall_number,
                    fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
 }
 
@@ -554,7 +551,7 @@ Framework Framework::makeITQ29(const ForceField &forceField, int3 replicate)
   };
   std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
 
-  return Framework(0, forceField, "ITQ-29", simulation_box, space_group_hall_number,
+  return Framework(forceField, "ITQ-29", simulation_box, space_group_hall_number,
                    fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
 }
 
@@ -618,7 +615,7 @@ Framework Framework::makeMFI(const ForceField &forceField, int3 replicate)
   };
   std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
 
-  return Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), space_group_hall_number,
+  return Framework(forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), space_group_hall_number,
                    fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
 }
 
@@ -680,7 +677,7 @@ Framework Framework::makeCHA(const ForceField &forceField, int3 replicate)
   };
   std::vector<Atom> fractional_atoms_unit_cell = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, space_group_hall_number, fractional_atoms_asymmetric_unit_cell);
 
-  return Framework(0, forceField, "CHA", simulation_box, space_group_hall_number,
+  return Framework(forceField, "CHA", simulation_box, space_group_hall_number,
                    fractional_atoms_asymmetric_unit_cell, fractional_atoms_unit_cell, replicate);
 }
 

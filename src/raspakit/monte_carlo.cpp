@@ -312,6 +312,11 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     if (outputToFiles)
     {
+      if(system_id >= streams.size())
+      {
+        throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
+      }
+
       std::ostream stream(streams[system_id].rdbuf());
       stream << system.runningEnergies.printMC("Recomputed from scratch");
       std::print(stream, "\n\n\n\n");

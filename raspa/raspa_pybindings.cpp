@@ -189,9 +189,9 @@ PYBIND11_MODULE(raspalib, m)
       .finalize();
 
   framework
-      .def(pybind11::init<std::size_t, const ForceField &, std::string, SimulationBox, std::size_t, 
+      .def(pybind11::init<const ForceField &, std::string, SimulationBox, std::size_t, 
                           const std::vector<Atom> &, int3>(),
-           pybind11::arg("frameworkId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
+           pybind11::arg("forceField"), pybind11::arg("componentName"),
            pybind11::arg("simulationBox"), pybind11::arg("spaceGroupHallNumber"), 
            pybind11::arg("definedAtoms"), 
            pybind11::arg("numberOfUnitCells"))

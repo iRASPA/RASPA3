@@ -131,7 +131,7 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
   };
 
   Framework f =
-      Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
+      Framework(forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                 atoms, atoms, int3(1, 1, 1));
 
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
@@ -241,7 +241,7 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
   };
 
   Framework f =
-      Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
+      Framework(forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                 atoms, atoms, int3(2, 2, 2));
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
 
@@ -620,7 +620,7 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI_P1)
   };
 
   Framework f =
-      Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 1,
+      Framework(forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 1,
                 atoms, atoms, int3(1, 1, 1));
 
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);

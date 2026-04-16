@@ -948,7 +948,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         if(const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom); cif.has_value())
         {
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
-          Framework framework = Framework(0, forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
+          Framework framework = Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
                                           defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
 
           std::optional<Framework> jsonFrameworkComponents{framework};

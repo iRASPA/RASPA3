@@ -213,7 +213,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
     Atom({0.0, 1.0 / 1000.0, 0.0}, -0.75, 1.0, 0, 2, 0, false, false)
   };
 
-  Framework framework = Framework(0, forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
+  Framework framework = Framework(forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
                                   atoms, atoms, {1, 1, 1});
 
   Component c4 = Component(forceField, "t4", 0.0, 0.0, 0.0,
@@ -320,7 +320,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
     Atom({-1.0 / 1000.0, 0.0, 0.0}, 0.5, 1.0, 0, 0, 0, false, false),
     Atom({0.0, -1.0 / 1000.0, 0.0}, -1.25, 1.0, 0, 1, 0, false, false)
   };
-  Framework framework = Framework(0, forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
+  Framework framework = Framework(forceField, "ions", SimulationBox(1000.0, 1000.0, 1000.0), 1,
                                   atoms, atoms, {1, 1, 1});
 
   Component c3 = Component(forceField, "t3", 0.0, 0.0, 0.0,

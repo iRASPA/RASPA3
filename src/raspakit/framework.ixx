@@ -51,7 +51,7 @@ export struct Framework
    * \param fractionalAtoms Vector of atoms defining the fractional positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
+  Framework(const ForceField &forceField, std::string componentName,
             SimulationBox simulationBox, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms,
             const std::vector<Atom> &fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
 
@@ -69,7 +69,7 @@ export struct Framework
    * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
+  Framework(const ForceField &forceField, std::string componentName,
             SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
             const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
@@ -79,7 +79,6 @@ export struct Framework
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
   int3 numberOfUnitCells{1, 1, 1};      ///< Number of unit cells in each dimension for the supercell.
 
-  std::size_t frameworkId{0};                 ///< Identifier for the framework.
   std::string name{};                         ///< Name of the framework component.
   std::string filename{};                     ///< File name of the framework.
   std::size_t numberOfComponents{1};

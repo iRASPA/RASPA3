@@ -286,7 +286,7 @@ void CommandLine::run(int argc, char *argv[])
       if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(), CIFReader::UseChargesFrom::CIF_File); cif.has_value())
       {
         auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
-        framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
                               defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
       }
       else if (cif.error() == CIFReader::ParseError::invalidForceField)
@@ -304,7 +304,7 @@ void CommandLine::run(int argc, char *argv[])
       {
         forceField = trial_zeolite_force_field;
         auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = zeolite_cif.value();
-        framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
                               defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
       }
       else if (zeolite_cif.error() == CIFReader::ParseError::invalidForceField)
@@ -315,7 +315,7 @@ void CommandLine::run(int argc, char *argv[])
         {
           forceField = trial_mof_force_field;
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
-          framework = Framework(0, forceField.value(), stem, simulation_box, space_group_hall_symbol,
+          framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
                                 defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
         }
         else if (mof_cif.error() == CIFReader::ParseError::invalidForceField)
