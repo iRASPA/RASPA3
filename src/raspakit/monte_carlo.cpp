@@ -922,6 +922,8 @@ void MonteCarlo::output()
                    system.components, system.frameworkMass(),
                    system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
 
+    std::flush(stream);
+
     // json statistics
     outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
     outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
