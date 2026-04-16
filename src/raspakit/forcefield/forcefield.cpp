@@ -892,6 +892,16 @@ void ForceField::applyMixingRule()
             data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
             data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
           }
+          if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
+              (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
+          {
+            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
+          }
         }
       }
       break;
@@ -915,6 +925,16 @@ void ForceField::applyMixingRule()
             data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
             data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
             data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+          }
+          if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
+              (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
+          {
+            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
           }
         }
       }
