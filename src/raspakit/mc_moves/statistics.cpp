@@ -37,38 +37,36 @@ void MCMoveStatistics::addTrial(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).counts[direction] += 1;
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalCounts[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).counts[direction] += 1.0;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalCounts[direction] += 1.0;
   }
 }
 
 void MCMoveStatistics::addConstructed(const Move::Types& move)
 {
-  std::visit([](auto&& s){ s.constructed += 1; }, stats[std::to_underlying(move)]);
-  std::visit([](auto&& s){ s.totalConstructed += 1; }, stats[std::to_underlying(move)]);
+  std::visit([](auto&& s){ s.constructed += 1; s.totalConstructed += 1; }, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addConstructed(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).constructed[direction] += 1;
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalConstructed[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).constructed[direction] += 1.0;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalConstructed[direction] += 1.0;
   }
 }
 
 void MCMoveStatistics::addAccepted(const Move::Types& move)
 {
-  std::visit([](auto&& s){ s.accepted += 1; }, stats[std::to_underlying(move)]);
-  std::visit([](auto&& s){ s.totalAccepted += 1; }, stats[std::to_underlying(move)]);
+  std::visit([](auto&& s){ s.accepted += 1; s.totalAccepted += 1; }, stats[std::to_underlying(move)]);
 }
 
 void MCMoveStatistics::addAccepted(const Move::Types& move, std::size_t direction)
 {
   if(std::holds_alternative<MoveStatistics<double3>>(stats[std::to_underlying(move)]))
   {
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).accepted[direction] += 1;
-    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalAccepted[direction] += 1;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).accepted[direction] += 1.0;
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).totalAccepted[direction] += 1.0;
   }
 }
 
@@ -181,6 +179,22 @@ const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
       }, stats[i]);
   }
   return status;
+}
+
+
+std::string MCMoveStatistics::repr() const
+{
+  std::ostringstream stream;
+  for(std::size_t i = 0; i != stats.size(); ++i)
+  {
+    std::visit([&stream, i](auto&& s){
+        if(s.allCounts > 0)
+        {
+          std::print(stream, "{}", formatStatistics(Move::moveNames[i], s)); 
+        }
+    }, stats[i]);
+  }
+  return stream.str();
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMoveStatistics& p)

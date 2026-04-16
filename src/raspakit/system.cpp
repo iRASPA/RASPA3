@@ -168,18 +168,6 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
 }
 
-System::System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f,
-               std::vector<Component> c)
-    : systemId(id),
-      temperature(T),
-      pressure(P.value_or(0.0) / Units::PressureConversionFactor),
-      input_pressure(P.value_or(0.0)),
-      beta(1.0 / (Units::KB * T)),
-      heliumVoidFraction(heliumVoidFraction),
-      framework(f),
-      components(c)
-{
-}
 
 void System::createFrameworks()
 {

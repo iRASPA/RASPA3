@@ -285,8 +285,9 @@ PYBIND11_MODULE(raspalib, m)
       .finalize();
 
   pybind11::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-    //.def("__getitem__", [](MCMoveStatistics &self, std::size_t index) { return self[index]; });
-    .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; });
+      .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; })
+      .def("__repr__", &MCMoveStatistics::repr);
+
 
   // define before component init to prevent failing default argument
   pybind11::class_<Component> component(m, "Component");
@@ -437,6 +438,7 @@ PYBIND11_MODULE(raspalib, m)
       .def("frameworkMass", &System::frameworkMass)
       .def_readonly("inputPressure", &System::input_pressure)
       .def_readonly("components", &System::components)
+      .def_readonly("mc_moves_statistics", &System::mc_moves_statistics)
       .def_readonly("loadings", &System::loadings)
       .def_readwrite("averageLoadings", &System::averageLoadings)
       .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
@@ -463,6 +465,8 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
       .def("run", &MonteCarlo::run)
+      .def("setup", &MonteCarlo::setup)
+      .def("tearDown", &MonteCarlo::tearDown)
       .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
       .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
       .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)

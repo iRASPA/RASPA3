@@ -157,6 +157,22 @@ export struct MonteCarlo
    * Equilibrates the systems by running the specified number of equilibration cycles,
    * and adjusts Wang-Landau biasing factors.
    */
+  void setup();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void tearDown();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
   void equilibrate(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**

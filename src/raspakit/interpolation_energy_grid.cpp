@@ -3786,6 +3786,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
+// calculateEnergyAtPosition using ForceField::InterpolationGridType::EwaldReal calcalulates energy for a unit-charge
 void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,

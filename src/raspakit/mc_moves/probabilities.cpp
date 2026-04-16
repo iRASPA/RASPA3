@@ -49,6 +49,7 @@ const std::vector<double> MCMoveProbabilities::normalizedMap() const
   {
     totalProbability += probability;
   }
+
   for (auto &probability : normalizedMap)
   {
     probability /= totalProbability;
@@ -76,7 +77,7 @@ void MCMoveProbabilities::join(const MCMoveProbabilities &other)
   {
     return;
   }
-  for (std::size_t i = 0; i < static_cast<std::size_t>(Move::Types::Count); i++)
+  for (std::size_t i = 0; i != static_cast<std::size_t>(Move::Types::Count); ++i)
   {
     if (probabilities[i] > 0.0 && other.probabilities[i] > 0.0)
     {
@@ -98,26 +99,28 @@ std::string MCMoveProbabilities::repr()
 {
   std::ostringstream stream;
 
-  std::print(stream, "translationProbability: {}\n", probabilities[std::to_underlying(Move::Types::Translation)]);
-  std::print(stream, "randomTranslationProbability: {}\n", probabilities[std::to_underlying(Move::Types::RandomTranslation)]);
-  std::print(stream, "rotationProbability: {}\n", probabilities[std::to_underlying(Move::Types::Rotation)]);
-  std::print(stream, "randomRotationProbability: {}\n", probabilities[std::to_underlying(Move::Types::RandomRotation)]);
-  std::print(stream, "volumeChangeProbability: {}\n", probabilities[std::to_underlying(Move::Types::VolumeChange)]);
-  std::print(stream, "reinsertionCBMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::ReinsertionCBMC)]);
-  std::print(stream, "partialReinsertionCBMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::PartialReinsertionCBMC)]);
-  std::print(stream, "identityChangeCBMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::IdentityChangeCBMC)]);
-  std::print(stream, "swapProbability: {}\n", probabilities[std::to_underlying(Move::Types::Swap)]);
-  std::print(stream, "swapCBMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::SwapCBMC)]);
-  std::print(stream, "swapCFCMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::SwapCFCMC)]);
-  std::print(stream, "swapCBCFCMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::SwapCBCFCMC)]);
-  std::print(stream, "gibbsVolumeChangeProbability: {}\n", probabilities[std::to_underlying(Move::Types::GibbsVolume)]);
-  std::print(stream, "gibbsSwapCBMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::GibbsSwapCBMC)]);
-  std::print(stream, "gibbsSwapCFCMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::GibbsSwapCFCMC)]);
-  std::print(stream, "widomProbability: {}\n", probabilities[std::to_underlying(Move::Types::Widom)]);
-  std::print(stream, "widomCFCMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::WidomCFCMC)]);
-  std::print(stream, "widomCBCFCMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::WidomCBCFCMC)]);
-  std::print(stream, "parallelTemperingProbability: {}\n", probabilities[std::to_underlying(Move::Types::ParallelTempering)]);
-  std::print(stream, "hybridMCProbability: {}\n", probabilities[std::to_underlying(Move::Types::HybridMC)]);
+  std::vector<double> normalized_probabilities = normalizedMap();
+
+  std::print(stream, "translationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Translation)]);
+  std::print(stream, "randomTranslationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RandomTranslation)]);
+  std::print(stream, "rotationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Rotation)]);
+  std::print(stream, "randomRotationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RandomRotation)]);
+  std::print(stream, "volumeChangeProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::VolumeChange)]);
+  std::print(stream, "reinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ReinsertionCBMC)]);
+  std::print(stream, "partialReinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::PartialReinsertionCBMC)]);
+  std::print(stream, "identityChangeCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::IdentityChangeCBMC)]);
+  std::print(stream, "swapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Swap)]);
+  std::print(stream, "swapCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCBMC)]);
+  std::print(stream, "swapCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCFCMC)]);
+  std::print(stream, "swapCBCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCBCFCMC)]);
+  std::print(stream, "gibbsVolumeChangeProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsVolume)]);
+  std::print(stream, "gibbsSwapCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapCBMC)]);
+  std::print(stream, "gibbsSwapCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapCFCMC)]);
+  std::print(stream, "widomProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Widom)]);
+  std::print(stream, "widomCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::WidomCFCMC)]);
+  std::print(stream, "widomCBCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::WidomCBCFCMC)]);
+  std::print(stream, "parallelTemperingProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ParallelTempering)]);
+  std::print(stream, "hybridMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::HybridMC)]);
 
   return stream.str();
 }

@@ -104,22 +104,22 @@ double3 parseDouble3(const std::string& item, auto json)
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions,
                        MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
                        bool shifted, bool applyTailCorrections, bool useCharge) noexcept(false)
-    : data((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), VDWParameters(0.0, 0.0)),
-      shiftPotentials((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), shifted),
-      tailCorrections((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), applyTailCorrections),
+    : data(pseudoAtoms.size() * pseudoAtoms.size(), VDWParameters(0.0, 0.0)),
+      shiftPotentials(pseudoAtoms.size() * pseudoAtoms.size(), shifted),
+      tailCorrections(pseudoAtoms.size() * pseudoAtoms.size(), applyTailCorrections),
       mixingRule(mixingRule),
       cutOffFrameworkVDW(cutOffFrameworkVDW),
       cutOffMoleculeVDW(cutOffMoleculeVDW),
       cutOffCoulomb(cutOffCoulomb),
-      numberOfPseudoAtoms(pseudoAtoms.size() + 1),
+      numberOfPseudoAtoms(pseudoAtoms.size()),
       pseudoAtoms(pseudoAtoms),
       useCharge(useCharge)
 {
-  PseudoAtom unitPseudoAtom("unit", false, 1.0, 1.0, 0.0, 0, false);
-  this->pseudoAtoms.push_back(unitPseudoAtom);
+  //PseudoAtom unitPseudoAtom("unit", false, 1.0, 1.0, 0.0, 0, false);
+  //this->pseudoAtoms.push_back(unitPseudoAtom);
 
-  VDWParameters unitVDWParameters(double4(1.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::LennardJones);
-  selfInteractions.push_back(unitVDWParameters);
+  //VDWParameters unitVDWParameters(double4(1.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::LennardJones);
+  //selfInteractions.push_back(unitVDWParameters);
 
   for (std::size_t i = 0; i < selfInteractions.size(); ++i)
   {
