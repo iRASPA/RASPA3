@@ -36,7 +36,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
   Component c = Component::makeCO2(forceField, 0, true);
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -109,7 +109,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
   Component c = Component::makeCO2(forceField, 0, true);
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(7.200346017629, 5.547320950450, 2.554032891860);
@@ -182,7 +182,7 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   Component c = Component::makeWater(forceField, 0, true);
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(2.672476355982, 4.866114600102, 3.294027041381);

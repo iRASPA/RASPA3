@@ -118,22 +118,25 @@ continueProductionStage:
 void MolecularDynamics::createOutputFiles()
 {
   std::filesystem::create_directories("output");
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
-        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, std::ios::out);
+    ++system_id;
   }
 }
 
 void MolecularDynamics::createInterpolationGrids()
 {
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
-    system.createExternalFieldInterpolationGrid(stream);
+    system.createExternalFieldInterpolationGrid(stream, system_id);
     system.createFrameworkInterpolationGrids(stream);
+
+    ++system_id;
   }
 }
 
@@ -148,10 +151,10 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
 
   createOutputFiles();
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0uz)
+    if (system_id == 0uz)
       system.containsTheFractionalMolecule = true;
     else
       system.containsTheFractionalMolecule = false;
@@ -161,11 +164,13 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     {
       system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
     }
+
+    ++system_id;
   }
 
-  for (const System& system : systems)
+  for (std::size_t system_id{0}; const System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
@@ -176,11 +181,13 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     std::print(stream, "{}", system.forceField.printForceFieldStatus());
     std::print(stream, "{}", system.writeComponentStatus());
     std::print(stream, "{}", system.reactions.printStatus());
+
+    ++system_id;
   }
 
   createInterpolationGrids();
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
@@ -190,9 +197,11 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
 
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
+
+    ++system_id;
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
@@ -229,15 +238,17 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
 
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
         std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -279,9 +290,9 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     Integrators::initializeVelocities(random, system.moleculeData, system.components, system.temperature);
 
@@ -316,6 +327,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
+
+    ++system_id;
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
@@ -335,15 +348,17 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
 
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -400,9 +415,9 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
@@ -434,6 +449,8 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
+
+    ++system_id;
   };
 
   minBias = std::numeric_limits<double>::max();
@@ -490,18 +507,22 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     }
 
     // sample properties
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
-      system.sampleProperties(estimation.currentBin, currentCycle);
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+
+      ++system_id;
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
         std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -522,38 +543,40 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     }
 
     // output properties to files
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
             currentCycle);
       }
 
       if (system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
                                                                system.simulationBox.volume,
                                                                system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if (system.propertyDensityGrid.has_value())
       {
-        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
                                                 system.framework, system.components, currentCycle);
       }
 
       if (system.propertyMSD.has_value())
       {
-        system.propertyMSD->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
+        system.propertyMSD->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
                                         system.timeStep, currentCycle);
       }
 
       if (system.propertyVACF.has_value())
       {
-        system.propertyVACF->writeOutput(system.systemId, system.components,
+        system.propertyVACF->writeOutput(system_id, system.components,
                                          system.numberOfIntegerMoleculesPerComponent, system.timeStep, currentCycle);
       }
+
+      ++system_id;
     }
 
     // write binary-restart file
@@ -574,38 +597,40 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   }
 
   // output properties to files
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     if (system.propertyConventionalRadialDistributionFunction.has_value())
     {
-      system.propertyConventionalRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+      system.propertyConventionalRadialDistributionFunction->writeOutput(system.forceField, system_id,
                                                                          system.simulationBox.volume,
                                                                          system.totalNumberOfPseudoAtoms, currentCycle);
     }
 
     if (system.propertyRadialDistributionFunction.has_value())
     {
-      system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+      system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
                                                              system.simulationBox.volume,
                                                              system.totalNumberOfPseudoAtoms, currentCycle);
     }
     if (system.propertyDensityGrid.has_value())
     {
-      system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+      system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
                                               system.framework, system.components, currentCycle);
     }
 
     if (system.propertyMSD.has_value())
     {
-      system.propertyMSD->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
+      system.propertyMSD->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
                                       system.timeStep, currentCycle);
     }
 
     if (system.propertyVACF.has_value())
     {
-      system.propertyVACF->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
+      system.propertyVACF->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
                                        system.timeStep, currentCycle);
     }
+
+    ++system_id;
   }
 }
 
@@ -623,9 +648,9 @@ void MolecularDynamics::output()
     }
   }
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "\n");
     std::print(stream, "===============================================================================\n");
@@ -669,6 +694,8 @@ void MolecularDynamics::output()
                system.averageLoadings.writeAveragesStatistics(
                    system.components, system.frameworkMass(),
                    system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+
+    ++system_id;
   }
 }
 

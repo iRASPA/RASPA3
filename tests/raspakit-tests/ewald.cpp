@@ -33,7 +33,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
 
   Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {2}, 5);
+  System system = System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(-1.0, 0.0, 1.149);
@@ -66,7 +66,7 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
   Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
 
-  System system = System(0, forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
+  System system = System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -154,7 +154,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
   Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
   Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -188,7 +188,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
   Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -222,7 +222,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
   Framework f = Framework::makeMFI(forceField, int3(1, 1, 1));
   Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -256,7 +256,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
   Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
   Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -291,7 +291,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
 
   System system =
-      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   // std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 

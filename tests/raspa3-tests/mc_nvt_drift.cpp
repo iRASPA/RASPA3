@@ -50,7 +50,7 @@ TEST(MC_NVT_DRIFT, translation)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -122,7 +122,7 @@ TEST(MC_NVT_DRIFT, random_translation)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -194,7 +194,7 @@ TEST(MC_NVT_DRIFT, rotation)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -266,7 +266,7 @@ TEST(MC_NVT_DRIFT, random_rotation)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -338,7 +338,7 @@ TEST(MC_NVT_DRIFT, reinsertion)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{250};
@@ -412,7 +412,7 @@ TEST(MC_NVT_DRIFT, translation_rotation_reinsertion)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{250};
@@ -486,7 +486,7 @@ TEST(MC_NVT_DRIFT, random_translation_random_rotation_reinsertion)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
       {}, {}, 5, 21, probabilities, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{250};

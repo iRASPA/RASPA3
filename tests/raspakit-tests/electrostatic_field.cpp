@@ -42,12 +42,12 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 2, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 3, 0, false, false)},
                             {}, {}, 5, 21);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
@@ -96,7 +96,6 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
                                       {"O", true, 15.999, -1.025, 0.0, 8, false},
                                       {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
                                       {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
-
                                      {{0.0, 2.30}, {0.0, 3.30}, {0.0, 2.745}, {0.0, 3.017}},
                                      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
@@ -108,12 +107,12 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 2, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 3, 0, false, false)},
                             {}, {}, 5, 21);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.83355, 7.83355, 1.8 + 5.93355 + 1.149);
@@ -163,7 +162,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2)
   forceField.omitInterInteractions = true;
   forceField.omitEwaldFourier = false;
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
 

@@ -25,7 +25,7 @@ TEST(MC, translation)
   Component methane = Component::makeMethane(forceField, 0);
   Component co2 = Component::makeCO2(forceField, 1, true);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   [[maybe_unused]] std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 }

@@ -16,9 +16,9 @@ import mixture_prediction;
 MixturePredictionSimulation::MixturePredictionSimulation(InputReader &inputReader)
     : systems(std::move(inputReader.systems))
 {
-  for (System &system : systems)
+  for ([[maybe_unused]]System &system : systems)
   {
-    std::string directoryNameString = std::format("output/system_{}/", system.systemId);
+    std::string directoryNameString = std::format("output/system_{}/", 0);
     std::filesystem::path directoryName{directoryNameString};
     std::filesystem::create_directories(directoryName);
   }
@@ -31,7 +31,7 @@ void MixturePredictionSimulation::run()
     MixturePrediction mixture(system);
 
     std::string fileNameString =
-        std::format("output/system_{}/output_{}_{}.txt", system.systemId, system.temperature, system.input_pressure);
+        std::format("output/system_{}/output_{}_{}.txt", 0, system.temperature, system.input_pressure);
     std::ofstream fstream(fileNameString, std::ios::out);
     std::ostream stream(fstream.rdbuf());
     // std::ostream stream(std::cout.rdbuf());

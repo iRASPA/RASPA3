@@ -96,15 +96,13 @@ export struct System
    * \param systemProbabilities The move probabilities for the Monte Carlo simulation.
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
-  System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
+  System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
          double T, std::optional<double> P, double heliumVoidFraction, 
          std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
   std::uint64_t versionNumber{1};
-
-  std::size_t systemId{};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -387,7 +385,7 @@ export struct System
 
   bool insideBlockedPockets(const Component &component, std::span<const Atom> molecule_atoms) const;
 
-  void sampleProperties(std::size_t currentBlock, std::size_t currentCycle);
+  void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle);
   void samplePropertiesEvolution(std::size_t absoluteCurrentCycle);
 
   void writeCPUTimeStatistics(std::ostream &stream) const;
@@ -398,13 +396,13 @@ export struct System
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
-  void createExternalFieldInterpolationGrid(std::ostream& stream);
+  void createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId);
   void createFrameworkInterpolationGrids(std::ostream &stream);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);
 
-  void writeRestartFile();
+  void writeRestartFile(std::size_t systemId);
 
   std::string repr() const;
 };

@@ -56,7 +56,7 @@ TEST(MC_NPT_DRIFT, translation_rotation_reinsertion_volume)
   systemProbabilities.setProbability(Move::Types::VolumeChange, 0.01);
 
   System system =
-      System(0, forceField, box, 300.0, 1e4, 1.0, {}, {co2, methane, water}, {10, 15, 8}, 5, systemProbabilities);
+      System(forceField, box, 300.0, 1e4, 1.0, {}, {co2, methane, water}, {10, 15, 8}, 5, systemProbabilities);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{2000};

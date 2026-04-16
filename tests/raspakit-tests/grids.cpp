@@ -77,7 +77,7 @@ TEST(grids, Test_CHA_grid)
                            Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 0, 0)},
                           5, 21);
 
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {1}, 5);
 
   // size_t typeB = forceField.pseudoAtoms.size() - 1;
   // size_t typeB = 7;

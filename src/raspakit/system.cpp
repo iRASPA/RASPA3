@@ -83,13 +83,12 @@ import interpolation_energy_grid;
  *
  *  Detailed description starts here.
  */
-System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
+System::System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
                double T, std::optional<double> P, double heliumVoidFraction,
                std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities)
-    : systemId(id),
-      temperature(T),
+    : temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
       input_pressure(P.value_or(0.0)),
       beta(1.0 / (Units::KB * T)),
@@ -130,6 +129,12 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       averageSimulationBox(numberOfBlocks),
       interpolationGrids(forceField.pseudoAtoms.size() + 1, std::nullopt)
 {
+  // set the system-ids
+  //for(std::size_t i = 0; i < components.size(); ++i)
+  //{
+  //  components[i].componentId = i;
+  //}
+
   if (box.has_value())
   {
     simulationBox = box.value();
@@ -361,11 +366,11 @@ void System::updateMoleculeAtomInformation()
   std::size_t atom_index = numberOfFrameworkAtoms;
   std::size_t molecule_index{};
 
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
+  for (std::size_t k = 0; k < components.size(); k++)
   {
-    std::size_t numberOfAtoms = components[componentId].atoms.size();
+    std::size_t numberOfAtoms = components[k].atoms.size();
 
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[k]; ++i)
     {
       moleculeData[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
       moleculeData[molecule_index].numberOfAtoms = numberOfAtoms;
@@ -373,7 +378,7 @@ void System::updateMoleculeAtomInformation()
       for (std::size_t j = 0; j < numberOfAtoms; ++j)
       {
         atomData[atom_index].moleculeId = static_cast<std::uint16_t>(i);
-        atomData[atom_index].componentId = static_cast<std::uint8_t>(componentId);
+        atomData[atom_index].componentId = static_cast<std::uint8_t>(k);
         ++atom_index;
       }
       ++molecule_index;
@@ -386,21 +391,21 @@ void System::checkMoleculeIds()
   std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
 
   std::size_t index = 0;  // indexOfFirstMolecule(selectedComponent);
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
+  for (std::size_t k = 0; k < components.size(); k++)
   {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[k]; ++i)
     {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
+      for (std::size_t j = 0; j < components[k].atoms.size(); ++j)
       {
         if (moleculeAtoms[index].moleculeId != static_cast<std::uint32_t>(i))
         {
           throw std::runtime_error(std::format("Wrong molecule-id detected {} for component {} molecule {}\n",
-                                               moleculeAtoms[index].moleculeId, componentId, i));
+                                               moleculeAtoms[index].moleculeId, k, i));
         }
-        if (moleculeAtoms[index].componentId != static_cast<std::uint8_t>(componentId))
+        if (moleculeAtoms[index].componentId != static_cast<std::uint8_t>(k))
         {
           throw std::runtime_error(std::format("Wrong component-id detected {} for component {} molecule {}\n",
-                                               moleculeAtoms[index].componentId, componentId, i));
+                                               moleculeAtoms[index].componentId, k, i));
         }
         ++index;
       }
@@ -1650,7 +1655,7 @@ void System::writeComponentFittingStatus(std::ostream& stream,
   std::print(stream, "\n\n");
 }
 
-void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle)
+void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle)
 {
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   double w = weight();
@@ -1701,7 +1706,7 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (samplePDBMovie.has_value())
   {
-    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), 
+    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(),
                            components, numberOfMoleculesPerComponent, currentCycle);
   }
 
@@ -2191,7 +2196,7 @@ std::string System::writeMCMoveStatistics() const
 }
 
 
-void System::createExternalFieldInterpolationGrid(std::ostream& stream)
+void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId)
 {
   // use local random-number generator (so that it does not interfere with a binary-restart)
   RandomNumber random{std::nullopt};
@@ -3035,8 +3040,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 {
   archive << s.versionNumber;
 
-  archive << s.systemId;
-
   archive << s.temperature;
   archive << s.pressure;
   archive << s.input_pressure;
@@ -3180,8 +3183,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
         std::format("Invalid version reading 'System' at line {} in file {}\n", location.line(), location.file_name()));
   }
 
-  archive >> s.systemId;
-
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;
@@ -3319,7 +3320,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   return archive;
 }
 
-void System::writeRestartFile()
+void System::writeRestartFile(std::size_t systemId)
 {
   nlohmann::json json;
 

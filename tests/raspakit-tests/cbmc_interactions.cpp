@@ -31,7 +31,7 @@ TEST(cbmc_interactions, framework_molecule_1)
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
   Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -56,7 +56,7 @@ TEST(cbmc_interactions, framework_molecule_2)
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
   Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
   Component c = Component::makeMethane(forceField, 0);
-  System system = System(0, forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
