@@ -79,6 +79,8 @@ import property_volume_evolution;
 import property_widom;
 import connectivity_table;
 import intra_molecular_potentials;
+import pressures;
+import property_pressure;
 
 
 template<typename T>
@@ -355,6 +357,16 @@ PYBIND11_MODULE(raspalib, m)
       .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();})
       .def("__repr__", &PropertyEnergy::repr);
 
+  pybind11::class_<Pressures>(m, "Pressures")
+      .def(pybind11::init<>())
+      .def_readonly("totalPressure", &Pressures::totalPressure)
+      .def_readonly("excessPressure", &Pressures::excessPressure)
+      .def_readonly("idealGasPressure", &Pressures::idealGasPressure);
+
+  pybind11::class_<PropertyPressure>(m, "PropertyPressure")
+      .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.result();});
+      //.def("__repr__", &Pressures::repr);
+
   pybind11::class_<AverageEnergyType>(m, "AverageEnergyType")
       .def(pybind11::init<double, double, double, double>(), 
            pybind11::arg("totalEnergy") = 0.0, pybind11::arg("VanDerWaalsEnergy") = 0.0,
@@ -423,6 +435,7 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyWidom>(m, "PropertyWidom");
 
+
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
@@ -443,7 +456,8 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("averageLoadings", &System::averageLoadings)
       .def_readwrite("samplePDBMovie", &System::samplePDBMovie)
       .def_readwrite("averageEnergyHistogram", &System::averageEnergyHistogram)
-      .def_readwrite("averageEnergies", &System::averageEnergies)
+      .def_readonly("averageEnergies", &System::averageEnergies)
+      .def_readonly("averagePressure", &System::averagePressure)
       .def_readwrite("densityGrid", &System::propertyDensityGrid)
       .def_readwrite("conventionalRadialDistributionFunction", &System::propertyConventionalRadialDistributionFunction)
       .def_readwrite("radialDistributionFunction", &System::propertyRadialDistributionFunction)

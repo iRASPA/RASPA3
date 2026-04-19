@@ -210,6 +210,23 @@ export union double3x3
     return *this;
   }
 
+  inline static double3x3  multiplyElementWise(const double3x3& a, const double3x3& b)
+  {
+    double3x3 r{};
+  
+    r.m11 = a.m11 * b.m11;
+    r.m21 = a.m21 * b.m21;
+    r.m31 = a.m31 * b.m31;
+    r.m12 = a.m12 * b.m12;
+    r.m22 = a.m22 * b.m22;
+    r.m32 = a.m32 * b.m32;
+    r.m13 = a.m13 * b.m13;
+    r.m23 = a.m23 * b.m23;
+    r.m33 = a.m33 * b.m33;
+  
+    return r;
+  }
+
   /*
   void rotateAroundAxis(double3 v, std::vector<double3> &coordinates, double angle)
   {
@@ -337,6 +354,7 @@ export inline double3 transposedMultiply(const double3x3& a, const double3& b)
   return r;
 }
 
+
 export inline double3 operator*(const double3x3& a, const std::array<double, 3>& b)
 {
   double3 r{};
@@ -425,15 +443,16 @@ export inline double3x3 operator*(const double3x3& a, const double& b)
 export inline double3x3 operator/(const double3x3& a, const double& b)
 {
   double3x3 r{};
-  r.m11 = a.m11 / b;
-  r.m12 = a.m12 / b;
-  r.m13 = a.m13 / b;
-  r.m21 = a.m21 / b;
-  r.m22 = a.m22 / b;
-  r.m23 = a.m23 / b;
-  r.m31 = a.m31 / b;
-  r.m32 = a.m32 / b;
-  r.m33 = a.m33 / b;
+  double inv_b = 1.0 / b;
+  r.m11 =  inv_b * a.m11;
+  r.m12 =  inv_b * a.m12;
+  r.m13 =  inv_b * a.m13;
+  r.m21 =  inv_b * a.m21;
+  r.m22 =  inv_b * a.m22;
+  r.m23 =  inv_b * a.m23;
+  r.m31 =  inv_b * a.m31;
+  r.m32 =  inv_b * a.m32;
+  r.m33 =  inv_b * a.m33;
   return r;
 }
 

@@ -185,15 +185,12 @@ class MCMoveProbabilities():
             probabilityParallelTemperingSwap (float, optional): _description_. Defaults to 0.0.
         """
 
-
 class ConnectivityTable():
     """
     A class representing a component in RASPA.
     """
 
-    def __init__(
-        self
-    ) -> None:
+    def __init__(self) -> None:
         ...
         """
         Initialize the ConnectivityTable object.
@@ -204,9 +201,7 @@ class IntraMolecularPotentials():
     A class representing the intra-molecular potentials of a component in RASPA.
     """
 
-    def __init__(
-        self
-    ) -> None:
+    def __init__(self) -> None:
         ...
         """
         Initialize the IntraMolecularPotentials object with provided parameters.
@@ -398,7 +393,6 @@ class Component():
 
     def __init__(
         self,
-        componentId: int,
         forceField: ForceField,
         componentName: str,
         criticalTemperature: float,
@@ -419,7 +413,6 @@ class Component():
         Initialize the Component object with provided parameters. 
 
         Args:
-            componentId (int): The ID of the component.
             forceField (ForceField): The force field to be used.
             componentName (str): The name of the component.
             criticalTemperature (float, optional): The critical temperature. Default is None.
@@ -443,6 +436,16 @@ class Component():
     @blockingPockets.setter
     def blockingPockets(self, arg0: collections.abc.Sequence[tuple[float, float, float, float]]) -> None:
         ...
+
+    @property
+    def mc_moves_probabilities(self) -> MCMoveProbabilities:
+        ...
+    """
+        Get the move-probabilities
+
+        Returns:
+            MCMoveProbabilities: The probabilties for each of the moves.
+        """
 
     @property
     def mc_moves_statistics(self) -> MCMoveStatistics:
@@ -511,7 +514,6 @@ class Framework():
 
     def __init__(
         self,
-        frameworkId: int,
         forceField: ForceField,
         componentName: str,
         simulationBox: SimulationBox,
@@ -524,7 +526,6 @@ class Framework():
         Initialize the Framework object with provided parameters.
 
         Args:
-            frameworkId (int): The ID of the framework.
             forceField (ForceField): The force field to be used.
             componentName (str): The name of the component.
             simulationBox (SimulationBox): The unit cell box. 
@@ -541,7 +542,6 @@ class System():
 
     def __init__(
         self,
-        systemId: int,
         forceField: ForceField,
         simulationBox: SimulationBox | None = None,
         hasExternalField: bool = False,
@@ -560,7 +560,6 @@ class System():
         Initialize the System object with provided parameters.
 
         Args:
-            systemId (int): The ID of the system.
             forceField (ForceField): The force field to be used.
             simulationBox (SimulationBox, optional): The simulation box. Default is None.
             externalTemperature (float): The temperature of the system.
@@ -588,6 +587,16 @@ class System():
         ...
 
     @property
+    def mc_moves_statistics(self) -> MCMoveStatistics:
+        ...
+    """ 
+        Get the move-statistics
+        
+        Returns:
+            MCMoveStatistics: The statistics for each of the moves.
+        """
+
+    @property
     def loadings(self) -> Loadings:
         ...
 
@@ -599,6 +608,15 @@ class System():
 
         Returns:
             PropertyEnergy: The average-energies property.
+        """
+    @property
+    def averagePressure(self) -> PropertyPressure:
+        ...
+        """
+        Get the average-pressure property.
+
+        Returns:
+            PropertyPressure: The average-pressure property.
         """
 
 
@@ -638,6 +656,10 @@ class MonteCarlo():
             randomSeed (int, optional): _description_. Defaults to a random integer.
             numberOfBlocks (int, optional): _description_. Defaults to 5.
         """
+    def setup(self) -> None:
+        ...
+    def tearDown(self) -> None:
+        ...
     def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         ...
     def initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
@@ -743,6 +765,30 @@ class Loadings():
     @property
     def numberOfMolecules(self) -> collections.abc.Sequence[float]:
         ...
+
+class Pressure():
+    """
+    A class representing pressure-information in RASPA.
+    """
+
+    def __init__(self) -> None:
+        ...
+        """
+        Initialize the Pressure object with provided parameters.
+        """
+
+    @property
+    def totalPressure(self) -> float:
+        ...
+
+    @property
+    def excessPressure(self) -> float:
+        ...
+
+    @property
+    def idealGasPressure(self) -> float:
+        ...
+
 
 
 class SampleMovie():
@@ -924,6 +970,20 @@ class PropertyLoading():
     def averageLoadingNumberOfMolecules(self, arg0: int) -> tuple[float, float]:
         ...
     def result(self) -> tuple[Loadings, Loadings]:
+        ...
+
+class PropertyPressure():
+    """
+    A class representing the pressure-property property in RASPA.
+    """
+
+    def __init__(self) -> None:
+        ...
+        """
+        Initialize the PropertyPressure object.
+        """
+
+    def result(self) -> tuple[Pressure, Pressures]:
         ...
 
 class PropertyNumberOfMoleculesEvolution(RaspaBase):

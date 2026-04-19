@@ -30,6 +30,7 @@ import skatom;
 import skcell;
 import sample_movies;
 import enthalpy_of_adsorption;
+import pressures;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
@@ -1272,14 +1273,14 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   if (!(framework.has_value() && framework->rigid))
   {
-    std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
+    std::pair<Pressures, Pressures> average_pressure = averagePressure.result();
 
     switch (Units::unitSystem)
     {
       case Units::System::RASPA:
       {
-        double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-        double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+        double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
+        double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
         std::print(stream, "Average pressure tensor: \n");
         std::print(stream, "-------------------------------------------------------------------------------\n");
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
@@ -1291,23 +1292,21 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az,
                    pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
                    pressureTensorError.cz);
-        std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-        std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-        std::pair<double, double> p = averagePressure.averagePressure();
         std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
-                   1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
-                   1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+                   1e-5 * Units::PressureConversionFactor * average_pressure.first.idealGasPressure,
+                   1e-5 * Units::PressureConversionFactor * average_pressure.second.idealGasPressure);
         std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
-                   1e-5 * Units::PressureConversionFactor * excessPressure.first,
-                   1e-5 * Units::PressureConversionFactor * excessPressure.second);
+                   1e-5 * Units::PressureConversionFactor * average_pressure.first.excessPressure,
+                   1e-5 * Units::PressureConversionFactor * average_pressure.second.excessPressure);
         std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-                   1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
+                   1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure, 
+                   1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressure);
       }
       break;
       case Units::System::ReducedUnits:
       {
-        double3x3 pressureTensor = currentPressureTensor.first;
-        double3x3 pressureTensorError = currentPressureTensor.second;
+        double3x3 pressureTensor = average_pressure.first.totalPressureTensor;
+        double3x3 pressureTensorError = average_pressure.second.totalPressureTensor;
         std::print(stream, "Average pressure tensor: \n");
         std::print(stream, "-------------------------------------------------------------------------------\n");
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
@@ -1319,15 +1318,13 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.az,
                    pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
                    pressureTensorError.cz, Units::unitOfPressureString);
-        std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-        std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-        std::pair<double, double> p = averagePressure.averagePressure();
-        std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n", idealGasPressure.first,
-                   idealGasPressure.second, Units::unitOfPressureString);
-        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", excessPressure.first, excessPressure.second,
+        std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n", average_pressure.first.idealGasPressure,
+                   average_pressure.second.idealGasPressure, Units::unitOfPressureString);
+        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", average_pressure.first.excessPressure, 
+                   average_pressure.second.excessPressure,
                    Units::unitOfPressureString);
-        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", p.first, p.second,
-                   Units::unitOfPressureString);
+        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", average_pressure.first.totalPressure, 
+                   average_pressure.second.totalPressure, Units::unitOfPressureString);
       }
       break;
     }
@@ -1548,9 +1545,11 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   }
   std::print(stream, "\n");
 
-  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+  std::pair<Pressures, Pressures> average_pressure = averagePressure.result();
+
+  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
+  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
+
   std::print(stream, "Average pressure tensor: \n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
@@ -1559,17 +1558,16 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
              pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
-  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-  std::pair<double, double> p = averagePressure.averagePressure();
+
   std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+             1e-5 * Units::PressureConversionFactor * average_pressure.first.idealGasPressure,
+             1e-5 * Units::PressureConversionFactor * average_pressure.second.idealGasPressure);
   std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * excessPressure.first,
-             1e-5 * Units::PressureConversionFactor * excessPressure.second);
+             1e-5 * Units::PressureConversionFactor * average_pressure.first.excessPressure,
+             1e-5 * Units::PressureConversionFactor * average_pressure.second.excessPressure);
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-             1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
+             1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure, 
+             1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressure);
 
   return stream.str();
 }
