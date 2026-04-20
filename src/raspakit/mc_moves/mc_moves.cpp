@@ -1143,8 +1143,11 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     {
       double value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
-      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, value,
-                                                                                           selectedSystem.weight());
+      std::size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+      double V = selectedSystem.simulationBox.volume;
+
+      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, 
+           value, N, V, selectedSystem.weight());
       break;
     }
     case Move::Types::WidomCFCMC:

@@ -1711,8 +1711,6 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     double dudlambda = runningEnergies.dudlambda(lambda);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
-    component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
-
     ++componentId;
   }
 

@@ -81,6 +81,7 @@ import connectivity_table;
 import intra_molecular_potentials;
 import pressures;
 import property_pressure;
+import widom_data;
 
 
 template<typename T>
@@ -290,15 +291,23 @@ PYBIND11_MODULE(raspalib, m)
       .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; })
       .def("__repr__", &MCMoveStatistics::repr);
 
+  pybind11::class_<WidomData>(m, "WidomData")
+      .def_readonly("total", &WidomData::total)
+      .def_readonly("excess", &WidomData::excess)
+      .def_readonly("idealGas", &WidomData::idealGas);
 
-  // define before component init to prevent failing default argument
+  pybind11::class_<PropertyWidom>(m, "PropertyWidom")
+      .def("result", &PropertyWidom::result)
+      .def("chemicalPotentialResult", [](PropertyWidom& p, double T) 
+          { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"))
+      .def("fugacityResult", [](PropertyWidom& p, double T) 
+          { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"));
+
   pybind11::class_<Component> component(m, "Component");
-
   pybind11::native_enum<Component::Type>(component, "Type", "enum.IntEnum")
       .value("Adsorbate", Component::Type::Adsorbate)
       .value("Cation", Component::Type::Cation)
       .finalize();
-
   component
       .def(pybind11::init<const ForceField &, std::string, double, double, double, std::vector<Atom>,
                           const ConnectivityTable &, const Potentials::IntraMolecularPotentials &, std::size_t,
@@ -312,6 +321,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("thermodynamicIntegration") = false,
            pybind11::arg("blockingPockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
+      .def_readonly("lambdaHistogram", &Component::averageRosenbluthWeights)
       .def_readwrite("lambdaHistogram", &Component::lambdaGC)
       .def_readonly("mc_moves_probabilities", &Component::mc_moves_probabilities)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
@@ -433,7 +443,6 @@ PYBIND11_MODULE(raspalib, m)
             pybind11::arg("writeEvery") = std::nullopt)
       .def_readonly("result", &PropertyVolumeEvolution::result);
 
-  pybind11::class_<PropertyWidom>(m, "PropertyWidom");
 
 
   pybind11::class_<System>(m, "System")
