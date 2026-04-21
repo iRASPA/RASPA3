@@ -13,7 +13,7 @@ import randomnumbers;
 import input_reader;
 import component;
 import averages;
-import loadings;
+import loading_data;
 import units;
 import enthalpy_of_adsorption;
 import simulationbox;
@@ -243,7 +243,7 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
         std::ostream stream(streams[system_id].rdbuf());
 
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
         std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
         std::flush(stream);
@@ -353,7 +353,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
         std::ostream stream(streams[system_id].rdbuf());
 
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);

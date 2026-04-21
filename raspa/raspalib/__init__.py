@@ -12,7 +12,7 @@ __all__ = [
     "Framework",
     "System",
     "MonteCarlo",
-    "Loadings",
+    "LoadingData",
     "SampleMovie",
     "EnergyFactor",
     "EnergyStatus",
@@ -25,6 +25,7 @@ __all__ = [
     "PropertyDensityGrid",
     "PropertyLambdaProbabilityHistogram",
     "Move",
-    "MoveStatisticsDouble3"
+    "MoveStatisticsDouble3",
+    "WidomData"
 ]
 

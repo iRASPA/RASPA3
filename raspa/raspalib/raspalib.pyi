@@ -538,6 +538,16 @@ class Component():
             PropertyLambdaProbabilityHistogram: The lambda histogram.
         """
 
+    @property
+    def averageDuDlambda(self) -> tuple[collections.abc.Sequence[tuple[float, float, float]], collections.abc.Sequence[tuple[float, float, float]]]:
+        ...
+    """ 
+        Get the thermodynamic integration data.
+        
+        Returns:
+            tuple[]: The measured thermodynamic integration data.
+        """
+
 
 class SimulationBox():
     """
@@ -668,7 +678,11 @@ class System():
         """
 
     @property
-    def loadings(self) -> Loadings:
+    def loadings(self) -> LoadingData:
+        ...
+
+    @property
+    def averageLoadings(self) -> PropertyLoading:
         ...
 
     @property
@@ -804,7 +818,7 @@ class MolecularDynamics():
         """
 
 
-class Loadings():
+class LoadingData():
     """
     A class representing loading-information in RASPA.
     """
@@ -817,7 +831,7 @@ class Loadings():
     ) -> None:
         ...
         """
-        Initialize the Loadings object with provided parameters.
+        Initialize the LoadingData object with provided parameters.
 
         Args:
             numberOfMolecules (Sequence[int]): The number of molecules for each component
@@ -1040,7 +1054,7 @@ class PropertyLoading():
 
     def averageLoadingNumberOfMolecules(self, arg0: int) -> tuple[float, float]:
         ...
-    def result(self) -> tuple[Loadings, Loadings]:
+    def result(self) -> tuple[LoadingData, LoadingData]:
         ...
 
 class PropertyPressure():

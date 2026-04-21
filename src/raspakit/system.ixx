@@ -22,7 +22,7 @@ import running_energy;
 import energy_status;
 import energy_factor;
 import gradient_factor;
-import loadings;
+import loading_data;
 import sample_movies;
 import enthalpy_of_adsorption;
 import property_lambda_probability_histogram;
@@ -118,7 +118,7 @@ export struct System
   EquationOfState equationOfState;
   std::optional<Thermostat> thermostat;
 
-  Loadings loadings;
+  LoadingData loadings;
 
   std::vector<std::size_t> swappableComponents{};
   std::vector<std::size_t> initialNumberOfMolecules{};

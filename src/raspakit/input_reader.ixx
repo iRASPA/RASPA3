@@ -19,7 +19,7 @@ import framework;
 import component;
 import simulationbox;
 import forcefield;
-import loadings;
+import loading_data;
 import enthalpy_of_adsorption;
 import energy_status;
 import averages;

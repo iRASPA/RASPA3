@@ -13,7 +13,7 @@ import randomnumbers;
 import input_reader;
 import component;
 import averages;
-import loadings;
+import loading_data;
 import units;
 import enthalpy_of_adsorption;
 import simulationbox;
@@ -343,7 +343,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
       for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
@@ -460,7 +460,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
@@ -660,7 +660,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
@@ -802,7 +802,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
 
       system.loadings =
-          Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+          LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
       std::ostream stream(streams[system_id].rdbuf());
 

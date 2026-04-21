@@ -6,7 +6,7 @@ import std;
 
 import archive;
 import averages;
-import loadings;
+import loading_data;
 import enthalpy_of_adsorption;
 import component;
 import json;

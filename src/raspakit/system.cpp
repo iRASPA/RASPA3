@@ -21,7 +21,7 @@ import simulationbox;
 import forcefield;
 import double3x3;
 import units;
-import loadings;
+import loading_data;
 import averages;
 import skparser;
 import skposcarparser;
@@ -1259,7 +1259,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
+  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.result();
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -1534,7 +1534,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.result();
+  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.result();
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -1689,7 +1689,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
                                        rotationalDegreesOfFreedom));
   averageTemperature.addSample(currentBlock, overallTemperature, w);
 
-  loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
+  loadings = LoadingData(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
   averageLoadings.addSample(currentBlock, loadings, w);
 
   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(

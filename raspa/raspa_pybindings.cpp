@@ -63,7 +63,7 @@ import monte_carlo;
 import molecular_dynamics;
 import input_reader;
 import property_loading;
-import loadings;
+import loading_data;
 import energy_factor;
 import energy_status;
 import sample_movies;
@@ -225,6 +225,7 @@ PYBIND11_MODULE(raspalib, m)
       .def(pybind11::init<>())
       .def_readwrite("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
       .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+      .def("averageDuDlambda", &PropertyLambdaProbabilityHistogram::averageDuDlambda)
       .def("result", &PropertyLambdaProbabilityHistogram::result);
 
 
@@ -339,11 +340,11 @@ PYBIND11_MODULE(raspalib, m)
       .def("__repr__", &Component::repr);
 
 
-  pybind11::class_<Loadings>(m, "Loadings")
+  pybind11::class_<LoadingData>(m, "LoadingData")
       .def(pybind11::init<std::size_t>())
-      .def_readonly("numberOfMolecules", &Loadings::numberOfMolecules)
-      .def_readonly("numberDensities", &Loadings::numberDensities)
-      .def_readonly("inverseNumberDensities", &Loadings::inverseNumberDensities);
+      .def_readonly("numberOfMolecules", &LoadingData::numberOfMolecules)
+      .def_readonly("numberDensities", &LoadingData::numberDensities)
+      .def_readonly("inverseNumberDensities", &LoadingData::inverseNumberDensities);
       //.def("printStatus",
       //     static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
       //         &Loadings::printStatus))

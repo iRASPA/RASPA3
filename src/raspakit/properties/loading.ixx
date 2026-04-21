@@ -7,11 +7,11 @@ import std;
 import archive;
 import int3;
 import averages;
-import loadings;
+import loading_data;
 import component;
 
-inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &lhs,
-                                            const std::pair<Loadings, double> &rhs)
+inline std::pair<LoadingData, double> pair_sum(const std::pair<LoadingData, double> &lhs,
+                                            const std::pair<LoadingData, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -23,13 +23,13 @@ export struct PropertyLoading
   PropertyLoading(std::size_t numberOfBlocks, std::size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
         numberOfComponents(numberOfComponents),
-        bookKeepingLoadings(numberOfBlocks)
+        bookKeepingLoadingData(numberOfBlocks)
   {
     // workaround for g++
     for(std::size_t i = 0; i < numberOfBlocks; ++i)
     {
-      Loadings loadings = Loadings(numberOfComponents);
-      bookKeepingLoadings[i] = {loadings, 0.0};
+      LoadingData loadings = LoadingData(numberOfComponents);
+      bookKeepingLoadingData[i] = {loadings, 0.0};
     }
   }
 
@@ -39,42 +39,42 @@ export struct PropertyLoading
 
   std::size_t numberOfBlocks;
   std::size_t numberOfComponents;
-  std::vector<std::pair<Loadings, double>> bookKeepingLoadings;
+  std::vector<std::pair<LoadingData, double>> bookKeepingLoadingData;
 
   void resize(std::size_t newNumberOfComponents)
   {
     numberOfComponents = newNumberOfComponents;
 
     // workaround for g++
-    bookKeepingLoadings = std::vector<std::pair<Loadings, double>>(numberOfBlocks);
+    bookKeepingLoadingData = std::vector<std::pair<LoadingData, double>>(numberOfBlocks);
     for(std::size_t i = 0; i < numberOfBlocks; ++i)
     {
-      Loadings loadings = Loadings(numberOfComponents);
-      bookKeepingLoadings[i] = {loadings, 0.0};
+      LoadingData loadings = LoadingData(numberOfComponents);
+      bookKeepingLoadingData[i] = {loadings, 0.0};
     }
   }
 
-  inline void addSample(std::size_t blockIndex, const Loadings &loading, const double &weight)
+  inline void addSample(std::size_t blockIndex, const LoadingData &loading, const double &weight)
   {
-    bookKeepingLoadings[blockIndex].first += weight * loading;
-    bookKeepingLoadings[blockIndex].second += weight;
+    bookKeepingLoadingData[blockIndex].first += weight * loading;
+    bookKeepingLoadingData[blockIndex].second += weight;
   }
 
   //====================================================================================================================
 
-  Loadings averagedLoading(std::size_t blockIndex) const
+  LoadingData averagedLoading(std::size_t blockIndex) const
   {
-    return bookKeepingLoadings[blockIndex].first / std::max(1.0, bookKeepingLoadings[blockIndex].second);
+    return bookKeepingLoadingData[blockIndex].first / std::max(1.0, bookKeepingLoadingData[blockIndex].second);
   }
 
-  Loadings averagedLoading() const
+  LoadingData averagedLoading() const
   {
     // workaround for g++
-    Loadings loadings = Loadings(numberOfComponents);
+    LoadingData loadings = LoadingData(numberOfComponents);
 
-    std::pair<Loadings, double> summedBlocks = std::make_pair(loadings, 0.0);
+    std::pair<LoadingData, double> summedBlocks = std::make_pair(loadings, 0.0);
 
-    for(const std::pair<Loadings, double> &bookKeepingLoading : bookKeepingLoadings)
+    for(const std::pair<LoadingData, double> &bookKeepingLoading : bookKeepingLoadingData)
     {
       summedBlocks.first += bookKeepingLoading.first;
       summedBlocks.second += bookKeepingLoading.second;
@@ -83,27 +83,27 @@ export struct PropertyLoading
     return summedBlocks.first / std::max(1.0, summedBlocks.second);;
   }
 
-  std::pair<Loadings, Loadings> result() const
+  std::pair<LoadingData, LoadingData> result() const
   {
-    Loadings average = averagedLoading();
+    LoadingData average = averagedLoading();
 
-    Loadings sumOfSquares(numberOfComponents);
+    LoadingData sumOfSquares(numberOfComponents);
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingLoadings[blockIndex].second / std::max(1.0, bookKeepingLoadings[0].second) > 0.5)
+      if (bookKeepingLoadingData[blockIndex].second / std::max(1.0, bookKeepingLoadingData[0].second) > 0.5)
       {
-        Loadings value = averagedLoading(blockIndex) - average;
+        LoadingData value = averagedLoading(blockIndex) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
     }
-    Loadings confidenceIntervalError(numberOfComponents);
+    LoadingData confidenceIntervalError(numberOfComponents);
     if (numberOfSamples >= 3)
     {
       std::size_t degreesOfFreedom = numberOfSamples - 1;
-      Loadings standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      Loadings standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      LoadingData standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      LoadingData standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

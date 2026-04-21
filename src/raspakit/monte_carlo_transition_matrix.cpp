@@ -12,7 +12,7 @@ import randomnumbers;
 import input_reader;
 import component;
 import averages;
-import loadings;
+import loading_data;
 import units;
 import enthalpy_of_adsorption;
 import simulationbox;
@@ -279,7 +279,7 @@ void MonteCarloTransitionMatrix::initialize()
       {
         std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
         std::flush(stream);
@@ -355,7 +355,7 @@ void MonteCarloTransitionMatrix::equilibrate()
       {
         std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
@@ -491,7 +491,7 @@ void MonteCarloTransitionMatrix::production()
       {
         std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
         std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));

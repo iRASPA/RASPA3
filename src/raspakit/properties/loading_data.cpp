@@ -1,6 +1,6 @@
 module;
 
-module loadings;
+module loading_data;
 
 import std;
 
@@ -10,7 +10,7 @@ import stringutils;
 import component;
 import units;
 
-std::string Loadings::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+std::string LoadingData::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
                                   double componentAmountOfExcessMolecules, std::optional<double> frameworkMass,
                                   std::optional<int3> numberOfUnitCells) const
 {
@@ -74,8 +74,8 @@ std::string Loadings::printStatus(std::size_t componentId, const std::string &co
   return stream.str();
 }
 
-std::string Loadings::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
-                                  double componentAmountOfExcessMolecules, const Loadings &average, const Loadings &error,
+std::string LoadingData::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
+                                  double componentAmountOfExcessMolecules, const LoadingData &average, const LoadingData &error,
                                   std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const
 {
   std::ostringstream stream;
@@ -164,7 +164,7 @@ std::string Loadings::printStatus(std::size_t componentId, const std::string &co
   return stream.str();
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Loadings &l)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const LoadingData &l)
 {
   archive << l.versionNumber;
 
@@ -182,14 +182,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Loadin
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Loadings &l)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, LoadingData &l)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > l.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Loadings' at line {} in file {}\n", location.line(),
+    throw std::runtime_error(std::format("Invalid version reading 'LoadingData' at line {} in file {}\n", location.line(),
                                          location.file_name()));
   }
 
@@ -205,7 +205,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Loadings &l)
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("Loadings: Error in binary restart\n"));
+    throw std::runtime_error(std::format("LoadingData: Error in binary restart\n"));
   }
 #endif
 
