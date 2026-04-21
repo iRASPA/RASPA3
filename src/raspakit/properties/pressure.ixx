@@ -7,12 +7,12 @@ import std;
 import archive;
 import double3x3;
 import averages;
-import pressures;
+import pressure_data;
 import units;
 import json;
 
-inline std::pair<Pressures, double> pair_acc_pressure(const std::pair<Pressures, double> &lhs,
-                                                      const std::pair<Pressures, double> &rhs)
+inline std::pair<PressureData, double> pair_acc_pressure(const std::pair<PressureData, double> &lhs,
+                                                         const std::pair<PressureData, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -31,7 +31,7 @@ export struct PropertyPressure
 
   std::uint64_t versionNumber{1};
   std::size_t numberOfBlocks;
-  std::vector<std::pair<Pressures, double>> bookKeepingPressure;
+  std::vector<std::pair<PressureData, double>> bookKeepingPressure;
 
   inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureTensor,
                         double weight)
@@ -55,41 +55,41 @@ export struct PropertyPressure
   //====================================================================================================================
 
 
-  Pressures averagedPressures(std::size_t blockIndex) const
+  PressureData averagedPressures(std::size_t blockIndex) const
   {
     return bookKeepingPressure[blockIndex].first / bookKeepingPressure[blockIndex].second;
   }
 
-  Pressures averagedPressures() const
+  PressureData averagedPressures() const
   {
-    std::pair<Pressures, double> summedBlocks = std::accumulate(
+    std::pair<PressureData, double> summedBlocks = std::accumulate(
         bookKeepingPressure.begin(), bookKeepingPressure.end(),
-        std::make_pair(Pressures(), 0.0), pair_acc_pressure);
+        std::make_pair(PressureData(), 0.0), pair_acc_pressure);
     return summedBlocks.first / summedBlocks.second;
   }
 
-  std::pair<Pressures, Pressures> result() const
+  std::pair<PressureData, PressureData> result() const
   {
-    Pressures average = averagedPressures();
+    PressureData average = averagedPressures();
 
-    Pressures sumOfSquares{};
+    PressureData sumOfSquares{};
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingPressure[blockIndex].second / std::max(1.0, bookKeepingPressure[0].second) > 0.5)
       {
-        Pressures value = averagedPressures(blockIndex) - average;
+        PressureData value = averagedPressures(blockIndex) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
     }
 
-    Pressures confidenceIntervalError{};
+    PressureData confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
       std::size_t degreesOfFreedom = numberOfSamples - 1;
-      Pressures standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      Pressures standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      PressureData standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      PressureData standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

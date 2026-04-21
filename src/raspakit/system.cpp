@@ -30,7 +30,7 @@ import skatom;
 import skcell;
 import sample_movies;
 import enthalpy_of_adsorption;
-import pressures;
+import pressure_data;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
@@ -1273,7 +1273,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   if (!(framework.has_value() && framework->rigid))
   {
-    std::pair<Pressures, Pressures> average_pressure = averagePressure.result();
+    std::pair<PressureData, PressureData> average_pressure = averagePressure.result();
 
     switch (Units::unitSystem)
     {
@@ -1545,7 +1545,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   }
   std::print(stream, "\n");
 
-  std::pair<Pressures, Pressures> average_pressure = averagePressure.result();
+  std::pair<PressureData, PressureData> average_pressure = averagePressure.result();
 
   double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;

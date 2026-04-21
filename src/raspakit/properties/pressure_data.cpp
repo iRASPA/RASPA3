@@ -1,6 +1,6 @@
 module;
 
-module pressures;
+module pressure_data;
 
 import std;
 
@@ -11,7 +11,7 @@ import component;
 import units;
 
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Pressures &l)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PressureData &l)
 {
   archive << l.versionNumber;
 
@@ -29,14 +29,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Pressu
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Pressures &l)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PressureData &l)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > l.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Pressures' at line {} in file {}\n", location.line(),
+    throw std::runtime_error(std::format("Invalid version reading 'PressureData' at line {} in file {}\n", location.line(),
                                          location.file_name()));
   }
 
@@ -52,7 +52,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Pressures &l
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("Pressures: Error in binary restart\n"));
+    throw std::runtime_error(std::format("PressureData: Error in binary restart\n"));
   }
 #endif
 

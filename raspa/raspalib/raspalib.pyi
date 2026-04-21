@@ -386,6 +386,57 @@ class MCMoveStatistics:
     def __getitem__(self, arg0: Move.Types) -> MoveStatisticsDouble | MoveStatisticsDouble3:
         ...
 
+class WidomData:
+    """
+    A class representing a Widom-data property in RASPA.
+    """
+
+    def __init__(self) -> None:
+        ...
+        """
+        Initialize the Widom-data object.
+        """
+    @property
+    def total(self) -> float:
+        ...
+    @property
+    def excess(self) -> float:
+        ...
+    @property
+    def idealGas(self) -> float:
+        ...
+
+class PropertyWidom:
+    """
+    A class representing a Widom-insertion property in RASPA.
+    """
+
+    def __init__(self) -> None:
+        ...
+        """
+        Initialize the PropertyWidom object.
+        """
+
+    @property
+    def chemicalPotentialResult(self, temperature: float) -> WidomData:
+        ...
+    """
+        Get the chemical potentials.
+
+        Returns:
+            WidomData: The chemical potentials in units of Kelvin.
+        """
+
+    @property
+    def fugacityResult(self, temperature: float) -> float:
+        ...
+    """
+        Get the fugacity.
+
+        Returns:
+            float: The fugacity in units of Pascals.
+        """
+
 class Component():
     """
     A class representing a component in RASPA.
@@ -436,6 +487,26 @@ class Component():
     @blockingPockets.setter
     def blockingPockets(self, arg0: collections.abc.Sequence[tuple[float, float, float, float]]) -> None:
         ...
+
+    @property
+    def averageRosenbluthWeights(self) -> PropertyWidom:
+        ...
+    """
+        Get the Widom-move data.
+
+        Returns:
+            PropertyWidom: The results of the Widom insertions.
+        """
+
+    @property
+    def averageGibbsRosenbluthWeights(self) -> PropertyWidom:
+        ...
+    """
+        Get the Gibbs-Widom-move data.
+
+        Returns:
+            PropertyWidom: The results of the Gibbs Widom insertions.
+        """
 
     @property
     def mc_moves_probabilities(self) -> MCMoveProbabilities:
@@ -1110,16 +1181,4 @@ class PropertyLambdaProbabilityHistogram():
     @property
     def histogram(self) -> collections.abc.Sequence[float]:
         ...
-
-
-class PropertyWidom():
-    """
-    A class representing a Widom-insertion property in RASPA.
-    """
-
-    def __init__(self) -> None:
-        ...
-        """
-        Initialize the PropertyWidom object.
-        """
 

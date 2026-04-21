@@ -1,6 +1,6 @@
 module;
 
-export module property_widom;
+export module property_gibbs_widom;
 
 import std;
 
@@ -17,16 +17,16 @@ inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs,
 }
 
 inline std::pair<WidomData, double> pair_acc_widom(const std::pair<WidomData, double> &lhs,
-                                                      const std::pair<WidomData, double> &rhs)
+                                                   const std::pair<WidomData, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
-export struct PropertyWidom
+export struct PropertyGibbsWidom
 {
-  PropertyWidom();
+  PropertyGibbsWidom();
 
-  PropertyWidom(std::size_t numberOfBlocks)
+  PropertyGibbsWidom(std::size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), 
         bookKeepingRosenbluthWeight(numberOfBlocks),
         bookKeepingFugacity(numberOfBlocks)
@@ -50,10 +50,9 @@ export struct PropertyWidom
     bookKeepingRosenbluthWeight[blockIndex].first += weight * RosenbluthValue;
     bookKeepingRosenbluthWeight[blockIndex].second += weight;
 
-    bookKeepingFugacity[blockIndex].first.total += 0.0;
+    bookKeepingFugacity[blockIndex].first.total += weight * (V / static_cast<double>(std::max(N, 1uz))) * RosenbluthValue;
+    bookKeepingFugacity[blockIndex].first.idealGas += weight * (V / static_cast<double>(std::max(N, 1uz)));
     bookKeepingFugacity[blockIndex].first.excess += weight * RosenbluthValue;
-    bookKeepingFugacity[blockIndex].first.idealGas += weight * static_cast<double>(N) / V;
-
     bookKeepingFugacity[blockIndex].second += weight;
   }
 
@@ -111,19 +110,13 @@ export struct PropertyWidom
         bookKeepingFugacity.begin(), bookKeepingFugacity.end(),
         std::make_pair(WidomData(), 0.0), pair_acc_widom);
 
-    return WidomData(-(1.0 / beta) * std::log(summedBlocks.first.excess / summedBlocks.second) +
-                      (1.0 / beta) * std::log(summedBlocks.first.idealGas / summedBlocks.second),
-                     -(1.0 / beta) * std::log(summedBlocks.first.excess / summedBlocks.second),
-                      (1.0 / beta) * std::log(summedBlocks.first.idealGas / summedBlocks.second));
+    return -(1.0 / beta) * log(summedBlocks.first / summedBlocks.second);
   }
 
 
   WidomData averagedChemicalPotential(std::size_t blockIndex, double beta) const
   {
-    return WidomData(-(1.0 / beta) * std::log(bookKeepingFugacity[blockIndex].first.excess / bookKeepingFugacity[blockIndex].second) +
-                      (1.0 / beta) * std::log(bookKeepingFugacity[blockIndex].first.idealGas / bookKeepingFugacity[blockIndex].second),
-                     -(1.0 / beta) * std::log(bookKeepingFugacity[blockIndex].first.excess / bookKeepingFugacity[blockIndex].second),
-                      (1.0 / beta) * std::log(bookKeepingFugacity[blockIndex].first.idealGas / bookKeepingFugacity[blockIndex].second));
+    return -(1.0 / beta) * log(bookKeepingFugacity[blockIndex].first / bookKeepingFugacity[blockIndex].second);
   }
 
   std::pair<WidomData, WidomData> chemicalPotentialResult(double beta) const
@@ -159,13 +152,17 @@ export struct PropertyWidom
 
   double averagedFugacity(double beta) const
   {
-    return std::exp(beta * averagedChemicalPotential(beta).total) / beta;
+    std::pair<WidomData, double> summedBlocks = std::accumulate(
+        bookKeepingFugacity.begin(), bookKeepingFugacity.end(),
+        std::make_pair(WidomData(), 0.0), pair_acc_widom);
+
+    return 1.0 / (beta * (summedBlocks.first.total / summedBlocks.second));
   }
 
 
   double averagedFugacity(std::size_t blockIndex, double beta) const
   {
-    return std::exp(beta * averagedChemicalPotential(blockIndex, beta).total) / beta;
+    return 1.0 / (beta * (bookKeepingFugacity[blockIndex].first.total / bookKeepingFugacity[blockIndex].second));
   }
 
 
@@ -200,6 +197,6 @@ export struct PropertyWidom
 
   //====================================================================================================================
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyWidom &w);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWidom &w);
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyGibbsWidom &w);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyGibbsWidom &w);
 };

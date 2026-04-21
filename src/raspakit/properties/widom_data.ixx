@@ -97,6 +97,17 @@ export inline WidomData operator/(const WidomData& a, const double& b)
   return m;
 }
 
+export inline WidomData operator/(const WidomData& a, const std::array<double,3>& b)
+{
+  WidomData m{}; 
+
+  m.total = a.total / b[0];
+  m.excess = a.excess / b[1];
+  m.idealGas = a.idealGas / b[2];
+
+  return m;
+}
+
 export inline WidomData operator/(const double& a, const WidomData& b)
 {
   WidomData m{}; 

@@ -7,7 +7,7 @@ import std;
 import archive;
 import double3;
 import double3x3;
-import pressures;
+import pressure_data;
 import stringutils;
 import units;
 import json;
@@ -21,7 +21,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
   std::print(stream, "Pressure averages and statistics:\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::pair<Pressures, Pressures> average_pressure = result();
+  std::pair<PressureData, PressureData> average_pressure = result();
 
   switch (Units::unitSystem)
   {
@@ -135,7 +135,7 @@ nlohmann::json PropertyPressure::jsonAveragesStatistics() const
   nlohmann::json status;
   double conv = Units::PressureConversionFactor;
 
-  std::pair<Pressures, Pressures> average_pressure = result();
+  std::pair<PressureData, PressureData> average_pressure = result();
 
   status["averagePressureTensor"]["mean"] = conv * average_pressure.first.totalPressureTensor;
   status["averagePressureTensor"]["confidence"] = conv * average_pressure.second.totalPressureTensor;

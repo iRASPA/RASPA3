@@ -1148,6 +1148,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
       selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, 
            value, N, V, selectedSystem.weight());
+      selectedSystem.components[selectedComponent].averageGibbsRosenbluthWeights.addWidomSample(currentBlock, 
+           value, N, V, selectedSystem.weight());
       break;
     }
     case Move::Types::WidomCFCMC:

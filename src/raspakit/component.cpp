@@ -69,7 +69,8 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
-      averageRosenbluthWeights(numberOfBlocks)
+      averageRosenbluthWeights(numberOfBlocks),
+      averageGibbsRosenbluthWeights(numberOfBlocks)
 {
   if (filenameData.has_value())
   {
@@ -100,6 +101,7 @@ Component::Component(const ForceField &forceField, std::string componentName, do
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
+      averageGibbsRosenbluthWeights(numberOfBlocks),
       blockingPockets(blockingPockets)
 {
   totalMass = 0.0;
@@ -1539,6 +1541,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.cbmc_moves_statistics;
 
   archive << c.averageRosenbluthWeights;
+  archive << c.averageGibbsRosenbluthWeights;
 
   archive << c.lnPartitionFunction;
 
@@ -1618,6 +1621,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.cbmc_moves_statistics;
 
   archive >> c.averageRosenbluthWeights;
+  archive >> c.averageGibbsRosenbluthWeights;
 
   archive >> c.lnPartitionFunction;
 

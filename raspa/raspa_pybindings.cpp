@@ -77,9 +77,10 @@ import property_rdf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
 import property_widom;
+import property_gibbs_widom;
 import connectivity_table;
 import intra_molecular_potentials;
-import pressures;
+import pressure_data;
 import property_pressure;
 import widom_data;
 
@@ -303,6 +304,13 @@ PYBIND11_MODULE(raspalib, m)
       .def("fugacityResult", [](PropertyWidom& p, double T) 
           { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"));
 
+  pybind11::class_<PropertyGibbsWidom>(m, "PropertyGibbsWidom")
+      .def("result", &PropertyGibbsWidom::result)
+      .def("chemicalPotentialResult", [](PropertyGibbsWidom& p, double T) 
+          { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"))
+      .def("fugacityResult", [](PropertyGibbsWidom& p, double T) 
+          { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"));
+
   pybind11::class_<Component> component(m, "Component");
   pybind11::native_enum<Component::Type>(component, "Type", "enum.IntEnum")
       .value("Adsorbate", Component::Type::Adsorbate)
@@ -321,12 +329,12 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("thermodynamicIntegration") = false,
            pybind11::arg("blockingPockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
-      .def_readonly("lambdaHistogram", &Component::averageRosenbluthWeights)
       .def_readwrite("lambdaHistogram", &Component::lambdaGC)
       .def_readonly("mc_moves_probabilities", &Component::mc_moves_probabilities)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
       .def_readwrite("blockingPockets", &Component::blockingPockets)
       .def_readwrite("averageRosenbluthWeights", &Component::averageRosenbluthWeights)
+      .def_readwrite("averageGibbsRosenbluthWeights", &Component::averageGibbsRosenbluthWeights)
       .def("printStatus", &Component::printStatus)
       .def("__repr__", &Component::repr);
 
@@ -367,11 +375,11 @@ PYBIND11_MODULE(raspalib, m)
       .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();})
       .def("__repr__", &PropertyEnergy::repr);
 
-  pybind11::class_<Pressures>(m, "Pressures")
+  pybind11::class_<PressureData>(m, "PressureData")
       .def(pybind11::init<>())
-      .def_readonly("totalPressure", &Pressures::totalPressure)
-      .def_readonly("excessPressure", &Pressures::excessPressure)
-      .def_readonly("idealGasPressure", &Pressures::idealGasPressure);
+      .def_readonly("totalPressure", &PressureData::totalPressure)
+      .def_readonly("excessPressure", &PressureData::excessPressure)
+      .def_readonly("idealGasPressure", &PressureData::idealGasPressure);
 
   pybind11::class_<PropertyPressure>(m, "PropertyPressure")
       .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.result();});

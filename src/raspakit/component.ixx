@@ -18,6 +18,7 @@ import forcefield;
 import property_lambda_probability_histogram;
 import simulationbox;
 import property_widom;
+import property_gibbs_widom;
 import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -202,7 +203,8 @@ export struct Component
 
   std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
-  PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
+  PropertyWidom averageRosenbluthWeights;            ///< Average Rosenbluth weights for Widom insertion.
+  PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
   
   std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
 
