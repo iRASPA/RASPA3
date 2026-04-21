@@ -15,25 +15,25 @@ void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t curr
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  bin = static_cast<std::size_t>((energy.totalEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.totalEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].totalEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].VanDerWaalsEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.CoulombEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.CoulombEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].CoulombEnergy += weight;
   }
-  bin = static_cast<std::size_t>((energy.polarizationEnergy * Units::EnergyToKelvin - valueRange.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.polarizationEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
@@ -142,7 +142,7 @@ void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t curr
   {
     if (average[bin].totalEnergy > 0.0)
     {
-      stream_output << std::format("{} {} {} {} {} {} {} {} {}\n", energies[bin], 
+      stream_output << std::format("{} {} {} {} {} {} {} {} {}\n", energies[bin] * Units::EnergyToKelvin, 
           average[bin].totalEnergy, error[bin].totalEnergy, average[bin].VanDerWaalsEnergy, error[bin].VanDerWaalsEnergy,
           average[bin].CoulombEnergy, error[bin].CoulombEnergy, average[bin].polarizationEnergy, error[bin].polarizationEnergy);
     }

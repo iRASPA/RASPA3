@@ -4,7 +4,6 @@ export module property_lambda_probability_histogram;
 
 import std;
 
-import double3;
 import randomnumbers;
 import archive;
 import averages;
@@ -15,8 +14,8 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
-inline std::pair<double3, double> pair_sum_double3(const std::pair<double3, double> &lhs,
-                                                   const std::pair<double3, double> &rhs)
+inline std::pair<double, double> pair_sum_double(const std::pair<double, double> &lhs,
+                                                   const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -44,8 +43,8 @@ export struct PropertyLambdaProbabilityHistogram
         bookKeepingLambda(std::vector<std::vector<double>>(numberOfBlocks, std::vector<double>(numberOfSamplePoints))),
         bookKeepingDensity(std::vector<std::pair<double, double>>(numberOfBlocks)),
         computeDUdlambda(false),
-        bookKeepingDUdlambda(std::vector<std::vector<std::pair<double3, double>>>(
-            numberOfBlocks, std::vector<std::pair<double3, double>>(numberOfSamplePoints)))
+        bookKeepingDUdlambda(std::vector<std::vector<std::pair<double, double>>>(
+            numberOfBlocks, std::vector<std::pair<double, double>>(numberOfSamplePoints)))
   {
   }
 
@@ -72,7 +71,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   // dU/dlambda-histogram
   bool computeDUdlambda;
-  std::vector<std::vector<std::pair<double3, double>>> bookKeepingDUdlambda;
+  std::vector<std::vector<std::pair<double, double>>> bookKeepingDUdlambda;
 
   // fractional molecule occupancy
   std::size_t occupancyCount{0};
@@ -87,7 +86,7 @@ export struct PropertyLambdaProbabilityHistogram
       bookKeepingDensity[i] = std::make_pair<double, double>(0.0, 0.0);
       std::fill(bookKeepingLambda[i].begin(), bookKeepingLambda[i].end(), 0.0);
       std::fill(bookKeepingDUdlambda[i].begin(), bookKeepingDUdlambda[i].end(),
-                std::make_pair<double3, double>(double3(0.0, 0.0, 0.0), 0.0));
+                std::make_pair<double, double>(0.0, 0.0));
     }
 
     occupancyCount = 0;
@@ -141,7 +140,7 @@ export struct PropertyLambdaProbabilityHistogram
     {
       bookKeepingLambda[blockIndex][currentBin] += 1.0;
 
-      bookKeepingDUdlambda[blockIndex][currentBin].first.x += dUdlambda;
+      bookKeepingDUdlambda[blockIndex][currentBin].first += dUdlambda;
       bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
     }
 
@@ -458,58 +457,58 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  std::vector<double3> averagedDUdlambda(std::size_t blockIndex) const
+  std::vector<double> averagedDUdlambda(std::size_t blockIndex) const
   {
-    std::vector<double3> averagedData(numberOfSamplePoints);
+    std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingDUdlambda[blockIndex].cbegin(), bookKeepingDUdlambda[blockIndex].cend(),
-                   averagedData.begin(), [&](const std::pair<double3, double> &sample)
+                   averagedData.begin(), [&](const std::pair<double, double> &sample)
                    { return sample.first / std::max(1.0, sample.second); });
     return averagedData;
   }
 
-  std::vector<double3> averagedDUdlambda() const
+  std::vector<double> averagedDUdlambda() const
   {
-    std::vector<std::pair<double3, double>> summedBlocks(numberOfSamplePoints);
+    std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
-                     summedBlocks.begin(), pair_sum_double3);
+                     summedBlocks.begin(), pair_sum_double);
     }
 
-    std::vector<double3> averagedData(numberOfSamplePoints);
+    std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(summedBlocks.begin(), summedBlocks.end(), averagedData.begin(),
-                   [&](std::pair<double3, double> &sample) { return sample.first / std::max(1.0, sample.second); });
+                   [&](std::pair<double, double> &sample) { return sample.first / std::max(1.0, sample.second); });
     return averagedData;
   }
 
-  std::pair<std::vector<double3>, std::vector<double3>> averageDuDlambda() const
+  std::pair<std::vector<double>, std::vector<double>> averageDuDlambda() const
   {
     std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    std::vector<double3> average = averagedDUdlambda();
+    std::vector<double> average = averagedDUdlambda();
 
-    std::vector<double3> sumOfSquares(numberOfSamplePoints);
+    std::vector<double> sumOfSquares(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      std::vector<double3> blockAverage = averagedDUdlambda(blockIndex);
+      std::vector<double> blockAverage = averagedDUdlambda(blockIndex);
       for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
       {
-        double3 value = blockAverage[binIndex] - average[binIndex];
+        double value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] += value * value;
       }
     }
-    std::vector<double3> standardDeviation(numberOfSamplePoints);
+    std::vector<double> standardDeviation(numberOfSamplePoints);
     std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const double3 &sumofsquares)
-                   { return sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
+                   [&](const double &sumofsquares)
+                   { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
 
-    std::vector<double3> standardError(numberOfSamplePoints);
+    std::vector<double> standardError(numberOfSamplePoints);
     std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double3 &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
+                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
 
-    std::vector<double3> confidenceIntervalError(numberOfSamplePoints);
+    std::vector<double> confidenceIntervalError(numberOfSamplePoints);
     std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const double3 &error) { return intermediateStandardNormalDeviate * error; });
+                   [&](const double &error) { return intermediateStandardNormalDeviate * error; });
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -520,8 +519,8 @@ export struct PropertyLambdaProbabilityHistogram
   {
     std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingDUdlambda[blockIndex].begin(), bookKeepingDUdlambda[blockIndex].end(),
-                   averagedData.begin(), [&](const std::pair<double3, double> &sample)
-                   { return (sample.first.x + sample.first.y + sample.first.z) / std::max(1.0, sample.second); });
+                   averagedData.begin(), [&](const std::pair<double, double> &sample)
+                   { return (sample.first) / std::max(1.0, sample.second); });
 
     // trapezoidal rule: https://en.wikipedia.org/wiki/Trapezoidal_rule
     // Calculating result
@@ -548,17 +547,17 @@ export struct PropertyLambdaProbabilityHistogram
 
   double averagedExcessChemicalPotentialDUdlambda() const
   {
-    std::vector<std::pair<double3, double>> summedBlocks(numberOfSamplePoints);
+    std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
-                     summedBlocks.begin(), pair_sum_double3);
+                     summedBlocks.begin(), pair_sum_double);
     }
 
     std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(summedBlocks.begin(), summedBlocks.end(), averagedData.begin(),
-                   [&](std::pair<double3, double> &sample)
-                   { return (sample.first.x + sample.first.y + sample.first.z) / std::max(1.0, sample.second); });
+                   [&](std::pair<double, double> &sample)
+                   { return (sample.first) / std::max(1.0, sample.second); });
 
     double res = 0;
     for (std::size_t i = 0; i < averagedData.size(); i++)

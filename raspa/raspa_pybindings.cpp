@@ -39,6 +39,7 @@ import std;
 #endif
 
 import int3;
+import double2;
 import double3;
 import double4;
 import double3x3;
@@ -85,10 +86,38 @@ import property_pressure;
 import widom_data;
 
 
+
+template <typename T>
+std::vector<T> operator*(std::vector<T> v, const T& scalar)
+{
+  for (auto& element : v)
+  {
+    element *= scalar;
+  }
+  return v;
+}
+
+template <typename T>
+std::vector<T> operator*(const T& scalar, std::vector<T> v)
+{
+  for (auto& element : v)
+  {
+    element *= scalar;
+  }
+  return v;
+}
+
+
 template<typename T>
 std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)
 {
   return std::make_pair(a * b.first, a * b.second);
+}
+
+template<typename T>
+std::pair<T, T> operator*(const double2& a, const std::pair<T, T>& b)
+{
+  return std::make_pair(a.x * b.first, a.y * b.second);
 }
 
 PYBIND11_MODULE(raspalib, m)
@@ -223,9 +252,14 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
+      // dimensionless
       .def_readwrite("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
+      // dimensionless
       .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
-      .def("averageDuDlambda", &PropertyLambdaProbabilityHistogram::averageDuDlambda)
+       // convert result to units of Kelvin
+      .def("averageDuDlambda", [](PropertyLambdaProbabilityHistogram& p) 
+          { return Units::EnergyToKelvin * p.averageDuDlambda();})
+      // dimensionless
       .def("result", &PropertyLambdaProbabilityHistogram::result);
 
 
@@ -300,15 +334,19 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<PropertyWidom>(m, "PropertyWidom")
       .def("result", &PropertyWidom::result)
+       // convert result to units of Kelvin
       .def("chemicalPotentialResult", [](PropertyWidom& p, double T) 
           { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"))
+       // convert result to units of Pascal
       .def("fugacityResult", [](PropertyWidom& p, double T) 
           { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"));
 
   pybind11::class_<PropertyGibbsWidom>(m, "PropertyGibbsWidom")
       .def("result", &PropertyGibbsWidom::result)
+       // convert result to units of Kelvin
       .def("chemicalPotentialResult", [](PropertyGibbsWidom& p, double T) 
           { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"))
+       // convert result to units of Pascal
       .def("fugacityResult", [](PropertyGibbsWidom& p, double T) 
           { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, pybind11::arg("temperature"));
 
@@ -345,12 +383,6 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("numberOfMolecules", &LoadingData::numberOfMolecules)
       .def_readonly("numberDensities", &LoadingData::numberDensities)
       .def_readonly("inverseNumberDensities", &LoadingData::inverseNumberDensities);
-      //.def("printStatus",
-      //     static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
-      //         &Loadings::printStatus))
-      //.def("printStatus", static_cast<std::string (Loadings::*)(const Component &, const Loadings &, const Loadings &,
-      //                                                          std::optional<double>, std::optional<int3>) const>(
-      //                        &Loadings::printStatus));
 
   pybind11::class_<SampleMovie>(m, "SampleMovie")
       .def(pybind11::init<std::size_t, std::size_t, bool>(),
@@ -371,8 +403,8 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("totalEnergy", &EnergyStatus::totalEnergy)
       .def("__repr__", &EnergyStatus::repr);
 
-  // convert result to units of Kelvin
   pybind11::class_<PropertyEnergy>(m, "PropertyEnergy")
+       // convert result to units of Kelvin
       .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();})
       .def("__repr__", &PropertyEnergy::repr);
 
@@ -418,13 +450,15 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
 
 
-  // results in units of Kelvin
   pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
       .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>(),
                  pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfBins"), pybind11::arg("valueRange"),
                  pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
-      .def("result", &PropertyEnergyHistogram::result);
+      // convert result to units of Kelvin
+      .def("result", [](PropertyEnergyHistogram& p) { auto [bins, average, error] = p.result(); 
+           return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
+                                                                 {Units::EnergyToKelvin * bins, average, error};});
 
   pybind11::class_<PropertyConventionalRadialDistributionFunction> conv_rdf(m, "PropertyConventionalRadialDistributionFunction");
     conv_rdf.def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
