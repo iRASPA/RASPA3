@@ -51,12 +51,6 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
   return false;
 }
 
-inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3> &lhs,
-                                                   const std::pair<EnergyStatus, double3x3> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
 [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,

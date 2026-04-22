@@ -10,14 +10,14 @@ import averages;
 import widom_data;
 
 
-inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs,
+inline std::pair<double, double> pair_acc_gibbs_widom(const std::pair<double, double> &lhs,
                                           const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
-inline std::pair<WidomData, double> pair_acc_widom(const std::pair<WidomData, double> &lhs,
-                                                   const std::pair<WidomData, double> &rhs)
+inline std::pair<WidomData, double> pair_acc_gibbs_widom2(const std::pair<WidomData, double> &lhs,
+                                                          const std::pair<WidomData, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -62,7 +62,7 @@ export struct PropertyGibbsWidom
   {
     std::pair<double, double> summedBlocks = std::accumulate(
         bookKeepingRosenbluthWeight.begin(), bookKeepingRosenbluthWeight.end(),
-        std::make_pair(0.0, 0.0), pair_acc);
+        std::make_pair(0.0, 0.0), pair_acc_gibbs_widom);
 
     return summedBlocks.first / summedBlocks.second;
   }
@@ -108,7 +108,7 @@ export struct PropertyGibbsWidom
   {
     std::pair<WidomData, double> summedBlocks = std::accumulate(
         bookKeepingFugacity.begin(), bookKeepingFugacity.end(),
-        std::make_pair(WidomData(), 0.0), pair_acc_widom);
+        std::make_pair(WidomData(), 0.0), pair_acc_gibbs_widom2);
 
     return -(1.0 / beta) * log(summedBlocks.first / summedBlocks.second);
   }
@@ -154,7 +154,7 @@ export struct PropertyGibbsWidom
   {
     std::pair<WidomData, double> summedBlocks = std::accumulate(
         bookKeepingFugacity.begin(), bookKeepingFugacity.end(),
-        std::make_pair(WidomData(), 0.0), pair_acc_widom);
+        std::make_pair(WidomData(), 0.0), pair_acc_gibbs_widom2);
 
     return 1.0 / (beta * (summedBlocks.first.total / summedBlocks.second));
   }
