@@ -8,19 +8,19 @@ endif()
 
 include(FetchContent)
 
-if(CONDA OR APPLE)
+#if(CONDA OR APPLE)
   FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
     GIT_TAG v3.0.1
   )
-else()
-  FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG v2.10.4
-  )
-endif()
+#else()
+#  FetchContent_Declare(
+#    pybind11
+#    GIT_REPOSITORY https://github.com/pybind/pybind11
+#    GIT_TAG v2.10.4
+#  )
+#endif()
 
 FetchContent_GetProperties(pybind11)
 
