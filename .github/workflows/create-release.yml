@@ -63,7 +63,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -112,7 +112,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -164,7 +164,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -213,7 +213,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -261,7 +261,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -343,7 +343,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 
           apt-get install -y --no-install-recommends clang make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
@@ -392,7 +392,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 
           apt-get install -y --no-install-recommends clang make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
@@ -514,8 +514,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False  clang llvm libomp zlib-static 
           dnf install -y perl 
           dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack blas
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False pybind11-devel
+          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False fftw-devel 
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False ocl-icd-devel
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
@@ -683,7 +682,7 @@ jobs:
         run: | 
           pacman -Sy --noconfirm
           pacman -S --noconfirm vi vim git wget debugedit unzip
-          pacman -S --noconfirm python3 pybind11 libxml2-legacy
+          pacman -S --noconfirm python3 libxml2-legacy
           pacman -S --noconfirm gcc make cmake openmp ninja
           pacman -S --noconfirm blas64 lapack64
           pacman -S --noconfirm fftw ocl-icd opencl-headers
@@ -731,8 +730,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -776,8 +775,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -821,8 +820,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -866,8 +865,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -911,8 +910,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -956,8 +955,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1001,8 +1000,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1046,8 +1045,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1091,8 +1090,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1183,7 +1182,7 @@ jobs:
           zypper --non-interactive dup
           zypper --non-interactive update
           zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
-          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends python3 python3-devel
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp19-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
           zypper install -y rpm-build git
@@ -1284,7 +1283,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -1333,7 +1332,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -1381,7 +1380,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
@@ -1462,7 +1461,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 
           apt-get install -y --no-install-recommends clang make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
@@ -1511,7 +1510,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 
           apt-get install -y --no-install-recommends clang make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
@@ -1632,8 +1631,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False  clang llvm libomp zlib-static 
           dnf install -y perl 
           dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack blas
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False pybind11-devel 
+          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False fftw-devel 
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False ocl-icd-devel
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
@@ -1801,7 +1799,7 @@ jobs:
         run: | 
           pacman -Sy --noconfirm
           pacman -S --noconfirm vi vim git wget debugedit unzip
-          pacman -S --noconfirm python3 pybind11 libxml2-legacy
+          pacman -S --noconfirm python3 libxml2-legacy
           pacman -S --noconfirm gcc make cmake openmp ninja
           pacman -S --noconfirm blas64 lapack64
           pacman -S --noconfirm fftw ocl-icd opencl-headers
@@ -1850,8 +1848,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1895,8 +1893,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1940,8 +1938,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -1985,8 +1983,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2030,8 +2028,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2075,8 +2073,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2120,8 +2118,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2165,8 +2163,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2210,8 +2208,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
@@ -2302,7 +2300,7 @@ jobs:
           zypper --non-interactive dup
           zypper --non-interactive update
           zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
-          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends python3 python3-devel
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp19-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
           zypper install -y rpm-build git
@@ -2403,7 +2401,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
           apt-get install -y --no-install-recommends clang llvm lld libc++-dev libunwind-dev
@@ -2448,7 +2446,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev 
@@ -2496,7 +2494,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev 
@@ -2545,7 +2543,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev 
@@ -2593,7 +2591,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
           apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev python3-numpy
+          apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
           apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev 
@@ -2646,8 +2644,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False  libomp zlib-static 
           dnf install -y perl 
           dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack blas
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False pybind11-devel 
+          dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False fftw-devel 
           dnf --enablerepo=devel install -y --setopt=install_weak_deps=False ocl-icd-devel
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
@@ -2725,7 +2722,7 @@ jobs:
         run: | 
           pacman -Sy --noconfirm
           pacman -S --noconfirm vi vim git wget debugedit unzip
-          pacman -S --noconfirm python3 pybind11 libxml2-legacy
+          pacman -S --noconfirm python3 libxml2-legacy
           pacman -S --noconfirm gcc make cmake openmp ninja
           pacman -S --noconfirm blas64 lapack64
           pacman -S --noconfirm fftw ocl-icd opencl-headers
@@ -2772,8 +2769,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -2817,8 +2814,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -2862,8 +2859,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -2907,8 +2904,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -2952,8 +2949,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -2997,8 +2994,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -3042,8 +3039,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -3087,8 +3084,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -3132,8 +3129,8 @@ jobs:
           dnf install -y 'dnf-command(config-manager)' 
           dnf install -y --setopt=install_weak_deps=False wget git rpm-build xz unzip fftw-devel
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 ocl-icd-devel
-          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 python3-numpy
-          dnf install -y --setopt=install_weak_deps=False pybind11-devel gcc make g++ zlib-static
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-numpy
+          dnf install -y --setopt=install_weak_deps=False gcc make g++ zlib-static
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
           tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
@@ -3224,7 +3221,7 @@ jobs:
           zypper --non-interactive dup
           zypper --non-interactive update
           zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
-          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel python3-numpy
+          zypper install -y --no-recommends python3 python3-devel python3-numpy
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp19-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
           zypper install -y rpm-build git
