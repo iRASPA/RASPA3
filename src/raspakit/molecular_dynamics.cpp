@@ -15,7 +15,7 @@ import component;
 import averages;
 import loading_data;
 import units;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import simulationbox;
 import forcefield;
 import sample_movies;
@@ -95,6 +95,9 @@ void MolecularDynamics::run()
 {
   switch (simulationStage)
   {
+    case SimulationStage::Uninitialized:
+      setup();
+      break;
     case SimulationStage::Initialization:
       goto continueInitializationStage;
     case SimulationStage::Equilibration:
@@ -112,7 +115,7 @@ continueEquilibrationStage:
 continueProductionStage:
   production();
 
-  output();
+  tearDown();
 }
 
 void MolecularDynamics::createOutputFiles()
@@ -140,15 +143,8 @@ void MolecularDynamics::createInterpolationGrids()
   }
 }
 
-void MolecularDynamics::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+void MolecularDynamics::setup()
 {
-  std::size_t totalNumberOfMolecules{0uz};
-  std::size_t totalNumberOfComponents{0uz};
-  std::size_t numberOfStepsPerCycle{0uz};
-
-  if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
-  simulationStage = SimulationStage::Initialization;
-
   createOutputFiles();
 
   for (std::size_t system_id{0}; System& system : systems)
@@ -204,7 +200,23 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
+}
+
+void MolecularDynamics::tearDown()
+{
+  output();
+}
+
+void MolecularDynamics::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
+
+  if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
+  simulationStage = SimulationStage::Initialization;
+
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
@@ -234,6 +246,11 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
           component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
         }
       }
+    }
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -331,7 +348,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     for (System& system : systems)
     {
@@ -344,6 +361,11 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
           std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+    }
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -472,7 +494,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
@@ -504,6 +526,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
           std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+    }
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
     }
 
     // sample properties
@@ -719,6 +746,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << mc.optimizeMCMovesEvery;
 
   archive << mc.currentCycle;
+  archive << mc.absoluteCurrentCycle;
   archive << mc.simulationStage;
 
   archive << mc.systems;
@@ -757,6 +785,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> mc.optimizeMCMovesEvery;
 
   archive >> mc.currentCycle;
+  archive >> mc.absoluteCurrentCycle;
   archive >> mc.simulationStage;
 
   archive >> mc.systems;

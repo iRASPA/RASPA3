@@ -7,7 +7,7 @@ import std;
 import archive;
 import averages;
 import loading_data;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import component;
 import json;
 import units;
@@ -50,16 +50,16 @@ export struct PropertyEnthalpy
 
   //====================================================================================================================
 
-  EnthalpyOfAdsorption averagedEnthalpy(std::size_t blockIndex) const
+  EnthalpyOfAdsorptionData averagedEnthalpy(std::size_t blockIndex) const
   {
     return (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].first /
             std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second))
         .compositeProperty();
   }
 
-  EnthalpyOfAdsorption averagedEnthalpy() const
+  EnthalpyOfAdsorptionData averagedEnthalpy() const
   {
-    EnthalpyOfAdsorption average(numberOfComponents);
+    EnthalpyOfAdsorptionData average(numberOfComponents);
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
@@ -74,11 +74,11 @@ export struct PropertyEnthalpy
     return (1.0 / static_cast<double>(std::max(1uz, numberOfSamples))) * average;
   }
 
-  std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> averageEnthalpy() const
+  std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> result() const
   {
-    EnthalpyOfAdsorption average = averagedEnthalpy();
+    EnthalpyOfAdsorptionData average = averagedEnthalpy();
 
-    EnthalpyOfAdsorption sumOfSquares(numberOfComponents);
+    EnthalpyOfAdsorptionData sumOfSquares(numberOfComponents);
     std::size_t numberOfSamples = 0;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
@@ -86,17 +86,17 @@ export struct PropertyEnthalpy
               std::max(1.0, bookKeepingEnthalpyOfAdsorptionTerms[0].second) >
           0.5)
       {
-        EnthalpyOfAdsorption value = averagedEnthalpy(blockIndex) - average;
+        EnthalpyOfAdsorptionData value = averagedEnthalpy(blockIndex) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
     }
-    EnthalpyOfAdsorption confidenceIntervalError(numberOfComponents);
+    EnthalpyOfAdsorptionData confidenceIntervalError(numberOfComponents);
     if (numberOfSamples >= 3)
     {
       std::size_t degreesOfFreedom = numberOfSamples - 1;
-      EnthalpyOfAdsorption standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      EnthalpyOfAdsorption standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      EnthalpyOfAdsorptionData standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      EnthalpyOfAdsorptionData standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

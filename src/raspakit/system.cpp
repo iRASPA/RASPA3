@@ -29,7 +29,7 @@ import skstructure;
 import skatom;
 import skcell;
 import sample_movies;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import pressure_data;
 import energy_factor;
 import energy_status;
@@ -74,6 +74,9 @@ import integrators;
 import integrators_compute;
 import integrators_update;
 import interpolation_energy_grid;
+import property_number_of_molecules_evolution;
+import property_volume_evolution;
+import property_conserved_energy_evolution;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -1786,6 +1789,10 @@ void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
   if (propertyVolumeEvolution.has_value())
   {
     propertyVolumeEvolution->addSample(absoluteCurrentCycle, simulationBox.volume);
+  }
+  if (propertyConservedEnergyEvolution.has_value())
+  {
+    propertyConservedEnergyEvolution->addSample(absoluteCurrentCycle, runningEnergies);
   }
 }
 

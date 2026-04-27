@@ -1,6 +1,6 @@
 module;
 
-export module enthalpy_of_adsorption;
+export module enthalpy_of_adsorption_data;
 
 import std;
 
@@ -10,18 +10,20 @@ import energy_status;
 import averages;
 import units;
 
-export struct EnthalpyOfAdsorption
+export struct EnthalpyOfAdsorptionData
 {
-  EnthalpyOfAdsorption(std::size_t size) : size(size), values(size) {}
+  EnthalpyOfAdsorptionData(std::size_t size) : size(size), values(size) {}
 
-  EnthalpyOfAdsorption(std::vector<double> values) : size(values.size()), values(values) {}
+  EnthalpyOfAdsorptionData(std::vector<double> values) : size(values.size()), values(values) {}
 
-  bool operator==(EnthalpyOfAdsorption const&) const = default;
+  bool operator==(EnthalpyOfAdsorptionData const&) const = default;
+
+  double& operator[](std::size_t index) {return values[index];}
 
   std::size_t size;
   std::vector<double> values;
 
-  inline EnthalpyOfAdsorption& operator+=(const EnthalpyOfAdsorption& b)
+  inline EnthalpyOfAdsorptionData& operator+=(const EnthalpyOfAdsorptionData& b)
   {
     for (std::size_t i = 0; i < size; ++i)
     {
@@ -30,13 +32,13 @@ export struct EnthalpyOfAdsorption
     return *this;
   }
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnthalpyOfAdsorption& p);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnthalpyOfAdsorption& p);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnthalpyOfAdsorptionData& p);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnthalpyOfAdsorptionData& p);
 };
 
-export inline EnthalpyOfAdsorption operator+(const EnthalpyOfAdsorption& a, const EnthalpyOfAdsorption& b)
+export inline EnthalpyOfAdsorptionData operator+(const EnthalpyOfAdsorptionData& a, const EnthalpyOfAdsorptionData& b)
 {
-  EnthalpyOfAdsorption m(a.size);
+  EnthalpyOfAdsorptionData m(a.size);
 
   for (std::size_t i = 0; i < m.size; ++i)
   {
@@ -46,9 +48,9 @@ export inline EnthalpyOfAdsorption operator+(const EnthalpyOfAdsorption& a, cons
   return m;
 }
 
-export inline EnthalpyOfAdsorption operator-(const EnthalpyOfAdsorption& a, const EnthalpyOfAdsorption& b)
+export inline EnthalpyOfAdsorptionData operator-(const EnthalpyOfAdsorptionData& a, const EnthalpyOfAdsorptionData& b)
 {
-  EnthalpyOfAdsorption m(a.size);
+  EnthalpyOfAdsorptionData m(a.size);
 
   for (std::size_t i = 0; i < m.size; ++i)
   {
@@ -58,9 +60,9 @@ export inline EnthalpyOfAdsorption operator-(const EnthalpyOfAdsorption& a, cons
   return m;
 }
 
-export inline EnthalpyOfAdsorption operator*(const EnthalpyOfAdsorption& a, const EnthalpyOfAdsorption& b)
+export inline EnthalpyOfAdsorptionData operator*(const EnthalpyOfAdsorptionData& a, const EnthalpyOfAdsorptionData& b)
 {
-  EnthalpyOfAdsorption m(a.size);
+  EnthalpyOfAdsorptionData m(a.size);
 
   for (std::size_t i = 0; i < m.size; ++i)
   {
@@ -70,9 +72,9 @@ export inline EnthalpyOfAdsorption operator*(const EnthalpyOfAdsorption& a, cons
   return m;
 }
 
-export inline EnthalpyOfAdsorption operator*(const double& a, const EnthalpyOfAdsorption& b)
+export inline EnthalpyOfAdsorptionData operator*(const double& a, const EnthalpyOfAdsorptionData& b)
 {
-  EnthalpyOfAdsorption m(b.size);
+  EnthalpyOfAdsorptionData m(b.size);
 
   for (std::size_t i = 0; i < m.size; ++i)
   {
@@ -82,9 +84,9 @@ export inline EnthalpyOfAdsorption operator*(const double& a, const EnthalpyOfAd
   return m;
 }
 
-export inline EnthalpyOfAdsorption sqrt(const EnthalpyOfAdsorption& a)
+export inline EnthalpyOfAdsorptionData sqrt(const EnthalpyOfAdsorptionData& a)
 {
-  EnthalpyOfAdsorption m(a.size);
+  EnthalpyOfAdsorptionData m(a.size);
 
   for (std::size_t i = 0; i < m.size; ++i)
   {
@@ -164,9 +166,9 @@ export struct EnthalpyOfAdsorptionTerms
     return *this;
   }
 
-  inline EnthalpyOfAdsorption compositeProperty [[nodiscard]] () const
+  inline EnthalpyOfAdsorptionData compositeProperty [[nodiscard]] () const
   {
-    EnthalpyOfAdsorption v(size);
+    EnthalpyOfAdsorptionData v(size);
     if (size > 0)
     {
       // Symmetric matrix

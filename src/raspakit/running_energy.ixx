@@ -368,6 +368,44 @@ export struct RunningEnergy
     return v;
   }
 
+  inline RunningEnergy& operator*=(const double& b)
+  {
+    externalFieldVDW *= b;
+    frameworkMoleculeVDW *= b;
+    moleculeMoleculeVDW *= b;
+    externalFieldCharge *= b;
+    frameworkMoleculeCharge *= b;
+    moleculeMoleculeCharge *= b;
+    ewald_fourier *= b;
+    ewald_self *= b;
+    ewald_exclusion *= b;
+    bond *= b;
+    ureyBradley *= b;
+    bend *= b;
+    inversionBend *= b;
+    outOfPlaneBend *= b;
+    torsion *= b;
+    improperTorsion *= b;
+    bondBond *= b;
+    bondBend *= b;
+    bondTorsion *= b;
+    bendBend *= b;
+    bendTorsion *= b;
+    intraVDW *= b;
+    intraCoul *= b;
+    tail *= b;
+    polarization *= b;
+    dudlambdaVDW *= b;
+    dudlambdaCharge *= b;
+    dudlambdaEwald *= b;
+    translationalKineticEnergy *= b;
+    rotationalKineticEnergy *= b;
+    NoseHooverEnergy *= b;
+
+    return *this;
+  }
+
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.

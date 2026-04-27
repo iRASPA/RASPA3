@@ -95,7 +95,8 @@ export struct MolecularDynamics
   std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.
 
-  std::size_t currentCycle{0};                                      ///< Current simulation cycle.
+  std::size_t currentCycle{};                                       ///< Current simulation cycle.
+  std::size_t absoluteCurrentCycle{};
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current stage of the simulation.
 
   std::vector<System> systems;              ///< Vector of systems in the simulation.
@@ -124,6 +125,10 @@ export struct MolecularDynamics
    * Manages the simulation stages: initialization, equilibration, and production.
    */
   void run();
+
+  void setup();
+
+  void tearDown();
 
   /**
    * \brief Initializes the simulation.

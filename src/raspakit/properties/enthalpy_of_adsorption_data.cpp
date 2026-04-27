@@ -1,12 +1,12 @@
 module;
 
-module enthalpy_of_adsorption;
+module enthalpy_of_adsorption_data;
 
 import std;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorption &p)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorptionData &p)
 {
   archive << p.size;
   archive << p.values;
@@ -18,7 +18,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Enthal
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorption &p)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorptionData &p)
 {
   archive >> p.size;
   archive >> p.values;

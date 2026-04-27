@@ -24,7 +24,7 @@ import energy_factor;
 import gradient_factor;
 import loading_data;
 import sample_movies;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import property_lambda_probability_histogram;
 import property_simulationbox;
 import property_energy;
@@ -41,6 +41,7 @@ import property_msd;
 import property_vacf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
+import property_conserved_energy_evolution;
 import units;
 import bond_potential;
 import move_statistics;
@@ -230,6 +231,7 @@ export struct System
 
   std::optional<PropertyNumberOfMoleculesEvolution> propertyNumberOfMoleculesEvolution;
   std::optional<PropertyVolumeEvolution> propertyVolumeEvolution;
+  std::optional<PropertyConservedEnergyEvolution> propertyConservedEnergyEvolution;
 
   // Breakthrough settings
   std::size_t columnNumberOfGridPoints{100};

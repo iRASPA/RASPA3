@@ -84,11 +84,14 @@ import intra_molecular_potentials;
 import pressure_data;
 import property_pressure;
 import widom_data;
+import equation_of_states;
+import property_conserved_energy_evolution;
+import thermostat;
+import enthalpy_of_adsorption_data;
+import property_enthalpy;
 
-
-
-template <typename T>
-std::vector<T> operator*(std::vector<T> v, const T& scalar)
+template <typename U, typename T>
+std::vector<T> operator*(std::vector<U> v, const T& scalar)
 {
   for (auto& element : v)
   {
@@ -97,8 +100,8 @@ std::vector<T> operator*(std::vector<T> v, const T& scalar)
   return v;
 }
 
-template <typename T>
-std::vector<T> operator*(const T& scalar, std::vector<T> v)
+template <typename U, typename T>
+std::vector<T> operator*(const U& scalar, std::vector<T> v)
 {
   for (auto& element : v)
   {
@@ -146,14 +149,47 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("z", &double4::z)
       .def_readwrite("w", &double4::w);
 
+  pybind11::class_<EquationOfState> eos(m, "EquationOfState");
+
+    pybind11::class_<EquationOfState::FluidInput>(eos, "FluidInput")
+        .def(pybind11::init<double, double, double, double, bool>(), 
+            pybind11::arg("criticalTemperature"), pybind11::arg("criticalPressure"),
+            pybind11::arg("acentricFactor"), pybind11::arg("molFraction") = 1.0,
+            pybind11::arg("swappable") = true)
+        .def_readwrite("criticalTemperature", &EquationOfState::FluidInput::criticalTemperature)
+        .def_readwrite("criticalPressure", &EquationOfState::FluidInput::criticalPressure)
+        .def_readwrite("acentricFactor", &EquationOfState::FluidInput::acentricFactor)
+        .def_readwrite("molFraction", &EquationOfState::FluidInput::molFraction)
+        .def_readwrite("swappable", &EquationOfState::FluidInput::swappable);
+
+    pybind11::native_enum<EquationOfState::Type>(eos, "EquationOfStateType", "enum.IntEnum")
+        .value("PengRobinson", EquationOfState::Type::PengRobinson)
+        .value("PengRobinsonGasem", EquationOfState::Type::PengRobinsonGasem)
+        .value("SoaveRedlichKwong", EquationOfState::Type::SoaveRedlichKwong)
+        .finalize();
+    pybind11::native_enum<EquationOfState::MultiComponentMixingRules>(eos, "EquationOfStateMultiComponentMixingRules", "enum.IntEnum")
+        .value("VanDerWaals", EquationOfState::MultiComponentMixingRules::VanDerWaals)
+        .finalize();
+
+  pybind11::class_<EquationOfState::FluidResult>(eos, "FluidResult")
+      .def(pybind11::init<double, std::optional<double>, EquationOfState::FluidState>(), 
+          pybind11::arg("compressibility"), pybind11::arg("fugacityCoefficient"),
+          pybind11::arg("fluidState"))
+      .def_readwrite("compressibility", &EquationOfState::FluidResult::compressibility)
+      .def_readwrite("fugacityCoefficient", &EquationOfState::FluidResult::fugacityCoefficient)
+      .def_readwrite("fluidState", &EquationOfState::FluidResult::fluidState);
+
+    eos.def(pybind11::init<EquationOfState::Type, EquationOfState::MultiComponentMixingRules,
+                  double, double, const SimulationBox &, double,
+                  std::vector<Component> &>())
+       .def_static("computeFluidProperties", &EquationOfState::computeFluidProperties,
+         pybind11::arg("temperature"), 
+         pybind11::arg("pressure"),
+         pybind11::arg("equationOfStateProperties"),
+         pybind11::arg("type") = EquationOfState::Type::PengRobinson,
+         pybind11::arg("mixingRules") = EquationOfState::MultiComponentMixingRules::VanDerWaals);
+
   pybind11::class_<RandomNumber>(m, "RandomNumber").def(pybind11::init<std::size_t>(), pybind11::arg("seed") = 12);
-
-  pybind11::class_<RunningEnergy>(m, "RunningEnergy")
-      .def(pybind11::init<>())
-      .def_readwrite("moleculeMoleculeVDW", &RunningEnergy::moleculeMoleculeVDW)
-      .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW)
-      .def("__repr__", &RunningEnergy::repr);
-
 
   pybind11::class_<Atom>(m, "Atom")
       .def(pybind11::init<>())
@@ -180,7 +216,8 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("type", &SimulationBox::type)
       .def_readonly("lengthA", &SimulationBox::lengthA)
       .def_readonly("lengthB", &SimulationBox::lengthB)
-      .def_readonly("lengthC", &SimulationBox::lengthC);
+      .def_readonly("lengthC", &SimulationBox::lengthC)
+      .def_readonly("volume", &SimulationBox::volume);
 
   pybind11::class_<VDWParameters>(m, "VDWParameters")
       .def(pybind11::init<double, double>(), pybind11::arg("epsilon"), pybind11::arg("sigma"));
@@ -515,7 +552,12 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("radialDistributionFunction", &System::propertyRadialDistributionFunction)
       .def_readwrite("propertyNumberOfMoleculesEvolution", &System::propertyNumberOfMoleculesEvolution)
       .def_readwrite("propertyVolumeEvolution", &System::propertyVolumeEvolution)
+      .def_readwrite("propertyConservedEnergyEvolution", &System::propertyConservedEnergyEvolution)
+      .def_readwrite("averageEnthalpiesOfAdsorption", &System::averageEnthalpiesOfAdsorption)
+      .def_readwrite("thermostat", &System::thermostat)
       .def_readwrite("atomData", &System::atomData)
+      .def_readwrite("translationalDegreesOfFreedom", &System::translationalDegreesOfFreedom)
+      .def_readwrite("rotationalDegreesOfFreedom", &System::rotationalDegreesOfFreedom)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
@@ -539,6 +581,9 @@ PYBIND11_MODULE(raspalib, m)
       .def("cycle", &MonteCarlo::performCycle)
       .def_readonly("systems", &MonteCarlo::systems);
 
+
+
+
   pybind11::class_<MolecularDynamics>(m, "MolecularDynamics")
     .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
                         std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
@@ -549,11 +594,49 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("randomSeed") = std::nullopt, pybind11::arg("numberOfBlocks") = 5,
          pybind11::arg("outputToFiles") = false)
       .def("run", &MolecularDynamics::run)
-      .def("initialize", &MolecularDynamics::initialize, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
-      .def("equilibrate", &MolecularDynamics::equilibrate, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
-      .def("production", &MolecularDynamics::production, pybind11::arg("call_back_function") = pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("setup", &MolecularDynamics::setup)
+      .def("tearDown", &MolecularDynamics::tearDown)
+      .def("initialize", &MolecularDynamics::initialize, pybind11::arg("call_back_function") = 
+                      pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("equilibrate", &MolecularDynamics::equilibrate, pybind11::arg("call_back_function") = 
+                      pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
+      .def("production", &MolecularDynamics::production, pybind11::arg("call_back_function") = 
+                      pybind11::cpp_function([](void){}), pybind11::arg("call_back_every") = 100)
       .def_readonly("systems", &MolecularDynamics::systems);
 
+  pybind11::class_<RunningEnergy>(m, "RunningEnergy")
+      .def("conservedEnergy", &RunningEnergy::conservedEnergy)
+      .def("potentialEnergy", &RunningEnergy::potentialEnergy)
+      .def("kineticEnergy", &RunningEnergy::kineticEnergy)
+      .def_readonly("NoseHooverEnergy", &RunningEnergy::NoseHooverEnergy)
+      .def_readwrite("moleculeMoleculeVDW", &RunningEnergy::moleculeMoleculeVDW)
+      .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW)
+      .def("__repr__", &RunningEnergy::repr);
+
+  pybind11::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
+      .def(pybind11::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
+            pybind11::arg("numberOfCycles"), pybind11::arg("sampleEvery"), pybind11::arg("writeEvery") = std::nullopt)
+       // convert result to units of Kelvin
+      .def("result", [](const PropertyConservedEnergyEvolution& p) { return Units::EnergyToKelvin * p.result();});
+
+  pybind11::class_<Thermostat>(m, "Thermostat")
+      .def(pybind11::init<double, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+            pybind11::arg("temperature"), 
+            pybind11::arg("thermostatChainLength"), pybind11::arg("numberOfYoshidaSuzukiSteps"),
+            pybind11::arg("timeStep"), 
+            pybind11::arg("translationalDegreesOfFreedom"), pybind11::arg("rotationalDgreesOfFreedom"));
+
+  pybind11::class_<EnthalpyOfAdsorptionData>(m, "EnthalpyOfAdsorptionData")
+      .def(pybind11::init<std::size_t>(),
+            pybind11::arg("numberOfComponents"))
+      .def_readonly("values", &EnthalpyOfAdsorptionData::values)
+      .def("__getitem__", &EnthalpyOfAdsorptionData::operator[]);
+
+  pybind11::class_<PropertyEnthalpy>(m, "PropertyEnthalpy")
+      .def(pybind11::init<std::size_t, std::size_t>(),
+            pybind11::arg("numberOfBlocks"), 
+            pybind11::arg("numberOfComponents"))
+      .def("result", [](const PropertyEnthalpy& p) { return Units::EnergyToKelvin * p.result();});
 }
 
 namespace pybind11 {

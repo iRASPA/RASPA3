@@ -14,7 +14,7 @@ import component;
 import averages;
 import loading_data;
 import units;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import simulationbox;
 import forcefield;
 import sample_movies;

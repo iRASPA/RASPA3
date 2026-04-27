@@ -6,8 +6,8 @@
 1. [Monte Carlo: CFCMC Gibbs CO₂](#Example_advanced_1)
 2. [Monte Carlo: CFCMC adsorption of CO₂ in MFI](#Example_advanced_2)
 3. [Monte Carlo: CFCMC binary mixture adsorption of CO₂ and N₂ in DMOF](#Example_advanced_3)
-4. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_4)
-5. [HMC CFCMC co2 in MFI](#Example_advanced_5)
+4. [HMC CFCMC co2 in MFI](#Example_advanced_4)
+5. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_5)
 
 
 #### Monte Carlo: CFCMC Gibbs CO₂<a name="Example_advanced_1"></a>
@@ -429,7 +429,7 @@ Component 0 [CO2]
 }
 ```
 
-#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_4"></a>
+#### HMC CFCMC co2 in MFI<a name="Example_advanced_4"></a>
 
 ```json
 {
@@ -471,7 +471,7 @@ Component 0 [CO2]
 }
 ```
 
-#### HMC CFCMC co2 in MFI<a name="Example_advanced_5"></a>
+#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_5"></a>
 
 
 ```json

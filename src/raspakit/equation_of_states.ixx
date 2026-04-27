@@ -49,6 +49,22 @@ export struct EquationOfState
     VaporLiquid = 4          ///< Vapor-liquid coexistence.
   };
 
+  struct FluidInput
+  {
+    double criticalTemperature;
+    double criticalPressure;
+    double acentricFactor;
+    double molFraction;
+    bool swappable;
+  };
+
+  struct FluidResult
+  {
+    double compressibility;
+    std::optional<double> fugacityCoefficient;
+    EquationOfState::FluidState fluidState;
+  };
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   EquationOfState::FluidState fluidState{EquationOfState::FluidState::Unknown};  ///< Current fluid state.
@@ -100,6 +116,14 @@ export struct EquationOfState
                                        EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
                                        double temperature, double pressure, const SimulationBox &simulationBox,
                                        double heliumVoidFraction, std::vector<Component> &components);
+
+
+  static std::vector<EquationOfState::FluidResult> computeFluidProperties(
+                                                      double temperature, 
+                                                      double pressure,
+                                                      const std::vector<EquationOfState::FluidInput> &equationOfStateProperties,
+                                                      EquationOfState::Type type,
+                                                      EquationOfState::MultiComponentMixingRules rules);
 
   /**
    * \brief Serializes the EquationOfState object to an output archive.
