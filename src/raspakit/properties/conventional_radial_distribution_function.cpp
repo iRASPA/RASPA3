@@ -126,8 +126,8 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
-                                                       std::size_t atomTypeB) const
+PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std::size_t atomTypeA,
+                                                                            std::size_t atomTypeB) const
 {
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
@@ -158,6 +158,33 @@ PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
   return std::make_pair(average, confidenceIntervalError);
 }
 
+std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>
+PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
+                                                       std::size_t atomTypeB,
+                                                       double volume) const
+{
+  auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+
+  // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
+  // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
+  double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
+                                           pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
+                       static_cast<double>(totalNumberOfCounts);
+  double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+
+  std::vector<double> x(numberOfBins);
+  std::vector<double> y(numberOfBins);
+  std::vector<double> error_y(numberOfBins);
+  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+  {
+    x[bin] = (static_cast<double>(bin) + 0.5) * deltaR,
+    y[bin] = average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
+    error_y[bin] = error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5));
+  }
+
+  return {x, y, error_y};
+}
+
 void PropertyConventionalRadialDistributionFunction::writeOutput(
     const ForceField &forceField, std::size_t systemId, double volume,
     [[maybe_unused]] std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle)
@@ -181,7 +208,7 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
         stream_rdf_output << "# column 2: normalize rdf []\n";
         stream_rdf_output << "# column 3: error normalize rdf []\n";
 
-        auto [average, error] = result(atomTypeA, atomTypeB);
+        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/

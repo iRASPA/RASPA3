@@ -73,8 +73,6 @@ import average_energy_type;
 import property_energy_histogram;
 import property_lambda_probability_histogram;
 import property_density_grid;
-import property_conventional_rdf;
-import property_rdf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
 import property_widom;
@@ -89,6 +87,13 @@ import property_conserved_energy_evolution;
 import thermostat;
 import enthalpy_of_adsorption_data;
 import property_enthalpy;
+import property_conventional_rdf;
+import property_rdf;
+import mean_squared_displacement_data;
+import property_msd;
+import velocity_autocorrelation_function_data;
+import property_vacf;
+
 
 template <typename U, typename T>
 std::vector<T> operator*(std::vector<U> v, const T& scalar)
@@ -497,22 +502,57 @@ PYBIND11_MODULE(raspalib, m)
            return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
                                                                  {Units::EnergyToKelvin * bins, average, error};});
 
-  pybind11::class_<PropertyConventionalRadialDistributionFunction> conv_rdf(m, "PropertyConventionalRadialDistributionFunction");
-    conv_rdf.def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+  pybind11::class_<PropertyConventionalRadialDistributionFunction>(m, "PropertyConventionalRadialDistributionFunction")
+       .def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
                  pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfPseudoAtoms"),
                  pybind11::arg("numberOfBins"), pybind11::arg("range"),
                  pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
        .def("result", &PropertyConventionalRadialDistributionFunction::result);
 
-  pybind11::class_<PropertyRadialDistributionFunction> rdf(m, "PropertyRadialDistributionFunction");
-    rdf.def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+  pybind11::class_<PropertyRadialDistributionFunction>(m, "PropertyRadialDistributionFunction")
+       .def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
             pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfPseudoAtoms"),
             pybind11::arg("numberOfBins"), pybind11::arg("range"),
             pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"))
        .def("result", &PropertyRadialDistributionFunction::result);
 
+
+  pybind11::class_<MeanSquaredDisplacementData>(m, "MeanSquaredDisplacementData")
+      .def_readonly("time", &MeanSquaredDisplacementData::time)
+      .def_readonly("xyz", &MeanSquaredDisplacementData::xyz)
+      .def_readonly("x", &MeanSquaredDisplacementData::x)
+      .def_readonly("y", &MeanSquaredDisplacementData::y)
+      .def_readonly("z", &MeanSquaredDisplacementData::z)
+      .def_readonly("numberOfSamples", &MeanSquaredDisplacementData::numberOfSamples);
+
+  pybind11::class_<PropertyMeanSquaredDisplacement>(m, "PropertyMeanSquaredDisplacement")
+       .def(pybind11::init<std::size_t, std::size_t, std::size_t, double, std::size_t>(),
+            pybind11::arg("numberOfComponents"), pybind11::arg("numberOfParticles"),
+            pybind11::arg("sampleEvery"), pybind11::arg("writeEvery"),
+            pybind11::arg("numberOfBlockElementsMSD"))
+       .def("result", &PropertyMeanSquaredDisplacement::result);
+
+  pybind11::class_<VelocityAutoCorrelationFunctionData>(m, "VelocityAutoCorrelationFunctionData")
+      .def_readonly("time", &VelocityAutoCorrelationFunctionData::time)
+      .def_readonly("xyz", &VelocityAutoCorrelationFunctionData::xyz)
+      .def_readonly("x", &VelocityAutoCorrelationFunctionData::x)
+      .def_readonly("y", &VelocityAutoCorrelationFunctionData::y)
+      .def_readonly("z", &VelocityAutoCorrelationFunctionData::z)
+      .def_readonly("numberOfSamples", &VelocityAutoCorrelationFunctionData::numberOfSamples);
+
+  pybind11::class_<PropertyVelocityAutoCorrelationFunction>(m, "PropertyVelocityAutoCorrelationFunction")
+       .def(pybind11::init<std::size_t, const std::vector<std::size_t> &, std::size_t, std::size_t, double, std::size_t, std::size_t>(),
+            pybind11::arg("numberOfComponents"), 
+            pybind11::arg("numberOfMoleculesPerComponent"), 
+            pybind11::arg("numberOfParticles"),
+            pybind11::arg("numberOfBuffersVACF"), 
+            pybind11::arg("bufferLengthVACF"),
+            pybind11::arg("sampleEvery"), 
+            pybind11::arg("writeEvery"))
+       .def("result", &PropertyVelocityAutoCorrelationFunction::result);
+
   pybind11::class_<PropertyNumberOfMoleculesEvolution>(m, "PropertyNumberOfMoleculesEvolution")
-    .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
+      .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
             pybind11::arg("numberOfCycles"), pybind11::arg("numberOfComponents"),
             pybind11::arg("sampleEvery"), pybind11::arg("writeEvery") = std::nullopt)
       .def_readonly("result", &PropertyNumberOfMoleculesEvolution::result);
@@ -538,8 +578,10 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("systemProbabilities") = MCMoveProbabilities())
       .def("computeTotalEnergies", &System::computeTotalEnergies)
       .def("frameworkMass", &System::frameworkMass)
+      .def_readonly("simulationBox", &System::simulationBox)
       .def_readonly("inputPressure", &System::input_pressure)
       .def_readonly("components", &System::components)
+      .def_readonly("numberOfMoleculesPerComponent", &System::numberOfMoleculesPerComponent)
       .def_readonly("mc_moves_statistics", &System::mc_moves_statistics)
       .def_readonly("loadings", &System::loadings)
       .def_readwrite("averageLoadings", &System::averageLoadings)
@@ -548,7 +590,9 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("averageEnergies", &System::averageEnergies)
       .def_readonly("averagePressure", &System::averagePressure)
       .def_readwrite("densityGrid", &System::propertyDensityGrid)
-      .def_readwrite("conventionalRadialDistributionFunction", &System::propertyConventionalRadialDistributionFunction)
+      .def_readwrite("propertyConventionalRadialDistributionFunction", &System::propertyConventionalRadialDistributionFunction)
+      .def_readwrite("propertyMSD", &System::propertyMSD)
+      .def_readwrite("propertyVACF", &System::propertyVACF)
       .def_readwrite("radialDistributionFunction", &System::propertyRadialDistributionFunction)
       .def_readwrite("propertyNumberOfMoleculesEvolution", &System::propertyNumberOfMoleculesEvolution)
       .def_readwrite("propertyVolumeEvolution", &System::propertyVolumeEvolution)
@@ -637,6 +681,7 @@ PYBIND11_MODULE(raspalib, m)
             pybind11::arg("numberOfBlocks"), 
             pybind11::arg("numberOfComponents"))
       .def("result", [](const PropertyEnthalpy& p) { return Units::EnergyToKelvin * p.result();});
+
 }
 
 namespace pybind11 {

@@ -13,6 +13,7 @@ import molecule;
 import simulationbox;
 import forcefield;
 import component;
+import velocity_autocorrelation_function_data;
 
 // Computes Velocity Auto-Correlation Function (VASF)
 
@@ -20,10 +21,15 @@ export struct PropertyVelocityAutoCorrelationFunction
 {
   PropertyVelocityAutoCorrelationFunction() {};
 
-  PropertyVelocityAutoCorrelationFunction(std::size_t numberOfComponents, std::size_t numberOfParticles,
-                                          std::size_t numberOfBuffersVACF, std::size_t bufferLengthVACF,
-                                          std::size_t sampleEvery, std::size_t writeEvery)
+  PropertyVelocityAutoCorrelationFunction(std::size_t numberOfComponents, 
+                                          const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+                                          std::size_t numberOfParticles,
+                                          std::size_t numberOfBuffersVACF, 
+                                          std::size_t bufferLengthVACF,
+                                          std::size_t sampleEvery, 
+                                          std::size_t writeEvery)
       : numberOfComponents(numberOfComponents),
+        numberOfMoleculesPerComponent(numberOfMoleculesPerComponent),
         numberOfParticles(numberOfParticles),
         numberOfBuffersVACF(numberOfBuffersVACF),
         bufferLengthVACF(bufferLengthVACF),
@@ -59,6 +65,7 @@ export struct PropertyVelocityAutoCorrelationFunction
   std::uint64_t versionNumber{1};
 
   std::size_t numberOfComponents;
+  std::vector<std::size_t> numberOfMoleculesPerComponent;
   std::size_t numberOfParticles;
 
   std::size_t numberOfBuffersVACF;
@@ -81,6 +88,9 @@ export struct PropertyVelocityAutoCorrelationFunction
 
   void addSample(std::size_t currentCycle, const std::vector<Component> &components,
                  const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
+
+  std::vector<std::vector<VelocityAutoCorrelationFunctionData>> result();
+
   void writeOutput(std::size_t systemId, const std::vector<Component> &components,
                    const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
                    std::size_t currentCycle);

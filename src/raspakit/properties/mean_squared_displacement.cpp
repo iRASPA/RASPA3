@@ -12,6 +12,7 @@ import simulationbox;
 import forcefield;
 import component;
 import averages;
+import mean_squared_displacement_data;
 
 void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const std::vector<Component> &components,
                                                 const std::vector<std::size_t> &numberOfMoleculesPerComponent,
@@ -147,6 +148,38 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
   }
 
   ++countMSD;
+}
+
+std::vector<std::vector<MeanSquaredDisplacementData>> PropertyMeanSquaredDisplacement::result()
+{
+  std::vector<std::vector<MeanSquaredDisplacementData>> results(numberOfComponents);
+
+  double deltaT{1.0};
+
+  for (std::size_t i = 0; i != numberOfComponents; ++i)
+  {
+    for (std::size_t currentBlock = 0; currentBlock < numberOfBlocksMSD; ++currentBlock)
+    {
+      std::size_t currentBlocklength = std::min(blockLengthMSD[currentBlock], numberOfBlockElementsMSD);
+      double dt = static_cast<double>(sampleEvery) * deltaT * std::pow(numberOfBlockElementsMSD, currentBlock);
+      for (std::size_t k = 1; k < currentBlocklength; ++k)
+      {
+        if (msdSelfCount[currentBlock][i][k] > 0)
+        {
+          double fac = 1.0 / static_cast<double>(msdSelfCount[currentBlock][i][k]);
+
+          results[i].push_back(MeanSquaredDisplacementData(
+                               static_cast<double>(k) * dt, 
+                               fac * msdSelf[currentBlock][i][k].w,
+                               fac * msdSelf[currentBlock][i][k].x, 
+                               fac * msdSelf[currentBlock][i][k].y,
+                               fac * msdSelf[currentBlock][i][k].z, 
+                               static_cast<double>(msdSelfCount[currentBlock][i][k])));
+        }
+      }
+    }
+  }
+  return results;
 }
 
 void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const std::vector<Component> &components,

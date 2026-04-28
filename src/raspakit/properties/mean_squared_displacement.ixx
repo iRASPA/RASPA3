@@ -13,6 +13,7 @@ import molecule;
 import simulationbox;
 import forcefield;
 import component;
+import mean_squared_displacement_data;
 
 // Computes Mean Squared Displacement (MSD) using order-N algorithm
 
@@ -75,6 +76,9 @@ export struct PropertyMeanSquaredDisplacement
 
   void addSample(std::size_t currentCycle, const std::vector<Component> &components,
                  const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
+
+  std::vector<std::vector<MeanSquaredDisplacementData>> result();
+
   void writeOutput(std::size_t systemId, const std::vector<Component> &components,
                    const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
                    std::size_t currentCycle);

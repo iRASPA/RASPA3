@@ -12,6 +12,7 @@ import simulationbox;
 import forcefield;
 import component;
 import averages;
+import velocity_autocorrelation_function_data;
 
 void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle,
                                                         const std::vector<Component> &components,
@@ -116,6 +117,32 @@ void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle
   }
 }
 
+
+std::vector<std::vector<VelocityAutoCorrelationFunctionData>> PropertyVelocityAutoCorrelationFunction::result()
+{
+  std::vector<std::vector<VelocityAutoCorrelationFunctionData>> results(numberOfComponents);
+
+  double deltaT{1.0};
+
+  for (std::size_t i = 0; i < numberOfComponents; ++i)
+  {
+    double fac = 1.0 / static_cast<double>(numberOfMoleculesPerComponent[i] * countAccumulatedVACF);
+
+    for (std::size_t k = 0; k < bufferLengthVACF; ++k)
+    {
+      results[i].push_back(VelocityAutoCorrelationFunctionData(
+              static_cast<double>(k * sampleEvery) * deltaT,
+              fac * accumulatedAcfVACF[i][k].w,
+              fac * accumulatedAcfVACF[i][k].x, 
+              fac * accumulatedAcfVACF[i][k].y,
+              fac * accumulatedAcfVACF[i][k].z, 
+              static_cast<double>(countAccumulatedVACF))
+            );
+    }
+  }
+  return results;
+}
+
 void PropertyVelocityAutoCorrelationFunction::writeOutput(std::size_t systemId,
                                                           const std::vector<Component> &components,
                                                           const std::vector<std::size_t> &numberOfMoleculesPerComponent,
@@ -182,6 +209,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << vacf.sampleEvery;
   archive << vacf.writeEvery;
   archive << vacf.numberOfComponents;
+  archive << vacf.numberOfMoleculesPerComponent;
   archive << vacf.numberOfParticles;
 
   archive << vacf.numberOfBuffersVACF;
@@ -221,6 +249,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyVelo
   archive >> vacf.sampleEvery;
   archive >> vacf.writeEvery;
   archive >> vacf.numberOfComponents;
+  archive >> vacf.numberOfMoleculesPerComponent;
   archive >> vacf.numberOfParticles;
 
   archive >> vacf.numberOfBuffersVACF;

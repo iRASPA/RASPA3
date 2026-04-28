@@ -39,8 +39,11 @@ export struct PropertyConventionalRadialDistributionFunction
   std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
                                                    std::size_t atomTypeB) const;
   std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
-  std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
-                                                             std::size_t atomTypeB) const;
+  std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
+                                                                                  std::size_t atomTypeB) const;
+  std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
+                                                                                   std::size_t atomTypeB,
+                                                                                   double volume) const;
 
   std::size_t numberOfBlocks;
   std::size_t numberOfPseudoAtoms;
@@ -57,6 +60,7 @@ export struct PropertyConventionalRadialDistributionFunction
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
               std::size_t currentCycle, std::size_t block);
+
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
 

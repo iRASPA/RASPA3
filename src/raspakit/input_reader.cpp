@@ -1283,7 +1283,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyVACF = PropertyVelocityAutoCorrelationFunction(
-              systems[systemId].components.size(), systems[systemId].moleculeData.size(), numberOfBuffersVACF,
+              systems[systemId].components.size(), systems[systemId].numberOfMoleculesPerComponent,
+              systems[systemId].moleculeData.size(), numberOfBuffersVACF,
               bufferLengthVACF, sampleVACFEvery, writeVACFEvery);
         }
       }
