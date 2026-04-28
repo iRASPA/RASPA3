@@ -10,7 +10,7 @@ import cubic;
 import component;
 import simulationbox;
 
-EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules rules,
+EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::MixingRules rules,
                                  double temperature, double pressure, const SimulationBox &simulationBox,
                                  double heliumVoidFraction, std::vector<Component> &components)
     : equationOfState(type), multiComponentMixingRules(rules)
@@ -22,7 +22,7 @@ EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::Mu
 // T in Kelvin
 // p in Pascal
 void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type,
-                                                      EquationOfState::MultiComponentMixingRules rules,
+                                                      EquationOfState::MixingRules rules,
                                                       double temperature, double pressure,
                                                       const SimulationBox &simulationBox, double heliumVoidFraction,
                                                       std::vector<Component> &components)
@@ -89,7 +89,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   switch (rules)
   {
     default:
-    case MultiComponentMixingRules::VanDerWaals:
+    case MixingRules::VanDerWaals:
       for (std::size_t i = 0; i < components.size(); i++)
         for (std::size_t j = 0; j < components.size(); j++)
         {
@@ -341,7 +341,7 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
                                                       double temperature, double pressure,
                                                       const std::vector<EquationOfState::FluidInput> &equationOfStateProperties,
                                                       EquationOfState::Type type = EquationOfState::Type::PengRobinson,
-                                                      EquationOfState::MultiComponentMixingRules rules = EquationOfState::MultiComponentMixingRules::VanDerWaals)
+                                                      EquationOfState::MixingRules rules = EquationOfState::MixingRules::VanDerWaals)
 {
   std::vector<double> a(equationOfStateProperties.size());
   std::vector<double> b(equationOfStateProperties.size());
@@ -408,7 +408,7 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
   switch (rules)
   {
     default:
-    case MultiComponentMixingRules::VanDerWaals:
+    case MixingRules::VanDerWaals:
       for (std::size_t i = 0; i < equationOfStateProperties.size(); i++)
       {
         for (std::size_t j = 0; j < equationOfStateProperties.size(); j++)

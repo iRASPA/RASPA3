@@ -26,6 +26,14 @@ __all__ = [
     "PropertyLambdaProbabilityHistogram",
     "Move",
     "MoveStatisticsDouble3",
-    "WidomData"
+    "WidomData",
+    "EquationOfState",
+    "MolecularDynamics",
+    "RunningEnergy",
+    "PropertyConservedEnergyEvolution",
+    "Thermostat",
+    "PropertyConventionalRadialDistributionFunction",
+    "PropertyMeanSquaredDisplacement",
+    "PropertyVelocityAutoCorrelationFunction"
 ]
 

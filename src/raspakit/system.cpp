@@ -171,7 +171,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   createInitialMolecules(initialpositions);
 
   equationOfState =
-      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
+      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
                       P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());

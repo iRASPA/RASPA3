@@ -32,7 +32,7 @@ export struct EquationOfState
   /**
    * \brief Enumeration of mixing rules for multi-component systems.
    */
-  enum class MultiComponentMixingRules : int
+  enum class MixingRules : int
   {
     VanDerWaals = 0  ///< van der Waals mixing rules.
   };
@@ -69,8 +69,8 @@ export struct EquationOfState
 
   EquationOfState::FluidState fluidState{EquationOfState::FluidState::Unknown};  ///< Current fluid state.
   EquationOfState::Type equationOfState{EquationOfState::Type::PengRobinson};    ///< Type of equation of state used.
-  EquationOfState::MultiComponentMixingRules multiComponentMixingRules{
-      EquationOfState::MultiComponentMixingRules::VanDerWaals};  ///< Mixing rules for multi-component systems.
+  EquationOfState::MixingRules multiComponentMixingRules{
+      EquationOfState::MixingRules::VanDerWaals};  ///< Mixing rules for multi-component systems.
 
   /**
    * \brief Default constructor for the EquationOfState struct.
@@ -93,7 +93,7 @@ export struct EquationOfState
    * \param heliumVoidFraction The fraction of void space occupied by helium.
    * \param components The components present in the fluid mixture.
    */
-  EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
+  EquationOfState(EquationOfState::Type type, EquationOfState::MixingRules multiComponentMixingRules,
                   double temperature, double pressure, const SimulationBox &simulationBox, double heliumVoidFraction,
                   std::vector<Component> &components);
 
@@ -113,7 +113,7 @@ export struct EquationOfState
    * \param components The components present in the fluid mixture.
    */
   void computeComponentFluidProperties(EquationOfState::Type equationOfState,
-                                       EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
+                                       EquationOfState::MixingRules multiComponentMixingRules,
                                        double temperature, double pressure, const SimulationBox &simulationBox,
                                        double heliumVoidFraction, std::vector<Component> &components);
 
@@ -123,7 +123,7 @@ export struct EquationOfState
                                                       double pressure,
                                                       const std::vector<EquationOfState::FluidInput> &equationOfStateProperties,
                                                       EquationOfState::Type type,
-                                                      EquationOfState::MultiComponentMixingRules rules);
+                                                      EquationOfState::MixingRules rules);
 
   /**
    * \brief Serializes the EquationOfState object to an output archive.
