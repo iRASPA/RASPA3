@@ -393,6 +393,22 @@ export struct System
   void createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId);
   void createFrameworkInterpolationGrids(std::ostream &stream);
 
+  void setThermostat(const std::optional<Thermostat> &thermo);
+
+  void setSamplePDBMovie(const std::optional<SampleMovie> &movie);
+
+  void setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist);
+  void setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &grid);
+
+  void setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property);
+  void setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property);
+  void setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property);
+
+  void setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction> &rdf);
+  void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction> &rdf);
+  void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement> &msd);
+  void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction> &vacf);
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);
 

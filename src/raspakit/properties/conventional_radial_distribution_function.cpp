@@ -23,6 +23,10 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
   if (moleculeAtoms.empty()) return;
 
+  volume_cummulative += simulationBox.volume;
+  ++volume_count;
+
+
   for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
@@ -158,38 +162,77 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std:
   return std::make_pair(average, confidenceIntervalError);
 }
 
-std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>
-PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
-                                                       std::size_t atomTypeB,
-                                                       double volume) const
+//std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>
+//PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
+//                                                       std::size_t atomTypeB) const
+//{
+//  auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+//
+//  // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
+//  // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
+//  double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
+//                                           pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
+//                       static_cast<double>(totalNumberOfCounts);
+//  double normalization = (volume_cummulative / volume_count) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+//
+//  std::vector<double> x(numberOfBins);
+//  std::vector<double> y(numberOfBins);
+//  std::vector<double> error_y(numberOfBins);
+//  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+//  {
+//    x[bin] = (static_cast<double>(bin) + 0.5) * deltaR,
+//    y[bin] = average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
+//    error_y[bin] = error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5));
+//  }
+//
+//  return {x, y, error_y};
+//}
+
+std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>>
+PropertyConventionalRadialDistributionFunction::result() const
 {
-  auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+   std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>> 
+     results(numberOfPseudoAtoms, std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>(numberOfPseudoAtoms));
 
-  // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
-  // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-  double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
-                                           pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
-                       static_cast<double>(totalNumberOfCounts);
-  double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
-
-  std::vector<double> x(numberOfBins);
-  std::vector<double> y(numberOfBins);
-  std::vector<double> error_y(numberOfBins);
-  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+  for (std::size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
   {
-    x[bin] = (static_cast<double>(bin) + 0.5) * deltaR,
-    y[bin] = average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
-    error_y[bin] = error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5));
-  }
+    for (std::size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
+    {
+      if (pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
+      {
+        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+        
+        // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
+        // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
+        double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
+                                                 pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
+                             static_cast<double>(totalNumberOfCounts);
+        double normalization = (volume_cummulative / volume_count) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+        
+        std::vector<double> x(numberOfBins);
+        std::vector<double> y(numberOfBins);
+        std::vector<double> error_y(numberOfBins);
+        for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+        {
+          x[bin] = (static_cast<double>(bin) + 0.5) * deltaR,
+          y[bin] = average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
+          error_y[bin] = error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5));
+        }
 
-  return {x, y, error_y};
+        results[atomTypeA][atomTypeB] = {x, y, error_y};
+        results[atomTypeB][atomTypeA] = {x, y, error_y};
+      }
+    }
+  }
+   return results;
 }
 
 void PropertyConventionalRadialDistributionFunction::writeOutput(
     const ForceField &forceField, std::size_t systemId, double volume,
     [[maybe_unused]] std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle)
 {
-  if (currentCycle % writeEvery != 0uz) return;
+  if (!writeEvery.has_value()) return;
+  if (currentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("conventional_rdf");
 

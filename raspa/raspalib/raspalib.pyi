@@ -941,12 +941,9 @@ class PropertyConventionalRadialDistributionFunction:
         """
 
     @property
-    def result(self, 
-               atom1: int, 
-               atom2: int,
-               volume: float) -> tuple[collections.abc.Sequence[double], 
-                                       collections.abc.Sequence[double], 
-                                       collections.abc.Sequence[double]]:
+    def result(self) -> list[list[tuple[collections.abc.Sequence[double],
+                                        collections.abc.Sequence[double],
+                                        collections.abc.Sequence[double]]]]:
         ...
 
 
@@ -956,14 +953,11 @@ class PropertyMeanSquaredDisplacement:
     """
 
     def __init__(self,
-                 number_of_components: int,
-                 number_of_particles: int,
                  sample_every: int,
-                 write_every: int,
-                 number_of_block_elements_msd: int) -> None:
+                 write_every: int | None) -> None:
         ...
         """
-        Initialize the PropertyWidom object.
+        Initialize the PropertyMeanSquaredDisplacement object.
         """
 
     @property
@@ -993,6 +987,18 @@ class PropertyVelocityAutoCorrelationFunction:
     def result(self) -> list[collections.abc.Sequence[double],
                              collections.abc.Sequence[double]):
         ...
+
+class Thermostat:
+    """
+    A class representing a Thermostat in RASPA.
+    """
+    def __init__(self,
+                 thermostat_chain_length: int,
+                 number_of_yoshida_suzuki_steps: int) -> None:
+        ...
+        """
+        Initialize the Thermostat object.
+        """
 
 class Component():
     """
@@ -1323,7 +1329,7 @@ class System():
         """
 
     @property
-    def property_conventional_radial_distribution_function(self) -> PropertyConventionalRadialDistributionFunction | None:
+    def property_conventional_rdf(self) -> PropertyConventionalRadialDistributionFunction | None:
         ...
         """
         Get the rdf property.
@@ -1381,6 +1387,46 @@ class System():
         Returns:
             PropertyConservedEnergyEvolution: The average-pressure property.
         """
+
+    @set_thermostat.setter
+    def set_thermostat(self, rdf: Thermostat) -> None:
+        ...
+
+    @set_sample_pdb_movie.setter
+    def set_sample_pdb_movie(self, sample_movie: SampleMovie) -> None:
+        ...
+
+    @set_average_energy_histogram.setter
+    def set_average_energy_histogram(self, property: PropertyEnergyHistogram) -> None:
+        ...
+
+    @set_property_density_grid.setter
+    def set_property_density_grid(self, property: PropertyDensityGrid) -> None:
+        ...
+
+    @set_property_number_of_molecules_evolution.setter
+    def set_property_number_of_molecules_evolution(self, property: PropertyNumberOfMoleculesEvolution) -> None:
+        ...
+
+    @set_property_volume_evolution.setter
+    def set_property_volume_evolution(self, property: PropertyVolumeEvolution) -> None:
+        ...
+
+    @set_property_conserved_energy_evolution.setter
+    def set_property_conserved_energy_evolution(self, property: PropertyConservedEnergyEvolution) -> None:
+        ...
+
+    @set_property_conventional_rdf.setter
+    def set_property_conventional_rdf(self, property: PropertyConventionalRadialDistributionFunction) -> None:
+        ...
+
+    @set_property_msd.setter
+    def set_property_msd(self, property: PropertyMeanSquaredDisplacement) -> None:
+        ...
+
+    @set_property_vacf.setter
+    def set_property_msd(self, property: PropertyVelocityAutoCorrelationFunction) -> None:
+        ...
 
 class MonteCarlo():
     """

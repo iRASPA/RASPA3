@@ -16,9 +16,18 @@ export struct PropertyConventionalRadialDistributionFunction
 {
   PropertyConventionalRadialDistributionFunction() {};
 
+  PropertyConventionalRadialDistributionFunction(std::size_t numberOfBins, double range, std::size_t sampleEvery,
+                                                 std::optional<std::size_t> writeEvery):
+        numberOfBins(numberOfBins),
+        range(range),
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery)
+  {
+  }
+
   PropertyConventionalRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms,
                                                  std::size_t numberOfBins, double range, std::size_t sampleEvery,
-                                                 std::size_t writeEvery)
+                                                 std::optional<std::size_t> writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfPseudoAtoms(numberOfPseudoAtoms),
         numberOfBins(numberOfBins),
@@ -41,9 +50,10 @@ export struct PropertyConventionalRadialDistributionFunction
   std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
                                                                                   std::size_t atomTypeB) const;
-  std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
-                                                                                   std::size_t atomTypeB,
-                                                                                   double volume) const;
+
+  std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>> result() const;
+  //std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
+  //                                                                                 std::size_t atomTypeB) const;
 
   std::size_t numberOfBlocks;
   std::size_t numberOfPseudoAtoms;
@@ -52,11 +62,13 @@ export struct PropertyConventionalRadialDistributionFunction
   double range;
   double deltaR;
   std::size_t sampleEvery;
-  std::size_t writeEvery;
+  std::optional<std::size_t> writeEvery;
   std::vector<std::vector<double>> sumProperty;
   std::size_t totalNumberOfCounts;
   std::vector<std::size_t> numberOfCounts;
   std::vector<std::size_t> pairCount;
+  double volume_cummulative{};
+  double volume_count{};
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
               std::size_t currentCycle, std::size_t block);

@@ -13,6 +13,13 @@ export struct PropertyConservedEnergyEvolution
 {
   PropertyConservedEnergyEvolution() {};
 
+  PropertyConservedEnergyEvolution(std::size_t sampleEvery, std::optional<std::size_t> writeEvery):
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery)
+  {
+  }
+
+
   PropertyConservedEnergyEvolution(std::size_t numberOfCycles, std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : sampleEvery(sampleEvery),
         writeEvery(writeEvery),

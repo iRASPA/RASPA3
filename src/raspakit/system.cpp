@@ -1761,12 +1761,12 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   if (propertyMSD.has_value())
   {
-    propertyMSD->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
+    propertyMSD->addSample(currentCycle, moleculeData);
   }
 
   if (propertyVACF.has_value())
   {
-    propertyVACF->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
+    propertyVACF->addSample(currentCycle, moleculeData);
   }
 
   if (propertyDensityGrid.has_value())
@@ -3051,6 +3051,120 @@ nlohmann::json System::jsonMCMoveStatistics() const
   }
 
   return status;
+}
+
+
+void System::setThermostat(const std::optional<Thermostat> &thermo)
+{
+  if (thermo.has_value())
+  {
+    thermostat = Thermostat(temperature, timeStep, 
+                            translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
+                            thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps);
+  }
+}
+
+void System::setSamplePDBMovie(const std::optional<SampleMovie> &movie)
+{
+  if (movie.has_value())
+  {
+    samplePDBMovie = movie;
+  }
+}
+
+void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist)
+{
+  if (hist.has_value())
+  {
+    averageEnergyHistogram = hist;
+  }
+}
+
+void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &grid)
+{
+  if (grid.has_value())
+  {
+    propertyDensityGrid = grid;
+  }
+}
+
+
+void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property)
+{
+  if(property.has_value())
+  {
+    propertyNumberOfMoleculesEvolution = property;
+  }
+}
+
+void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property)
+{
+  if(property.has_value())
+  {
+    propertyVolumeEvolution = property;
+  }
+}
+
+void System::setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property)
+{
+  if(property.has_value())
+  {
+    propertyConservedEnergyEvolution = property;
+  }
+}
+
+void System::setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction> &rdf)
+{
+  if(rdf.has_value())
+  {
+    propertyConventionalRadialDistributionFunction = PropertyConventionalRadialDistributionFunction(
+           5,
+           forceField.pseudoAtoms.size(),
+           rdf->numberOfBins,
+           12.0,
+           rdf->sampleEvery,
+           rdf->writeEvery
+         );
+  }
+}
+
+void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFunction> &rdf)
+{
+  if(rdf.has_value())
+  {
+    propertyRadialDistributionFunction = PropertyRadialDistributionFunction();
+  }
+}
+
+void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement> &msd)
+{
+  if(msd.has_value())
+  {
+    propertyMSD = PropertyMeanSquaredDisplacement(
+           numberOfMoleculesPerComponent,
+           moleculeData.size(),
+           timeStep,
+           25uz,
+           msd->sampleEvery,
+           msd->writeEvery
+        );
+  }
+}
+
+void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction> &vacf)
+{
+  if(vacf.has_value())
+  {
+    propertyVACF = PropertyVelocityAutoCorrelationFunction(
+           numberOfMoleculesPerComponent,
+           moleculeData.size(),
+           timeStep,
+           vacf->numberOfBuffersVACF,
+           vacf->bufferLengthVACF,
+           vacf->sampleEvery,
+           vacf->writeEvery);
+
+  }
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)

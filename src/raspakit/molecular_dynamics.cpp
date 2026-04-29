@@ -593,14 +593,12 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
       if (system.propertyMSD.has_value())
       {
-        system.propertyMSD->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
-                                        system.timeStep, currentCycle);
+        system.propertyMSD->writeOutput(system_id, system.components,  currentCycle);
       }
 
       if (system.propertyVACF.has_value())
       {
-        system.propertyVACF->writeOutput(system_id, system.components,
-                                         system.numberOfIntegerMoleculesPerComponent, system.timeStep, currentCycle);
+        system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
       }
 
       ++system_id;
@@ -647,14 +645,12 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
     if (system.propertyMSD.has_value())
     {
-      system.propertyMSD->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
-                                      system.timeStep, currentCycle);
+      system.propertyMSD->writeOutput(system_id, system.components, currentCycle);
     }
 
     if (system.propertyVACF.has_value())
     {
-      system.propertyVACF->writeOutput(system_id, system.components, system.numberOfIntegerMoleculesPerComponent,
-                                       system.timeStep, currentCycle);
+      system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
     }
 
     ++system_id;

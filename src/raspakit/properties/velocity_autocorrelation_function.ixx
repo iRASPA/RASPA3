@@ -21,16 +21,28 @@ export struct PropertyVelocityAutoCorrelationFunction
 {
   PropertyVelocityAutoCorrelationFunction() {};
 
-  PropertyVelocityAutoCorrelationFunction(std::size_t numberOfComponents, 
-                                          const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+  PropertyVelocityAutoCorrelationFunction(std::size_t numberOfBuffersVACF,
+                                          std::size_t bufferLengthVACF,
+                                          std::size_t sampleEvery, 
+                                          std::optional<std::size_t> writeEvery):
+        numberOfBuffersVACF(numberOfBuffersVACF),
+        bufferLengthVACF(bufferLengthVACF),
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery)
+  {
+  }
+
+  PropertyVelocityAutoCorrelationFunction(const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                           std::size_t numberOfParticles,
+                                          double timeStep,
                                           std::size_t numberOfBuffersVACF, 
                                           std::size_t bufferLengthVACF,
                                           std::size_t sampleEvery, 
-                                          std::size_t writeEvery)
-      : numberOfComponents(numberOfComponents),
+                                          std::optional<std::size_t> writeEvery):
         numberOfMoleculesPerComponent(numberOfMoleculesPerComponent),
+        numberOfComponents(numberOfMoleculesPerComponent.size()),
         numberOfParticles(numberOfParticles),
+        timeStep(timeStep),
         numberOfBuffersVACF(numberOfBuffersVACF),
         bufferLengthVACF(bufferLengthVACF),
         sampleEvery(sampleEvery),
@@ -64,15 +76,16 @@ export struct PropertyVelocityAutoCorrelationFunction
 
   std::uint64_t versionNumber{1};
 
-  std::size_t numberOfComponents;
   std::vector<std::size_t> numberOfMoleculesPerComponent;
+  std::size_t numberOfComponents;
   std::size_t numberOfParticles;
+  double timeStep;
 
   std::size_t numberOfBuffersVACF;
   std::size_t bufferLengthVACF;
 
   std::size_t sampleEvery;
-  std::size_t writeEvery;
+  std::optional<std::size_t> writeEvery;
 
   std::vector<std::vector<double3>> originVACF;
   std::vector<std::vector<double3>> originOnsagerVACF;
@@ -86,14 +99,11 @@ export struct PropertyVelocityAutoCorrelationFunction
   std::size_t countAccumulatedVACF;
   std::vector<double3> sumVel;
 
-  void addSample(std::size_t currentCycle, const std::vector<Component> &components,
-                 const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
+  void addSample(std::size_t currentCycle, std::vector<Molecule> &molecules);
 
   std::vector<std::vector<VelocityAutoCorrelationFunctionData>> result();
 
-  void writeOutput(std::size_t systemId, const std::vector<Component> &components,
-                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
-                   std::size_t currentCycle);
+  void writeOutput(std::size_t systemId, const std::vector<Component> &components, std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyVelocityAutoCorrelationFunction &msd);

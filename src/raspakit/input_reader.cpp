@@ -1249,8 +1249,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyMSD = PropertyMeanSquaredDisplacement(
-              systems[systemId].components.size(), systems[systemId].moleculeData.size(), sampleMSDEvery, writeMSDEvery,
-              numberOfBlockElementsMSD);
+              systems[systemId].numberOfMoleculesPerComponent, systems[systemId].moleculeData.size(), 
+              systems[systemId].timeStep, numberOfBlockElementsMSD,
+              sampleMSDEvery, writeMSDEvery);
         }
       }
 
@@ -1283,8 +1284,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyVACF = PropertyVelocityAutoCorrelationFunction(
-              systems[systemId].components.size(), systems[systemId].numberOfMoleculesPerComponent,
-              systems[systemId].moleculeData.size(), numberOfBuffersVACF,
+              systems[systemId].numberOfMoleculesPerComponent, systems[systemId].moleculeData.size(),
+              systems[systemId].timeStep, numberOfBuffersVACF,
               bufferLengthVACF, sampleVACFEvery, writeVACFEvery);
         }
       }
@@ -1403,9 +1404,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         if (caseInSensStringCompare(ensembleString, "NVT"))
         {
           systems[systemId].thermostat =
-              Thermostat(systems[systemId].temperature, thermostatChainLength, numberOfYoshidaSuzukiSteps,
-                         systems[systemId].timeStep, systems[systemId].translationalDegreesOfFreedom,
-                         systems[systemId].rotationalDegreesOfFreedom);
+              Thermostat(systems[systemId].temperature, systems[systemId].timeStep,
+                         systems[systemId].translationalDegreesOfFreedom,
+                         systems[systemId].rotationalDegreesOfFreedom,
+                         thermostatChainLength, numberOfYoshidaSuzukiSteps);
         }
       }
 
