@@ -257,7 +257,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("mass"), 
            pybind11::arg("charge"),
            pybind11::arg("polarizability") = 0.0, 
-           pybind11::arg("atomic_number") = 1, 
+           pybind11::arg("atomic_number") = 6, 
            pybind11::arg("print_to_pdb") = true,
            pybind11::arg("source") = "");
 
