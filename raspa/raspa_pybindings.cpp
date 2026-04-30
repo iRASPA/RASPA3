@@ -341,6 +341,8 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("bias_factor", &PropertyLambdaProbabilityHistogram::biasFactor)
       // dimensionless
       .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+      .def_readonly("occupancy_total", &PropertyLambdaProbabilityHistogram::occupancyTotal)
+      .def_readonly("occupancy_count", &PropertyLambdaProbabilityHistogram::occupancyCount)
        // convert result to units of Kelvin
       .def("average_dudlambda", [](PropertyLambdaProbabilityHistogram& p) 
           { return Units::EnergyToKelvin * p.averageDuDlambda();})

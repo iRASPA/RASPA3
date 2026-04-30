@@ -13,7 +13,7 @@ class PseudoAtom():
         mass: float = 1.0,
         charge: float = 0.0,
         polarizability: float = 0.0,
-        atomic_number: int = 6,
+        atomic_number: int = 8,
         print_to_pdb: bool = True,
         source: str = "-"
     ) -> None:
@@ -23,12 +23,12 @@ class PseudoAtom():
 
         Args:
             name (str): The name of the pseudo atom. Default is "C".
-            framework_type (bool): Whether it is a framework-atom or not
+            frameworkType (bool): Whether it is a framework-atom or not
             mass (float): The mass of the pseudo atom. Default is 1.0.
             charge (float): The charge of the pseudo atom. Default is 0.0.
             polarizability (float): The polarizability of the pseudo atom. Default is 0.0.
-            atomic_number (int): The atomic number of the pseudo atom. Default is 6.
-            print_to_pdb (bool): Whether to print to PDB. Default is False.
+            atomicNumber (int): The atomic number of the pseudo atom. Default is 8.
+            printToPDB (bool): Whether to print to PDB. Default is False.
             source (str): The source of the pseudo atom. Default is "-".
         """
 
@@ -89,8 +89,7 @@ class ForceField():
         """
         Members:
 
-        - LORENTZ_BERTHELOT: arithmetic mean for diameters, geometric mean for energies.
-        - JORGENSEN:  geometric mean for diameters and energies.
+          Lorentz_Berthelot
         """
         LORENTZ_BERTHELOT: int = 0
         JORGENSEN: int = 1
@@ -210,7 +209,7 @@ class IntraMolecularPotentials():
 
 class Move:
     """
-    A class representing a move in RASPA.
+    This is my move class.
     """
     def __init__(self) -> None:
         ...
@@ -279,59 +278,45 @@ class MoveStatisticsDouble():
     @property
     def accepted(self) -> float:
         ...
- 
     @property
     def all_counts(self) -> int:
         ...
-  
     @property
     def constructed(self) -> float:
         ...
-   
     @property
     def counts(self) -> float:
         ...
-   
     @property
     def lower_limit(self) -> float:
         ...
-   
     @lowerLimit.setter
     def lower_limit(self, arg0: float) -> None:
         ...
-   
     @property
     def max_change(self) -> float:
         ...
-   
     @maxChange.setter
     def max_change(self, arg0: float) -> None:
         ...
-   
     @property
     def target_acceptance(self) -> float:
         ...
-   
     @target_acceptance.setter
     def target_acceptance(self, arg0: float) -> None:
         ...
-   
     @property
     def total_accepted(self) -> float:
         ...
-   
     @property
     def total_constructed(self) -> float:
         ...
-   
     @property
     def total_counts(self) -> float:
         ...
-   
     @property
     def upper_limit(self) -> float:
         ...
-   
     @upperLimit.setter
     def upper_limit(self, arg0: float) -> None:
         ...
@@ -351,60 +336,45 @@ class MoveStatisticsDouble3():
     @property
     def accepted(self) -> tuple[float, float, float]:
         ...
-   
     @property
     def all_counts(self) -> int:
         ...
-   
     @property
     def constructed(self) -> tuple[float, float, float]:
         ...
-   
     @property
     def counts(self) -> tuple[float, float, float]:
         ...
-   
     @property
     def lower_limit(self) -> tuple[float, float, float]:
         ...
-   
-   
     @lowerLimit.setter
     def lower_limit(self, arg0: tuple[float, float, float]) -> None:
         ...
-    
     @property
     def max_change(self) -> tuple[float, float, float]:
         ...
-  
     @maxChange.setter
     def max_change(self, arg0: tuple[float, float, float]) -> None:
         ...
-   
     @property
     def target_acceptance(self) -> tuple[float, float, float]:
         ...
-   
     @targetAcceptance.setter
     def target_acceptance(self, arg0: tuple[float, float, float]) -> None:
         ...
-   
     @property
     def total_accepted(self) -> tuple[float, float, float]:
         ...
-   
     @property
     def total_constructed(self) -> tuple[float, float, float]:
         ...
-    
     @property
     def total_counts(self) -> tuple[float, float, float]:
         ...
-    
     @property
     def upper_limit(self) -> tuple[float, float, float]:
         ...
-    
     @upperLimit.setter
     def upper_limit(self, arg0: tuple[float, float, float]) -> None:
         ...
@@ -426,19 +396,15 @@ class WidomData:
         """
         Initialize the Widom-data object.
         """
-   
     @property
     def total(self) -> float:
         ...
-    
     @property
     def excess(self) -> float:
         ...
-    
     @property
     def ideal_gas(self) -> float:
         ...
-
 
 class LoadingData():
     """
@@ -924,6 +890,13 @@ class PropertyLambdaProbabilityHistogram():
     def histogram(self) -> collections.abc.Sequence[float]:
         ...
 
+    @property
+    def occupancy_count(self) -> float:
+        ...
+
+    @property
+    def occupancy_total(self) -> float:
+        ...
 
 
 class PropertyWidom:
