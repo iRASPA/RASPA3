@@ -58,9 +58,9 @@ export struct Thermostat
   std::size_t
       translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
   std::size_t translationalDegreesOfFreedom;  ///< Number of translational degrees of freedom.
-  std::size_t rotationalDegreesOfFreedom;      ///< Number of rotational degrees of freedom.
+  std::size_t rotationalDegreesOfFreedom;     ///< Number of rotational degrees of freedom.
   std::size_t thermostatChainLength;          ///< The length of the thermostat chain.
-  double timeScaleParameterThermostat{0.15};  ///< Time scale parameter for the thermostat.
+  double timeScaleParameterThermostat{0.15};   ///< Time scale parameter for the thermostat.
   std::size_t numberOfRespaSteps{5};          ///< Number of RESPA steps.
   std::size_t numberOfYoshidaSuzukiSteps{5};  ///< Number of Yoshida-Suzuki steps for integration.
 

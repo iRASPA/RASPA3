@@ -40,7 +40,7 @@ RunningEnergy Integrators::velocityVerlet(
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, 0.5 * dt);
+  updateVelocities(moleculeData, dt);
 
   // evolve the positions a full timestep
   updatePositions(moleculeData, dt);
@@ -60,7 +60,7 @@ RunningEnergy Integrators::velocityVerlet(
   updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, components);
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, 0.5 * dt);
+  updateVelocities(moleculeData, dt);
 
   // apply thermo for temperature control
   if (thermostat.has_value())

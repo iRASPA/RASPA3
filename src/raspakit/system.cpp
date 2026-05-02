@@ -452,7 +452,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
   for (std::size_t componentId = 0; const Component& component : components)
   {
-    if (component.swappable)
+    if (component.hasFractionalMolecule)
     {
       numberOfMoleculesPerComponent[componentId] = 0;
       for (std::size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)

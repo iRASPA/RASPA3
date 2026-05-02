@@ -50,6 +50,12 @@ export union simd_quatd
     return *this;
   }
 
+  simd_quatd& operator*=(const double& b)
+  {
+    this->ix *= b, this->iy *= b, this->iz *= b, this->r *= b;
+    return *this;
+  }
+
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const simd_quatd& q);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, simd_quatd& q);
 

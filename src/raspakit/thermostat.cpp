@@ -83,9 +83,8 @@ void Thermostat::initialize(RandomNumber &random)
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
-    thermostatMassTranslation[i] =
-        static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) *
-        timeScaleParameterThermostat * timeScaleParameterThermostat;
+    thermostatMassTranslation[i] = thermostatDegreesOfFreedomTranslation[i] *
+                                   timeScaleParameterThermostat * timeScaleParameterThermostat;
   }
 
   thermostatDegreesOfFreedomRotation[0] = static_cast<double>(rotationalDegreesOfFreedom) * Units::KB * temperature;
@@ -96,8 +95,8 @@ void Thermostat::initialize(RandomNumber &random)
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
-    thermostatMassRotation[i] =
-        static_cast<double>(rotationalDegreesOfFreedom) * timeScaleParameterThermostat * timeScaleParameterThermostat;
+    thermostatMassRotation[i] = thermostatDegreesOfFreedomRotation[i] *
+                                timeScaleParameterThermostat * timeScaleParameterThermostat;
   }
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)

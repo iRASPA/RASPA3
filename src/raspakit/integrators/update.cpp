@@ -30,8 +30,8 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::pair<do
   // Scale velocities and orientation momenta of each molecule
   for (Molecule& molecule : moleculeData)
   {
-    molecule.velocity = scaling.first * molecule.velocity;
-    molecule.orientationMomentum = scaling.second * molecule.orientationMomentum;
+    molecule.velocity *= scaling.first;
+    molecule.orientationMomentum *= scaling.second;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.scaleVelocities += end - begin;
@@ -70,8 +70,8 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, double dt)
   // Update velocities and orientation momenta based on gradients
   for (Molecule& molecule : moleculeData)
   {
-    molecule.velocity -= dt * molecule.gradient * molecule.invMass;
-    molecule.orientationMomentum -= dt * molecule.orientationGradient;
+    molecule.velocity -= 0.5 * dt * molecule.gradient * molecule.invMass;
+    molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
@@ -82,7 +82,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 {
   for (Molecule& molecule : moleculeData)
   {
-    // Draw reandom vector with variance kBT / m
+    // Draw random vector with variance kBT / m
     molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
                         std::sqrt(Units::KB * temperature / molecule.mass);
 
