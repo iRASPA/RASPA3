@@ -457,7 +457,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonDUdLambdaStatistics(
                  conv * dudlambda.second[binIndex].x);
     }
     */
-    std::vector<double> excessChemicalPotentialBlocks;
+    std::vector<double> excessChemicalPotentialBlocks(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = averagedExcessChemicalPotentialDUdlambda(blockIndex);
