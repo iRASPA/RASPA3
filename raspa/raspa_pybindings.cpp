@@ -693,6 +693,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("atom_data", &System::atomData)
       .def_readwrite("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_readwrite("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
+      .def_readwrite("time_step", &System::timeStep)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 

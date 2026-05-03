@@ -789,7 +789,13 @@ class RunningEnergy:
     def kinetic_energy(self) -> float:
         ...
     @property
-    def nose_hoover_energy(self) -> float:
+    def translational_kinetic_energy(self) -> float:
+        ...
+    @property
+    def rotational_kinetic_energy(self) -> float:
+        ...
+    @property
+    def thermostat_energy(self) -> float:
         ...
 
 class PropertyConservedEnergyEvolution():
@@ -814,7 +820,7 @@ class PropertyConservedEnergyEvolution():
         """
 
     @property
-    def result(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
+    def result(self) -> collections.abc.Sequence[RunningEnergy]:
         ...
 
 
@@ -939,7 +945,7 @@ class PropertyConventionalRadialDistributionFunction:
                  numberOf_blocks: int,
                  number_of_pseudo_atoms: int,
                  number_of_bins: int,
-                 range: double,
+                 range: float,
                  sample_every: int,
                  write_every: int) -> None:
         ...
@@ -948,9 +954,9 @@ class PropertyConventionalRadialDistributionFunction:
         """
 
     @property
-    def result(self) -> list[list[tuple[collections.abc.Sequence[double],
-                                        collections.abc.Sequence[double],
-                                        collections.abc.Sequence[double]]]]:
+    def result(self) -> list[list[tuple[collections.abc.Sequence[float],
+                                        collections.abc.Sequence[float],
+                                        collections.abc.Sequence[float]]]]:
         ...
 
 
@@ -968,8 +974,8 @@ class PropertyMeanSquaredDisplacement:
         """
 
     @property
-    def result(self) -> list[collections.abc.Sequence[double],
-                             collections.abc.Sequence[double]):
+    def result(self) -> list[collections.abc.Sequence[float],
+                             collections.abc.Sequence[float]):
         ...
 
 class PropertyVelocityAutoCorrelationFunction:
@@ -991,8 +997,8 @@ class PropertyVelocityAutoCorrelationFunction:
         """
 
     @property
-    def result(self) -> list[collections.abc.Sequence[double],
-                             collections.abc.Sequence[double]):
+    def result(self) -> list[collections.abc.Sequence[float],
+                             collections.abc.Sequence[float]):
         ...
 
 class Thermostat:
@@ -1001,7 +1007,8 @@ class Thermostat:
     """
     def __init__(self,
                  thermostat_chain_length: int,
-                 number_of_yoshida_suzuki_steps: int) -> None:
+                 number_of_yoshida_suzuki_steps: int,
+                 time_scale_parameter: float) -> None:
         ...
         """
         Initialize the Thermostat object.
