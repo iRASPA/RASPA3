@@ -107,8 +107,7 @@ export struct EnergyStatus
     }
     totalEnergy =
         intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
-        interEnergy.total() + polarizationEnergy +
-        Potentials::EnergyFactor(translationalKineticEnergy + rotationalKineticEnergy + noseHooverEnergy, 0.0);
+        interEnergy.total() + polarizationEnergy;
   }
 
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);

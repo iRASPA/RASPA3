@@ -149,6 +149,9 @@ void MolecularDynamics::setup()
 
   for (std::size_t system_id{0}; System& system : systems)
   {
+    system.forceField.initializeAutomaticCutOff(system.simulationBox);
+    system.forceField.initializeEwaldParameters(system.simulationBox);
+
     // switch the fractional molecule on in the first system, and off in all others
     if (system_id == 0uz)
       system.containsTheFractionalMolecule = true;
@@ -207,6 +210,7 @@ void MolecularDynamics::tearDown()
   output();
 }
 
+
 void MolecularDynamics::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::size_t totalNumberOfMolecules{0uz};
@@ -215,6 +219,12 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
+
+  for (System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+  }
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
