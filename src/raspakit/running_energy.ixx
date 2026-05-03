@@ -183,6 +183,9 @@ export struct RunningEnergy
    * \return The total kinetic energy.
    */
   inline double kineticEnergy() const { return translationalKineticEnergy + rotationalKineticEnergy; }
+  inline double translationalPartKineticEnergy() const { return translationalKineticEnergy; }
+  inline double rotationalPartKineticEnergy() const { return rotationalKineticEnergy; }
+  inline double thermostatEnergy() const { return NoseHooverEnergy; }
 
   /**
    * \brief Computes the total Ewald Fourier energy.

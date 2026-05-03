@@ -1399,6 +1399,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         std::size_t thermostatChainLength{5};
         std::size_t numberOfYoshidaSuzukiSteps{5};
+        double timeScaleParameterThermostat{0.15};
 
         std::string ensembleString = value["Ensemble"].get<std::string>();
         if (caseInSensStringCompare(ensembleString, "NVT"))
@@ -1407,7 +1408,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               Thermostat(systems[systemId].temperature, systems[systemId].timeStep,
                          systems[systemId].translationalDegreesOfFreedom,
                          systems[systemId].rotationalDegreesOfFreedom,
-                         thermostatChainLength, numberOfYoshidaSuzukiSteps);
+                         thermostatChainLength, numberOfYoshidaSuzukiSteps,
+                         timeScaleParameterThermostat);
         }
       }
 

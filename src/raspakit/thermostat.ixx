@@ -27,9 +27,10 @@ export struct Thermostat
    */
   Thermostat() {}
 
-  Thermostat(std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps):
+  Thermostat(std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps, double timeScaleParameterThermostat):
       thermostatChainLength(thermostatChainLength),
-      numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps)
+      numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps),
+      timeScaleParameterThermostat(timeScaleParameterThermostat)
   {
   }
       
@@ -49,7 +50,8 @@ export struct Thermostat
    */
   Thermostat(double temperature, double timeStep,
              std::size_t translationalDegreesOfFreedom, std::size_t rotationaleDegreesOfFreedom,
-             std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps);
+             std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
+             double timeScaleParameterThermostat);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -60,10 +62,9 @@ export struct Thermostat
   std::size_t translationalDegreesOfFreedom;  ///< Number of translational degrees of freedom.
   std::size_t rotationalDegreesOfFreedom;     ///< Number of rotational degrees of freedom.
   std::size_t thermostatChainLength;          ///< The length of the thermostat chain.
-  double timeScaleParameterThermostat{0.15};   ///< Time scale parameter for the thermostat.
   std::size_t numberOfRespaSteps{5};          ///< Number of RESPA steps.
   std::size_t numberOfYoshidaSuzukiSteps{5};  ///< Number of Yoshida-Suzuki steps for integration.
-
+  double timeScaleParameterThermostat{0.15};   ///< Time scale parameter for the thermostat.
 
   std::vector<double>
       thermostatDegreesOfFreedomTranslation;          ///< Degrees of freedom for the translational thermostat chain.

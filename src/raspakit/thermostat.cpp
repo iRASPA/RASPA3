@@ -10,13 +10,15 @@ import randomnumbers;
 
 Thermostat::Thermostat(double temperature, double timeStep, 
                        std::size_t translationalDegreesOfFreedom, std::size_t rotationalDegreesOfFreedom,
-                       std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps)
+                       std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
+                       double timeScaleParameterThermostat)
     : temperature(temperature),
       timeStep(timeStep),
       translationalDegreesOfFreedom(translationalDegreesOfFreedom),
       rotationalDegreesOfFreedom(rotationalDegreesOfFreedom),
       thermostatChainLength(thermostatChainLength),
       numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps),
+      timeScaleParameterThermostat(timeScaleParameterThermostat),
       thermostatDegreesOfFreedomTranslation(thermostatChainLength),
       thermostatForceTranslation(thermostatChainLength),
       thermostatVelocityTranslation(thermostatChainLength),
@@ -266,9 +268,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
   archive << t.thermostatDegreesOfFreedomTranslation;
   archive << t.thermostatDegreesOfFreedomRotation;
   archive << t.thermostatChainLength;
-  archive << t.timeScaleParameterThermostat;
   archive << t.numberOfRespaSteps;
   archive << t.numberOfYoshidaSuzukiSteps;
+  archive << t.timeScaleParameterThermostat;
 
   archive << t.thermostatForceTranslation;
   archive << t.thermostatVelocityTranslation;
@@ -305,9 +307,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   archive >> t.thermostatDegreesOfFreedomTranslation;
   archive >> t.thermostatDegreesOfFreedomRotation;
   archive >> t.thermostatChainLength;
-  archive >> t.timeScaleParameterThermostat;
   archive >> t.numberOfRespaSteps;
   archive >> t.numberOfYoshidaSuzukiSteps;
+  archive >> t.timeScaleParameterThermostat;
 
   archive >> t.thermostatForceTranslation;
   archive >> t.thermostatVelocityTranslation;

@@ -752,7 +752,9 @@ PYBIND11_MODULE(raspalib, m)
       .def("conserved_energy", &RunningEnergy::conservedEnergy)
       .def("potential_energy", &RunningEnergy::potentialEnergy)
       .def("kinetic_energy", &RunningEnergy::kineticEnergy)
-      .def_readonly("nose_hoover_energy", &RunningEnergy::NoseHooverEnergy)
+      .def("translational_kinetic_energy", &RunningEnergy::translationalPartKineticEnergy)
+      .def("rotational_kinetic_energy", &RunningEnergy::rotationalPartKineticEnergy)
+      .def("thermostat_energy", &RunningEnergy::thermostatEnergy)
       .def_readwrite("molecule_molecule_vdw", &RunningEnergy::moleculeMoleculeVDW)
       .def_readwrite("framework_molecule_vdw", &RunningEnergy::frameworkMoleculeVDW)
       .def("__repr__", &RunningEnergy::repr);
@@ -766,9 +768,10 @@ PYBIND11_MODULE(raspalib, m)
       .def("result", [](const PropertyConservedEnergyEvolution& p) { return Units::EnergyToKelvin * p.result();});
 
   pybind11::class_<Thermostat>(m, "Thermostat")
-      .def(pybind11::init<std::size_t, std::size_t>(),
+      .def(pybind11::init<std::size_t, std::size_t, double>(),
             pybind11::arg("thermostat_chain_length") = 5, 
-            pybind11::arg("number_of_yoshida_suzuki_steps") = 5);
+            pybind11::arg("number_of_yoshida_suzuki_steps") = 5,
+            pybind11::arg("time_scale_parameter") = 0.15);
 
   pybind11::class_<EnthalpyOfAdsorptionData>(m, "EnthalpyOfAdsorptionData")
       .def(pybind11::init<std::size_t>(),

@@ -3060,7 +3060,8 @@ void System::setThermostat(const std::optional<Thermostat> &thermo)
   {
     thermostat = Thermostat(temperature, timeStep, 
                             translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
-                            thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps);
+                            thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps,
+                            thermo->timeScaleParameterThermostat);
   }
 }
 

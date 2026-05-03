@@ -74,7 +74,7 @@ export struct PropertyMeanSquaredDisplacement
   std::optional<std::size_t> writeEvery;
   std::size_t maxNumberOfBlocksMSD;
   std::size_t countMSD{0uz};
-  std::size_t numberOfBlocksMSD;
+  std::size_t numberOfBlocksMSD{0uz};
   std::vector<std::size_t> blockLengthMSD;
 
   std::vector<std::vector<std::vector<std::size_t>>> msdSelfCount;
