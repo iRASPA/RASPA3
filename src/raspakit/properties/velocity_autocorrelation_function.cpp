@@ -120,8 +120,6 @@ std::vector<std::vector<VelocityAutoCorrelationFunctionData>> PropertyVelocityAu
 {
   std::vector<std::vector<VelocityAutoCorrelationFunctionData>> results(numberOfComponents);
 
-  double deltaT{1.0};
-
   for (std::size_t i = 0; i < numberOfComponents; ++i)
   {
     double fac = 1.0 / static_cast<double>(numberOfMoleculesPerComponent[i] * countAccumulatedVACF);
@@ -129,7 +127,7 @@ std::vector<std::vector<VelocityAutoCorrelationFunctionData>> PropertyVelocityAu
     for (std::size_t k = 0; k < bufferLengthVACF; ++k)
     {
       results[i].push_back(VelocityAutoCorrelationFunctionData(
-              static_cast<double>(k * sampleEvery) * deltaT,
+              static_cast<double>(k * sampleEvery) * timeStep,
               fac * accumulatedAcfVACF[i][k].w,
               fac * accumulatedAcfVACF[i][k].x, 
               fac * accumulatedAcfVACF[i][k].y,
