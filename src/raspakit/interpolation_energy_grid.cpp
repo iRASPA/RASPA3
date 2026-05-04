@@ -3580,7 +3580,7 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
  * This function extracts parameters specific to external field grids,
  * allowing to use this data in construction of external field interpolation grid in simulations.
  *
- * \param filename The name of the CUBE file containing the external field data.
+ * \param filename The name of the CUBE file containing the external field data. The file is expected to be column-major ordered
  * \return A pair containing the 3D grid of external field values and the grid dimensions.
  */
 const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
@@ -3597,13 +3597,23 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
 
   std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
   double value{};
-  for (std::size_t i = 0; i < gridDims.x * gridDims.y * gridDims.z; i++)
+
+  for (std::size_t iz = 0; iz < gridDims.z; iz++)
   {
-    if (!(infile >> value)){
-      throw std::runtime_error("Unexpected end of cube data: " + filename);
+    for (std::size_t iy = 0; iy < gridDims.y; iy++)
+    {
+      for (std::size_t ix = 0; ix < gridDims.x; ix++)
+      {
+        if (!(infile >> value)){
+          throw std::runtime_error("Unexpected end of cube data: " + filename);
+        }
+        std::size_t idx = ix * (gridDims.y * gridDims.z) 
+                        + iy * gridDims.z
+                        + iz;
+
+        gridFlat[idx] = value * Units::KelvinToEnergy;
+      }
     }
-    // TODO: add options for different input units
-    gridFlat[i] = value * Units::KelvinToEnergy;
   }
 
   return gridFlat;
