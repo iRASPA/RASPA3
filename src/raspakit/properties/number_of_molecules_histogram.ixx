@@ -20,16 +20,28 @@ export struct PropertyNumberOfMoleculesHistogram
 {
   PropertyNumberOfMoleculesHistogram() {};
 
-  PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range,
-                                     std::size_t size, std::size_t sampleEvery, std::size_t writeEvery)
-      : numberOfBlocks(numberOfBlocks),
+
+    PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range,
+                                       std::size_t sampleEvery, std::optional<std::size_t> writeEvery):
+        numberOfBlocks(numberOfBlocks),
         numberOfBins(range.second - range.first),
         range(range),
-        size(size),
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery)
+  {
+  }
+
+  PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::size_t numberOfComponents,
+                                     std::pair<std::size_t, std::size_t> range,
+                                     std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
+      : numberOfBlocks(numberOfBlocks),
+        numberOfBins(range.second - range.first),
+        numberOfComponents(numberOfComponents),
+        range(range),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         bookKeepingEnergyHistogram(std::vector<std::vector<std::vector<double>>>(
-            numberOfBlocks, std::vector<std::vector<double>>(numberOfBins, std::vector<double>(size)))),
+            numberOfBlocks, std::vector<std::vector<double>>(numberOfBins, std::vector<double>(numberOfComponents)))),
         numberOfCounts(numberOfBlocks)
   {
   }
@@ -38,10 +50,10 @@ export struct PropertyNumberOfMoleculesHistogram
 
   std::size_t numberOfBlocks;
   std::size_t numberOfBins;
+  std::size_t numberOfComponents;
   std::pair<std::size_t, std::size_t> range;
-  std::size_t size;
   std::size_t sampleEvery;
-  std::size_t writeEvery;
+  std::optional<std::size_t> writeEvery;
   std::vector<std::vector<std::vector<double>>> bookKeepingEnergyHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
@@ -51,7 +63,8 @@ export struct PropertyNumberOfMoleculesHistogram
 
   std::vector<std::vector<double>> averagedProbabilityHistogram(std::size_t blockIndex) const;
   std::vector<std::vector<double>> averagedProbabilityHistogram() const;
-  std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>> averageProbabilityHistogram() const;
+
+  std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>> result() const;
 
   void writeOutput(std::size_t systemId, std::vector<Component> &components, std::size_t currentCycle);
 

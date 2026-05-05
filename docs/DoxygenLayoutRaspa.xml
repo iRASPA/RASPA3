@@ -42,7 +42,7 @@
     </tab>
     <tab type="examples" visible="yes" title="" intro=""/>
     <tab type="pages" visible="yes" title="" intro=""/>
-    <tab type="user" url="../raspalib/html/index.html" visible="yes" title="Raspalib (python)"/>
+    <tab type="user" url="raspalib/html/index.html" visible="yes" title="Raspalib (python)"/>
   </navindex>
 
   <!-- Layout definition for a class page -->

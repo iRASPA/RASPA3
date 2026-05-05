@@ -1100,9 +1100,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(
-              jsonNumberOfBlocks, {minimumRangeNumberOfMoleculesHistogram, maximumRangeNumberOfMoleculesHistogram},
-              systems[systemId].components.size(), sampleNumberOfMoleculesHistogramEvery,
-              writeNumberOfMoleculesHistogramEvery);
+              jsonNumberOfBlocks, systems[systemId].components.size(),
+              {minimumRangeNumberOfMoleculesHistogram, maximumRangeNumberOfMoleculesHistogram},
+              sampleNumberOfMoleculesHistogramEvery, writeNumberOfMoleculesHistogramEvery);
         }
       }
 

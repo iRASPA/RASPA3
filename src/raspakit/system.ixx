@@ -397,6 +397,7 @@ export struct System
 
   void setSamplePDBMovie(const std::optional<SampleMovie> &movie);
 
+  void setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram> &hist);
   void setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist);
   void setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &grid);
 

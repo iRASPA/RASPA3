@@ -71,6 +71,7 @@ import sample_movies;
 import property_energy;
 import average_energy_type;
 import property_energy_histogram;
+import property_number_of_molecules_histogram;
 import property_lambda_probability_histogram;
 import property_density_grid;
 import property_number_of_molecules_evolution;
@@ -562,6 +563,14 @@ PYBIND11_MODULE(raspalib, m)
            return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
                                                                  {Units::EnergyToKelvin * bins, average, error};});
 
+  pybind11::class_<PropertyNumberOfMoleculesHistogram>(m, "PropertyNumberOfMoleculesHistogram")
+      .def(pybind11::init<std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
+                 pybind11::arg("number_of_blocks"), 
+                 pybind11::arg("value_range"),
+                 pybind11::arg("sample_every"), 
+                 pybind11::arg("write_every") = std::nullopt)
+       .def("result", &PropertyNumberOfMoleculesHistogram::result);
+
   pybind11::class_<PropertyConventionalRadialDistributionFunction>(m, "PropertyConventionalRadialDistributionFunction")
        .def(pybind11::init<std::size_t, double, std::size_t, std::optional<std::size_t>>(),
                  pybind11::arg("number_of_bins"), 
@@ -664,6 +673,9 @@ PYBIND11_MODULE(raspalib, m)
          pybind11::arg("property:") = std::nullopt)
       .def_readonly("average_energy_histogram", &System::averageEnergyHistogram)
       .def("set_average_energy_histogram", &System::setAverageEnergyHistogram,
+         pybind11::arg("property:") = std::nullopt)
+      .def_readonly("property_number_of_molecules_histogram", &System::averageNumberOfMoleculesHistogram)
+      .def("set_number_of_molecules_histogram", &System::setNumberOfMoleculesHistogram,
          pybind11::arg("property:") = std::nullopt)
       .def_readonly("sample_pdb_movie", &System::samplePDBMovie)
       .def("set_sample_pdb_movie", &System::setSamplePDBMovie,

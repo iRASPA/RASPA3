@@ -3073,6 +3073,16 @@ void System::setSamplePDBMovie(const std::optional<SampleMovie> &movie)
   }
 }
 
+void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram> &hist)
+{
+  if (hist.has_value())
+  {
+    averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(hist->numberOfBlocks, components.size(), 
+                                                                hist->range, hist->sampleEvery, hist->writeEvery);
+  }
+}
+
+
 void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist)
 {
   if (hist.has_value())

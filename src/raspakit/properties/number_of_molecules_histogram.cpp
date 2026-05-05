@@ -87,7 +87,7 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
 std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram(
     std::size_t blockIndex) const
 {
-  std::vector<std::vector<double>> averagedData(numberOfBins, std::vector<double>(size));
+  std::vector<std::vector<double>> averagedData(numberOfBins, std::vector<double>(numberOfComponents));
   std::transform(bookKeepingEnergyHistogram[blockIndex].begin(), bookKeepingEnergyHistogram[blockIndex].end(),
                  averagedData.begin(),
                  [&](const std::vector<double> &sample) { return sample / numberOfCounts[blockIndex]; });
@@ -96,7 +96,7 @@ std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedPro
 
 std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram() const
 {
-  std::vector<std::vector<double>> summedBlocks(numberOfBins, std::vector<double>(size));
+  std::vector<std::vector<double>> summedBlocks(numberOfBins, std::vector<double>(numberOfComponents));
   for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex].begin(),
@@ -104,7 +104,7 @@ std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedPro
                    [](const std::vector<double> &a, const std::vector<double> &b) { return a + b; });
   }
 
-  std::vector<std::vector<double>> average(numberOfBins, std::vector<double>(size));
+  std::vector<std::vector<double>> average(numberOfBins, std::vector<double>(numberOfComponents));
   std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
                  [&](const std::vector<double> &sample) { return sample / totalNumberOfCounts; });
 
@@ -112,11 +112,11 @@ std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedPro
 }
 
 std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
+PropertyNumberOfMoleculesHistogram::result() const
 {
   std::vector<std::vector<double>> average = averagedProbabilityHistogram();
 
-  std::vector<std::vector<double>> sumOfSquares(numberOfBins, std::vector<double>(size));
+  std::vector<std::vector<double>> sumOfSquares(numberOfBins, std::vector<double>(numberOfComponents));
   std::size_t numberOfSamples = 0;
   for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
@@ -132,17 +132,17 @@ PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
       ++numberOfSamples;
     }
   }
-  std::vector<std::vector<double>> confidenceIntervalError(numberOfBins, std::vector<double>(size));
+  std::vector<std::vector<double>> confidenceIntervalError(numberOfBins, std::vector<double>(numberOfComponents));
   if (numberOfSamples >= 3)
   {
     std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    std::vector<std::vector<double>> standardDeviation(numberOfBins, std::vector<double>(size));
+    std::vector<std::vector<double>> standardDeviation(numberOfBins, std::vector<double>(numberOfComponents));
     std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
                    [&](const std::vector<double> &sumofsquares)
                    { return sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
 
-    std::vector<std::vector<double>> standardError(numberOfBins, std::vector<double>(size));
+    std::vector<std::vector<double>> standardError(numberOfBins, std::vector<double>(numberOfComponents));
     std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
                    [&](const std::vector<double> &sigma)
                    { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
@@ -157,7 +157,8 @@ PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
 void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::vector<Component> &components,
                                                      std::size_t currentCycle)
 {
-  if (currentCycle % writeEvery != 0uz) return;
+  if (!writeEvery.has_value()) return;
+  if (currentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("number_of_molecules_histogram");
 
@@ -166,20 +167,20 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::
 
   stream_output << std::format("# number_of_molecules_histogram, number of counts: {}\n", totalNumberOfCounts);
   stream_output << "# column 1: number of molecules [-]\n";
-  for (std::size_t i = 0; i < size; ++i)
+  for (std::size_t i = 0; i < numberOfComponents; ++i)
   {
     stream_output << std::format("# column {}: number of molecules component {} [-]\n", 2 * i + 2, components[i].name);
     stream_output << std::format("# column {}: number of molecules component {} error [-]\n", 2 * i + 3,
                                  components[i].name);
   }
 
-  auto [average, error] = averageProbabilityHistogram();
+  auto [average, error] = result();
 
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
     stream_output << std::format("{}", bin + range.first);
 
-    for (std::size_t i = 0; i < size; ++i)
+    for (std::size_t i = 0; i < numberOfComponents; ++i)
     {
       stream_output << std::format(" {} {}", average[bin][i], error[bin][i]);
     }
@@ -193,8 +194,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << hist.numberOfBlocks;
   archive << hist.numberOfBins;
+  archive << hist.numberOfComponents;
   archive << hist.range;
-  archive << hist.size;
   archive << hist.sampleEvery;
   archive << hist.writeEvery;
   archive << hist.bookKeepingEnergyHistogram;
@@ -221,8 +222,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyNumb
 
   archive >> hist.numberOfBlocks;
   archive >> hist.numberOfBins;
+  archive >> hist.numberOfComponents;
   archive >> hist.range;
-  archive >> hist.size;
   archive >> hist.sampleEvery;
   archive >> hist.writeEvery;
   archive >> hist.bookKeepingEnergyHistogram;

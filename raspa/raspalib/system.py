@@ -129,6 +129,10 @@ class System():
         ...
 
     @property
+    def property_number_of_molecules_histogram(self) -> PropertyNumberOfMoleculesHistogram | None:
+        """Return the number of molecule-histogram property, if configured."""
+
+    @property
     def average_energy_histogram(self) -> PropertyEnergyHistogram | None:
         """Return the energy-histogram property, if configured."""
         ...
@@ -174,6 +178,10 @@ class System():
 
     def set_sample_pdb_movie(self, sample_movie: SampleMovie) -> None:
         """Enable/configure PDB-movie sampling."""
+        ...
+
+    def set_number_of_molecules_histogram(self, property: PropertyNumberOfMoleculesHistogram) -> None:
+        """Attach a number of molecules-histogram property configuration."""
         ...
 
     def set_average_energy_histogram(self, property: PropertyEnergyHistogram) -> None:

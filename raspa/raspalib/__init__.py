@@ -66,6 +66,7 @@ __all__ = [
     "AverageEnergyType",
     "PropertyEnergy",
     "PropertyEnergyHistogram",
+    "PropertyNumberOfMoleculesHistogram",
     "PropertyLoading",
     "PropertyNumberOfMoleculesEvolution",
     "PropertyVolumeEvolution",

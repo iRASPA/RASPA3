@@ -11,7 +11,8 @@ if(DOXYGEN_PATH_NOTFOUND)
           ${CMAKE_CURRENT_LIST_DIR}/doxygen-awesome-sidebar-only.css)
 
      add_custom_target(documentation 
-       COMMAND ${DOXYGEN_PATH} ${CMAKE_CURRENT_LIST_DIR}/Doxyfile_raspalib WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+       COMMAND ${DOXYGEN_PATH} ${CMAKE_CURRENT_LIST_DIR}/Doxyfile_raspalib WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
+                      BYPRODUCTS ${CMAKE_BINARY_DIR}/html/raspalib
        COMMAND ${DOXYGEN_PATH} ${CMAKE_CURRENT_LIST_DIR}/Doxyfile_raspa WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                      BYPRODUCTS ${CMAKE_BINARY_DIR}/html/index.html
      )
