@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -115,9 +115,15 @@ Collaboration diagram for MCMoveCpuTime:</div>
 <div class="dyncontent">
 <div class="center"><img src="structMCMoveCpuTime__coll__graph.png" border="0" usemap="#aMCMoveCpuTime_coll__map" alt="Collaboration graph"/></div>
 <map name="aMCMoveCpuTime_coll__map" id="aMCMoveCpuTime_coll__map">
-<area shape="rect" title="Stores CPU timing statistics for various Monte Carlo moves." alt="" coords="22,137,159,163"/>
-<area shape="rect" title=" " alt="" coords="5,5,176,75"/>
-<area shape="poly" title=" " alt="" coords="93,88,93,137,88,137,88,88"/>
+<area shape="rect" title="Stores CPU timing statistics for various Monte Carlo moves." alt="" coords="967,35,1104,60"/>
+<area shape="rect" title=" " alt="" coords="639,5,844,89"/>
+<area shape="poly" title=" " alt="" coords="858,45,966,45,966,50,858,50"/>
+<area shape="rect" title=" " alt="" coords="363,20,525,75"/>
+<area shape="poly" title=" " alt="" coords="539,45,638,45,638,50,539,50"/>
+<area shape="rect" title=" " alt="" coords="193,35,280,60"/>
+<area shape="poly" title=" " alt="" coords="294,45,362,45,362,50,294,50"/>
+<area shape="rect" title=" " alt="" coords="5,27,144,67"/>
+<area shape="poly" title=" " alt="" coords="157,45,193,45,193,50,157,50"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -154,9 +160,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>clearTimingStatistics
 <tr class="memitem:afae978f6af042cf79c4f22ef65201417" id="r_afae978f6af042cf79c4f22ef65201417"><td class="memItemLeft" align="right" valign="top"><a id="afae978f6af042cf79c4f22ef65201417" name="afae978f6af042cf79c4f22ef65201417"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>MCMoveCpuTime</b> (const <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;)=default</td></tr>
 <tr class="separator:afae978f6af042cf79c4f22ef65201417"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae4998ef53b9e2e99caa832710f6a3d84" id="r_ae4998ef53b9e2e99caa832710f6a3d84"><td class="memItemLeft" align="right" valign="top"><a id="ae4998ef53b9e2e99caa832710f6a3d84" name="ae4998ef53b9e2e99caa832710f6a3d84"></a>
-std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator[]</b> (const MoveTypes &amp;move)</td></tr>
-<tr class="separator:ae4998ef53b9e2e99caa832710f6a3d84"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad2c0a43940b5ab0a893959ca42cf1385" id="r_ad2c0a43940b5ab0a893959ca42cf1385"><td class="memItemLeft" align="right" valign="top"><a id="ad2c0a43940b5ab0a893959ca42cf1385" name="ad2c0a43940b5ab0a893959ca42cf1385"></a>
+std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator[]</b> (const Move::Types &amp;move)</td></tr>
+<tr class="separator:ad2c0a43940b5ab0a893959ca42cf1385"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae9ce9191dae79a22f2fbd1ecf21bb5d4" id="r_ae9ce9191dae79a22f2fbd1ecf21bb5d4"><td class="memItemLeft" align="right" valign="top"><a id="ae9ce9191dae79a22f2fbd1ecf21bb5d4" name="ae9ce9191dae79a22f2fbd1ecf21bb5d4"></a>
 <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator=</b> (const <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;b)</td></tr>
 <tr class="separator:ae9ce9191dae79a22f2fbd1ecf21bb5d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -170,9 +176,9 @@ Public Attributes</h2></td></tr>
 std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
 <tr class="memdesc:a0030f19522a2a164aaa19b0551a91ef9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization purposes. <br /></td></tr>
 <tr class="separator:a0030f19522a2a164aaa19b0551a91ef9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a357424fbd494dfdd949c73c9e326934e" id="r_a357424fbd494dfdd949c73c9e326934e"><td class="memItemLeft" align="right" valign="top"><a id="a357424fbd494dfdd949c73c9e326934e" name="a357424fbd494dfdd949c73c9e326934e"></a>
-std::map&lt; MoveTypes, std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>timingMap</b></td></tr>
-<tr class="separator:a357424fbd494dfdd949c73c9e326934e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae9b6eab98af0703f352a275c560c1df0" id="r_ae9b6eab98af0703f352a275c560c1df0"><td class="memItemLeft" align="right" valign="top"><a id="ae9b6eab98af0703f352a275c560c1df0" name="ae9b6eab98af0703f352a275c560c1df0"></a>
+std::array&lt; std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt;, std::to_underlying(Move::Types::Count)&gt;&#160;</td><td class="memItemRight" valign="bottom"><b>timingMap</b></td></tr>
+<tr class="separator:ae9b6eab98af0703f352a275c560c1df0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1db5bfd79186edf851b6b3f67d729b84" id="r_a1db5bfd79186edf851b6b3f67d729b84"><td class="memItemLeft" align="right" valign="top"><a id="a1db5bfd79186edf851b6b3f67d729b84" name="a1db5bfd79186edf851b6b3f67d729b84"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>propertySampling</b> {0.0}</td></tr>
 <tr class="memdesc:a1db5bfd79186edf851b6b3f67d729b84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on property sampling. <br /></td></tr>

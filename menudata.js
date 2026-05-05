@@ -24,7 +24,6 @@
 */
 var menudata={children:[
 {text:"Main Page",url:"index.html"},
-{text:"Related Pages",url:"pages.html"},
 {text:"Modules",url:"modules.html",children:[
 {text:"Modules List",url:"modules.html"}]},
 {text:"Namespaces",url:"namespaces.html",children:[
@@ -104,4 +103,6 @@ var menudata={children:[
 {text:"v",url:"functions_vars_v.html#index_v"},
 {text:"w",url:"functions_vars_w.html#index_w"}]},
 {text:"Enumerations",url:"functions_enum.html"},
-{text:"Related Symbols",url:"functions_rela.html"}]}]}]}
+{text:"Related Symbols",url:"functions_rela.html"}]}]},
+{text:"Related Pages",url:"pages.html"},
+{text:"Raspalib (python)",url:"raspalib/html/index.html"}]}

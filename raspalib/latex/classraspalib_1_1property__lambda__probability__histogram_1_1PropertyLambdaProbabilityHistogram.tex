@@ -1,0 +1,78 @@
+\doxysection{raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram Class Reference}
+\hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram}{}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram}\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a492369f1ec8e7a72fb52c69c36123e07}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a492369f1ec8e7a72fb52c69c36123e07} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, int number\+\_\+of\+\_\+blocks, int number\+\_\+of\+\_\+sample\+\_\+points)
+\item 
+tuple\mbox{[}collections.\+abc.\+Sequence\mbox{[}float\mbox{]}, collections.\+abc.\+Sequence\mbox{[}float\mbox{]}\mbox{]} \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_ae9d586b952dda5953e76fc3da937bf92}{normalized\+\_\+average\+\_\+probability\+\_\+histogram}} (self)
+\item 
+collections.\+abc.\+Sequence\mbox{[}float\mbox{]} \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a4db4fa6c22d57d7e30b6d5e3259cbd0c}{bias\+\_\+factor}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aad58a403bca5c7a5e356c2395c10b627}{bias\+\_\+factor}} (self, collections.\+abc.\+Sequence\mbox{[}float\mbox{]} arg0)
+\item 
+collections.\+abc.\+Sequence\mbox{[}float\mbox{]} \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aa10b81e5e37b3f0990b2d19f7bad2816}{histogram}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a130216e9f0da77a8da92ee3fabb7bf2a}{occupancy\+\_\+count}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a5509a031658032549578aaaec0f446c1}{occupancy\+\_\+total}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Configure and access lambda-probability histogram statistics in RASPA.
+
+This property stores raw and normalized lambda occupancy information used in
+expanded-ensemble or free-energy style workflows.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a4db4fa6c22d57d7e30b6d5e3259cbd0c}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a4db4fa6c22d57d7e30b6d5e3259cbd0c} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!bias\_factor@{bias\_factor}}
+\index{bias\_factor@{bias\_factor}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{bias\_factor()}{bias\_factor()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}float\mbox{]} raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+bias\+\_\+factor (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the lambda-dependent bias factors.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aad58a403bca5c7a5e356c2395c10b627}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aad58a403bca5c7a5e356c2395c10b627} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!bias\_factor@{bias\_factor}}
+\index{bias\_factor@{bias\_factor}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{bias\_factor()}{bias\_factor()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+bias\+\_\+factor (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Sequence\mbox{[}float\mbox{]}}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set the lambda-dependent bias factors.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aa10b81e5e37b3f0990b2d19f7bad2816}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_aa10b81e5e37b3f0990b2d19f7bad2816} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!histogram@{histogram}}
+\index{histogram@{histogram}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{histogram()}{histogram()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}float\mbox{]} raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return raw histogram counts/probabilities per lambda bin.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_ae9d586b952dda5953e76fc3da937bf92}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_ae9d586b952dda5953e76fc3da937bf92} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!normalized\_average\_probability\_histogram@{normalized\_average\_probability\_histogram}}
+\index{normalized\_average\_probability\_histogram@{normalized\_average\_probability\_histogram}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{normalized\_average\_probability\_histogram()}{normalized\_average\_probability\_histogram()}}
+{\footnotesize\ttfamily  tuple\mbox{[}collections.\+abc.\+Sequence\mbox{[}float\mbox{]}, collections.\+abc.\+Sequence\mbox{[}float\mbox{]}\mbox{]} raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+normalized\+\_\+average\+\_\+probability\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return lambda grid points and normalized average probabilities.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a130216e9f0da77a8da92ee3fabb7bf2a}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a130216e9f0da77a8da92ee3fabb7bf2a} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!occupancy\_count@{occupancy\_count}}
+\index{occupancy\_count@{occupancy\_count}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{occupancy\_count()}{occupancy\_count()}}
+{\footnotesize\ttfamily  float raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+occupancy\+\_\+count (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the counted number of occupied histogram samples.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a5509a031658032549578aaaec0f446c1}\label{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram_a5509a031658032549578aaaec0f446c1} 
+\index{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}!occupancy\_total@{occupancy\_total}}
+\index{occupancy\_total@{occupancy\_total}!raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram@{raspalib.property\_lambda\_probability\_histogram.PropertyLambdaProbabilityHistogram}}
+\doxysubsubsection{\texorpdfstring{occupancy\_total()}{occupancy\_total()}}
+{\footnotesize\ttfamily  float raspalib.\+property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+Property\+Lambda\+Probability\+Histogram.\+occupancy\+\_\+total (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the total occupancy accumulator for normalization.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/property\+\_\+lambda\+\_\+probability\+\_\+histogram.\+py\end{DoxyCompactItemize}

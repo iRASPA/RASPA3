@@ -12,11 +12,12 @@ var structMolecularDynamics =
     ] ],
     [ "MolecularDynamics", "structMolecularDynamics.html#aae3b95bbba24b7aae2fb1a38e9f849c8", null ],
     [ "MolecularDynamics", "structMolecularDynamics.html#a4ab78235f0decb00691b0d0d01a6323e", null ],
+    [ "MolecularDynamics", "structMolecularDynamics.html#ad002e8baea98cc46fcf84bcaa1ff0d0e", null ],
     [ "createOutputFiles", "structMolecularDynamics.html#afa9d9df2bb64849093dacbf0bf49c2c6", null ],
-    [ "equilibrate", "structMolecularDynamics.html#a62516c9f0e4aa163518be46248ad6b3b", null ],
-    [ "initialize", "structMolecularDynamics.html#a6c3d25b2487c2604eebbbe5ed69a8c21", null ],
+    [ "equilibrate", "structMolecularDynamics.html#a0c76b495fc4b4074197a065411a6a446", null ],
+    [ "initialize", "structMolecularDynamics.html#abe2bd7b225b9efe7fa7484b67c5ec7bd", null ],
     [ "output", "structMolecularDynamics.html#af76347f9d9fe461095a5fe35ad2ebc5d", null ],
-    [ "production", "structMolecularDynamics.html#a6631cfb1fbd151deb80b5124f0239d45", null ],
+    [ "production", "structMolecularDynamics.html#ae0267447ac40cad73b1314dfb6fcf39a", null ],
     [ "randomSystem", "structMolecularDynamics.html#a280e303db75aa4e154e9e80ecb7c37a1", null ],
     [ "run", "structMolecularDynamics.html#ab7ded600796e05067ce5f7ef8b5cad12", null ],
     [ "currentCycle", "structMolecularDynamics.html#a3d54ae3ba63a76677d0ef50dca32e629", null ],
@@ -27,6 +28,8 @@ var structMolecularDynamics =
     [ "numberOfInitializationCycles", "structMolecularDynamics.html#a3f4c8c6a9632d6f5cf173a306c6163b4", null ],
     [ "numberOfSteps", "structMolecularDynamics.html#a46293eba8df21349a1205b5f682391e9", null ],
     [ "optimizeMCMovesEvery", "structMolecularDynamics.html#ab028def70a530ddf588dbb171dceab5c", null ],
+    [ "outputJsonFileNames", "structMolecularDynamics.html#ad5f61e1fbc534d906e5da3c3fd120485", null ],
+    [ "outputJsons", "structMolecularDynamics.html#ab196083e67226586f7b2f000ab2e6d0c", null ],
     [ "printEvery", "structMolecularDynamics.html#adaa7f392a3023f622bc3e1f0813275ab", null ],
     [ "random", "structMolecularDynamics.html#a94261bdd9dd2dce87467d23d3d768c10", null ],
     [ "rescaleWangLandauEvery", "structMolecularDynamics.html#a578a489e9d81c5088e5f61026caf5ec3", null ],
@@ -35,5 +38,6 @@ var structMolecularDynamics =
     [ "systems", "structMolecularDynamics.html#a406eb46f2dbaeba08f8ab206fde46621", null ],
     [ "totalSimulationTime", "structMolecularDynamics.html#a8dd01b5fc7761dcff3ec2d9e382e75f4", null ],
     [ "versionNumber", "structMolecularDynamics.html#a7657283afdf2a5d536772c8d85acfaf2", null ],
-    [ "writeBinaryRestartEvery", "structMolecularDynamics.html#a45f28882fb56c8f59c2470f5a8c862c2", null ]
+    [ "writeBinaryRestartEvery", "structMolecularDynamics.html#a45f28882fb56c8f59c2470f5a8c862c2", null ],
+    [ "writeRestartEvery", "structMolecularDynamics.html#a50f5a91d46a4b29487b7e458f38ea4e8", null ]
 ];

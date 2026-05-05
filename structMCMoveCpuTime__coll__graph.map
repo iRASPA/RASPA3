@@ -1,5 +1,11 @@
 <map id="MCMoveCpuTime" name="MCMoveCpuTime">
-<area shape="rect" id="Node000001" title="Stores CPU timing statistics for various Monte Carlo moves." alt="" coords="22,137,159,163"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,176,75"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,88,93,137,88,137,88,88"/>
+<area shape="rect" id="Node000001" title="Stores CPU timing statistics for various Monte Carlo moves." alt="" coords="967,35,1104,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="639,5,844,89"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="858,45,966,45,966,50,858,50"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="363,20,525,75"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="539,45,638,45,638,50,539,50"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="193,35,280,60"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="294,45,362,45,362,50,294,50"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="5,27,144,67"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="157,45,193,45,193,50,157,50"/>
 </map>

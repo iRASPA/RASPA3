@@ -1,0 +1,313 @@
+\doxysection{raspalib.\+system.\+System Class Reference}
+\hypertarget{classraspalib_1_1system_1_1System}{}\label{classraspalib_1_1system_1_1System}\index{raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1system_1_1System_a846529b891655966a433907f323622d8}\label{classraspalib_1_1system_1_1System_a846529b891655966a433907f323622d8} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField}{Force\+Field}} force\+\_\+field, \mbox{\hyperlink{classraspalib_1_1simulation__box_1_1SimulationBox}{Simulation\+Box}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a7c91a4b1c95093ae61cedebc40022cb8}{simulation\+\_\+box}}=None, bool has\+\_\+external\+\_\+field=False, float external\+\_\+temperature=300.\+0, float\texorpdfstring{$\vert$}{|}None external\+\_\+pressure=None, float helium\+\_\+void\+\_\+fraction=0.\+29, \mbox{\hyperlink{classraspalib_1_1framework_1_1Framework}{Framework}}\texorpdfstring{$\vert$}{|}None framework\+\_\+components=None, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1component_1_1Component}{Component}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a6a294972845036590f6e5dcd8f0811c5}{components}}=\mbox{[}$\,$\mbox{]}, collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float\mbox{]}\mbox{]} initial\+\_\+positions=\mbox{[}$\,$\mbox{]}, collections.\+abc.\+Sequence\mbox{[}int\mbox{]} initial\+\_\+number\+\_\+of\+\_\+molecules=\mbox{[}$\,$\mbox{]}, int number\+\_\+of\+\_\+blocks=5, \mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}} system\+\_\+probabilities=\mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}}())
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1component_1_1Component}{Component}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a6a294972845036590f6e5dcd8f0811c5}{components}} (self)
+\item 
+collections.\+abc.\+Sequence\mbox{[}int\mbox{]} \mbox{\hyperlink{classraspalib_1_1system_1_1System_aee3416b05f76ef0f015a965d7e5e7579}{number\+\_\+of\+\_\+molecules\+\_\+per\+\_\+component}} (self)
+\item 
+float\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a297cace79c5fa364b2ced93b1071bea8}{framework\+\_\+mass}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1mc__move__statistics_1_1MCMoveStatistics}{MCMove\+Statistics}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a2ee2e5eb3614bfc25310a32f8fb893f0}{mc\+\_\+moves\+\_\+statistics}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1simulation__box_1_1SimulationBox}{Simulation\+Box}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a7c91a4b1c95093ae61cedebc40022cb8}{simulation\+\_\+box}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1loading__data_1_1LoadingData}{Loading\+Data}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a8a2f78a7f1d9041e2d762c5b2e42d7ef}{loadings}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__loading_1_1PropertyLoading}{Property\+Loading}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a58fc5ad294c16333bebde1945f8c98d7}{average\+\_\+loadings}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__enthalpy_1_1PropertyEnthalpy}{Property\+Enthalpy}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_a30e6ad18820a812621a8026acf9ac11c}{average\+\_\+enthalpies\+\_\+of\+\_\+adsorption}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1sample__movie_1_1SampleMovie}{Sample\+Movie}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a5bfa974e0348dc7981105e22451be489}{sample\+\_\+pdb\+\_\+movie}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__energy_1_1PropertyEnergy}{Property\+Energy}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_ae651fb6d62fb48c5a583e7d2b007227b}{average\+\_\+energies}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__pressure_1_1PropertyPressure}{Property\+Pressure}} \mbox{\hyperlink{classraspalib_1_1system_1_1System_af9c8e5c330eb0981a3520225459f11ba}{average\+\_\+pressure}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__density__grid_1_1PropertyDensityGrid}{Property\+Density\+Grid}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a4ec4ca45691311cdf2d7601554ac9877}{property\+\_\+density\+\_\+grid}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_afd59c491c5924c7172376717d4f2ac9e}{property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__energy__histogram_1_1PropertyEnergyHistogram}{Property\+Energy\+Histogram}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a6c6cafe62a9c440faa74bc061f309103}{average\+\_\+energy\+\_\+histogram}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a42cb285569963e0cf37138f4a330be09}{average\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__conventional__radial__distribution__function_1_1PropertyConventionalRadialDistributionFunction}{Property\+Conventional\+Radial\+Distribution\+Function}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a0627e4865075cd88471c2ab1d2c0ee5a}{property\+\_\+conventional\+\_\+rdf}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__mean__squared__displacement_1_1PropertyMeanSquaredDisplacement}{Property\+Mean\+Squared\+Displacement}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a0c4a5ba0a43ff8e24e2bcc34c0fa751a}{property\+\_\+msd}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__velocity__autocorrelation__function_1_1PropertyVelocityAutoCorrelationFunction}{Property\+Velocity\+Auto\+Correlation\+Function}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_ac5811cb8144f3932a4f84314739fa1a9}{property\+\_\+vacf}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__evolution_1_1PropertyNumberOfMoleculesEvolution}{Property\+Number\+Of\+Molecules\+Evolution}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a887e596341a34a0c69f18ca45c9dd42a}{property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+evolution}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__volume__evolution_1_1PropertyVolumeEvolution}{Property\+Volume\+Evolution}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_ad91a549121a4e777ac36118e70e94c8b}{property\+\_\+volume\+\_\+evolution}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__conserved__energy__evolution_1_1PropertyConservedEnergyEvolution}{Property\+Conserved\+Energy\+Evolution}}\texorpdfstring{$\vert$}{|}None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a5ca605d2d181b82b71931adb5e6851c0}{property\+\_\+conserved\+\_\+energy\+\_\+evolution}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_aab8f739d86187bd36fb0a2424db83fe7}{set\+\_\+thermostat}} (self, \mbox{\hyperlink{classraspalib_1_1thermostat_1_1Thermostat}{Thermostat}} rdf)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a6a7785b6f8823565b33331ada093afe7}{set\+\_\+sample\+\_\+pdb\+\_\+movie}} (self, \mbox{\hyperlink{classraspalib_1_1sample__movie_1_1SampleMovie}{Sample\+Movie}} sample\+\_\+movie)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a292fc8f38881978e31a623d6f98bf474}{set\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram}} (self, \mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a934a991e210064559a039d26ab0cbe7a}{set\+\_\+average\+\_\+energy\+\_\+histogram}} (self, \mbox{\hyperlink{classraspalib_1_1property__energy__histogram_1_1PropertyEnergyHistogram}{Property\+Energy\+Histogram}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a9043a34d26b5f9e1a3b00ddd1f966ed5}{set\+\_\+property\+\_\+density\+\_\+grid}} (self, \mbox{\hyperlink{classraspalib_1_1property__density__grid_1_1PropertyDensityGrid}{Property\+Density\+Grid}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a2e7decd1a6c3a70c995e323fd5991306}{set\+\_\+property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+evolution}} (self, \mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__evolution_1_1PropertyNumberOfMoleculesEvolution}{Property\+Number\+Of\+Molecules\+Evolution}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_a547712b23dddca576b49631d365807fa}{set\+\_\+property\+\_\+volume\+\_\+evolution}} (self, \mbox{\hyperlink{classraspalib_1_1property__volume__evolution_1_1PropertyVolumeEvolution}{Property\+Volume\+Evolution}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_af81842b6b1af92c91d810d7c770aeea3}{set\+\_\+property\+\_\+conserved\+\_\+energy\+\_\+evolution}} (self, \mbox{\hyperlink{classraspalib_1_1property__conserved__energy__evolution_1_1PropertyConservedEnergyEvolution}{Property\+Conserved\+Energy\+Evolution}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_ae842d22e61903b8516f156f0d1d03fe0}{set\+\_\+property\+\_\+conventional\+\_\+rdf}} (self, \mbox{\hyperlink{classraspalib_1_1property__conventional__radial__distribution__function_1_1PropertyConventionalRadialDistributionFunction}{Property\+Conventional\+Radial\+Distribution\+Function}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_ae40bfccd0de057f99b42c8ff26d41d45}{set\+\_\+property\+\_\+msd}} (self, \mbox{\hyperlink{classraspalib_1_1property__mean__squared__displacement_1_1PropertyMeanSquaredDisplacement}{Property\+Mean\+Squared\+Displacement}} property)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1system_1_1System_ae456f314281900b9073872499d7be1ba}{set\+\_\+property\+\_\+msd}} (self, \mbox{\hyperlink{classraspalib_1_1property__velocity__autocorrelation__function_1_1PropertyVelocityAutoCorrelationFunction}{Property\+Velocity\+Auto\+Correlation\+Function}} property)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Represent a full simulation system configuration in RASPA.
+
+A system combines force-field settings, box geometry, framework/component
+definitions, initial state, move probabilities, and optional sampled
+properties.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1system_1_1System_ae651fb6d62fb48c5a583e7d2b007227b}\label{classraspalib_1_1system_1_1System_ae651fb6d62fb48c5a583e7d2b007227b} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_energies@{average\_energies}}
+\index{average\_energies@{average\_energies}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_energies()}{average\_energies()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__energy_1_1PropertyEnergy}{Property\+Energy}} raspalib.\+system.\+System.\+average\+\_\+energies (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the average-energy property accessor.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a6c6cafe62a9c440faa74bc061f309103}\label{classraspalib_1_1system_1_1System_a6c6cafe62a9c440faa74bc061f309103} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_energy\_histogram@{average\_energy\_histogram}}
+\index{average\_energy\_histogram@{average\_energy\_histogram}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_energy\_histogram()}{average\_energy\_histogram()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__energy__histogram_1_1PropertyEnergyHistogram}{Property\+Energy\+Histogram}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+average\+\_\+energy\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the energy-histogram property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a30e6ad18820a812621a8026acf9ac11c}\label{classraspalib_1_1system_1_1System_a30e6ad18820a812621a8026acf9ac11c} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_enthalpies\_of\_adsorption@{average\_enthalpies\_of\_adsorption}}
+\index{average\_enthalpies\_of\_adsorption@{average\_enthalpies\_of\_adsorption}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_enthalpies\_of\_adsorption()}{average\_enthalpies\_of\_adsorption()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__enthalpy_1_1PropertyEnthalpy}{Property\+Enthalpy}} raspalib.\+system.\+System.\+average\+\_\+enthalpies\+\_\+of\+\_\+adsorption (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the average enthalpy-of-adsorption property accessor.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a58fc5ad294c16333bebde1945f8c98d7}\label{classraspalib_1_1system_1_1System_a58fc5ad294c16333bebde1945f8c98d7} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_loadings@{average\_loadings}}
+\index{average\_loadings@{average\_loadings}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_loadings()}{average\_loadings()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__loading_1_1PropertyLoading}{Property\+Loading}} raspalib.\+system.\+System.\+average\+\_\+loadings (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the average-loading property accessor.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a42cb285569963e0cf37138f4a330be09}\label{classraspalib_1_1system_1_1System_a42cb285569963e0cf37138f4a330be09} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_number\_of\_molecules\_histogram@{average\_number\_of\_molecules\_histogram}}
+\index{average\_number\_of\_molecules\_histogram@{average\_number\_of\_molecules\_histogram}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_number\_of\_molecules\_histogram()}{average\_number\_of\_molecules\_histogram()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+average\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the molecule-count histogram property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_af9c8e5c330eb0981a3520225459f11ba}\label{classraspalib_1_1system_1_1System_af9c8e5c330eb0981a3520225459f11ba} 
+\index{raspalib.system.System@{raspalib.system.System}!average\_pressure@{average\_pressure}}
+\index{average\_pressure@{average\_pressure}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{average\_pressure()}{average\_pressure()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__pressure_1_1PropertyPressure}{Property\+Pressure}} raspalib.\+system.\+System.\+average\+\_\+pressure (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the average-pressure property accessor.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a6a294972845036590f6e5dcd8f0811c5}\label{classraspalib_1_1system_1_1System_a6a294972845036590f6e5dcd8f0811c5} 
+\index{raspalib.system.System@{raspalib.system.System}!components@{components}}
+\index{components@{components}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{components()}{components()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1component_1_1Component}{Component}}\mbox{]} raspalib.\+system.\+System.\+components (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the configured list of components.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a297cace79c5fa364b2ced93b1071bea8}\label{classraspalib_1_1system_1_1System_a297cace79c5fa364b2ced93b1071bea8} 
+\index{raspalib.system.System@{raspalib.system.System}!framework\_mass@{framework\_mass}}
+\index{framework\_mass@{framework\_mass}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{framework\_mass()}{framework\_mass()}}
+{\footnotesize\ttfamily  float \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+framework\+\_\+mass (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the total framework mass, if a framework is present.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a8a2f78a7f1d9041e2d762c5b2e42d7ef}\label{classraspalib_1_1system_1_1System_a8a2f78a7f1d9041e2d762c5b2e42d7ef} 
+\index{raspalib.system.System@{raspalib.system.System}!loadings@{loadings}}
+\index{loadings@{loadings}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{loadings()}{loadings()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1loading__data_1_1LoadingData}{Loading\+Data}} raspalib.\+system.\+System.\+loadings (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return current loading data.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a2ee2e5eb3614bfc25310a32f8fb893f0}\label{classraspalib_1_1system_1_1System_a2ee2e5eb3614bfc25310a32f8fb893f0} 
+\index{raspalib.system.System@{raspalib.system.System}!mc\_moves\_statistics@{mc\_moves\_statistics}}
+\index{mc\_moves\_statistics@{mc\_moves\_statistics}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{mc\_moves\_statistics()}{mc\_moves\_statistics()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1mc__move__statistics_1_1MCMoveStatistics}{MCMove\+Statistics}} raspalib.\+system.\+System.\+mc\+\_\+moves\+\_\+statistics (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return Monte Carlo move acceptance/statistics counters.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_aee3416b05f76ef0f015a965d7e5e7579}\label{classraspalib_1_1system_1_1System_aee3416b05f76ef0f015a965d7e5e7579} 
+\index{raspalib.system.System@{raspalib.system.System}!number\_of\_molecules\_per\_component@{number\_of\_molecules\_per\_component}}
+\index{number\_of\_molecules\_per\_component@{number\_of\_molecules\_per\_component}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{number\_of\_molecules\_per\_component()}{number\_of\_molecules\_per\_component()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}int\mbox{]} raspalib.\+system.\+System.\+number\+\_\+of\+\_\+molecules\+\_\+per\+\_\+component (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return molecule counts for each configured component.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a5ca605d2d181b82b71931adb5e6851c0}\label{classraspalib_1_1system_1_1System_a5ca605d2d181b82b71931adb5e6851c0} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_conserved\_energy\_evolution@{property\_conserved\_energy\_evolution}}
+\index{property\_conserved\_energy\_evolution@{property\_conserved\_energy\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_conserved\_energy\_evolution()}{property\_conserved\_energy\_evolution()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__conserved__energy__evolution_1_1PropertyConservedEnergyEvolution}{Property\+Conserved\+Energy\+Evolution}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+conserved\+\_\+energy\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return conserved-energy evolution property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a0627e4865075cd88471c2ab1d2c0ee5a}\label{classraspalib_1_1system_1_1System_a0627e4865075cd88471c2ab1d2c0ee5a} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_conventional\_rdf@{property\_conventional\_rdf}}
+\index{property\_conventional\_rdf@{property\_conventional\_rdf}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_conventional\_rdf()}{property\_conventional\_rdf()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__conventional__radial__distribution__function_1_1PropertyConventionalRadialDistributionFunction}{Property\+Conventional\+Radial\+Distribution\+Function}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+conventional\+\_\+rdf (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the conventional radial distribution function property.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a4ec4ca45691311cdf2d7601554ac9877}\label{classraspalib_1_1system_1_1System_a4ec4ca45691311cdf2d7601554ac9877} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_density\_grid@{property\_density\_grid}}
+\index{property\_density\_grid@{property\_density\_grid}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_density\_grid()}{property\_density\_grid()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__density__grid_1_1PropertyDensityGrid}{Property\+Density\+Grid}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+density\+\_\+grid (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the density-grid property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a0c4a5ba0a43ff8e24e2bcc34c0fa751a}\label{classraspalib_1_1system_1_1System_a0c4a5ba0a43ff8e24e2bcc34c0fa751a} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_msd@{property\_msd}}
+\index{property\_msd@{property\_msd}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_msd()}{property\_msd()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__mean__squared__displacement_1_1PropertyMeanSquaredDisplacement}{Property\+Mean\+Squared\+Displacement}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+msd (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the mean-squared-displacement property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a887e596341a34a0c69f18ca45c9dd42a}\label{classraspalib_1_1system_1_1System_a887e596341a34a0c69f18ca45c9dd42a} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_number\_of\_molecules\_evolution@{property\_number\_of\_molecules\_evolution}}
+\index{property\_number\_of\_molecules\_evolution@{property\_number\_of\_molecules\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_number\_of\_molecules\_evolution()}{property\_number\_of\_molecules\_evolution()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__evolution_1_1PropertyNumberOfMoleculesEvolution}{Property\+Number\+Of\+Molecules\+Evolution}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return molecule-count evolution property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_afd59c491c5924c7172376717d4f2ac9e}\label{classraspalib_1_1system_1_1System_afd59c491c5924c7172376717d4f2ac9e} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_number\_of\_molecules\_histogram@{property\_number\_of\_molecules\_histogram}}
+\index{property\_number\_of\_molecules\_histogram@{property\_number\_of\_molecules\_histogram}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_number\_of\_molecules\_histogram()}{property\_number\_of\_molecules\_histogram()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the number of molecule-histogram property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_ac5811cb8144f3932a4f84314739fa1a9}\label{classraspalib_1_1system_1_1System_ac5811cb8144f3932a4f84314739fa1a9} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_vacf@{property\_vacf}}
+\index{property\_vacf@{property\_vacf}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_vacf()}{property\_vacf()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__velocity__autocorrelation__function_1_1PropertyVelocityAutoCorrelationFunction}{Property\+Velocity\+Auto\+Correlation\+Function}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+vacf (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the velocity-autocorrelation property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_ad91a549121a4e777ac36118e70e94c8b}\label{classraspalib_1_1system_1_1System_ad91a549121a4e777ac36118e70e94c8b} 
+\index{raspalib.system.System@{raspalib.system.System}!property\_volume\_evolution@{property\_volume\_evolution}}
+\index{property\_volume\_evolution@{property\_volume\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{property\_volume\_evolution()}{property\_volume\_evolution()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__volume__evolution_1_1PropertyVolumeEvolution}{Property\+Volume\+Evolution}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+property\+\_\+volume\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return volume-evolution property, if configured.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a5bfa974e0348dc7981105e22451be489}\label{classraspalib_1_1system_1_1System_a5bfa974e0348dc7981105e22451be489} 
+\index{raspalib.system.System@{raspalib.system.System}!sample\_pdb\_movie@{sample\_pdb\_movie}}
+\index{sample\_pdb\_movie@{sample\_pdb\_movie}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{sample\_pdb\_movie()}{sample\_pdb\_movie()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1sample__movie_1_1SampleMovie}{Sample\+Movie}} \texorpdfstring{$\vert$}{|} None raspalib.\+system.\+System.\+sample\+\_\+pdb\+\_\+movie (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return configured PDB-movie sampling settings, if enabled.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a934a991e210064559a039d26ab0cbe7a}\label{classraspalib_1_1system_1_1System_a934a991e210064559a039d26ab0cbe7a} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_average\_energy\_histogram@{set\_average\_energy\_histogram}}
+\index{set\_average\_energy\_histogram@{set\_average\_energy\_histogram}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_average\_energy\_histogram()}{set\_average\_energy\_histogram()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+average\+\_\+energy\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__energy__histogram_1_1PropertyEnergyHistogram}{Property\+Energy\+Histogram}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach an energy-histogram property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a292fc8f38881978e31a623d6f98bf474}\label{classraspalib_1_1system_1_1System_a292fc8f38881978e31a623d6f98bf474} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_number\_of\_molecules\_histogram@{set\_number\_of\_molecules\_histogram}}
+\index{set\_number\_of\_molecules\_histogram@{set\_number\_of\_molecules\_histogram}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_number\_of\_molecules\_histogram()}{set\_number\_of\_molecules\_histogram()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+number\+\_\+of\+\_\+molecules\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__histogram_1_1PropertyNumberOfMoleculesHistogram}{Property\+Number\+Of\+Molecules\+Histogram}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach a number of molecules-histogram property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_af81842b6b1af92c91d810d7c770aeea3}\label{classraspalib_1_1system_1_1System_af81842b6b1af92c91d810d7c770aeea3} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_conserved\_energy\_evolution@{set\_property\_conserved\_energy\_evolution}}
+\index{set\_property\_conserved\_energy\_evolution@{set\_property\_conserved\_energy\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_conserved\_energy\_evolution()}{set\_property\_conserved\_energy\_evolution()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+conserved\+\_\+energy\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__conserved__energy__evolution_1_1PropertyConservedEnergyEvolution}{Property\+Conserved\+Energy\+Evolution}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach conserved-energy evolution property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_ae842d22e61903b8516f156f0d1d03fe0}\label{classraspalib_1_1system_1_1System_ae842d22e61903b8516f156f0d1d03fe0} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_conventional\_rdf@{set\_property\_conventional\_rdf}}
+\index{set\_property\_conventional\_rdf@{set\_property\_conventional\_rdf}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_conventional\_rdf()}{set\_property\_conventional\_rdf()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+conventional\+\_\+rdf (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__conventional__radial__distribution__function_1_1PropertyConventionalRadialDistributionFunction}{Property\+Conventional\+Radial\+Distribution\+Function}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach conventional RDF property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a9043a34d26b5f9e1a3b00ddd1f966ed5}\label{classraspalib_1_1system_1_1System_a9043a34d26b5f9e1a3b00ddd1f966ed5} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_density\_grid@{set\_property\_density\_grid}}
+\index{set\_property\_density\_grid@{set\_property\_density\_grid}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_density\_grid()}{set\_property\_density\_grid()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+density\+\_\+grid (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__density__grid_1_1PropertyDensityGrid}{Property\+Density\+Grid}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach a density-grid property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_ae40bfccd0de057f99b42c8ff26d41d45}\label{classraspalib_1_1system_1_1System_ae40bfccd0de057f99b42c8ff26d41d45} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_msd@{set\_property\_msd}}
+\index{set\_property\_msd@{set\_property\_msd}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_msd()}{set\_property\_msd()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+msd (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__mean__squared__displacement_1_1PropertyMeanSquaredDisplacement}{Property\+Mean\+Squared\+Displacement}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach mean-squared-displacement property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_ae456f314281900b9073872499d7be1ba}\label{classraspalib_1_1system_1_1System_ae456f314281900b9073872499d7be1ba} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_msd@{set\_property\_msd}}
+\index{set\_property\_msd@{set\_property\_msd}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_msd()}{set\_property\_msd()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+msd (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__velocity__autocorrelation__function_1_1PropertyVelocityAutoCorrelationFunction}{Property\+Velocity\+Auto\+Correlation\+Function}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach velocity-autocorrelation property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a2e7decd1a6c3a70c995e323fd5991306}\label{classraspalib_1_1system_1_1System_a2e7decd1a6c3a70c995e323fd5991306} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_number\_of\_molecules\_evolution@{set\_property\_number\_of\_molecules\_evolution}}
+\index{set\_property\_number\_of\_molecules\_evolution@{set\_property\_number\_of\_molecules\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_number\_of\_molecules\_evolution()}{set\_property\_number\_of\_molecules\_evolution()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+number\+\_\+of\+\_\+molecules\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__number__of__molecules__evolution_1_1PropertyNumberOfMoleculesEvolution}{Property\+Number\+Of\+Molecules\+Evolution}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach molecule-count evolution property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a547712b23dddca576b49631d365807fa}\label{classraspalib_1_1system_1_1System_a547712b23dddca576b49631d365807fa} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_property\_volume\_evolution@{set\_property\_volume\_evolution}}
+\index{set\_property\_volume\_evolution@{set\_property\_volume\_evolution}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_property\_volume\_evolution()}{set\_property\_volume\_evolution()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+property\+\_\+volume\+\_\+evolution (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1property__volume__evolution_1_1PropertyVolumeEvolution}{Property\+Volume\+Evolution}}}]{property }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach volume-evolution property configuration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a6a7785b6f8823565b33331ada093afe7}\label{classraspalib_1_1system_1_1System_a6a7785b6f8823565b33331ada093afe7} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_sample\_pdb\_movie@{set\_sample\_pdb\_movie}}
+\index{set\_sample\_pdb\_movie@{set\_sample\_pdb\_movie}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_sample\_pdb\_movie()}{set\_sample\_pdb\_movie()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+sample\+\_\+pdb\+\_\+movie (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1sample__movie_1_1SampleMovie}{Sample\+Movie}}}]{sample\+\_\+movie }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Enable/configure PDB-movie sampling.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_aab8f739d86187bd36fb0a2424db83fe7}\label{classraspalib_1_1system_1_1System_aab8f739d86187bd36fb0a2424db83fe7} 
+\index{raspalib.system.System@{raspalib.system.System}!set\_thermostat@{set\_thermostat}}
+\index{set\_thermostat@{set\_thermostat}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{set\_thermostat()}{set\_thermostat()}}
+{\footnotesize\ttfamily  None raspalib.\+system.\+System.\+set\+\_\+thermostat (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{\mbox{\hyperlink{classraspalib_1_1thermostat_1_1Thermostat}{Thermostat}}}]{rdf }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Attach thermostat settings to the system.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1system_1_1System_a7c91a4b1c95093ae61cedebc40022cb8}\label{classraspalib_1_1system_1_1System_a7c91a4b1c95093ae61cedebc40022cb8} 
+\index{raspalib.system.System@{raspalib.system.System}!simulation\_box@{simulation\_box}}
+\index{simulation\_box@{simulation\_box}!raspalib.system.System@{raspalib.system.System}}
+\doxysubsubsection{\texorpdfstring{simulation\_box()}{simulation\_box()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1simulation__box_1_1SimulationBox}{Simulation\+Box}} raspalib.\+system.\+System.\+simulation\+\_\+box (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the system simulation box.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/system.\+py\end{DoxyCompactItemize}

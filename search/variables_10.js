@@ -14,7 +14,6 @@ var searchData=
   ['reverse_5flnpi_11',['reverse_lnpi',['../structTransitionMatrix.html#a5fc3239b0df1dc3818c7d4754e1c6c77',1,'TransitionMatrix']]],
   ['rezeroafterinitialization_12',['rezeroAfterInitialization',['../structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3',1,'TransitionMatrix']]],
   ['rigid_13',['rigid',['../structComponent.html#a205d5610646701fbcb47d58cee3848be',1,'Component::rigid'],['../structFramework.html#ac6a05f3fff8f8d164856ccb55e15a3eb',1,'Framework::rigid']]],
-  ['rotationaldegreesoffreedom_14',['rotationalDegreesOfFreedom',['../structComponent.html#a79e47df34566ee1922e4f542ef80ad3d',1,'Component']]],
-  ['rotationaldgreesoffreedom_15',['rotationalDgreesOfFreedom',['../structThermostat.html#a946a876db659830ca6aa7e10e3454c50',1,'Thermostat']]],
-  ['rotationalkineticenergy_16',['rotationalKineticEnergy',['../structRunningEnergy.html#a52e9488faa6805d564a6969f4f575162',1,'RunningEnergy']]]
+  ['rotationaldegreesoffreedom_14',['rotationaldegreesoffreedom',['../structComponent.html#a79e47df34566ee1922e4f542ef80ad3d',1,'Component::rotationalDegreesOfFreedom'],['../structThermostat.html#ad3b103c978abfdfb6604e238412228a3',1,'Thermostat::rotationalDegreesOfFreedom']]],
+  ['rotationalkineticenergy_15',['rotationalKineticEnergy',['../structRunningEnergy.html#a52e9488faa6805d564a6969f4f575162',1,'RunningEnergy']]]
 ];

@@ -1,0 +1,37 @@
+\doxysection{Manual}
+\hypertarget{manual_main}{}\label{manual_main}\index{Manual@{Manual}}
+\doxysubsection*{Design philosophy}
+
+{\ttfamily RASPALIB} is a molecular simulation library for use in python and python notebooks for computing adsorption and diffusion in nanoporous materials, and thermodynamic and transport properties of fluids. It implements force field based classical Monte Carlo/\+Molecular Dynamics in various ensembles. {\ttfamily RASPALIB} can be used for the simulation of molecules in gases, fluids, zeolites, aluminosilicates, metal-\/organic frameworks, and carbon nanotubes. One of the main applications of {\ttfamily RASPALIB} is to compute adsorption isotherms and to understand the atomic-\/level mechanism of adsorption and separations.
+
+{\ttfamily RASPALIB} is redesigned and rewritten from the ground up in {\ttfamily C++23}, based on the following ideas\+:
+
+
+\begin{DoxyItemize}
+\item Composition and value semantics\textbackslash{} Major improvements in efficiency result from the implementation of {\ttfamily C++} code based on composition and value semantics (in contrast to inheritance and reference semantics). Composition is a structural approach in which complex objects are built from simple building blocks. Value semantics avoid sharing mutable state and upholds the independence of values to support local reasoning. References are only used implicitly, at function boundaries, and are never stored. This style of coding has many advantages. Avoiding complex inheritance hierarchies and reducing the need for virtual functions lead to major code simplifications. It encourages code clarity and local reasoning. With composition, components are directly included in an object, removing the necessity for pointers, manual memory allocations, and indirections. This leads to straightforward memory patterns and access safety. Lifetimes of objects are coupled with composition, eliminating the need for explicit memory management. These lead to better compiler optimization and therefore performance of the code.
+\item Correctness and accuracy\textbackslash{} For all the techniques and algorithms available in {\ttfamily RASPA3} we have implemented the \textquotesingle{}best\textquotesingle{} ones available in literature. For example, {\ttfamily RASPA3} uses Configurational-\/\+Bias Monte-\/\+Carlo, it uses the Ewald summation for electrostatics, molecular dynamics is based on \textquotesingle{}symplectic\textquotesingle{} integrators, all Monte-\/\+Carlo moves obey detailed balance etc. Unit tests test the smallest functional units of code and prevent developers breaking existing code when refactoring or adding new code. The unit tests in {\ttfamily RASPA3} are arranged hierarchically. Atoms are placed at several distances and the Lennard-\/\+Jones potentials are tested and compared with the analytically computed energy. Then molecules are placed within a zeolite framework at predetermined positions and compared to the energies computed with {\ttfamily RASPA2}. The various energy routines used in biased-\/sampling are tested by comparing to the general routines. The various routines for the gradients are tested by comparing the computed gradients to the values computed by finite difference schemes based on the energy. Likewise, the strain-\/derivative tensor (related to the pressure) is tested by comparing to the values computed by finite difference schemes based on the energy of a strained cell.
+\item Integrated simulation environment\textbackslash{} The {\ttfamily RASPA3} {\ttfamily C++} simulation engine is made available to {\ttfamily Python} via a {\ttfamily Pybind11} interface. For use in {\ttfamily Python}, {\ttfamily RASPA3} is built as a shared library, allowing its functions to be used by {\ttfamily Python} users and enabling seamless interactions with the simulation routines. Through the API, the library allows for invocation of {\ttfamily RASPA3}\textquotesingle{}s simulation routines from {\ttfamily Python} scripts, calling the same simulation routines as via the {\ttfamily JSON} input. This execution directly from {\ttfamily Python} enables the ability to prototype simulation settings and incorporate {\ttfamily RASPA3} into existing workflows. Extension and modification of the code is relatively straightforward.
+\end{DoxyItemize}
+
+\doxysubsection*{Citing {\ttfamily RASPALIB}}
+
+If you are using {\ttfamily RASPALIB} and would like to cite it in your journal articles or book-\/chapters, then for {\ttfamily RASPALIB}\+:
+
+\begin{quote}
+Y.\+A. Ran, S. Sharma, S.\+R.\+G. Balestra, Z. Li, S. Calero, T.\+J.\+H Vlugt, R.\+Q. Snurr, and D. Dubbeldam RASPA3\+: A Monte Carlo Code for Computing Adsorption and Diffusion in Nanoporous Materials and Thermodynamics Properties of Fluids, J. Chem. Phys. 2024, 161, 114106 \href{https://doi.org/10.1063/5.0226249}{\texttt{ https\+://doi.\+org/10.\+1063/5.\+0226249}} \end{quote}
+For the inner workings of Monte Carlo codes\+:
+
+\begin{quote}
+D. Dubbeldam, A. Torres-\/\+Knoop, and K.\+S. Walton, On the Inner Workings of Monte Carlo Codes, \href{http://dx.doi.org/10.1080/08927022.2013.819102}{\texttt{ http\+://dx.\+doi.\+org/10.\+1080/08927022.\+2013.\+819102}} , 39(14-\/15), 1253-\/1292, 2013. \end{quote}
+For the description of Molecular Dynamics and diffusion\+:
+
+\begin{quote}
+D. Dubbeldam and R.\+Q. Snurr, Recent Developments in the Molecular Modeling of Diffusion in Nanoporous Materials, \href{http://dx.doi.org/10.1080/08927020601156418}{\texttt{ http\+://dx.\+doi.\+org/10.\+1080/08927020601156418}}, , 33(4-\/5), 305-\/325, 2007. \end{quote}
+For the description of the implementation of force fields\+:
+
+\begin{quote}
+D. Dubbeldam, K.\+S. Walton, T.\+J.\+H. Vlugt, and S. Calero, Design, Parameterization, and Implementation of Atomic Force Fields for Adsorption in Nanoporous Materials, \href{https://doi.org/10.1002/adts.201900135}{\texttt{ https\+://doi.\+org/10.\+1002/adts.\+201900135}}, , 2(11), 1900135, 2019. \end{quote}
+For the implementation of the grid interpolation methods\+:
+
+\begin{quote}
+Y.\+A. Ran, J. Tapia, S. Sharma, P. Bai, S. Calero, T.\+J.\+H. Vlugt, D. Dubbeldam Implementation of energy and force grids in molecular simulations of porous materials. Molecular Physics, 2025, e2542486 \href{https://doi.org/10.1080/00268976.2025.2542486}{\texttt{ https\+://doi.\+org/10.\+1080/00268976.\+2025.\+2542486}} \end{quote}

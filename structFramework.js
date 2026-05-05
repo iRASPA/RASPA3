@@ -1,7 +1,8 @@
 var structFramework =
 [
     [ "Framework", "structFramework.html#ad6e5ec2ae2d5b1309b75065911b29bb5", null ],
-    [ "Framework", "structFramework.html#a56d99608c689f813ba5fb54078279586", null ],
+    [ "Framework", "structFramework.html#ab2dfe15a0a8135c003d6ea725f3a6d79", null ],
+    [ "Framework", "structFramework.html#a29fba4c51f32a15d7288cdbde8d13501", null ],
     [ "jsonStatus", "structFramework.html#a9010afb68992da3d1af28c9d001f3b86", null ],
     [ "makeSuperCell", "structFramework.html#a168c49f456383c575b9f350b7473214b", null ],
     [ "printBreakthroughStatus", "structFramework.html#aa3079de3f2f2bb15eea31fca562c8fdb", null ],
@@ -19,7 +20,6 @@ var structFramework =
     [ "excludedIntraCoulomb", "structFramework.html#ac42912bbd546cbd5dc40c13766e3f304", null ],
     [ "filename", "structFramework.html#af10e1803eb1c32bfa8c08a9b8b6e7fba", null ],
     [ "fractionalUnitCellAtoms", "structFramework.html#a66440c72e59f168d54ed065120825503", null ],
-    [ "frameworkId", "structFramework.html#ab34db0b26cb8464992c1cbfb6b1ef7f3", null ],
     [ "ImproperTorsions", "structFramework.html#adadd52be918d14011e259a06fa255011", null ],
     [ "intraCoulomb", "structFramework.html#a423032cb355899ebf9f1372ecf3994c7", null ],
     [ "intraVDW", "structFramework.html#a64784c841a5a4feba2cdb6b38e8a8a8f", null ],

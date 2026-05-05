@@ -1,0 +1,102 @@
+\chapter{RASPALIB}
+\hypertarget{index}{}\label{index}\index{RASPALIB@{RASPALIB}}
+\label{index_md_raspa_2README}%
+\Hypertarget{index_md_raspa_2README}%
+ \doxysection*{~\newline
+ \href{https://github.com/iRASPA/raspa3}{\texttt{ }} ~\newline
+ RASPA3 ~\newline
+ }
+
+\doxyparagraph*{This software is a general purpose classical simulation package.}
+
+
+
+It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2026 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).
+
+
+
+\href{https://github.com/iRASPA/raspa3/releases}{\texttt{  }} \href{https://github.com/iRASPA/raspa3/issues}{\texttt{  }} \href{https://iRASPA.github.io/RASPA3}{\texttt{  }} \href{https://github.com/iRASPA/RASPA3/actions/workflows/unit-test.yml}{\texttt{  }} 
+
+
+
+• \href{\#authors}{\texttt{ Authors}} • \href{\#contributors}{\texttt{ Contributors}} • \href{\#running}{\texttt{ Running}} • \href{\#python}{\texttt{ Python}} • \href{\#dependencies}{\texttt{ Dependencies}} • 
+
+\doxysection*{Authors}
+
+Drs. Youri Ran, University of Amsterdam~\newline
+ Drs. Shrinjay Sharma, Delft University of Technology~\newline
+ Dr. Salvador R.\+G. Balestra, Universidad Pablo de Olavide~\newline
+ Drs. Zhao Li, Northwestern University~\newline
+ Prof. Sofia Calero, Eindhoven University of Technology~\newline
+ Prof. Thijs Vlugt, Delft University of Technology~\newline
+ Prof. Randall Q. Snurr, Northwestern University~\newline
+ Dr. David Dubbeldam, University of Amsterdam
+
+\doxysection*{Contributors}
+
+Olivier Marchand, equitable binning and site resolved density grid support~\newline
+ Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-\/implementation discussion~\newline
+ Anserme, better README.\+md and packaging
+
+\doxysection*{Citing RASPA3}
+
+Y.\+A. Ran, S. Sharma, S.\+R.\+G. Balestra, Z. Li, S. Calero, T.\+J.\+H. Vlugt, R.\+Q. Snurr, D. Dubbeldam, \+\_\+"{}\+RASPA3\+: A Monte Carlo code for computing adsorption and diffusion in nanoporous materials and thermodynamics properties of fluids"{}\+\_\+, {\bfseries{2024}}, J. Chem. Phys., 161, 114106, \href{https://doi.org/10.1063/5.0226249}{\texttt{ DOI}}
+
+\doxysection*{Running}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{cd\ examples/basic/1\_mc\_methane\_in\_box}
+\DoxyCodeLine{./run}
+
+\end{DoxyCode}
+
+
+\doxysection*{Implemented so far}
+
+
+\begin{DoxyItemize}
+\item rigid molecules and rigid framework
+\item multiple systems, box or framework
+\item grand canonical ensemble (CBMC, CFCMC, and CB/\+CFCMC)
+\item Gibbs ensemble (CBMC, CFCMC, and CB/\+CFCMC)
+\item Monte Carlo NPT ensemble
+\item transition matrix Monte Carlo
+\item Molecular Dynamics NVT ensemble (Nose-\/\+Hoover thermostat)
+\item binary restart
+\item blocking pockets
+\item PDB-\/movies, energy histograms, number of molecule histograms
+\item RDF, MSD-\/order-\/N, VACF, density grids (cube files)
+\item charge equilibration
+\item MC/\+MD hybrid move
+\item tail-\/corrections for CFCMC
+\item grids for rigid frameworks
+\item writing and reading restart-\/files
+\item external field interpolation grids
+\end{DoxyItemize}
+
+\doxysection*{Experimental}
+
+
+\begin{DoxyItemize}
+\item flexible molecules (CBMC)
+\item partial insertion move
+\end{DoxyItemize}
+
+\doxysection*{Todo-\/list}
+
+
+\begin{DoxyItemize}
+\item flexible molecules (MD)
+\item zeo++-\/type calculations
+\item flexible frameworks
+\item reaction ensemble
+\item identity change
+\item polarization
+\item cell-\/lists for rigid frameworks
+\item partial molar volumes
+\item partial molar enthalpies/volumes
+\item optimization
+\item elastic constants
+\item HDF5 property writing 
+\end{DoxyItemize}

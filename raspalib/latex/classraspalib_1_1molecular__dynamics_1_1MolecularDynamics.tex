@@ -1,0 +1,90 @@
+\doxysection{raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics Class Reference}
+\hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics}{}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics}\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_ab9546049215bf758cdb1a600069f4345}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_ab9546049215bf758cdb1a600069f4345} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, int number\+\_\+of\+\_\+cycles=0, int number\+\_\+of\+\_\+initialization\+\_\+cycles=0, int number\+\_\+of\+\_\+equilibration\+\_\+cycles=0, int print\+\_\+every=5000, int write\+\_\+binary\+\_\+restart\+\_\+every=5000, int rescale\+\_\+wang\+\_\+landau\+\_\+every=5000, int optimize\+\_\+mc\+\_\+moves\+\_\+every=5000, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5fe8ec76e8ac9e30ae900c1fe17ff26d}{systems}}=\mbox{[}$\,$\mbox{]}, int\texorpdfstring{$\vert$}{|}None random\+\_\+seed=None, int number\+\_\+of\+\_\+blocks=5, bool output\+\_\+to\+\_\+files=False)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5e147442d559cfc6378fe3c24a1269af}{setup}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_ae01b1f2a4119fd8b18585b3119d5460b}{tear\+\_\+down}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a265612d49c98a4f086efa3aa6213cd87}{equilibrate}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_aef0f58dfc29917364f378f2e6a5752d7}{initialize}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a8da76d09a53cfda31e12720b0546f948}{production}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5fe8ec76e8ac9e30ae900c1fe17ff26d}{systems}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Configure and run molecular-dynamics workflows in RASPA.
+
+This class stores run-control settings and orchestrates initialization,
+equilibration, and production stages for one or more simulation systems.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a265612d49c98a4f086efa3aa6213cd87}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a265612d49c98a4f086efa3aa6213cd87} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!equilibrate@{equilibrate}}
+\index{equilibrate@{equilibrate}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{equilibrate()}{equilibrate()}}
+{\footnotesize\ttfamily  None raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+equilibrate (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the equilibration stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_aef0f58dfc29917364f378f2e6a5752d7}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_aef0f58dfc29917364f378f2e6a5752d7} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!initialize@{initialize}}
+\index{initialize@{initialize}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{initialize()}{initialize()}}
+{\footnotesize\ttfamily  None raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+initialize (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the initialization stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a8da76d09a53cfda31e12720b0546f948}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a8da76d09a53cfda31e12720b0546f948} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!production@{production}}
+\index{production@{production}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{production()}{production()}}
+{\footnotesize\ttfamily  None raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+production (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the production stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5e147442d559cfc6378fe3c24a1269af}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5e147442d559cfc6378fe3c24a1269af} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!setup@{setup}}
+\index{setup@{setup}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{setup()}{setup()}}
+{\footnotesize\ttfamily  None raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+setup (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Allocate and prepare simulation resources before running.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5fe8ec76e8ac9e30ae900c1fe17ff26d}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_a5fe8ec76e8ac9e30ae900c1fe17ff26d} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!systems@{systems}}
+\index{systems@{systems}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{systems()}{systems()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+systems (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the configured list of simulation systems.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_ae01b1f2a4119fd8b18585b3119d5460b}\label{classraspalib_1_1molecular__dynamics_1_1MolecularDynamics_ae01b1f2a4119fd8b18585b3119d5460b} 
+\index{raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}!tear\_down@{tear\_down}}
+\index{tear\_down@{tear\_down}!raspalib.molecular\_dynamics.MolecularDynamics@{raspalib.molecular\_dynamics.MolecularDynamics}}
+\doxysubsubsection{\texorpdfstring{tear\_down()}{tear\_down()}}
+{\footnotesize\ttfamily  None raspalib.\+molecular\+\_\+dynamics.\+Molecular\+Dynamics.\+tear\+\_\+down (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Release simulation resources after completion.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/molecular\+\_\+dynamics.\+py\end{DoxyCompactItemize}

@@ -1,0 +1,97 @@
+\doxysection{raspalib.\+component.\+Component Class Reference}
+\hypertarget{classraspalib_1_1component_1_1Component}{}\label{classraspalib_1_1component_1_1Component}\index{raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1component_1_1Component_a752d7d97eaf37612d0b905528a31d4d3}\label{classraspalib_1_1component_1_1Component_a752d7d97eaf37612d0b905528a31d4d3} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField}{Force\+Field}} force\+\_\+field, str component\+\_\+name, float critical\+\_\+temperature, float critical\+\_\+pressure, float acentric\+\_\+factor, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1atom_1_1Atom}{Atom}}\mbox{]} defined\+\_\+atoms=\mbox{[}$\,$\mbox{]}, \mbox{\hyperlink{classraspalib_1_1connectivity__table_1_1ConnectivityTable}{Connectivity\+Table}} connectivity\+\_\+table=\mbox{\hyperlink{classraspalib_1_1connectivity__table_1_1ConnectivityTable}{Connectivity\+Table}}(), \mbox{\hyperlink{classraspalib_1_1intra__molecular__potentials_1_1IntraMolecularPotentials}{Intra\+Molecular\+Potentials}} intra\+\_\+molecular\+\_\+potentials=\mbox{\hyperlink{classraspalib_1_1intra__molecular__potentials_1_1IntraMolecularPotentials}{Intra\+Molecular\+Potentials}}(), int number\+\_\+of\+\_\+blocks=5, int number\+\_\+of\+\_\+lambda\+\_\+bins=21, \mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}} particle\+\_\+probabilities=\mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}}(), float\texorpdfstring{$\vert$}{|}None fugacity\+\_\+coefficient=None, bool thermodynamic\+\_\+integration=False, collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float, float\mbox{]}\mbox{]} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_aa31b01e901e753237692b539cee8acce}{blocking\+\_\+pockets}}=\mbox{[}$\,$\mbox{]})
+\item 
+collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float, float\mbox{]}\mbox{]} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_aa31b01e901e753237692b539cee8acce}{blocking\+\_\+pockets}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a70fd38de8294da811036ca0ec37758e7}{blocking\+\_\+pockets}} (self, collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float, float\mbox{]}\mbox{]} arg0)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__widom_1_1PropertyWidom}{Property\+Widom}} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a5038a442fc42679ec61667ffc8e3c115}{average\+\_\+rosenbluth\+\_\+weights}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__widom_1_1PropertyWidom}{Property\+Widom}} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a014da648f2386e30473a3e6eebd4718a}{average\+\_\+gibbs\+\_\+rosenbluth\+\_\+weights}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a5b3eae8fe1cb6095443c7f1ddb6d3900}{mc\+\_\+moves\+\_\+probabilities}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1mc__move__statistics_1_1MCMoveStatistics}{MCMove\+Statistics}} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a2db0f8bf04d256317b3bb6e6bb809d80}{mc\+\_\+moves\+\_\+statistics}} (self)
+\item 
+\mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram}{Property\+Lambda\+Probability\+Histogram}} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_afb1f02e52d6fa540a6c206fb0c03084d}{lambda\+\_\+histogram}} (self)
+\item 
+tuple\mbox{[}collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float\mbox{]}\mbox{]}, collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float\mbox{]}\mbox{]}\mbox{]} \mbox{\hyperlink{classraspalib_1_1component_1_1Component_a16dd8a07a3e37035116f965153f3bd55}{average\+\_\+dudlambda}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Represent a simulation component in RASPA.
+
+A component groups force-field settings, molecular topology definitions,
+Monte Carlo move settings, and runtime statistics for a specific adsorbate
+or fluid species.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1component_1_1Component_a16dd8a07a3e37035116f965153f3bd55}\label{classraspalib_1_1component_1_1Component_a16dd8a07a3e37035116f965153f3bd55} 
+\index{raspalib.component.Component@{raspalib.component.Component}!average\_dudlambda@{average\_dudlambda}}
+\index{average\_dudlambda@{average\_dudlambda}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{average\_dudlambda()}{average\_dudlambda()}}
+{\footnotesize\ttfamily  tuple\mbox{[}collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float\mbox{]}\mbox{]}, collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float\mbox{]}\mbox{]}\mbox{]} raspalib.\+component.\+Component.\+average\+\_\+dudlambda (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return average dU/dlambda data used in thermodynamic integration.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_a014da648f2386e30473a3e6eebd4718a}\label{classraspalib_1_1component_1_1Component_a014da648f2386e30473a3e6eebd4718a} 
+\index{raspalib.component.Component@{raspalib.component.Component}!average\_gibbs\_rosenbluth\_weights@{average\_gibbs\_rosenbluth\_weights}}
+\index{average\_gibbs\_rosenbluth\_weights@{average\_gibbs\_rosenbluth\_weights}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{average\_gibbs\_rosenbluth\_weights()}{average\_gibbs\_rosenbluth\_weights()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__widom_1_1PropertyWidom}{Property\+Widom}} raspalib.\+component.\+Component.\+average\+\_\+gibbs\+\_\+rosenbluth\+\_\+weights (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return Gibbs-Widom insertion Rosenbluth-weight statistics.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_a5038a442fc42679ec61667ffc8e3c115}\label{classraspalib_1_1component_1_1Component_a5038a442fc42679ec61667ffc8e3c115} 
+\index{raspalib.component.Component@{raspalib.component.Component}!average\_rosenbluth\_weights@{average\_rosenbluth\_weights}}
+\index{average\_rosenbluth\_weights@{average\_rosenbluth\_weights}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{average\_rosenbluth\_weights()}{average\_rosenbluth\_weights()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__widom_1_1PropertyWidom}{Property\+Widom}} raspalib.\+component.\+Component.\+average\+\_\+rosenbluth\+\_\+weights (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return Widom insertion Rosenbluth-weight statistics.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_aa31b01e901e753237692b539cee8acce}\label{classraspalib_1_1component_1_1Component_aa31b01e901e753237692b539cee8acce} 
+\index{raspalib.component.Component@{raspalib.component.Component}!blocking\_pockets@{blocking\_pockets}}
+\index{blocking\_pockets@{blocking\_pockets}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{blocking\_pockets()}{blocking\_pockets()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float, float\mbox{]}\mbox{]} raspalib.\+component.\+Component.\+blocking\+\_\+pockets (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return blocking-pocket definitions as ``(x, y, z, radius)`` tuples.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_a70fd38de8294da811036ca0ec37758e7}\label{classraspalib_1_1component_1_1Component_a70fd38de8294da811036ca0ec37758e7} 
+\index{raspalib.component.Component@{raspalib.component.Component}!blocking\_pockets@{blocking\_pockets}}
+\index{blocking\_pockets@{blocking\_pockets}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{blocking\_pockets()}{blocking\_pockets()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+component.\+Component.\+blocking\+\_\+pockets (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Sequence\mbox{[}tuple\mbox{[}float, float, float, float\mbox{]}\mbox{]}}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set blocking-pocket definitions as ``(x, y, z, radius)`` tuples.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_afb1f02e52d6fa540a6c206fb0c03084d}\label{classraspalib_1_1component_1_1Component_afb1f02e52d6fa540a6c206fb0c03084d} 
+\index{raspalib.component.Component@{raspalib.component.Component}!lambda\_histogram@{lambda\_histogram}}
+\index{lambda\_histogram@{lambda\_histogram}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{lambda\_histogram()}{lambda\_histogram()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1property__lambda__probability__histogram_1_1PropertyLambdaProbabilityHistogram}{Property\+Lambda\+Probability\+Histogram}} raspalib.\+component.\+Component.\+lambda\+\_\+histogram (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return lambda-probability histogram statistics.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_a5b3eae8fe1cb6095443c7f1ddb6d3900}\label{classraspalib_1_1component_1_1Component_a5b3eae8fe1cb6095443c7f1ddb6d3900} 
+\index{raspalib.component.Component@{raspalib.component.Component}!mc\_moves\_probabilities@{mc\_moves\_probabilities}}
+\index{mc\_moves\_probabilities@{mc\_moves\_probabilities}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{mc\_moves\_probabilities()}{mc\_moves\_probabilities()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1mc__move__probabilities_1_1MCMoveProbabilities}{MCMove\+Probabilities}} raspalib.\+component.\+Component.\+mc\+\_\+moves\+\_\+probabilities (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return configured Monte Carlo move probabilities.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1component_1_1Component_a2db0f8bf04d256317b3bb6e6bb809d80}\label{classraspalib_1_1component_1_1Component_a2db0f8bf04d256317b3bb6e6bb809d80} 
+\index{raspalib.component.Component@{raspalib.component.Component}!mc\_moves\_statistics@{mc\_moves\_statistics}}
+\index{mc\_moves\_statistics@{mc\_moves\_statistics}!raspalib.component.Component@{raspalib.component.Component}}
+\doxysubsubsection{\texorpdfstring{mc\_moves\_statistics()}{mc\_moves\_statistics()}}
+{\footnotesize\ttfamily  \mbox{\hyperlink{classraspalib_1_1mc__move__statistics_1_1MCMoveStatistics}{MCMove\+Statistics}} raspalib.\+component.\+Component.\+mc\+\_\+moves\+\_\+statistics (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return Monte Carlo move acceptance/statistics counters.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/component.\+py\end{DoxyCompactItemize}

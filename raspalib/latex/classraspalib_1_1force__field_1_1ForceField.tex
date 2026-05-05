@@ -1,0 +1,77 @@
+\doxysection{raspalib.\+force\+\_\+field.\+Force\+Field Class Reference}
+\hypertarget{classraspalib_1_1force__field_1_1ForceField}{}\label{classraspalib_1_1force__field_1_1ForceField}\index{raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_1_1MixingRule}{Mixing\+Rule}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+None \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_ad9e3256b33ccaa8d968c6b951fd3a780}{\+\_\+\+\_\+init\+\_\+\+\_\+}} (self, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1pseudo__atom_1_1PseudoAtom}{Pseudo\+Atom}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_a6feca0bf57460ebe26c2e822aba52405}{pseudo\+\_\+atoms}}=None, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1vdw__parameters_1_1VDWParameters}{VDWParameters}}\mbox{]} parameters=None, \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_1_1MixingRule}{Mixing\+Rule}} mixing\+\_\+rule=Mixing\+Rule.\+LORENTZ\+\_\+\+BERTHELOT, float cutoff\+\_\+framework\+\_\+vdw=12.\+0, float cutoff\+\_\+molecule\+\_\+vdw=12.\+0, float cutoff\+\_\+coulomb=12.\+0, bool shifted=False, bool tail\+\_\+corrections=False, use\+\_\+charge=True)
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1pseudo__atom_1_1PseudoAtom}{Pseudo\+Atom}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_a6feca0bf57460ebe26c2e822aba52405}{pseudo\+\_\+atoms}} (self)
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1vdw__parameters_1_1VDWParameters}{VDWParameters}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_a7fe9383bdeec2b99e347a3e657680908}{vdw\+\_\+parameters}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Define non-bonded force-field settings used by RASPA.
+
+This object combines pseudo-atom definitions, Van der Waals parameter
+tables, mixing-rule selection, and electrostatics/cutoff options.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classraspalib_1_1force__field_1_1ForceField_ad9e3256b33ccaa8d968c6b951fd3a780}\label{classraspalib_1_1force__field_1_1ForceField_ad9e3256b33ccaa8d968c6b951fd3a780} 
+\index{raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}!\_\_init\_\_@{\_\_init\_\_}}
+\index{\_\_init\_\_@{\_\_init\_\_}!raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}}
+\doxysubsubsection{\texorpdfstring{\_\_init\_\_()}{\_\_init\_\_()}}
+{\footnotesize\ttfamily  None raspalib.\+force\+\_\+field.\+Force\+Field.\+\_\+\+\_\+init\+\_\+\+\_\+ (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1pseudo__atom_1_1PseudoAtom}{Pseudo\+Atom}}\mbox{]} }]{pseudo\+\_\+atoms = {\ttfamily None},  }\item[{collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1vdw__parameters_1_1VDWParameters}{VDWParameters}}\mbox{]} }]{parameters = {\ttfamily None},  }\item[{\mbox{\hyperlink{classraspalib_1_1force__field_1_1ForceField_1_1MixingRule}{Mixing\+Rule}} }]{mixing\+\_\+rule = {\ttfamily MixingRule.LORENTZ\+\_\+BERTHELOT},  }\item[{float }]{cutoff\+\_\+framework\+\_\+vdw = {\ttfamily 12.0},  }\item[{float }]{cutoff\+\_\+molecule\+\_\+vdw = {\ttfamily 12.0},  }\item[{float }]{cutoff\+\_\+coulomb = {\ttfamily 12.0},  }\item[{bool }]{shifted = {\ttfamily False},  }\item[{bool }]{tail\+\_\+corrections = {\ttfamily False},  }\item[{}]{use\+\_\+charge = {\ttfamily True} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Initialize a :class:`ForceField`.
+
+Args:
+    pseudo_atoms: Sequence of pseudo-atom definitions. Defaults to
+        ``None``.
+    parameters: Sequence of Van der Waals parameters. Defaults to
+        ``None``.
+    mixing_rule: Mixing rule for unlike interactions. Defaults to
+        :attr:`MixingRule.LORENTZ_BERTHELOT`.
+    cutoff_framework_vdw: Framework-molecule Van der Waals cutoff
+        distance. Defaults to ``12.0``.
+    cutoff_molecule_vdw: Molecule-molecule Van der Waals cutoff
+        distance. Defaults to ``12.0``.
+    cutoff_coulomb: Real-space cutoff distance for Ewald electrostatic
+        interactions. Defaults to ``12.0``.
+    shifted: Whether to apply shifted non-bonded potentials. Defaults
+        to ``False``.
+    tail_corrections: Whether to apply long-range tail corrections.
+        Defaults to ``False``.
+    use_charge: Whether electrostatic interactions are enabled.
+        Defaults to ``True``.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1force__field_1_1ForceField_a6feca0bf57460ebe26c2e822aba52405}\label{classraspalib_1_1force__field_1_1ForceField_a6feca0bf57460ebe26c2e822aba52405} 
+\index{raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}!pseudo\_atoms@{pseudo\_atoms}}
+\index{pseudo\_atoms@{pseudo\_atoms}!raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}}
+\doxysubsubsection{\texorpdfstring{pseudo\_atoms()}{pseudo\_atoms()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1pseudo__atom_1_1PseudoAtom}{Pseudo\+Atom}}\mbox{]} raspalib.\+force\+\_\+field.\+Force\+Field.\+pseudo\+\_\+atoms (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the configured pseudo-atom definitions.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1force__field_1_1ForceField_a7fe9383bdeec2b99e347a3e657680908}\label{classraspalib_1_1force__field_1_1ForceField_a7fe9383bdeec2b99e347a3e657680908} 
+\index{raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}!vdw\_parameters@{vdw\_parameters}}
+\index{vdw\_parameters@{vdw\_parameters}!raspalib.force\_field.ForceField@{raspalib.force\_field.ForceField}}
+\doxysubsubsection{\texorpdfstring{vdw\_parameters()}{vdw\_parameters()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1vdw__parameters_1_1VDWParameters}{VDWParameters}}\mbox{]} raspalib.\+force\+\_\+field.\+Force\+Field.\+vdw\+\_\+parameters (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the configured Van der Waals interaction parameters.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/force\+\_\+field.\+py\end{DoxyCompactItemize}

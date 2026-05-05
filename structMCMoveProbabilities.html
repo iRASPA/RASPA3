@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -112,9 +112,9 @@ Collaboration diagram for MCMoveProbabilities:</div>
 <div class="dyncontent">
 <div class="center"><img src="structMCMoveProbabilities__coll__graph.png" border="0" usemap="#aMCMoveProbabilities_coll__map" alt="Collaboration graph"/></div>
 <map name="aMCMoveProbabilities_coll__map" id="aMCMoveProbabilities_coll__map">
-<area shape="rect" title=" " alt="" coords="14,108,174,133"/>
-<area shape="rect" title=" " alt="" coords="5,5,183,45"/>
-<area shape="poly" title=" " alt="" coords="97,59,97,108,91,108,91,59"/>
+<area shape="rect" title=" " alt="" coords="8,93,168,119"/>
+<area shape="rect" title=" " alt="" coords="5,5,171,31"/>
+<area shape="poly" title=" " alt="" coords="91,45,91,93,85,93,85,45"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -126,21 +126,21 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a cl
 <tr class="memitem:a96e4cb703719d4a79d56049cd73091b6" id="r_a96e4cb703719d4a79d56049cd73091b6"><td class="memItemLeft" align="right" valign="top"><a id="a96e4cb703719d4a79d56049cd73091b6" name="a96e4cb703719d4a79d56049cd73091b6"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>MCMoveProbabilities</b> (double translationProbability=0.0, double randomTranslationProbability=0.0, double rotationProbability=0.0, double randomRotationProbability=0.0, double volumeChangeProbability=0.0, double reinsertionCBMCProbability=0.0, double partialReinsertionCBMCProbability=0.0, double identityChangeCBMCProbability=0.0, double swapProbability=0.0, double swapCBMCProbability=0.0, double swapCFCMCProbability=0.0, double swapCBCFCMCProbability=0.0, double gibbsVolumeChangeProbability=0.0, double gibbsSwapCBMCProbability=0.0, double gibbsSwapCFCMCProbability=0.0, double widomProbability=0.0, double widomCFCMCProbability=0.0, double widomCBCFCMCProbability=0.0, double parallelTemperingProbability=0.0, double hybridMCProbability=0.0)</td></tr>
 <tr class="separator:a96e4cb703719d4a79d56049cd73091b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a91abac1f90779f7974e312e486baf14f" id="r_a91abac1f90779f7974e312e486baf14f"><td class="memItemLeft" align="right" valign="top"><a id="a91abac1f90779f7974e312e486baf14f" name="a91abac1f90779f7974e312e486baf14f"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getProbability</b> (const MoveTypes &amp;move) const</td></tr>
-<tr class="separator:a91abac1f90779f7974e312e486baf14f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd080dda69040e113e21e7804b14e990" id="r_acd080dda69040e113e21e7804b14e990"><td class="memItemLeft" align="right" valign="top"><a id="acd080dda69040e113e21e7804b14e990" name="acd080dda69040e113e21e7804b14e990"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setProbability</b> (const MoveTypes &amp;move, double probability)</td></tr>
-<tr class="separator:acd080dda69040e113e21e7804b14e990"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a16447cba77cca144e8dddad932f3b8d4" id="r_a16447cba77cca144e8dddad932f3b8d4"><td class="memItemLeft" align="right" valign="top"><a id="a16447cba77cca144e8dddad932f3b8d4" name="a16447cba77cca144e8dddad932f3b8d4"></a>
-const std::unordered_map&lt; MoveTypes, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>normalizedMap</b> () const</td></tr>
-<tr class="separator:a16447cba77cca144e8dddad932f3b8d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0fc39b27365bf07ea180a3e3012a0a34" id="r_a0fc39b27365bf07ea180a3e3012a0a34"><td class="memItemLeft" align="right" valign="top"><a id="a0fc39b27365bf07ea180a3e3012a0a34" name="a0fc39b27365bf07ea180a3e3012a0a34"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>getProbability</b> (const Move::Types &amp;move) const</td></tr>
+<tr class="separator:a0fc39b27365bf07ea180a3e3012a0a34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04f27995bb85db1638ae05956479ab4f" id="r_a04f27995bb85db1638ae05956479ab4f"><td class="memItemLeft" align="right" valign="top"><a id="a04f27995bb85db1638ae05956479ab4f" name="a04f27995bb85db1638ae05956479ab4f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>setProbability</b> (const Move::Types &amp;move, double probability)</td></tr>
+<tr class="separator:a04f27995bb85db1638ae05956479ab4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a995dda77279ba87b60ba8e1d614cb801" id="r_a995dda77279ba87b60ba8e1d614cb801"><td class="memItemLeft" align="right" valign="top"><a id="a995dda77279ba87b60ba8e1d614cb801" name="a995dda77279ba87b60ba8e1d614cb801"></a>
+const std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>normalizedMap</b> () const</td></tr>
+<tr class="separator:a995dda77279ba87b60ba8e1d614cb801"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad371911d771519ae0bb89be50e9174e7" id="r_ad371911d771519ae0bb89be50e9174e7"><td class="memItemLeft" align="right" valign="top"><a id="ad371911d771519ae0bb89be50e9174e7" name="ad371911d771519ae0bb89be50e9174e7"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>removeRedundantMoves</b> ()</td></tr>
 <tr class="separator:ad371911d771519ae0bb89be50e9174e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a39680bd26e2505ae42a87fb79102a0d7" id="r_a39680bd26e2505ae42a87fb79102a0d7"><td class="memItemLeft" align="right" valign="top"><a id="a39680bd26e2505ae42a87fb79102a0d7" name="a39680bd26e2505ae42a87fb79102a0d7"></a>
-MoveTypes&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (RandomNumber &amp;random)</td></tr>
-<tr class="separator:a39680bd26e2505ae42a87fb79102a0d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f8b68b680befa6f3b6c75bf1aa14eb1" id="r_a4f8b68b680befa6f3b6c75bf1aa14eb1"><td class="memItemLeft" align="right" valign="top"><a id="a4f8b68b680befa6f3b6c75bf1aa14eb1" name="a4f8b68b680befa6f3b6c75bf1aa14eb1"></a>
+Move::Types&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (RandomNumber &amp;random)</td></tr>
+<tr class="separator:a4f8b68b680befa6f3b6c75bf1aa14eb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2229572e3ebe13cf199bbf8af2157192" id="r_a2229572e3ebe13cf199bbf8af2157192"><td class="memItemLeft" align="right" valign="top"><a id="a2229572e3ebe13cf199bbf8af2157192" name="a2229572e3ebe13cf199bbf8af2157192"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>join</b> (const <a class="el" href="structMCMoveProbabilities.html">MCMoveProbabilities</a> &amp;other)</td></tr>
 <tr class="separator:a2229572e3ebe13cf199bbf8af2157192"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -153,9 +153,9 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a133a03355773c94fa6ba44ccfdb1d928" id="r_a133a03355773c94fa6ba44ccfdb1d928"><td class="memItemLeft" align="right" valign="top"><a id="a133a03355773c94fa6ba44ccfdb1d928" name="a133a03355773c94fa6ba44ccfdb1d928"></a>
 std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
 <tr class="separator:a133a03355773c94fa6ba44ccfdb1d928"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1ffb1476772f3a0f651eb3917b49d141" id="r_a1ffb1476772f3a0f651eb3917b49d141"><td class="memItemLeft" align="right" valign="top"><a id="a1ffb1476772f3a0f651eb3917b49d141" name="a1ffb1476772f3a0f651eb3917b49d141"></a>
-std::unordered_map&lt; MoveTypes, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>probabilities</b> {}</td></tr>
-<tr class="separator:a1ffb1476772f3a0f651eb3917b49d141"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a54783a445db0b853153d5a94e4b6ba42" id="r_a54783a445db0b853153d5a94e4b6ba42"><td class="memItemLeft" align="right" valign="top"><a id="a54783a445db0b853153d5a94e4b6ba42" name="a54783a445db0b853153d5a94e4b6ba42"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>probabilities</b> {}</td></tr>
+<tr class="separator:a54783a445db0b853153d5a94e4b6ba42"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

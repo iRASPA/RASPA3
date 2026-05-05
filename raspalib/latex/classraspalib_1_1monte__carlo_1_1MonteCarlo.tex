@@ -1,0 +1,99 @@
+\doxysection{raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo Class Reference}
+\hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo}{}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo}\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_ad3af45c911f99006fe7ebda26782517a}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_ad3af45c911f99006fe7ebda26782517a} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, int number\+\_\+of\+\_\+cycles=0, int number\+\_\+of\+\_\+initialization\+\_\+cycles=0, int number\+\_\+of\+\_\+equilibration\+\_\+cycles=0, int print\+Every=5000, int write\+\_\+binary\+\_\+restart\+\_\+every=5000, int rescale\+\_\+wang\+\_\+landau\+\_\+every=5000, int optimize\+\_\+mc\+\_\+moves\+\_\+every=5000, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_aa1a29d980a68d955ff062dae87e88524}{systems}}=\mbox{[}$\,$\mbox{]}, int\texorpdfstring{$\vert$}{|}None random\+\_\+seed=None, int number\+\_\+of\+\_\+blocks=5, bool output\+\_\+to\+\_\+files=False)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_a2696886567e47a4afb4b2e2fcc3286df}{setup}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_a195c9b133b45b8c5599b73a035e4d15b}{tear\+\_\+down}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_af1af6eaa3900d491298855ef17cc826d}{equilibrate}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_a19d2d757beaa86f3824541b0dac1feca}{initialize}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_a47ce88097f11c63c5cafaab59a585c76}{production}} (self, collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]}\texorpdfstring{$\vert$}{|}None call\+\_\+back\+\_\+function=None)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_a02081282447349360c8c97ca3731fd8b}{run}} (self)
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1monte__carlo_1_1MonteCarlo_aa1a29d980a68d955ff062dae87e88524}{systems}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Configure and run Monte Carlo workflows in RASPA.
+
+This class stores run-control settings and orchestrates initialization,
+equilibration, and production stages for one or more simulation systems.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_af1af6eaa3900d491298855ef17cc826d}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_af1af6eaa3900d491298855ef17cc826d} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!equilibrate@{equilibrate}}
+\index{equilibrate@{equilibrate}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{equilibrate()}{equilibrate()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+equilibrate (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the equilibration stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_a19d2d757beaa86f3824541b0dac1feca}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_a19d2d757beaa86f3824541b0dac1feca} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!initialize@{initialize}}
+\index{initialize@{initialize}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{initialize()}{initialize()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+initialize (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the initialization stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_a47ce88097f11c63c5cafaab59a585c76}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_a47ce88097f11c63c5cafaab59a585c76} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!production@{production}}
+\index{production@{production}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{production()}{production()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+production (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{collections.\+abc.\+Callable\mbox{[}\mbox{[}$\,$\mbox{]}, None\mbox{]} \texorpdfstring{$\vert$}{|} None }]{call\+\_\+back\+\_\+function = {\ttfamily None} }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Run the production stage.
+
+Args:
+    call_back_function: Optional callback invoked during execution.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_a02081282447349360c8c97ca3731fd8b}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_a02081282447349360c8c97ca3731fd8b} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!run@{run}}
+\index{run@{run}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{run()}{run()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+run (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Execute the full configured Monte Carlo workflow.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_a2696886567e47a4afb4b2e2fcc3286df}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_a2696886567e47a4afb4b2e2fcc3286df} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!setup@{setup}}
+\index{setup@{setup}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{setup()}{setup()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+setup (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Allocate and prepare simulation resources before running.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_aa1a29d980a68d955ff062dae87e88524}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_aa1a29d980a68d955ff062dae87e88524} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!systems@{systems}}
+\index{systems@{systems}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{systems()}{systems()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1system_1_1System}{System}}\mbox{]} raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+systems (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the configured list of simulation systems.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1monte__carlo_1_1MonteCarlo_a195c9b133b45b8c5599b73a035e4d15b}\label{classraspalib_1_1monte__carlo_1_1MonteCarlo_a195c9b133b45b8c5599b73a035e4d15b} 
+\index{raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}!tear\_down@{tear\_down}}
+\index{tear\_down@{tear\_down}!raspalib.monte\_carlo.MonteCarlo@{raspalib.monte\_carlo.MonteCarlo}}
+\doxysubsubsection{\texorpdfstring{tear\_down()}{tear\_down()}}
+{\footnotesize\ttfamily  None raspalib.\+monte\+\_\+carlo.\+Monte\+Carlo.\+tear\+\_\+down (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Release simulation resources after completion.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/monte\+\_\+carlo.\+py\end{DoxyCompactItemize}

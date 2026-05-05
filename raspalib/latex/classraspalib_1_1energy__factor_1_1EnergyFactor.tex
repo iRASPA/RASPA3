@@ -1,0 +1,42 @@
+\doxysection{raspalib.\+energy\+\_\+factor.\+Energy\+Factor Class Reference}
+\hypertarget{classraspalib_1_1energy__factor_1_1EnergyFactor}{}\label{classraspalib_1_1energy__factor_1_1EnergyFactor}\index{raspalib.energy\_factor.EnergyFactor@{raspalib.energy\_factor.EnergyFactor}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1energy__factor_1_1EnergyFactor_a669b097d9e4ab3fd740abe5077cf247d}\label{classraspalib_1_1energy__factor_1_1EnergyFactor_a669b097d9e4ab3fd740abe5077cf247d} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, float \mbox{\hyperlink{classraspalib_1_1energy__factor_1_1EnergyFactor_ab4413bc912c28ea174bae144c940da94}{energy}}, float \mbox{\hyperlink{classraspalib_1_1energy__factor_1_1EnergyFactor_ae3572be5e0f316805cfe56f7707f268d}{dudlambda}})
+\item 
+float \mbox{\hyperlink{classraspalib_1_1energy__factor_1_1EnergyFactor_ab4413bc912c28ea174bae144c940da94}{energy}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1energy__factor_1_1EnergyFactor_ae3572be5e0f316805cfe56f7707f268d}{dudlambda}} (self)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Store an energy term and its thermodynamic-integration derivative.
+
+This lightweight container is used by RASPA to pass both an energy value
+and the corresponding ``dU/dlambda`` contribution together.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1energy__factor_1_1EnergyFactor_ae3572be5e0f316805cfe56f7707f268d}\label{classraspalib_1_1energy__factor_1_1EnergyFactor_ae3572be5e0f316805cfe56f7707f268d} 
+\index{raspalib.energy\_factor.EnergyFactor@{raspalib.energy\_factor.EnergyFactor}!dudlambda@{dudlambda}}
+\index{dudlambda@{dudlambda}!raspalib.energy\_factor.EnergyFactor@{raspalib.energy\_factor.EnergyFactor}}
+\doxysubsubsection{\texorpdfstring{dudlambda()}{dudlambda()}}
+{\footnotesize\ttfamily  float raspalib.\+energy\+\_\+factor.\+Energy\+Factor.\+dudlambda (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the stored ``dU/dlambda`` contribution.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1energy__factor_1_1EnergyFactor_ab4413bc912c28ea174bae144c940da94}\label{classraspalib_1_1energy__factor_1_1EnergyFactor_ab4413bc912c28ea174bae144c940da94} 
+\index{raspalib.energy\_factor.EnergyFactor@{raspalib.energy\_factor.EnergyFactor}!energy@{energy}}
+\index{energy@{energy}!raspalib.energy\_factor.EnergyFactor@{raspalib.energy\_factor.EnergyFactor}}
+\doxysubsubsection{\texorpdfstring{energy()}{energy()}}
+{\footnotesize\ttfamily  float raspalib.\+energy\+\_\+factor.\+Energy\+Factor.\+energy (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the stored energy contribution.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/energy\+\_\+factor.\+py\end{DoxyCompactItemize}

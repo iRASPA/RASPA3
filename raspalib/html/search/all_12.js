@@ -1,0 +1,6 @@
+var searchData=
+[
+  ['units_0',['Units',['../units.html',1,'md_raspa_2manual']]],
+  ['upper_5flimit_1',['upper_limit',['../classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble.html#ab4b3e8af72c23f73e20494fe8ce19167',1,'raspalib.move_statistics_double.MoveStatisticsDouble.upper_limit(self)'],['../classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble.html#af94d2773829b06f29072c437e81c3aa3',1,'raspalib.move_statistics_double.MoveStatisticsDouble.upper_limit(self, float arg0)'],['../classraspalib_1_1move__statistics__double3_1_1MoveStatisticsDouble3.html#a2510c237f828ed9f5397e9f133112667',1,'raspalib.move_statistics_double3.MoveStatisticsDouble3.upper_limit(self)'],['../classraspalib_1_1move__statistics__double3_1_1MoveStatisticsDouble3.html#aaa5cd9fbffb5cd07d0068bc048c106ec',1,'raspalib.move_statistics_double3.MoveStatisticsDouble3.upper_limit(self, tuple[float, float, float] arg0)']]],
+  ['user_20manual_2',['User Manual',['../md_raspa_2manual.html',1,'']]]
+];

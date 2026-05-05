@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,60 +100,30 @@ $(document).ready(function(){initNavTree('module_mc__moves__move__types.html',''
 
 <div class="header">
   <div class="summary">
-<a href="#enum-members">Enumerations</a> &#124;
+<a href="#classes">Classes</a> &#124;
 <a href="#var-members">Variables</a> &#124;
 <a href="#files">Files</a>  </div>
   <div class="headertitle"><div class="title">mc_moves_move_types Module Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
-Enumerations</h2></td></tr>
-<tr class="memitem:ab462ece87329d2b69a76d968f05a1191" id="r_ab462ece87329d2b69a76d968f05a1191"><td class="memItemLeft" align="right" valign="top"><a id="ab462ece87329d2b69a76d968f05a1191" name="ab462ece87329d2b69a76d968f05a1191"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>MoveTypes</b> : std::size_t { <br />
-&#160;&#160;<b>Translation</b> = 0
-, <b>RandomTranslation</b> = 1
-, <b>Rotation</b> = 2
-, <b>RandomRotation</b> = 3
-, <br />
-&#160;&#160;<b>VolumeChange</b> = 4
-, <b>ReinsertionCBMC</b> = 5
-, <b>PartialReinsertionCBMC</b> = 6
-, <b>IdentityChangeCBMC</b> = 7
-, <br />
-&#160;&#160;<b>Swap</b> = 8
-, <b>SwapCBMC</b> = 9
-, <b>SwapCFCMC</b> = 10
-, <b>SwapCBCFCMC</b> = 11
-, <br />
-&#160;&#160;<b>GibbsVolume</b> = 12
-, <b>GibbsSwapCBMC</b> = 13
-, <b>GibbsSwapCFCMC</b> = 14
-, <b>Widom</b> = 15
-, <br />
-&#160;&#160;<b>WidomCFCMC</b> = 16
-, <b>WidomCBCFCMC</b> = 17
-, <b>ParallelTempering</b> = 18
-, <b>HybridMC</b> = 19
-, <br />
-&#160;&#160;<b>Count</b>
-<br />
- }</td></tr>
-<tr class="separator:ab462ece87329d2b69a76d968f05a1191"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMove.html">Move</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a22c27261654d9cda917c799cdd98efde" id="r_a22c27261654d9cda917c799cdd98efde"><td class="memItemLeft" align="right" valign="top">std::unordered_set&lt; MoveTypes &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="move__types_8ixx.html#a22c27261654d9cda917c799cdd98efde">componentMoves</a></td></tr>
-<tr class="separator:a22c27261654d9cda917c799cdd98efde"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acb4d51719bf12f894d5823aef7b13ca2" id="r_acb4d51719bf12f894d5823aef7b13ca2"><td class="memItemLeft" align="right" valign="top"><a id="acb4d51719bf12f894d5823aef7b13ca2" name="acb4d51719bf12f894d5823aef7b13ca2"></a>
-std::unordered_set&lt; MoveTypes &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>systemMoves</b> = {MoveTypes::VolumeChange, MoveTypes::HybridMC}</td></tr>
-<tr class="separator:acb4d51719bf12f894d5823aef7b13ca2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae53b836eadf12c85449766a906cf1188" id="r_ae53b836eadf12c85449766a906cf1188"><td class="memItemLeft" align="right" valign="top">std::unordered_set&lt; MoveTypes &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="move__types_8ixx.html#ae53b836eadf12c85449766a906cf1188">crossSystemMoves</a></td></tr>
-<tr class="separator:ae53b836eadf12c85449766a906cf1188"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f1ddec4f7c8e8fd0caad5c73cf8edff" id="r_a4f1ddec4f7c8e8fd0caad5c73cf8edff"><td class="memItemLeft" align="right" valign="top"><a id="a4f1ddec4f7c8e8fd0caad5c73cf8edff" name="a4f1ddec4f7c8e8fd0caad5c73cf8edff"></a>
-std::unordered_set&lt; MoveTypes &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>groupMoves</b> = {}</td></tr>
-<tr class="separator:a4f1ddec4f7c8e8fd0caad5c73cf8edff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abfe05f28525db7a6c6a1fab8613d9ff4" id="r_abfe05f28525db7a6c6a1fab8613d9ff4"><td class="memItemLeft" align="right" valign="top">std::map&lt; MoveTypes, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="move__types_8ixx.html#abfe05f28525db7a6c6a1fab8613d9ff4">moveNames</a></td></tr>
-<tr class="separator:abfe05f28525db7a6c6a1fab8613d9ff4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0b458d5641625b51eec9a0dd71670055" id="r_a0b458d5641625b51eec9a0dd71670055"><td class="memItemLeft" align="right" valign="top">std::unordered_set&lt; Move::Types &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="move__types_8ixx.html#a0b458d5641625b51eec9a0dd71670055">componentMoves</a></td></tr>
+<tr class="separator:a0b458d5641625b51eec9a0dd71670055"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3cb1ac97b2897345bca0d3b2ef91411" id="r_ae3cb1ac97b2897345bca0d3b2ef91411"><td class="memItemLeft" align="right" valign="top"><a id="ae3cb1ac97b2897345bca0d3b2ef91411" name="ae3cb1ac97b2897345bca0d3b2ef91411"></a>
+std::unordered_set&lt; Move::Types &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>systemMoves</b> = {Move::Types::VolumeChange, Move::Types::HybridMC}</td></tr>
+<tr class="separator:ae3cb1ac97b2897345bca0d3b2ef91411"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67bc53be66f0b9e87c63fd5c1d2d6302" id="r_a67bc53be66f0b9e87c63fd5c1d2d6302"><td class="memItemLeft" align="right" valign="top">std::unordered_set&lt; Move::Types &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="move__types_8ixx.html#a67bc53be66f0b9e87c63fd5c1d2d6302">crossSystemMoves</a></td></tr>
+<tr class="separator:a67bc53be66f0b9e87c63fd5c1d2d6302"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a843e64af2573a97a772705103d6b386a" id="r_a843e64af2573a97a772705103d6b386a"><td class="memItemLeft" align="right" valign="top"><a id="a843e64af2573a97a772705103d6b386a" name="a843e64af2573a97a772705103d6b386a"></a>
+std::unordered_set&lt; Move::Types &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>groupMoves</b> = {}</td></tr>
+<tr class="separator:a843e64af2573a97a772705103d6b386a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>

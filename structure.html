@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -131,7 +131,7 @@ $(document).ready(function(){initNavTree('structure.html',''); initResizable(); 
 <div class="image">
 <img src="struct_integrators.png" alt=""/>
 </div>
- <h1>Example: CB/CFCMC Move</h1>
+ <h1>Example: CB/CFCMC <a class="el" href="structMove.html">Move</a></h1>
 <p>One example of a Monte Carlo move - which may also be the most complex move RASPA offers, is the "Configurational Bias Continuous Fractional Component Monte Carlo" move (our naming is still better than the DFT people name their XC functionals). The CB/CFCMC move is a combination of the CBMC move and the CFCMC move. The CBMC move increases the acceptance probability - and therefore decorrelation of the simulation - by proposing multiple possible states and selecting the best from the Boltzmann weight of the state with some extra accounting to keep detailed balance. CFCMC increases the acceptance by making one particle a fractional particle ($0 &lt; \lambda &lt;= 1$), such that the energy barrier of insertion is lower and more gradual.</p>
 <p>The CB/CFCMC move starts by randomly sampling a random displacement $\Delta \lambda$, which alters the particle size. If $\lambda + \Delta \lamda &lt; 1$ a deletion move is done (left branch in figure), else if $\lambda + \Delta \lamda \ge 1$ an insertion move is done, otherwise there will be just a scaling. If there is an insertion (deletion) taking place a new fractional particle should be placed (chosen), such that there is always 1 fractional particle. For this the CBMC routines are used. In all cases the new interaction energies are calculated and are then used to determine what the probability of acceptance of this move is. If this move is accepted, a set of routines is called (labeled Update in the figure) to alter the system state.</p>
 <div class="image">

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -146,9 +146,21 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae7295096bf560c09dccc3d76f83772b1" id="r_ae7295096bf560c09dccc3d76f83772b1"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#ae7295096bf560c09dccc3d76f83772b1">CoulombEnergy</a> () const</td></tr>
 <tr class="memdesc:ae7295096bf560c09dccc3d76f83772b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total Coulombic energy.  <br /></td></tr>
 <tr class="separator:ae7295096bf560c09dccc3d76f83772b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01f9927244f8f27b58893c4a6d2c13c4" id="r_a01f9927244f8f27b58893c4a6d2c13c4"><td class="memItemLeft" align="right" valign="top"><a id="a01f9927244f8f27b58893c4a6d2c13c4" name="a01f9927244f8f27b58893c4a6d2c13c4"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>VanDerWaalsEnergy</b> () const</td></tr>
+<tr class="separator:a01f9927244f8f27b58893c4a6d2c13c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab6127cd5554d2a74c31536d5f235e641" id="r_ab6127cd5554d2a74c31536d5f235e641"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#ab6127cd5554d2a74c31536d5f235e641">kineticEnergy</a> () const</td></tr>
 <tr class="memdesc:ab6127cd5554d2a74c31536d5f235e641"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total kinetic energy.  <br /></td></tr>
 <tr class="separator:ab6127cd5554d2a74c31536d5f235e641"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8669a442122a7ee1c612fff17075a7ab" id="r_a8669a442122a7ee1c612fff17075a7ab"><td class="memItemLeft" align="right" valign="top"><a id="a8669a442122a7ee1c612fff17075a7ab" name="a8669a442122a7ee1c612fff17075a7ab"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>translationalPartKineticEnergy</b> () const</td></tr>
+<tr class="separator:a8669a442122a7ee1c612fff17075a7ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aabfa1b20f8c550a21f28f81a98f4a68a" id="r_aabfa1b20f8c550a21f28f81a98f4a68a"><td class="memItemLeft" align="right" valign="top"><a id="aabfa1b20f8c550a21f28f81a98f4a68a" name="aabfa1b20f8c550a21f28f81a98f4a68a"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>rotationalPartKineticEnergy</b> () const</td></tr>
+<tr class="separator:aabfa1b20f8c550a21f28f81a98f4a68a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a22129f368d76b32a67914845291beae0" id="r_a22129f368d76b32a67914845291beae0"><td class="memItemLeft" align="right" valign="top"><a id="a22129f368d76b32a67914845291beae0" name="a22129f368d76b32a67914845291beae0"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatEnergy</b> () const</td></tr>
+<tr class="separator:a22129f368d76b32a67914845291beae0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a11b8beaf8eaa250603b85e573f99ce4f" id="r_a11b8beaf8eaa250603b85e573f99ce4f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a11b8beaf8eaa250603b85e573f99ce4f">ewaldFourier</a> () const</td></tr>
 <tr class="memdesc:a11b8beaf8eaa250603b85e573f99ce4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total Ewald Fourier energy.  <br /></td></tr>
 <tr class="separator:a11b8beaf8eaa250603b85e573f99ce4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -170,6 +182,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a9526ac8520d387ae2dff2bc2d4f24802" id="r_a9526ac8520d387ae2dff2bc2d4f24802"><td class="memItemLeft" align="right" valign="top"><a id="a9526ac8520d387ae2dff2bc2d4f24802" name="a9526ac8520d387ae2dff2bc2d4f24802"></a>
 <a class="el" href="structRunningEnergy.html">RunningEnergy</a>&#160;</td><td class="memItemRight" valign="bottom"><b>operator-</b> () const</td></tr>
 <tr class="separator:a9526ac8520d387ae2dff2bc2d4f24802"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a012f890a8cd5fdd6ec02f8d77d649d64" id="r_a012f890a8cd5fdd6ec02f8d77d649d64"><td class="memItemLeft" align="right" valign="top"><a id="a012f890a8cd5fdd6ec02f8d77d649d64" name="a012f890a8cd5fdd6ec02f8d77d649d64"></a>
+<a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator*=</b> (const double &amp;b)</td></tr>
+<tr class="separator:a012f890a8cd5fdd6ec02f8d77d649d64"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a63b2b16a0448e43dc96abb1a72749dce" id="r_a63b2b16a0448e43dc96abb1a72749dce"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a63b2b16a0448e43dc96abb1a72749dce">repr</a> () const</td></tr>
+<tr class="memdesc:a63b2b16a0448e43dc96abb1a72749dce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> object.  <br /></td></tr>
+<tr class="separator:a63b2b16a0448e43dc96abb1a72749dce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -717,6 +735,26 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>A string representing the differences in energy components between two molecular dynamics states. </dd></dl>
+
+</div>
+</div>
+<a id="a63b2b16a0448e43dc96abb1a72749dce" name="a63b2b16a0448e43dc96abb1a72749dce"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a63b2b16a0448e43dc96abb1a72749dce">&#9670;&#160;</a></span>repr()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::repr </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> object. </p>
+<dl class="section return"><dt>Returns</dt><dd>A string describing the <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> object. </dd></dl>
 
 </div>
 </div>

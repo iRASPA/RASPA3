@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -124,9 +124,12 @@ Collaboration diagram for PropertyConventionalRadialDistributionFunction:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a40bf3d48295b209c7130042ecfde3d3d" id="r_a40bf3d48295b209c7130042ecfde3d3d"><td class="memItemLeft" align="right" valign="top"><a id="a40bf3d48295b209c7130042ecfde3d3d" name="a40bf3d48295b209c7130042ecfde3d3d"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyConventionalRadialDistributionFunction</b> (std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms, std::size_t numberOfBins, double range, std::size_t sampleEvery, std::size_t writeEvery)</td></tr>
-<tr class="separator:a40bf3d48295b209c7130042ecfde3d3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99be5cd88c24cb28b595ab9e724002ee" id="r_a99be5cd88c24cb28b595ab9e724002ee"><td class="memItemLeft" align="right" valign="top"><a id="a99be5cd88c24cb28b595ab9e724002ee" name="a99be5cd88c24cb28b595ab9e724002ee"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyConventionalRadialDistributionFunction</b> (std::size_t numberOfBins, double range, std::size_t sampleEvery, std::optional&lt; std::size_t &gt; writeEvery)</td></tr>
+<tr class="separator:a99be5cd88c24cb28b595ab9e724002ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1bc5db6b3f08abc4b4f3c923af690c36" id="r_a1bc5db6b3f08abc4b4f3c923af690c36"><td class="memItemLeft" align="right" valign="top"><a id="a1bc5db6b3f08abc4b4f3c923af690c36" name="a1bc5db6b3f08abc4b4f3c923af690c36"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyConventionalRadialDistributionFunction</b> (std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms, std::size_t numberOfBins, double range, std::size_t sampleEvery, std::optional&lt; std::size_t &gt; writeEvery)</td></tr>
+<tr class="separator:a1bc5db6b3f08abc4b4f3c923af690c36"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a47cc2dccca1e5c468763fc1010ee14b2" id="r_a47cc2dccca1e5c468763fc1010ee14b2"><td class="memItemLeft" align="right" valign="top"><a id="a47cc2dccca1e5c468763fc1010ee14b2" name="a47cc2dccca1e5c468763fc1010ee14b2"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (std::size_t blockIndex, std::size_t atomTypeA, std::size_t atomTypeB) const</td></tr>
 <tr class="separator:a47cc2dccca1e5c468763fc1010ee14b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,6 +139,9 @@ std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><
 <tr class="memitem:a6ae87fdeb8bf9937c6cddefbd0e2b08a" id="r_a6ae87fdeb8bf9937c6cddefbd0e2b08a"><td class="memItemLeft" align="right" valign="top"><a id="a6ae87fdeb8bf9937c6cddefbd0e2b08a" name="a6ae87fdeb8bf9937c6cddefbd0e2b08a"></a>
 std::pair&lt; std::vector&lt; double &gt;, std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageProbabilityHistogram</b> (std::size_t atomTypeA, std::size_t atomTypeB) const</td></tr>
 <tr class="separator:a6ae87fdeb8bf9937c6cddefbd0e2b08a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1935d0f0abeb78fa721276fadf23e074" id="r_a1935d0f0abeb78fa721276fadf23e074"><td class="memItemLeft" align="right" valign="top"><a id="a1935d0f0abeb78fa721276fadf23e074" name="a1935d0f0abeb78fa721276fadf23e074"></a>
+std::vector&lt; std::vector&lt; std::tuple&lt; std::vector&lt; double &gt;, std::vector&lt; double &gt;, std::vector&lt; double &gt; &gt; &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>result</b> () const</td></tr>
+<tr class="separator:a1935d0f0abeb78fa721276fadf23e074"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba9ae107c7a40a309953604cb6ee5c18" id="r_aba9ae107c7a40a309953604cb6ee5c18"><td class="memItemLeft" align="right" valign="top"><a id="aba9ae107c7a40a309953604cb6ee5c18" name="aba9ae107c7a40a309953604cb6ee5c18"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, std::size_t currentCycle, std::size_t block)</td></tr>
 <tr class="separator:aba9ae107c7a40a309953604cb6ee5c18"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -169,9 +175,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>deltaR</b></td></tr
 <tr class="memitem:a5b8cdfe50125995534cff46626bf08ef" id="r_a5b8cdfe50125995534cff46626bf08ef"><td class="memItemLeft" align="right" valign="top"><a id="a5b8cdfe50125995534cff46626bf08ef" name="a5b8cdfe50125995534cff46626bf08ef"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b></td></tr>
 <tr class="separator:a5b8cdfe50125995534cff46626bf08ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad214aebb3cb91b3a432a3b20b311aa40" id="r_ad214aebb3cb91b3a432a3b20b311aa40"><td class="memItemLeft" align="right" valign="top"><a id="ad214aebb3cb91b3a432a3b20b311aa40" name="ad214aebb3cb91b3a432a3b20b311aa40"></a>
-std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
-<tr class="separator:ad214aebb3cb91b3a432a3b20b311aa40"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0524085630d25a1cbc1f5afd1b9a2f9e" id="r_a0524085630d25a1cbc1f5afd1b9a2f9e"><td class="memItemLeft" align="right" valign="top"><a id="a0524085630d25a1cbc1f5afd1b9a2f9e" name="a0524085630d25a1cbc1f5afd1b9a2f9e"></a>
+std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
+<tr class="separator:a0524085630d25a1cbc1f5afd1b9a2f9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c635df81bf9ec08162f0ae9105f95d6" id="r_a6c635df81bf9ec08162f0ae9105f95d6"><td class="memItemLeft" align="right" valign="top"><a id="a6c635df81bf9ec08162f0ae9105f95d6" name="a6c635df81bf9ec08162f0ae9105f95d6"></a>
 std::vector&lt; std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>sumProperty</b></td></tr>
 <tr class="separator:a6c635df81bf9ec08162f0ae9105f95d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -184,6 +190,12 @@ std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bott
 <tr class="memitem:a72d2e399b1683ba80c821854cd24bdef" id="r_a72d2e399b1683ba80c821854cd24bdef"><td class="memItemLeft" align="right" valign="top"><a id="a72d2e399b1683ba80c821854cd24bdef" name="a72d2e399b1683ba80c821854cd24bdef"></a>
 std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pairCount</b></td></tr>
 <tr class="separator:a72d2e399b1683ba80c821854cd24bdef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb25aa2e2c3ab4b9578f30d4c95f5846" id="r_adb25aa2e2c3ab4b9578f30d4c95f5846"><td class="memItemLeft" align="right" valign="top"><a id="adb25aa2e2c3ab4b9578f30d4c95f5846" name="adb25aa2e2c3ab4b9578f30d4c95f5846"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>volume_cummulative</b> {}</td></tr>
+<tr class="separator:adb25aa2e2c3ab4b9578f30d4c95f5846"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4414b66de00b1b456a59f32c1f12fff8" id="r_a4414b66de00b1b456a59f32c1f12fff8"><td class="memItemLeft" align="right" valign="top"><a id="a4414b66de00b1b456a59f32c1f12fff8" name="a4414b66de00b1b456a59f32c1f12fff8"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>volume_count</b> {}</td></tr>
+<tr class="separator:a4414b66de00b1b456a59f32c1f12fff8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

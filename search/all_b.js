@@ -12,7 +12,7 @@ var searchData=
   ['liquid_9',['Liquid',['../structEquationOfState.html#ad24dde64769d920de844de46c3426af5a5635bf596d97c1c2e7afe481ed060774',1,'EquationOfState']]],
   ['lnpartitionfunction_10',['lnPartitionFunction',['../structComponent.html#a7fe47bf4a440c2c8bd04bd20c04ba686',1,'Component']]],
   ['lnpi_11',['lnpi',['../structTransitionMatrix.html#a9d052c97d0963b37ffdc3a0f4605405e',1,'TransitionMatrix']]],
-  ['loadings_12',['Loadings',['../structLoadings.html',1,'']]],
+  ['loadingdata_12',['LoadingData',['../structLoadingData.html',1,'']]],
   ['log_13',['Log',['../structComponent.html#aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b',1,'Component']]],
   ['lorentz_5fberthelot_14',['Lorentz_Berthelot',['../structForceField.html#a3414738e7f6343c7b8993b7af19fe878a9a64296881083d284df9f5bdb6638aaa',1,'ForceField']]]
 ];

@@ -1,0 +1,115 @@
+\doxysection{raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State Class Reference}
+\hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState}{}\label{classraspalib_1_1equation__of__state_1_1EquationOfState}\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1EquationOfStateType}{Equation\+Of\+State\+Type}}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidInput}{Fluid\+Input}}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidResult}{Fluid\+Result}}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidState}{Fluid\+State}}
+\item 
+class \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1MixingRules}{Mixing\+Rules}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_a9901bb8c59563f7eb44ab16783af1386}{critical\+\_\+temperature}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_a3bbdf16bd7ae2af4d26610ea7450ab2f}{critical\+\_\+pressure}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_abd09e562dd9b5fe2370d0187b18268bd}{acentric\+\_\+factor}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_ac3044ea00e955aee5852a008f23c1d57}{mol\+\_\+fraction}} (self)
+\item 
+bool \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_aefe730d45dec2a38edba8f6abff8ff2a}{swappable}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_a9ad2fca21569642f1c81ac150a4eafa9}{\+\_\+\+\_\+init\+\_\+\+\_\+}} (self)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidResult}{Equation\+Of\+State.\+Fluid\+Result}}\mbox{]} \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_aca0262cf826506894ce44ff70d8e4b62}{compute\+\_\+fluid\+\_\+properties}} (float temperature, float pressure, collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidInput}{Fluid\+Input}}\mbox{]} properties, \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1EquationOfStateType}{Equation\+Of\+State\+Type}} type, \mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1MixingRules}{Equation\+Of\+State.\+Mixing\+Rules}} mixing\+\_\+rules)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Equation-of-state utilities for fluid-property calculations in RASPA.
+
+This API exposes supported equation-of-state models, mixing rules, and
+helper data containers used to compute compressibility and fugacity data for
+fluid mixtures.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_a9ad2fca21569642f1c81ac150a4eafa9}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_a9ad2fca21569642f1c81ac150a4eafa9} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!\_\_init\_\_@{\_\_init\_\_}}
+\index{\_\_init\_\_@{\_\_init\_\_}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{\_\_init\_\_()}{\_\_init\_\_()}}
+{\footnotesize\ttfamily  None raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+\_\+\+\_\+init\+\_\+\+\_\+ (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Initialize an :class:`EquationOfState` helper instance.\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_abd09e562dd9b5fe2370d0187b18268bd}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_abd09e562dd9b5fe2370d0187b18268bd} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!acentric\_factor@{acentric\_factor}}
+\index{acentric\_factor@{acentric\_factor}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{acentric\_factor()}{acentric\_factor()}}
+{\footnotesize\ttfamily  float raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+acentric\+\_\+factor (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the component acentric factor.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_aca0262cf826506894ce44ff70d8e4b62}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_aca0262cf826506894ce44ff70d8e4b62} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!compute\_fluid\_properties@{compute\_fluid\_properties}}
+\index{compute\_fluid\_properties@{compute\_fluid\_properties}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{compute\_fluid\_properties()}{compute\_fluid\_properties()}}
+{\footnotesize\ttfamily  collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidResult}{Equation\+Of\+State.\+Fluid\+Result}}\mbox{]} raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+compute\+\_\+fluid\+\_\+properties (\begin{DoxyParamCaption}\item[{float}]{temperature,  }\item[{float}]{pressure,  }\item[{collections.\+abc.\+Sequence\mbox{[}\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1FluidInput}{Fluid\+Input}}\mbox{]}}]{properties,  }\item[{\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1EquationOfStateType}{Equation\+Of\+State\+Type}}}]{type,  }\item[{\mbox{\hyperlink{classraspalib_1_1equation__of__state_1_1EquationOfState_1_1MixingRules}{Equation\+Of\+State.\+Mixing\+Rules}}}]{mixing\+\_\+rules }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+\begin{DoxyVerb}Compute EOS properties for all provided fluid components.
+
+Args:
+    temperature: System temperature.
+    pressure: System pressure.
+    properties: Sequence of component input data.
+    type: EOS model to use.
+    mixing_rules: Mixing rule used for the mixture calculation.
+
+Returns:
+    Sequence of :class:`FluidResult` entries, one per input component.
+\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_a3bbdf16bd7ae2af4d26610ea7450ab2f}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_a3bbdf16bd7ae2af4d26610ea7450ab2f} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!critical\_pressure@{critical\_pressure}}
+\index{critical\_pressure@{critical\_pressure}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{critical\_pressure()}{critical\_pressure()}}
+{\footnotesize\ttfamily  float raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+critical\+\_\+pressure (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the component critical pressure.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_a9901bb8c59563f7eb44ab16783af1386}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_a9901bb8c59563f7eb44ab16783af1386} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!critical\_temperature@{critical\_temperature}}
+\index{critical\_temperature@{critical\_temperature}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{critical\_temperature()}{critical\_temperature()}}
+{\footnotesize\ttfamily  float raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+critical\+\_\+temperature (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the component critical temperature.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_ac3044ea00e955aee5852a008f23c1d57}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_ac3044ea00e955aee5852a008f23c1d57} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!mol\_fraction@{mol\_fraction}}
+\index{mol\_fraction@{mol\_fraction}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{mol\_fraction()}{mol\_fraction()}}
+{\footnotesize\ttfamily  float raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+mol\+\_\+fraction (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the component mole fraction.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1equation__of__state_1_1EquationOfState_aefe730d45dec2a38edba8f6abff8ff2a}\label{classraspalib_1_1equation__of__state_1_1EquationOfState_aefe730d45dec2a38edba8f6abff8ff2a} 
+\index{raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}!swappable@{swappable}}
+\index{swappable@{swappable}!raspalib.equation\_of\_state.EquationOfState@{raspalib.equation\_of\_state.EquationOfState}}
+\doxysubsubsection{\texorpdfstring{swappable()}{swappable()}}
+{\footnotesize\ttfamily  bool raspalib.\+equation\+\_\+of\+\_\+state.\+Equation\+Of\+State.\+swappable (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return whether the component is marked as swappable.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/equation\+\_\+of\+\_\+state.\+py\end{DoxyCompactItemize}

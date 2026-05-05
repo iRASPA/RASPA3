@@ -25,6 +25,23 @@
 var NAVTREE =
 [
   [ "RASPA3", "index.html", [
+    [ "Modules", "modules.html", [
+      [ "Modules List", "modules.html", "modules_dup" ]
+    ] ],
+    [ "Namespaces", "namespaces.html", [
+      [ "Namespace List", "namespaces.html", "namespaces_dup" ]
+    ] ],
+    [ "Classes", "annotated.html", [
+      [ "Class List", "annotated.html", "annotated_dup" ],
+      [ "Class Index", "classes.html", null ],
+      [ "Class Members", "functions.html", [
+        [ "All", "functions.html", "functions_dup" ],
+        [ "Functions", "functions_func.html", "functions_func" ],
+        [ "Variables", "functions_vars.html", "functions_vars" ],
+        [ "Enumerations", "functions_enum.html", null ],
+        [ "Related Symbols", "functions_rela.html", null ]
+      ] ]
+    ] ],
     [ "User Manual", "md_docs_2manual.html", [
       [ "Manual", "manual_main.html", null ],
       [ "Units", "units.html", null ],
@@ -47,36 +64,20 @@ var NAVTREE =
       [ "FAQ", "FAQ.html", null ],
       [ "Appendix: Structure of the RASPA Code", "structure.html", null ]
     ] ],
-    [ "Modules", "modules.html", [
-      [ "Modules List", "modules.html", "modules_dup" ]
-    ] ],
-    [ "Namespaces", "namespaces.html", [
-      [ "Namespace List", "namespaces.html", "namespaces_dup" ]
-    ] ],
-    [ "Classes", "annotated.html", [
-      [ "Class List", "annotated.html", "annotated_dup" ],
-      [ "Class Index", "classes.html", null ],
-      [ "Class Members", "functions.html", [
-        [ "All", "functions.html", "functions_dup" ],
-        [ "Functions", "functions_func.html", "functions_func" ],
-        [ "Variables", "functions_vars.html", "functions_vars" ],
-        [ "Enumerations", "functions_enum.html", null ],
-        [ "Related Symbols", "functions_rela.html", null ]
-      ] ]
-    ] ]
+    [ "Raspalib (python)", "raspalib/html/index.html", null ]
   ] ]
 ];
 
 var NAVTREEINDEX =
 [
 "FAQ.html",
-"module_triquintic__derivatives__external__field.html",
-"structChainGrowData.html",
-"structForceField.html#a05c395fa1f6618853754c8034fc49ecf",
-"structInputReader.html#aab194ea6c0c2a17832e091458f0c6c8b",
-"structMonteCarlo.html#a862bfa674ce0bf50fc7b79e1df324938",
-"structPseudoAtom.html#ad0a8f413b0c7a7a7ac188952671b9dda",
-"structTransitionMatrix.html#a556217308e0e058ad98e479aeb10fbe8"
+"module_urey__bradley__potential.html",
+"structCIFReader.html#af22592d56fbfbf063c452141313287ec",
+"structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983a3ebf69400847360a2fce3bed2e99f8d7",
+"structInputReader.html#ac92f6d977ab49756c683006cc03f8939",
+"structMonteCarlo.html#a92cb53d86687ec03d2c5d649e064c486",
+"structPseudoAtom.html#acf4996286ed58a462d4edb3051c604b6",
+"structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

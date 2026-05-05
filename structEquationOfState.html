@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.22</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.28</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,8 +100,10 @@ $(document).ready(function(){initNavTree('structEquationOfState.html',''); initR
 
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="structEquationOfState-members.html">List of all members</a>  </div>
@@ -112,6 +114,13 @@ $(document).ready(function(){initNavTree('structEquationOfState.html',''); initR
 <p>Represents the equation of state for fluid mixtures in the simulation.  
  <a href="structEquationOfState.html#details">More...</a></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState_1_1FluidInput.html">FluidInput</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState_1_1FluidResult.html">FluidResult</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
 <tr class="memitem:a51c8277dc27fa95e25e99f5cd682156f" id="r_a51c8277dc27fa95e25e99f5cd682156f"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">Type</a> : int { <a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156fad4ea342ac520601c86740ae36dd3b2c4">PengRobinson</a> = 0
@@ -120,10 +129,10 @@ Public Types</h2></td></tr>
  }</td></tr>
 <tr class="memdesc:a51c8277dc27fa95e25e99f5cd682156f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of supported equations of state.  <a href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">More...</a><br /></td></tr>
 <tr class="separator:a51c8277dc27fa95e25e99f5cd682156f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af82f7c7f61c624be3fb4577f1bf889f7" id="r_af82f7c7f61c624be3fb4577f1bf889f7"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">MultiComponentMixingRules</a> : int { <a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed">VanDerWaals</a> = 0
+<tr class="memitem:a2919126391b59bd044f6266ea42fb704" id="r_a2919126391b59bd044f6266ea42fb704"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">MixingRules</a> : int { <a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed">VanDerWaals</a> = 0
  }</td></tr>
-<tr class="memdesc:af82f7c7f61c624be3fb4577f1bf889f7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of mixing rules for multi-component systems.  <a href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">More...</a><br /></td></tr>
-<tr class="separator:af82f7c7f61c624be3fb4577f1bf889f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memdesc:a2919126391b59bd044f6266ea42fb704"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of mixing rules for multi-component systems.  <a href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">More...</a><br /></td></tr>
+<tr class="separator:a2919126391b59bd044f6266ea42fb704"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad24dde64769d920de844de46c3426af5" id="r_ad24dde64769d920de844de46c3426af5"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#ad24dde64769d920de844de46c3426af5">FluidState</a> : int { <br />
 &#160;&#160;<a class="el" href="structEquationOfState.html#ad24dde64769d920de844de46c3426af5a88183b946cc5f0e8c96b2e66e1c74a7e">Unknown</a> = 0
 , <a class="el" href="structEquationOfState.html#ad24dde64769d920de844de46c3426af5a2c3a64d87d74b9a159d4c3bc925d42e8">SuperCriticalFluid</a> = 1
@@ -141,12 +150,18 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a03dc3da0d5bc8498d2799783577e64d3" id="r_a03dc3da0d5bc8498d2799783577e64d3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#a03dc3da0d5bc8498d2799783577e64d3">EquationOfState</a> ()=default</td></tr>
 <tr class="memdesc:a03dc3da0d5bc8498d2799783577e64d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structEquationOfState.html" title="Represents the equation of state for fluid mixtures in the simulation.">EquationOfState</a> struct.  <br /></td></tr>
 <tr class="separator:a03dc3da0d5bc8498d2799783577e64d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a83a67132f77dded8cc99c6e0024a5dd4" id="r_a83a67132f77dded8cc99c6e0024a5dd4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#a83a67132f77dded8cc99c6e0024a5dd4">EquationOfState</a> (<a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a> type, <a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a> <a class="el" href="structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242">multiComponentMixingRules</a>, double temperature, double pressure, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double heliumVoidFraction, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components)</td></tr>
-<tr class="memdesc:a83a67132f77dded8cc99c6e0024a5dd4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="structEquationOfState.html" title="Represents the equation of state for fluid mixtures in the simulation.">EquationOfState</a> with specified parameters.  <br /></td></tr>
-<tr class="separator:a83a67132f77dded8cc99c6e0024a5dd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd32e4e08e0efb2944a129abd398380e" id="r_acd32e4e08e0efb2944a129abd398380e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#acd32e4e08e0efb2944a129abd398380e">computeComponentFluidProperties</a> (<a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a> <a class="el" href="structEquationOfState.html#a3ba390021f69b0511144725495a96f6b">equationOfState</a>, <a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a> <a class="el" href="structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242">multiComponentMixingRules</a>, double temperature, double pressure, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double heliumVoidFraction, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components)</td></tr>
-<tr class="memdesc:acd32e4e08e0efb2944a129abd398380e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the fluid properties for each component in the mixture.  <br /></td></tr>
-<tr class="separator:acd32e4e08e0efb2944a129abd398380e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6418937711af0d3a24fb483df52c9190" id="r_a6418937711af0d3a24fb483df52c9190"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#a6418937711af0d3a24fb483df52c9190">EquationOfState</a> (<a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a> type, <a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a> <a class="el" href="structEquationOfState.html#ae8cdf6084fbc9327a6db4ab211fdf9a1">multiComponentMixingRules</a>, double temperature, double pressure, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double heliumVoidFraction, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components)</td></tr>
+<tr class="memdesc:a6418937711af0d3a24fb483df52c9190"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="structEquationOfState.html" title="Represents the equation of state for fluid mixtures in the simulation.">EquationOfState</a> with specified parameters.  <br /></td></tr>
+<tr class="separator:a6418937711af0d3a24fb483df52c9190"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac83ce4ba780d742f6ff4034ab85e6443" id="r_ac83ce4ba780d742f6ff4034ab85e6443"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#ac83ce4ba780d742f6ff4034ab85e6443">computeComponentFluidProperties</a> (<a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a> <a class="el" href="structEquationOfState.html#a3ba390021f69b0511144725495a96f6b">equationOfState</a>, <a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a> <a class="el" href="structEquationOfState.html#ae8cdf6084fbc9327a6db4ab211fdf9a1">multiComponentMixingRules</a>, double temperature, double pressure, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double heliumVoidFraction, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components)</td></tr>
+<tr class="memdesc:ac83ce4ba780d742f6ff4034ab85e6443"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the fluid properties for each component in the mixture.  <br /></td></tr>
+<tr class="separator:ac83ce4ba780d742f6ff4034ab85e6443"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a493c2b960f696a334938d74bf8769b61" id="r_a493c2b960f696a334938d74bf8769b61"><td class="memItemLeft" align="right" valign="top"><a id="a493c2b960f696a334938d74bf8769b61" name="a493c2b960f696a334938d74bf8769b61"></a>
+static std::vector&lt; <a class="el" href="structEquationOfState_1_1FluidResult.html">EquationOfState::FluidResult</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>computeFluidProperties</b> (double temperature, double pressure, const std::vector&lt; <a class="el" href="structEquationOfState_1_1FluidInput.html">EquationOfState::FluidInput</a> &gt; &amp;equationOfStateProperties, <a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a> type, <a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a> rules)</td></tr>
+<tr class="separator:a493c2b960f696a334938d74bf8769b61"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -162,9 +177,9 @@ std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumbe
 <a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">EquationOfState::Type</a>&#160;</td><td class="memItemRight" valign="bottom"><b>equationOfState</b> {<a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156fad4ea342ac520601c86740ae36dd3b2c4">EquationOfState::Type::PengRobinson</a>}</td></tr>
 <tr class="memdesc:a3ba390021f69b0511144725495a96f6b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of equation of state used. <br /></td></tr>
 <tr class="separator:a3ba390021f69b0511144725495a96f6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4fc1f8766551af9e3716592f4edd242" id="r_af4fc1f8766551af9e3716592f4edd242"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242">multiComponentMixingRules</a></td></tr>
-<tr class="memdesc:af4fc1f8766551af9e3716592f4edd242"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mixing rules for multi-component systems.  <br /></td></tr>
-<tr class="separator:af4fc1f8766551af9e3716592f4edd242"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8cdf6084fbc9327a6db4ab211fdf9a1" id="r_ae8cdf6084fbc9327a6db4ab211fdf9a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEquationOfState.html#ae8cdf6084fbc9327a6db4ab211fdf9a1">multiComponentMixingRules</a></td></tr>
+<tr class="memdesc:ae8cdf6084fbc9327a6db4ab211fdf9a1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mixing rules for multi-component systems.  <br /></td></tr>
+<tr class="separator:ae8cdf6084fbc9327a6db4ab211fdf9a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -215,8 +230,8 @@ Friends</h2></td></tr>
 
 </div>
 </div>
-<a id="af82f7c7f61c624be3fb4577f1bf889f7" name="af82f7c7f61c624be3fb4577f1bf889f7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af82f7c7f61c624be3fb4577f1bf889f7">&#9670;&#160;</a></span>MultiComponentMixingRules</h2>
+<a id="a2919126391b59bd044f6266ea42fb704" name="a2919126391b59bd044f6266ea42fb704"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2919126391b59bd044f6266ea42fb704">&#9670;&#160;</a></span>MixingRules</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -225,7 +240,7 @@ Friends</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a> : int</td>
+          <td class="memname">enum class <a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a> : int</td>
         </tr>
       </table>
   </td>
@@ -237,7 +252,7 @@ Friends</h2></td></tr>
 
 <p>Enumeration of mixing rules for multi-component systems. </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed" name="af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed"></a>VanDerWaals&#160;</td><td class="fielddoc"><p>van der Waals mixing rules. </p>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed" name="a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed"></a>VanDerWaals&#160;</td><td class="fielddoc"><p>van der Waals mixing rules. </p>
 </td></tr>
 </table>
 
@@ -304,8 +319,8 @@ Friends</h2></td></tr>
 
 </div>
 </div>
-<a id="a83a67132f77dded8cc99c6e0024a5dd4" name="a83a67132f77dded8cc99c6e0024a5dd4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a83a67132f77dded8cc99c6e0024a5dd4">&#9670;&#160;</a></span>EquationOfState() <span class="overload">[2/2]</span></h2>
+<a id="a6418937711af0d3a24fb483df52c9190" name="a6418937711af0d3a24fb483df52c9190"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6418937711af0d3a24fb483df52c9190">&#9670;&#160;</a></span>EquationOfState() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -319,7 +334,7 @@ Friends</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a>&#160;</td>
           <td class="paramname"><em>multiComponentMixingRules</em>, </td>
         </tr>
         <tr>
@@ -378,8 +393,8 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="acd32e4e08e0efb2944a129abd398380e" name="acd32e4e08e0efb2944a129abd398380e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acd32e4e08e0efb2944a129abd398380e">&#9670;&#160;</a></span>computeComponentFluidProperties()</h2>
+<a id="ac83ce4ba780d742f6ff4034ab85e6443" name="ac83ce4ba780d742f6ff4034ab85e6443"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac83ce4ba780d742f6ff4034ab85e6443">&#9670;&#160;</a></span>computeComponentFluidProperties()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -393,7 +408,7 @@ Friends</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a>&#160;</td>
           <td class="paramname"><em>multiComponentMixingRules</em>, </td>
         </tr>
         <tr>
@@ -545,20 +560,20 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
-<a id="af4fc1f8766551af9e3716592f4edd242" name="af4fc1f8766551af9e3716592f4edd242"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af4fc1f8766551af9e3716592f4edd242">&#9670;&#160;</a></span>multiComponentMixingRules</h2>
+<a id="ae8cdf6084fbc9327a6db4ab211fdf9a1" name="ae8cdf6084fbc9327a6db4ab211fdf9a1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae8cdf6084fbc9327a6db4ab211fdf9a1">&#9670;&#160;</a></span>multiComponentMixingRules</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">EquationOfState::MultiComponentMixingRules</a> EquationOfState::multiComponentMixingRules</td>
+          <td class="memname"><a class="el" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704">EquationOfState::MixingRules</a> EquationOfState::multiComponentMixingRules</td>
         </tr>
       </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
-<div class="line">      <a class="code hl_enumvalue" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed">EquationOfState::MultiComponentMixingRules::VanDerWaals</a>}</div>
-<div class="ttc" id="astructEquationOfState_html_af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed"><div class="ttname"><a href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7ac046eb74b3a7039a3814e202f3de33ed">EquationOfState::MultiComponentMixingRules::VanDerWaals</a></div><div class="ttdeci">@ VanDerWaals</div><div class="ttdoc">van der Waals mixing rules.</div></div>
+<div class="line">      <a class="code hl_enumvalue" href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed">EquationOfState::MixingRules::VanDerWaals</a>}</div>
+<div class="ttc" id="astructEquationOfState_html_a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed"><div class="ttname"><a href="structEquationOfState.html#a2919126391b59bd044f6266ea42fb704ac046eb74b3a7039a3814e202f3de33ed">EquationOfState::MixingRules::VanDerWaals</a></div><div class="ttdeci">@ VanDerWaals</div><div class="ttdoc">van der Waals mixing rules.</div></div>
 </div><!-- fragment -->
 <p>Mixing rules for multi-component systems. </p>
 

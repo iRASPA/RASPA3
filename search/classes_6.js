@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['gradientfactor_0',['GradientFactor',['../structPotentials_1_1GradientFactor.html',1,'Potentials']]]
+  ['hessianfactor_0',['HessianFactor',['../structPotentials_1_1HessianFactor.html',1,'Potentials']]]
 ];

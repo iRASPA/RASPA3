@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['vanderwaalspotential_0',['VanDerWaalsPotential',['../structVanDerWaalsPotential.html',1,'']]],
-  ['vdwparameters_1',['VDWParameters',['../structVDWParameters.html',1,'']]]
+  ['widomdata_0',['WidomData',['../structWidomData.html',1,'']]],
+  ['writelammpsdata_1',['WriteLammpsData',['../structWriteLammpsData.html',1,'']]]
 ];

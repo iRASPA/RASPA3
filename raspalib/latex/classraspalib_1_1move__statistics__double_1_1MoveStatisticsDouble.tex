@@ -1,0 +1,159 @@
+\doxysection{raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double Class Reference}
+\hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble}{}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble}\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a35b172196591171b410aa4e0fe991b75}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a35b172196591171b410aa4e0fe991b75} 
+None {\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a25d4450c63e083c07bd3f09f07e00aa4}{accepted}} (self)
+\item 
+int \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a3cf5db31e6d3c4ebf89bd0c5be194788}{all\+\_\+counts}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a57a8b93f848358429da460fb447c969a}{constructed}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a07cf43a177ab23a69a62a87bb2c3d069}{counts}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a213597733f9f5ee1abb6671571041895}{lower\+\_\+limit}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a88dd461b72ec3f4adec1fb10993d1b78}{lower\+\_\+limit}} (self, float arg0)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a52c9864f9bfe692dc37e9825651bf9a6}{max\+\_\+change}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a4015be405e95a5ed59349e59aa97c74c}{max\+\_\+change}} (self, float arg0)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a1f1e9426c1a5788d58873e79970ac9ed}{target\+\_\+acceptance}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a317778250e18d15153117996b8448c3c}{target\+\_\+acceptance}} (self, float arg0)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a5ab21a49b7c61fdfb926e6f23b163fd5}{total\+\_\+accepted}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a852e5b20104c5ba694290e6763fc7dce}{total\+\_\+constructed}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ad82a3f856d3eeb25518f02dd0b4fa872}{total\+\_\+counts}} (self)
+\item 
+float \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ab4b3e8af72c23f73e20494fe8ce19167}{upper\+\_\+limit}} (self)
+\item 
+None \mbox{\hyperlink{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_af94d2773829b06f29072c437e81c3aa3}{upper\+\_\+limit}} (self, float arg0)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}Track Monte Carlo move statistics for scalar-valued move metrics.
+
+This container stores accepted/constructed counters, running totals, and
+adaptive bounds/targets used during move-step tuning.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a25d4450c63e083c07bd3f09f07e00aa4}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a25d4450c63e083c07bd3f09f07e00aa4} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!accepted@{accepted}}
+\index{accepted@{accepted}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{accepted()}{accepted()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+accepted (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the accepted value/count in the current window.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a3cf5db31e6d3c4ebf89bd0c5be194788}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a3cf5db31e6d3c4ebf89bd0c5be194788} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!all\_counts@{all\_counts}}
+\index{all\_counts@{all\_counts}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{all\_counts()}{all\_counts()}}
+{\footnotesize\ttfamily  int raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+all\+\_\+counts (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the total number of attempted updates counted.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a57a8b93f848358429da460fb447c969a}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a57a8b93f848358429da460fb447c969a} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!constructed@{constructed}}
+\index{constructed@{constructed}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{constructed()}{constructed()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+constructed (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the constructed/proposed value/count in the current window.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a07cf43a177ab23a69a62a87bb2c3d069}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a07cf43a177ab23a69a62a87bb2c3d069} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!counts@{counts}}
+\index{counts@{counts}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{counts()}{counts()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+counts (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the number of samples in the current averaging window.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a213597733f9f5ee1abb6671571041895}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a213597733f9f5ee1abb6671571041895} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!lower\_limit@{lower\_limit}}
+\index{lower\_limit@{lower\_limit}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{lower\_limit()}{lower\_limit()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+lower\+\_\+limit (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the lower adaptive bound for the move parameter.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a88dd461b72ec3f4adec1fb10993d1b78}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a88dd461b72ec3f4adec1fb10993d1b78} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!lower\_limit@{lower\_limit}}
+\index{lower\_limit@{lower\_limit}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{lower\_limit()}{lower\_limit()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+lower\+\_\+limit (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{float}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set the lower adaptive bound for the move parameter.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a52c9864f9bfe692dc37e9825651bf9a6}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a52c9864f9bfe692dc37e9825651bf9a6} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!max\_change@{max\_change}}
+\index{max\_change@{max\_change}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{max\_change()}{max\_change()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+max\+\_\+change (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the maximum allowed parameter change per adaptation step.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a4015be405e95a5ed59349e59aa97c74c}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a4015be405e95a5ed59349e59aa97c74c} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!max\_change@{max\_change}}
+\index{max\_change@{max\_change}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{max\_change()}{max\_change()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+max\+\_\+change (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{float}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set the maximum allowed parameter change per adaptation step.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a1f1e9426c1a5788d58873e79970ac9ed}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a1f1e9426c1a5788d58873e79970ac9ed} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!target\_acceptance@{target\_acceptance}}
+\index{target\_acceptance@{target\_acceptance}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{target\_acceptance()}{target\_acceptance()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+target\+\_\+acceptance (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the target acceptance ratio for adaptive tuning.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a317778250e18d15153117996b8448c3c}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a317778250e18d15153117996b8448c3c} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!target\_acceptance@{target\_acceptance}}
+\index{target\_acceptance@{target\_acceptance}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{target\_acceptance()}{target\_acceptance()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+target\+\_\+acceptance (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{float}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set the target acceptance ratio for adaptive tuning.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a5ab21a49b7c61fdfb926e6f23b163fd5}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a5ab21a49b7c61fdfb926e6f23b163fd5} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!total\_accepted@{total\_accepted}}
+\index{total\_accepted@{total\_accepted}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{total\_accepted()}{total\_accepted()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+total\+\_\+accepted (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return cumulative accepted value/count over the full run.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a852e5b20104c5ba694290e6763fc7dce}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_a852e5b20104c5ba694290e6763fc7dce} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!total\_constructed@{total\_constructed}}
+\index{total\_constructed@{total\_constructed}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{total\_constructed()}{total\_constructed()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+total\+\_\+constructed (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return cumulative constructed/proposed value/count over the full run.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ad82a3f856d3eeb25518f02dd0b4fa872}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ad82a3f856d3eeb25518f02dd0b4fa872} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!total\_counts@{total\_counts}}
+\index{total\_counts@{total\_counts}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{total\_counts()}{total\_counts()}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+total\+\_\+counts (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return cumulative number of samples over the full run.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ab4b3e8af72c23f73e20494fe8ce19167}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_ab4b3e8af72c23f73e20494fe8ce19167} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!upper\_limit@{upper\_limit}}
+\index{upper\_limit@{upper\_limit}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{upper\_limit()}{upper\_limit()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily  float raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+upper\+\_\+limit (\begin{DoxyParamCaption}\item[{}]{self }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Return the upper adaptive bound for the move parameter.\end{DoxyVerb}
+ \Hypertarget{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_af94d2773829b06f29072c437e81c3aa3}\label{classraspalib_1_1move__statistics__double_1_1MoveStatisticsDouble_af94d2773829b06f29072c437e81c3aa3} 
+\index{raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}!upper\_limit@{upper\_limit}}
+\index{upper\_limit@{upper\_limit}!raspalib.move\_statistics\_double.MoveStatisticsDouble@{raspalib.move\_statistics\_double.MoveStatisticsDouble}}
+\doxysubsubsection{\texorpdfstring{upper\_limit()}{upper\_limit()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily  None raspalib.\+move\+\_\+statistics\+\_\+double.\+Move\+Statistics\+Double.\+upper\+\_\+limit (\begin{DoxyParamCaption}\item[{}]{self,  }\item[{float}]{arg0 }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Set the upper adaptive bound for the move parameter.\end{DoxyVerb}
+ 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+raspa/raspalib/move\+\_\+statistics\+\_\+double.\+py\end{DoxyCompactItemize}
