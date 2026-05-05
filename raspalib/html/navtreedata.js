@@ -39,13 +39,13 @@ var NAVTREE =
       [ "Units", "units.html", null ],
       [ "Installing", "installing.html", null ]
     ] ],
-    [ "Raspa3", "../../../html/index.html", null ]
+    [ "Raspa3", "../../index.html", null ]
   ] ]
 ];
 
 var NAVTREEINDEX =
 [
-"../../../html/index.html"
+"../../index.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

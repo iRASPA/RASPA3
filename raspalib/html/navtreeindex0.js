@@ -1,6 +1,6 @@
 var NAVTREEINDEX0 =
 {
-"../../../html/index.html":[2],
+"../../index.html":[2],
 "annotated.html":[0,0],
 "classes.html":[0,1],
 "classraspalib_1_1atom_1_1Atom.html":[0,0,0,0,0],
