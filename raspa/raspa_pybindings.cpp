@@ -756,6 +756,8 @@ PYBIND11_MODULE(raspalib, m)
       .def("translational_kinetic_energy", &RunningEnergy::translationalPartKineticEnergy)
       .def("rotational_kinetic_energy", &RunningEnergy::rotationalPartKineticEnergy)
       .def("thermostat_energy", &RunningEnergy::thermostatEnergy)
+      .def("coulomb_energy", &RunningEnergy::CoulombEnergy)
+      .def("van_der_waals_energy", &RunningEnergy::VanDerWaalsEnergy)
       .def_readwrite("molecule_molecule_vdw", &RunningEnergy::moleculeMoleculeVDW)
       .def_readwrite("framework_molecule_vdw", &RunningEnergy::frameworkMoleculeVDW)
       .def("__repr__", &RunningEnergy::repr);

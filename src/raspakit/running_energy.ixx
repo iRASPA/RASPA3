@@ -175,6 +175,11 @@ export struct RunningEnergy
     return frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion;
   }
 
+  inline double VanDerWaalsEnergy() const
+  {
+    return frameworkMoleculeVDW + moleculeMoleculeVDW;
+  }
+
   /**
    * \brief Computes the total kinetic energy.
    *
