@@ -195,6 +195,14 @@ PYBIND11_MODULE(raspalib, m)
         .value("VAN_DER_WAALS", EquationOfState::MixingRules::VanDerWaals)
         .finalize();
 
+    pybind11::native_enum<EquationOfState::FluidState>(eos, "FluidState", "enum.IntEnum")
+        .value("UNKNOWN", EquationOfState::FluidState::Unknown)
+        .value("SUPER_CRITICAL_FLUID", EquationOfState::FluidState::SuperCriticalFluid)
+        .value("VAPOR", EquationOfState::FluidState::Vapor)
+        .value("LIQUID", EquationOfState::FluidState::Liquid)
+        .value("VAPOR_LIQUID", EquationOfState::FluidState::VaporLiquid)
+        .finalize();
+
   pybind11::class_<EquationOfState::FluidResult>(eos, "FluidResult")
       .def(pybind11::init<double, std::optional<double>, EquationOfState::FluidState>(), 
           pybind11::arg("compressibility"), 

@@ -29,8 +29,8 @@ class PropertyDensityGrid():
         sample_every: int  = 1,
         write_every: int = 5000,
         density_grid_pseudo_atoms_list: collections.abc.Sequence[str] = [],
-        normalization_type: PropertyDensityGrid.Normalization = Normalization.MAX,
-        binning_mode: PropertyDensityGrid.Binning = Binning.STANDARD
+        normalization_type: Normalization = Normalization.MAX,
+        binning_mode: Binning = Binning.STANDARD
     ) -> None:
         ...
         """

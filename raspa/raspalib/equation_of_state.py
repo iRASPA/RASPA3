@@ -111,8 +111,8 @@ class EquationOfState():
                                  pressure: float,
                                  properties: collections.abc.Sequence[FluidInput],
                                  type: EquationOfStateType,
-                                 mixing_rules: EquationOfState.MixingRules,
-                                 ) -> collections.abc.Sequence[EquationOfState.FluidResult]:
+                                 mixing_rules: MixingRules,
+                                 ) -> collections.abc.Sequence[FluidResult]:
         """Compute EOS properties for all provided fluid components.
 
         Args:

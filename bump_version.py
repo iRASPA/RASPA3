@@ -51,7 +51,8 @@ def main(new_version_or_part):
     pkgbuild_skyl_file = "packaging/PKGBUILD-skylake-avx512"
     makefilemanual_file = "src/makefile-manual"
     infoplist_file = "packaging/Info.plist"
-    doxy_file = "docs/Doxyfile"
+    doxy_file_raspa = "docs/Doxyfile_raspa"
+    doxy_file_raspalib = "docs/Doxyfile_raspalib"
 
     pyproject_pattern = r'version\s*=\s*"\d+\.\d+\.\d+"'
     cmake_pattern = r"(^[ \t]*VERSION[ \t]+)\d+\.\d+\.\d+([ \t]*$)"
@@ -84,7 +85,8 @@ def main(new_version_or_part):
     bump_version(pkgbuild_skyl_file, pkgbuild_pattern, new_pkgbuild_version)
     bump_version(makefilemanual_file, makefilemanual_pattern, new_makefilemanual_version)
     bump_version(infoplist_file, infoplist_pattern, new_infoplist_version)
-    bump_version(doxy_file, doxyfile_pattern, new_doxyfile_version)
+    bump_version(doxy_file_raspa, doxyfile_pattern, new_doxyfile_version)
+    bump_version(doxy_file_raspalib, doxyfile_pattern, new_doxyfile_version)
 
 
 if __name__ == "__main__":
