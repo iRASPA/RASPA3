@@ -8,7 +8,7 @@ import archive;
 import units;
 import component;
 
-std::vector<double> operator+(const std::vector<double> &a, const std::vector<double> &b)
+inline std::vector<double> operator+(const std::vector<double> &a, const std::vector<double> &b)
 {
   std::vector<double> result;
   result.reserve(a.size());
@@ -17,7 +17,7 @@ std::vector<double> operator+(const std::vector<double> &a, const std::vector<do
   return result;
 }
 
-std::vector<double> operator-(const std::vector<double> &a, const std::vector<double> &b)
+inline std::vector<double> operator-(const std::vector<double> &a, const std::vector<double> &b)
 {
   std::vector<double> result;
   result.reserve(a.size());
@@ -26,7 +26,7 @@ std::vector<double> operator-(const std::vector<double> &a, const std::vector<do
   return result;
 }
 
-std::vector<double> operator*(const std::vector<double> &a, const std::vector<double> &b)
+inline std::vector<double> operator*(const std::vector<double> &a, const std::vector<double> &b)
 {
   std::vector<double> result;
   result.reserve(a.size());
@@ -35,7 +35,7 @@ std::vector<double> operator*(const std::vector<double> &a, const std::vector<do
   return result;
 }
 
-std::vector<double> operator*(const double &a, const std::vector<double> &b)
+inline std::vector<double> operator*(const double &a, const std::vector<double> &b)
 {
   std::vector<double> result;
   result.reserve(b.size());
@@ -45,7 +45,7 @@ std::vector<double> operator*(const double &a, const std::vector<double> &b)
   return result;
 }
 
-std::vector<double> operator/(const std::vector<double> &a, const double &b)
+inline std::vector<double> operator/(const std::vector<double> &a, const double &b)
 {
   std::vector<double> result;
   result.reserve(a.size());
@@ -54,7 +54,7 @@ std::vector<double> operator/(const std::vector<double> &a, const double &b)
   return result;
 }
 
-std::vector<double> sqrt(const std::vector<double> &a)
+inline std::vector<double> sqrt(const std::vector<double> &a)
 {
   std::vector<double> result;
   result.reserve(a.size());
@@ -67,16 +67,16 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
                                                    std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                                    const double &weight)
 {
-  std::size_t bin;
+  std::make_signed_t<std::size_t> bin;
 
   if (currentCycle % sampleEvery != 0uz) return;
 
   for (std::size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
   {
-    bin = numberOfIntegerMoleculesPerComponent[i] - range.first;
-    if (bin < numberOfBins)
+    bin = std::make_signed_t<std::size_t>(numberOfIntegerMoleculesPerComponent[i]) - std::make_signed_t<std::size_t>(range.first);
+    if (bin > 0 && bin < std::make_signed_t<std::size_t>(numberOfBins))
     {
-      bookKeepingEnergyHistogram[blockIndex][bin][i] += weight;
+      bookKeepingEnergyHistogram[blockIndex][i][static_cast<std::size_t>(bin)] += weight;
     }
   }
 
@@ -84,74 +84,92 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
   totalNumberOfCounts += weight;
 }
 
-std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram(
-    std::size_t blockIndex) const
+std::vector<double> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram(std::size_t blockIndex, std::size_t component_id) const
 {
-  std::vector<std::vector<double>> averagedData(numberOfBins, std::vector<double>(numberOfComponents));
-  std::transform(bookKeepingEnergyHistogram[blockIndex].begin(), bookKeepingEnergyHistogram[blockIndex].end(),
+  std::vector<double> averagedData(numberOfBins);
+
+  // loop over components, and operate on the vector of bins
+  std::transform(bookKeepingEnergyHistogram[blockIndex][component_id].begin(), bookKeepingEnergyHistogram[blockIndex][component_id].end(),
                  averagedData.begin(),
-                 [&](const std::vector<double> &sample) { return sample / numberOfCounts[blockIndex]; });
+                 [&](const double &sample) { return sample / numberOfCounts[blockIndex]; });
   return averagedData;
 }
 
-std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram() const
+std::vector<double> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram( std::size_t component_id) const
 {
-  std::vector<std::vector<double>> summedBlocks(numberOfBins, std::vector<double>(numberOfComponents));
+  std::vector<double> summedBlocks(numberOfBins);
   for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
-    std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex].begin(),
+    std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex][component_id].begin(),
                    summedBlocks.begin(),
-                   [](const std::vector<double> &a, const std::vector<double> &b) { return a + b; });
+                   [](const double &a, const double &b) { return a + b; });
   }
 
-  std::vector<std::vector<double>> average(numberOfBins, std::vector<double>(numberOfComponents));
+  std::vector<double> average(numberOfBins);
   std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                 [&](const std::vector<double> &sample) { return sample / totalNumberOfCounts; });
+                 [&](const double &sample) { return sample / totalNumberOfCounts; });
 
   return average;
 }
 
-std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
+std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>
 PropertyNumberOfMoleculesHistogram::result() const
 {
-  std::vector<std::vector<double>> average = averagedProbabilityHistogram();
+  std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>  
+    result_data(numberOfComponents,{std::vector<double>(numberOfBins), std::vector<double>(numberOfBins), 
+                                    std::vector<double>(numberOfBins)});
 
-  std::vector<std::vector<double>> sumOfSquares(numberOfBins, std::vector<double>(numberOfComponents));
-  std::size_t numberOfSamples = 0;
-  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  std::vector<double> bin_data(numberOfBins);
+  for (std::size_t i = 0; i != numberOfBins; ++i)
   {
-    std::vector<std::vector<double>> blockAverage = averagedProbabilityHistogram(blockIndex);
+    bin_data[i] = static_cast<double>(i) + static_cast<double>(range.first);
+  }
 
-    if (numberOfCounts[blockIndex] > 0.0)
+  for(std::size_t i = 0; i < numberOfComponents; ++i)
+  {
+    std::vector<double> average = averagedProbabilityHistogram(i);
+
+    std::vector<double> sumOfSquares(numberOfBins);
+
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+      std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex, i);
+
+      if (numberOfCounts[blockIndex] > 0.0)
       {
-        std::vector<double> value = blockAverage[binIndex] - average[binIndex];
-        sumOfSquares[binIndex] = sumOfSquares[binIndex] + value * value;
+        for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+        {
+          double value = blockAverage[binIndex] - average[binIndex];
+          sumOfSquares[binIndex] = sumOfSquares[binIndex] + value * value;
+        }
+        ++numberOfSamples;
       }
-      ++numberOfSamples;
     }
+
+    std::vector<double> confidenceIntervalError(numberOfBins);
+    if (numberOfSamples >= 3)
+    {
+      std::size_t degreesOfFreedom = numberOfBlocks - 1;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      std::vector<double> standardDeviation(numberOfBins);
+      std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
+                     [&](const double &sumofsquares)
+                     { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
+
+      std::vector<double> standardError(numberOfBins);
+      std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
+                     [&](const double &sigma)
+                     { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
+
+      std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
+                     [&](const double &error) { return intermediateStandardNormalDeviate * error; });
+    }
+
+    result_data[i] = {bin_data, average, confidenceIntervalError};
   }
-  std::vector<std::vector<double>> confidenceIntervalError(numberOfBins, std::vector<double>(numberOfComponents));
-  if (numberOfSamples >= 3)
-  {
-    std::size_t degreesOfFreedom = numberOfBlocks - 1;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    std::vector<std::vector<double>> standardDeviation(numberOfBins, std::vector<double>(numberOfComponents));
-    std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const std::vector<double> &sumofsquares)
-                   { return sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
 
-    std::vector<std::vector<double>> standardError(numberOfBins, std::vector<double>(numberOfComponents));
-    std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const std::vector<double> &sigma)
-                   { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-    std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const std::vector<double> &error) { return intermediateStandardNormalDeviate * error; });
-  }
-
-  return std::make_pair(average, confidenceIntervalError);
+  return result_data;
 }
 
 void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::vector<Component> &components,
@@ -174,15 +192,17 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::
                                  components[i].name);
   }
 
-  auto [average, error] = result();
+  std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>> results_data = result();
 
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
-    stream_output << std::format("{}", bin + range.first);
-
     for (std::size_t i = 0; i < numberOfComponents; ++i)
     {
-      stream_output << std::format(" {} {}", average[bin][i], error[bin][i]);
+      stream_output << std::format("{}", bin + range.first);
+
+      auto [bins, average, error] = results_data[i];
+
+      stream_output << std::format(" {} {}", average[bin], error[bin]);
     }
     stream_output << "\n";
   }

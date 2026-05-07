@@ -41,7 +41,7 @@ export struct PropertyNumberOfMoleculesHistogram
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         bookKeepingEnergyHistogram(std::vector<std::vector<std::vector<double>>>(
-            numberOfBlocks, std::vector<std::vector<double>>(numberOfBins, std::vector<double>(numberOfComponents)))),
+            numberOfBlocks, std::vector<std::vector<double>>(numberOfComponents, std::vector<double>(numberOfBins)))),
         numberOfCounts(numberOfBlocks)
   {
   }
@@ -61,10 +61,10 @@ export struct PropertyNumberOfMoleculesHistogram
   void addSample(std::size_t blockIndex, std::size_t currentCycle,
                  std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, const double &weight);
 
-  std::vector<std::vector<double>> averagedProbabilityHistogram(std::size_t blockIndex) const;
-  std::vector<std::vector<double>> averagedProbabilityHistogram() const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t component_id) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t component_id) const;
 
-  std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>> result() const;
+  std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>> result() const;
 
   void writeOutput(std::size_t systemId, std::vector<Component> &components, std::size_t currentCycle);
 
