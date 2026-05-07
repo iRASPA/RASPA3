@@ -74,7 +74,18 @@ export struct PropertyEnthalpy
     return (1.0 / static_cast<double>(std::max(1uz, numberOfSamples))) * average;
   }
 
-  std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> result() const
+  std::vector<std::pair<double, double>> result() const
+  {
+    std::vector<std::pair<double, double>> data(numberOfComponents);
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = averageEnthalpy();
+    for (std::size_t k = 0; k < numberOfComponents; k++)
+    {
+      data[k] = {enthalpy.first.values[k], enthalpy.second[k]};
+    }
+    return data;
+  }
+
+  std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> averageEnthalpy() const
   {
     EnthalpyOfAdsorptionData average = averagedEnthalpy();
 

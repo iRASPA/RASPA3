@@ -95,6 +95,22 @@ import property_msd;
 import velocity_autocorrelation_function_data;
 import property_vacf;
 
+template <typename T>
+std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
+{
+    p.first *= s;
+    p.second *= s;
+    return p;
+}
+
+template <typename T>
+std::pair<T, T>& operator*=(const double& s, std::pair<T, T>& p)
+{
+    p.first *= s;
+    p.second *= s;
+    return p;
+}
+
 
 template <typename U, typename T>
 std::vector<T> operator*(std::vector<U> v, const T& scalar)

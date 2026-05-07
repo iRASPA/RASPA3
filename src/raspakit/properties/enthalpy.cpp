@@ -27,7 +27,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
   }
   else
   {
-    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = result();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = averageEnthalpy();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
@@ -115,7 +115,7 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
 
   if (!swappableComponents.empty())
   {
-    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = result();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = averageEnthalpy();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
