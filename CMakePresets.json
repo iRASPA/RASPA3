@@ -48,6 +48,42 @@
       }
     },
     {
+      "name": "python-macos-intel",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "cacheVariables": {
+        "PYPI": true,
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_OSX_SYSROOT": "macosx",
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/usr/local/opt/llvm/lib/c++/libc++.modules.json",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_APP": false,
+        "BUILD_CLI": false,
+        "BUILD_LIBTORCH": false,
+        "BUILD_PYTHON": true,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT": false,
+        "BUILD_TESTING_FOUNDATIONKIT": false,
+        "BUILD_TESTING_SYMMETRYKIT": false,
+        "BUILD_TESTING_RASPAKIT": false,
+        "BUILD_TESTING_RASPA3": false,
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
       "name": "windows_conda_raspa3",
       "description": "Sets compilers, build type",
       "inherits": [

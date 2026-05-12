@@ -145,7 +145,9 @@ std::pair<T, T> operator*(const double2& a, const std::pair<T, T>& b)
   return std::make_pair(a.x * b.first, a.y * b.second);
 }
 
-PYBIND11_MODULE(raspalib, m)
+#define EXPAND_MODULE(name) PYBIND11_MODULE(name, m)
+
+EXPAND_MODULE(MODULE_NAME)
 {
   pybind11::class_<int3>(m, "int3")
       .def(pybind11::init<int32_t, int32_t, int32_t>(), pybind11::arg("x") = 0, pybind11::arg("y") = 0,

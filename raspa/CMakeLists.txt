@@ -23,11 +23,39 @@ endif()
 pybind11_add_module(${PROJECT_NAME} MODULE)
 target_sources(${PROJECT_NAME} PUBLIC raspa_pybindings.cpp)
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
-
-raspa_target_link_libraries(${PROJECT_NAME})
-
+target_compile_options(${PROJECT_NAME} PRIVATE -DMODULE_NAME=raspalib)
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+raspa_target_link_libraries(${PROJECT_NAME})
+
+# on intel, also create avx2 and avx512 versions
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
+
+  pybind11_add_module(${PROJECT_NAME}_avx2 MODULE)
+  target_sources(${PROJECT_NAME}_avx2 PUBLIC raspa_pybindings.cpp)
+  target_sources(${PROJECT_NAME}_avx2 PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
+  if(MSVC)
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE /arch:AVX2 -DMODULE_NAME=raspalib_avx2)
+  else()
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE -march=core-avx2 -mfma -DMODULE_NAME=raspalib_avx2)
+  endif()
+  target_compile_options(${PROJECT_NAME}_avx2 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+  set_target_properties(${PROJECT_NAME}_avx2 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx2)
+  
+  pybind11_add_module(${PROJECT_NAME}_avx512 MODULE)
+  target_sources(${PROJECT_NAME}_avx512 PUBLIC raspa_pybindings.cpp)
+  target_sources(${PROJECT_NAME}_avx512 PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
+  if(MSVC)
+    target_compile_options(${PROJECT_NAME}_avx512 PRIVATE /arch:AVX512 -DMODULE_NAME=raspalib_avx512)
+  else()
+    target_compile_options(${PROJECT_NAME}_avx512 PRIVATE -march=skylake-avx512 -mfma -DMODULE_NAME=raspalib_avx512)
+  endif()
+  target_compile_options(${PROJECT_NAME}_avx512 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+  set_target_properties(${PROJECT_NAME}_avx512 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx512)
+
+endif()
 
 if(CONDA)
   target_link_options(${PROJECT_NAME} PRIVATE -L$ENV{CONDA_PREFIX}/lib)
@@ -48,6 +76,20 @@ elseif(APPLE)
                 COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"${SKBUILD_PLATLIB_DIR}/raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}>\"
             )
         ")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
+      install(TARGETS ${PROJECT_NAME}_avx2 DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+      install(CODE "
+              execute_process(
+                  COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"${SKBUILD_PLATLIB_DIR}/raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}_avx2>\"
+              )
+          ")
+      install(TARGETS ${PROJECT_NAME}_avx512 DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+      install(CODE "
+              execute_process(
+                  COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"${SKBUILD_PLATLIB_DIR}/raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}_avx512>\"
+              )
+          ")
+    endif()
     install(DIRECTORY raspalib DESTINATION ${SKBUILD_PLATLIB_DIR})
   else()
     install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
