@@ -17,16 +17,34 @@
       }
     },
     {
-      "name": "python",
+      "name": "python-macos-apple-silicon",
       "description": "Sets compilers, build type",
       "inherits": "base",
       "cacheVariables": {
+        "PYPI": true,
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "CMAKE_OSX_SYSROOT": "macosx",
+        "CMAKE_CXX_STDLIB_MODULES_JSON": "/opt/homebrew/opt/llvm/lib/c++/libc++.modules.json",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -D_LIBCPP_DISABLE_AVAILABILITY -fexperimental-library -Xclang -fopenmp -g -O3 -ffast-math",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "BUILD_APP": false
+        "BUILD_APP": false,
+        "BUILD_CLI": false,
+        "BUILD_PYTHON": true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT": false,
+        "BLA_SIZEOF_INTEGER": "4"
       }
     },
     {

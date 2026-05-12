@@ -1,6 +1,7 @@
 import enum
 import collections.abc
 
+from raspalib.version import __version__
 from raspalib.atom import *
 from raspalib.pseudo_atom import *
 from raspalib.vdw_parameters import *

@@ -8,19 +8,11 @@ endif()
 
 include(FetchContent)
 
-#if(CONDA OR APPLE)
-  FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG v3.0.1
-  )
-#else()
-#  FetchContent_Declare(
-#    pybind11
-#    GIT_REPOSITORY https://github.com/pybind/pybind11
-#    GIT_TAG v2.10.4
-#  )
-#endif()
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11
+  GIT_TAG v3.0.1
+)
 
 FetchContent_GetProperties(pybind11)
 
@@ -49,5 +41,15 @@ elseif(LINUX)
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
   install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
 elseif(APPLE)
-  install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
+  if(PYPI)
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+    install(CODE "
+            execute_process(
+                COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"${SKBUILD_PLATLIB_DIR}/raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}>\"
+            )
+        ")
+    install(DIRECTORY raspalib DESTINATION ${SKBUILD_PLATLIB_DIR})
+  else()
+    install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
+  endif()
 endif()

@@ -1,9 +1,9 @@
 [build-system]
-requires = ["wheel", "scikit-build-core"]
+requires = ["wheel", "scikit-build-core>=0.10", "setuptools-scm"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "raspa"
+name = "raspalib"
 version = "3.0.29"
 description = "A general purpose classical simulation package"
 authors = [
@@ -15,21 +15,45 @@ authors = [
     { name = "Prof. Randall Q. Snurr, Northwestern University" },
     { name = "Dr. David Dubbeldam, University of Amsterdam", email = "d.dubbeldam@uva.nl" },
 ]
-dependencies = ["pybind11", "numpy"]
+dependencies = []
 requires-python = ">=3.10"
 license = { file = "LICENSE.md" }
 readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    'Typing :: Typed',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX',
+    'Operating System :: Unix',
+    'Operating System :: MacOS',
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    'Programming Language :: Python :: 3 :: Only',
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries",
+]
 
+[tool.setuptools.dynamic]
+version = {attr = "raspalib.__version__"}
+
+[project.urls]
+Documentation = "https://iraspa.github.io/RASPA3/"
+Repository = "https://github.com/iRASPA/RASPA3"
 
 [tool.scikit-build]
+cmake.source-dir = "."
 cmake.version = ">=4.3.0"
 cmake.build-type = "Release"
-cmake.args = [
-    "--preset=python",
-    "-DBUILD_TESTING=0",
-    "-DBUILD_PYTHON=1",
-    "-DSKIP_EXECUTABLE=1",
-]
 wheel.cmake = true
+wheel.install-dir = "raspalib"
 build-dir = "build/python"
 sdist.exclude = ["*.cpp", "*.ixx", "*.pcm", "CMakeLists.txt"]
