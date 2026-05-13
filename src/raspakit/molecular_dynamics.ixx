@@ -51,6 +51,9 @@ export struct MolecularDynamics
    */
   MolecularDynamics();
 
+  MolecularDynamics(const MolecularDynamics&) = delete;
+  MolecularDynamics& operator=(const MolecularDynamics&) = delete;
+
   /**
    * \brief Constructs a MolecularDynamics object with specified input parameters.
    *

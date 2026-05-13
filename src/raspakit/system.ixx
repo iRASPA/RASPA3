@@ -73,7 +73,7 @@ export struct System
    *
    * Initializes a System object with default values.
    */
-  System() = default;
+  System() {};
 
   /**
    * \brief Constructs a System object programmatically.
