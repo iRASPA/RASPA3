@@ -3,7 +3,7 @@ project(raspalib)
 if(UNIX AND DEFINED ENV{CONDA_BUILD_CROSS_COMPILATION})
   find_package(Python3 REQUIRED COMPONENTS Development)
 else()
-  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development.SABIModule)
 endif()
 
 if(NOT Python_FOUND)
@@ -25,7 +25,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(nanobind)
 
-nanobind_build_library(nanobind-static)
+add_compile_definitions(Py_LIMITED_API=0x030c0000)
+
+nanobind_build_library(nanobind-static-abi3)
 
 add_library(${PROJECT_NAME} MODULE)
 #nanobind_add_module(${PROJECT_NAME} NB_STATIC STABLE_ABI LTO raspa_pybindings.cpp)
@@ -34,11 +36,11 @@ set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_MODULE_STD ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_SCAN_FOR_MODULES ON)
 raspa_target_link_libraries(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE nanobind-static Python3::Module)
+target_link_libraries(${PROJECT_NAME} PRIVATE nanobind-static-abi3 Python3::SABIModule)
 target_include_directories(${PROJECT_NAME} PRIVATE
   ${nanobind_SOURCE_DIR}/include
   ${nanobind_SOURCE_DIR}/ext/robin-map/include
-  ${Python_INCLUDE_DIRS}
+  ${Python3_SABI_INCLUDE_DIRS}
 )
 include_directories(${Python3_INCLUDE_DIRS})
 
@@ -47,8 +49,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
   PREFIX ""
-  SUFFIX "${NB_SUFFIX}" # Leverages nanobind's resolved extension macro
+  SUFFIX "${NB_SUFFIX_S}" # Leverages nanobind's resolved extension macro
 )
+
+#if(APPLE)
+#   target_link_options(${PROJECT_NAME} PRIVATE "-Wl,-undefined,dynamic_lookup")
+#endif()
 
 ## on intel, also create avx2 and avx512 versions
 #if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
@@ -111,9 +117,15 @@ elseif(APPLE)
                   COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"${SKBUILD_PLATLIB_DIR}/raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}_avx512>\"
               )
           ")
-      install(DIRECTORY raspalib DESTINATION ${SKBUILD_PLATLIB_DIR})
     endif()
+    install(DIRECTORY raspalib DESTINATION ${SKBUILD_PLATLIB_DIR})
   else()
+    install(TARGETS ${PROJECT_NAME} DESTINATION raspalib)
+    install(CODE "
+            execute_process(
+                COMMAND codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\" \"raspalib/$<TARGET_FILE_NAME:${PROJECT_NAME}>\"
+            )
+        ")
     install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
   endif()
 endif()

@@ -16,6 +16,9 @@ endif()
 # clang 17 and greater can avoid this setting
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
 project(raspa3
   VERSION 3.0.29
   DESCRIPTION ""
@@ -25,6 +28,7 @@ project(raspa3
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 add_definitions(-DVERSION=${PROJECT_VERSION})
+
 
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
@@ -157,7 +161,7 @@ function(raspa_target_link_libraries target_name)
       OpenCL::OpenCL
       ${ZLIB_LIBRARIES}
       -static-libstdc++
-      -nostdlib++
+      -nostdlib++  # Prevent linking system libstdc++ or system libc++
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/unwind/libunwind.a
