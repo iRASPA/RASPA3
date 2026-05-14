@@ -61,3 +61,67 @@ sdist.exclude = ["*.cpp", "*.ixx", "*.pcm", "CMakeLists.txt"]
 cmake = true
 install-dir = "raspalib"
 py-api = "cp312"
+
+[tool.cibuildwheel]
+archs = ["arm64"]
+skip = ["*i686", "*musllinux*"]
+manylinux-x86_64-image = "manylinux_2_28"
+build = "cp312-*"
+
+
+[tool.cibuildwheel.macos]
+before-all = "brew install llvm cmake"
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx*x86_64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.13", CC = "/usr/local/opt/llvm/bin/clang", CXX = "/usr/local/opt/llvm/bin/clang++" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx*arm64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0", CC = "/opt/homebrew/opt/llvm/bin/clang", CXX = "/opt/homebrew/opt/llvm/bin/clang++" }
+
+
+[tool.cibuildwheel.linux]
+before-all = """
+if [ "$(uname -m)" = "x86_64" ]; then
+curl -sSL -O https://github.com/Kitware/CMake/releases/download/v4.3.2/cmake-4.3.2-linux-x86_64.tar.gz
+tar -xzf cmake-4.3.0-linux-x86_64.tar.gz --strip-components=1 -C /usr/local
+rm cmake-4.3.0-linux-x86_64.tar.gz
+curl -sSL -O https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.5/LLVM-22.1.5-Linux-X64.tar.xz
+mkdir -p /opt/llvm-22
+tar -xJf LLVM-22.1.5-Linux-X64.tar.xz --strip-components=1 -C /opt/llvm-22
+rm LLVM-22.1.5-Linux-X64.tar.xz
+else
+fi
+"""
+environment = { CC = "/opt/llvm-22/bin/clang", CXX = "/opt/llvm-22/bin/clang++" }
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "linux"
+if.platform-machine = "x86_64"
+cmake.args = ["--preset=python-linux-x64"]
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "linux"
+if.platform-machine = "aarch64"
+cmake.args = ["--preset=python-linux-arm64"]
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "darwin"
+if.platform-machine = "x86_64"
+cmake.args = ["--preset=python-macos-intel"] 
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "darwin"
+if.platform-machine = "arm64"
+cmake.args = ["--preset=python-macos-arm64"]
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "windows"
+if.platform-machine = "AMD64"
+cmake.args = ["--preset=python-windows-x64"]
+
+[[tool.scikit-build.overrides]]
+if.platform-system = "windows"
+if.platform-machine = "ARM64"
+cmake.args = ["--preset=python-windows-arm64"]

@@ -5,6 +5,12 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/optional.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/function.h>
+#include <nanobind/stl/variant.h>
+#include <nanobind/stl/array.h>
+#include <nanobind/stl/pair.h>
+#include <nanobind/stl/tuple.h>
 
 import std;
 
@@ -131,7 +137,7 @@ struct type_caster<int3>
   // are used to indicate the return value policy and parent object (for
   // return_value_policy::reference_internal) and are often ignored by custom casters.
   // The return value should reflect the type hint specified by the second argument of `io_name`.
-  static handle from_cpp(const double3 &number, rv_policy /* policy */, cleanup_list * /* cleanup */) noexcept
+  static handle from_cpp(const int3 &number, rv_policy /* policy */, cleanup_list * /* cleanup */) noexcept
   {
       return nanobind::make_tuple(number.x, number.y, number.z).release();
   }
@@ -240,11 +246,86 @@ public:
 };
 
 
+template <>
+struct type_caster<double4>
+{
+public:
+  // Sets positional type hints for Python tooling
+  NB_TYPE_CASTER(double4, io_name("Sequence[float] | float", "tuple[float, float, float, float]"));
+
+  static handle from_cpp(const double4 &number, rv_policy /* policy */, cleanup_list * /* cleanup */) noexcept
+  {
+    return nanobind::make_tuple(number.x, number.y, number.z, number.w).release();
+  }
+
+  // Python -> C++
+  bool from_python(handle src, uint8_t flags, cleanup_list *cleanup) noexcept
+  {
+    // Case 1: Single scalar value passed directly (e.g., 5.0 -> [5.0, 5.0, 5.0])
+    if (nanobind::isinstance<nanobind::float_>(src) || nanobind::isinstance<nanobind::int_>(src))
+    {
+      // Fixed: Functional-style nanobind::cast
+      double scalar = nanobind::cast<double>(src);
+      value.x = scalar;
+      value.y = scalar;
+      value.z = scalar;
+      value.w = scalar;
+      return true;
+    }
+
+    // Case 2: Sequence container passed down
+    if (nanobind::isinstance<nanobind::sequence>(src))
+    {
+      auto seq = nanobind::borrow<nanobind::sequence>(src);
+
+      // Sub-case A: Single-element sequence (e.g., [5.0] -> [5.0, 5.0, 5.0])
+      if (nanobind::len(seq) == 1)
+      {
+        auto item = seq[0];
+        if (!nanobind::isinstance<nanobind::float_>(item) && !nanobind::isinstance<nanobind::int_>(item))
+        {
+          return false;
+        }
+
+        double scalar = nanobind::cast<double>(item);
+        value.x = scalar;
+        value.y = scalar;
+        value.z = scalar;
+        value.w = scalar;
+        return true;
+      }
+
+      // Sub-case B: Full three-element sequence (e.g., [1.0, 2.0, 3.0])
+      if (nanobind::len(seq) == 4)
+      {
+        for (auto item : seq)
+        {
+          if (!nanobind::isinstance<nanobind::float_>(item) && !nanobind::isinstance<nanobind::int_>(item))
+          {
+            return false;
+          }
+        }
+
+        // Fixed: Functional-style nanobind::cast on indexed sequence elements
+        value.x = nanobind::cast<double>(seq[0]);
+        value.y = nanobind::cast<double>(seq[1]);
+        value.z = nanobind::cast<double>(seq[2]);
+        value.w = nanobind::cast<double>(seq[3]);
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
 
 } // namespace detail
 } // namespace nanobind
 
-NB_MODULE(raspalib, m)
+
+#define EXPAND_MODULE(name) NB_MODULE(name, m)
+EXPAND_MODULE(MODULE_NAME)
 {
   nanobind::class_<EquationOfState> eos(m, "EquationOfState");
 
@@ -554,7 +635,7 @@ NB_MODULE(raspalib, m)
            nanobind::arg("number_of_blocks") = 5,
            nanobind::arg("number_of_lambda_bins") = 41,
            nanobind::arg("particle_probabilities") = MCMoveProbabilities(), 
-           nanobind::arg("fugacity_coefficient") = std::nullopt,
+           nanobind::arg("fugacity_coefficient") = nanobind::none(),
            nanobind::arg("thermodynamic_integration") = false,
            nanobind::arg("blocking_pockets") = std::vector<double4>())
       .def_ro("name", &Component::name)
@@ -566,7 +647,6 @@ NB_MODULE(raspalib, m)
       .def_rw("average_gibbs_rosenbluth_weights", &Component::averageGibbsRosenbluthWeights)
       .def("print_status", &Component::printStatus)
       .def("__repr__", &Component::repr);
-
 
   nanobind::class_<LoadingData>(m, "LoadingData")
       .def(nanobind::init<std::size_t>())
@@ -663,7 +743,7 @@ NB_MODULE(raspalib, m)
                  nanobind::arg("number_of_blocks"), 
                  nanobind::arg("value_range"),
                  nanobind::arg("sample_every"), 
-                 nanobind::arg("write_every") = std::nullopt)
+                 nanobind::arg("write_every") = nanobind::none())
        .def("result", &PropertyNumberOfMoleculesHistogram::result);
 
   nanobind::class_<PropertyConventionalRadialDistributionFunction>(m, "PropertyConventionalRadialDistributionFunction")
@@ -671,7 +751,7 @@ NB_MODULE(raspalib, m)
                  nanobind::arg("number_of_bins"), 
                  nanobind::arg("range"),
                  nanobind::arg("sample_every"), 
-                 nanobind::arg("write_every") = std::nullopt)
+                 nanobind::arg("write_every") = nanobind::none())
        .def("result", &PropertyConventionalRadialDistributionFunction::result);
 
   nanobind::class_<PropertyRadialDistributionFunction>(m, "PropertyRadialDistributionFunction")
@@ -696,7 +776,7 @@ NB_MODULE(raspalib, m)
   nanobind::class_<PropertyMeanSquaredDisplacement>(m, "PropertyMeanSquaredDisplacement")
        .def(nanobind::init<std::size_t, std::optional<std::size_t>>(),
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = std::nullopt)
+            nanobind::arg("write_every") = nanobind::none())
        .def("result", &PropertyMeanSquaredDisplacement::result);
 
   nanobind::class_<VelocityAutoCorrelationFunctionData>(m, "VelocityAutoCorrelationFunctionData")
@@ -712,7 +792,7 @@ NB_MODULE(raspalib, m)
             nanobind::arg("number_of_buffers_vacf"), 
             nanobind::arg("buffer_length_vacf"),
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = std::nullopt)
+            nanobind::arg("write_every") = nanobind::none())
        .def("result", &PropertyVelocityAutoCorrelationFunction::result);
 
 
@@ -721,29 +801,40 @@ NB_MODULE(raspalib, m)
             nanobind::arg("number_of_cycles"), 
             nanobind::arg("number_of_components"),
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = std::nullopt)
+            nanobind::arg("write_every") = nanobind::none())
       .def_ro("result", &PropertyNumberOfMoleculesEvolution::result);
 
   nanobind::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
     .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
             nanobind::arg("number_of_cycles"), 
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = std::nullopt)
+            nanobind::arg("write_every") = nanobind::none())
       .def_ro("result", &PropertyVolumeEvolution::result);
 
-
+  nanobind::class_<RunningEnergy>(m, "RunningEnergy")
+      .def("conserved_energy", &RunningEnergy::conservedEnergy)
+      .def("potential_energy", &RunningEnergy::potentialEnergy)
+      .def("kinetic_energy", &RunningEnergy::kineticEnergy)
+      .def("translational_kinetic_energy", &RunningEnergy::translationalPartKineticEnergy)
+      .def("rotational_kinetic_energy", &RunningEnergy::rotationalPartKineticEnergy)
+      .def("thermostat_energy", &RunningEnergy::thermostatEnergy)
+      .def("coulomb_energy", &RunningEnergy::CoulombEnergy)
+      .def("van_der_waals_energy", &RunningEnergy::VanDerWaalsEnergy)
+      .def_rw("molecule_molecule_vdw", &RunningEnergy::moleculeMoleculeVDW)
+      .def_rw("framework_molecule_vdw", &RunningEnergy::frameworkMoleculeVDW)
+      .def("__repr__", &RunningEnergy::repr);
 
   nanobind::class_<System>(m, "System")
       .def(nanobind::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
                           std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
            nanobind::arg("force_field"), 
-           nanobind::arg("simulation_box") = std::nullopt,
+           nanobind::arg("simulation_box") = nanobind::none(),
            nanobind::arg("has_external_field") = false, 
            nanobind::arg("external_temperature") = 298.0, 
-           nanobind::arg("external_pressure") = std::nullopt, 
+           nanobind::arg("external_pressure") = nanobind::none(), 
            nanobind::arg("helium_void_fraction") = 0.0,
-           nanobind::arg("framework_components") = std::nullopt,
+           nanobind::arg("framework_components") = nanobind::none(),
            nanobind::arg("components") = std::vector<Component>(), 
            nanobind::arg("initial_positions") = std::vector<std::vector<double3>>(),
            nanobind::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
@@ -762,40 +853,40 @@ NB_MODULE(raspalib, m)
       .def_ro("average_pressure", &System::averagePressure)
       .def_ro("thermostat", &System::thermostat)
       .def("set_thermostat", &System::setThermostat,
-         nanobind::arg("thermostat") = std::nullopt)
+         nanobind::arg("thermostat") = nanobind::none())
       .def_ro("property_density_grid", &System::propertyDensityGrid)
       .def("set_property_density_grid", &System::setPropertyDensityGrid,
-         nanobind::arg("property:") = std::nullopt)
+         nanobind::arg("property:") = nanobind::none())
       .def_ro("average_energy_histogram", &System::averageEnergyHistogram)
       .def("set_average_energy_histogram", &System::setAverageEnergyHistogram,
-         nanobind::arg("property:") = std::nullopt)
+         nanobind::arg("property:") = nanobind::none())
       .def_ro("property_number_of_molecules_histogram", &System::averageNumberOfMoleculesHistogram)
       .def("set_number_of_molecules_histogram", &System::setNumberOfMoleculesHistogram,
-         nanobind::arg("property:") = std::nullopt)
+         nanobind::arg("property:") = nanobind::none())
       .def_ro("sample_pdb_movie", &System::samplePDBMovie)
       .def("set_sample_pdb_movie", &System::setSamplePDBMovie,
-         nanobind::arg("property:") = std::nullopt)
+         nanobind::arg("property:") = nanobind::none())
       .def_ro("property_conventional_rdf", &System::propertyConventionalRadialDistributionFunction)
       .def("set_property_conventional_rdf", &System::setPropertyConventionalRDF,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_msd", &System::propertyMSD)
       .def("set_property_msd", &System::setPropertyMSD,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_vacf", &System::propertyVACF)
       .def("set_property_vacf", &System::setPropertyVACF,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_rdf", &System::propertyRadialDistributionFunction)
       .def("set_property_rdf", &System::setPropertyRDF,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_number_of_molecules_evolution", &System::propertyNumberOfMoleculesEvolution)
       .def("set_property_number_of_molecules_evolution", &System::setPropertyNumberOfMoleculesEvolution,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_volume_evolution", &System::propertyVolumeEvolution)
       .def("set_property_volume_evolution", &System::setPropertyVolumeEvolution,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_ro("property_conserved_energy_evolution", &System::propertyConservedEnergyEvolution)
       .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
-         nanobind::arg("property") = std::nullopt)
+         nanobind::arg("property") = nanobind::none())
       .def_rw("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_rw("atom_data", &System::atomData)
       .def_rw("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
@@ -804,28 +895,9 @@ NB_MODULE(raspalib, m)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
-  /*
     nanobind::class_<MonteCarlo>(m, "MonteCarlo")
       .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
-         // Define names and explicit defaults so Python understands the layout
-         nanobind::arg("number_of_cycles") = 5000,
-         nanobind::arg("number_of_initialization_cycles") = 5000,
-         nanobind::arg("number_of_equilibration_cycles") = 5000,
-         nanobind::arg("print_every") = 5000,
-         nanobind::arg("write_binary_restart_every") = 5000,
-         nanobind::arg("rescale_wang_landau_every") = 5000,
-         nanobind::arg("optimize_mc_moves_every") = 5000,
-         nanobind::arg("systems") = std::vector<System>(),
-         nanobind::arg("random_seed") = 10, 
-         nanobind::arg("number_of_blocks") = 10,
-         nanobind::arg("output_to_files") = false
-    );
-    */
-
-    nanobind::class_<MonteCarlo>(m, "MonteCarlo")
-      .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+                        const std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
          nanobind::arg("number_of_cycles"),
          nanobind::arg("number_of_initialization_cycles"),
          nanobind::arg("number_of_equilibration_cycles") = 0,
@@ -834,17 +906,18 @@ NB_MODULE(raspalib, m)
          nanobind::arg("rescale_wang_landau_every") = 1000,
          nanobind::arg("optimize_mc_moves_every") = 100,
          nanobind::arg("systems") = std::vector<System>(),
-         nanobind::arg("random_seed") = std::nullopt,
+         nanobind::arg("random_seed") = nanobind::none(),
          nanobind::arg("number_of_blocks") = 5,
          nanobind::arg("output_to_files") = false)
       .def("run", &MonteCarlo::run)
       .def("setup", &MonteCarlo::setup)
       .def("tear_down", &MonteCarlo::tearDown)
-      .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def("equilibrate", &MonteCarlo::equilibrate, nanobind::arg("call_back_function") = nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
+      .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
+      .def("equilibrate", &MonteCarlo::equilibrate, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
+      .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
       .def("cycle", &MonteCarlo::performCycle)
       .def_ro("systems", &MonteCarlo::systems);
+
 
   nanobind::class_<MolecularDynamics>(m, "MolecularDynamics")
     .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
@@ -857,7 +930,7 @@ NB_MODULE(raspalib, m)
          nanobind::arg("rescale_wang_landau_every") = 1000,
          nanobind::arg("optimize_mc_moves_every") = 100, 
          nanobind::arg("systems") = std::vector<System>(),
-         nanobind::arg("random_seed") = std::nullopt, 
+         nanobind::arg("random_seed") = nanobind::none(), 
          nanobind::arg("number_of_blocks") = 5,
          nanobind::arg("output_to_files") = false)
       .def("run", &MolecularDynamics::run)
@@ -871,24 +944,12 @@ NB_MODULE(raspalib, m)
                       nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
       .def_ro("systems", &MolecularDynamics::systems);
 
-  nanobind::class_<RunningEnergy>(m, "RunningEnergy")
-      .def("conserved_energy", &RunningEnergy::conservedEnergy)
-      .def("potential_energy", &RunningEnergy::potentialEnergy)
-      .def("kinetic_energy", &RunningEnergy::kineticEnergy)
-      .def("translational_kinetic_energy", &RunningEnergy::translationalPartKineticEnergy)
-      .def("rotational_kinetic_energy", &RunningEnergy::rotationalPartKineticEnergy)
-      .def("thermostat_energy", &RunningEnergy::thermostatEnergy)
-      .def("coulomb_energy", &RunningEnergy::CoulombEnergy)
-      .def("van_der_waals_energy", &RunningEnergy::VanDerWaalsEnergy)
-      .def_rw("molecule_molecule_vdw", &RunningEnergy::moleculeMoleculeVDW)
-      .def_rw("framework_molecule_vdw", &RunningEnergy::frameworkMoleculeVDW)
-      .def("__repr__", &RunningEnergy::repr);
 
   nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
             nanobind::arg("number_of_cycles"), 
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = std::nullopt)
+            nanobind::arg("write_every") = nanobind::none())
        // convert result to units of Kelvin
       .def("result", [](const PropertyConservedEnergyEvolution& p) { return Units::EnergyToKelvin * p.result();});
 

@@ -79,7 +79,7 @@ export struct MonteCarlo
    */
   MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
              std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
-             std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, std::vector<System> &systems,
+             std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, const std::vector<System> &systems,
              std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.

@@ -30,8 +30,8 @@ add_compile_definitions(Py_LIMITED_API=0x030c0000)
 nanobind_build_library(nanobind-static-abi3)
 
 add_library(${PROJECT_NAME} MODULE)
-#nanobind_add_module(${PROJECT_NAME} NB_STATIC STABLE_ABI LTO raspa_pybindings.cpp)
 target_sources(${PROJECT_NAME} PUBLIC raspa_pybindings.cpp)
+target_compile_options(${PROJECT_NAME} PRIVATE -DMODULE_NAME=raspalib)
 set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_MODULE_STD ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_SCAN_FOR_MODULES ON)
@@ -43,47 +43,67 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${Python3_SABI_INCLUDE_DIRS}
 )
 include_directories(${Python3_INCLUDE_DIRS})
-
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-
 set_target_properties(${PROJECT_NAME} PROPERTIES
   PREFIX ""
   SUFFIX "${NB_SUFFIX_S}" # Leverages nanobind's resolved extension macro
 )
 
-#if(APPLE)
-#   target_link_options(${PROJECT_NAME} PRIVATE "-Wl,-undefined,dynamic_lookup")
-#endif()
+# on intel, also create avx2 and avx512 versions
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
 
-## on intel, also create avx2 and avx512 versions
-#if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
-#
-#  pybind11_add_module(${PROJECT_NAME}_avx2 MODULE)
-#  target_sources(${PROJECT_NAME}_avx2 PUBLIC raspa_pybindings.cpp)
-#  target_sources(${PROJECT_NAME}_avx2 PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
-#  if(MSVC)
-#    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE /arch:AVX2 -DMODULE_NAME=raspalib_avx2)
-#  else()
-#    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE -march=core-avx2 -mfma -DMODULE_NAME=raspalib_avx2)
-#  endif()
-#  target_compile_options(${PROJECT_NAME}_avx2 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
-#  set_target_properties(${PROJECT_NAME}_avx2 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-#  raspa_target_link_libraries(${PROJECT_NAME}_avx2)
-#  
-#  pybind11_add_module(${PROJECT_NAME}_avx512 MODULE)
-#  target_sources(${PROJECT_NAME}_avx512 PUBLIC raspa_pybindings.cpp)
-#  target_sources(${PROJECT_NAME}_avx512 PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
-#  if(MSVC)
-#    target_compile_options(${PROJECT_NAME}_avx512 PRIVATE /arch:AVX512 -DMODULE_NAME=raspalib_avx512)
-#  else()
-#    target_compile_options(${PROJECT_NAME}_avx512 PRIVATE -march=skylake-avx512 -mfma -DMODULE_NAME=raspalib_avx512)
-#  endif()
-#  target_compile_options(${PROJECT_NAME}_avx512 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
-#  set_target_properties(${PROJECT_NAME}_avx512 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-#  raspa_target_link_libraries(${PROJECT_NAME}_avx512)
-#
-#endif()
+  add_library(${PROJECT_NAME}_avx2 MODULE)
+  target_sources(${PROJECT_NAME}_avx2 PUBLIC raspa_pybindings.cpp)
+  if(MSVC)
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE /arch:AVX2 -DMODULE_NAME=raspalib_avx2)
+  else()
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE -march=core-avx2 -mfma -DMODULE_NAME=raspalib_avx2)
+  endif()
+  set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
+  set_property(TARGET ${PROJECT_NAME}_avx2 PROPERTY CXX_MODULE_STD ON)
+  set_property(TARGET ${PROJECT_NAME}_avx2 PROPERTY CXX_SCAN_FOR_MODULES ON)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx2)
+  target_link_libraries(${PROJECT_NAME}_avx2 PRIVATE nanobind-static-abi3 Python3::SABIModule)
+  target_include_directories(${PROJECT_NAME}_avx2 PRIVATE
+    ${nanobind_SOURCE_DIR}/include
+    ${nanobind_SOURCE_DIR}/ext/robin-map/include
+    ${Python3_SABI_INCLUDE_DIRS}
+  )
+  include_directories(${Python3_INCLUDE_DIRS})
+  target_compile_options(${PROJECT_NAME}_avx2 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+  set_target_properties(${PROJECT_NAME}_avx2 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+  set_target_properties(${PROJECT_NAME}_avx2 PROPERTIES
+    PREFIX ""
+    SUFFIX "${NB_SUFFIX_S}"
+  )
+
+  add_library(${PROJECT_NAME}_avx512 MODULE)
+  target_sources(${PROJECT_NAME}_avx512 PUBLIC raspa_pybindings.cpp)
+  if(MSVC)
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE /arch:AVX512 -DMODULE_NAME=raspalib_avx512)
+  else()
+    target_compile_options(${PROJECT_NAME}_avx2 PRIVATE -march=skylake-avx512 -mfma -DMODULE_NAME=raspalib_avx512)
+  endif()
+  set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
+  set_property(TARGET ${PROJECT_NAME}_avx512 PROPERTY CXX_MODULE_STD ON)
+  set_property(TARGET ${PROJECT_NAME}_avx512 PROPERTY CXX_SCAN_FOR_MODULES ON)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx512)
+  target_link_libraries(${PROJECT_NAME}_avx512 PRIVATE nanobind-static-abi3 Python3::SABIModule)
+  target_include_directories(${PROJECT_NAME}_avx512 PRIVATE
+    ${nanobind_SOURCE_DIR}/include
+    ${nanobind_SOURCE_DIR}/ext/robin-map/include
+    ${Python3_SABI_INCLUDE_DIRS}
+  )
+  include_directories(${Python3_INCLUDE_DIRS})
+  target_compile_options(${PROJECT_NAME}_avx512 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+  set_target_properties(${PROJECT_NAME}_avx512 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+  set_target_properties(${PROJECT_NAME}_avx512 PROPERTIES
+    PREFIX ""
+    SUFFIX "${NB_SUFFIX_S}"
+  )
+
+endif()
 
 if(CONDA)
   target_link_options(${PROJECT_NAME} PRIVATE -L$ENV{CONDA_PREFIX}/lib)
