@@ -34,6 +34,8 @@ find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
+add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
+add_link_options("-fopenmp")
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 

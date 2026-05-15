@@ -15,6 +15,11 @@ endif()
 include(FetchContent)
 
 set(NB_TEST OFF CACHE BOOL "" FORCE)
+if (Python3_EXECUTABLE)
+    set(NB_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}" CACHE INTERNAL "")
+    # Also set standard CMake hints just in case
+    set(Python_EXECUTABLE "${Python3_EXECUTABLE}" CACHE INTERNAL "")
+endif()
 
 FetchContent_Declare(
     nanobind
@@ -24,6 +29,12 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(nanobind)
+
+# Force-enable C++20 Standard Library Modules after nanobind disables them
+set(CMAKE_CXX_MODULE_STD ON CACHE BOOL "" FORCE)
+set(CXX_SCAN_FOR_MODULES ON CACHE BOOL "" FORCE)
+set(CMAKE_CXX_VISIBILITY_PRESET default)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN OFF)
 
 add_compile_definitions(Py_LIMITED_API=0x030c0000)
 
@@ -111,11 +122,18 @@ if(CONDA)
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
   install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
 elseif(LINUX)
-  # base the install directory on where also python-numpy is installed
-  #execute_process(COMMAND python3 -c "import numpy; import os; print(os.path.dirname(os.path.dirname(numpy.__file__)))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND python3 -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
-  install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
+  if(PYPI)
+    install(DIRECTORY raspalib DESTINATION ${SKBUILD_PLATLIB_DIR})
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
+      install(TARGETS ${PROJECT_NAME}_avx2 DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+      install(TARGETS ${PROJECT_NAME}_avx512 DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)
+    endif()
+  else()
+    execute_process(COMMAND python3 -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
+    install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
+endif()
 elseif(APPLE)
   if(PYPI)
     install(TARGETS ${PROJECT_NAME} DESTINATION ${SKBUILD_PLATLIB_DIR}/raspalib)

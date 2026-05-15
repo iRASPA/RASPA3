@@ -16,6 +16,68 @@
         "INSTALL_GTEST": false
       }
     },
+    { 
+      "name": "python-linux-aarch64",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
+      "cacheVariables": {
+        "PYPI": true,
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+        "CMAKE_CXX_FLAGS_RELEASE": "-D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -Xclang -fopenmp=libgomp -DNDEBUG -fexperimental-library -g -O3 -ffast-math",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_INSTALL_PREFIX": "/usr",
+        "PACKAGE_INSTALL_PREFIX": "/usr",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
+        "BUILD_APP": false,
+        "BUILD_CLI": false,
+        "BUILD_PYTHON": true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT": false,
+        "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
+        "Python3_EXECUTABLE": "/usr/bin/python3",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    { 
+      "name": "python-linux-x86_64",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
+      "cacheVariables": {
+        "PYPI": true,
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+        "CMAKE_CXX_FLAGS_RELEASE": "-D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -Xclang -fopenmp=libgomp -DNDEBUG -fexperimental-library -g -O3 -ffast-math",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_LINKER_TYPE": "LLD",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_INSTALL_PREFIX": "/usr",
+        "PACKAGE_INSTALL_PREFIX": "/usr",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.10",
+        "BUILD_APP": false,
+        "BUILD_CLI": false,
+        "BUILD_PYTHON": true,
+        "BUILD_LIBTORCH": false,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT": false,
+        "BLAS_LIBRARIES": "/usr/lib64/libblas.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack.so.3",
+        "Python3_EXECUTABLE": "/usr/bin/python3",
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
     {
       "name": "python-macos-arm64",
       "description": "Sets compilers, build type",

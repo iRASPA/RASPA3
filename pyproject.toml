@@ -65,7 +65,9 @@ py-api = "cp312"
 [tool.cibuildwheel]
 archs = ["arm64"]
 skip = ["*i686", "*musllinux*"]
-manylinux-x86_64-image = "manylinux_2_28"
+repair-wheel-command = "auditwheel repair --exclude libOpenCL.so.1 -w {dest_dir} {wheel}  || bash"
+manylinux-x86_64-image = "ghcr.io/iraspa/manylinux_2_28_x86_64-llvm-22:latest"
+manylinux-aarch64-image = "ghcr.io/iraspa/manylinux_2_28_aarch64-llvm-22:latest"
 build = "cp312-*"
 
 
@@ -82,29 +84,19 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "11.0", CC = "/opt/homebrew/opt/llvm/
 
 
 [tool.cibuildwheel.linux]
-before-all = """
-if [ "$(uname -m)" = "x86_64" ]; then
-curl -sSL -O https://github.com/Kitware/CMake/releases/download/v4.3.2/cmake-4.3.2-linux-x86_64.tar.gz
-tar -xzf cmake-4.3.0-linux-x86_64.tar.gz --strip-components=1 -C /usr/local
-rm cmake-4.3.0-linux-x86_64.tar.gz
-curl -sSL -O https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.5/LLVM-22.1.5-Linux-X64.tar.xz
-mkdir -p /opt/llvm-22
-tar -xJf LLVM-22.1.5-Linux-X64.tar.xz --strip-components=1 -C /opt/llvm-22
-rm LLVM-22.1.5-Linux-X64.tar.xz
-else
-fi
-"""
-environment = { CC = "/opt/llvm-22/bin/clang", CXX = "/opt/llvm-22/bin/clang++" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_aarch64"
 
 [[tool.scikit-build.overrides]]
 if.platform-system = "linux"
 if.platform-machine = "x86_64"
-cmake.args = ["--preset=python-linux-x64"]
+cmake.args = ["--preset=python-linux-x86_64"]
 
 [[tool.scikit-build.overrides]]
 if.platform-system = "linux"
 if.platform-machine = "aarch64"
-cmake.args = ["--preset=python-linux-arm64"]
+cmake.args = ["--preset=python-linux-aarch64"]
 
 [[tool.scikit-build.overrides]]
 if.platform-system = "darwin"
