@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "raspalib"
-version = "3.0.29"
+version = "3.0.32"
 description = "A general purpose classical simulation package"
 authors = [
     { name = "Drs. Youri Ran, University of Amsterdam" },
@@ -65,14 +65,11 @@ py-api = "cp312"
 [tool.cibuildwheel]
 archs = ["arm64"]
 skip = ["*i686", "*musllinux*"]
-repair-wheel-command = "auditwheel repair --exclude libOpenCL.so.1 -w {dest_dir} {wheel}  || bash"
-manylinux-x86_64-image = "ghcr.io/iraspa/manylinux_2_28_x86_64-llvm-22:latest"
-manylinux-aarch64-image = "ghcr.io/iraspa/manylinux_2_28_aarch64-llvm-22:latest"
 build = "cp312-*"
 
 
 [tool.cibuildwheel.macos]
-before-all = "brew install llvm cmake"
+before-all = "brew install llvm cmake libomp"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-macosx*x86_64"
@@ -84,36 +81,45 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "11.0", CC = "/opt/homebrew/opt/llvm/
 
 
 [tool.cibuildwheel.linux]
+repair-wheel-command = "auditwheel repair --exclude libOpenCL.so.1 -w {dest_dir} {wheel}  || bash"
+manylinux-x86_64-image = "ghcr.io/iraspa/manylinux_2_28_x86_64-llvm-22:latest"
+manylinux-aarch64-image = "ghcr.io/iraspa/manylinux_2_28_aarch64-llvm-22:latest"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
 
+[tool.cibuildwheel.windows]
+environment = { CMAKE_ARGS = "-GNinja -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"}
+
 [[tool.scikit-build.overrides]]
-if.platform-system = "linux"
-if.platform-machine = "x86_64"
+if.platform_system = "linux"
+if.platform_machine = "x86_64"
 cmake.args = ["--preset=python-linux-x86_64"]
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "linux"
-if.platform-machine = "aarch64"
+if.platform_system = "linux"
+if.platform_machine = "aarch64"
 cmake.args = ["--preset=python-linux-aarch64"]
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "darwin"
-if.platform-machine = "x86_64"
-cmake.args = ["--preset=python-macos-intel"] 
+if.platform_system = "darwin"
+if.platform_machine = "x86_64"
+cmake.args = ["--preset=python-macos-x86_64"]
+
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "darwin"
-if.platform-machine = "arm64"
+if.platform_system = "darwin"
+if.platform_machine = "arm64"
 cmake.args = ["--preset=python-macos-arm64"]
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "windows"
-if.platform-machine = "AMD64"
-cmake.args = ["--preset=python-windows-x64"]
+if.platform_system = "^win32"
+if.platform_machine = "(?i)^(AMD64|x86_64)$"
+cmake.args = ["--preset=python-windows-x86_64"]
+cmake.define.VCPKG_TARGET_TRIPLET = "x64-windows"
 
 [[tool.scikit-build.overrides]]
-if.platform-system = "windows"
-if.platform-machine = "ARM64"
+if.platform_system = "^win32"
+if.platform_machine = "(?i)^ARM64$"
 cmake.args = ["--preset=python-windows-arm64"]
+cmake.define.VCPKG_TARGET_TRIPLET = "arm64-windows"

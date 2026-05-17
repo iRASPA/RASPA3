@@ -16,6 +16,8 @@ endif()
 # clang 17 and greater can avoid this setting
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Keep all internal functions (including the static C++ library) private. 
+# Only show the specific Python entry point.
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
@@ -34,8 +36,10 @@ find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
-add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
-add_link_options("-fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
+  #add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
+  #add_link_options("-fopenmp")
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
@@ -80,7 +84,6 @@ if(BUILD_TESTING)
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 endif()
-
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
@@ -128,7 +131,7 @@ function(raspa_target_link_libraries target_name)
       voro++
       ${TORCH_LIBRARIES}
       OpenMP::OpenMP_CXX
-      OpenCL::OpenCL
+      -Wl,--as-needed OpenCL::OpenCL
       -nostdlib++
       -l:libc++.a
       -l:libc++abi.a
@@ -171,9 +174,11 @@ function(raspa_target_link_libraries target_name)
   endif()
 endfunction()
 
-
-
 add_subdirectory(src)
+
+if(BUILD_PYTHON)
+  add_subdirectory(raspa)
+endif()
 
 if(BUILD_APP)
   add_subdirectory(data)
@@ -201,6 +206,3 @@ if(BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
 
-if(BUILD_PYTHON)
-  add_subdirectory(raspa)
-endif()

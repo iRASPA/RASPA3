@@ -51,6 +51,7 @@ __all__ = [
     "ForceField",
     "MCMoveProbabilities",
     "MCMoveStatistics",
+    "ConnectivityTable",
     "IntraMolecularPotentials",
     "Component",
     "SimulationBox",
@@ -70,6 +71,8 @@ __all__ = [
     "PropertyVolumeEvolution",
     "PropertyDensityGrid",
     "PropertyLambdaProbabilityHistogram",
+    "PropertyWidom",
+    "PropertyPressure",
     "Move",
     "MoveStatisticsDouble3",
     "WidomData",
@@ -80,7 +83,8 @@ __all__ = [
     "Thermostat",
     "PropertyConventionalRadialDistributionFunction",
     "PropertyMeanSquaredDisplacement",
-    "PropertyVelocityAutoCorrelationFunction"
-    "PropertyEnthalpy"
+    "PropertyVelocityAutoCorrelationFunction",
+    "PropertyEnthalpy",
+    "EnthalpyOfAdsorptionData"
 ]
 
