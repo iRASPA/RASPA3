@@ -17,6 +17,58 @@
       }
     },
     {
+      "name": "python-windows-arm64",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "PYPI": true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_INSTALL_PREFIX": "$env{PREFIX}",
+        "PACKAGE_INSTALL_PREFIX": "$env{PREFIX}",
+        "CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE": "ARM64",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /Ob3 /fp:fast /openmp::llvm -DNDEBUG",
+        "CMAKE_SHARED_LINKER_FLAGS": "/FORCE:MULTIPLE /DEFAULTLIB:VCRUNTIME",
+        "CMAKE_MODULE_LINKER_FLAGS": "/FORCE:MULTIPLE /DEFAULTLIB:VCRUNTIME",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
+        "OpenMP_C_FLAGS": "/openmp::llvm",
+        "OpenMP_CXX_FLAGS": "/openmp::lvm",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/lib/arm64/libomp.lib",
+        "BLAS_LIBRARIES": "C:/vcpkg/installed/ARM64-windows-static/lib/openblas.lib",
+        "LAPACK_LIBRARIES": "C:/vcpkg/installed/ARM64-windows-static/lib/lapack.lib;C:/vcpkg/installed/ARM64-windows-static/lib/libf2c.lib",
+        "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/ARM64-windows-static/include",
+        "ZLIB_LIBRARY": "C:/vcpkg/installed/ARM64-windows-static/lib/zlib.lib",
+        "OpenCL_INCLUDE_DIR": "C:/vcpkg/installed/ARM64-windows/include",
+        "OpenCL_LIBRARY": "C:/vcpkg/installed/ARM64-windows/lib/OpenCL.lib",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_WINDOWS_PACKAGE": false,
+        "BUILD_PYTHON": true,
+        "BUILD_APP": false,
+        "BUILD_CLI": false,
+        "BUILD_TESTING": false,
+        "BUILD_TESTING_MATHKIT": false,
+        "BUILD_TESTING_FOUNDATIONKIT": false,
+        "BUILD_TESTING_SYMMETRYKIT": false,
+        "BUILD_TESTING_RASPAKIT": false,
+        "BUILD_TESTING_RASPA3": false,
+        "BUILD_LIBTORCH": false,
+        "BLA_SIZEOF_INTEGER": "8"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Windows"
+          ]
+        }
+      }
+    },
+    {
       "name": "python-windows-x86_64",
       "description": "Sets compilers, build type",
       "inherits": [
