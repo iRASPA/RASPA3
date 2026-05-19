@@ -43,8 +43,12 @@ from raspalib.system import *
 from raspalib.monte_carlo import *
 from raspalib.molecular_dynamics import *
 from raspalib.equation_of_state import *
+from raspalib.molecular_viewer import *
 
 __all__ = [
+    "create_molecular_movie",
+    "MFI",
+    "ITQ_29",
     "PseudoAtom",
     "VDWParameters",
     "Atom",
