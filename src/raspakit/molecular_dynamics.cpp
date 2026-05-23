@@ -145,7 +145,6 @@ void MolecularDynamics::createInterpolationGrids()
 
 void MolecularDynamics::setup()
 {
-  createOutputFiles();
 
   for (std::size_t system_id{0}; System& system : systems)
   {
@@ -167,21 +166,26 @@ void MolecularDynamics::setup()
     ++system_id;
   }
 
-  for (std::size_t system_id{0}; const System& system : systems)
+  if (outputToFiles)
   {
-    std::ostream stream(streams[system_id].rdbuf());
+    createOutputFiles();
 
-    std::print(stream, "{}", system.writeOutputHeader());
-    std::print(stream, "Random seed: {}\n\n", random.seed);
-    std::print(stream, "{}\n", HardwareInfo::writeInfo());
-    std::print(stream, "{}", Units::printStatus());
-    std::print(stream, "{}", system.writeSystemStatus());
-    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(stream, "{}", system.forceField.printForceFieldStatus());
-    std::print(stream, "{}", system.writeComponentStatus());
-    std::print(stream, "{}", system.reactions.printStatus());
+    for (std::size_t system_id{0}; const System& system : systems)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
 
-    ++system_id;
+      std::print(stream, "{}", system.writeOutputHeader());
+      std::print(stream, "Random seed: {}\n\n", random.seed);
+      std::print(stream, "{}\n", HardwareInfo::writeInfo());
+      std::print(stream, "{}", Units::printStatus());
+      std::print(stream, "{}", system.writeSystemStatus());
+      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(stream, "{}", system.forceField.printForceFieldStatus());
+      std::print(stream, "{}", system.writeComponentStatus());
+      std::print(stream, "{}", system.reactions.printStatus());
+
+      ++system_id;
+    }
   }
 
   createInterpolationGrids();
@@ -196,9 +200,12 @@ void MolecularDynamics::setup()
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
 
-    std::ostream stream(streams[system_id].rdbuf());
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n\n\n\n");
+    if (outputToFiles)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMC("Recomputed from scratch");
+      std::print(stream, "\n\n\n\n");
+    }
 
     ++system_id;
   };
@@ -207,7 +214,10 @@ void MolecularDynamics::setup()
 
 void MolecularDynamics::tearDown()
 {
-  output();
+  if (outputToFiles)
+  {
+    output();
+  }
 }
 
 
@@ -267,13 +277,17 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     {
       for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system_id].rdbuf());
-
         system.loadings =
             LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-        std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
-        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
-        std::flush(stream);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+
+          std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+          std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
+          std::flush(stream);
+        }
 
         ++system_id;
       }
@@ -298,13 +312,16 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
+      if (outputToFiles)
       {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+        Archive<std::ofstream> archive(ofile);
+        archive << *this;
+        ofile.close();
+        if (ofile)
+        {
+          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
       }
     }
 
@@ -319,7 +336,6 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 
   for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system_id].rdbuf());
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     Integrators::initializeVelocities(random, system.moleculeData, system.components, system.temperature);
 
@@ -345,8 +361,12 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     }
     system.referenceEnergy = system.runningEnergies.conservedEnergy();
 
-    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
-    std::print(stream, "\n\n\n\n");
+    if (outputToFiles)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+      std::print(stream, "\n\n\n\n");
+    }
 
     for (Component& component : system.components)
     {
@@ -382,13 +402,17 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     {
       for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system_id].rdbuf());
-
         system.loadings =
             LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
-        std::flush(stream);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+
+          std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
+          std::flush(stream);
+        }
 
         ++system_id;
       }
@@ -426,13 +450,16 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     if (currentCycle % printEvery == 0uz)
     {
       // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
+      if (outputToFiles)
       {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+        Archive<std::ofstream> archive(ofile);
+        archive << *this;
+        ofile.close();
+        if (ofile)
+        {
+          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
       }
     }
   continueEquilibrationStage:;
@@ -449,7 +476,6 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
   for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system_id].rdbuf());
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
@@ -463,8 +489,12 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     }
     system.referenceEnergy = system.runningEnergies.conservedEnergy();
 
-    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
-    std::print(stream, "\n");
+    if (outputToFiles)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+      std::print(stream, "\n");
+    }
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -555,9 +585,12 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     {
       for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system_id].rdbuf());
-        std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
-        std::flush(stream);
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
+          std::flush(stream);
+        }
 
         ++system_id;
       }
@@ -617,13 +650,16 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     // write binary-restart file
     if (currentCycle % printEvery == 0uz)
     {
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
+      if (outputToFiles)
       {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+        Archive<std::ofstream> archive(ofile);
+        archive << *this;
+        ofile.close();
+        if (ofile)
+        {
+          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
       }
     }
     t2 = std::chrono::system_clock::now();
