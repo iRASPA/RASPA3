@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "raspalib"
-version = "3.0.32"
+version = "3.0.33"
 description = "A general purpose classical simulation package"
 authors = [
     { name = "Drs. Youri Ran, University of Amsterdam" },
@@ -64,7 +64,7 @@ py-api = "cp312"
 
 [tool.cibuildwheel]
 archs = ["arm64"]
-skip = ["*i686", "*manylinux*"]
+skip = ["*i686", "*musl*"]
 build = "cp312-*"
 
 
@@ -84,8 +84,8 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "11.0", CC = "/opt/homebrew/opt/llvm/
 repair-wheel-command = "auditwheel repair --exclude libOpenCL.so.1 -w {dest_dir} {wheel}  || bash"
 manylinux-x86_64-image = "ghcr.io/iraspa/manylinux_2_28_x86_64-llvm-22:latest"
 manylinux-aarch64-image = "ghcr.io/iraspa/manylinux_2_28_aarch64-llvm-22:latest"
-musllinux-x86_64-image = "ghcr.io/iraspa/musllinux_1_2_x86_64-llvm-22:latest"
-musllinux-aarch64-image = "ghcr.io/iraspa/musllinux_1_2_aarch64-llvm-22:latest"
+musllinux-x86_64-image = "ghcr.io/iraspa/musllinux_1_1_x86_64-llvm-22:latest"
+musllinux-aarch64-image = "ghcr.io/iraspa/musllinux_1_1_aarch64-llvm-22:latest"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-manylinux_aarch64"
