@@ -1,9 +1,10 @@
+import ipywidgets as widgets
+from IPython.display import display
 import py3Dmol
+import io
 from ase.io import read
 from ase.spacegroup import crystal
 from ase.io import write
-import py3Dmol
-import io
 
 
 def MFI(x,y,z):
@@ -76,4 +77,32 @@ def create_molecular_movie(view, pdb_path, framework=None):
     view.setStyle({'model': 1}, {'stick': {'radius': 0.15}, 'sphere': {'scale': 0.15}})
 
   view.setCameraParameters({'orthographic': True})
+
+  initial_orientation = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+
+  play_btn = widgets.Button(description="Play", icon="play")
+  stop_btn = widgets.Button(description="Stop", icon="stop")
+  reset_btn = widgets.Button(description="Reset", icon="history")
+  
+  def play_movie(b):
+      view.animate({'loop': 'once', 'interval': 200, 'reps': 1})
+      view.update()
+  
+  def stop_movie(b):
+      view.stopAnimate()
+      view.update()
+
+  def reset_view(b):
+    view.stopAnimate()
+    view.setView(initial_orientation)
+    view.setFrame(0)
+    view.zoomTo()
+    view.update()
+  
+  play_btn.on_click(play_movie)
+  stop_btn.on_click(stop_movie)
+  reset_btn.on_click(reset_view)
+
+  display(widgets.HBox([play_btn, stop_btn, reset_btn]))
+  view.setView(initial_orientation)
   view.zoomTo()

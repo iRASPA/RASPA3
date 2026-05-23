@@ -40,7 +40,7 @@ target_compile_options(${PROJECT_NAME}_base PRIVATE -DMODULE_NAME=raspalib_base)
 set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
 set_property(TARGET ${PROJECT_NAME}_base PROPERTY CXX_MODULE_STD ON)
 set_property(TARGET ${PROJECT_NAME}_base PROPERTY CXX_SCAN_FOR_MODULES ON)
-raspa_target_link_libraries(${PROJECT_NAME}_base)
+raspa_target_link_libraries(${PROJECT_NAME}_base PRIVATE)
 target_link_libraries(${PROJECT_NAME}_base PRIVATE nanobind-static-abi3 Python::SABIModule)
 target_include_directories(${PROJECT_NAME}_base PRIVATE
   ${nanobind_SOURCE_DIR}/include
@@ -70,7 +70,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
   set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
   set_property(TARGET ${PROJECT_NAME}_avx PROPERTY CXX_MODULE_STD ON)
   set_property(TARGET ${PROJECT_NAME}_avx PROPERTY CXX_SCAN_FOR_MODULES ON)
-  raspa_target_link_libraries(${PROJECT_NAME}_avx)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx PRIVATE)
   target_link_libraries(${PROJECT_NAME}_avx PRIVATE nanobind-static-abi3 Python::SABIModule)
   target_include_directories(${PROJECT_NAME}_avx PRIVATE
     ${nanobind_SOURCE_DIR}/include
@@ -96,7 +96,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
   set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
   set_property(TARGET ${PROJECT_NAME}_avx2 PROPERTY CXX_MODULE_STD ON)
   set_property(TARGET ${PROJECT_NAME}_avx2 PROPERTY CXX_SCAN_FOR_MODULES ON)
-  raspa_target_link_libraries(${PROJECT_NAME}_avx2)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx2 PRIVATE)
   target_link_libraries(${PROJECT_NAME}_avx2 PRIVATE nanobind-static-abi3 Python::SABIModule)
   target_include_directories(${PROJECT_NAME}_avx2 PRIVATE
     ${nanobind_SOURCE_DIR}/include
@@ -121,7 +121,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64)")
   set_property(SOURCE raspa_pybindings.cpp PROPERTY CXX_SCAN_FOR_MODULES ON)
   set_property(TARGET ${PROJECT_NAME}_avx512 PROPERTY CXX_MODULE_STD ON)
   set_property(TARGET ${PROJECT_NAME}_avx512 PROPERTY CXX_SCAN_FOR_MODULES ON)
-  raspa_target_link_libraries(${PROJECT_NAME}_avx512)
+  raspa_target_link_libraries(${PROJECT_NAME}_avx512 PRIVATE)
   target_link_libraries(${PROJECT_NAME}_avx512 PRIVATE nanobind-static-abi3 Python::SABIModule)
   target_include_directories(${PROJECT_NAME}_avx512 PRIVATE
     ${nanobind_SOURCE_DIR}/include
