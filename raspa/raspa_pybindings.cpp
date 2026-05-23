@@ -87,7 +87,6 @@ std::pair<T, T>& operator*=(const double& s, std::pair<T, T>& p)
     return p;
 }
 
-
 template <typename U, typename T>
 std::vector<T> operator*(std::vector<U> v, const T& scalar)
 {
@@ -107,7 +106,6 @@ std::vector<T> operator*(const U& scalar, std::vector<T> v)
   }
   return v;
 }
-
 
 template<typename T>
 std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)

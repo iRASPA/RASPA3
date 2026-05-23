@@ -10,17 +10,6 @@ import simulationbox;
 import average_energy_type;
 import units;
 
-inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
-template<typename T>
-std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)
-{
-  return std::make_pair(a * b.first, a * b.second);
-}
-
 
 export struct PropertyEnergyHistogram
 {
@@ -31,7 +20,7 @@ export struct PropertyEnergyHistogram
                           std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(numberOfBins),
-        valueRange(Units::KelvinToEnergy * valueRange),
+        valueRange(Units::KelvinToEnergy * valueRange.first, Units::KelvinToEnergy * valueRange.second),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         bookKeepingEnergyHistogram(
