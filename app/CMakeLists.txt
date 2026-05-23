@@ -5,6 +5,7 @@ add_executable(${PROJECT_NAME}
 )
 
 raspa_target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE raspakit_base)
 
 if(BUILD_MAC_PACKAGE)
         install(CODE "execute_process(COMMAND

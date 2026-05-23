@@ -1094,7 +1094,7 @@
         "BUILD_CLI": true,
         "BUILD_PYTHON": true,
         "BUILD_LIBTORCH": false,
-        "BUILD_TESTING": false,
+        "BUILD_TESTING": true,
         "BUILD_TESTING_MATHKIT": true,
         "BUILD_TESTING_FOUNDATIONKIT": true,
         "BUILD_TESTING_SYMMETRYKIT": true,

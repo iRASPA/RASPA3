@@ -6,6 +6,7 @@ add_executable(unit_tests_mathkit
 
 raspa_target_link_libraries(unit_tests_mathkit)
 target_link_libraries(unit_tests_mathkit PUBLIC 
+                      raspakit_base
                       GTest::gtest
                       GTest::gtest_main
                       GTest::gmock

@@ -124,13 +124,8 @@ def print_debug_info():
 
 
 from raspalib.version import __version__
-from raspalib.molecular_viewer import *
 
 __all__ = [
-    "print_debug_info",
-    "create_molecular_movie",
-    "MFI",
-    "ITQ_29",
     "PseudoAtom",
     "VDWParameters",
     "Atom",

@@ -32,6 +32,7 @@ add_executable(unit_tests_raspakit
 
 raspa_target_link_libraries(unit_tests_raspakit)
 target_link_libraries(unit_tests_raspakit PUBLIC
+                      raspakit_base
                       GTest::gtest
                       GTest::gtest_main
                       GTest::gmock

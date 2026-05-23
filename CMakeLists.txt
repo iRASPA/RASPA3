@@ -110,7 +110,6 @@ function(raspa_target_link_libraries target_name)
   if(CONDA)
     target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
@@ -123,7 +122,6 @@ function(raspa_target_link_libraries target_name)
   elseif(LINUX)
     target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       -static-libgcc
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
@@ -143,7 +141,6 @@ function(raspa_target_link_libraries target_name)
   elseif(WIN32)
     target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${HDF5_LIBRARIES_TO_EXPORT}
@@ -156,7 +153,6 @@ function(raspa_target_link_libraries target_name)
   elseif(APPLE)
     target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       voro++
@@ -196,7 +192,6 @@ if(BUILD_DOXYGEN)
 endif()
 
 add_subdirectory(packaging)
-
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
