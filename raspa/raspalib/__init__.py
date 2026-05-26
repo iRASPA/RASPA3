@@ -104,7 +104,7 @@ module_path = f"raspalib.raspalib_{level}"
 try:
     _module = importlib.import_module(module_path, package=__package__)
 except ImportError:
-    warnings.warn(f"Important failed, falling back to base-version", RuntimeWarning)
+    warnings.warn("Import failed, falling back to base-version", RuntimeWarning)
     _module = importlib.import_module("raspalib.raspalib_base", package=__package__)
 globals().update({
     name: export 

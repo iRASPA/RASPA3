@@ -22,7 +22,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 project(raspa3
-  VERSION 3.0.29
+  VERSION 3.0.30
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
@@ -100,7 +100,7 @@ set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
 set(HDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16 OFF CACHE BOOL "Build static libraries" FORCE)
 FetchContent_Declare(hdf5
   GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
-    GIT_TAG 2.1.1
+  GIT_TAG 2.1.1
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(hdf5)
 set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")

@@ -169,11 +169,11 @@ jobs:
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
           apt-get install -y --no-install-recommends libfftw3-dev
-          ln -s /usr/lib/x86_64-linux-gnu/libxml2.so.16 /usr/lib/libxml2.so.2
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
           rm -f LLVM-22.1.1-Linux-X64.tar
+          ln -sf /usr/lib/x86_64-linux-gnu/libxml2.so.16 /usr/lib/libxml2.so.2
           wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0-linux-x86_64.sh
           sh ./cmake-4.3.0-linux-x86_64.sh --skip-license --prefix=/usr
           rm -f cmake-4.3.0-linux-x86_64.sh
@@ -1134,11 +1134,13 @@ jobs:
         run: |
           zypper --non-interactive dup
           zypper --non-interactive update  
-          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
+          zypper install -y --no-recommends wget ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
           zypper install -y --no-recommends python3 python3-devel 
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
-          zypper install -y rpm-build git
+          zypper remove -y busybox-gawk || true
+          zypper install -y --no-confirm gawk git
+          zypper --non-interactive install --auto-agree-with-product-licenses rpm-build
           ln -s /usr/lib64/libxml2.so.16 /usr/lib64/libxml2.so.2
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
@@ -1288,11 +1290,11 @@ jobs:
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev
           apt-get install -y --no-install-recommends libfftw3-dev 
-          ln -s /usr/lib/x86_64-linux-gnu/libxml2.so.16 /usr/lib/libxml2.so.2
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
           tar -xf LLVM-22.1.1-Linux-X64.tar -C /usr --strip-components=1
           rm -f LLVM-22.1.1-Linux-X64.tar
+          ln -sf /usr/lib/x86_64-linux-gnu/libxml2.so.16 /usr/lib/libxml2.so.2
           wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0-linux-x86_64.sh
           sh ./cmake-4.3.0-linux-x86_64.sh --skip-license --prefix=/usr
           rm -f cmake-4.3.0-linux-x86_64.sh
@@ -2252,11 +2254,13 @@ jobs:
         run: |
           zypper --non-interactive dup
           zypper --non-interactive update  
-          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
+          zypper install -y --no-recommends wget ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
           zypper install -y --no-recommends python3 python3-devel 
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
-          zypper install -y rpm-build git
+          zypper remove -y busybox-gawk || true
+          zypper install -y --no-confirm gawk git
+          zypper --non-interactive install --auto-agree-with-product-licenses rpm-build
           ln -s /usr/lib64/libxml2.so.16 /usr/lib64/libxml2.so.2
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-X64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-X64.tar.xz
@@ -2399,14 +2403,18 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
-          apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev 
-          apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg 
+          apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev
+          apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg
           apt-get install -y --no-install-recommends python3 python3-dev python3-numpy
-          apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip
-          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
-          apt-get install -y --no-install-recommends clang llvm lld libc++-dev libunwind-dev
-          apt-get install -y --no-install-recommends ocl-icd-opencl-dev 
+          apt-get install -y --no-install-recommends liblapack-dev libomp5 make xz-utils unzip gcc
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev libxml2-dev
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev
           apt-get install -y --no-install-recommends libfftw3-dev
+          ln -s /lib/aarch64-linux-gnu/libxml2.so.16 /lib/aarch64-linux-gnu/libxml2.so.2
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
+          xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
+          tar -xf LLVM-22.1.1-Linux-ARM64.tar -C /usr --strip-components=1
+          rm -f LLVM-22.1.1-Linux-ARM64.tar
           wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0-linux-aarch64.sh
           sh ./cmake-4.3.0-linux-aarch64.sh --skip-license --prefix=/usr
           rm -f cmake-4.3.0-linux-aarch64.sh
@@ -3173,11 +3181,13 @@ jobs:
         run: |
           zypper --non-interactive dup
           zypper --non-interactive update  
-          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
+          zypper install -y --no-recommends wget ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
           zypper install -y --no-recommends python3 python3-devel python3-numpy
           zypper install -y --no-recommends lapack-devel blas-devel xz unzip libxml2 libomp-devel
           zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
-          zypper install -y rpm-build git
+          zypper remove -y busybox-gawk || true
+          zypper install -y --no-confirm gawk git
+          zypper --non-interactive install --auto-agree-with-product-licenses rpm-build
           ln -s /usr/lib64/libxml2.so.16 /usr/lib64/libxml2.so.2
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz
           xz -d -v LLVM-22.1.1-Linux-ARM64.tar.xz
