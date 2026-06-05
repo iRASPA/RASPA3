@@ -14,11 +14,11 @@ import forcefield;
 import units;
 import skelement;
 
-SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox) : 
-                         sampleEvery(sampleEvery), restrictToBox(restrictToBox)
+SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag) : 
+                         sampleEvery(sampleEvery), restrictToBox(restrictToBox), tag(tag)
 {
   std::filesystem::create_directory("movies");
-  std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
+  std::ofstream stream(std::format("movies/movie{}.s{}.pdb", tag.value_or(""), systemId));
 }
 
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
@@ -29,7 +29,8 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
   if (currentCycle % sampleEvery == 0)
   {
     std::filesystem::create_directory("movies");
-    std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId), std::ios_base::app);
+
+    std::ofstream stream(std::format("movies/movie{}.s{}.pdb", tag.value_or(""), systemId), std::ios_base::app);
 
     std::print(stream, "MODEL {:>4}\n", modelNumber);
     std::print(stream, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA,

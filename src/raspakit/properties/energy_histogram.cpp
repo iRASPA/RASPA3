@@ -119,7 +119,8 @@ std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<Aver
 
 void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t currentCycle)
 {
-  if (currentCycle % writeEvery != 0uz) return;
+  if (!writeEvery.has_value()) return;
+  if (currentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("energy_histogram");
 
@@ -167,7 +168,10 @@ std::string PropertyEnergyHistogram::printSettings() const
 
   std::print(stream, "Energy histogram:\n");
   std::print(stream, "    sample every: {}\n", sampleEvery);
-  std::print(stream, "    write every: {}\n", writeEvery);
+  if(writeEvery.has_value())
+  {
+    std::print(stream, "    write every: {}\n", writeEvery.value());
+  }
   std::print(stream, "    number of bins: {}\n", numberOfBins);
   std::print(stream, "    valueRange: ({}) - ({})\n", valueRange.first, valueRange.second);
   std::print(stream, "\n");

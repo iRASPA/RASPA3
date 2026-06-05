@@ -54,7 +54,7 @@ def ITQ_29(x,y,z):
 
   return cif_str
 
-def create_molecular_movie(view, pdb_path, framework=None):
+def create_molecular_movie(view, pdb_path, framework=None, interval=200):
   def pos(arr):
       return {'x': float(arr[0]), 'y': float(arr[1]), 'z': float(arr[2])}
 
@@ -85,7 +85,7 @@ def create_molecular_movie(view, pdb_path, framework=None):
   reset_btn = widgets.Button(description="Reset", icon="history")
   
   def play_movie(b):
-      view.animate({'loop': 'once', 'interval': 200, 'reps': 1})
+      view.animate({'loop': 'once', 'interval': interval, 'reps': 1})
       view.update()
   
   def stop_movie(b):

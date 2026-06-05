@@ -480,10 +480,11 @@ EXPAND_MODULE(MODULE_NAME)
       .def_readonly("inverse_number_densities", &LoadingData::inverseNumberDensities);
 
   pybind11::class_<SampleMovie>(m, "SampleMovie")
-      .def(pybind11::init<std::size_t, std::size_t, bool>(),
+      .def(pybind11::init<std::size_t, std::size_t, bool, std::optional<std::string>>(),
            pybind11::arg("system_id"), 
            pybind11::arg("sample_every"), 
-           pybind11::arg("restrict_to_box") = true);
+           pybind11::arg("restrict_to_box") = true,
+           pybind11::arg("tag") = std::nullopt);
 
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
       .def(pybind11::init<std::size_t, std::size_t>())
@@ -554,12 +555,12 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
-      .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>(),
+      .def(pybind11::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
                  pybind11::arg("number_of_blocks"), 
                  pybind11::arg("number_of_bins"), 
                  pybind11::arg("value_range"),
                  pybind11::arg("sample_every"), 
-                 pybind11::arg("write_every"))
+                 pybind11::arg("write_every") = std::nullopt)
       // convert result to units of Kelvin
       .def("result", [](PropertyEnergyHistogram& p) { auto [bins, average, error] = p.result(); 
            return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>

@@ -653,10 +653,11 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("inverse_number_densities", &LoadingData::inverseNumberDensities);
 
   nanobind::class_<SampleMovie>(m, "SampleMovie")
-      .def(nanobind::init<std::size_t, std::size_t, bool>(),
+      .def(nanobind::init<std::size_t, std::size_t, bool, std::optional<std::string>>(),
            nanobind::arg("system_id"), 
            nanobind::arg("sample_every"), 
-           nanobind::arg("restrict_to_box") = true);
+           nanobind::arg("restrict_to_box") = true,
+           nanobind::arg("tag") = std::nullopt);
 
   nanobind::class_<PropertyLoading>(m, "PropertyLoading")
       .def(nanobind::init<std::size_t, std::size_t>())
@@ -725,12 +726,12 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
-      .def(nanobind::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::size_t>(),
+      .def(nanobind::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
                  nanobind::arg("number_of_blocks"), 
                  nanobind::arg("number_of_bins"), 
                  nanobind::arg("value_range"),
                  nanobind::arg("sample_every"), 
-                 nanobind::arg("write_every"))
+                 nanobind::arg("write_every") = nanobind::none())
       // convert result to units of Kelvin
       .def("result", [](PropertyEnergyHistogram& p) { auto [bins, average, error] = p.result(); 
            return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>

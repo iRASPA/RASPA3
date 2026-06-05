@@ -17,7 +17,7 @@ export struct PropertyEnergyHistogram
   PropertyEnergyHistogram() {};
 
   PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> valueRange,
-                          std::size_t sampleEvery, std::size_t writeEvery)
+                          std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(numberOfBins),
         valueRange(Units::KelvinToEnergy * valueRange.first, Units::KelvinToEnergy * valueRange.second),
@@ -35,7 +35,7 @@ export struct PropertyEnergyHistogram
   std::size_t numberOfBins;
   std::pair<double, double> valueRange;
   std::size_t sampleEvery;
-  std::size_t writeEvery;
+  std::optional<std::size_t> writeEvery;
   std::vector<std::vector<AverageEnergyType>> bookKeepingEnergyHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};

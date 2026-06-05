@@ -15,7 +15,7 @@ export struct SampleMovie
   std::uint64_t versionNumber{1};
 
   SampleMovie() {};
-  SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox);
+  SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag);
 
   void update(const ForceField& forceField, std::size_t systemId, const SimulationBox simulationBox,
               const std::span<Atom> atomData, const std::vector<Component> &components,
@@ -24,6 +24,7 @@ export struct SampleMovie
 
   std::size_t sampleEvery{10};
   bool restrictToBox;
+  std::optional<std::string> tag{};
 
   int modelNumber{1};
 

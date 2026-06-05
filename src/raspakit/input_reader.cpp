@@ -1378,7 +1378,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             restrict_to_box = value["RestrictMoviePositionsToBox"].get<bool>();
           }
 
-          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery, restrict_to_box);
+          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery, restrict_to_box, std::nullopt);
         }
       }
 
