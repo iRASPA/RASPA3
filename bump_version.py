@@ -53,6 +53,7 @@ def main(new_version_or_part):
     infoplist_file = "packaging/Info.plist"
     doxy_file_raspa = "docs/Doxyfile_raspa"
     doxy_file_raspalib = "docs/Doxyfile_raspalib"
+    raspalib_version_file = "raspa/raspalib/version.py"
 
     pyproject_pattern = r'version\s*=\s*"\d+\.\d+\.\d+"'
     cmake_pattern = r"(^[ \t]*VERSION[ \t]+)\d+\.\d+\.\d+([ \t]*$)"
@@ -60,6 +61,7 @@ def main(new_version_or_part):
     makefilemanual_pattern = r"VERSION=\d+\.\d+\.\d+"
     infoplist_pattern = r"<string>\d+\.\d+\.\d+</string>"
     doxyfile_pattern = r"PROJECT_NUMBER\s*=\s*\d+\.\d+\.\d+"
+    file_raspalib_pattern = r'__version__\s*=\s*"\d+\.\d+\.\d+"'
 
     current_version_match = re.search(r'"\d+\.\d+\.\d+"', read_current_version(pyproject_file, pyproject_pattern))
     if not current_version_match:
@@ -77,6 +79,8 @@ def main(new_version_or_part):
     new_makefilemanual_version = f"VERSION={new_version}"
     new_infoplist_version = f"<string>{new_version}</string>"
     new_doxyfile_version = f"PROJECT_NUMBER         = {new_version}"
+    new_pyproject_version = f'version = "{new_version}"'
+    new_file_raspalib_version = f'__version__ = "{new_version}"'
 
     bump_version(pyproject_file, pyproject_pattern, new_pyproject_version)
     bump_version(cmake_file, cmake_pattern, new_cmake_version)
@@ -87,6 +91,7 @@ def main(new_version_or_part):
     bump_version(infoplist_file, infoplist_pattern, new_infoplist_version)
     bump_version(doxy_file_raspa, doxyfile_pattern, new_doxyfile_version)
     bump_version(doxy_file_raspalib, doxyfile_pattern, new_doxyfile_version)
+    bump_version(raspalib_version_file, file_raspalib_pattern, new_file_raspalib_version)
 
 
 if __name__ == "__main__":
