@@ -24,6 +24,7 @@
       ],
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe",
@@ -76,6 +77,7 @@
       ],
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe",
@@ -120,6 +122,7 @@
       },
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_C_COMPILER": "/usr/bin/clang",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
         "CMAKE_CXX_FLAGS_RELEASE": "-D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -Xclang -fopenmp=libgomp -DNDEBUG -fexperimental-library -g -O3 -ffast-math",
@@ -159,6 +162,7 @@
       },
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_C_COMPILER": "/usr/bin/clang",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
         "CMAKE_CXX_FLAGS_RELEASE": "-D_LIBCPP_DISABLE_AVAILABILITY -stdlib=libc++ -Xclang -fopenmp=libgomp -DNDEBUG -fexperimental-library -g -O3 -ffast-math",
@@ -192,6 +196,7 @@
       "inherits": "base",
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_OSX_ARCHITECTURES": "arm64",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",
@@ -225,6 +230,7 @@
       "inherits": "base",
       "cacheVariables": {
         "PYPI": true,
+        "ABI3" : true,
         "CMAKE_OSX_ARCHITECTURES": "x86_64",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "clang",

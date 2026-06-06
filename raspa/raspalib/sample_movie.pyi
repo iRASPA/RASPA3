@@ -10,7 +10,8 @@ class SampleMovie():
         self,
         system_id: int,
         sample_every: int = 1,
-        restrict_to_box: bool = True
+        restrict_to_box: bool = True,
+        tag: str | None
     ) -> None:
         ...
         """
@@ -21,4 +22,5 @@ class SampleMovie():
             sample_every: Sampling interval in cycles. Defaults to ``1``.
             restrict_to_box: Whether sampled coordinates are restricted/wrapped
                 to the simulation box. Defaults to ``True``.
+            tag: Optionally concat filename
         """
