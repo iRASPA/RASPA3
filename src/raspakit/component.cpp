@@ -531,18 +531,25 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   std::print(stream, "    Critical pressure:     {} [{}]\n", criticalPressure, Units::unitOfPressureString);
   std::print(stream, "    Acentric factor:       {} [-]\n\n", acentricFactor);
 
-  std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
-  std::print(stream << std::boolalpha, "    Swappable:                   {}\n\n", swappable);
-  std::print(stream, "    Mass:                         {} [-]\n", totalMass);
-  std::print(stream, "    Fugacity:                     {} [Pa]\n",
-             molFraction * fugacityCoefficient.value_or(1.0) * inputPressure);
-  if (fugacityCoefficient.has_value())
+  if(swappable)
   {
-    std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());
+    std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
+    std::print(stream << std::boolalpha, "    Swappable:                   {}\n\n", swappable);
+    std::print(stream, "    Mass:                         {} [-]\n", totalMass);
+    std::print(stream, "    Fugacity:                     {} [Pa]\n",
+               molFraction * fugacityCoefficient.value_or(1.0) * inputPressure);
+    if (fugacityCoefficient.has_value())
+    {
+      std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());
+    }
+    std::print(stream, "    Bulk fluid density:           {} [-]\n", bulkFluidDensity);
+    std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
+    std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
   }
-  std::print(stream, "    Bulk fluid density:           {} [-]\n", bulkFluidDensity);
-  std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
-  std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
+  else
+  {
+    std::print(stream << std::boolalpha, "    Swappable:                   {}\n\n", swappable);
+  }
 
   std::print(stream, "    Number Of Atoms:              {}\n", atoms.size());
   std::print(stream, "    CBMC starting bead:           {}\n", startingBead);

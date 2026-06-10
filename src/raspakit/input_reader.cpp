@@ -1495,27 +1495,27 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
-  for (std::size_t i = 0uz; i < systems.size(); ++i)
-  {
-    double sum = 0.0;
-    for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-    {
-      if (systems[i].components[j].type != Component::Type::Cation)
-      {
-        sum += systems[i].components[j].molFraction;
-      }
-    }
-    if (std::abs(sum - 1.0) > 1e-15)
-    {
-      for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-      {
-        if (systems[i].components[j].type != Component::Type::Cation)
-        {
-          systems[i].components[j].molFraction /= sum;
-        }
-      }
-    }
-  }
+  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  //{
+  //  double sum = 0.0;
+  //  for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //  {
+  //    if (systems[i].components[j].type != Component::Type::Cation)
+  //    {
+  //      sum += systems[i].components[j].molFraction;
+  //    }
+  //  }
+  //  if (std::abs(sum - 1.0) > 1e-15)
+  //  {
+  //    for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //    {
+  //      if (systems[i].components[j].type != Component::Type::Cation)
+  //      {
+  //        systems[i].components[j].molFraction /= sum;
+  //      }
+  //    }
+  //  }
+  //}
 
   //for (std::size_t i = 0uz; i < systems.size(); ++i)
   //{
