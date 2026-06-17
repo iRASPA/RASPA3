@@ -11,11 +11,6 @@ import averages;
 import simulationbox;
 import component;
 
-inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
 export struct PropertyNumberOfMoleculesHistogram
 {
   PropertyNumberOfMoleculesHistogram() {};

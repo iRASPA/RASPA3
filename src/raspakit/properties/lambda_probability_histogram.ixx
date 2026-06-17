@@ -471,8 +471,15 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
-                     summedBlocks.begin(), pair_sum_double);
+      std::transform(
+          summedBlocks.begin(),
+          summedBlocks.end(),
+          bookKeepingDUdlambda[blockIndex].begin(),
+          summedBlocks.begin(),
+          [](const auto& lhs, const auto& rhs) {
+              return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
+          }
+      );
     }
 
     std::vector<double> averagedData(numberOfSamplePoints);
@@ -550,8 +557,15 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
-                     summedBlocks.begin(), pair_sum_double);
+      std::transform(
+          summedBlocks.begin(),
+          summedBlocks.end(),
+          bookKeepingDUdlambda[blockIndex].begin(),
+          summedBlocks.begin(),
+          [](const auto& lhs, const auto& rhs) {
+              return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
+          }
+      );
     }
 
     std::vector<double> averagedData(numberOfSamplePoints);

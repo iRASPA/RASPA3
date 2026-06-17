@@ -10,11 +10,6 @@ import averages;
 import loading_data;
 import component;
 
-inline std::pair<LoadingData, double> pair_sum(const std::pair<LoadingData, double> &lhs,
-                                            const std::pair<LoadingData, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
 
 export struct PropertyLoading
 {

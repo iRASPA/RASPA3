@@ -13,11 +13,6 @@ import framework;
 import component;
 import json;
 
-inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, double> &lhs,
-                                                const std::pair<EnergyStatus, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
 
 export struct PropertyEnergy
 {
@@ -65,8 +60,14 @@ export struct PropertyEnergy
   EnergyStatus averagedEnergy() const
   {
     std::pair<EnergyStatus, double> summedBlocks = std::accumulate(
-        bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(),
-        std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0), pair_sum);
+        bookKeepingEnergyStatus.begin(),
+        bookKeepingEnergyStatus.end(),
+        std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0),
+        [](const auto& lhs, const auto& rhs) {
+            return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
+        }
+    );
+
     return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
