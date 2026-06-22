@@ -523,7 +523,7 @@ std::vector<Atom> CIFReader::expandDefinedAtomsToUnitCell(const SimulationBox &s
       double3 dr = cartesian_position_A - cartesian_position_B;
       dr = simulation_box.applyPeriodicBoundaryConditions(dr);
       double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
+      if (rr < 0.1 * 0.1)
       {
         overLap = true;
         break;
