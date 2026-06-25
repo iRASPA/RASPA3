@@ -65,6 +65,24 @@ std::vector<SKSeitzIntegerMatrix> SKSeitzIntegerMatrix::SeitzMatrices(std::strin
   return matrices;
 }
 
+std::vector<SKSeitzIntegerMatrix> SKSeitzIntegerMatrix::SeitzMatricesFromGenerators(std::string encoding)
+{
+  std::size_t m = std::min(encoding.size() / 3, static_cast<std::size_t>(3));
+
+  std::vector<SKSeitzIntegerMatrix> matrices(3, SKSeitzIntegerMatrix(SKRotationMatrix::identity, int3(0, 0, 0)));
+
+  for (std::size_t i = 0; i < m; i++)
+  {
+    char x = encoding[3 * i];
+    char y = encoding[3 * i + 1];
+    char z = encoding[3 * i + 2];
+
+    matrices[i] = SKSeitzIntegerMatrix(x, y, z);
+  }
+
+  return matrices;
+}
+
 std::vector<SKOneThirdSeitzMatrix> SKSeitzIntegerMatrix::SeitzData = std::vector<SKOneThirdSeitzMatrix>{
     SKOneThirdSeitzMatrix(" x", '0', 1, 0, 0, 0),         SKOneThirdSeitzMatrix(" y", '1', 0, 1, 0, 0),
     SKOneThirdSeitzMatrix(" z", '2', 0, 0, 1, 0),         SKOneThirdSeitzMatrix("-x", '3', -1, 0, 0, 0),

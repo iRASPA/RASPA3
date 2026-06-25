@@ -175,11 +175,16 @@ export struct CIFReader
   static std::vector<Atom> expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box,
                   std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms);
 
+  void resolveSpaceGroupHallNumber(const SimulationBox& simulation_box);
+
   Scanner scanner;                                  ///< Scanner object for navigating through the CIF content.
   
 
   std::vector<Atom> fractionalAtoms;                ///< List of atoms with fractional coordinates.
   std::optional<std::size_t> spaceGroupHallNumber;  ///< Optional space group Hall number.
+  std::optional<std::size_t> spaceGroupInternationalNumber;
+  std::string hmSymbol;
+  std::vector<std::string> symmetryOperationStrings;
   double a;                                         ///< Cell length a.
   double b;                                         ///< Cell length b.
   double c;                                         ///< Cell length c.

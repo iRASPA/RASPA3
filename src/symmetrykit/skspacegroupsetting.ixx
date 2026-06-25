@@ -45,6 +45,7 @@ export class SKSpaceGroupSetting
 
   const std::vector<int3> latticeTranslations() const { return _latticeTranslations; }
   Centring centring() const { return _centring; }
+  bool standardSetting() const { return _standard; }
 
   // check
   SKAsymmetricUnit asymmetricUnit() const { return _asymmetricUnit; }

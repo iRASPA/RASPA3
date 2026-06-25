@@ -7,6 +7,7 @@ add_executable(unit_tests_symmetrykit
   find_spacegroup.cpp
   find_spacegroup_symmetry_metric.cpp
   poscar_parser.cpp
+  cif_symmetry.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_symmetrykit)
@@ -18,6 +19,7 @@ target_link_libraries(unit_tests_symmetrykit PUBLIC
                       GTest::gmock_main)
 
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY testdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 gtest_add_tests(TARGET unit_tests_symmetrykit TEST_LIST noArgsTests)
 set_tests_properties(${noArgsTests} PROPERTIES WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

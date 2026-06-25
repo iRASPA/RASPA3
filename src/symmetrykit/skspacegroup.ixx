@@ -56,6 +56,11 @@ export class SKSpaceGroup
   static std::optional<std::size_t> HallNumberFromHMString(std::string inputString);
   static std::optional<std::size_t> HallNumberFromSpaceGroupNumber(std::size_t);
   static std::optional<std::size_t> HallNumber(std::string inputString);
+  static std::optional<SKSeitzMatrix> parseCifSymmetryOperation(std::string expression);
+  static Centring centringFromHMString(std::string hmString);
+  static std::optional<std::size_t> HallNumberFromSymmetryOperations(
+      const std::vector<SKSeitzMatrix>& operations, double3x3 lattice, Centring centering,
+      std::optional<std::size_t> internationalNumber = std::nullopt, double symmetryPrecision = 1e-2);
   static std::optional<FoundPrimitiveCellInfo> SKFindPrimitive(
       double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
       double symmetryPrecision);

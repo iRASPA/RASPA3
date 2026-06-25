@@ -163,6 +163,253 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromSpaceGroupNumber([[maybe_
   return std::nullopt;
 }
 
+struct CifCoordinateExpression
+{
+  int xCoeff = 0;
+  int yCoeff = 0;
+  int zCoeff = 0;
+  double translation = 0.0;
+};
+
+std::optional<double> parseCifRational(std::string_view expression, std::size_t& position)
+{
+  const std::size_t start = position;
+  while (position < expression.size() && std::isdigit(expression[position]))
+  {
+    ++position;
+  }
+  if (position == start)
+  {
+    return std::nullopt;
+  }
+
+  const int numerator = std::stoi(std::string(expression.substr(start, position - start)));
+  if (position < expression.size() && expression[position] == '/')
+  {
+    ++position;
+    const std::size_t denominatorStart = position;
+    while (position < expression.size() && std::isdigit(expression[position]))
+    {
+      ++position;
+    }
+    if (position == denominatorStart)
+    {
+      return std::nullopt;
+    }
+    const int denominator = std::stoi(std::string(expression.substr(denominatorStart, position - denominatorStart)));
+    if (denominator == 0)
+    {
+      return std::nullopt;
+    }
+    return static_cast<double>(numerator) / static_cast<double>(denominator);
+  }
+
+  return static_cast<double>(numerator);
+}
+
+std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string expression)
+{
+  expression.erase(std::remove_if(expression.begin(), expression.end(),
+                                  [](unsigned char character) { return std::isspace(character); }),
+                   expression.end());
+  if (expression.empty())
+  {
+    return std::nullopt;
+  }
+
+  CifCoordinateExpression coordinateExpression{};
+  std::size_t position = 0;
+  while (position < expression.size())
+  {
+    int sign = 1;
+    if (expression[position] == '+')
+    {
+      ++position;
+    }
+    else if (expression[position] == '-')
+    {
+      sign = -1;
+      ++position;
+    }
+
+    if (position >= expression.size())
+    {
+      return std::nullopt;
+    }
+
+    if (std::isdigit(expression[position]))
+    {
+      const std::optional<double> value = parseCifRational(expression, position);
+      if (!value)
+      {
+        return std::nullopt;
+      }
+      coordinateExpression.translation += static_cast<double>(sign) * *value;
+      continue;
+    }
+
+    const char variable = static_cast<char>(std::tolower(expression[position]));
+    if (variable != 'x' && variable != 'y' && variable != 'z')
+    {
+      return std::nullopt;
+    }
+    ++position;
+
+    int& coefficient = variable == 'x'   ? coordinateExpression.xCoeff
+                       : variable == 'y' ? coordinateExpression.yCoeff
+                                         : coordinateExpression.zCoeff;
+    coefficient += sign;
+  }
+
+  return coordinateExpression;
+}
+
+std::string stripCifQuotes(std::string expression)
+{
+  expression.erase(std::remove_if(expression.begin(), expression.end(),
+                                  [](unsigned char character) { return std::isspace(character); }),
+                   expression.end());
+  if (expression.size() >= 2 &&
+      ((expression.front() == '\'' && expression.back() == '\'') ||
+       (expression.front() == '"' && expression.back() == '"')))
+  {
+    expression = expression.substr(1, expression.size() - 2);
+  }
+  return expression;
+}
+
+std::vector<std::string> splitCifSymmetryCoordinates(std::string expression)
+{
+  std::vector<std::string> coordinates;
+  std::string current;
+
+  for (char character : expression)
+  {
+    if (character == ',')
+    {
+      coordinates.push_back(current);
+      current.clear();
+      continue;
+    }
+    current.push_back(character);
+  }
+
+  if (!current.empty())
+  {
+    coordinates.push_back(current);
+  }
+
+  return coordinates;
+}
+
+Centring SKSpaceGroup::centringFromHMString(std::string hmString)
+{
+  hmString.erase(std::remove_if(hmString.begin(), hmString.end(),
+                                [](unsigned char character)
+                                { return character == '\'' || character == '"' || std::isspace(character); }),
+                 hmString.end());
+  if (hmString.empty())
+  {
+    return Centring::primitive;
+  }
+
+  switch (std::toupper(hmString.front()))
+  {
+    case 'P':
+      return Centring::primitive;
+    case 'I':
+      return Centring::body;
+    case 'F':
+      return Centring::face;
+    case 'A':
+      return Centring::a_face;
+    case 'B':
+      return Centring::b_face;
+    case 'C':
+      return Centring::c_face;
+    case 'R':
+      return Centring::r;
+    case 'H':
+      return Centring::h;
+    default:
+      return Centring::primitive;
+  }
+}
+
+std::optional<SKSeitzMatrix> SKSpaceGroup::parseCifSymmetryOperation(std::string expression)
+{
+  expression = stripCifQuotes(std::move(expression));
+
+  const std::vector<std::string> coordinates = splitCifSymmetryCoordinates(expression);
+  if (coordinates.size() != 3)
+  {
+    return std::nullopt;
+  }
+
+  std::array<CifCoordinateExpression, 3> parsedCoordinates{};
+  for (std::size_t i = 0; i < coordinates.size(); ++i)
+  {
+    const std::optional<CifCoordinateExpression> parsedCoordinate =
+        parseCifCoordinateExpression(coordinates[i]);
+    if (!parsedCoordinate)
+    {
+      return std::nullopt;
+    }
+    parsedCoordinates[i] = *parsedCoordinate;
+  }
+
+  const SKRotationMatrix rotation(
+      int3(parsedCoordinates[0].xCoeff, parsedCoordinates[1].xCoeff, parsedCoordinates[2].xCoeff),
+      int3(parsedCoordinates[0].yCoeff, parsedCoordinates[1].yCoeff, parsedCoordinates[2].yCoeff),
+      int3(parsedCoordinates[0].zCoeff, parsedCoordinates[1].zCoeff, parsedCoordinates[2].zCoeff));
+  const double3 translation(parsedCoordinates[0].translation, parsedCoordinates[1].translation,
+                            parsedCoordinates[2].translation);
+  return SKSeitzMatrix(rotation, translation);
+}
+
+std::optional<std::size_t> SKSpaceGroup::HallNumberFromSymmetryOperations(
+    const std::vector<SKSeitzMatrix>& operations, double3x3 lattice, Centring centering,
+    std::optional<std::size_t> internationalNumber, double symmetryPrecision)
+{
+  if (operations.empty())
+  {
+    return std::nullopt;
+  }
+
+  std::vector<std::size_t> hallNumbers{};
+  if (internationalNumber && *internationalNumber > 0 && *internationalNumber <= 230)
+  {
+    hallNumbers = SKSpaceGroupDataBase::spaceGroupHallData[*internationalNumber];
+  }
+  else
+  {
+    for (std::size_t internationalTableNumber = 1; internationalTableNumber <= 230; ++internationalTableNumber)
+    {
+      for (std::size_t hallNumber : SKSpaceGroupDataBase::spaceGroupHallData[internationalTableNumber])
+      {
+        hallNumbers.push_back(hallNumber);
+      }
+    }
+  }
+
+  std::optional<std::size_t> matchedHallNumber;
+  for (std::size_t hallNumber : hallNumbers)
+  {
+    if (!matchSpaceGroup(hallNumber, lattice, centering, operations, symmetryPrecision))
+    {
+      continue;
+    }
+
+    matchedHallNumber = hallNumber;
+    if (SKSpaceGroupDataBase::spaceGroupData[hallNumber].standardSetting())
+    {
+      return hallNumber;
+    }
+  }
+
+  return matchedHallNumber;
+}
+
 std::vector<double3> SKSpaceGroup::listOfSymmetricPositions(double3 pos)
 {
   std::unordered_set<SKSeitzIntegerMatrix, SKSeitzIntegerMatrix::hashFunction> seitzMatrices =
@@ -800,10 +1047,18 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   double3x3 translationsnew = double3x3();
 
   SKSpaceGroup dataBaseSpaceGroup = SKSpaceGroup(HallNumber);
-  std::vector<SKSeitzIntegerMatrix> dataBaseSpaceGroupGenerators =
-      SKSeitzIntegerMatrix::SeitzMatrices(dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators());
+  const std::string& encodedGenerators = dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators();
+  if (encodedGenerators.empty())
+  {
+    if (centering != dataBaseSpaceGroup.spaceGroupSetting().centring())
+    {
+      return std::nullopt;
+    }
+    return double3(0.0, 0.0, 0.0);
+  }
 
-  // assert(!dataBaseSpaceGroupGenerators.empty());
+  std::vector<SKSeitzIntegerMatrix> dataBaseSpaceGroupGenerators =
+      SKSeitzIntegerMatrix::SeitzMatricesFromGenerators(encodedGenerators);
 
   // apply change-of-basis to generators
   for (std::size_t i = 0; i < dataBaseSpaceGroupGenerators.size(); i++)

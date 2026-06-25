@@ -6,6 +6,8 @@ import std;
 
 import double3;
 import skspacegroup;
+import skdefinitions;
+import skseitzmatrix;
 import skelement;
 import scanner;
 import characterset;
@@ -77,6 +79,8 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
                                cif_reader.alpha * std::numbers::pi / 180.0, 
                                cif_reader.beta * std::numbers::pi / 180.0,
                                cif_reader.gamma * std::numbers::pi / 180.0, type);
+
+  cif_reader.resolveSpaceGroupHallNumber(simulation_box);
 
   if (useChargesFrom == UseChargesFrom::PseudoAtoms)
   {
@@ -168,14 +172,15 @@ void CIFReader::parseSymmetry(std::string& string)
     }
   }
 
-  if (!spaceGroupHallNumber)
+  if ((string == std::string("_space_group_name_H-M_alt")) ||
+      (string == std::string("_symmetry_space_group_name_H-M")) ||
+      (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
   {
-    if ((string == std::string("_space_group_name_H-M_alt")) ||
-        (string == std::string("_symmetry_space_group_name_H-M")) ||
-        (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
+    std::optional<std::string> possibleString = scanString();
+    if (possibleString)
     {
-      std::optional<std::string> possibleString = scanString();
-      if (possibleString)
+      hmSymbol = *possibleString;
+      if (!spaceGroupHallNumber)
       {
         spaceGroupHallNumber = SKSpaceGroup::HallNumberFromHMString(*possibleString);
       }
@@ -187,9 +192,54 @@ void CIFReader::parseSymmetry(std::string& string)
     if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
         (string == std::string("_symmetry.Int_Tables_number")))
     {
-      std::size_t spaceGroupNumber = scanInt();
-      spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(spaceGroupNumber);
+      spaceGroupInternationalNumber = scanInt();
+      spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(*spaceGroupInternationalNumber);
     }
+  }
+  else if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
+           (string == std::string("_symmetry.Int_Tables_number")))
+  {
+    spaceGroupInternationalNumber = scanInt();
+  }
+}
+
+void CIFReader::resolveSpaceGroupHallNumber(const SimulationBox& simulation_box)
+{
+  if (symmetryOperationStrings.empty())
+  {
+    return;
+  }
+
+  std::vector<SKSeitzMatrix> operations{};
+  operations.reserve(symmetryOperationStrings.size());
+  for (const std::string& symmetryOperationString : symmetryOperationStrings)
+  {
+    if (const std::optional<SKSeitzMatrix> operation =
+            SKSpaceGroup::parseCifSymmetryOperation(symmetryOperationString))
+    {
+      operations.push_back(*operation);
+    }
+  }
+
+  if (operations.empty())
+  {
+    return;
+  }
+
+  Centring centering = Centring::primitive;
+  if (!hmSymbol.empty())
+  {
+    centering = SKSpaceGroup::centringFromHMString(hmSymbol);
+  }
+  else if (spaceGroupHallNumber)
+  {
+    centering = SKSpaceGroup(spaceGroupHallNumber.value()).spaceGroupSetting().centring();
+  }
+
+  if (const std::optional<std::size_t> hallNumber = SKSpaceGroup::HallNumberFromSymmetryOperations(
+          operations, simulation_box.cell, centering, spaceGroupInternationalNumber))
+  {
+    spaceGroupHallNumber = hallNumber;
   }
 }
 
@@ -225,6 +275,38 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
 
   // set scanner back to the first <value>
   scanner.setScanLocation(previousScanLocation);
+
+  const bool isSymmetryLoop = std::ranges::any_of(
+      tags,
+      [](const std::string& tag)
+      {
+        return tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz");
+      });
+
+  if (isSymmetryLoop)
+  {
+    std::optional<std::string> symmetryValue = std::nullopt;
+    do
+    {
+      for (const std::string& tag : tags)
+      {
+        if (tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz"))
+        {
+          symmetryValue = parseValue();
+          if (symmetryValue)
+          {
+            symmetryOperationStrings.push_back(*symmetryValue);
+          }
+        }
+        else
+        {
+          symmetryValue = parseValue();
+        }
+      }
+    } while (symmetryValue);
+
+    return std::expected<void, CIFReader::ParseError>();
+  }
 
   std::optional<std::string> value1 = std::nullopt;
   do
