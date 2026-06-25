@@ -5,7 +5,7 @@ import std;
 import double3;
 import double3x3;
 
-import skposcarlegacyparser;
+import skposcarparser;
 import sksymmetrycell;
 import skspacegroup;
 import skpointgroup;
@@ -16,7 +16,7 @@ std::pair<double3x3, std::vector<std::tuple<double3, std::size_t, double>>> load
   std::ifstream t(fileName.c_str());
   std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-  SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+  SKPOSCARParser parser = SKPOSCARParser(fileContent);
   parser.startParsing();
 
   return {parser.movies().front().front()->cell->unitCell(), parser.firstTestFrame()};

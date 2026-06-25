@@ -6,7 +6,7 @@ import double3;
 import double3x3;
 import randomnumbers;
 
-import skposcarlegacyparser;
+import skposcarparser;
 import sksymmetrycell;
 import skspacegroup;
 import skpointgroup;
@@ -32,7 +32,7 @@ TEST(FindSmallestPrimitiveCell, Triclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -189,7 +189,7 @@ TEST(FindSmallestPrimitiveCell, Monoclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -722,7 +722,7 @@ TEST(FindSmallestPrimitiveCell, Orthogonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1347,7 +1347,7 @@ TEST(FindSmallestPrimitiveCell, Tetragonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1596,7 +1596,7 @@ TEST(FindSmallestPrimitiveCell, Trigonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1837,7 +1837,7 @@ TEST(FindSmallestPrimitiveCell, Hexagonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -2012,7 +2012,7 @@ double3(6.4032700000, -6.4032700000, 6.4032700000), double3(6.4032700000, 6.4032
     std::string fileContent((std::istreambuf_iterator<char>(t)),
       std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double> > atoms = parser.firstTestFrame();
@@ -3317,7 +3317,7 @@ TEST(FindSmallestPrimitiveCell, Virtual)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();

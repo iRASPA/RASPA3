@@ -6,6 +6,7 @@ add_executable(unit_tests_symmetrykit
   find_pointgroup_no_partial_occupancies.cpp
   find_spacegroup.cpp
   find_spacegroup_symmetry_metric.cpp
+  poscar_parser.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_symmetrykit)
