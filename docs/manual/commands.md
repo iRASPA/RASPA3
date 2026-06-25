@@ -126,9 +126,9 @@
     presence of this file will result in continuation from the point where
     the program was at the moment of outputting this file. The file can be
     quite big (several hundreds of megabytes) and will be outputted
-    every 'WriteBinaryRestartFileEvery' cycles.
+    every 'WriteBinaryRestartEvery' cycles.
 
--   `"WriteBinaryRestartFileEvery" : integer`
+-   `"WriteBinaryRestartEvery" : integer`
     The output frequency (i.e. every `int` cycles) of writing the
     crash-recovery file.
 
