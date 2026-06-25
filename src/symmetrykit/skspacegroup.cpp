@@ -334,17 +334,17 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
   std::optional<double3x3> primitiveDelaunayUnitCell =
       SKSymmetryCell::computeDelaunayReducedCell(smallestUnitCell, symmetryPrecision);
 
-  if (primitiveDelaunayUnitCell)
+  if (primitiveDelaunayUnitCell.has_value())
   {
     SKPointSymmetrySet latticeSymmetries =
-        SKSymmetryCell::findLatticeSymmetry(*primitiveDelaunayUnitCell, symmetryPrecision);
+        SKSymmetryCell::findLatticeSymmetry(primitiveDelaunayUnitCell.value(), symmetryPrecision);
 
     std::vector<std::tuple<double3, std::size_t, double>> positionInPrimitiveCell =
-        SKSymmetryCell::trim(atoms, unitCell, *primitiveDelaunayUnitCell, allowPartialOccupancies, symmetryPrecision);
+        SKSymmetryCell::trim(atoms, unitCell, primitiveDelaunayUnitCell.value(), allowPartialOccupancies, symmetryPrecision);
 
-    SKSymmetryOperationSet spaceGroupSymmetries =
-        SKSpaceGroup::findSpaceGroupSymmetry(unitCell, positionInPrimitiveCell, positionInPrimitiveCell,
-                                             latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
+    SKSymmetryOperationSet spaceGroupSymmetries = SKSpaceGroup::findSpaceGroupSymmetry(
+        primitiveDelaunayUnitCell.value(), positionInPrimitiveCell, positionInPrimitiveCell, latticeSymmetries,
+        allowPartialOccupancies, symmetryPrecision);
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
@@ -362,9 +362,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
         {
           case Laue::laue_1:
           {
-            SKSymmetryCell::createFromUnitCell((*primitiveDelaunayUnitCell) * (*Mprime));
+            SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * (*Mprime));
             std::optional<std::pair<SKSymmetryCell, SKTransformationMatrix>> symmetryCell =
-                SKSymmetryCell::createFromUnitCell((*primitiveDelaunayUnitCell) * (*Mprime))
+                SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * Mprime.value())
                     .computeReducedNiggliCellAndChangeOfBasisMatrix();
             if (!symmetryCell)
             {
@@ -380,7 +380,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             // lattice vectors
             // (|a| < |c|)
             std::optional<double3x3> computedDelaunayReducedCell2D = SKSymmetryCell::computeDelaunayReducedCell2D(
-                (*primitiveDelaunayUnitCell) * (*Mprime), symmetryPrecision);
+                primitiveDelaunayUnitCell.value() * Mprime.value(), symmetryPrecision);
             if (!computedDelaunayReducedCell2D)
             {
               return std::nullopt;
@@ -397,7 +397,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
 
         SKTransformationMatrix correctedBasis = pointGroup->computeBasisCorrection(*Mprime, centering);
 
-        double3x3 primitiveLattice = (*primitiveDelaunayUnitCell) * correctedBasis;
+        double3x3 primitiveLattice = primitiveDelaunayUnitCell.value() * correctedBasis;
 
         // transform the symmetries (rotation and translation) from the primtive cell to the conventional cell
         // the centering is used to add the additional translations
@@ -425,7 +425,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
               SKIntegerSymmetryOperationSet dataBaseSpaceGroupSymmetries =
                   spaceGroup.spaceGroupSetting().fullSeitzMatrices();
 
-              double3x3 transform = conventionalBravaisLattice.inverse() * *primitiveDelaunayUnitCell;
+              double3x3 transform = conventionalBravaisLattice.inverse() * primitiveDelaunayUnitCell.value();
 
               std::vector<std::tuple<double3, std::size_t, double>> atomsInConventionalCell{};
               std::transform(positionInPrimitiveCell.begin(), positionInPrimitiveCell.end(),
@@ -488,7 +488,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             SKIntegerSymmetryOperationSet dataBaseSpaceGroupSymmetries =
                 spaceGroup.spaceGroupSetting().fullSeitzMatrices();
 
-            double3x3 transform = conventionalBravaisLattice.inverse() * *primitiveDelaunayUnitCell;
+            double3x3 transform = conventionalBravaisLattice.inverse() * primitiveDelaunayUnitCell.value();
 
             std::vector<std::tuple<double3, std::size_t, double>> atomsInConventionalCell{};
             std::transform(positionInPrimitiveCell.begin(), positionInPrimitiveCell.end(),
@@ -689,14 +689,14 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
   if (primitiveDelaunayUnitCell)
   {
     SKPointSymmetrySet latticeSymmetries =
-        SKSymmetryCell::findLatticeSymmetry(*primitiveDelaunayUnitCell, symmetryPrecision);
+        SKSymmetryCell::findLatticeSymmetry(primitiveDelaunayUnitCell.value(), symmetryPrecision);
 
     std::vector<std::tuple<double3, std::size_t, double>> positionInPrimitiveCell =
-        SKSymmetryCell::trim(atoms, unitCell, *primitiveDelaunayUnitCell, allowPartialOccupancies, symmetryPrecision);
+        SKSymmetryCell::trim(atoms, unitCell, primitiveDelaunayUnitCell.value(), allowPartialOccupancies, symmetryPrecision);
 
-    SKSymmetryOperationSet spaceGroupSymmetries =
-        SKSpaceGroup::findSpaceGroupSymmetry(unitCell, positionInPrimitiveCell, positionInPrimitiveCell,
-                                             latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
+    SKSymmetryOperationSet spaceGroupSymmetries = SKSpaceGroup::findSpaceGroupSymmetry(
+        primitiveDelaunayUnitCell.value(), positionInPrimitiveCell, positionInPrimitiveCell, latticeSymmetries,
+        allowPartialOccupancies, symmetryPrecision);
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
