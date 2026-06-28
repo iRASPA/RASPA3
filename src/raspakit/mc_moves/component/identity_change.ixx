@@ -6,28 +6,23 @@ import std;
 
 import randomnumbers;
 import running_energy;
-import atom;
-import molecule;
 import system;
 
 export namespace MC_Moves
 {
 /**
- * \brief Performs a CBMC reinsertion move for a selected molecule.
+ * \brief Performs a CBMC identity-change move for a selected molecule.
  *
- * Attempts to reinsert a molecule using Configurational Bias Monte Carlo (CBMC) method.
- * Updates the system if the move is accepted and returns the energy difference.
+ * Attempts to change the identity of a molecule from one component to another using
+ * Configurational Bias Monte Carlo (CBMC). Updates the system if the move is accepted
+ * and returns the energy difference.
  *
  * \param random Random number generator instance.
  * \param system The simulation system.
- * \param selectedComponent Index of the selected component.
- * \param selectedMolecule Index of the selected molecule within the component.
- * \param molecule Reference to the molecule to be reinserted.
- * \param molecule_atoms Span of atoms belonging to the molecule.
+ * \param selectedComponent Index of the component selected for the move attempt.
  *
  * \return An optional RunningEnergy containing the energy difference if the move is accepted; std::nullopt otherwise.
  */
-std::optional<RunningEnergy> identityChangeMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                                std::size_t selectedMolecule, Molecule &molecule,
-                                                std::span<Atom> molecule_atoms);
+std::optional<RunningEnergy> identityChangeMove(RandomNumber &random, System &system,
+                                                std::size_t selectedComponent);
 }  // namespace MC_Moves

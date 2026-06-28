@@ -157,3 +157,48 @@ import interpolation_energy_grid;
   return FirstBeadData(atom, externalEnergies[0].second,
                        (RosenbluthWeight + storedR) / double(forceField.numberOfFirstBeadPositions), 0.0);
 }
+
+[[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadPartialInsertion(
+    const Component& component, bool hasExternalField, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom& atom, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+{
+  std::vector<Atom> trialPositions({atom});
+
+  const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtoms, moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
+      skipBackgroundMolecule);
+
+  if (externalEnergies.empty()) return std::nullopt;
+
+  double logBoltmannFactor = -beta * externalEnergies[0].second.potentialEnergy();
+  double RosenbluthWeight = std::exp(logBoltmannFactor);
+
+  if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+
+  return FirstBeadData(externalEnergies[0].first, externalEnergies[0].second, RosenbluthWeight, 0.0);
+}
+
+[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadPartialDeletion(
+    const Component& component, bool hasExternalField, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom& atom) noexcept
+{
+  std::vector<Atom> trialPositions({atom});
+
+  const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtoms, moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
+
+  double logBoltmannFactor = -beta * externalEnergies[0].second.potentialEnergy();
+  double RosenbluthWeight = std::exp(logBoltmannFactor);
+
+  return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight, 0.0);
+}

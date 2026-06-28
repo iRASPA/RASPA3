@@ -774,6 +774,12 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
       }
       std::print(stream, "\n");
     }
+    if (!identityChanges.empty())
+    {
+      std::stringstream result{};
+      std::copy(identityChanges.begin(), identityChanges.end(), std::ostream_iterator<std::size_t>(result, " "));
+      std::print(stream, "    identity changes: {}\n", result.str());
+    }
   }
 
   return stream.str();
@@ -1532,6 +1538,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.intraMolecularPotentials;
   archive << c.grownAtoms;
   archive << c.partialReinsertionFixedAtoms;
+  archive << c.identityChanges;
 
   archive << c.initialNumberOfMolecules;
 
@@ -1612,6 +1619,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.intraMolecularPotentials;
   archive >> c.grownAtoms;
   archive >> c.partialReinsertionFixedAtoms;
+  archive >> c.identityChanges;
 
   archive >> c.initialNumberOfMolecules;
 

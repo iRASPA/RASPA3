@@ -21,10 +21,12 @@ import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
+import cbmc_util;
 
 export namespace CBMC
 {
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
+    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1,
+    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
 }

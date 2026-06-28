@@ -21,10 +21,12 @@ import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
+import cbmc_util;
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
+    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip,
+    std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -41,6 +43,11 @@ import threadpool;
   {
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
+    if (skipBackgroundMolecule.has_value() && compA == skipBackgroundMolecule->componentId &&
+        molA == skipBackgroundMolecule->moleculeId)
+    {
+      continue;
+    }
     double3 posA = it1->position;
     std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);

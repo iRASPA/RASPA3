@@ -19,6 +19,7 @@ import component;
 import forcefield;
 import simulationbox;
 import interpolation_energy_grid;
+import cbmc_util;
 
 export namespace CBMC
 {
@@ -87,8 +88,9 @@ export namespace CBMC
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, bool groupId,
-    bool isFractional) noexcept;
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, const Atom &oldStartingBead,
+    double scaling, bool groupId, bool isFractional,
+    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
 
 // identity change deletion
 [[nodiscard]] ChainRetraceData retraceMoleculeIdentityChangeDeletion(

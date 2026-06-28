@@ -36,7 +36,8 @@ import bond_potential;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced)
+    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced,
+    std::optional<SkipMolecule> skipBackgroundMolecule)
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
@@ -174,7 +175,8 @@ import bond_potential;
                                                     interpolationGrids, externalFieldInterpolationGrid,
                                                     framework, frameworkAtomData, moleculeAtomData,
                                                     cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-                                                    trialPositions, RosenBluthWeightTorsion, -1);
+                                                    trialPositions, RosenBluthWeightTorsion, -1,
+                                                    skipBackgroundMolecule);
 
     if (externalEnergies.empty()) return std::nullopt;
 

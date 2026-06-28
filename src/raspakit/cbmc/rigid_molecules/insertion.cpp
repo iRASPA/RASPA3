@@ -24,6 +24,7 @@ import running_energy;
 import framework;
 import component;
 import interpolation_energy_grid;
+import cbmc_util;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
     RandomNumber &random, const Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
@@ -31,7 +32,7 @@ import interpolation_energy_grid;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept
+    double cutOffCoulomb, std::span<Atom> molecule_atoms, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(forceField.numberOfTrialDirections);
 
@@ -55,7 +56,8 @@ import interpolation_energy_grid;
                                                   interpolationGrids, externalFieldInterpolationGrid,
                                                   framework, frameworkAtomData, moleculeAtomData,
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
-                                                  std::make_signed_t<std::size_t>(component.startingBead));
+                                                  std::make_signed_t<std::size_t>(component.startingBead),
+                                                  skipBackgroundMolecule);
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltmannFactors{};

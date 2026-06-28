@@ -21,6 +21,7 @@ import cbmc_rigid_insertion;
 import cbmc_rigid_deletion;
 import cbmc_flexible_insertion;
 import cbmc_flexible_deletion;
+import cbmc_util;
 import framework;
 import component;
 import cbmc_chain_data;
@@ -326,19 +327,21 @@ import interpolation_energy_grid;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, bool groupId,
-    bool isFractional) noexcept
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, const Atom &oldStartingBead,
+    double scaling, bool groupId, bool isFractional, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];
+  firstBead.position = oldStartingBead.position;
   firstBead.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
   firstBead.groupId = groupId;
   firstBead.isFractional = isFractional;
   firstBead.setScaling(scaling);
 
-  std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead);
+  std::optional<FirstBeadData> const firstBeadData = CBMC::growMultipleFirstBeadPartialInsertion(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+      firstBead, skipBackgroundMolecule);
 
   if (!firstBeadData) return std::nullopt;
 
@@ -368,13 +371,13 @@ import interpolation_energy_grid;
       chainData = CBMC::growRigidMoleculeChainInsertion(random, component, selectedComponent, hasExternalField, forceField, simulationBox,
                                                         interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtomData,
                                                         moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                                                        cutOffCoulomb, molecule_atoms);
+                                                        cutOffCoulomb, molecule_atoms, skipBackgroundMolecule);
       break;
     case Component::GrowType::Flexible:
       chainData = CBMC::growFlexibleMoleculeChainInsertion(
           random, component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework,
           frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-          molecule_atoms, {component.startingBead});
+          molecule_atoms, {component.startingBead}, skipBackgroundMolecule);
       break;
     default:
       std::unreachable();
@@ -397,9 +400,10 @@ import interpolation_energy_grid;
 {
   std::size_t startingBead = component.startingBead;
 
-  const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadSwapDeletion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms[startingBead]);
+  const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadPartialDeletion(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+      molecule_atoms[startingBead]);
 
   if (molecule_atoms.size() == 1)
   {

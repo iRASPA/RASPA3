@@ -12,6 +12,7 @@ import component;
 import forcefield;
 import simulationbox;
 import interpolation_energy_grid;
+import cbmc_util;
 
 export namespace CBMC
 {
@@ -46,4 +47,21 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, const Atom &atom, double storedR);
+
+[[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadPartialInsertion(
+    const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom,
+    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+
+[[nodiscard]] FirstBeadData retraceMultipleFirstBeadPartialDeletion(
+    const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom) noexcept;
 }  // namespace CBMC

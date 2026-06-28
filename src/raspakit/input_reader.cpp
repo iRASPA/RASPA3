@@ -427,6 +427,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("IdentityChangeProbability") && item["IdentityChangeProbability"].is_number_float())
+      {
+        double identity_change_CBMC_probability = item["IdentityChangeProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::IdentityChangeCBMC, identity_change_CBMC_probability);
+        }
+      }
+
       if (item.contains("SwapConventionalProbability") && item["SwapConventionalProbability"].is_number_float())
       {
         double swapProbability = item["SwapConventionalProbability"].get<double>();
@@ -568,6 +577,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].molFraction = mol_fraction;
+        }
+      }
+
+      if (item.contains("IdentityChanges") && item["IdentityChanges"].is_array())
+      {
+        std::vector<std::size_t> identity_changes = item["IdentityChanges"].get<std::vector<std::size_t>>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].identityChanges = identity_changes;
         }
       }
 
@@ -1682,6 +1700,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",
+    "IdentityChangeProbability",
     "SwapConventionalProbability",
     "SwapProbability",
     "CFCMC_SwapProbability",
@@ -1696,6 +1715,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "FugacityCoefficient",
     "IdealGasRosenbluthWeight",
     "MolFraction",
+    "IdentityChanges",
     "ThermodynamicIntegration",
     "LambdaBiasFileName",
     "BlockingPockets"};

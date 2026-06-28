@@ -21,6 +21,7 @@ import units;
 import cbmc_interactions_external_field;
 import cbmc_interactions_framework_molecule;
 import cbmc_interactions_intermolecular;
+import cbmc_util;
 
 bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const Component &component,
                                 std::span<const Atom> molecule_atoms)
@@ -57,7 +58,7 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    std::vector<Atom> &trialPositions) noexcept
+    std::vector<Atom> &trialPositions, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::vector<std::pair<Atom, RunningEnergy>> energies{};
   energies.reserve(trialPositions.size());
@@ -84,7 +85,8 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     if (!frameworkEnergy.has_value()) continue;
 
     std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, {it, 1});
+        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, {it, 1}, -1,
+        skipBackgroundMolecule);
 
     // skip trial-positions that have an overlap in inter-molecular energy
     if (!interEnergy.has_value()) continue;
@@ -102,7 +104,8 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip) noexcept
+    std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip,
+    std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::vector<std::pair<std::vector<Atom>, RunningEnergy>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -125,7 +128,8 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
     if (!frameworkEnergy.has_value()) continue;
 
     std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, skip);
+        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, skip,
+        skipBackgroundMolecule);
     if (!interEnergy.has_value()) continue;
 
     energies.push_back(
@@ -141,7 +145,7 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, const std::vector<double> &RosenbluthWeightsTorsion,
-    std::make_signed_t<std::size_t> skip) noexcept
+    std::make_signed_t<std::size_t> skip, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -170,7 +174,8 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
     }
 
     std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSets[i], skip);
+        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSets[i], skip,
+        skipBackgroundMolecule);
     if (!interEnergy.has_value())
     {
       continue;
@@ -190,7 +195,7 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
-    std::make_signed_t<std::size_t> skip) noexcept
+    std::make_signed_t<std::size_t> skip, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -213,7 +218,8 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
     if (!frameworkEnergy.has_value()) continue;
 
     std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, skip);
+        forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, skip,
+        skipBackgroundMolecule);
     if (!interEnergy.has_value()) continue;
 
     energies.push_back(std::make_tuple(molecule, trialPositionSet,
@@ -228,7 +234,7 @@ const std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDual
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    std::vector<Atom> &trialPositionSet) noexcept
+    std::vector<Atom> &trialPositionSet, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
 {
   std::pair<std::vector<Atom>, RunningEnergy> energies;
 
@@ -248,7 +254,8 @@ const std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDual
   if (!frameworkEnergy.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-      forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, -1);
+      forceField, simulationBox, moleculeAtoms, cutOffMoleculeVDW, cutOffCoulomb, trialPositionSet, -1,
+      skipBackgroundMolecule);
   if (!interEnergy.has_value()) return std::nullopt;
 
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();

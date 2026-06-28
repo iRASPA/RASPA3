@@ -190,6 +190,7 @@ export struct Component
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
   std::vector<Atom> grownAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
+  std::vector<std::size_t> identityChanges{};
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 

@@ -12,6 +12,13 @@ import randomnumbers;
 
 export namespace CBMC
 {
+/// Background molecule to omit from CBMC inter-molecular energy evaluations.
+struct SkipMolecule
+{
+  std::uint8_t componentId;
+  std::uint32_t moleculeId;
+};
+
 std::vector<Atom> rotateRandomlyAround(RandomNumber &random, std::span<Atom> atoms, std::size_t startingBead);
 std::vector<Atom> rotateRandomlyAround(simd_quatd &q, std::span<Atom> atoms, std::size_t startingBead);
 

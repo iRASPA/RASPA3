@@ -715,3 +715,306 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
     EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
   }
 }
+
+TEST(MC_MUVT_DRIFT, identity_change)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  co2.mc_moves_probabilities = probabilities_co2;
+  co2.identityChanges = {0, 1};
+  co2.molFraction = 0.25;
+  co2.swappable = true;
+  co2.idealGasRosenbluthWeight = 1.0;
+
+  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+
+  Component methane = Component::makeMethane(forceField, 1);
+  methane.mc_moves_probabilities = probabilities_methane;
+  methane.identityChanges = {0, 1};
+  methane.molFraction = 0.75;
+  methane.swappable = true;
+  methane.idealGasRosenbluthWeight = 1.0;
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane}, {}, {10, 10}, 5);
+
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.numberOfMoleculesPerComponent[0] + s.numberOfMoleculesPerComponent[1], 20uz);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, identity_change_cfcmc)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
+
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  co2.mc_moves_probabilities = probabilities_co2;
+  co2.identityChanges = {0, 1};
+  co2.molFraction = 0.25;
+  co2.swappable = true;
+  co2.idealGasRosenbluthWeight = 1.0;
+
+  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
+  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
+  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
+
+  Component methane = Component::makeMethane(forceField, 1);
+  methane.mc_moves_probabilities = probabilities_methane;
+  methane.identityChanges = {0, 1};
+  methane.molFraction = 0.75;
+  methane.swappable = true;
+  methane.idealGasRosenbluthWeight = 1.0;
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane}, {}, {10, 10}, 5);
+
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 1uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 1uz);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+  }
+}
+
+namespace {
+
+std::filesystem::path repositoryRoot()
+{
+  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+}
+
+ForceField makeZeoliteAlkaneForceField()
+{
+  return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
+                     {"Si", true, 28.0855, 2.05, 0.0, 14, false},
+                     {"Al", true, 26.982, 2.05, 0.0, 13, false},
+                     {"O", true, 15.999, -1.025, 0.0, 8, false},
+                     {"Na+", false, 12.0, 1.0, 0.0, 6, false},
+                     {"Cl-", false, 15.9994, -1.0, 0.0, 8, false},
+                     {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
+                     {"C_co2", false, 12.0, 0.6512, 0.0, 6, false},
+                     {"O_co2", false, 15.9994, -0.3256, 0.0, 8, false},
+                     {"Ow", false, 15.9996, 0.0, 0.0, 8, false},
+                     {"Hw", false, 1.0008, 0.241, 0.0, 1, false},
+                     {"Lw", false, 0.0, -0.241, 0.0, 0, false},
+                     {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
+                     {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
+                     {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
+                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false},
+                     {"CH3", false, 15.04, 0.0, 0.0, 6, false},
+                     {"CH2", false, 14.03, 0.0, 0.0, 6, false}},
+                    {{1.0, 1.0},
+                     {22.0, 2.30},
+                     {22.0, 2.30},
+                     {53.0, 3.30},
+                     {15.0966, 2.65755},
+                     {142.562, 3.51932},
+                     {158.5, 3.72},
+                     {29.933, 2.745},
+                     {85.671, 3.017},
+                     {89.633, 3.097},
+                     {0.0, 1.0},
+                     {0.0, 1.0},
+                     {10.9, 2.64},
+                     {124.070, 3.38},
+                     {158.5, 3.72},
+                     {91.5, 3.681},
+                     {98.0, 3.75},
+                     {46.0, 3.95}},
+                    ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+}
+
+Component makeAlkaneFromExample(const ForceField &forceField, std::size_t componentId, std::string_view name,
+                                const MCMoveProbabilities &probabilities)
+{
+  const std::filesystem::path moleculePath =
+      repositoryRoot() / "examples/basic/4_mc_binary_mixture_propane_butane_in_box" / name;
+  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), moleculePath.string(), 5,
+                   21, probabilities, std::nullopt, false);
+}
+
+}  // namespace
+
+TEST(MC_MUVT_DRIFT, identity_change_co2_propane_butane)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  constexpr std::array<std::size_t, 3> identityChanges = {0, 1, 2};
+
+  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
+  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
+  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
+  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities_co2.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  co2.mc_moves_probabilities = probabilities_co2;
+  co2.identityChanges.assign(identityChanges.begin(), identityChanges.end());
+  co2.molFraction = 0.25;
+  co2.swappable = true;
+  co2.idealGasRosenbluthWeight = 1.0;
+
+  MCMoveProbabilities probabilities_propane = probabilities_co2;
+  Component propane = makeAlkaneFromExample(forceField, 1, "propane", probabilities_propane);
+  propane.mc_moves_probabilities = probabilities_propane;
+  propane.identityChanges.assign(identityChanges.begin(), identityChanges.end());
+  propane.molFraction = 0.375;
+  propane.swappable = true;
+  propane.idealGasRosenbluthWeight = 1.0;
+
+  MCMoveProbabilities probabilities_butane = probabilities_co2;
+  Component butane = makeAlkaneFromExample(forceField, 2, "butane", probabilities_butane);
+  butane.mc_moves_probabilities = probabilities_butane;
+  butane.identityChanges.assign(identityChanges.begin(), identityChanges.end());
+  butane.molFraction = 0.375;
+  butane.swappable = true;
+  butane.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, propane, butane}, {}, {5, 5, 5}, 5);
+
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.numberOfMoleculesPerComponent[0] + s.numberOfMoleculesPerComponent[1] +
+                  s.numberOfMoleculesPerComponent[2],
+              15uz);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+  }
+}
