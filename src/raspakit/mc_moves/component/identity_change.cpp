@@ -13,7 +13,6 @@ import simd_quatd;
 import simulationbox;
 import cbmc;
 import cbmc_chain_data;
-import cbmc_util;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -52,6 +51,11 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
+  if (newComponent == selectedComponent)
+  {
+    return std::nullopt;
+  }
+
   if (system.components[newComponent].type != system.components[oldComponent].type)
   {
     return std::nullopt;
@@ -62,8 +66,6 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   {
     std::swap(oldComponent, newComponent);
   }
-
-  const bool sameSpeciesReconfiguration = (oldComponent == newComponent);
 
   Component &oldComponentData = system.components[oldComponent];
   Component &newComponentData = system.components[newComponent];
@@ -85,16 +87,11 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   Component::GrowType newGrowType = newComponentData.growType;
   Component::GrowType oldGrowType = oldComponentData.growType;
 
-  const std::size_t trialMoleculeId = sameSpeciesReconfiguration
-                                          ? selectedMoleculeOld
-                                          : system.numberOfMoleculesPerComponent[newComponent];
-
-  std::optional<CBMC::SkipMolecule> skipBackgroundMolecule = std::nullopt;
-  if (!sameSpeciesReconfiguration)
-  {
-    skipBackgroundMolecule = CBMC::SkipMolecule{static_cast<std::uint8_t>(oldComponent),
-                                                static_cast<std::uint32_t>(selectedMoleculeOld)};
-  }
+  const std::size_t oldGlobalMoleculeId =
+      system.moleculeIndexOfComponent(oldComponent, selectedMoleculeOld);
+  const std::size_t trialMoleculeId = system.numberOfMolecules();
+  const std::make_signed_t<std::size_t> skipBackgroundMolecule =
+      static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
 
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
@@ -144,9 +141,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), newMolecule,
-                                                              oldMoleculeAtoms) +
+      Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
+          system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, newComponentData,
+          oldComponentData) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule,
                                                                  oldMoleculeAtoms);
@@ -173,58 +170,31 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
 
-  double acceptanceProbability;
-  if (sameSpeciesReconfiguration)
-  {
-    acceptanceProbability =
-        correctionFactorEwald * growData->RosenbluthWeight / retraceData.RosenbluthWeight;
-  }
-  else
-  {
-    const double idealGasRosenbluthWeightNew = newComponentData.idealGasRosenbluthWeight.value_or(1.0);
-    const double idealGasRosenbluthWeightOld = oldComponentData.idealGasRosenbluthWeight.value_or(1.0);
-    const double fugacityNew =
-        newComponentData.molFraction * newComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
-    const double fugacityOld =
-        oldComponentData.molFraction * oldComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
-    const double numberOfMoleculesOld =
-        static_cast<double>(system.numberOfIntegerMoleculesPerComponent[oldComponent]);
-    const double numberOfMoleculesNew =
-        static_cast<double>(system.numberOfIntegerMoleculesPerComponent[newComponent]);
+  const double idealGasRosenbluthWeightNew = newComponentData.idealGasRosenbluthWeight.value_or(1.0);
+  const double idealGasRosenbluthWeightOld = oldComponentData.idealGasRosenbluthWeight.value_or(1.0);
+  const double fugacityNew =
+      newComponentData.molFraction * newComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
+  const double fugacityOld =
+      oldComponentData.molFraction * oldComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
+  const double numberOfMoleculesOld =
+      static_cast<double>(system.numberOfIntegerMoleculesPerComponent[oldComponent]);
+  const double numberOfMoleculesNew =
+      static_cast<double>(system.numberOfIntegerMoleculesPerComponent[newComponent]);
 
-    const double rosenbluthNew =
-        growData->RosenbluthWeight * std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
-    acceptanceProbability =
-        correctionFactorEwald * (rosenbluthNew / idealGasRosenbluthWeightNew) * fugacityNew * numberOfMoleculesOld /
-        ((retraceData.RosenbluthWeight / idealGasRosenbluthWeightOld) * fugacityOld * (numberOfMoleculesNew + 1.0));
-  }
+  const double rosenbluthNew =
+      growData->RosenbluthWeight * std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
+  const double acceptanceProbability =
+      correctionFactorEwald * (rosenbluthNew / idealGasRosenbluthWeightNew) * fugacityNew * numberOfMoleculesOld /
+      ((retraceData.RosenbluthWeight / idealGasRosenbluthWeightOld) * fugacityOld * (numberOfMoleculesNew + 1.0));
 
   if (random.uniform() < acceptanceProbability)
   {
     oldComponentData.mc_moves_statistics.addAccepted(move);
 
+    const RunningEnergy energyDifference = (growData->energies - retraceData.energies) + energyFourierDifference +
+                                           tailEnergyDifference + polarizationDifference;
+
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-
-    if (sameSpeciesReconfiguration)
-    {
-      std::copy(newMolecule.begin(), newMolecule.end(), oldMoleculeAtoms.begin());
-
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> electricFieldMolecule =
-            system.spanElectricFieldOld(oldComponent, selectedMoleculeOld);
-        std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
-      }
-
-      const std::size_t molecule_index = system.moleculeIndexOfComponent(oldComponent, selectedMoleculeOld);
-      Molecule updatedMolecule = growData->molecule;
-      updatedMolecule.atomIndex = system.moleculeData[molecule_index].atomIndex;
-      updatedMolecule.numberOfAtoms = system.moleculeData[molecule_index].numberOfAtoms;
-      updatedMolecule.componentId = oldComponent;
-      system.moleculeData[molecule_index] = updatedMolecule;
-
-      return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
-    }
 
     std::vector<Atom> acceptedAtoms(growData->atom.begin(), growData->atom.end());
     for (Atom &atom : acceptedAtoms)
@@ -245,8 +215,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       system.insertMolecule(newComponent, acceptedMolecule, acceptedAtoms);
     }
 
-    return (growData->energies - retraceData.energies) + energyFourierDifference + tailEnergyDifference +
-           polarizationDifference;
+    return energyDifference;
   }
 
   return std::nullopt;

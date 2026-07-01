@@ -52,7 +52,7 @@ export namespace CBMC
     double cutOffMoleculeVDW, double cutOffCoulomb, Molecule &molecule, std::span<Atom> molecule_atoms) noexcept;
 
 // reinsertion retrace
-[[nodiscard]] ChainRetraceData retraceMoleculeReinsertion(
+[[nodiscard]] std::optional<ChainRetraceData> retraceMoleculeReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
@@ -90,11 +90,30 @@ export namespace CBMC
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, const Atom &oldStartingBead,
     double scaling, bool groupId, bool isFractional,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 // identity change deletion
 [[nodiscard]] ChainRetraceData retraceMoleculeIdentityChangeDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::span<Atom> molecule_atoms) noexcept;
+
+// distance-biased ion-pair insertion: second molecule with fixed first-bead position
+[[nodiscard]] std::optional<ChainGrowData> growMoleculePairSecondSwapInsertion(
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double3 fixedFirstBeadPosition,
+    double scaling, bool groupId, bool isFractional) noexcept;
+
+[[nodiscard]] ChainRetraceData retraceMoleculePairSecondSwapDeletion(
+    const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,

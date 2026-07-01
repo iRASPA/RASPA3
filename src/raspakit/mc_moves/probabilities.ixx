@@ -21,9 +21,11 @@ export struct MCMoveProbabilities
                       double swapProbability = 0.0, double swapCBMCProbability = 0.0, double swapCFCMCProbability = 0.0,
                       double swapCBCFCMCProbability = 0.0, double gibbsVolumeChangeProbability = 0.0,
                       double gibbsSwapCBMCProbability = 0.0, double gibbsSwapCFCMCProbability = 0.0,
+                      double gibbsIdentityChangeCBMCProbability = 0.0,
                       double widomProbability = 0.0, double widomCFCMCProbability = 0.0,
-                      double widomCBCFCMCProbability = 0.0, double parallelTemperingProbability = 0.0,
-                      double hybridMCProbability = 0.0);
+                      double widomCBCFCMCProbability = 0.0,                       double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0,
+                      double reactionCBMCProbability = 0.0, double reactionConventionalCFCMCProbability = 0.0,
+                      double reactionConventionalCFCMCCBMCProbability = 0.0);
 
   // use .at such that access is const
   double getProbability(const Move::Types &move) const { return probabilities[std::to_underlying(move)]; };

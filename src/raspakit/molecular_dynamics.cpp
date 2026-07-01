@@ -157,6 +157,9 @@ void MolecularDynamics::setup()
     else
       system.containsTheFractionalMolecule = false;
 
+    // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
+    system.initializeGibbsSwapFractionalMoleculeGroupIds();
+
     // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
     if (system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
     {

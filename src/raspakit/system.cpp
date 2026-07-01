@@ -107,7 +107,10 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       numberOfFractionalMoleculesPerComponent(c.size()),
       numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
       idealGasEnergiesPerComponent(c.size()),
       forceField(forcefield),
@@ -133,6 +136,9 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       averageSimulationBox(numberOfBlocks),
       interpolationGrids(forceField.pseudoAtoms.size() + 1, std::nullopt)
 {
+  input_pressureTensorDiagonal = double3(input_pressure, input_pressure, input_pressure);
+  pressureTensorDiagonal = double3(pressure, pressure, pressure);
+
   if (box.has_value())
   {
     simulationBox = box.value();
@@ -208,21 +214,13 @@ std::optional<double> System::frameworkMass() const
   return mass;
 }
 
-void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
-                                      std::vector<Atom> atoms, std::size_t moleculeId)
+void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                             [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms)
 {
-  double l = 0.0;
-  for (Atom& atom : atoms)
-  {
-    atom.moleculeId = static_cast<std::uint16_t>(moleculeId);
-    atom.groupId = components[selectedComponent].lambdaGC.computeDUdlambda;
-    atom.isFractional = true;
-    atom.setScaling(l);
-  }
-  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
+  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, moleculeIndex);
   atomData.insert(iterator, atoms.begin(), atoms.end());
 
-  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, 0);
+  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, moleculeIndex);
   moleculeData.insert(moleculeIterator, molecule);
 
   electricPotential.resize(electricPotential.size() + atoms.size());
@@ -230,15 +228,51 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
   electricFieldNew.resize(electricFieldNew.size() + atoms.size());
 
   numberOfMoleculesPerComponent[selectedComponent] += 1;
+  numberOfFractionalMoleculesPerComponent[selectedComponent] += 1;
 
   netCharge += components[selectedComponent].netCharge;
   netChargeAdsorbates += components[selectedComponent].netCharge;
   netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
 
-  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
-  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
+  for (Atom& atom : atoms)
+  {
+    numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
+    totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
+  }
 
   updateMoleculeAtomInformation();
+}
+
+void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
+                                      std::vector<Atom> atoms, std::size_t moleculeIndex)
+{
+  const double l = 0.0;
+  const bool groupId = components[selectedComponent].lambdaGC.computeDUdlambda ||
+                       components[selectedComponent].lambdaGibbs.computeDUdlambda;
+  for (Atom& atom : atoms)
+  {
+    atom.moleculeId = static_cast<std::uint16_t>(moleculeIndex);
+    atom.groupId = groupId;
+    atom.isFractional = true;
+    atom.setScaling(l);
+  }
+  insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
+}
+
+void System::insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                              [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
+                                              bool isReactant, double lambda)
+{
+  const double vdwScale = isReactant ? (1.0 - lambda) : lambda;
+  const double coulombScale = isReactant ? std::pow(1.0 - lambda, 5) : std::pow(lambda, 5);
+  for (Atom& atom : atoms)
+  {
+    atom.scalingVDW = vdwScale;
+    atom.scalingCoulomb = coulombScale;
+    atom.isFractional = true;
+  }
+
+  insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
 }
 
 /// Inserts a molecule into the vector of atoms.
@@ -324,6 +358,54 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
   updateMoleculeAtomInformation();
 }
 
+void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                                    [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
+                                                    double lambda)
+{
+  const double coulombScale = std::pow(lambda, 5);
+  for (Atom& atom : atoms)
+  {
+    atom.scalingVDW = lambda;
+    atom.scalingCoulomb = coulombScale;
+    atom.isFractional = true;
+  }
+
+  insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
+}
+
+void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
+                                      const std::span<Atom> molecule)
+{
+  for (const Atom& atom : molecule)
+  {
+    numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
+    totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
+  }
+
+  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
+  atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+
+  std::vector<double3>::const_iterator iterator_electric_field =
+      iteratorForElectricField(selectedComponent, selectedMolecule);
+  electricField.erase(iterator_electric_field,
+                      iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
+
+  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, selectedMolecule);
+  moleculeData.erase(moleculeIterator, moleculeIterator + 1);
+
+  electricPotential.resize(electricPotential.size() - molecule.size());
+  electricFieldNew.resize(electricFieldNew.size() - molecule.size());
+
+  numberOfMoleculesPerComponent[selectedComponent] -= 1;
+  numberOfFractionalMoleculesPerComponent[selectedComponent] -= 1;
+
+  netCharge -= components[selectedComponent].netCharge;
+  netChargeAdsorbates -= components[selectedComponent].netCharge;
+  netChargePerComponent[selectedComponent] -= components[selectedComponent].netCharge;
+
+  updateMoleculeAtomInformation();
+}
+
 void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
 {
   // Update the number of pseudo atoms per type (used for tail-corrections)
@@ -376,7 +458,7 @@ void System::updateMoleculeAtomInformation()
 
       for (std::size_t j = 0; j < numberOfAtoms; ++j)
       {
-        atomData[atom_index].moleculeId = static_cast<std::uint16_t>(i);
+        atomData[atom_index].moleculeId = static_cast<std::uint32_t>(molecule_index);
         atomData[atom_index].componentId = static_cast<std::uint8_t>(k);
         ++atom_index;
       }
@@ -389,17 +471,18 @@ void System::checkMoleculeIds()
 {
   std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
 
-  std::size_t index = 0;  // indexOfFirstMolecule(selectedComponent);
+  std::size_t index = 0;
+  std::size_t molecule_index = 0;
   for (std::size_t k = 0; k < components.size(); k++)
   {
     for (std::size_t i = 0; i < numberOfMoleculesPerComponent[k]; ++i)
     {
       for (std::size_t j = 0; j < components[k].atoms.size(); ++j)
       {
-        if (moleculeAtoms[index].moleculeId != static_cast<std::uint32_t>(i))
+        if (moleculeAtoms[index].moleculeId != static_cast<std::uint32_t>(molecule_index))
         {
-          throw std::runtime_error(std::format("Wrong molecule-id detected {} for component {} molecule {}\n",
-                                               moleculeAtoms[index].moleculeId, k, i));
+          throw std::runtime_error(std::format("Wrong molecule-id detected {} for global molecule {}\n",
+                                               moleculeAtoms[index].moleculeId, molecule_index));
         }
         if (moleculeAtoms[index].componentId != static_cast<std::uint8_t>(k))
         {
@@ -408,6 +491,7 @@ void System::checkMoleculeIds()
         }
         ++index;
       }
+      ++molecule_index;
     }
   }
 
@@ -437,8 +521,8 @@ void System::checkMoleculeIds()
       }
     }
   }
-  std::print("check complete\n");
 }
+
 
 void System::createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions)
 {
@@ -450,23 +534,63 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     if (component.hasFractionalMolecule)
     {
       numberOfMoleculesPerComponent[componentId] = 0;
-      for (std::size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
+
+      auto growFractionalMolecule = [&]() -> std::optional<ChainGrowData>
       {
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          bool groupId = components[componentId].lambdaGC.computeDUdlambda;
-          Component::GrowType growType = components[componentId].growType;
+          const bool groupId = components[componentId].lambdaGC.computeDUdlambda ||
+                               components[componentId].lambdaGibbs.computeDUdlambda;
+          const Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox, 
-              interpolationGrids, externalFieldInterpolationGrid,
-              framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 0.0,
-              groupId, true);
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
+              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+              spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW,
+              forceField.cutOffCoulomb, numberOfMolecules(), 0.0, groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+        return growData;
+      };
 
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
+      if (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
+                                 indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId));
       }
+
+      if (numberOfPairGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
+                                 indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId));
+      }
+
+      if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
+                                 indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId));
+      }
+
+      if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        std::vector<Atom> atoms = growData->atom;
+        const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
+        for (Atom& atom : atoms)
+        {
+          atom.isFractional = true;
+          atom.groupId = groupId;
+          atom.setScaling(0.5);
+        }
+        insertFractionalMoleculeAtIndex(
+            componentId, indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId),
+            growData->molecule, std::move(atoms));
+      }
+
+      translationalDegreesOfFreedom += components[componentId].translationalDegreesOfFreedom;
+      rotationalDegreesOfFreedom += components[componentId].rotationalDegreesOfFreedom;
     }
 
     // Add atom position passed to 'createInitialMolecules'
@@ -530,7 +654,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           growData = CBMC::growMoleculeSwapInsertion(
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
               framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMoleculesPerComponent[componentId], 1.0,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 1.0,
               false, false);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
@@ -777,6 +901,18 @@ const std::span<const double3> System::spanElectricFieldOld(std::size_t selected
   return std::span(&electricField[index + numberOfFrameworkAtoms], size);
 }
 
+std::size_t System::globalIndexOfComponentAndMolecule(std::size_t selectedComponent, std::size_t selectedMolecule)
+{
+  std::size_t index{0};
+  for (std::size_t i = 0; i < selectedComponent; ++i)
+  {
+    index += numberOfMoleculesPerComponent[i];
+  }
+  index += selectedMolecule;
+  return index;
+}
+
+
 std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent)
 {
   std::size_t index{0};
@@ -794,6 +930,8 @@ void System::determineSwappableComponents()
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
     {
@@ -801,7 +939,10 @@ void System::determineSwappableComponents()
     }
 
     if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0)
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -822,47 +963,667 @@ void System::determineFractionalComponents()
   {
     numberOfFractionalMoleculesPerComponent[i] = 0;
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCBCFCMC) > 0.0)
+    const bool needsGCSlot = components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+                             components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0;
+    if (needsGCSlot)
     {
-      numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
       components[i].hasFractionalMolecule = true;
     }
 
-    // Gibbs
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCBCFCMC) > 0.0)
     {
-      numberOfFractionalMoleculesPerComponent[i] += 1;
+      numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
+      components[i].hasFractionalMolecule = true;
+    }
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0)
+    {
+      numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] = 1;
+      components[i].hasFractionalMolecule = true;
+    }
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
+    {
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
       components[i].hasFractionalMolecule = true;
     }
   }
 
-  for (std::size_t reactionId{0}; [[maybe_unused]] const Reaction& reaction : reactions.list)
+  numberOfReactionFractionalMoleculesPerComponent_CFCMC.assign(
+      reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
+}
+
+std::size_t System::indexOfGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return 0;
+}
+
+std::size_t System::indexOfPairGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
+         numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(
+    std::size_t selectedComponent) const noexcept
+{
+  return indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(
+    std::size_t selectedComponent) const noexcept
+{
+  return indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(
+    std::size_t selectedComponent) const noexcept
+{
+  return indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size_t selectedComponent,
+                                                     std::size_t subIndex) const noexcept
+{
+  switch (move)
   {
-    for (std::size_t j = 0; j < components.size(); ++j)
+    case Move::Types::SwapCFCMC:
+    case Move::Types::WidomCFCMC:
+      return indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::SwapCBCFCMC:
+    case Move::Types::WidomCBCFCMC:
+      return indexOfPairGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBCFCMC:
+      return indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::GibbsConventionalCFCMC:
+    case Move::Types::GibbsConventionalCFCMCCBMC:
+      return indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    default:
+      return indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+  }
+}
+
+std::size_t System::parallelReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
+                                                            bool isProduct, std::size_t localIndex) const noexcept
+{
+  std::size_t index = indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(componentId);
+  for (std::size_t r = 0; r < reactionId; ++r)
+  {
+    if (reactions.list[r].serialRxCFC)
     {
-      numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][j] = 0;
+      continue;
+    }
+    index += reactions.list[r].reactantStoichiometry[componentId] +
+             reactions.list[r].productStoichiometry[componentId];
+  }
+
+  const Reaction& reaction = reactions.list[reactionId];
+  if (isProduct)
+  {
+    index += reaction.reactantStoichiometry[componentId] + localIndex;
+  }
+  else
+  {
+    index += localIndex;
+  }
+  return index;
+}
+
+std::size_t System::serialReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
+                                                          std::size_t localIndex) const noexcept
+{
+  std::size_t index = indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(componentId);
+  for (std::size_t r = 0; r < reactionId; ++r)
+  {
+    if (!reactions.list[r].serialRxCFC)
+    {
+      continue;
+    }
+    index += std::max(reactions.list[r].reactantStoichiometry[componentId],
+                      reactions.list[r].productStoichiometry[componentId]);
+  }
+  return index + localIndex;
+}
+
+void System::precomputeReactionFractionalLayout() noexcept
+{
+  numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC.assign(components.size(), 0);
+  numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC.assign(components.size(), 0);
+  numberOfReactionFractionalMoleculesPerComponent_CFCMC.assign(
+      reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
+
+  const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
+                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0;
+  const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+                         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+
+  if (!useParallel && !useSerial)
+  {
+    return;
+  }
+
+  for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
+  {
+    const Reaction& reaction = reactions.list[reactionId];
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      if (reaction.serialRxCFC)
+      {
+        if (!useSerial)
+        {
+          continue;
+        }
+        const std::size_t count = std::max(reaction.reactantStoichiometry[componentId],
+                                           reaction.productStoichiometry[componentId]);
+        numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[componentId] += count;
+        numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][componentId] = count;
+      }
+      else
+      {
+        if (!useParallel)
+        {
+          continue;
+        }
+        const std::size_t count = reaction.reactantStoichiometry[componentId] +
+                                  reaction.productStoichiometry[componentId];
+        numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[componentId] += count;
+        numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][componentId] = count;
+      }
+    }
+  }
+}
+
+void System::syncReactionFractionalMoleculeIndices() noexcept
+{
+  for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
+  {
+    Reaction& reaction = reactions.list[reactionId];
+    reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
+    reaction.productFractionalMoleculeIds.assign(components.size(), {});
+
+    if (reaction.serialRxCFC)
+    {
+      std::vector<std::vector<std::size_t>>& activeIds =
+          reaction.fractionalSideIsReactants ? reaction.reactantFractionalMoleculeIds
+                                           : reaction.productFractionalMoleculeIds;
+      const std::vector<std::size_t>& stoichiometry =
+          reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry : reaction.productStoichiometry;
+      for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+      {
+        for (std::size_t k = 0; k < stoichiometry[componentId]; ++k)
+        {
+          activeIds[componentId].push_back(serialReactionFractionalMoleculeIndex(reactionId, componentId, k));
+        }
+      }
+      continue;
     }
 
-    // for ([[maybe_unused]]  std::size_t componentId{ 0 };  const std::size_t [[maybe_unused]]  stoichiometry :
-    // reaction.reactantStoichiometry)
-    //{
-    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //   ++componentId;
-    // }
-    // for ([[maybe_unused]] std::size_t componentId{ 0 };  const [[maybe_unused]] std::size_t stoichiometry :
-    // reaction.productStoichiometry)
-    //{
-    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //   ++componentId;
-    // }
-    ++reactionId;
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
+      {
+        reaction.reactantFractionalMoleculeIds[componentId].push_back(
+            parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k));
+      }
+      for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
+      {
+        reaction.productFractionalMoleculeIds[componentId].push_back(
+            parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k));
+      }
+    }
+  }
+}
+
+bool System::usesReactionConventionalCFCMC() const noexcept
+{
+  return mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
+         mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0 ||
+         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+}
+
+bool System::usesGibbsConventionalCFCMC() const noexcept
+{
+  for (const Component& component : components)
+  {
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+void System::initializeGibbsConventionalFractionalMolecules() noexcept
+{
+  if (!usesGibbsConventionalCFCMC())
+  {
+    return;
+  }
+
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] == 0)
+    {
+      continue;
+    }
+
+    const std::size_t fractionalMoleculeIndex =
+        indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId);
+    std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
+    const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
+    for (Atom& atom : fractionalMolecule)
+    {
+      atom.setScaling(0.5);
+      atom.isFractional = true;
+      atom.groupId = groupId;
+    }
+
+    PropertyLambdaProbabilityHistogram& lambdaGibbs = components[componentId].lambdaGibbs;
+    if (lambdaGibbs.numberOfSamplePoints > 0)
+    {
+      lambdaGibbs.setCurrentBin(lambdaGibbs.numberOfSamplePoints / 2);
+    }
+  }
+}
+
+// Serial Gibbs CFCMC: only the system that owns the active fractional molecule contributes dUdlambda.
+// Fractional molecules in inactive systems are switched off (lambda=0) and must have groupId=0,
+// otherwise the soft-core derivative still yields a spurious dUdlambda contribution.
+void System::initializeGibbsSwapFractionalMoleculeGroupIds() noexcept
+{
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] == 0)
+    {
+      continue;
+    }
+
+    const std::size_t fractionalMoleculeIndex = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
+    std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
+    const bool groupId = containsTheFractionalMolecule && components[componentId].lambdaGC.computeDUdlambda;
+    for (Atom& atom : fractionalMolecule)
+    {
+      atom.groupId = static_cast<std::uint8_t>(groupId);
+    }
+  }
+}
+
+bool System::hasReactionFractionalMolecules() const noexcept
+{
+  for (const std::vector<std::size_t>& perReaction : numberOfReactionFractionalMoleculesPerComponent_CFCMC)
+  {
+    for (std::size_t count : perReaction)
+    {
+      if (count > 0)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(Reaction& reaction) noexcept
+{
+  if (!reaction.serialRxCFC)
+  {
+    return reaction.lambda;
+  }
+  return reaction.fractionalSideIsReactants ? reaction.lambda : reaction.lambdaProductSide;
+}
+
+const PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(const Reaction& reaction) const noexcept
+{
+  if (!reaction.serialRxCFC)
+  {
+    return reaction.lambda;
+  }
+  return reaction.fractionalSideIsReactants ? reaction.lambda : reaction.lambdaProductSide;
+}
+
+void System::initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins)
+{
+  for (Reaction& reaction : reactions.list)
+  {
+    reaction.lambda = PropertyLambdaProbabilityHistogram(numberOfBlocks, numberOfLambdaBins);
+    reaction.lambdaProductSide = PropertyLambdaProbabilityHistogram(numberOfBlocks, numberOfLambdaBins);
+    reaction.lambda.computeDUdlambda = true;
+    reaction.lambdaProductSide.computeDUdlambda = true;
+  }
+}
+
+void System::syncReactionLambdaBin(Reaction& reaction) noexcept
+{
+  auto setBinFromLambda = [](PropertyLambdaProbabilityHistogram& histogram, double lambda)
+  {
+    const std::size_t bin = std::min(
+        static_cast<std::size_t>(histogram.numberOfSamplePoints * lambda),
+        histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0);
+    histogram.setCurrentBin(bin);
+  };
+
+  if (!reaction.serialRxCFC)
+  {
+    setBinFromLambda(reaction.lambda, reaction.currentLambda);
+    return;
+  }
+
+  setBinFromLambda(reaction.lambda, reaction.fractionalSideIsReactants ? reaction.currentLambda : 0.0);
+  setBinFromLambda(reaction.lambdaProductSide, reaction.fractionalSideIsReactants ? 0.0 : reaction.currentLambda);
+}
+
+void System::syncReactionLambdaBins() noexcept
+{
+  for (Reaction& reaction : reactions.list)
+  {
+    syncReactionLambdaBin(reaction);
+  }
+}
+
+void System::reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept
+{
+  if (reactions.list.empty() || !usesReactionConventionalCFCMC())
+  {
+    return;
+  }
+
+  const bool hasFractionals = hasReactionFractionalMolecules();
+
+  for (Reaction& reaction : reactions.list)
+  {
+    if (phase == PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample)
+    {
+      syncReactionLambdaBin(reaction);
+      activeReactionLambdaHistogram(reaction).WangLandauIteration(phase, hasFractionals);
+      continue;
+    }
+
+    reaction.lambda.WangLandauIteration(phase, hasFractionals);
+    if (reaction.serialRxCFC)
+    {
+      reaction.lambdaProductSide.WangLandauIteration(phase, hasFractionals);
+    }
+  }
+}
+
+void System::reactionLambdaSampleOccupancy() noexcept
+{
+  if (reactions.list.empty() || !usesReactionConventionalCFCMC())
+  {
+    return;
+  }
+
+  const bool hasFractionals = hasReactionFractionalMolecules();
+  for (Reaction& reaction : reactions.list)
+  {
+    activeReactionLambdaHistogram(reaction).sampleOccupancy(hasFractionals);
+  }
+}
+
+void System::reactionLambdaClearBookkeeping() noexcept
+{
+  for (Reaction& reaction : reactions.list)
+  {
+    reaction.lambda.clear();
+    if (reaction.serialRxCFC)
+    {
+      reaction.lambdaProductSide.clear();
+    }
+  }
+}
+
+void System::reactionLambdaFinalize() noexcept
+{
+  if (reactions.list.empty() || !usesReactionConventionalCFCMC())
+  {
+    return;
+  }
+
+  const bool hasFractionals = hasReactionFractionalMolecules();
+  for (Reaction& reaction : reactions.list)
+  {
+    reaction.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, hasFractionals);
+    if (reaction.serialRxCFC)
+    {
+      reaction.lambdaProductSide.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
+                                                     hasFractionals);
+    }
+  }
+}
+
+double System::reactionLambdaMinBias() const noexcept
+{
+  double minBias = std::numeric_limits<double>::max();
+  for (const Reaction& reaction : reactions.list)
+  {
+    const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+    if (!histogram.biasFactor.empty())
+    {
+      const double currentMinBias =
+          *std::min_element(histogram.biasFactor.cbegin(), histogram.biasFactor.cend());
+      minBias = currentMinBias < minBias ? currentMinBias : minBias;
+    }
+  }
+  return minBias;
+}
+
+void System::reactionLambdaNormalize(double minBias) noexcept
+{
+  for (Reaction& reaction : reactions.list)
+  {
+    reaction.lambda.normalize(minBias);
+    if (reaction.serialRxCFC)
+    {
+      reaction.lambdaProductSide.normalize(minBias);
+    }
+  }
+}
+
+void System::reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept
+{
+  if (reactions.list.empty() || !usesReactionConventionalCFCMC())
+  {
+    return;
+  }
+
+  const bool hasFractionals = hasReactionFractionalMolecules();
+  const double totalDensity = static_cast<double>(numberOfIntegerMolecules()) / simulationBox.volume;
+
+  for (Reaction& reaction : reactions.list)
+  {
+    PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+    syncReactionLambdaBin(reaction);
+    const double lambda = reaction.currentLambda;
+    const double dudlambda = runningEnergies.dudlambda(lambda);
+    histogram.sampleHistogram(blockIndex, totalDensity, dudlambda, hasFractionals, weight);
+  }
+}
+
+void System::createReactionFractionalMolecules()
+{
+  if (reactions.list.empty())
+  {
+    return;
+  }
+
+  if (!components.empty())
+  {
+    initializeReactionLambdaHistograms(components.front().lambdaGC.numberOfBlocks,
+                                     components.front().lambdaGC.numberOfSamplePoints);
+  }
+
+  const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
+                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0;
+  const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+                         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+
+  precomputeReactionFractionalLayout();
+
+  if (useParallel)
+  {
+    createParallelReactionFractionalMolecules();
+  }
+  if (useSerial)
+  {
+    createSerialReactionFractionalMolecules();
+  }
+
+  syncReactionFractionalMoleculeIndices();
+  syncReactionLambdaBins();
+}
+
+void System::incrementReactionFractionalMoleculeIds(std::size_t componentId) noexcept
+{
+  for (Reaction& otherReaction : reactions.list)
+  {
+    if (otherReaction.reactantFractionalMoleculeIds.size() != components.size())
+    {
+      continue;
+    }
+    for (std::size_t& moleculeId : otherReaction.reactantFractionalMoleculeIds[componentId])
+    {
+      ++moleculeId;
+    }
+    for (std::size_t& moleculeId : otherReaction.productFractionalMoleculeIds[componentId])
+    {
+      ++moleculeId;
+    }
+  }
+}
+
+void System::createParallelReactionFractionalMolecules()
+{
+  if (reactions.list.empty())
+  {
+    return;
+  }
+
+  if (mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) <= 0.0 &&
+      mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) <= 0.0)
+  {
+    return;
+  }
+
+  RandomNumber random(1200);
+
+  for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
+  {
+    Reaction& reaction = reactions.list[reactionId];
+    if (reaction.serialRxCFC)
+    {
+      continue;
+    }
+
+    reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
+    reaction.productFractionalMoleculeIds.assign(components.size(), {});
+
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
+      {
+        std::optional<ChainGrowData> growData = std::nullopt;
+        do
+        {
+          growData = CBMC::growMoleculeSwapInsertion(
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
+              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+
+        const std::size_t moleculeIndex =
+            parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k);
+        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, true,
+                                         reaction.currentLambda);
+      }
+
+      for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
+      {
+        std::optional<ChainGrowData> growData = std::nullopt;
+        do
+        {
+          growData = CBMC::growMoleculeSwapInsertion(
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
+              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+
+        const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
+        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, false,
+                                         reaction.currentLambda);
+      }
+    }
+  }
+}
+
+void System::createSerialReactionFractionalMolecules()
+{
+  if (reactions.list.empty())
+  {
+    return;
+  }
+
+  if (mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) <= 0.0 &&
+      mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) <= 0.0)
+  {
+    return;
+  }
+
+  RandomNumber random(1200);
+
+  for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
+  {
+    Reaction& reaction = reactions.list[reactionId];
+    if (!reaction.serialRxCFC)
+    {
+      continue;
+    }
+
+    reaction.fractionalSideIsReactants = true;
+    reaction.currentLambda = 0.0;
+    reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
+    reaction.productFractionalMoleculeIds.assign(components.size(), {});
+
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
+      {
+        std::optional<ChainGrowData> growData = std::nullopt;
+        do
+        {
+          growData = CBMC::growMoleculeSwapInsertion(
+              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
+              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+
+        const std::size_t moleculeIndex = serialReactionFractionalMoleculeIndex(reactionId, componentId, k);
+        insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, 0.0);
+      }
+    }
   }
 }
 
@@ -1060,7 +1821,20 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
   }
-  std::print(stream, "\n");
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+      const double averageOccupancy = histogram.occupancy();
+      const double lambda = reaction.currentLambda;
+      std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
+                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 averageOccupancy);
+    }
+    std::print(stream, "\n");
+  }
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
@@ -1111,7 +1885,20 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
   }
-  std::print(stream, "\n");
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+      const double averageOccupancy = histogram.occupancy();
+      const double lambda = reaction.currentLambda;
+      std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
+                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 averageOccupancy);
+    }
+    std::print(stream, "\n");
+  }
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
@@ -1204,7 +1991,20 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
   }
-  std::print(stream, "\n");
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+      const double averageOccupancy = histogram.occupancy();
+      const double lambda = reaction.currentLambda;
+      std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
+                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 averageOccupancy);
+    }
+    std::print(stream, "\n");
+  }
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
@@ -1253,7 +2053,20 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
   }
-  std::print(stream, "\n");
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+      const double averageOccupancy = histogram.occupancy();
+      const double lambda = reaction.currentLambda;
+      std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
+                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 averageOccupancy);
+    }
+    std::print(stream, "\n");
+  }
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
@@ -1709,8 +2522,17 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     double dudlambda = runningEnergies.dudlambda(lambda);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
+    if (usesGibbsConventionalCFCMC())
+    {
+      const double gibbsLambda = component.lambdaGibbs.lambdaValue();
+      const double gibbsDudlambda = runningEnergies.dudlambda(gibbsLambda);
+      component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
+    }
+
     ++componentId;
   }
+
+  reactionLambdaSampleProductionHistograms(currentBlock, w);
 
   if (samplePDBMovie.has_value())
   {
@@ -2201,6 +3023,17 @@ std::string System::writeMCMoveStatistics() const
     }
 
     ++componentId;
+  }
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+      std::print(stream, "reaction {} lambda statistics:\n", reaction.id);
+      std::print(stream, "{}", histogram.writeAveragesStatistics(beta, std::nullopt, std::nullopt));
+      std::print(stream, "{}", histogram.writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
+    }
   }
 
   std::print(stream, "\n\n");
@@ -3181,6 +4014,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.temperature;
   archive << s.pressure;
   archive << s.input_pressure;
+  archive << s.pressureTensorDiagonal;
+  archive << s.input_pressureTensorDiagonal;
   archive << s.beta;
 
   archive << s.heliumVoidFraction;
@@ -3205,7 +4040,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfFractionalMoleculesPerComponent;
   archive << s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
 
   archive << s.idealGasEnergiesPerComponent;
@@ -3324,6 +4162,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;
+  if (versionNumber >= 2)
+  {
+    archive >> s.pressureTensorDiagonal;
+    archive >> s.input_pressureTensorDiagonal;
+  }
+  else
+  {
+    s.pressureTensorDiagonal = double3(s.pressure, s.pressure, s.pressure);
+    s.input_pressureTensorDiagonal = double3(s.input_pressure, s.input_pressure, s.input_pressure);
+  }
   archive >> s.beta;
 
   archive >> s.heliumVoidFraction;
@@ -3348,7 +4196,25 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfFractionalMoleculesPerComponent;
   archive >> s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  if (versionNumber >= 4)
+  {
+    archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
+  }
+  else
+  {
+    s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
+  }
   archive >> s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
+  if (versionNumber >= 3)
+  {
+    archive >> s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
+    archive >> s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
+  }
+  else
+  {
+    s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
+    s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
+  }
   archive >> s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
 
   archive >> s.idealGasEnergiesPerComponent;

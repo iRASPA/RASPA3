@@ -91,12 +91,17 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
+  const std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
       random, component, system.hasExternalField, system.forceField, system.simulationBox, 
       system.interpolationGrids, system.externalFieldInterpolationGrid, 
       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, growData->storedR);
   time_end = std::chrono::system_clock::now();
+
+  if (!retraceData)
+  {
+    return std::nullopt;
+  }
 
   // Record CPU time taken for the retracing step.
   component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
@@ -132,7 +137,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
         old_molecule);
     correctionFactorDualCutOff =
         std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
-                                 (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
+                                 (energyOld->potentialEnergy() - retraceData->energies.potentialEnergy())));
   }
 
   RunningEnergy polarizationDifference;
@@ -158,7 +163,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Apply Metropolis acceptance criterion.
   if (random.uniform() <
-      correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
+      correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData->RosenbluthWeight)
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
@@ -176,7 +181,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       return (energyNew.value() - energyOld.value()) + energyFourierDifference + polarizationDifference;
     }
 
-    return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
+    return (growData->energies - retraceData->energies) + energyFourierDifference + polarizationDifference;
   };
 
   // Move is rejected.

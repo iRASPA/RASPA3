@@ -152,15 +152,19 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"LambdaShuffle-Ewald", std::chrono::duration<double>::zero()},
                   {"LambdaShuffle-Tail", std::chrono::duration<double>::zero()},
                 },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::GibbsIdentityChangeCBMC [15],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
                 std::map<std::string, std::chrono::duration<double>>{ 
-                  //Move::Types::Widom [15],
+                  //Move::Types::Widom [16],
                   {"Total", std::chrono::duration<double>::zero()},
                   {"NonEwald", std::chrono::duration<double>::zero()},
                   {"Tail", std::chrono::duration<double>::zero()},
                   {"Ewald", std::chrono::duration<double>::zero()}
                 },
                 std::map<std::string, std::chrono::duration<double>>{ 
-                  //Move::Types::WidomCFCMC [16],
+                  //Move::Types::WidomCFCMC [17],
                   {"Total", std::chrono::duration<double>::zero()},
                   {"ExternalField", std::chrono::duration<double>::zero()},
                   {"Molecule", std::chrono::duration<double>::zero()},
@@ -169,7 +173,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"Tail", std::chrono::duration<double>::zero()}
                 },
                 std::map<std::string, std::chrono::duration<double>>{ 
-                  //Move::Types::WidomCBCFCMC [17],
+                  //Move::Types::WidomCBCFCMC [18],
                   {"Total", std::chrono::duration<double>::zero()},
                   {"ExternalField", std::chrono::duration<double>::zero()},
                   {"Molecule", std::chrono::duration<double>::zero()},
@@ -179,15 +183,35 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"Tail", std::chrono::duration<double>::zero()}
                 },
                 std::map<std::string, std::chrono::duration<double>>{ 
-                  //Move::Types::ParallelTempering [18],
+                  //Move::Types::ParallelTempering [19],
                   {"Total", std::chrono::duration<double>::zero()},
                   {"Energy", std::chrono::duration<double>::zero()},
                   {"Fugacity", std::chrono::duration<double>::zero()}
                 },
                 std::map<std::string, std::chrono::duration<double>>{ 
-                  //Move::Types::HybridMC [19],
+                  //Move::Types::HybridMC [20],
                   {"Total", std::chrono::duration<double>::zero()},
                   {"Integration", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::ReactionCBMC [21],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::ReactionConventionalCFCMC [22],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::ReactionConventionalCFCMCCBMC [23],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::ReactionCFCMC [24],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::ReactionCFCMCCBMC [25],
+                  {"Total", std::chrono::duration<double>::zero()},
                 }
               }
 {
@@ -360,8 +384,9 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
 
   for(std::size_t i = 0; i != timingMap.size(); ++i)
   {
-    if (i == std::to_underlying(Move::Types::VolumeChange) || 
-        i == std::to_underlying(Move::Types::GibbsVolume) || 
+    if (i == std::to_underlying(Move::Types::VolumeChange) ||
+        i == std::to_underlying(Move::Types::AnisotropicVolumeChange) ||
+        i == std::to_underlying(Move::Types::GibbsVolume) ||
         i == std::to_underlying(Move::Types::HybridMC))
     {
       continue;

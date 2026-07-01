@@ -1,8 +1,13 @@
 add_executable(unit_tests_raspa3
+  mc_fractional_molecule_order.cpp
+  mc_gibbs_drift.cpp
+  mc_thermodynamic_integration_drift.cpp
   mc_muvt_drift.cpp
   mc_muvt_grids_drift.cpp
+  mc_npt_drift.cpp
   mc_nvt_drift.cpp
   mc_nvt_grids_drift.cpp
+  mc_reaction_drift.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

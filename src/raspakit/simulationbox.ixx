@@ -371,6 +371,39 @@ export struct SimulationBox
   }
 
   /**
+   * \brief Returns a new SimulationBox scaled by factors along each lattice vector length.
+   *
+   * Creates a new SimulationBox with lengths multiplied by the given factors along a, b, and c,
+   * keeping the angles fixed, and recalculates the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale Scaling factors for lengths a, b, and c.
+   * \return A new scaled SimulationBox.
+   */
+  SimulationBox scaled(double3 scale) const
+  {
+    SimulationBox v;
+
+    v.lengthA = scale.x * lengthA;
+    v.lengthB = scale.y * lengthB;
+    v.lengthC = scale.z * lengthC;
+    v.angleAlpha = angleAlpha;
+    v.angleBeta = angleBeta;
+    v.angleGamma = angleGamma;
+
+    double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
+    double3 v1 = double3(v.lengthA, 0.0, 0.0);
+    double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
+    double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
+                         v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
+    v.cell = double3x3(v1, v2, v3);
+    v.inverseCell = v.cell.inverse();
+    v.volume = v.cell.determinant();
+    v.type = type;
+
+    return v;
+  }
+
+  /**
    * \brief Returns a new SimulationBox scaled by integer factors along each axis.
    *
    * Creates a new SimulationBox with lengths multiplied by the given integer factors,

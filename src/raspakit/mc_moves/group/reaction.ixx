@@ -12,7 +12,5 @@ import system;
 
 export namespace MC_Moves
 {
-std::optional<RunningEnergy> reactionMove([[maybe_unused]] RandomNumber& random, System& system,
-                                          [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
-                                          [[maybe_unused]] const std::vector<std::size_t> productStoichiometry);
+std::optional<RunningEnergy> reactionMove_CBMC(RandomNumber& random, System& system);
 }

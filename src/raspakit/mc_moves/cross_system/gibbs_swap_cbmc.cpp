@@ -39,7 +39,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
   // Index for the new molecule in system A
-  std::size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
+  std::size_t newMoleculeIndex = systemA.numberOfMolecules();
 
   // Update move counts statistics for both systems
   componentA.mc_moves_statistics.addTrial(move);

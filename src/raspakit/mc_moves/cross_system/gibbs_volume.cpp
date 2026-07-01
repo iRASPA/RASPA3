@@ -88,6 +88,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
+  // The intra-molecular energies have not changed by the com-scaling
+  newTotalEnergyA.bond = oldTotalEnergyA.bond;
+  newTotalEnergyA.ureyBradley = oldTotalEnergyA.ureyBradley;
+  newTotalEnergyA.bend = oldTotalEnergyA.bend;
+  newTotalEnergyA.inversionBend = oldTotalEnergyA.inversionBend;
+  newTotalEnergyA.outOfPlaneBend = oldTotalEnergyA.outOfPlaneBend;
+  newTotalEnergyA.torsion = oldTotalEnergyA.torsion;
+  newTotalEnergyA.improperTorsion = oldTotalEnergyA.improperTorsion;
+  newTotalEnergyA.bondBond = oldTotalEnergyA.bondBond;
+  newTotalEnergyA.bondBend = oldTotalEnergyA.bondBend;
+  newTotalEnergyA.bondTorsion = oldTotalEnergyA.bondTorsion;
+  newTotalEnergyA.bendBend = oldTotalEnergyA.bendBend;
+  newTotalEnergyA.bendTorsion = oldTotalEnergyA.bendTorsion;
+
   if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
   {
     return std::nullopt;
@@ -135,6 +149,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
+
+  // The intra-molecular energies have not changed by the com-scaling
+  newTotalEnergyB.bond = oldTotalEnergyB.bond;
+  newTotalEnergyB.ureyBradley = oldTotalEnergyB.ureyBradley;
+  newTotalEnergyB.bend = oldTotalEnergyB.bend;
+  newTotalEnergyB.inversionBend = oldTotalEnergyB.inversionBend;
+  newTotalEnergyB.outOfPlaneBend = oldTotalEnergyB.outOfPlaneBend;
+  newTotalEnergyB.torsion = oldTotalEnergyB.torsion;
+  newTotalEnergyB.improperTorsion = oldTotalEnergyB.improperTorsion;
+  newTotalEnergyB.bondBond = oldTotalEnergyB.bondBond;
+  newTotalEnergyB.bondBend = oldTotalEnergyB.bondBend;
+  newTotalEnergyB.bondTorsion = oldTotalEnergyB.bondTorsion;
+  newTotalEnergyB.bendBend = oldTotalEnergyB.bendBend;
+  newTotalEnergyB.bendTorsion = oldTotalEnergyB.bendTorsion;
 
   if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
   {

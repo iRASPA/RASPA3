@@ -21,12 +21,11 @@ import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
-import cbmc_util;
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
     double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip,
-    std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -42,9 +41,7 @@ import cbmc_util;
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-    std::size_t compA = static_cast<std::size_t>(it1->componentId);
-    if (skipBackgroundMolecule.has_value() && compA == skipBackgroundMolecule->componentId &&
-        molA == skipBackgroundMolecule->moleculeId)
+    if (skipBackgroundMolecule >= 0 && molA == static_cast<std::size_t>(skipBackgroundMolecule))
     {
       continue;
     }
@@ -60,7 +57,6 @@ import cbmc_util;
       if (index != skip)
       {
         double3 posB = atom.position;
-        std::size_t compB = static_cast<std::size_t>(atom.componentId);
         std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
         std::size_t typeB = static_cast<std::size_t>(atom.type);
         bool groupIdB = static_cast<bool>(atom.groupId);
@@ -68,7 +64,7 @@ import cbmc_util;
         double scalingCoulombB = atom.scalingCoulomb;
         double chargeB = atom.charge;
 
-        if (!(compA == compB && molA == molB))
+        if (molA != molB)
         {
           dr = posA - posB;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);

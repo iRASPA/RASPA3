@@ -81,13 +81,22 @@ cd examples/basic/1_mc_methane_in_box
 # Experimental
 - flexible molecules (CBMC)
 - partial insertion move
+- identity change
 
 # Todo-list
+- Gibbs identity change
+- Gibbs CFCMC/CBMC
+- Gibbs conventional CFCMC
+- Gibbs conventional CFCMC/CBMC
+- Reaction MC CBMC
+- Reaction MC conventional CFCMC
+- Reaction MC conventional CFCMC/CBMC
+- Reaction MC CFCMC
+- Reaction MC CFCMC/CBMC
 - flexible molecules (MD)
 - zeo++-type calculations
 - flexible frameworks
 - reaction ensemble
-- identity change
 - polarization
 - cell-lists for rigid frameworks
 - partial molar volumes

@@ -20,10 +20,22 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Gibbs volume",
   "Gibbs swap (CBMC)",
   "Gibbs swap (CFCMC)",
+  "Gibbs identity change (CBMC)",
   "Widom",
   "Widom (CFCMC)",
   "Widom (CB/CFCMC)",
   "Parallel tempering",
-  "Hybrid MC"
+  "Hybrid MC",
+  "Reaction (CBMC)",
+  "Reaction (conventional CFCMC)",
+  "Reaction (conventional CFCMC/CBMC)",
+  "Reaction (CFCMC)",
+  "Reaction (CFCMC/CBMC)",
+  "Gibbs swap (CB/CFCMC)",
+  "Gibbs conventional CFCMC",
+  "Gibbs conventional CFCMC/CBMC",
+  "Pair swap (CBMC)",
+  "Pair swap",
+  "Anisotropic volume change"
 };
 

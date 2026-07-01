@@ -175,6 +175,10 @@ void MonteCarloTransitionMatrix::performCycle()
         selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSecondSystem.containsTheFractionalMolecule);
+
+        selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Production:
         MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
@@ -192,6 +196,8 @@ void MonteCarloTransitionMatrix::performCycle()
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
     selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
         selectedSecondSystem.containsTheFractionalMolecule);
+    selectedSystem.reactionLambdaSampleOccupancy();
+    selectedSecondSystem.reactionLambdaSampleOccupancy();
   }
 }
 
@@ -340,6 +346,9 @@ void MonteCarloTransitionMatrix::equilibrate()
       component.lambdaGC.clear();
     }
 
+    system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.reactionLambdaClearBookkeeping();
+
     ++system_id;
   };
 
@@ -382,6 +391,9 @@ void MonteCarloTransitionMatrix::equilibrate()
               PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
               system.containsTheFractionalMolecule);
         }
+
+        system.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
       }
     }
 
@@ -436,6 +448,9 @@ void MonteCarloTransitionMatrix::production()
       component.lambdaGC.clear();
     }
 
+    system.reactionLambdaFinalize();
+    system.reactionLambdaClearBookkeeping();
+
     ++system_id;
   }
 
@@ -448,6 +463,15 @@ void MonteCarloTransitionMatrix::production()
           *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
     }
+
+    if (system.usesReactionConventionalCFCMC())
+    {
+      const double reactionMinBias = system.reactionLambdaMinBias();
+      if (reactionMinBias < minBias)
+      {
+        minBias = reactionMinBias;
+      }
+    }
   }
   for (System& system : systems)
   {
@@ -455,6 +479,7 @@ void MonteCarloTransitionMatrix::production()
     {
       component.lambdaGC.normalize(minBias);
     }
+    system.reactionLambdaNormalize(minBias);
   }
 
   numberOfSteps = 0uz;

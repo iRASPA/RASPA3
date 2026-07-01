@@ -36,6 +36,8 @@ import mc_moves_insertion;
 import mc_moves_deletion;
 import mc_moves_insertion_cbmc;
 import mc_moves_deletion_cbmc;
+import mc_moves_pair_insertion_cbmc;
+import mc_moves_pair_deletion_cbmc;
 import mc_moves_swap_cfcmc;
 import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_gibbs_swap_cbmc;
@@ -46,7 +48,13 @@ import mc_moves_swap_cfcmc;
 import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_gibbs_swap_cbmc;
 import mc_moves_gibbs_swap_cfcmc;
+import mc_moves_gibbs_swap_cfcbmc_cbmc;
+import mc_moves_gibbs_conventional_cfcmc;
+import mc_moves_gibbs_identity_change;
 import mc_moves_reaction;
+import mc_moves_reaction_conventional_cfcmc;
+import mc_moves_reaction_conventional_cfcmc_cbmc;
+import mc_moves_reaction_cfcmc;
 import mc_moves_reaction_cfcmc_cbmc;
 import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
@@ -183,6 +191,16 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
+    case Move::Types::AnisotropicVolumeChange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::anisotropicVolumeMove(random, selectedSystem);
+
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
     case Move::Types::ReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
@@ -305,6 +323,62 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
+    case Move::Types::PairSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMoveCBMC(random, selectedSystem, selectedComponent,
+                                                                             selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::PairSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMove(random, selectedSystem, selectedComponent,
+                                                                         selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
@@ -317,7 +391,6 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       break;
     }
     case Move::Types::GibbsSwapCBMC:
-    case Move::Types::GibbsSwapCFCMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -337,6 +410,86 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
         {
           selectedSecondSystem.runningEnergies += energy.value().first;
           selectedSystem.runningEnergies += energy.value().second;
+        }
+      }
+      break;
+    }
+    case Move::Types::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBCFCMC:
+    {
+      if (selectedSystem.containsTheFractionalMolecule)
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
+        }
+      }
+      else if (selectedSecondSystem.containsTheFractionalMolecule)
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
+        if (energy)
+        {
+          selectedSecondSystem.runningEnergies += energy.value().first;
+          selectedSystem.runningEnergies += energy.value().second;
+        }
+      }
+      break;
+    }
+    case Move::Types::GibbsConventionalCFCMC:
+    case Move::Types::GibbsConventionalCFCMCCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSystem, selectedSecondSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSystem, selectedSecondSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
+        }
+      }
+      else
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSecondSystem, selectedSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSecondSystem, selectedSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSecondSystem.runningEnergies += energy.value().first;
+          selectedSystem.runningEnergies += energy.value().second;
+        }
+      }
+      break;
+    }
+    case Move::Types::GibbsIdentityChangeCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].gibbsIdentityChanges.empty())
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            MC_Moves::GibbsIdentityChangeMove_CBMC(random, selectedSystem, selectedSecondSystem, selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
         }
       }
       break;
@@ -376,6 +529,66 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::ReactionCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
       }
       break;
     }
@@ -523,6 +736,16 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
+    case Move::Types::AnisotropicVolumeChange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::anisotropicVolumeMove(random, selectedSystem);
+
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
     case Move::Types::ReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
@@ -669,6 +892,62 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
+    case Move::Types::PairSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMoveCBMC(random, selectedSystem, selectedComponent,
+                                                                             selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::PairSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMove(random, selectedSystem, selectedComponent,
+                                                                         selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
@@ -705,11 +984,16 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       break;
     }
     case Move::Types::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBCFCMC:
     {
       if (selectedSystem.containsTheFractionalMolecule)
       {
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSystem, selectedSecondSystem, fractionalMoleculeSystem, selectedComponent);
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
         if (energy)
         {
           selectedSystem.runningEnergies += energy.value().first;
@@ -718,12 +1002,63 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       else if (selectedSecondSystem.containsTheFractionalMolecule)
       {
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSecondSystem, selectedSystem, fractionalMoleculeSystem, selectedComponent);
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
         if (energy)
         {
           selectedSecondSystem.runningEnergies += energy.value().first;
           selectedSystem.runningEnergies += energy.value().second;
+        }
+      }
+      break;
+    }
+    case Move::Types::GibbsConventionalCFCMC:
+    case Move::Types::GibbsConventionalCFCMCCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSystem, selectedSecondSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSystem, selectedSecondSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
+        }
+      }
+      else
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSecondSystem, selectedSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSecondSystem, selectedSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSecondSystem.runningEnergies += energy.value().first;
+          selectedSystem.runningEnergies += energy.value().second;
+        }
+      }
+      break;
+    }
+    case Move::Types::GibbsIdentityChangeCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].gibbsIdentityChanges.empty())
+      {
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            MC_Moves::GibbsIdentityChangeMove_CBMC(random, selectedSystem, selectedSecondSystem, selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
         }
       }
       break;
@@ -763,6 +1098,66 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::ReactionCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
       }
       break;
     }
@@ -874,6 +1269,15 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     case Move::Types::VolumeChange:
     {
       std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::AnisotropicVolumeChange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::anisotropicVolumeMove(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value();
@@ -1033,6 +1437,62 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
+    case Move::Types::PairSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMoveCBMC(random, selectedSystem, selectedComponent,
+                                                                             selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::PairSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::pairInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] = MC_Moves::pairDeletionMove(random, selectedSystem, selectedComponent,
+                                                                         selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
@@ -1080,13 +1540,18 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       break;
     }
     case Move::Types::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBCFCMC:
     {
       if (selectedSystem.containsTheFractionalMolecule)
       {
         selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
 
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
         if (energy)
         {
           selectedSystem.runningEnergies += energy.value().first;
@@ -1100,8 +1565,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       else if (selectedSecondSystem.containsTheFractionalMolecule)
       {
         selectedSecondSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
-        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = MC_Moves::GibbsSwapMove_CFCMC(
-            random, selectedSecondSystem, selectedSystem, selectedComponent, fractionalMoleculeSystem);
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsSwapCFCMC
+                ? MC_Moves::GibbsSwapMove_CFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                fractionalMoleculeSystem)
+                : MC_Moves::GibbsSwapMove_CBCFCMC(random, selectedSecondSystem, selectedSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
         if (energy)
         {
           selectedSecondSystem.runningEnergies += energy.value().first;
@@ -1109,6 +1578,74 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+      }
+      break;
+    }
+    case Move::Types::GibbsConventionalCFCMC:
+    case Move::Types::GibbsConventionalCFCMCCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
+
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSystem, selectedSecondSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSystem, selectedSecondSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
+        }
+
+        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+      }
+      else
+      {
+        selectedSecondSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
+
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            moveType == Move::Types::GibbsConventionalCFCMCCBMC
+                ? MC_Moves::GibbsConventionalCFCMCCBMCMove(random, selectedSecondSystem, selectedSystem,
+                                                             selectedComponent)
+                : MC_Moves::GibbsConventionalCFCMCMove(random, selectedSecondSystem, selectedSystem,
+                                                       selectedComponent);
+        if (energy)
+        {
+          selectedSecondSystem.runningEnergies += energy.value().first;
+          selectedSystem.runningEnergies += energy.value().second;
+        }
+
+        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+      }
+      break;
+    }
+    case Move::Types::GibbsIdentityChangeCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].gibbsIdentityChanges.empty())
+      {
+        selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
+        selectedSecondSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
+
+        std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+            MC_Moves::GibbsIdentityChangeMove_CBMC(random, selectedSystem, selectedSecondSystem, selectedComponent);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value().first;
+          selectedSecondSystem.runningEnergies += energy.value().second;
+        }
+
+        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
         selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
         selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
       }
@@ -1167,6 +1704,66 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
+    case Move::Types::ReactionCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionConventionalCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_ConventionalCFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
+    case Move::Types::ReactionCFCMCCBMC:
+    {
+      if (!selectedSystem.reactions.list.empty())
+      {
+        std::optional<RunningEnergy> energy = MC_Moves::reactionMove_CFCMCCBMC(random, selectedSystem);
+        if (energy)
+        {
+          selectedSystem.runningEnergies += energy.value();
+        }
+      }
+      break;
+    }
     case Move::Types::Count:
     {
       throw std::runtime_error("Move count called, invalid sampling of move probabilities");
@@ -1181,7 +1778,10 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system
-  if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapCFCMC)
+  if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapCFCMC &&
+      moveType != Move::Types::GibbsSwapCBCFCMC && moveType != Move::Types::GibbsConventionalCFCMC &&
+      moveType != Move::Types::GibbsConventionalCFCMCCBMC &&
+      moveType != Move::Types::GibbsIdentityChangeCBMC)
   {
     selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
     if (componentMoves.count(moveType))

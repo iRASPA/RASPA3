@@ -58,7 +58,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   // Get index of the fractional molecule for the component
-  std::size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+  std::size_t indexFractionalMolecule =
+      system.indexOfFractionalMoleculeForMove(Move::Types::SwapCFCMC, selectedComponent);
 
   if (selectedNewBin >= std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints))  // Insertion move
   {
@@ -182,8 +183,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     RunningEnergy energyDifference = externalFieldDifference.value() + frameworkDifference.value() +
                                      moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
 
-    // Grow molecule with newLambda
-    std::size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+    // Grow molecule with newLambda (trial global molecule id, not a storage index)
+    std::size_t newMolecule = system.numberOfMolecules();
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
@@ -279,6 +280,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
+
+      system.updateMoleculeAtomInformation();
 
       component.mc_moves_statistics.addAccepted(move, 0);
 

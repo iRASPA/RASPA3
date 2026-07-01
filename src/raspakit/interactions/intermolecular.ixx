@@ -84,6 +84,32 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
                                                                       std::span<const Atom> oldatoms) noexcept;
 
 /**
+ * \brief Computes inter-molecular tail energy from pseudo-atom type counts.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyFromTypeCounts(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const std::size_t> typeCounts) noexcept;
+
+/**
+ * \brief Tail correction difference when replacing one molecule type with another (identity change).
+ *
+ * Equivalent to RASPA2 TailMolecularEnergyDifferenceAddRemove.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAddRemove(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const std::size_t> currentTypeCounts, const Component &componentToAdd,
+    const Component &componentToRemove) noexcept;
+
+/**
+ * \brief Tail correction difference for a reaction ensemble move (RASPA2 TailMolecularEnergyDifferenceRXMX).
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceReaction(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const std::size_t> currentTypeCounts, const std::vector<std::size_t> &reactantStoichiometry,
+    const std::vector<std::size_t> &productStoichiometry, const std::vector<Component> &components,
+    bool forward) noexcept;
+
+/**
  * \brief Computes the inter-molecular forces and energy.
  *
  * Calculates the van der Waals and Coulombic forces between all pairs of atoms

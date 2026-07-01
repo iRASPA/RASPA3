@@ -244,4 +244,9 @@ export struct InputReader
    * the presence of only known component-specific keys.
    */
   static const std::set<std::string, InsensitiveCompare> componentOptions;
+
+  /**
+   * \brief Set of reaction-specific option keys accepted within each Reactions entry.
+   */
+  static const std::set<std::string, InsensitiveCompare> reactionOptions;
 };

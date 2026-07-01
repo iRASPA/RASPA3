@@ -16,7 +16,6 @@ import cbmc_interactions;
 import framework;
 import component;
 import interpolation_energy_grid;
-import cbmc_util;
 
 export namespace CBMC
 {
@@ -27,5 +26,5 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt);
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
 }

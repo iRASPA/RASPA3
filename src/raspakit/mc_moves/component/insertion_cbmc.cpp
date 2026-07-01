@@ -38,8 +38,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   Move::Types move = Move::Types::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
+  // Set trial moleculeId to something that does not overlap with the current molecules
+  // The 'insertMolecule' routine will place it after the last molecule of the component
+  std::size_t selectedMolecule = system.numberOfMolecules();
+
   // Update move counts statistics for swap insertion move
-  std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   component.mc_moves_statistics.addTrial(move, 0);
 
   // Extract cutoff distances and growth type for the selected component

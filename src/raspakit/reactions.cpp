@@ -35,8 +35,11 @@ nlohmann::json Reactions::jsonStatus() const
   if (list.empty()) return status;
   status["n_reactions"] = list.size();
 
-  nlohmann::json reactions(list.size());
-  for (std::size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
+  nlohmann::json reactions = nlohmann::json::array();
+  for (const Reaction& reaction : list)
+  {
+    reactions.push_back(reaction.jsonStatus());
+  }
   status["reactions"] = reactions;
   return status;
 }

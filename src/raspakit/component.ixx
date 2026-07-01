@@ -147,7 +147,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
@@ -177,6 +177,11 @@ export struct Component
   std::optional<double> idealGasRosenbluthWeight{};  ///< Optional ideal gas Rosenbluth weight [-].
   std::optional<double> idealGasEnergy{};            ///< Optional ideal gas energy [J].
 
+  /// Partner component index for distance-biased ion-pair GCMC (Orkoulas & Panagiotopoulos).
+  std::optional<std::size_t> pairComponentId{};
+  /// Maximum ion-pair separation R_max for distance-biased pair insertion/deletion [m].
+  std::optional<double> maximumPairDistance{};
+
   double netCharge{0.0};                                ///< Net charge of the component [e].
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
@@ -191,6 +196,7 @@ export struct Component
   std::vector<Atom> grownAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
   std::vector<std::size_t> identityChanges{};
+  std::vector<std::size_t> gibbsIdentityChanges{};
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 

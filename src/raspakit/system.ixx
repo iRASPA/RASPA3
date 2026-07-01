@@ -100,11 +100,13 @@ export struct System
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{4};
 
   double temperature{300.0};
   double pressure{1e4};
   double input_pressure{1e4};
+  double3 pressureTensorDiagonal{1e4, 1e4, 1e4};
+  double3 input_pressureTensorDiagonal{1e4, 1e4, 1e4};
   double beta{1.0 / (Units::KB * 300.0)};
 
   double heliumVoidFraction{0.29};
@@ -139,8 +141,17 @@ export struct System
   // # fractional molecules for pair-CFCMC grand-canonical
   std::vector<std::size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
 
-  // # fractional molecules for CFCMC-Gibbs
+  // # fractional molecules for GibbsSwapCFCMC / GibbsSwapCBCFCMC
+  std::vector<std::size_t> numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for GibbsConventionalCFCMC
   std::vector<std::size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};
+
+  // # parallel-reaction fractional molecules (ReactionConventionalCFCMC)
+  std::vector<std::size_t> numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC{};
+
+  // # serial-reaction fractional molecules (ReactionCFCMC)
+  std::vector<std::size_t> numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC{};
 
   // # reactant fractional molecules for all reactions using CFCMC
   std::vector<std::vector<std::size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};
@@ -248,24 +259,31 @@ export struct System
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
   std::optional<InterpolationEnergyGrid> externalFieldInterpolationGrid;
 
-  /// The fractional molecule for grand-canonical is stored first
-  inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent)
+  // Fractional molecules per component are stored in Move::Types enum order, then integer molecules.
+  // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> GibbsSwapCFCMC -> ReactionConventionalCFCMC -> ReactionCFCMC ->
+  //          GibbsConventionalCFCMC
+  [[nodiscard]] std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept
   {
-    return 0;
+    return indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(selectedComponent);
   }
-
-  /// The fractional molecule for grand-canonical pair-insertion is stored second
-  inline std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent)
-  {
-    return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
-  }
-
-  /// The fractional molecule for Gibbs is stored third
-  inline std::size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent)
-  {
-    return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
-           numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
-  }
+  [[nodiscard]] std::size_t indexOfFractionalMoleculeForMove(Move::Types move, std::size_t selectedComponent,
+                                                             std::size_t subIndex = 0) const noexcept;
+  [[nodiscard]] std::size_t parallelReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
+                                                                    bool isProduct, std::size_t localIndex) const noexcept;
+  [[nodiscard]] std::size_t serialReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
+                                                                  std::size_t localIndex) const noexcept;
 
   void addComponent(const Component &&component) noexcept(false);
 
@@ -293,6 +311,8 @@ export struct System
   std::size_t numerOfAdsorbateComponents() { return components.size(); }
   std::size_t randomMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
+
+  std::size_t globalIndexOfComponentAndMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
 
   std::size_t indexOfFirstMolecule(std::size_t selectedComponent);
   std::vector<Atom>::iterator iteratorForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
@@ -336,15 +356,49 @@ export struct System
   // Mol. Phys.  117(23-24), 3493-3508, 2019
   double weight() const
   {
-    return std::transform_reduce(
+    double w = std::transform_reduce(
         components.begin(), components.end(), 0.0, [](const double &acc, const double &b) { return acc + b; },
         [](const Component &component) { return component.lambdaGC.weight() + component.lambdaGibbs.weight(); });
+
+    if (usesReactionConventionalCFCMC())
+    {
+      for (const Reaction &reaction : reactions.list)
+      {
+        w += activeReactionLambdaHistogram(reaction).weight();
+      }
+    }
+
+    return w;
   }
 
   void removeRedundantMoves();
   void rescaleMoveProbabilities();
   void determineSwappableComponents();
   void determineFractionalComponents();
+  void createReactionFractionalMolecules();
+  void createParallelReactionFractionalMolecules();
+  void createSerialReactionFractionalMolecules();
+  void precomputeReactionFractionalLayout() noexcept;
+  void syncReactionFractionalMoleculeIndices() noexcept;
+  void incrementReactionFractionalMoleculeIds(std::size_t componentId) noexcept;
+  void initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins);
+  void syncReactionLambdaBin(Reaction& reaction) noexcept;
+  void syncReactionLambdaBins() noexcept;
+  [[nodiscard]] bool usesReactionConventionalCFCMC() const noexcept;
+  [[nodiscard]] bool usesGibbsConventionalCFCMC() const noexcept;
+  void initializeGibbsConventionalFractionalMolecules() noexcept;
+  void initializeGibbsSwapFractionalMoleculeGroupIds() noexcept;
+  [[nodiscard]] bool hasReactionFractionalMolecules() const noexcept;
+  [[nodiscard]] PropertyLambdaProbabilityHistogram& activeReactionLambdaHistogram(Reaction& reaction) noexcept;
+  [[nodiscard]] const PropertyLambdaProbabilityHistogram& activeReactionLambdaHistogram(
+      const Reaction& reaction) const noexcept;
+  void reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept;
+  void reactionLambdaSampleOccupancy() noexcept;
+  void reactionLambdaClearBookkeeping() noexcept;
+  void reactionLambdaFinalize() noexcept;
+  [[nodiscard]] double reactionLambdaMinBias() const noexcept;
+  void reactionLambdaNormalize(double minBias) noexcept;
+  void reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept;
   void rescaleMolarFractions();
   void computeComponentFluidProperties();
   void computeNumberOfPseudoAtoms();
@@ -369,8 +423,16 @@ export struct System
   void insertMoleculePolarization(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
                                   std::span<double3> electricField);
   void insertFractionalMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
-                                std::size_t moleculeId);
+                                std::size_t moleculeIndex);
+  void insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
+                                       std::vector<Atom> atoms);
+  void insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
+                                        std::vector<Atom> atoms, bool isReactant, double lambda);
+  void insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                              const Molecule &molecule, std::vector<Atom> atoms, double lambda);
   void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
+  void deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
+                                  const std::span<Atom> atoms);
   void updateMoleculeAtomInformation();
   void checkMoleculeIds();
 

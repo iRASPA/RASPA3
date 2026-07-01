@@ -21,7 +21,6 @@ import units;
 import cbmc_interactions_external_field;
 import cbmc_interactions_framework_molecule;
 import cbmc_interactions_intermolecular;
-import cbmc_util;
 
 bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const Component &component,
                                 std::span<const Atom> molecule_atoms)
@@ -58,7 +57,7 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    std::vector<Atom> &trialPositions, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::vector<Atom> &trialPositions, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<std::pair<Atom, RunningEnergy>> energies{};
   energies.reserve(trialPositions.size());
@@ -105,7 +104,7 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip,
-    std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<std::pair<std::vector<Atom>, RunningEnergy>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -145,7 +144,7 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> CBMC::co
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, const std::vector<double> &RosenbluthWeightsTorsion,
-    std::make_signed_t<std::size_t> skip, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::make_signed_t<std::size_t> skip, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -195,7 +194,7 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
-    std::make_signed_t<std::size_t> skip, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::make_signed_t<std::size_t> skip, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> energies{};
   energies.reserve(trialPositionSets.size());
@@ -234,7 +233,7 @@ const std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDual
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
-    std::vector<Atom> &trialPositionSet, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    std::vector<Atom> &trialPositionSet, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::pair<std::vector<Atom>, RunningEnergy> energies;
 

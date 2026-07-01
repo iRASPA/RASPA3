@@ -23,4 +23,12 @@ export namespace MC_Moves
  * \return The new total energy if the move is accepted; std::nullopt otherwise.
  */
 std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
+
+/**
+ * \brief Performs an anisotropic volume move with independent pressures along a, b, and c.
+ *
+ * Scales each lattice vector length independently and applies the corresponding diagonal pressure component
+ * in the acceptance criterion.
+ */
+std::optional<RunningEnergy> anisotropicVolumeMove(RandomNumber &random, System &system);
 }  // namespace MC_Moves

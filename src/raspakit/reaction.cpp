@@ -41,6 +41,15 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
   archive << r.reactantStoichiometry;
   archive << r.productStoichiometry;
   archive << r.lambda;
+  archive << r.lambdaProductSide;
+  archive << r.currentLambda;
+  archive << r.maximumLambdaChange;
+  archive << r.maximumLambdaChangeProducts;
+  archive << r.lambdaSwitchPoint;
+  archive << r.serialRxCFC;
+  archive << r.fractionalSideIsReactants;
+  archive << r.reactantFractionalMoleculeIds;
+  archive << r.productFractionalMoleculeIds;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -64,6 +73,25 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
   archive >> r.reactantStoichiometry;
   archive >> r.productStoichiometry;
   archive >> r.lambda;
+  if (versionNumber >= 3)
+  {
+    archive >> r.lambdaProductSide;
+    archive >> r.currentLambda;
+    archive >> r.maximumLambdaChange;
+    archive >> r.maximumLambdaChangeProducts;
+    archive >> r.lambdaSwitchPoint;
+    archive >> r.serialRxCFC;
+    archive >> r.fractionalSideIsReactants;
+    archive >> r.reactantFractionalMoleculeIds;
+    archive >> r.productFractionalMoleculeIds;
+  }
+  else if (versionNumber >= 2)
+  {
+    archive >> r.currentLambda;
+    archive >> r.maximumLambdaChange;
+    archive >> r.reactantFractionalMoleculeIds;
+    archive >> r.productFractionalMoleculeIds;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

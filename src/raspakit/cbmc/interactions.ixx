@@ -21,7 +21,6 @@ import units;
 import cbmc_interactions_intermolecular;
 import cbmc_interactions_framework_molecule;
 import interpolation_energy_grid;
-import cbmc_util;
 
 export namespace CBMC
 {
@@ -35,7 +34,7 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositions,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
@@ -44,7 +43,7 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> computeExternalNo
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip = -1,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
@@ -54,7 +53,7 @@ const std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> computeE
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, const std::vector<double> &RosenbluthWeightsTorsion,
     std::make_signed_t<std::size_t> skip = -1,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
@@ -64,7 +63,7 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> comput
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip = -1,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(
     const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
@@ -73,5 +72,5 @@ const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositionSet,
-    std::optional<SkipMolecule> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 }  // namespace CBMC

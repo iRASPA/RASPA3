@@ -128,3 +128,122 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   return std::nullopt;
 }
+
+std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& random, System& system)
+{
+  std::chrono::system_clock::time_point time_begin, time_end;
+  Move::Types move = Move::Types::AnisotropicVolumeChange;
+
+  system.mc_moves_statistics.addTrial(move);
+
+  RunningEnergy oldTotalEnergy = system.runningEnergies;
+  const double numberOfMolecules = static_cast<double>(std::accumulate(
+      system.numberOfIntegerMoleculesPerComponent.begin(), system.numberOfIntegerMoleculesPerComponent.end(), 0));
+  const SimulationBox& oldBox = system.simulationBox;
+  const double oldVolume = oldBox.volume;
+
+  const double3 maxVolumeChange(
+      system.mc_moves_statistics.getMaxChange(move, 0),
+      system.mc_moves_statistics.getMaxChange(move, 1),
+      system.mc_moves_statistics.getMaxChange(move, 2));
+
+  const double3 scale(std::exp(maxVolumeChange.x * (2.0 * random.uniform() - 1.0)),
+                      std::exp(maxVolumeChange.y * (2.0 * random.uniform() - 1.0)),
+                      std::exp(maxVolumeChange.z * (2.0 * random.uniform() - 1.0)));
+
+  SimulationBox newBox = oldBox.scaled(scale);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions{system.moleculeData, system.atomData};
+  for (Molecule& molecule : newPositions.first)
+  {
+    std::span<Atom> moleculeAtoms = {&newPositions.second[molecule.atomIndex], molecule.numberOfAtoms};
+
+    for (Atom& atom : moleculeAtoms)
+    {
+      const double3 fractional = oldBox.inverseCell * atom.position;
+      atom.position = newBox.cell * fractional;
+    }
+
+    double totalMass = 0.0;
+    double3 newCom(0.0, 0.0, 0.0);
+    for (const Atom& atom : moleculeAtoms)
+    {
+      const double mass = system.forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+      newCom += mass * atom.position;
+      totalMass += mass;
+    }
+    molecule.centerOfMassPosition = newCom / totalMass;
+  }
+
+  const double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
+  const double ewald_alpha_stored = system.forceField.EwaldAlpha;
+  const int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
+
+  system.forceField.initializeAutomaticCutOff(newBox);
+
+  time_begin = std::chrono::system_clock::now();
+  RunningEnergy newTotalInterEnergy =
+      Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+
+  time_begin = std::chrono::system_clock::now();
+  RunningEnergy newTotalTailEnergy =
+      Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+
+  time_begin = std::chrono::system_clock::now();
+  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+
+  RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+
+  newTotalEnergy.bond = oldTotalEnergy.bond;
+  newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
+  newTotalEnergy.bend = oldTotalEnergy.bend;
+  newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
+  newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
+  newTotalEnergy.torsion = oldTotalEnergy.torsion;
+  newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
+  newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
+  newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
+  newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
+  newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
+  newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+
+  system.mc_moves_statistics.addConstructed(move);
+
+  const double volumeRatio = scale.x * scale.y * scale.z;
+  const double pressureWork =
+      oldVolume * (system.pressureTensorDiagonal.x * (scale.x - 1.0) +
+                   system.pressureTensorDiagonal.y * (scale.y - 1.0) +
+                   system.pressureTensorDiagonal.z * (scale.z - 1.0));
+
+  if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
+                                  (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
+                                      system.beta))
+  {
+    system.mc_moves_statistics.addAccepted(move);
+
+    system.simulationBox = newBox;
+    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
+    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
+
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+
+    return newTotalEnergy - oldTotalEnergy;
+  }
+
+  system.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored;
+  system.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored;
+  system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
+  system.forceField.EwaldAlpha = ewald_alpha_stored;
+  system.forceField.numberOfWaveVectors = ewald_k_stored;
+
+  return std::nullopt;
+}

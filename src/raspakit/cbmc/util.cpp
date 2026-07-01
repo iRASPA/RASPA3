@@ -66,7 +66,10 @@ std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector<double> 
   std::size_t selected = 0;
   double cumw = ShiftedBoltzmannFactors[0];
   double ws = random.uniform() * SumShiftedBoltzmannFactors;
-  while (cumw < ws) cumw += ShiftedBoltzmannFactors[++selected];
+  while (selected + 1 < ShiftedBoltzmannFactors.size() && cumw < ws)
+  {
+    cumw += ShiftedBoltzmannFactors[++selected];
+  }
 
   return selected;
 }

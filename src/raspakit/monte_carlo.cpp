@@ -27,6 +27,7 @@ import atom;
 import double3;
 import double3x3;
 import property_lambda_probability_histogram;
+import reaction;
 import property_widom;
 import property_simulationbox;
 import property_energy;
@@ -124,11 +125,21 @@ void MonteCarlo::setup()
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
-    // switch the fractional molecule on in the first system, and off in all others
-    if (system_id == 0uz)
+    // switch the fractional molecule on in the first system, and off in all others (serial Gibbs CFCMC)
+    if (system.usesGibbsConventionalCFCMC() || system_id == 0uz)
       system.containsTheFractionalMolecule = true;
     else
       system.containsTheFractionalMolecule = false;
+
+    // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
+    system.initializeGibbsSwapFractionalMoleculeGroupIds();
+
+    if (system.usesGibbsConventionalCFCMC())
+    {
+      system.initializeGibbsConventionalFractionalMolecules();
+      system.precomputeTotalRigidEnergy();
+      system.runningEnergies = system.computeTotalEnergies();
+    }
 
     // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
     if (system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 &&
@@ -279,6 +290,18 @@ void MonteCarlo::performCycle()
         selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSecondSystem.containsTheFractionalMolecule);
+
+        if (selectedSystem.usesGibbsConventionalCFCMC())
+        {
+          selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+        }
+
+        selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Production:
         MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
@@ -290,6 +313,13 @@ void MonteCarlo::performCycle()
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
     selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
         selectedSecondSystem.containsTheFractionalMolecule);
+    if (selectedSystem.usesGibbsConventionalCFCMC())
+    {
+      selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+    }
+    selectedSystem.reactionLambdaSampleOccupancy();
+    selectedSecondSystem.reactionLambdaSampleOccupancy();
   }
 }
 
@@ -436,7 +466,16 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                  true);
+        component.lambdaGibbs.clear();
+      }
     }
+
+    system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.reactionLambdaClearBookkeeping();
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
@@ -493,7 +532,15 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
           component.lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
               system.containsTheFractionalMolecule);
+          if (system.usesGibbsConventionalCFCMC())
+          {
+            component.lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
+          }
         }
+
+        system.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
 
         if (outputToFiles)
         {
@@ -502,6 +549,16 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
           {
             component.lambdaGC.writeBiasingFile(
                 std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
+            if (system.usesGibbsConventionalCFCMC())
+            {
+              component.lambdaGibbs.writeBiasingFile(
+                  std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
+            }
+          }
+          for (Reaction& reaction : system.reactions.list)
+          {
+            system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
+                std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
           }
         }
 
@@ -585,7 +642,15 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, true);
+        component.lambdaGibbs.clear();
+      }
     }
+
+    system.reactionLambdaFinalize();
+    system.reactionLambdaClearBookkeeping();
   };
 
   minBias = std::numeric_limits<double>::max();
@@ -596,6 +661,21 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       double currentMinBias =
           *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        const double gibbsMinBias =
+            *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
+        minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
+      }
+    }
+
+    if (system.usesReactionConventionalCFCMC())
+    {
+      const double reactionMinBias = system.reactionLambdaMinBias();
+      if (reactionMinBias < minBias)
+      {
+        minBias = reactionMinBias;
+      }
     }
   }
   for (System& system : systems)
@@ -603,7 +683,12 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
     for (Component& component : system.components)
     {
       component.lambdaGC.normalize(minBias);
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.normalize(minBias);
+      }
     }
+    system.reactionLambdaNormalize(minBias);
   }
 
   if (outputToFiles)
@@ -615,6 +700,16 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       {
         component.lambdaGC.writeBiasingFile(
             std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
+        if (system.usesGibbsConventionalCFCMC())
+        {
+          component.lambdaGibbs.writeBiasingFile(
+              std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
+        }
+      }
+      for (Reaction& reaction : system.reactions.list)
+      {
+        system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
+            std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
       }
 
       ++system_id;

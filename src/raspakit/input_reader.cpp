@@ -341,6 +341,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   std::vector<std::vector<std::vector<double3>>> jsonRestartFilePositions(
       jsonNumberOfSystems, std::vector<std::vector<double3>>(jsonNumberOfComponents, std::vector<double3>()));
 
+  std::vector<std::vector<Reaction>> jsonReactions(jsonNumberOfSystems);
+
   // Parse component options
   if (parsed_data.contains("Components"))
   {
@@ -454,6 +456,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("PairSwapConventionalProbability") &&
+          item["PairSwapConventionalProbability"].is_number_float())
+      {
+        double pairSwapProbability = item["PairSwapConventionalProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::PairSwap, pairSwapProbability);
+        }
+      }
+
+      if (item.contains("PairSwapProbability") && item["PairSwapProbability"].is_number_float())
+      {
+        double pairSwapCBMCProbability = item["PairSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::PairSwapCBMC, pairSwapCBMCProbability);
+        }
+      }
+
       if (item.contains("CFCMC_SwapProbability") && item["CFCMC_SwapProbability"].is_number_float())
       {
         double swapCFCMCProbability = item["CFCMC_SwapProbability"].get<double>();
@@ -481,12 +502,71 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("Gibbs_CFCMC_CBMC_SwapProbability") &&
+          item["Gibbs_CFCMC_CBMC_SwapProbability"].is_number_float())
+      {
+        double gibbsSwapCBCFCMCProbability = item["Gibbs_CFCMC_CBMC_SwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsSwapCBCFCMC, gibbsSwapCBCFCMCProbability);
+        }
+      }
+
+      if (item.contains("Gibbs_Conventional_CFCMC_CBMC_Probability") &&
+          item["Gibbs_Conventional_CFCMC_CBMC_Probability"].is_number_float())
+      {
+        double gibbsConventionalCFCMCCBMCProbability =
+            item["Gibbs_Conventional_CFCMC_CBMC_Probability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMCCBMC,
+                                               gibbsConventionalCFCMCCBMCProbability);
+        }
+      }
+
+      if (item.contains("CBCFGibbsProbability") && item["CBCFGibbsProbability"].is_number_float())
+      {
+        double cbCfGibbsProbability = item["CBCFGibbsProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMCCBMC, cbCfGibbsProbability);
+        }
+      }
+
+      if (item.contains("Gibbs_Conventional_CFCMC_Probability") &&
+          item["Gibbs_Conventional_CFCMC_Probability"].is_number_float())
+      {
+        double gibbsConventionalCFCMCProbability = item["Gibbs_Conventional_CFCMC_Probability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMC, gibbsConventionalCFCMCProbability);
+        }
+      }
+
+      if (item.contains("CFGibbsProbability") && item["CFGibbsProbability"].is_number_float())
+      {
+        double cfGibbsProbability = item["CFGibbsProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMC, cfGibbsProbability);
+        }
+      }
+
       if (item.contains("GibbsSwapProbability") && item["GibbsSwapProbability"].is_number_float())
       {
         double gibbsSwapCBMCProbability = item["GibbsSwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsSwapCBMC, gibbsSwapCBMCProbability);
+        }
+      }
+
+      if (item.contains("GibbsIdentityChangeProbability") && item["GibbsIdentityChangeProbability"].is_number_float())
+      {
+        double gibbsIdentityChangeCBMCProbability = item["GibbsIdentityChangeProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsIdentityChangeCBMC, gibbsIdentityChangeCBMCProbability);
         }
       }
 
@@ -580,12 +660,51 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("PairComponent") && item["PairComponent"].is_number_integer())
+      {
+        std::size_t pair_component = item["PairComponent"].get<std::size_t>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].pairComponentId = pair_component;
+        }
+      }
+
+      if (item.contains("MaximumPairDistance") && item["MaximumPairDistance"].is_number_float())
+      {
+        double maximum_pair_distance = item["MaximumPairDistance"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].maximumPairDistance = maximum_pair_distance;
+        }
+      }
+
       if (item.contains("IdentityChanges") && item["IdentityChanges"].is_array())
       {
         std::vector<std::size_t> identity_changes = item["IdentityChanges"].get<std::vector<std::size_t>>();
+        if (std::ranges::contains(identity_changes, componentId))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: component '{}' (id {}) cannot list itself in 'IdentityChanges'\n", jsonComponentName,
+              componentId));
+        }
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].identityChanges = identity_changes;
+        }
+      }
+
+      if (item.contains("GibbsIdentityChanges") && item["GibbsIdentityChanges"].is_array())
+      {
+        std::vector<std::size_t> gibbs_identity_changes = item["GibbsIdentityChanges"].get<std::vector<std::size_t>>();
+        if (std::ranges::contains(gibbs_identity_changes, componentId))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: component '{}' (id {}) cannot list itself in 'GibbsIdentityChanges'\n",
+              jsonComponentName, componentId));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].gibbsIdentityChanges = gibbs_identity_changes;
         }
       }
 
@@ -682,6 +801,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonCreateNumberOfMolecules[i][componentId] = initialNumberOfMolecule[i];
+        }
+      }
+
+      if (item.contains("LnPartitionFunction") && item["LnPartitionFunction"].is_array())
+      {
+        std::vector<double> ln_partition_functions =
+            parseList<double>(jsonNumberOfSystems, "LnPartitionFunction", item["LnPartitionFunction"]);
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].lnPartitionFunction = ln_partition_functions[i];
+        }
+      }
+      else if (item.contains("LnPartitionFunction") && item["LnPartitionFunction"].is_number())
+      {
+        const double lnPartitionFunction = item["LnPartitionFunction"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].lnPartitionFunction = lnPartitionFunction;
         }
       }
 
@@ -837,6 +974,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         mc_moves_probabilities.setProbability(Move::Types::VolumeChange, value["VolumeMoveProbability"].get<double>());
       }
 
+      if (value.contains("AnisotropicVolumeMoveProbability") &&
+          value["AnisotropicVolumeMoveProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::AnisotropicVolumeChange,
+                                              value["AnisotropicVolumeMoveProbability"].get<double>());
+      }
+
       if (value.contains("GibbsVolumeMoveProbability") && value["GibbsVolumeMoveProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::GibbsVolume,
@@ -852,6 +996,160 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
+      }
+
+      bool anySerialRxCFC = false;
+      if (value.contains("SerialRxCFC") && value["SerialRxCFC"].is_boolean() && value["SerialRxCFC"].get<bool>())
+      {
+        anySerialRxCFC = true;
+      }
+      if (value.contains("Reactions") && value["Reactions"].is_array())
+      {
+        for (const auto& reactionItem : value["Reactions"])
+        {
+          if (reactionItem.contains("SerialRxCFC") && reactionItem["SerialRxCFC"].is_boolean() &&
+              reactionItem["SerialRxCFC"].get<bool>())
+          {
+            anySerialRxCFC = true;
+            break;
+          }
+        }
+      }
+
+      if (value.contains("ReactionProbability") && value["ReactionProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCBMC,
+                                              value["ReactionProbability"].get<double>());
+      }
+
+      if (value.contains("ConventionalCFCRXMCProbability") &&
+          value["ConventionalCFCRXMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMC,
+                                              value["ConventionalCFCRXMCProbability"].get<double>());
+      }
+      else if (value.contains("CFCRXMCProbability") && value["CFCRXMCProbability"].is_number_float() &&
+               !anySerialRxCFC)
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMC,
+                                              value["CFCRXMCProbability"].get<double>());
+      }
+
+      if (value.contains("ConventionalCFCRXMCLambdaChangeMoveProbability") &&
+          value["ConventionalCFCRXMCLambdaChangeMoveProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
+                                              value["ConventionalCFCRXMCLambdaChangeMoveProbability"].get<double>());
+      }
+      else if (value.contains("ProbabilityCFCRXMCLambdaChangeMove") &&
+               value["ProbabilityCFCRXMCLambdaChangeMove"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
+                                              value["ProbabilityCFCRXMCLambdaChangeMove"].get<double>());
+      }
+
+      if (value.contains("ConventionalCFCRXMCCBMCProbability") &&
+          value["ConventionalCFCRXMCCBMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
+                                              value["ConventionalCFCRXMCCBMCProbability"].get<double>());
+      }
+      else if (value.contains("CFCRXMCCBMCProbability") && value["CFCRXMCCBMCProbability"].is_number_float() &&
+               !anySerialRxCFC)
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
+                                              value["CFCRXMCCBMCProbability"].get<double>());
+      }
+
+      if (value.contains("CFCRXMCProbability") && value["CFCRXMCProbability"].is_number_float() && anySerialRxCFC)
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC,
+                                              value["CFCRXMCProbability"].get<double>());
+      }
+      else if (value.contains("SerialCFCRXMCProbability") &&
+               value["SerialCFCRXMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC,
+                                              value["SerialCFCRXMCProbability"].get<double>());
+      }
+
+      if (value.contains("CFCRXMCCBMCProbability") && value["CFCRXMCCBMCProbability"].is_number_float() &&
+          anySerialRxCFC)
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMCCBMC,
+                                              value["CFCRXMCCBMCProbability"].get<double>());
+      }
+      else if (value.contains("SerialCFCRXMCCBMCProbability") &&
+               value["SerialCFCRXMCCBMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMCCBMC,
+                                              value["SerialCFCRXMCCBMCProbability"].get<double>());
+      }
+
+      if (value.contains("Reactions") && value["Reactions"].is_array())
+      {
+        double defaultMaximumLambdaChange = 0.3;
+        if (value.contains("MaximumReactionLambdaChange") && value["MaximumReactionLambdaChange"].is_number())
+        {
+          defaultMaximumLambdaChange = value["MaximumReactionLambdaChange"].get<double>();
+        }
+
+        double defaultMaximumLambdaChangeProducts = 0.3;
+        if (value.contains("MaximumReactionLambdaChangeProducts") &&
+            value["MaximumReactionLambdaChangeProducts"].is_number())
+        {
+          defaultMaximumLambdaChangeProducts = value["MaximumReactionLambdaChangeProducts"].get<double>();
+        }
+
+        double defaultLambdaSwitchPoint = 0.5;
+        if (value.contains("LambdaSwitchPoint") && value["LambdaSwitchPoint"].is_number())
+        {
+          defaultLambdaSwitchPoint = value["LambdaSwitchPoint"].get<double>();
+        }
+
+        bool defaultSerialRxCFC = false;
+        if (value.contains("SerialRxCFC") && value["SerialRxCFC"].is_boolean())
+        {
+          defaultSerialRxCFC = value["SerialRxCFC"].get<bool>();
+        }
+
+        std::size_t reactionId = 0;
+        for (const auto& reactionItem : value["Reactions"])
+        {
+          if (!reactionItem.contains("Reactants") || !reactionItem.contains("Products"))
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: each reaction must contain 'Reactants' and 'Products'\n"));
+          }
+          Reaction reaction(reactionId, reactionItem["Reactants"].get<std::vector<std::size_t>>(),
+                            reactionItem["Products"].get<std::vector<std::size_t>>());
+          reaction.maximumLambdaChange = defaultMaximumLambdaChange;
+          reaction.maximumLambdaChangeProducts = defaultMaximumLambdaChangeProducts;
+          reaction.lambdaSwitchPoint = defaultLambdaSwitchPoint;
+          reaction.serialRxCFC = defaultSerialRxCFC;
+
+          if (reactionItem.contains("MaximumReactionLambdaChange") &&
+              reactionItem["MaximumReactionLambdaChange"].is_number())
+          {
+            reaction.maximumLambdaChange = reactionItem["MaximumReactionLambdaChange"].get<double>();
+          }
+          if (reactionItem.contains("MaximumReactionLambdaChangeProducts") &&
+              reactionItem["MaximumReactionLambdaChangeProducts"].is_number())
+          {
+            reaction.maximumLambdaChangeProducts =
+                reactionItem["MaximumReactionLambdaChangeProducts"].get<double>();
+          }
+          if (reactionItem.contains("LambdaSwitchPoint") && reactionItem["LambdaSwitchPoint"].is_number())
+          {
+            reaction.lambdaSwitchPoint = reactionItem["LambdaSwitchPoint"].get<double>();
+          }
+          if (reactionItem.contains("SerialRxCFC") && reactionItem["SerialRxCFC"].is_boolean())
+          {
+            reaction.serialRxCFC = reactionItem["SerialRxCFC"].get<bool>();
+          }
+          jsonReactions[systemId].push_back(reaction);
+          ++reactionId;
+        }
       }
 
       if (!value.contains("Type"))
@@ -1025,6 +1323,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
       }
 
+      {
+        double3 inputPressureDiagonal(systems[systemId].input_pressure, systems[systemId].input_pressure,
+                                        systems[systemId].input_pressure);
+        if (value.contains("ExternalPressureX") && value["ExternalPressureX"].is_number())
+        {
+          inputPressureDiagonal.x = value["ExternalPressureX"].get<double>();
+        }
+        if (value.contains("ExternalPressureY") && value["ExternalPressureY"].is_number())
+        {
+          inputPressureDiagonal.y = value["ExternalPressureY"].get<double>();
+        }
+        if (value.contains("ExternalPressureZ") && value["ExternalPressureZ"].is_number())
+        {
+          inputPressureDiagonal.z = value["ExternalPressureZ"].get<double>();
+        }
+        systems[systemId].input_pressureTensorDiagonal = inputPressureDiagonal;
+        systems[systemId].pressureTensorDiagonal = inputPressureDiagonal / Units::PressureConversionFactor;
+      }
+
       if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
       {
         systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
@@ -1040,6 +1357,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
       {
         systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<std::size_t>();
+      }
+
+      systems[systemId].reactions.list = std::move(jsonReactions[systemId]);
+      if (!systems[systemId].reactions.list.empty() && systems[systemId].usesReactionConventionalCFCMC())
+      {
+        systems[systemId].createReactionFractionalMolecules();
       }
 
 
@@ -1480,8 +1803,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     for (std::size_t reactionId = 0uz; const Reaction& reaction : systems[i].reactions.list)
     {
-      if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
-          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
+      if (reaction.reactantStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
+          reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents())
       {
         throw std::runtime_error(
             std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal"
@@ -1623,6 +1946,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ComputePolarization",
     "ChargeMethod",
     "VolumeMoveProbability",
+    "AnisotropicVolumeMoveProbability",
     "GibbsVolumeMoveProbability",
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
@@ -1630,6 +1954,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
+    "ExternalPressureX",
+    "ExternalPressureY",
+    "ExternalPressureZ",
     "ChemicalPotential",
     "UseChargesFrom",
     "Framework",
@@ -1688,7 +2015,21 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",
     "MacroStateMaximumNumberOfMolecules",
-    "RestartFileName"};
+    "RestartFileName",
+    "ReactionProbability",
+    "ConventionalCFCRXMCProbability",
+    "ConventionalCFCRXMCLambdaChangeMoveProbability",
+    "ConventionalCFCRXMCCBMCProbability",
+    "CFCRXMCProbability",
+    "CFCRXMCCBMCProbability",
+    "ProbabilityCFCRXMCLambdaChangeMove",
+    "SerialCFCRXMCProbability",
+    "SerialCFCRXMCCBMCProbability",
+    "MaximumReactionLambdaChange",
+    "MaximumReactionLambdaChangeProducts",
+    "LambdaSwitchPoint",
+    "SerialRxCFC",
+    "Reactions"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",
@@ -1703,10 +2044,18 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdentityChangeProbability",
     "SwapConventionalProbability",
     "SwapProbability",
+    "PairSwapConventionalProbability",
+    "PairSwapProbability",
+    "PairComponent",
+    "MaximumPairDistance",
     "CFCMC_SwapProbability",
     "CFCMC_CBMC_SwapProbability",
     "GibbsSwapProbability",
     "Gibbs_CFCMC_SwapProbability",
+    "Gibbs_CFCMC_CBMC_SwapProbability",
+    "Gibbs_Conventional_CFCMC_Probability",
+    "CFGibbsProbability",
+    "GibbsIdentityChangeProbability",
     "WidomProbability",
     "CFCMC_WidomProbability",
     "CFCMC_CBMC_WidomProbability",
@@ -1716,9 +2065,15 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdealGasRosenbluthWeight",
     "MolFraction",
     "IdentityChanges",
+    "GibbsIdentityChanges",
     "ThermodynamicIntegration",
     "LambdaBiasFileName",
-    "BlockingPockets"};
+    "BlockingPockets",
+    "LnPartitionFunction"};
+
+const std::set<std::string, InputReader::InsensitiveCompare> InputReader::reactionOptions = {
+    "Reactants", "Products", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
+    "LambdaSwitchPoint", "SerialRxCFC"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -1739,6 +2094,20 @@ void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>&
         if (!systemOptions.contains(key))
         {
           throw std::runtime_error(std::format("Error: Unknown system input '{}'\n", key));
+        }
+      }
+
+      if (value.contains("Reactions") && value["Reactions"].is_array())
+      {
+        for (const auto& reactionItem : value["Reactions"])
+        {
+          for (auto& [key, _] : reactionItem.items())
+          {
+            if (!reactionOptions.contains(key))
+            {
+              throw std::runtime_error(std::format("Error: Unknown reaction input '{}'\n", key));
+            }
+          }
         }
       }
     }

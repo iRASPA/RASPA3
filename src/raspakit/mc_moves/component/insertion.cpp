@@ -38,8 +38,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   Move::Types move = Move::Types::Swap;
   Component& component = system.components[selectedComponent];
 
-  // Initialize selected molecule and update swap insertion move counts.
-  std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  // Set trial moleculeId to something that does not overlap with the current molecules
+  // The 'insertMolecule' routine will place it after the last molecule of the component
+  std::size_t selectedMolecule = system.numberOfMolecules();
+
+  // Update swap insertion move counts.
   component.mc_moves_statistics.addTrial(move, 0);
 
   // Generate a trial molecule with a random position inside the simulation box.

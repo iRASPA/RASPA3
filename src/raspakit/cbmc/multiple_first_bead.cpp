@@ -92,7 +92,8 @@ import interpolation_energy_grid;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom) noexcept
+    double cutOffCoulomb, const Atom& atom,
+    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions(forceField.numberOfFirstBeadPositions, atom);
   std::for_each(trialPositions.begin(), trialPositions.end(),
@@ -101,7 +102,7 @@ import interpolation_energy_grid;
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
       component, hasExternalField, forceField, simulationBox, interpolationGrids, 
       externalFieldInterpolationGrid, framework, frameworkAtoms,
-      moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
+      moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, skipBackgroundMolecule);
 
   if (externalEnergies.empty()) return std::nullopt;
 
@@ -124,25 +125,24 @@ import interpolation_energy_grid;
                        RosenbluthWeight / double(forceField.numberOfFirstBeadPositions), storedR);
 }
 
-[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadReinsertion(
+[[nodiscard]] std::optional<FirstBeadData> CBMC::retraceMultipleFirstBeadReinsertion(
     [[maybe_unused]] RandomNumber& random, const Component& component, bool hasExternalField,
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom, double storedR)
+    double cutOffCoulomb, const Atom& atom, double storedR,
+    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions({atom});
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
       component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtoms,
-      moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
+      moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, skipBackgroundMolecule);
   if (externalEnergies.empty())
   {
-    throw std::runtime_error(
-        "[retraceMultipleFirstBeadReinsertion]: all overlap, \
-                              including existing configuration\n");
+    return std::nullopt;
   }
 
   std::vector<double> logBoltmannFactors{};
@@ -164,7 +164,7 @@ import interpolation_energy_grid;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom, std::optional<SkipMolecule> skipBackgroundMolecule) noexcept
+    double cutOffCoulomb, const Atom& atom, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions({atom});
 
@@ -201,4 +201,40 @@ import interpolation_energy_grid;
   double RosenbluthWeight = std::exp(logBoltmannFactor);
 
   return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight, 0.0);
+}
+
+[[nodiscard]] std::optional<FirstBeadData> CBMC::growFirstBeadAtFixedPosition(
+    const Component& component, bool hasExternalField, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom& atom) noexcept
+{
+  std::vector<Atom> trialPositions({atom});
+
+  const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtoms, moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
+
+  if (externalEnergies.empty()) return std::nullopt;
+
+  return FirstBeadData(externalEnergies[0].first, externalEnergies[0].second, 1.0, 0.0);
+}
+
+[[nodiscard]] FirstBeadData CBMC::retraceFirstBeadAtFixedPosition(
+    const Component& component, bool hasExternalField, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom atom) noexcept
+{
+  std::vector<Atom> trialPositions({atom});
+
+  const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
+      component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
+      framework, frameworkAtoms, moleculeAtoms, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
+
+  return FirstBeadData(atom, externalEnergies[0].second, 1.0, 0.0);
 }

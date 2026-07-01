@@ -46,7 +46,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  std::size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+  std::size_t indexFractionalMolecule =
+      system.indexOfFractionalMoleculeForMove(Move::Types::SwapCFCMC, selectedComponent);
 
   if (selectedNewBin >= std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints))  // Insertion move
   {
@@ -168,7 +169,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     }
 
     // Copy atoms from the old fractional molecule, including the groupIds
-    std::size_t upcomingMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent];
+    std::size_t upcomingMoleculeId = system.numberOfMolecules();
+
     bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
     std::for_each(std::begin(trialMolecule.second), std::end(trialMolecule.second),
                   [selectedComponent, upcomingMoleculeId, groupId, newLambda](Atom& atom)
@@ -296,6 +298,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
+
+      system.updateMoleculeAtomInformation();
 
       component.mc_moves_statistics.addAccepted(move, 0);
 

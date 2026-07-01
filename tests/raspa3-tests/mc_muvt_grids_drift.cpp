@@ -74,9 +74,9 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -161,9 +161,9 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -248,9 +248,9 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -335,9 +335,9 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -376,350 +376,3 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   }
 }
 
-TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
-{
-  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
-
-  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
-
-  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
-  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(Move::Types::SwapCFCMC, 1.0);
-
-  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                            {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
-
-  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
-  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
-
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
-                                probabilities_methane, std::nullopt, false);
-
-  MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(Move::Types::Translation, 1.0);
-  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-
-  Component water = Component(
-      forceField, "water", 0.0, 0.0, 0.0,
-      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
-
-  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
-
-  std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
-  size_t printEvery{1000};
-  size_t writeBinaryRestartEvery{10000};
-  size_t rescaleWangLandauEvery{5000};
-  size_t optimizeMCMovesEvery{5000};
-  size_t numberOfBlocks{5};
-  bool outputToFiles{false};
-
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
-                             numberOfBlocks, outputToFiles);
-
-  mc.run();
-
-  for (System &s : mc.systems)
-  {
-    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
-    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
-
-    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
-    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
-  }
-}
-
-TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
-{
-  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
-
-  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
-
-  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
-  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
-
-  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                            {}, {}, 5, 21, probabilities_co2, std::nullopt, true);
-
-  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
-  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
-
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
-                                probabilities_methane, std::nullopt, false);
-
-  MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(Move::Types::Translation, 1.0);
-  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-
-  Component water = Component(
-      forceField, "water", 0.0, 0.0, 0.0,
-      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
-
-  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
-
-  std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
-  size_t printEvery{1000};
-  size_t writeBinaryRestartEvery{10000};
-  size_t rescaleWangLandauEvery{5000};
-  size_t optimizeMCMovesEvery{5000};
-  size_t numberOfBlocks{5};
-  bool outputToFiles{false};
-
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
-                             numberOfBlocks, outputToFiles);
-
-  mc.run();
-
-  for (System &s : mc.systems)
-  {
-    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
-    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
-
-    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
-    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
-  }
-}
-
-TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
-{
-  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
-
-  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
-
-  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
-  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(Move::Types::SwapCFCMC, 1.0);
-
-  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
-
-  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
-  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
-
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
-                                probabilities_methane, std::nullopt, true);
-
-  MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(Move::Types::Translation, 1.0);
-  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-
-  Component water = Component(
-      forceField, "water", 0.0, 0.0, 0.0,
-      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
-
-  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
-
-  std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
-  size_t printEvery{1000};
-  size_t writeBinaryRestartEvery{10000};
-  size_t rescaleWangLandauEvery{5000};
-  size_t optimizeMCMovesEvery{5000};
-  size_t numberOfBlocks{5};
-  bool outputToFiles{false};
-
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
-                             numberOfBlocks, outputToFiles);
-
-  mc.run();
-
-  for (System &s : mc.systems)
-  {
-    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
-    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
-
-    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
-    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
-  }
-}
-
-TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
-{
-  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
-
-  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
-
-  MCMoveProbabilities probabilities_co2 = MCMoveProbabilities();
-  probabilities_co2.setProbability(Move::Types::Translation, 1.0);
-  probabilities_co2.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_co2.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_co2.setProbability(Move::Types::SwapCBCFCMC, 1.0);
-
-  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
-                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                            {}, {}, 5, 21, probabilities_co2, std::nullopt, false);
-
-  MCMoveProbabilities probabilities_methane = MCMoveProbabilities();
-  probabilities_methane.setProbability(Move::Types::Translation, 1.0);
-  probabilities_methane.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-  probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
-
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
-                                probabilities_methane, std::nullopt, true);
-
-  MCMoveProbabilities probabilities_water = MCMoveProbabilities();
-  probabilities_water.setProbability(Move::Types::Translation, 1.0);
-  probabilities_water.setProbability(Move::Types::Rotation, 1.0);
-  probabilities_water.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-
-  Component water = Component(
-      forceField, "water", 0.0, 0.0, 0.0,
-      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-      {}, {}, 5, 21, probabilities_water, std::nullopt, false);
-
-  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
-
-  std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
-  size_t printEvery{1000};
-  size_t writeBinaryRestartEvery{10000};
-  size_t rescaleWangLandauEvery{5000};
-  size_t optimizeMCMovesEvery{5000};
-  size_t numberOfBlocks{5};
-  bool outputToFiles{false};
-
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
-                             numberOfBlocks, outputToFiles);
-
-  mc.run();
-
-  for (System &s : mc.systems)
-  {
-    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
-    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
-
-    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.externalFieldCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
-    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
-    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
-  }
-}

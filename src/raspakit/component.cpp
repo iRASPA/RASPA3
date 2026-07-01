@@ -780,6 +780,13 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
       std::copy(identityChanges.begin(), identityChanges.end(), std::ostream_iterator<std::size_t>(result, " "));
       std::print(stream, "    identity changes: {}\n", result.str());
     }
+    if (!gibbsIdentityChanges.empty())
+    {
+      std::stringstream result{};
+      std::copy(gibbsIdentityChanges.begin(), gibbsIdentityChanges.end(),
+                std::ostream_iterator<std::size_t>(result, " "));
+      std::print(stream, "    gibbs identity changes: {}\n", result.str());
+    }
   }
 
   return stream.str();
@@ -1539,6 +1546,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.grownAtoms;
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
+  archive << c.gibbsIdentityChanges;
 
   archive << c.initialNumberOfMolecules;
 
@@ -1558,6 +1566,12 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.averageGibbsRosenbluthWeights;
 
   archive << c.lnPartitionFunction;
+
+  if (c.versionNumber >= 3)
+  {
+    archive << c.pairComponentId;
+    archive << c.maximumPairDistance;
+  }
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1620,6 +1634,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.grownAtoms;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
+  if (versionNumber >= 2)
+  {
+    archive >> c.gibbsIdentityChanges;
+  }
 
   archive >> c.initialNumberOfMolecules;
 
@@ -1639,6 +1657,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.averageGibbsRosenbluthWeights;
 
   archive >> c.lnPartitionFunction;
+
+  if (versionNumber >= 3)
+  {
+    archive >> c.pairComponentId;
+    archive >> c.maximumPairDistance;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

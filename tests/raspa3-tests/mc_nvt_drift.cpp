@@ -53,9 +53,9 @@ TEST(MC_NVT_DRIFT, translation)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -125,9 +125,9 @@ TEST(MC_NVT_DRIFT, random_translation)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -197,9 +197,9 @@ TEST(MC_NVT_DRIFT, rotation)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -269,9 +269,9 @@ TEST(MC_NVT_DRIFT, random_rotation)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{1000};
-  size_t numberOfInitializationCycles{500};
-  size_t numberOfEquilibrationCycles{1000};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -341,9 +341,9 @@ TEST(MC_NVT_DRIFT, reinsertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{250};
-  size_t numberOfInitializationCycles{100};
-  size_t numberOfEquilibrationCycles{100};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -415,9 +415,9 @@ TEST(MC_NVT_DRIFT, translation_rotation_reinsertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{250};
-  size_t numberOfInitializationCycles{100};
-  size_t numberOfEquilibrationCycles{100};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
@@ -489,9 +489,9 @@ TEST(MC_NVT_DRIFT, random_translation_random_rotation_reinsertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{250};
-  size_t numberOfInitializationCycles{100};
-  size_t numberOfEquilibrationCycles{100};
+  size_t numberOfCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
   size_t writeBinaryRestartEvery{10000};
   size_t rescaleWangLandauEvery{5000};
