@@ -27,6 +27,19 @@ import std;
 import stringutils;
 import json;
 
+#if defined(__APPLE__)
+static std::string sysctlString(const char* name)
+{
+  char buffer[256]{};
+  size_t len = sizeof(buffer);
+  if (sysctlbyname(name, &buffer, &len, nullptr, 0) != 0 || len == 0)
+  {
+    return {};
+  }
+  return std::string(buffer, std::strlen(buffer));
+}
+#endif
+
 std::string HardwareInfo::writeInfo()
 {
   std::ostringstream stream;
@@ -123,33 +136,12 @@ std::string HardwareInfo::writeInfo()
 
   // get hostname and cpu-info for mac osx
 #if defined(__APPLE__)
-  size_t len;
-  char cpudata[128], cpumodel[128], hostname[256];
-  char osrelease[128], ostype[128], osversion[128];
-
-  len = sizeof(cpudata);
-  sysctlbyname("hw.machine", &cpudata, &len, NULL, 0);
-  std::print(stream, "Cpu data:    {}\n", std::string(cpudata, cpudata + len - 1));
-
-  len = sizeof(cpumodel);
-  sysctlbyname("hw.model", &cpumodel, &len, NULL, 0);
-  std::print(stream, "Cpu Model:   {}\n", std::string(cpumodel, cpumodel + len - 1));
-
-  len = sizeof(hostname);
-  sysctlbyname("kern.hostname", &hostname, &len, NULL, 0);
-  std::print(stream, "Host name:  {}s\n", std::string(hostname, hostname + len - 1));
-
-  len = sizeof(osrelease);
-  sysctlbyname("kern.osrelease", &osrelease, &len, NULL, 0);
-  std::print(stream, "OS release:  {}\n", std::string(osrelease, osrelease + len - 1));
-
-  len = sizeof(ostype);
-  sysctlbyname("kern.ostype", &ostype, &len, NULL, 0);
-  std::print(stream, "OS type:     {}\n", std::string(ostype, ostype + len - 1));
-
-  len = sizeof(osversion);
-  sysctlbyname("kern.osversion", &osversion, &len, NULL, 0);
-  std::print(stream, "OS version:  {}\n\n\n", std::string(osversion, osversion + len - 1));
+  std::print(stream, "Cpu data:    {}\n", sysctlString("hw.machine"));
+  std::print(stream, "Cpu Model:   {}\n", sysctlString("hw.model"));
+  std::print(stream, "Host name:  {}\n", sysctlString("kern.hostname"));
+  std::print(stream, "OS release:  {}\n", sysctlString("kern.osrelease"));
+  std::print(stream, "OS type:     {}\n", sysctlString("kern.ostype"));
+  std::print(stream, "OS version:  {}\n\n\n", sysctlString("kern.osversion"));
 #endif
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -480,33 +472,12 @@ nlohmann::json HardwareInfo::jsonInfo()
 
   // get hostname and cpu-info for mac osx
 #if defined(__APPLE__)
-  size_t len;
-  char cpudata[128], cpumodel[128], hostname[256];
-  char osrelease[128], ostype[128], osversion[128];
-
-  len = sizeof(cpudata);
-  sysctlbyname("hw.machine", &cpudata, &len, NULL, 0);
-  info["os_arch"] = std::string(cpudata, cpudata + len - 1);
-
-  len = sizeof(cpumodel);
-  sysctlbyname("hw.model", &cpumodel, &len, NULL, 0);
-  info["cpu_model"] = std::string(cpumodel, cpumodel + len - 1);
-
-  len = sizeof(hostname);
-  sysctlbyname("kern.hostname", &hostname, &len, NULL, 0);
-  info["hostname"] = std::string(hostname, hostname + len - 1);
-
-  len = sizeof(osrelease);
-  sysctlbyname("kern.osrelease", &osrelease, &len, NULL, 0);
-  info["os_release"] = std::string(osrelease, osrelease + len - 1);
-
-  len = sizeof(ostype);
-  sysctlbyname("kern.ostype", &ostype, &len, NULL, 0);
-  info["os_type"] = std::string(ostype, ostype + len - 1);
-
-  len = sizeof(osversion);
-  sysctlbyname("kern.osversion", &osversion, &len, NULL, 0);
-  info["os_version"] = std::string(osversion, osversion + len - 1);
+  info["os_arch"] = sysctlString("hw.machine");
+  info["cpu_model"] = sysctlString("hw.model");
+  info["hostname"] = sysctlString("kern.hostname");
+  info["os_release"] = sysctlString("kern.osrelease");
+  info["os_type"] = sysctlString("kern.ostype");
+  info["os_version"] = sysctlString("kern.osversion");
 #endif
 
   /*

@@ -212,6 +212,52 @@ MCMoveCpuTime::MCMoveCpuTime()
                 std::map<std::string, std::chrono::duration<double>>{
                   //Move::Types::ReactionCFCMCCBMC [25],
                   {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::GibbsSwapCBCFCMC [26],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"LambdaInterchange-NonEwald", std::chrono::duration<double>::zero()},
+                  {"LambdaInterchange-Ewald", std::chrono::duration<double>::zero()},
+                  {"LambdaInterchange-Tail", std::chrono::duration<double>::zero()},
+                  {"LambdaChange-NonEwald", std::chrono::duration<double>::zero()},
+                  {"LambdaChange-Ewald", std::chrono::duration<double>::zero()},
+                  {"LambdaChange-Tail", std::chrono::duration<double>::zero()},
+                  {"LambdaShuffle-NonEwald", std::chrono::duration<double>::zero()},
+                  {"LambdaShuffle-Ewald", std::chrono::duration<double>::zero()},
+                  {"LambdaShuffle-Tail", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::GibbsConventionalCFCMC [27],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::GibbsConventionalCFCMCCBMC [28],
+                  {"Total", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::PairSwap [29],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"Insertion-Total", std::chrono::duration<double>::zero()},
+                  {"Deletion-Total", std::chrono::duration<double>::zero()},
+                  {"NonEwald", std::chrono::duration<double>::zero()},
+                  {"Tail", std::chrono::duration<double>::zero()},
+                  {"Ewald", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::PairSwapCBMC [30],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"Insertion-Total", std::chrono::duration<double>::zero()},
+                  {"Deletion-Total", std::chrono::duration<double>::zero()},
+                  {"NonEwald", std::chrono::duration<double>::zero()},
+                  {"Tail", std::chrono::duration<double>::zero()},
+                  {"Ewald", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::AnisotropicVolumeChange [31],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"NonEwald", std::chrono::duration<double>::zero()},
+                  {"Tail", std::chrono::duration<double>::zero()},
+                  {"Ewald", std::chrono::duration<double>::zero()}
                 }
               }
 {

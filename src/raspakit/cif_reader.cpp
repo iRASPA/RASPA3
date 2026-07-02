@@ -90,29 +90,40 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     }
   }
 
+  for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
+  {
+    cif_reader.fractionalAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+  }
+
   std::vector<Atom> atoms = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms);
 
-  //if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
-  //{
-  //  ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
-  //                                                  ChargeEquilibration::Type::PeriodicEwaldSum);
+  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
+  {
+    std::vector<Atom> unit_cell_atoms_cartesian = atoms;
+    for (Atom& atom : unit_cell_atoms_cartesian)
+    {
+      atom.position = simulation_box.cell * atom.position;
+    }
 
-  //  std::vector<std::size_t> countCharge(definedAtoms.size());
-  //  std::vector<double> sumCharge(definedAtoms.size());
-  //  for (const Atom& atom : unitCellAtoms)
-  //  {
-  //    ++countCharge[atom.moleculeId];
-  //    sumCharge[atom.moleculeId] += atom.charge;
-  //  }
-  //  for (std::size_t i = 0; i < definedAtoms.size(); ++i)
-  //  {
-  //    definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
-  //  }
-  //  for (Atom& atom : unitCellAtoms)
-  //  {
-  //    atom.charge = definedAtoms[atom.moleculeId].charge;
-  //  }
-  //}
+    ChargeEquilibration::computeChargeEquilibration(forceField, simulation_box, unit_cell_atoms_cartesian,
+                                                      ChargeEquilibration::Type::PeriodicEwaldSum);
+
+    std::vector<std::size_t> count_charge(cif_reader.fractionalAtoms.size());
+    std::vector<double> sum_charge(cif_reader.fractionalAtoms.size());
+    for (const Atom& atom : unit_cell_atoms_cartesian)
+    {
+      ++count_charge[atom.moleculeId];
+      sum_charge[atom.moleculeId] += atom.charge;
+    }
+    for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
+    {
+      cif_reader.fractionalAtoms[i].charge = sum_charge[i] / static_cast<double>(count_charge[i]);
+    }
+    for (Atom& atom : atoms)
+    {
+      atom.charge = cif_reader.fractionalAtoms[atom.moleculeId].charge;
+    }
+  }
 
 
   return std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>{simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms, atoms};

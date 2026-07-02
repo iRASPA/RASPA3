@@ -320,4 +320,32 @@ RunningEnergy computeEwaldFourierElectricField(
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     std::span<Atom> atomData);
 
+/**
+ * \brief Computes the periodic Coulomb potential matrix used in charge equilibration.
+ *
+ * Fills the N x N matrix V (row-major) with the Ewald lattice sum of 1/|r_i - r_j + L| over all
+ * periodic images L (with neutralizing background). The diagonal contains the interaction of a
+ * site with its own periodic images (self/Wigner potential). The matrix is in units of
+ * [1/Angstrom]; no Coulomb conversion factor is applied.
+ *
+ * The Ewald parameters (alpha and the number of wave vectors) are derived internally from the
+ * simulation box, because charge equilibration runs during CIF-reading, before the force-field
+ * Ewald parameters have been initialized. The real-space part uses the minimum-image convention
+ * with a cutoff of half the smallest perpendicular box width; the Fourier part uses the same
+ * exp(ik.r) recursion as the other Ewald routines and accumulates each wave vector as a
+ * symmetric rank-2 update of the matrix.
+ *
+ * \param eik_x Preallocated vector to temporarily store exponential terms along x-axis.
+ * \param eik_y Preallocated vector to temporarily store exponential terms along y-axis.
+ * \param eik_z Preallocated vector to temporarily store exponential terms along z-axis.
+ * \param eik_xy Preallocated vector to temporarily store exponential terms along xy-plane.
+ * \param simulationBox The simulation box parameters.
+ * \param atoms The atoms (only positions are used).
+ * \param potentialMatrix Output buffer of size atoms.size() * atoms.size(), row-major.
+ */
+void computeEwaldFourierChargeEquilibrationPotentialMatrix(
+    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
+    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
+    const SimulationBox &simulationBox, std::span<const Atom> atoms, std::span<double> potentialMatrix);
+
 }  // namespace Interactions

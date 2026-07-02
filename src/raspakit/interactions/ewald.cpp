@@ -2004,3 +2004,174 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
   return energySum;
 }
+
+void Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(
+    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
+    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
+    const SimulationBox &simulationBox, std::span<const Atom> atoms, std::span<double> potentialMatrix)
+{
+  const std::size_t numberOfAtoms = atoms.size();
+  const double volume = simulationBox.volume;
+  const double3x3 inv_box = simulationBox.inverseCell;
+  const double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
+  const double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
+  const double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
+
+  // Derive the Ewald parameters from the box using the same formulas as
+  // ForceField::initializeEwaldParameters. The force-field Ewald parameters can not be used here,
+  // because charge equilibration runs during CIF-reading, before they are initialized.
+  const double3 perpendicularWidths = simulationBox.perpendicularWidths();
+  const double cutOff =
+      0.5 * std::min({perpendicularWidths.x, perpendicularWidths.y, perpendicularWidths.z});
+  const double eps = 1.0e-8;
+  const double tol = std::sqrt(std::abs(std::log(eps * cutOff)));
+  const double alpha = std::sqrt(std::abs(std::log(eps * cutOff * tol))) / cutOff;
+  const double tol1 = std::sqrt(-std::log(eps * cutOff * (2.0 * tol * alpha) * (2.0 * tol * alpha)));
+
+  const std::size_t kx_max_unsigned = static_cast<std::size_t>(
+      std::rint(0.25 + perpendicularWidths.x * alpha * tol1 / std::numbers::pi));
+  const std::size_t ky_max_unsigned = static_cast<std::size_t>(
+      std::rint(0.25 + perpendicularWidths.y * alpha * tol1 / std::numbers::pi));
+  const std::size_t kz_max_unsigned = static_cast<std::size_t>(
+      std::rint(0.25 + perpendicularWidths.z * alpha * tol1 / std::numbers::pi));
+  const std::size_t recip_integer_cutoff_squared =
+      std::max({kx_max_unsigned, ky_max_unsigned, kz_max_unsigned}) *
+      std::max({kx_max_unsigned, ky_max_unsigned, kz_max_unsigned});
+
+  const std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
+  const std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
+  const std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
+
+  std::fill(potentialMatrix.begin(), potentialMatrix.end(), 0.0);
+
+  // Real-space part: minimum-image erfc(alpha * r) / r; the cutoff equals half the smallest
+  // perpendicular width, so the minimum image is the only image that contributes.
+  for (std::size_t i = 0; i != numberOfAtoms; ++i)
+  {
+    for (std::size_t j = i + 1; j != numberOfAtoms; ++j)
+    {
+      double3 dr = atoms[i].position - atoms[j].position;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double r = std::sqrt(double3::dot(dr, dr));
+      potentialMatrix[i * numberOfAtoms + j] += std::erfc(alpha * r) / r;
+    }
+  }
+
+  if (numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
+  if (numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
+  if (numberOfAtoms * (kz_max_unsigned + 1) > eik_z.size()) eik_z.resize(numberOfAtoms * (kz_max_unsigned + 1));
+  if (numberOfAtoms > eik_xy.size()) eik_xy.resize(numberOfAtoms);
+
+  // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
+  for (std::size_t i = 0; i != numberOfAtoms; ++i)
+  {
+    eik_x[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
+    eik_y[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
+    eik_z[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
+    double3 s = 2.0 * std::numbers::pi * (inv_box * atoms[i].position);
+    eik_x[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.x), std::sin(s.x));
+    eik_y[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.y), std::sin(s.y));
+    eik_z[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.z), std::sin(s.z));
+  }
+
+  // Calculate remaining positive kx, ky and kz by recurrence
+  for (std::size_t kx = 2; kx <= kx_max_unsigned; ++kx)
+  {
+    for (std::size_t i = 0; i != numberOfAtoms; ++i)
+    {
+      eik_x[i + kx * numberOfAtoms] = eik_x[i + (kx - 1) * numberOfAtoms] * eik_x[i + 1 * numberOfAtoms];
+    }
+  }
+  for (std::size_t ky = 2; ky <= ky_max_unsigned; ++ky)
+  {
+    for (std::size_t i = 0; i != numberOfAtoms; ++i)
+    {
+      eik_y[i + ky * numberOfAtoms] = eik_y[i + (ky - 1) * numberOfAtoms] * eik_y[i + 1 * numberOfAtoms];
+    }
+  }
+  for (std::size_t kz = 2; kz <= kz_max_unsigned; ++kz)
+  {
+    for (std::size_t i = 0; i != numberOfAtoms; ++i)
+    {
+      eik_z[i + kz * numberOfAtoms] = eik_z[i + (kz - 1) * numberOfAtoms] * eik_z[i + 1 * numberOfAtoms];
+    }
+  }
+
+  // Fourier part: for every wave vector the contribution to the matrix,
+  // prefactor * cos(k.(r_i - r_j)) = prefactor * Re(e^{ik.r_i} conj(e^{ik.r_j})),
+  // is accumulated as a symmetric rank-2 update using the per-atom phases.
+  std::vector<std::complex<double>> phase(numberOfAtoms);
+  for (std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
+  {
+    double3 kvec_x = 2.0 * std::numbers::pi * static_cast<double>(kx) * ax;
+
+    // Only positive kx are used, the negative kx are taken into account by the factor of two
+    double factor = (kx == 0) ? 1.0 : 2.0;
+
+    for (std::make_signed_t<std::size_t> ky = -ky_max; ky <= ky_max; ++ky)
+    {
+      double3 kvec_y = 2.0 * std::numbers::pi * static_cast<double>(ky) * ay;
+
+      // Precompute and store eik_x * eik_y outside the kz-loop
+      for (std::size_t i = 0; i != numberOfAtoms; ++i)
+      {
+        std::complex<double> eiky_temp = eik_y[i + numberOfAtoms * static_cast<std::size_t>(std::abs(ky))];
+        eiky_temp.imag(ky >= 0 ? eiky_temp.imag() : -eiky_temp.imag());
+        eik_xy[i] = eik_x[i + numberOfAtoms * static_cast<std::size_t>(kx)] * eiky_temp;
+      }
+
+      for (std::make_signed_t<std::size_t> kz = -kz_max; kz <= kz_max; ++kz)
+      {
+        double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
+        double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
+
+        // Ommit kvec==0
+        std::size_t ksq = static_cast<std::size_t>(kx * kx + ky * ky + kz * kz);
+        if ((ksq != 0uz) && (ksq <= recip_integer_cutoff_squared))
+        {
+          for (std::size_t i = 0; i != numberOfAtoms; ++i)
+          {
+            std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
+            eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
+            phase[i] = eik_xy[i] * eikz_temp;
+          }
+
+          double prefactor = factor * (4.0 * std::numbers::pi / volume) *
+                             std::exp((-0.25 / (alpha * alpha)) * rksq) / rksq;
+
+          for (std::size_t i = 0; i != numberOfAtoms; ++i)
+          {
+            const double re_i = prefactor * phase[i].real();
+            const double im_i = prefactor * phase[i].imag();
+            double *row = &potentialMatrix[i * numberOfAtoms];
+            for (std::size_t j = i; j != numberOfAtoms; ++j)
+            {
+              row[j] += re_i * phase[j].real() + im_i * phase[j].imag();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Self-energy of the Gaussian screening charge and the neutralizing-background correction,
+  // which together make the matrix independent of the choice of alpha.
+  const double background = std::numbers::pi / (alpha * alpha * volume);
+  for (std::size_t i = 0; i != numberOfAtoms; ++i)
+  {
+    for (std::size_t j = i; j != numberOfAtoms; ++j)
+    {
+      potentialMatrix[i * numberOfAtoms + j] -= background;
+    }
+    potentialMatrix[i * numberOfAtoms + i] -= 2.0 * alpha / std::sqrt(std::numbers::pi);
+  }
+
+  // Mirror the upper triangle into the lower triangle
+  for (std::size_t i = 0; i != numberOfAtoms; ++i)
+  {
+    for (std::size_t j = i + 1; j != numberOfAtoms; ++j)
+    {
+      potentialMatrix[j * numberOfAtoms + i] = potentialMatrix[i * numberOfAtoms + j];
+    }
+  }
+}

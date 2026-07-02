@@ -13,14 +13,83 @@ import double3x3;
 import skelement;
 import atom;
 import simulationbox;
-#if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
-#endif
+import interactions_ewald;
 
-extern "C"
+static void solveMatrix(std::span<double> matrix, std::size_t rows, std::size_t cols, std::span<double> b,
+                        std::span<double> x)
 {
-  void dgesv_(const long long* n, const long long* nrhs, double* a, const long long* lda, long long* ipiv, double* b,
-              const long long* ldb, long long* info);
+  for (std::size_t i = 0; i < rows; ++i)
+  {
+    x[i] = b[i];
+  }
+
+  std::vector<double> d(cols);
+
+  auto element = [matrix, cols](std::size_t row, std::size_t col) -> double& {
+    return matrix[row * cols + col];
+  };
+
+  for (std::size_t i = 0; i < cols; ++i)
+  {
+    double r = 0.0;
+    for (std::size_t k = i; k < rows; ++k)
+    {
+      r += element(k, i) * element(k, i);
+    }
+
+    if (r == 0.0)
+    {
+      throw std::runtime_error("[charge equilibration]: matrix is rank deficient\n");
+    }
+
+    const double alpha = (element(i, i) < 0.0) ? -std::sqrt(r) : std::sqrt(r);
+    const double ak = 1.0 / (r + alpha * element(i, i));
+
+    element(i, i) += alpha;
+    d[i] = -alpha;
+
+    for (std::size_t k = i + 1; k < cols; ++k)
+    {
+      double f = 0.0;
+      for (std::size_t j = i; j < rows; ++j)
+      {
+        f += element(j, k) * element(j, i);
+      }
+      f *= ak;
+
+      for (std::size_t j = i; j < rows; ++j)
+      {
+        element(j, k) -= f * element(j, i);
+      }
+    }
+
+    if (std::abs(alpha) < 1.0e-5)
+    {
+      throw std::runtime_error("[charge equilibration]: apparent singularity in matrix\n");
+    }
+
+    double f = 0.0;
+    for (std::size_t j = i; j < rows; ++j)
+    {
+      f += x[j] * element(j, i);
+    }
+    f *= ak;
+
+    for (std::size_t j = i; j < rows; ++j)
+    {
+      x[j] -= f * element(j, i);
+    }
+  }
+
+  for (std::size_t i = cols; i-- > 0;)
+  {
+    double sum = 0.0;
+    for (std::size_t k = i + 1; k < cols; ++k)
+    {
+      sum += element(i, k) * x[k];
+    }
+    x[i] = (x[i] - sum) / d[i];
+  }
 }
 
 static double getJ(const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms, const std::vector<double>& J,
@@ -28,7 +97,6 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
 {
   double k = 14.4;      // [Angstroms * electron volts]
   double lambda = 1.2;  // Global hardness scaling parameter
-  double eta = 50.0;
 
   switch (type)
   {
@@ -147,191 +215,8 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
       }
     }
     break;
-    case ChargeEquilibration::Type::PeriodicEwaldSum:
-    {
-      double minCellLength = 250;
-      double3x3 box = simulationBox.cell;
-      double3x3 inverse_box = simulationBox.inverseCell;
-      double volume = simulationBox.volume;
-      long long aVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.ax))) - 1;
-      long long bVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.by))) - 1;
-      long long cVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.cz))) - 1;
-      double3 dr;
-
-      if (i == j)
-      {
-        double orbital = 0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              if (!((u == 0) && (v == 0) && (w == 0)))
-              {
-                dr.x =
-                    static_cast<double>(u) * box.ax + static_cast<double>(v) * box.bx + static_cast<double>(w) * box.cx;
-                dr.y =
-                    static_cast<double>(u) * box.ay + static_cast<double>(v) * box.by + static_cast<double>(w) * box.cy;
-                dr.z =
-                    static_cast<double>(u) * box.az + static_cast<double>(v) * box.bz + static_cast<double>(w) * box.cz;
-                double r2 = double3::dot(dr, dr);
-                double r = std::sqrt(r2);
-
-                double a = std::sqrt(J[i] * J[j]) / k;
-                double orbital_overlap_term = std::exp(-(a * a * r2)) * (2.0 * a - a * a * r - 1.0 / r);
-
-                orbital += orbital_overlap_term;
-              }
-            }
-          }
-        }
-
-        double alphaStar = 0.0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              if (!((u == 0) && (v == 0) && (w == 0)))
-              {
-                dr.x =
-                    static_cast<double>(u) * box.ax + static_cast<double>(v) * box.bx + static_cast<double>(w) * box.cx;
-                dr.y =
-                    static_cast<double>(u) * box.ay + static_cast<double>(v) * box.by + static_cast<double>(w) * box.cy;
-                dr.z =
-                    static_cast<double>(u) * box.az + static_cast<double>(v) * box.bz + static_cast<double>(w) * box.cz;
-                double r2 = double3::dot(dr, dr);
-                double r = std::sqrt(r2);
-
-                alphaStar += std::erfc(r / eta) / r;
-              }
-            }
-          }
-        }
-
-        double betaStar = 0;
-        double h = 0.0;
-        double b = 0.0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              if (!((u == 0) && (v == 0) && (w == 0)))
-              {
-                double3 kv;
-                kv.x = static_cast<double>(u) * inverse_box.ax + static_cast<double>(v) * inverse_box.bx +
-                       static_cast<double>(w) * inverse_box.cx;
-                kv.y = static_cast<double>(u) * inverse_box.ay + static_cast<double>(v) * inverse_box.by +
-                       static_cast<double>(w) * inverse_box.cy;
-                kv.z = static_cast<double>(u) * inverse_box.az + static_cast<double>(v) * inverse_box.bz +
-                       static_cast<double>(w) * inverse_box.cz;
-
-                kv.x *= 2.0 * std::numbers::pi;
-                kv.y *= 2.0 * std::numbers::pi;
-                kv.z *= 2.0 * std::numbers::pi;
-
-                h = std::sqrt(kv.x * kv.x + kv.y * kv.y + kv.z * kv.z);
-                b = 0.5 * h * eta;
-
-                betaStar += 1.0 / (h * h) * std::exp(-b * b);
-              }
-            }
-          }
-        }
-        betaStar *= 4.0 * std::numbers::pi / volume;
-
-        return J[i] + lambda * (k / 2.0) * (alphaStar + betaStar + orbital - 2.0 / (eta * std::sqrt(std::numbers::pi)));
-      }
-      else
-      {
-        double orbital = 0.0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              dr.x = (frameworkAtoms[i].position.x - frameworkAtoms[j].position.x) + static_cast<double>(u) * box.ax +
-                     static_cast<double>(v) * box.bx + static_cast<double>(w) * box.cx;
-              dr.y = (frameworkAtoms[i].position.y - frameworkAtoms[j].position.y) + static_cast<double>(u) * box.ay +
-                     static_cast<double>(v) * box.by + static_cast<double>(w) * box.cy;
-              dr.z = (frameworkAtoms[i].position.z - frameworkAtoms[j].position.z) + static_cast<double>(u) * box.az +
-                     static_cast<double>(v) * box.bz + static_cast<double>(w) * box.cz;
-              double r2 = double3::dot(dr, dr);
-              double r = std::sqrt(r2);
-
-              double a = std::sqrt(J[i] * J[j]) / k;
-              double orbital_overlap_term = std::exp(-(a * a * r2)) * (2.0 * a - a * a * r - 1.0 / r);
-
-              orbital += orbital_overlap_term;
-            }
-          }
-        }
-
-        double alpha = 0.0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              dr.x = (frameworkAtoms[i].position.x - frameworkAtoms[j].position.x) + static_cast<double>(u) * box.ax +
-                     static_cast<double>(v) * box.bx + static_cast<double>(w) * box.cx;
-              dr.y = (frameworkAtoms[i].position.y - frameworkAtoms[j].position.y) + static_cast<double>(u) * box.ay +
-                     static_cast<double>(v) * box.by + static_cast<double>(w) * box.cy;
-              dr.z = (frameworkAtoms[i].position.z - frameworkAtoms[j].position.z) + static_cast<double>(u) * box.az +
-                     static_cast<double>(v) * box.bz + static_cast<double>(w) * box.cz;
-              double r2 = double3::dot(dr, dr);
-              double r = std::sqrt(r2);
-
-              alpha += std::erfc(r / eta) / r;
-            }
-          }
-        }
-
-        double beta = 0.0;
-        for (long long u = -aVnum; u <= aVnum; u++)
-        {
-          for (long long v = -bVnum; v <= bVnum; v++)
-          {
-            for (long long w = -cVnum; w <= cVnum; w++)
-            {
-              if (!((u == 0) && (v == 0) && (w == 0)))
-              {
-                double3 kv;
-                kv.x = static_cast<double>(u) * inverse_box.ax + static_cast<double>(v) * inverse_box.bx +
-                       static_cast<double>(w) * inverse_box.cx;
-                kv.y = static_cast<double>(u) * inverse_box.ay + static_cast<double>(v) * inverse_box.by +
-                       static_cast<double>(w) * inverse_box.cy;
-                kv.z = static_cast<double>(u) * inverse_box.az + static_cast<double>(v) * inverse_box.bz +
-                       static_cast<double>(w) * inverse_box.cz;
-
-                kv.x *= 2.0 * std::numbers::pi;
-                kv.y *= 2.0 * std::numbers::pi;
-                kv.z *= 2.0 * std::numbers::pi;
-
-                double h = std::sqrt(kv.x * kv.x + kv.y * kv.y + kv.z * kv.z);
-                double b = 0.5 * h * eta;
-
-                dr.x = (frameworkAtoms[i].position.x - frameworkAtoms[j].position.x);
-                dr.y = (frameworkAtoms[i].position.y - frameworkAtoms[j].position.y);
-                dr.z = (frameworkAtoms[i].position.z - frameworkAtoms[j].position.z);
-
-                beta += std::cos(kv.x * dr.x + kv.y * dr.y + kv.z * dr.z) / (h * h) * std::exp(-b * b);
-              }
-            }
-          }
-        }
-        beta *= 4.0 * std::numbers::pi / volume;
-
-        return lambda * (k / 2.0) * (alpha + beta + orbital);
-      }
-    }
-    break;
+    // Type::PeriodicEwaldSum is handled in computeChargeEquilibration using the efficient
+    // Ewald routine Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix
     default:
       break;
   }
@@ -351,7 +236,6 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   std::vector<double> X(size);
   std::vector<double> Xc(size);
   std::vector<double> R(size);
-  std::vector<double> Q(size);
 
   for (std::size_t index = 0; const Atom& atom : frameworkAtoms)
   {
@@ -378,15 +262,69 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     J[i] = 13.598 + 2.0;
   }
 
+  // Build the full matrix of hardness/interaction elements J_ab
+  std::vector<double> Jab(size * size);
+
+  if (type == ChargeEquilibration::Type::PeriodicEwaldSum)
+  {
+    // Efficient Ewald summation: compute the periodic Coulomb potential matrix
+    // V_ij = sum over lattice images of 1/|r_i - r_j + L| in a single pass
+    std::vector<std::complex<double>> eik_x;
+    std::vector<std::complex<double>> eik_y;
+    std::vector<std::complex<double>> eik_z;
+    std::vector<std::complex<double>> eik_xy;
+    Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(eik_x, eik_y, eik_z, eik_xy, simulationBox,
+                                                                        frameworkAtoms, Jab);
+
+    const double lambda = 1.2;  // Global hardness scaling parameter
+    for (std::size_t i = 0; i != size; ++i)
+    {
+      for (std::size_t j = i; j != size; ++j)
+      {
+        if (i == j)
+        {
+          Jab[i * size + i] = J[i] + lambda * (k / 2.0) * Jab[i * size + i];
+        }
+        else
+        {
+          // Short-ranged orbital-overlap correction; it decays as exp(-a^2 r^2),
+          // so the minimum image is the only image that contributes
+          double3 dr = frameworkAtoms[i].position - frameworkAtoms[j].position;
+          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          double r2 = double3::dot(dr, dr);
+          double r = std::sqrt(r2);
+
+          double a = std::sqrt(J[i] * J[j]) / k;
+          double orbital_overlap_term = std::exp(-(a * a * r2)) * (2.0 * a - a * a * r - 1.0 / r);
+
+          double value = lambda * (k / 2.0) * (Jab[i * size + j] + orbital_overlap_term);
+          Jab[i * size + j] = value;
+          Jab[j * size + i] = value;
+        }
+      }
+    }
+  }
+  else
+  {
+    for (std::size_t i = 0; i != size; ++i)
+    {
+      for (std::size_t j = 0; j != size; ++j)
+      {
+        Jab[i * size + j] = getJ(simulationBox, frameworkAtoms, J, i, j, type);
+      }
+    }
+  }
+
   std::vector<double> A(size * size);
-  std::mdspan<double, std::dextents<std::size_t, 2>, std::layout_left> As(A.data(), size, size);
   std::vector<double> b(size);
-  std::vector<double> x0(size);
+  std::vector<double> charges(size);
+
+  auto element = [&A, size](std::size_t row, std::size_t col) -> double& { return A[row * size + col]; };
 
   // First row of A is all ones
   for (std::size_t i = 0; i < size; ++i)
   {
-    As[0, i] = 1.0;
+    element(0, i) = 1.0;
   }
 
   // First element in b is the total charge (FIX!)
@@ -405,27 +343,14 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   {
     for (std::size_t j = 0; j != size; ++j)
     {
-      As[i, j] =
-          getJ(simulationBox, frameworkAtoms, J, i - 1, j, type) - getJ(simulationBox, frameworkAtoms, J, i, j, type);
+      element(i, j) = Jab[(i - 1) * size + j] - Jab[i * size + j];
     }
   }
 
-  long long N = static_cast<long long>(size);
-  long long nrhs = 1;
-  long long lda = static_cast<long long>(size);
-  std::vector<long long> ipiv(size);
-  long long ldb = static_cast<long long>(size);
-  long long info;
-
-  dgesv_(&N, &nrhs, A.data(), &lda, ipiv.data(), b.data(), &ldb, &info);
-
-  if (info > 0)
-  {
-    throw std::runtime_error(std::format("[charge equilibration]: no solution found'\n"));
-  }
+  solveMatrix(A, size, size, b, charges);
 
   for (std::size_t i = 0; i < size; ++i)
   {
-    frameworkAtoms[i].charge = b[i];
+    frameworkAtoms[i].charge = charges[i];
   }
 }
