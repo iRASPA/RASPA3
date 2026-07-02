@@ -48,8 +48,8 @@ void appendAllReactionFractionalMoleculeExclusions(
 
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
-    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules,
-    std::optional<double> serialFractionalLambda = std::nullopt) noexcept;
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling = 1.0,
+    bool isFractional = false) noexcept;
 
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
     RandomNumber& random, System& system,
@@ -61,9 +61,6 @@ void appendAllReactionFractionalMoleculeExclusions(
                                                                        double lambda) noexcept;
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
-
-[[nodiscard]] RunningEnergy computeIntraEnergyDifference(const MoleculeGroupGrowData& growData,
-                                                         const MoleculeGroupRetraceData& retraceData) noexcept;
 
 [[nodiscard]] std::optional<RunningEnergy> computeReactionFractionalScalingEnergyDifference(
     System& system, Reaction& reaction, double lambdaOld, double lambdaNew,
@@ -84,12 +81,6 @@ void deleteSelectedMolecules(System& system,
 
 void insertGrownMolecules(System& system, std::span<const ChainGrowData> growData,
                           std::span<const std::size_t> productStoichiometry) noexcept;
-
-void overwriteReactionFractionalMolecules(System& system, Reaction& reaction,
-                                         std::span<const ChainGrowData> growData,
-                                         std::span<const std::size_t> stoichiometry,
-                                         const std::vector<std::vector<std::size_t>>& fractionalMoleculeIds,
-                                         bool isReactant, double lambda) noexcept;
 
 void acceptReactionForwardInsert(System& system, Reaction& reaction, double lambdaNew,
                                  std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,

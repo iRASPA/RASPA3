@@ -773,6 +773,57 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_full)
   EXPECT_TRUE(std::isfinite(system.runningEnergies.potentialEnergy()));
 }
 
+// regression test: two serial reactions with different stoichiometries ({2,0}->{0,2} and {1,1}->{2,0}).
+// when reaction 0 flips to the product side its CO2 fractional molecules disappear, and the fractional
+// molecule indices of reaction 1 must shift down accordingly. stale static indices made reaction 1 point
+// into the integer-molecule region, so the same molecule could be treated as fractional and integer at
+// once (NaN in the Ewald exclusion difference).
+TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_side_flip_drift)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+
+  System system = makeCO2N2TwoSerialReactionSystem(systemProbabilities, {60, 20}, {1, 1}, {2, 0});
+  system.createReactionFractionalMolecules();
+
+  for (Reaction& reaction : system.reactions.list)
+  {
+    reaction.currentLambda = 0.45;
+    reaction.maximumLambdaChange = 0.3;
+    reaction.lambdaSwitchPoint = 0.5;
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, reaction.currentLambda);
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(42);
+  for (int move = 0; move < 1000; ++move)
+  {
+    std::optional<RunningEnergy> delta = MC_Moves::reactionMove_CFCMC(random, system);
+    if (delta)
+    {
+      system.runningEnergies += delta.value();
+    }
+    ASSERT_TRUE(std::isfinite(system.runningEnergies.potentialEnergy()));
+
+    // the active fractional molecule ids of every serial reaction must lie inside the fractional region
+    for (const Reaction& reaction : system.reactions.list)
+    {
+      const std::vector<std::vector<std::size_t>>& activeIds = reaction.fractionalSideIsReactants
+                                                                   ? reaction.reactantFractionalMoleculeIds
+                                                                   : reaction.productFractionalMoleculeIds;
+      for (std::size_t componentId = 0; componentId < activeIds.size(); ++componentId)
+      {
+        for (const std::size_t moleculeId : activeIds[componentId])
+        {
+          ASSERT_LT(moleculeId, system.numberOfFractionalMoleculesPerComponent[componentId]);
+        }
+      }
+    }
+  }
+  system.checkMoleculeIds();
+  checkEnergyDrift(system);
+}
+
 TEST(MC_REACTION_DRIFT, reaction_mixed_parallel_serial_fractionals_init)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();

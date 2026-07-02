@@ -263,12 +263,11 @@ void System::insertReactionFractionalMolecule(std::size_t selectedComponent, std
                                               [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
                                               bool isReactant, double lambda)
 {
-  const double vdwScale = isReactant ? (1.0 - lambda) : lambda;
-  const double coulombScale = isReactant ? std::pow(1.0 - lambda, 5) : std::pow(lambda, 5);
+  // staged schedule from scaling.ixx; reactants are coupled with (1 - lambda)
+  const double effectiveLambda = isReactant ? (1.0 - lambda) : lambda;
   for (Atom& atom : atoms)
   {
-    atom.scalingVDW = vdwScale;
-    atom.scalingCoulomb = coulombScale;
+    atom.setScaling(effectiveLambda);
     atom.isFractional = true;
   }
 
@@ -362,11 +361,10 @@ void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponen
                                                     [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
                                                     double lambda)
 {
-  const double coulombScale = std::pow(lambda, 5);
+  // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]
   for (Atom& atom : atoms)
   {
-    atom.scalingVDW = lambda;
-    atom.scalingCoulomb = coulombScale;
+    atom.setScaling(lambda);
     atom.isFractional = true;
   }
 
@@ -1091,15 +1089,18 @@ std::size_t System::parallelReactionFractionalMoleculeIndex(std::size_t reaction
 std::size_t System::serialReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
                                                           std::size_t localIndex) const noexcept
 {
+  // the number of physically present serial-reaction fractional molecules depends on which side of
+  // each reaction is currently fractional, so the offset must use the active-side stoichiometry
   std::size_t index = indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(componentId);
   for (std::size_t r = 0; r < reactionId; ++r)
   {
-    if (!reactions.list[r].serialRxCFC)
+    const Reaction& reaction = reactions.list[r];
+    if (!reaction.serialRxCFC || numberOfReactionFractionalMoleculesPerComponent_CFCMC[r][componentId] == 0)
     {
       continue;
     }
-    index += std::max(reactions.list[r].reactantStoichiometry[componentId],
-                      reactions.list[r].productStoichiometry[componentId]);
+    index += reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry[componentId]
+                                                : reaction.productStoichiometry[componentId];
   }
   return index + localIndex;
 }
