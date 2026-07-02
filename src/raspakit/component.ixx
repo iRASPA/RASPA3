@@ -147,7 +147,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{4};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
@@ -202,6 +202,8 @@ export struct Component
 
   PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Grand-Canonical simulations.
   PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs simulations.
+  PropertyLambdaProbabilityHistogram lambdaPairSwap;    ///< Lambda probability histogram for ion-pair CFCMC swaps.
+  PropertyLambdaProbabilityHistogram lambdaPairSwapCB;  ///< Lambda probability histogram for ion-pair CB/CFCMC swaps.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
 
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.

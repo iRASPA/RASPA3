@@ -1504,6 +1504,120 @@ void System::reactionLambdaNormalize(double minBias) noexcept
   }
 }
 
+// A component "drives" a pair-swap lambda histogram if it is the lower-index component of an
+// ion-pair and the corresponding CFCMC pair move is enabled. The partner's histogram stays unused;
+// both fractional molecules of the pair are coupled to the driving component's histogram.
+bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept
+{
+  const Component& component = components[componentId];
+  if (!component.pairComponentId.has_value())
+  {
+    return false;
+  }
+  const std::size_t partner = component.pairComponentId.value();
+  if (partner >= components.size() || componentId >= partner)
+  {
+    return false;
+  }
+  return component.mc_moves_probabilities.getProbability(move) > 0.0;
+}
+
+void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept
+{
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      components[i].lambdaPairSwap.WangLandauIteration(phase, containsTheFractionalMolecule);
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      components[i].lambdaPairSwapCB.WangLandauIteration(phase, containsTheFractionalMolecule);
+    }
+  }
+}
+
+void System::pairSwapLambdaSampleOccupancy() noexcept
+{
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      components[i].lambdaPairSwap.sampleOccupancy(containsTheFractionalMolecule);
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      components[i].lambdaPairSwapCB.sampleOccupancy(containsTheFractionalMolecule);
+    }
+  }
+}
+
+void System::pairSwapLambdaClearBookkeeping() noexcept
+{
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      components[i].lambdaPairSwap.clear();
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      components[i].lambdaPairSwapCB.clear();
+    }
+  }
+}
+
+double System::pairSwapLambdaMinBias() const noexcept
+{
+  double minBias = std::numeric_limits<double>::max();
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      minBias = std::min(minBias, *std::min_element(components[i].lambdaPairSwap.biasFactor.cbegin(),
+                                                    components[i].lambdaPairSwap.biasFactor.cend()));
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      minBias = std::min(minBias, *std::min_element(components[i].lambdaPairSwapCB.biasFactor.cbegin(),
+                                                    components[i].lambdaPairSwapCB.biasFactor.cend()));
+    }
+  }
+  return minBias;
+}
+
+void System::pairSwapLambdaNormalize(double minBias) noexcept
+{
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      components[i].lambdaPairSwap.normalize(minBias);
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      components[i].lambdaPairSwapCB.normalize(minBias);
+    }
+  }
+}
+
+void System::pairSwapLambdaWriteBiasingFiles(std::size_t systemId)
+{
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      components[i].lambdaPairSwap.writeBiasingFile(
+          std::format("bias_factors/lambda_pair_bias_{}.s{}.json", components[i].name, systemId));
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      components[i].lambdaPairSwapCB.writeBiasingFile(
+          std::format("bias_factors/lambda_pair_cb_bias_{}.s{}.json", components[i].name, systemId));
+    }
+  }
+}
+
 void System::reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept
 {
   if (reactions.list.empty() || !usesReactionConventionalCFCMC())
@@ -2597,6 +2711,20 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       const double gibbsLambda = component.lambdaGibbs.lambdaValue();
       const double gibbsDudlambda = runningEnergies.dudlambda(gibbsLambda);
       component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
+    }
+
+    if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
+    {
+      const double pairLambda = component.lambdaPairSwap.lambdaValue();
+      component.lambdaPairSwap.sampleHistogram(currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda),
+                                               containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
+    {
+      const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
+      component.lambdaPairSwapCB.sampleHistogram(currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda),
+                                                 containsTheFractionalMolecule, w);
     }
 
     ++componentId;

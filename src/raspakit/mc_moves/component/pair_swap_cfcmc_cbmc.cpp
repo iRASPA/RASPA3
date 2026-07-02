@@ -94,7 +94,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   Component& componentBRef = system.components[componentB];
 
   // both fractional molecules of the pair are coupled to the lambda histogram of component A
-  PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaGC;
+  PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaPairSwapCB;
   const std::size_t oldBin = lambda.currentBin;
   const double deltaLambda = lambda.delta;
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);
@@ -231,7 +231,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, componentA.growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeA, newLambda,
-        componentA.lambdaGC.computeDUdlambda, true);
+        componentA.lambdaPairSwapCB.computeDUdlambda, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -261,7 +261,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
         system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA, system.beta, componentBRef.growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeB, newLambda,
-        componentBRef.lambdaGC.computeDUdlambda, true);
+        componentBRef.lambdaPairSwapCB.computeDUdlambda, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -472,7 +472,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     RunningEnergy energyDifference{};
 
     // (2a) the selected integer molecule of component A becomes fractional with lambda_new
-    const bool groupIdA = componentA.lambdaGC.computeDUdlambda;
+    const bool groupIdA = componentA.lambdaPairSwapCB.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeA)
     {
       atom.scalingVDW = Scaling::scalingVDW(newLambda);
@@ -518,7 +518,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2b) the selected integer molecule of component B becomes fractional with lambda_new
-    const bool groupIdB = componentBRef.lambdaGC.computeDUdlambda;
+    const bool groupIdB = componentBRef.lambdaPairSwapCB.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeB)
     {
       atom.scalingVDW = Scaling::scalingVDW(newLambda);

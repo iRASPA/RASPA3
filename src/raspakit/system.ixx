@@ -406,6 +406,13 @@ export struct System
   void reactionLambdaSampleOccupancy() noexcept;
   void reactionLambdaClearBookkeeping() noexcept;
   void reactionLambdaFinalize() noexcept;
+  [[nodiscard]] bool componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
+  void pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept;
+  void pairSwapLambdaSampleOccupancy() noexcept;
+  void pairSwapLambdaClearBookkeeping() noexcept;
+  [[nodiscard]] double pairSwapLambdaMinBias() const noexcept;
+  void pairSwapLambdaNormalize(double minBias) noexcept;
+  void pairSwapLambdaWriteBiasingFiles(std::size_t systemId);
   [[nodiscard]] double reactionLambdaMinBias() const noexcept;
   void reactionLambdaNormalize(double minBias) noexcept;
   void reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept;

@@ -89,7 +89,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
   Component& componentBRef = system.components[componentB];
 
   // both fractional molecules of the pair are coupled to the lambda histogram of component A
-  PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaGC;
+  PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaPairSwap;
   const std::size_t oldBin = lambda.currentBin;
   const double deltaLambda = lambda.delta;
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);
@@ -219,7 +219,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const std::size_t upcomingMoleculeIdA = system.numberOfMolecules();
     const std::size_t upcomingMoleculeIdB = system.numberOfMolecules() + 1;
 
-    const bool groupIdA = componentA.lambdaGC.computeDUdlambda;
+    const bool groupIdA = componentA.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : trialMoleculeA.second)
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdA);
@@ -228,7 +228,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       atom.isFractional = true;
       atom.setScaling(newLambda);
     }
-    const bool groupIdB = componentBRef.lambdaGC.computeDUdlambda;
+    const bool groupIdB = componentBRef.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : trialMoleculeB.second)
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdB);
@@ -481,7 +481,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2a) the selected integer molecule of component A becomes fractional with lambda_new
-    const bool groupIdA = componentA.lambdaGC.computeDUdlambda;
+    const bool groupIdA = componentA.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeA)
     {
       atom.scalingVDW = Scaling::scalingVDW(newLambda);
@@ -527,7 +527,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2b) the selected integer molecule of component B becomes fractional with lambda_new
-    const bool groupIdB = componentBRef.lambdaGC.computeDUdlambda;
+    const bool groupIdB = componentBRef.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeB)
     {
       atom.scalingVDW = Scaling::scalingVDW(newLambda);

@@ -17,7 +17,8 @@ export namespace MC_Moves
  * Identical to the ion-pair CFCMC swap move, except that the new fractional pair of the insertion
  * move is grown with configurational-bias Monte Carlo, and the fractional pair of the deletion move
  * is retraced with CBMC. Both fractional molecules of the pair are coupled to the same lambda (the
- * lambdaGC histogram of the lower-index component), keeping the system charge neutral at every lambda.
+ * lambdaPairSwapCB histogram of the lower-index component), keeping the system charge neutral at every
+ * lambda.
  *
  * Only the lower-index component of the pair performs the move (to avoid double counting).
  *

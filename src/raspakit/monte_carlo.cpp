@@ -299,6 +299,10 @@ void MonteCarlo::performCycle()
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
         }
 
+        selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         selectedSecondSystem.reactionLambdaWangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
@@ -318,6 +322,8 @@ void MonteCarlo::performCycle()
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
       selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
     }
+    selectedSystem.pairSwapLambdaSampleOccupancy();
+    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
     selectedSecondSystem.reactionLambdaSampleOccupancy();
   }
@@ -474,6 +480,9 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       }
     }
 
+    system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.pairSwapLambdaClearBookkeeping();
+
     system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
     system.reactionLambdaClearBookkeeping();
   };
@@ -539,6 +548,9 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
           }
         }
 
+        system.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+
         system.reactionLambdaWangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
 
@@ -555,6 +567,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
                   std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
             }
           }
+          system.pairSwapLambdaWriteBiasingFiles(system_id);
           for (Reaction& reaction : system.reactions.list)
           {
             system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
@@ -649,6 +662,9 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       }
     }
 
+    system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+    system.pairSwapLambdaClearBookkeeping();
+
     system.reactionLambdaFinalize();
     system.reactionLambdaClearBookkeeping();
   };
@@ -667,6 +683,12 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
             *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
         minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
       }
+    }
+
+    const double pairSwapMinBias = system.pairSwapLambdaMinBias();
+    if (pairSwapMinBias < minBias)
+    {
+      minBias = pairSwapMinBias;
     }
 
     if (system.usesReactionConventionalCFCMC())
@@ -688,6 +710,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
         component.lambdaGibbs.normalize(minBias);
       }
     }
+    system.pairSwapLambdaNormalize(minBias);
     system.reactionLambdaNormalize(minBias);
   }
 
@@ -706,6 +729,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
               std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
         }
       }
+      system.pairSwapLambdaWriteBiasingFiles(system_id);
       for (Reaction& reaction : system.reactions.list)
       {
         system.activeReactionLambdaHistogram(reaction).writeBiasingFile(

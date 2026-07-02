@@ -15,7 +15,7 @@ export namespace MC_Moves
  * \brief Ion-pair swap move in Continuous Fractional Component Monte Carlo (CFCMC).
  *
  * The pair of linked components (selectedComponent and its pairComponentId) each hold one fractional
- * molecule; both fractional molecules are coupled to the same lambda (the lambdaGC histogram of the
+ * molecule; both fractional molecules are coupled to the same lambda (the lambdaPairSwap histogram of the
  * lower-index component). Because the coulombic scaling of both fractional molecules is identical,
  * the system remains charge neutral at every lambda.
  *

@@ -732,6 +732,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].lambdaGC.computeDUdlambda = thermodynamic_integration;
+          jsonComponents[i][componentId].lambdaPairSwap.computeDUdlambda = thermodynamic_integration;
+          jsonComponents[i][componentId].lambdaPairSwapCB.computeDUdlambda = thermodynamic_integration;
         }
       }
 

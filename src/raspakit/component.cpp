@@ -68,6 +68,8 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
       fugacityCoefficient(fugacityCoefficient),
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+      lambdaPairSwap(numberOfBlocks, numberOfLambdaBins),
+      lambdaPairSwapCB(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       averageRosenbluthWeights(numberOfBlocks),
       averageGibbsRosenbluthWeights(numberOfBlocks)
@@ -77,6 +79,8 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
     readComponent(componentId, forceField, filenameData.value());
   }
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
+  lambdaPairSwap.computeDUdlambda = thermodynamicIntegration;
+  lambdaPairSwapCB.computeDUdlambda = thermodynamicIntegration;
 
   cbmc_moves_statistics = std::vector<CBMCMoveStatistics>(definedAtoms.size());
 }
@@ -98,6 +102,8 @@ Component::Component(const ForceField &forceField, std::string componentName, do
       intraMolecularPotentials(intraMolecularPotentials),
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+      lambdaPairSwap(numberOfBlocks, numberOfLambdaBins),
+      lambdaPairSwapCB(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
@@ -117,6 +123,8 @@ Component::Component(const ForceField &forceField, std::string componentName, do
 
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
+  lambdaPairSwap.computeDUdlambda = thermodynamicIntegration;
+  lambdaPairSwapCB.computeDUdlambda = thermodynamicIntegration;
 
   if (!intraMolecularPotentials.bonds.empty())
   {
@@ -1573,6 +1581,12 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
     archive << c.maximumPairDistance;
   }
 
+  if (c.versionNumber >= 4)
+  {
+    archive << c.lambdaPairSwap;
+    archive << c.lambdaPairSwapCB;
+  }
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -1662,6 +1676,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   {
     archive >> c.pairComponentId;
     archive >> c.maximumPairDistance;
+  }
+
+  if (versionNumber >= 4)
+  {
+    archive >> c.lambdaPairSwap;
+    archive >> c.lambdaPairSwapCB;
   }
 
 #if DEBUG_ARCHIVE
