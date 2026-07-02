@@ -109,7 +109,7 @@ void acceptChargedEwaldMove(System& system) noexcept
   (void)Interactions::computeEwaldFourierEnergy(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), system.netChargeFramework);
 }
 
 [[nodiscard]] RunningEnergy computeChargedGroupEwaldDifference(System& system, std::span<const Atom> newAtoms,
@@ -117,7 +117,7 @@ void acceptChargedEwaldMove(System& system) noexcept
 {
   RunningEnergy ewaldCombined = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms);
+      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
 
   const RunningEnergy correctedExclusion = computePerMoleculeEwaldExclusionDifference(
       system, splitAtomsByMoleculeId(newAtoms), splitAtomsByMoleculeId(oldAtoms));
@@ -674,7 +674,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms);
+      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
   energyDifference += ewaldDifference;
 
   if (includeTailCorrections)
@@ -747,7 +747,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, newAtoms, oldAtoms);
+        system.simulationBox, newAtoms, oldAtoms, system.netCharge);
     energyDifference += ewaldDifference;
   }
 

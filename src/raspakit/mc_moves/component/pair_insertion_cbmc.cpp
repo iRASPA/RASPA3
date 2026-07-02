@@ -118,11 +118,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMoleculeA, {});
+      system.simulationBox, newMoleculeA, {}, system.netCharge);
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMoleculeB, {});
+      system.simulationBox, newMoleculeB, {},
+      system.netCharge + system.components[selectedComponent].netCharge);
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -322,11 +323,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMoleculeA, {});
+      system.simulationBox, newMoleculeA, {}, system.netCharge);
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMoleculeB, {});
+      system.simulationBox, newMoleculeB, {},
+      system.netCharge + system.components[selectedComponent].netCharge);
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;

@@ -2744,7 +2744,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
-        numberOfMoleculesPerComponent, moleculeAtomPositions);
+        numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField,
@@ -2842,7 +2842,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                        CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
+                        netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)

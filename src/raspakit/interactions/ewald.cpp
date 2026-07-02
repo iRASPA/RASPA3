@@ -19,16 +19,40 @@ import framework;
 import component;
 import forcefield;
 
-// TODO:
-// An Exact Ewald Summation Method in Theory and Practice
-// S. Stenberg and B. Stenqvist
-// J. Phys. Chem. A 2020, 124, 3943−3946; https://doi.org/10.1021/acs.jpca.0c01684
-//
 // Removal of pressure and free energy artifacts in charged periodic systems via net charge corrections
 // to the Ewald potential
 // Stephen Bogusz, Thomas E. Cheatham III, and Bernard R. Brooks
 // J. Chem. Phys. 108, 7070 (1998); https://doi.org/10.1063/1.476320
 //
+
+// Net-charge correction difference for a Monte Carlo move that replaces 'oldatoms' by 'newatoms';
+// see Bogusz et al., J. Chem. Phys. 108, 7070 (1998). 'netCharge' is the total net charge of the
+// system (framework plus adsorbates) before the move, and 'singleIonFourierSum' is the Fourier sum
+// of a single unit charge for the current box and wave vectors.
+static void addNetChargeCorrectionDifference(RunningEnergy &energy, double singleIonFourierSum, double alpha,
+                                             double netCharge, std::span<const Atom> newatoms,
+                                             std::span<const Atom> oldatoms)
+{
+  double deltaCharge = 0.0;
+  double chargeDerivativeNew = 0.0;
+  double chargeDerivativeOld = 0.0;
+  for (const Atom &atom : oldatoms)
+  {
+    deltaCharge -= atom.scalingCoulomb * atom.charge;
+    chargeDerivativeOld += static_cast<bool>(atom.groupId) ? atom.charge : 0.0;
+  }
+  for (const Atom &atom : newatoms)
+  {
+    deltaCharge += atom.scalingCoulomb * atom.charge;
+    chargeDerivativeNew += static_cast<bool>(atom.groupId) ? atom.charge : 0.0;
+  }
+
+  double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
+  double netChargeNew = netCharge + deltaCharge;
+  energy.ewald_fourier += uIon * (netChargeNew * netChargeNew - netCharge * netCharge);
+  energy.dudlambdaEwald += 2.0 * uIon * (netChargeNew * chargeDerivativeNew - netCharge * chargeDerivativeOld);
+}
+
 double Interactions::computeEwaldFourierEnergySingleIon(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy, const ForceField &forceField,
@@ -244,7 +268,8 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtomPositions)
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtomPositions,
+    double netChargeFramework)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -256,6 +281,7 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
   RunningEnergy energySum{};
+  double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energySum;
   if (forceField.omitEwaldFourier) return energySum;
@@ -345,6 +371,7 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
         if ((ksq != 0uz) && (ksq <= recip_integer_cutoff_squared) && (rksq < recip_cutoff_squared))
         {
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+          singleIonFourierSum += temp;
 
           std::pair<std::complex<double>, std::complex<double>> cksum;
           for (std::size_t i = 0; i != numberOfAtoms; ++i)
@@ -436,6 +463,33 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
     }
   }
 
+  // Net-charge correction: neutralizing background plus removal of the spurious interaction of the
+  // net charge with its own periodic images; see Bogusz et al., J. Chem. Phys. 108, 7070 (1998).
+  // The framework-framework part is excluded, consistent with the subtraction of the rigid-framework
+  // Fourier energy above.
+  {
+    double netChargeAdsorbates = 0.0;
+    double netChargeDerivative = 0.0;
+    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
+    {
+      netChargeAdsorbates += moleculeAtomPositions[i].scalingCoulomb * moleculeAtomPositions[i].charge;
+      netChargeDerivative +=
+          static_cast<bool>(moleculeAtomPositions[i].groupId) ? moleculeAtomPositions[i].charge : 0.0;
+    }
+    double uIon =
+        -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
+    if (omitInterInteractions)
+    {
+      energySum.ewald_fourier += 2.0 * uIon * netChargeFramework * netChargeAdsorbates;
+      energySum.dudlambdaEwald += 2.0 * uIon * netChargeFramework * netChargeDerivative;
+    }
+    else
+    {
+      energySum.ewald_fourier += uIon * (2.0 * netChargeFramework + netChargeAdsorbates) * netChargeAdsorbates;
+      energySum.dudlambdaEwald += 2.0 * uIon * (netChargeFramework + netChargeAdsorbates) * netChargeDerivative;
+    }
+  }
+
   return energySum;
 }
 
@@ -446,7 +500,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData)
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData,
+    double netChargeFramework)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -459,6 +514,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
   RunningEnergy energySum{};
+  double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energySum;
   if (forceField.omitEwaldFourier) return energySum;
@@ -567,6 +623,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
           total.second = rigid.second + cksum.second;
 
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+          singleIonFourierSum += temp;
 
           double rigidEnergy =
               temp * (rigid.first.real() * rigid.first.real() + rigid.first.imag() * rigid.first.imag());
@@ -666,14 +723,30 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     }
   }
 
-  // Handle net-charges
-  // for (std::size_t i = 0; i != components.size(); ++i)
-  //{
-  //  for (std::size_t j = 0; j != components.size(); ++j)
-  //  {
-  //    //energy.energy += CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j];
-  //  }
-  //}
+  // Net-charge correction: neutralizing background plus removal of the spurious interaction of the
+  // net charge with its own periodic images; see Bogusz et al., J. Chem. Phys. 108, 7070 (1998).
+  // The correction is independent of the atom positions, so it contributes no gradient.
+  {
+    double netChargeAdsorbates = 0.0;
+    double netChargeDerivative = 0.0;
+    for (std::size_t i = 0; i != atomData.size(); ++i)
+    {
+      netChargeAdsorbates += atomData[i].scalingCoulomb * atomData[i].charge;
+      netChargeDerivative += static_cast<bool>(atomData[i].groupId) ? atomData[i].charge : 0.0;
+    }
+    double uIon =
+        -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
+    if (omitInterInteractions)
+    {
+      energySum.ewald_fourier += 2.0 * uIon * netChargeFramework * netChargeAdsorbates;
+      energySum.dudlambdaEwald += 2.0 * uIon * netChargeFramework * netChargeDerivative;
+    }
+    else
+    {
+      energySum.ewald_fourier += uIon * (2.0 * netChargeFramework + netChargeAdsorbates) * netChargeAdsorbates;
+      energySum.dudlambdaEwald += 2.0 * uIon * (netChargeFramework + netChargeAdsorbates) * netChargeDerivative;
+    }
+  }
 
   return energySum;
 }
@@ -683,9 +756,11 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    double netCharge)
 {
   RunningEnergy energy;
+  double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energy;
   if (forceField.omitEwaldFourier) return energy;
@@ -819,6 +894,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
           }
 
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+          singleIonFourierSum += temp;
 
           energy.ewald_fourier += temp * std::norm(storedEik[nvec].first + cksum_new.first - cksum_old.first);
           energy.ewald_fourier -= temp * std::norm(storedEik[nvec].first);
@@ -906,6 +982,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
+  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, newatoms, oldatoms);
+
   return energy;
 }
 
@@ -916,9 +994,10 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge)
 {
   RunningEnergy energy;
+  double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energy;
   if (forceField.omitEwaldFourier) return energy;
@@ -1064,6 +1143,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
                 2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
           }
 
+          singleIonFourierSum += temp;
           energy.ewald_fourier += temp * std::norm(storedEik[nvec].first + cksum_new.first - cksum_old.first);
           energy.ewald_fourier -= temp * std::norm(storedEik[nvec].first);
 
@@ -1152,6 +1232,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     energy.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
     energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
+
+  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, newatoms, oldatoms);
 
   return energy;
 }
@@ -1326,11 +1408,20 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomData, double UIon, double netChargeFramework,
-    std::vector<double> netChargePerComponent) noexcept
+    std::span<Atom> atomData, double netChargeFramework, std::vector<double> netChargePerComponent) noexcept
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
+  double singleIonFourierSum = 0.0;
+
+  // Total net charge, used for the net-charge correction to the strain derivative; the strain
+  // derivative includes the rigid-framework contribution, so the framework charge is included.
+  double netChargeTotal = netChargeFramework;
+  for (double q : netChargePerComponent)
+  {
+    netChargeTotal += q;
+  }
+  double netChargeTotalSquared = netChargeTotal * netChargeTotal;
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
   double3x3 inv_box = simulationBox.inverseCell;
@@ -1472,7 +1563,13 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
                                     (cki.imag() * test.real() - cki.real() * test.imag()) * (kvec_x + kvec_y + kvec_z);
           }
 
-          double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
+          singleIonFourierSum += temp;
+
+          // Include the net-charge correction in the strain derivative: per wave vector its energy
+          // contribution is -temp * Q_total^2, with the same k- and volume-dependence as the
+          // regular Fourier term (the correction's self part, alpha/sqrt(pi), is strain-independent).
+          double currentEnergy =
+              temp * (test.real() * test.real() + test.imag() * test.imag() - netChargeTotalSquared);
           double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
           strainDerivative.ax -= currentEnergy - fac * rk.x * rk.x;
           strainDerivative.bx -= -fac * rk.x * rk.y;
@@ -1558,11 +1655,16 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     }
   }
 
-  // Handle net-charges
+  // Handle net-charges: neutralizing background plus removal of the spurious interaction of the
+  // net charge with its own periodic images; see Bogusz et al., J. Chem. Phys. 108, 7070 (1998).
+  // The single-ion energy is computed internally from the wave-vector sum so that it is always
+  // consistent with the current simulation box.
+  double uIon =
+      -(singleIonFourierSum - Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi));
   for (std::size_t i = 0; i != components.size(); ++i)
   {
     energy.frameworkComponentEnergy(0, i).CoulombicFourier +=
-        Potentials::EnergyFactor(2.0 * UIon * netChargeFramework * netChargePerComponent[i], 0.0);
+        Potentials::EnergyFactor(2.0 * uIon * netChargeFramework * netChargePerComponent[i], 0.0);
   }
 
   for (std::size_t i = 0; i != components.size(); ++i)
@@ -1570,7 +1672,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     for (std::size_t j = 0; j != components.size(); ++j)
     {
       energy.componentEnergy(i, j).CoulombicFourier +=
-          Potentials::EnergyFactor(UIon * netChargePerComponent[i] * netChargePerComponent[j], 0.0);
+          Potentials::EnergyFactor(uIon * netChargePerComponent[i] * netChargePerComponent[j], 0.0);
     }
   }
 

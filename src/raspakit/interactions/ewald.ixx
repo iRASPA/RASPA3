@@ -85,6 +85,8 @@ void precomputeEwaldFourierRigid(
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
  * \param moleculeAtoms Positions and properties of the molecules' atoms.
+ * \param netChargeFramework Net charge of the framework, used for the net-charge correction
+ *                           (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierEnergy(
@@ -93,7 +95,8 @@ RunningEnergy computeEwaldFourierEnergy(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms);
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
+    double netChargeFramework = 0.0);
 
 /**
  * \brief Computes the energy difference due to atom position changes in the Ewald Fourier summation.
@@ -111,6 +114,9 @@ RunningEnergy computeEwaldFourierEnergy(
  * \param simulationBox The simulation box parameters.
  * \param newatoms The new positions and properties of the atoms.
  * \param oldatoms The old positions and properties of the atoms.
+ * \param netCharge The current total net charge of the system (framework plus adsorbates) before the
+ *                  move; used for the net-charge correction when the move changes the net charge
+ *                  (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
  * \return The running energy containing the Ewald Fourier energy difference.
  */
 RunningEnergy energyDifferenceEwaldFourier(
@@ -118,7 +124,8 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    double netCharge = 0.0);
 
 RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
@@ -127,32 +134,7 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
-
-/**
- * \brief Computes the energy difference due to atom position changes in the Ewald Fourier summation.
- *
- * Calculates the change in Fourier-space Ewald energy when atoms are moved from old positions to new positions.
- * Useful for Monte Carlo moves or molecular dynamics steps.
- *
- * \param eik_x Preallocated vector to temporarily store exponential terms along x-axis.
- * \param eik_y Preallocated vector to temporarily store exponential terms along y-axis.
- * \param eik_z Preallocated vector to temporarily store exponential terms along z-axis.
- * \param eik_xy Preallocated vector to temporarily store exponential terms along xy-plane.
- * \param storedEik Previously stored Fourier components of the system.
- * \param totalEik Updated Fourier components after the move.
- * \param forceField The force field parameters.
- * \param simulationBox The simulation box parameters.
- * \param newatoms The new positions and properties of the atoms.
- * \param oldatoms The old positions and properties of the atoms.
- * \return The running energy containing the Ewald Fourier energy difference.
- */
-RunningEnergy energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge = 0.0);
 
 /**
  * \brief Computes the difference in electric field due to atom position changes in the Ewald Fourier summation.
@@ -207,6 +189,8 @@ void computeEwaldFourierElectricFieldDifference(
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
  * \param atomData Positions and properties of the atoms (updated with computed gradients).
+ * \param netChargeFramework Net charge of the framework, used for the net-charge correction
+ *                           (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierGradient(
@@ -215,7 +199,8 @@ RunningEnergy computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData);
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData,
+    double netChargeFramework = 0.0);
 
 /**
  * \brief Computes the Ewald Fourier energy and its strain derivative.
@@ -235,10 +220,13 @@ RunningEnergy computeEwaldFourierGradient(
  * \param components The molecular components in the system.
  * \param numberOfMoleculesPerComponent Number of molecules per component.
  * \param atomData Positions and properties of the atoms (updated with computed gradients).
- * \param UIon The energy of a single ion in the Ewald summation.
  * \param netChargeFramework Net charge of the framework.
  * \param netChargePerComponent Net charges per component.
  * \return A pair containing the energy status and the strain derivative tensor.
+ *
+ * The net-charge correction (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)) is computed
+ * internally from the wave-vector sum, so that it remains consistent with the current
+ * simulation box; its contribution to the strain derivative is included.
  */
 std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
@@ -247,8 +235,7 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomData, double UIon, double netChargeFramework,
-    std::vector<double> netChargePerComponent) noexcept;
+    std::span<Atom> atomData, double netChargeFramework, std::vector<double> netChargePerComponent) noexcept;
 
 /**
  * \brief Accepts a move by updating the stored Ewald Fourier components.

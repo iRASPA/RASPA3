@@ -70,8 +70,8 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
-      system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework,
+      system.netChargePerComponent);
 
   strainDerivative.first.sumTotal();
 

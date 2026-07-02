@@ -136,7 +136,7 @@ std::optional<RunningEnergy> computeGibbsSwapFractionalMoleculesEnergyDifference
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newAtomsCombined, oldAtomsCombined);
+      system.simulationBox, newAtomsCombined, oldAtomsCombined, system.netCharge);
 
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
@@ -381,7 +381,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifferenceGrowA = Interactions::energyDifferenceEwaldFourier(
         systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.totalEik, systemA.totalEik,
-        systemA.forceField, systemA.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {});
+        systemA.forceField, systemA.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {},
+        systemA.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
@@ -422,7 +423,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifferenceRetraceB = Interactions::energyDifferenceEwaldFourier(
         systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.totalEik,
-        systemB.forceField, systemB.simulationBox, {}, selectedIntegerMoleculeB);
+        systemB.forceField, systemB.simulationBox, {}, selectedIntegerMoleculeB, systemB.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
@@ -499,7 +500,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifferenceB2 = Interactions::energyDifferenceEwaldFourier(
         systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.totalEik, systemB.totalEik,
-        systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB);
+        systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, systemB.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-Ewald"] += (time_end - time_begin);
@@ -728,7 +729,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldEnergyDifferenceB = Interactions::energyDifferenceEwaldFourier(
         systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.totalEik,
-        systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB);
+        systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, systemB.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaShuffle-Ewald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaShuffle-Ewald"] += (time_end - time_begin);
@@ -842,7 +843,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.totalEik,
-        systemA.forceField, systemA.simulationBox, trialPositions, fractionalMoleculeA);
+        systemA.forceField, systemA.simulationBox, trialPositions, fractionalMoleculeA, systemA.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaChange-Ewald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaChange-Ewald"] += (time_end - time_begin);

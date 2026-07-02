@@ -162,7 +162,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldEnergyDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, fractionalMolecule, oldFractionalMolecule);
+        system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
@@ -220,7 +220,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-        system.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {});
+        system.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {}, system.netCharge);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
@@ -341,7 +341,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       time_begin = std::chrono::system_clock::now();
       RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-          system.simulationBox, {}, fractionalMolecule);
+          system.simulationBox, {}, fractionalMolecule, system.netCharge);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
@@ -455,7 +455,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       time_begin = std::chrono::system_clock::now();
       RunningEnergy EwaldEnergyDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-          system.simulationBox, newFractionalMolecule, savedFractionalMolecule);
+          system.simulationBox, newFractionalMolecule, savedFractionalMolecule, system.netCharge);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
@@ -618,7 +618,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, trialPositions, molecule);
+        system.simulationBox, trialPositions, molecule, system.netCharge);
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

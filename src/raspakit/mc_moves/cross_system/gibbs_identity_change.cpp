@@ -108,7 +108,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   time_begin = std::chrono::system_clock::now();
   data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, data.oldMoleculeAtoms);
+      system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
   time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);

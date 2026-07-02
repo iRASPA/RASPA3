@@ -248,9 +248,14 @@ RunningEnergy Integrators::updateGradients(
       forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, interpolationGrids);
   RunningEnergy intermolecularEnergy =
       Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+  double netChargeFramework = 0.0;
+  for (const Atom& atom : frameworkAtomPositions)
+  {
+    netChargeFramework += atom.charge;
+  }
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
       eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
-      numberOfMoleculesPerComponent, moleculeAtomPositions);
+      numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
   RunningEnergy internal_energies{};
   for (const Component& component : components)

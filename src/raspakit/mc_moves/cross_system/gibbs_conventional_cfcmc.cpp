@@ -85,7 +85,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(System& system, std
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, trialAtoms, oldAtoms);
+      system.simulationBox, trialAtoms, oldAtoms, system.netCharge);
 
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
@@ -229,7 +229,7 @@ RunningEnergy growEwaldTailDifference(System& system, std::span<const Atom> grow
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-      system.simulationBox, growAtoms, {});
+      system.simulationBox, growAtoms, {}, system.netCharge);
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), growAtoms, {}) +
@@ -242,7 +242,7 @@ RunningEnergy retraceEwaldTailDifference(System& system, std::span<const Atom> r
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, {}, retraceAtoms);
+      system.simulationBox, {}, retraceAtoms, system.netCharge);
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                             system.spanOfMoleculeAtoms(), {}, retraceAtoms) +

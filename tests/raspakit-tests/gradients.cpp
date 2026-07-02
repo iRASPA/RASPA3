@@ -312,8 +312,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
-      system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework,
+      system.netChargePerComponent);
 
   EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomData[0].gradient.y, -362.766142495638, 1e-4);

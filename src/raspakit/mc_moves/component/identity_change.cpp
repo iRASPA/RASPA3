@@ -134,7 +134,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, oldMoleculeAtoms);
+      system.simulationBox, newMolecule, oldMoleculeAtoms, system.netCharge);
   time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);

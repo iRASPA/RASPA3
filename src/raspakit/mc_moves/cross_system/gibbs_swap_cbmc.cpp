@@ -77,7 +77,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.totalEik,
-      systemA.forceField, systemA.simulationBox, newMolecule, {});
+      systemA.forceField, systemA.simulationBox, newMolecule, {}, systemA.netCharge);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation
@@ -127,7 +127,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.totalEik,
-      systemB.forceField, systemB.simulationBox, {}, molecule);
+      systemB.forceField, systemB.simulationBox, {}, molecule, systemB.netCharge);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation

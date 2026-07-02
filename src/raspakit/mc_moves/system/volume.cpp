@@ -78,7 +78,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   // Compute new Ewald Fourier energy
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
-      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
+      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
+      system.netChargeFramework);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
@@ -197,7 +198,8 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
-      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
+      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
+      system.netChargeFramework);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 

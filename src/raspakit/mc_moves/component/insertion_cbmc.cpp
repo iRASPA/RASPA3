@@ -83,7 +83,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, {});
+      system.simulationBox, newMolecule, {}, system.netCharge);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the Ewald part of the move

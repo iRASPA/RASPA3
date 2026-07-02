@@ -494,8 +494,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.atomData, system.CoulombicFourierEnergySingleIon,
-      system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.atomData, system.netChargeFramework, system.netChargePerComponent);
   pressureInfo.first.sumTotal();
 
   std::vector<std::pair<double3x3, double>> strains{

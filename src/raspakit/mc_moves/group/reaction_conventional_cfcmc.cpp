@@ -165,7 +165,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_ConventionalCFCMC(RandomNumb
 
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, ewaldNewAtoms, ewaldOldAtoms);
+        system.simulationBox, ewaldNewAtoms, ewaldOldAtoms, system.netCharge);
     energyDifference += (growData->energies - retraceData->energies) + energyFourierDifference;
   }
 

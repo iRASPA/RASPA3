@@ -81,7 +81,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
       systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
-      systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second);
+      systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second,
+      systemA.netChargeFramework);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
@@ -143,7 +144,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
       systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
-      systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second);
+      systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second,
+      systemB.netChargeFramework);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
