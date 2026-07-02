@@ -107,6 +107,8 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       numberOfFractionalMoleculesPerComponent(c.size()),
       numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfPairSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
@@ -564,6 +566,20 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
                                  indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId));
       }
 
+      if (numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
+                                 indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId));
+      }
+
+      if (numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+      {
+        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
+                                 indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId));
+      }
+
       if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::optional<ChainGrowData> growData = growFractionalMolecule();
@@ -930,6 +946,8 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
     {
@@ -962,6 +980,8 @@ void System::determineFractionalComponents()
     numberOfFractionalMoleculesPerComponent[i] = 0;
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
@@ -997,6 +1017,33 @@ void System::determineFractionalComponents()
     }
   }
 
+  // ion-pair CFCMC moves need a fractional molecule on both components of the pair
+  // (done in a separate pass because a component allocates the slot of its pair partner)
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (!components[i].pairComponentId.has_value() || components[i].pairComponentId.value() >= components.size())
+    {
+      continue;
+    }
+    const std::size_t partner = components[i].pairComponentId.value();
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0)
+    {
+      numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[i] = 1;
+      numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[partner] = 1;
+      components[i].hasFractionalMolecule = true;
+      components[partner].hasFractionalMolecule = true;
+    }
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0)
+    {
+      numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[i] = 1;
+      numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[partner] = 1;
+      components[i].hasFractionalMolecule = true;
+      components[partner].hasFractionalMolecule = true;
+    }
+  }
+
   numberOfReactionFractionalMoleculesPerComponent_CFCMC.assign(
       reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
 }
@@ -1011,10 +1058,22 @@ std::size_t System::indexOfPairGCFractionalMoleculesPerComponent_CFCMC(std::size
   return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
 }
 
-std::size_t System::indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+std::size_t System::indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
 {
   return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
          numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[selectedComponent];
 }
 
 std::size_t System::indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(
@@ -1049,6 +1108,10 @@ std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size
     case Move::Types::SwapCBCFCMC:
     case Move::Types::WidomCBCFCMC:
       return indexOfPairGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::PairSwapCFCMC:
+      return indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::PairSwapCBCFCMC:
+      return indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
       return indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
@@ -4047,6 +4110,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfFractionalMoleculesPerComponent;
   archive << s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
@@ -4203,6 +4268,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfFractionalMoleculesPerComponent;
   archive >> s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
   if (versionNumber >= 4)
   {
     archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;

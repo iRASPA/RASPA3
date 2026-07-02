@@ -475,6 +475,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("CFCMC_PairSwapProbability") && item["CFCMC_PairSwapProbability"].is_number_float())
+      {
+        double pairSwapCFCMCProbability = item["CFCMC_PairSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::PairSwapCFCMC, pairSwapCFCMCProbability);
+        }
+      }
+
+      if (item.contains("CFCMC_CBMC_PairSwapProbability") && item["CFCMC_CBMC_PairSwapProbability"].is_number_float())
+      {
+        double pairSwapCBCFCMCProbability = item["CFCMC_CBMC_PairSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::PairSwapCBCFCMC, pairSwapCBCFCMCProbability);
+        }
+      }
+
       if (item.contains("CFCMC_SwapProbability") && item["CFCMC_SwapProbability"].is_number_float())
       {
         double swapCFCMCProbability = item["CFCMC_SwapProbability"].get<double>();
@@ -2046,6 +2064,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "SwapProbability",
     "PairSwapConventionalProbability",
     "PairSwapProbability",
+    "CFCMC_PairSwapProbability",
+    "CFCMC_CBMC_PairSwapProbability",
     "PairComponent",
     "MaximumPairDistance",
     "CFCMC_SwapProbability",

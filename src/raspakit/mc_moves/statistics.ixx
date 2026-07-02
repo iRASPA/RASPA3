@@ -37,6 +37,10 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::SwapCBMC)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::PairSwapCBMC)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::PairSwap)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::PairSwapCFCMC)] = MoveStatistics<double3>{
+        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
+    stats[std::to_underlying(Move::Types::PairSwapCBCFCMC)] = MoveStatistics<double3>{
+        .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
     stats[std::to_underlying(Move::Types::SwapCFCMC)] = MoveStatistics<double3>{
         .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
     stats[std::to_underlying(Move::Types::SwapCBCFCMC)] = MoveStatistics<double3>{

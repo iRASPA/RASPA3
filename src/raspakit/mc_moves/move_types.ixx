@@ -40,7 +40,9 @@ export struct Move
     PairSwap = 29,
     PairSwapCBMC = 30,
     AnisotropicVolumeChange = 31,
-    Count = 32
+    PairSwapCFCMC = 32,
+    PairSwapCBCFCMC = 33,
+    Count = 34
   };
 
   static std::array<std::string, std::to_underlying(Move::Types::Count)> moveNames;
@@ -53,6 +55,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::IdentityChangeCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,
                                                                 Move::Types::PairSwap,
+                                                                Move::Types::PairSwapCFCMC,      Move::Types::PairSwapCBCFCMC,
                                                                 Move::Types::SwapCFCMC,          Move::Types::SwapCBCFCMC,
                                                                 Move::Types::Widom,
                                                                 Move::Types::WidomCFCMC,         Move::Types::WidomCBCFCMC};

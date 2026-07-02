@@ -62,10 +62,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const std::uint8_t pairGroupId = moleculeAAtoms.front().groupId;
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
+  // integer molecules are stored after the fractional molecules of a component
+  const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
+
   std::optional<std::size_t> selectedPartner;
   if (pairGroupId > 0)
   {
-    for (std::size_t moleculeB = 0; moleculeB < system.numberOfIntegerMoleculesPerComponent[componentB]; ++moleculeB)
+    for (std::size_t moleculeB = firstIntegerMoleculeB;
+         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
     {
       std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
       if (moleculeBAtoms.front().groupId == pairGroupId)
@@ -79,7 +83,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   if (!selectedPartner.has_value())
   {
     double closestDistance = R_max;
-    for (std::size_t moleculeB = 0; moleculeB < system.numberOfIntegerMoleculesPerComponent[componentB]; ++moleculeB)
+    for (std::size_t moleculeB = firstIntegerMoleculeB;
+         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
     {
       std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
       const double distance =
@@ -116,7 +121,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   for (std::size_t component = 0; component < system.components.size(); ++component)
   {
-    for (std::size_t molecule = 0; molecule < system.numberOfIntegerMoleculesPerComponent[component]; ++molecule)
+    // include all molecules (fractional ones as well) except the pair that is being deleted
+    for (std::size_t molecule = 0; molecule < system.numberOfMoleculesPerComponent[component]; ++molecule)
     {
       if ((component == selectedComponent && molecule == selectedMolecule) ||
           (component == componentB && molecule == selectedMoleculeB))
@@ -309,10 +315,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const std::uint8_t pairGroupId = moleculeAAtoms.front().groupId;
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
+  // integer molecules are stored after the fractional molecules of a component
+  const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
+
   std::optional<std::size_t> selectedPartner;
   if (pairGroupId > 0)
   {
-    for (std::size_t moleculeB = 0; moleculeB < system.numberOfIntegerMoleculesPerComponent[componentB]; ++moleculeB)
+    for (std::size_t moleculeB = firstIntegerMoleculeB;
+         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
     {
       std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
       if (moleculeBAtoms.front().groupId == pairGroupId)
@@ -326,7 +336,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   if (!selectedPartner.has_value())
   {
     double closestDistance = R_max;
-    for (std::size_t moleculeB = 0; moleculeB < system.numberOfIntegerMoleculesPerComponent[componentB]; ++moleculeB)
+    for (std::size_t moleculeB = firstIntegerMoleculeB;
+         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
     {
       std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
       const double distance =
@@ -363,7 +374,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   for (std::size_t component = 0; component < system.components.size(); ++component)
   {
-    for (std::size_t molecule = 0; molecule < system.numberOfIntegerMoleculesPerComponent[component]; ++molecule)
+    // include all molecules (fractional ones as well) except the pair that is being deleted
+    for (std::size_t molecule = 0; molecule < system.numberOfMoleculesPerComponent[component]; ++molecule)
     {
       if ((component == selectedComponent && molecule == selectedMolecule) ||
           (component == componentB && molecule == selectedMoleculeB))

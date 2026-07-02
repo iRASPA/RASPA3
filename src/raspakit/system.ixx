@@ -141,6 +141,12 @@ export struct System
   // # fractional molecules for pair-CFCMC grand-canonical
   std::vector<std::size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
 
+  // # fractional molecules for ion-pair insertion/deletion CFCMC (PairSwapCFCMC)
+  std::vector<std::size_t> numberOfPairSwapFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for ion-pair insertion/deletion CB/CFCMC (PairSwapCBCFCMC)
+  std::vector<std::size_t> numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC{};
+
   // # fractional molecules for GibbsSwapCFCMC / GibbsSwapCBCFCMC
   std::vector<std::size_t> numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC{};
 
@@ -260,10 +266,14 @@ export struct System
   std::optional<InterpolationEnergyGrid> externalFieldInterpolationGrid;
 
   // Fractional molecules per component are stored in Move::Types enum order, then integer molecules.
-  // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> GibbsSwapCFCMC -> ReactionConventionalCFCMC -> ReactionCFCMC ->
-  //          GibbsConventionalCFCMC
+  // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> PairSwapCFCMC -> PairSwapCBCFCMC -> GibbsSwapCFCMC ->
+  //          ReactionConventionalCFCMC -> ReactionCFCMC -> GibbsConventionalCFCMC
   [[nodiscard]] std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;

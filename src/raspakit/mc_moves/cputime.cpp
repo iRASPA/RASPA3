@@ -258,6 +258,32 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"NonEwald", std::chrono::duration<double>::zero()},
                   {"Tail", std::chrono::duration<double>::zero()},
                   {"Ewald", std::chrono::duration<double>::zero()}
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::PairSwapCFCMC [32],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"Insertion-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Insertion-Ewald", std::chrono::duration<double>::zero()},
+                  {"Insertion-Tail", std::chrono::duration<double>::zero()},
+                  {"Deletion-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Deletion-Ewald", std::chrono::duration<double>::zero()},
+                  {"Deletion-Tail", std::chrono::duration<double>::zero()},
+                  {"Lambda-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Lambda-Ewald", std::chrono::duration<double>::zero()},
+                  {"Lambda-Tail", std::chrono::duration<double>::zero()},
+                },
+                std::map<std::string, std::chrono::duration<double>>{
+                  //Move::Types::PairSwapCBCFCMC [33],
+                  {"Total", std::chrono::duration<double>::zero()},
+                  {"Insertion-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Insertion-Ewald", std::chrono::duration<double>::zero()},
+                  {"Insertion-Tail", std::chrono::duration<double>::zero()},
+                  {"Deletion-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Deletion-Ewald", std::chrono::duration<double>::zero()},
+                  {"Deletion-Tail", std::chrono::duration<double>::zero()},
+                  {"Lambda-NonEwald", std::chrono::duration<double>::zero()},
+                  {"Lambda-Ewald", std::chrono::duration<double>::zero()},
+                  {"Lambda-Tail", std::chrono::duration<double>::zero()},
                 }
               }
 {

@@ -38,6 +38,8 @@ import mc_moves_insertion_cbmc;
 import mc_moves_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
 import mc_moves_pair_deletion_cbmc;
+import mc_moves_pair_swap_cfcmc;
+import mc_moves_pair_swap_cfcmc_cbmc;
 import mc_moves_swap_cfcmc;
 import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_gibbs_swap_cbmc;
@@ -324,6 +326,8 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       break;
     }
     case Move::Types::PairSwapCBMC:
+    case Move::Types::PairSwapCFCMC:
+    case Move::Types::PairSwapCBCFCMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -892,6 +896,28 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
+    case Move::Types::PairSwapCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::pairSwapMove_CFCMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::PairSwapCBCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::pairSwapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
     case Move::Types::PairSwapCBMC:
     {
       if (random.uniform() < 0.5)
@@ -1430,6 +1456,28 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       const auto [energyDifference, Pacc] =
           MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::PairSwapCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::pairSwapMove_CFCMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::PairSwapCBCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::pairSwapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
