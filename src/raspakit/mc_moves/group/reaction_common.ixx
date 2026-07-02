@@ -55,10 +55,10 @@ void appendAllReactionFractionalMoleculeExclusions(
     RandomNumber& random, System& system,
     std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules) noexcept;
 
-[[nodiscard]] std::vector<Atom> collectReactionFractionalAtoms(System& system, Reaction& reaction) noexcept;
+[[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
+                                                     std::span<const std::size_t> stoichiometry) noexcept;
 
-[[nodiscard]] std::vector<Atom> collectReactionFractionalAtomsAtLambda(System& system, Reaction& reaction,
-                                                                       double lambda) noexcept;
+[[nodiscard]] std::vector<Atom> collectReactionFractionalAtoms(System& system, Reaction& reaction) noexcept;
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
 
@@ -71,7 +71,8 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
 
 [[nodiscard]] std::optional<RunningEnergy> computeGroupSwapEnergyDifference(
     System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms,
-    bool includeTailCorrections = true, bool includeEwaldCorrections = true) noexcept;
+    bool includeTailCorrections = true, bool includeEwaldCorrections = true,
+    std::span<const Atom> excludeFromBackground = {}) noexcept;
 
 [[nodiscard]] RunningEnergy computeGroupSwapTailEnergyDifference(System& system, std::span<const Atom> newAtoms,
                                                                  std::span<const Atom> oldAtoms) noexcept;
@@ -82,16 +83,8 @@ void deleteSelectedMolecules(System& system,
 void insertGrownMolecules(System& system, std::span<const ChainGrowData> growData,
                           std::span<const std::size_t> productStoichiometry) noexcept;
 
-void acceptReactionForwardInsert(System& system, Reaction& reaction, double lambdaNew,
-                                 std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
-                                 std::span<const ChainGrowData> growData) noexcept;
-
-void acceptReactionBackwardDelete(System& system, Reaction& reaction, double lambdaNew,
-                                  std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
-                                  std::span<const ChainGrowData> growData) noexcept;
-
-[[nodiscard]] std::size_t numberOfReactionMoleculesForComponent(const Reaction& reaction, std::size_t componentId,
-                                                                ReactionMoveKind moveKind) noexcept;
+[[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,
+                                                                Move::Types move) noexcept;
 
 enum class SerialMoveKind : std::uint8_t
 {

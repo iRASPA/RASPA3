@@ -401,24 +401,23 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
     case TorsionType::Fixed:
       return 0.0;
     case TorsionType::Harmonic:
-      // ========================
-      // p_0/k_B [K]
-      // p_1     [-]
-      // p_2     [degrees]
-      // potential defined in terms of 'phi' and therefore contains a singularity
-      // the sign of the angle-phi is positive if (Rab x Rcb) x (Rcb x Rdc) is in the
-      // same direction as Rbc, and negative otherwise
+      // (1/2)*p_0*(phi-p_1)^2
+      // ===============================================
+      // p_0/k_B [K/rad^2]
+      // p_1     [degrees]
       sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
-      return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
+      temp = phi - parameters[1];
+      temp2 = temp * temp;
+      return 0.5 * parameters[0] * temp2;
     case TorsionType::HarmonicCosine:
       // (1/2)*p_0*(cos(phi)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      temp = cos_phi - parameters[1];
-      temp2 = temp * temp;
-      return 0.5 * parameters[0] * temp2;
+      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+      phi = std::copysign(std::acos(cos_phi), sign);
+      return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::ThreeCosine:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================

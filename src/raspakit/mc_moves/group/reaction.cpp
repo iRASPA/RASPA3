@@ -91,9 +91,13 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   const double equilibriumTerm = ReactionCommon::computeReactionEquilibriumLogTerm(system, reaction, moveKind);
 
   const double correctionFactorEwald = std::exp(-system.beta * energyFourierDifference.potentialEnergy());
-  const double rosenbluthNew =
-      growData->RosenbluthWeight * std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
-  const double rosenbluthOld = retraceData->RosenbluthWeight;
+  // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
+  // partition functions q_i can be used in the equilibrium term (Rosch and Maginn, eqs. 18-24)
+  const double idealGasInsert = ReactionCommon::idealGasRosenbluthWeightProduct(system, insertStoichiometry);
+  const double idealGasRemove = ReactionCommon::idealGasRosenbluthWeightProduct(system, removeStoichiometry);
+  const double rosenbluthNew = (growData->RosenbluthWeight / idealGasInsert) *
+                               std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
+  const double rosenbluthOld = retraceData->RosenbluthWeight / idealGasRemove;
 
   const double acceptanceProbability = correctionFactorEwald * (rosenbluthNew / rosenbluthOld) * std::exp(equilibriumTerm);
 

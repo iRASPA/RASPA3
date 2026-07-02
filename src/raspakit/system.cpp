@@ -1541,6 +1541,9 @@ void System::createParallelReactionFractionalMolecules()
 
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
+      // grow at the actual effective coupling (reactants: 1 - lambda, products: lambda) so that the
+      // overlap check is meaningful for fractional molecules that start (nearly) fully coupled
+      const double reactantScaling = 1.0 - reaction.currentLambda;
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
         std::optional<ChainGrowData> growData = std::nullopt;
@@ -1550,7 +1553,8 @@ void System::createParallelReactionFractionalMolecules()
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
               interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
               spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), reactantScaling, false,
+              true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex =
@@ -1559,6 +1563,7 @@ void System::createParallelReactionFractionalMolecules()
                                          reaction.currentLambda);
       }
 
+      const double productScaling = reaction.currentLambda;
       for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
       {
         std::optional<ChainGrowData> growData = std::nullopt;
@@ -1568,7 +1573,8 @@ void System::createParallelReactionFractionalMolecules()
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
               interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
               spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), productScaling, false,
+              true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
