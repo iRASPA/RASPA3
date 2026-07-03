@@ -1444,6 +1444,14 @@ void System::reactionLambdaSampleOccupancy() noexcept
   const bool hasFractionals = hasReactionFractionalMolecules();
   for (Reaction& reaction : reactions.list)
   {
+    if (reaction.serialRxCFC)
+    {
+      // sample both sides so that each histogram's occupancy measures the fraction of samples for
+      // which that side held the fractional molecules
+      reaction.lambda.sampleOccupancy(hasFractionals && reaction.fractionalSideIsReactants);
+      reaction.lambdaProductSide.sampleOccupancy(hasFractionals && !reaction.fractionalSideIsReactants);
+      continue;
+    }
     activeReactionLambdaHistogram(reaction).sampleOccupancy(hasFractionals);
   }
 }
@@ -2040,9 +2048,19 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   {
     for (const Reaction& reaction : reactions.list)
     {
+      const double lambda = reaction.currentLambda;
+      if (reaction.serialRxCFC)
+      {
+        std::print(stream,
+                   "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
+                   "occupancy reactants: ({:3f}) products: ({:3f})\n",
+                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
+                   reaction.lambdaProductSide.occupancy());
+        continue;
+      }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
-      const double lambda = reaction.currentLambda;
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
                  lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
@@ -2104,9 +2122,19 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   {
     for (const Reaction& reaction : reactions.list)
     {
+      const double lambda = reaction.currentLambda;
+      if (reaction.serialRxCFC)
+      {
+        std::print(stream,
+                   "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
+                   "occupancy reactants: ({:3f}) products: ({:3f})\n",
+                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
+                   reaction.lambdaProductSide.occupancy());
+        continue;
+      }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
-      const double lambda = reaction.currentLambda;
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
                  lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
@@ -2210,9 +2238,19 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   {
     for (const Reaction& reaction : reactions.list)
     {
+      const double lambda = reaction.currentLambda;
+      if (reaction.serialRxCFC)
+      {
+        std::print(stream,
+                   "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
+                   "occupancy reactants: ({:3f}) products: ({:3f})\n",
+                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
+                   reaction.lambdaProductSide.occupancy());
+        continue;
+      }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
-      const double lambda = reaction.currentLambda;
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
                  lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
@@ -2272,9 +2310,19 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   {
     for (const Reaction& reaction : reactions.list)
     {
+      const double lambda = reaction.currentLambda;
+      if (reaction.serialRxCFC)
+      {
+        std::print(stream,
+                   "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
+                   "occupancy reactants: ({:3f}) products: ({:3f})\n",
+                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
+                   reaction.lambdaProductSide.occupancy());
+        continue;
+      }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
-      const double lambda = reaction.currentLambda;
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
                  lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
@@ -3257,6 +3305,21 @@ std::string System::writeMCMoveStatistics() const
   {
     for (const Reaction& reaction : reactions.list)
     {
+      if (reaction.serialRxCFC)
+      {
+        std::print(stream, "reaction {} lambda statistics (reactant side, occupancy {:.6f}):\n", reaction.id,
+                   reaction.lambda.occupancy());
+        std::print(stream, "{}", reaction.lambda.writeAveragesStatistics(beta, std::nullopt, std::nullopt));
+        std::print(stream, "{}", reaction.lambda.writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
+
+        std::print(stream, "reaction {} lambda statistics (product side, occupancy {:.6f}):\n", reaction.id,
+                   reaction.lambdaProductSide.occupancy());
+        std::print(stream, "{}",
+                   reaction.lambdaProductSide.writeAveragesStatistics(beta, std::nullopt, std::nullopt));
+        std::print(stream, "{}",
+                   reaction.lambdaProductSide.writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
+        continue;
+      }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       std::print(stream, "reaction {} lambda statistics:\n", reaction.id);
       std::print(stream, "{}", histogram.writeAveragesStatistics(beta, std::nullopt, std::nullopt));

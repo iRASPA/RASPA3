@@ -1161,6 +1161,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           defaultSerialRxCFC = value["SerialRxCFC"].get<bool>();
         }
+        else if ((value.contains("SerialCFCRXMCProbability") && value["SerialCFCRXMCProbability"].is_number_float()) ||
+                 (value.contains("SerialCFCRXMCCBMCProbability") &&
+                  value["SerialCFCRXMCCBMCProbability"].is_number_float()))
+        {
+          // the serial reaction moves were explicitly requested, so default the reactions to serial Rx/CFC
+          defaultSerialRxCFC = true;
+        }
 
         std::size_t reactionId = 0;
         for (const auto& reactionItem : value["Reactions"])
