@@ -204,11 +204,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwapCBMC, 0);
 
-    const std::uint8_t pairGroupId =
-        static_cast<std::uint8_t>((system.numberOfIntegerMoleculesPerComponent[selectedComponent] + 1) % 256);
-    for (Atom& atom : growDataA->atom) atom.groupId = pairGroupId;
-    for (Atom& atom : growDataB->atom) atom.groupId = pairGroupId;
-
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, newMoleculeA,
                                                {});
@@ -408,11 +403,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwap, 0);
-
-    const std::uint8_t pairGroupId =
-        static_cast<std::uint8_t>((system.numberOfIntegerMoleculesPerComponent[selectedComponent] + 1) % 256);
-    for (Atom& atom : growDataA->atom) atom.groupId = pairGroupId;
-    for (Atom& atom : growDataB->atom) atom.groupId = pairGroupId;
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, newMoleculeA,

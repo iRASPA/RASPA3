@@ -407,6 +407,7 @@ export struct System
   void reactionLambdaClearBookkeeping() noexcept;
   void reactionLambdaFinalize() noexcept;
   [[nodiscard]] bool componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
+  [[nodiscard]] bool fractionalSlotComputesDUdlambda(std::size_t componentId, std::size_t slotIndex) const noexcept;
   void pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept;
   void pairSwapLambdaSampleOccupancy() noexcept;
   void pairSwapLambdaClearBookkeeping() noexcept;

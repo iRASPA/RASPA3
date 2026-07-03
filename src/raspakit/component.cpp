@@ -79,8 +79,6 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
     readComponent(componentId, forceField, filenameData.value());
   }
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
-  lambdaPairSwap.computeDUdlambda = thermodynamicIntegration;
-  lambdaPairSwapCB.computeDUdlambda = thermodynamicIntegration;
 
   cbmc_moves_statistics = std::vector<CBMCMoveStatistics>(definedAtoms.size());
 }
@@ -123,8 +121,6 @@ Component::Component(const ForceField &forceField, std::string componentName, do
 
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
-  lambdaPairSwap.computeDUdlambda = thermodynamicIntegration;
-  lambdaPairSwapCB.computeDUdlambda = thermodynamicIntegration;
 
   if (!intraMolecularPotentials.bonds.empty())
   {

@@ -249,8 +249,7 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
                                       std::vector<Atom> atoms, std::size_t moleculeIndex)
 {
   const double l = 0.0;
-  const bool groupId = components[selectedComponent].lambdaGC.computeDUdlambda ||
-                       components[selectedComponent].lambdaGibbs.computeDUdlambda;
+  const bool groupId = fractionalSlotComputesDUdlambda(selectedComponent, moleculeIndex);
   for (Atom& atom : atoms)
   {
     atom.moleculeId = static_cast<std::uint16_t>(moleculeIndex);
@@ -535,13 +534,11 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     {
       numberOfMoleculesPerComponent[componentId] = 0;
 
-      auto growFractionalMolecule = [&]() -> std::optional<ChainGrowData>
+      auto growFractionalMolecule = [&](bool groupId) -> std::optional<ChainGrowData>
       {
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          const bool groupId = components[componentId].lambdaGC.computeDUdlambda ||
-                               components[componentId].lambdaGibbs.computeDUdlambda;
           const Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
@@ -554,42 +551,48 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
       if (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
-                                 indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId));
+        const std::size_t slot = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfPairGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
-                                 indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId));
+        const std::size_t slot = indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId);
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
-                                 indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId));
+        const std::size_t slot = indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId);
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
-                                 indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId));
+        const std::size_t slot = indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId);
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom,
-                                 indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId));
+        const std::size_t slot = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData = growFractionalMolecule();
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(components[componentId].lambdaGibbs.computeDUdlambda);
         std::vector<Atom> atoms = growData->atom;
         const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
         for (Atom& atom : atoms)
@@ -1520,6 +1523,33 @@ bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types 
     return false;
   }
   return component.mc_moves_probabilities.getProbability(move) > 0.0;
+}
+
+// Whether the fractional molecule in the given slot carries dU/dlambda group-tagging. The pair-swap
+// slots follow the histogram of the driving (lower-index) component of the pair; all other slots
+// follow the legacy lambdaGC/lambdaGibbs flags of the component itself.
+bool System::fractionalSlotComputesDUdlambda(std::size_t componentId, std::size_t slotIndex) const noexcept
+{
+  std::size_t driver = componentId;
+  if (components[componentId].pairComponentId.has_value() &&
+      components[componentId].pairComponentId.value() < components.size())
+  {
+    driver = std::min(componentId, components[componentId].pairComponentId.value());
+  }
+
+  const std::size_t pairSwapBegin = indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId);
+  const std::size_t pairSwapEnd = pairSwapBegin + numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[componentId];
+  const std::size_t pairSwapCBEnd = pairSwapEnd + numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[componentId];
+
+  if (slotIndex >= pairSwapBegin && slotIndex < pairSwapEnd)
+  {
+    return components[driver].lambdaPairSwap.computeDUdlambda;
+  }
+  if (slotIndex >= pairSwapEnd && slotIndex < pairSwapCBEnd)
+  {
+    return components[driver].lambdaPairSwapCB.computeDUdlambda;
+  }
+  return components[componentId].lambdaGC.computeDUdlambda || components[componentId].lambdaGibbs.computeDUdlambda;
 }
 
 void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept

@@ -59,41 +59,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   }
 
   std::span<Atom> moleculeAAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
-  const std::uint8_t pairGroupId = moleculeAAtoms.front().groupId;
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
   // integer molecules are stored after the fractional molecules of a component
   const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
 
+  // the partner is the closest integer molecule of the paired component within R_max
   std::optional<std::size_t> selectedPartner;
-  if (pairGroupId > 0)
+  double closestDistance = R_max;
+  for (std::size_t moleculeB = firstIntegerMoleculeB;
+       moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
   {
-    for (std::size_t moleculeB = firstIntegerMoleculeB;
-         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
+    std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
+    const double distance =
+        (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
+    if (distance <= closestDistance)
     {
-      std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-      if (moleculeBAtoms.front().groupId == pairGroupId)
-      {
-        selectedPartner = moleculeB;
-        break;
-      }
-    }
-  }
-
-  if (!selectedPartner.has_value())
-  {
-    double closestDistance = R_max;
-    for (std::size_t moleculeB = firstIntegerMoleculeB;
-         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
-    {
-      std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-      const double distance =
-          (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
-      if (distance <= closestDistance)
-      {
-        closestDistance = distance;
-        selectedPartner = moleculeB;
-      }
+      closestDistance = distance;
+      selectedPartner = moleculeB;
     }
   }
 
@@ -312,41 +295,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   }
 
   std::span<Atom> moleculeAAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
-  const std::uint8_t pairGroupId = moleculeAAtoms.front().groupId;
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
   // integer molecules are stored after the fractional molecules of a component
   const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
 
+  // the partner is the closest integer molecule of the paired component within R_max
   std::optional<std::size_t> selectedPartner;
-  if (pairGroupId > 0)
+  double closestDistance = R_max;
+  for (std::size_t moleculeB = firstIntegerMoleculeB;
+       moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
   {
-    for (std::size_t moleculeB = firstIntegerMoleculeB;
-         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
+    std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
+    const double distance =
+        (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
+    if (distance <= closestDistance)
     {
-      std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-      if (moleculeBAtoms.front().groupId == pairGroupId)
-      {
-        selectedPartner = moleculeB;
-        break;
-      }
-    }
-  }
-
-  if (!selectedPartner.has_value())
-  {
-    double closestDistance = R_max;
-    for (std::size_t moleculeB = firstIntegerMoleculeB;
-         moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
-    {
-      std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-      const double distance =
-          (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
-      if (distance <= closestDistance)
-      {
-        closestDistance = distance;
-        selectedPartner = moleculeB;
-      }
+      closestDistance = distance;
+      selectedPartner = moleculeB;
     }
   }
 

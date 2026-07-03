@@ -117,6 +117,9 @@ RunningEnergy computeEwaldFourierEnergy(
  * \param netCharge The current total net charge of the system (framework plus adsorbates) before the
  *                  move; used for the net-charge correction when the move changes the net charge
  *                  (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
+ * \param netChargeDerivativeExternal The summed charge of dU/dlambda group-tagged atoms outside
+ *                  'newatoms'/'oldatoms' (e.g. the partner fractional molecule in chained pair
+ *                  moves); needed for the dU/dlambda of the net-charge correction.
  * \return The running energy containing the Ewald Fourier energy difference.
  */
 RunningEnergy energyDifferenceEwaldFourier(
@@ -125,7 +128,7 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
-    double netCharge = 0.0);
+    double netCharge = 0.0, double netChargeDerivativeExternal = 0.0);
 
 RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
@@ -134,7 +137,8 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge = 0.0);
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge = 0.0,
+    double netChargeDerivativeExternal = 0.0);
 
 /**
  * \brief Computes the difference in electric field due to atom position changes in the Ewald Fourier summation.

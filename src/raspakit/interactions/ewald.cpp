@@ -27,15 +27,17 @@ import forcefield;
 
 // Net-charge correction difference for a Monte Carlo move that replaces 'oldatoms' by 'newatoms';
 // see Bogusz et al., J. Chem. Phys. 108, 7070 (1998). 'netCharge' is the total net charge of the
-// system (framework plus adsorbates) before the move, and 'singleIonFourierSum' is the Fourier sum
-// of a single unit charge for the current box and wave vectors.
+// system (framework plus adsorbates) before the move, 'netChargeDerivativeExternal' is the charge
+// of group-tagged atoms outside 'oldatoms'/'newatoms' (nonzero when other dU/dlambda-tagged
+// molecules exist, e.g. the partner molecule in chained pair moves), and 'singleIonFourierSum' is
+// the Fourier sum of a single unit charge for the current box and wave vectors.
 static void addNetChargeCorrectionDifference(RunningEnergy &energy, double singleIonFourierSum, double alpha,
-                                             double netCharge, std::span<const Atom> newatoms,
-                                             std::span<const Atom> oldatoms)
+                                             double netCharge, double netChargeDerivativeExternal,
+                                             std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   double deltaCharge = 0.0;
-  double chargeDerivativeNew = 0.0;
-  double chargeDerivativeOld = 0.0;
+  double chargeDerivativeNew = netChargeDerivativeExternal;
+  double chargeDerivativeOld = netChargeDerivativeExternal;
   for (const Atom &atom : oldatoms)
   {
     deltaCharge -= atom.scalingCoulomb * atom.charge;
@@ -757,7 +759,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
-    double netCharge)
+    double netCharge, double netChargeDerivativeExternal)
 {
   RunningEnergy energy;
   double singleIonFourierSum = 0.0;
@@ -982,7 +984,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
-  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, newatoms, oldatoms);
+  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, netChargeDerivativeExternal, newatoms, oldatoms);
 
   return energy;
 }
@@ -994,7 +996,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge)
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge,
+    double netChargeDerivativeExternal)
 {
   RunningEnergy energy;
   double singleIonFourierSum = 0.0;
@@ -1233,7 +1236,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
-  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, newatoms, oldatoms);
+  addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, netChargeDerivativeExternal, newatoms, oldatoms);
 
   return energy;
 }

@@ -732,8 +732,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].lambdaGC.computeDUdlambda = thermodynamic_integration;
-          jsonComponents[i][componentId].lambdaPairSwap.computeDUdlambda = thermodynamic_integration;
-          jsonComponents[i][componentId].lambdaPairSwapCB.computeDUdlambda = thermodynamic_integration;
+        }
+      }
+
+      // selects which lambda the dU/dlambda group-tagging (thermodynamic integration) applies to:
+      // "CFCMC" (default lambdaGC, also used by CB/CFCMC swap), "CFCMC_PairSwap", or "CFCMC_CBMC_PairSwap"
+      if (item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_string())
+      {
+        std::string thermodynamicIntegrationString = item["ThermodynamicIntegration"].get<std::string>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          if (caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC") ||
+              caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_Swap") ||
+              caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_CBMC_Swap"))
+          {
+            jsonComponents[i][componentId].lambdaGC.computeDUdlambda = true;
+          }
+          else if (caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_PairSwap"))
+          {
+            jsonComponents[i][componentId].lambdaPairSwap.computeDUdlambda = true;
+          }
+          else if (caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_CBMC_PairSwap"))
+          {
+            jsonComponents[i][componentId].lambdaPairSwapCB.computeDUdlambda = true;
+          }
+          else
+          {
+            throw std::runtime_error(
+                std::format("Error [Component {}]: unknown 'ThermodynamicIntegration' value '{}' "
+                            "(allowed: 'CFCMC', 'CFCMC_PairSwap', 'CFCMC_CBMC_PairSwap')\n",
+                            componentId, thermodynamicIntegrationString));
+          }
         }
       }
 
@@ -1843,6 +1872,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
     {
       if (systems[i].components[j].lambdaGC.computeDUdlambda)
+      {
+        ++numberOfDUDlambda;
+      }
+      if (systems[i].components[j].lambdaPairSwap.computeDUdlambda)
+      {
+        ++numberOfDUDlambda;
+      }
+      if (systems[i].components[j].lambdaPairSwapCB.computeDUdlambda)
       {
         ++numberOfDUDlambda;
       }
