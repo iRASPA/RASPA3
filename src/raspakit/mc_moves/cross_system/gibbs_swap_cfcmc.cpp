@@ -208,8 +208,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     for (Atom& atom : selectedIntegerMoleculeB)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = std::uint8_t{0};
+      atom.setScalingOff();
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -271,15 +270,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       atom.moleculeId = static_cast<std::uint16_t>(
           systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-      atom.setScaling(oldLambda);
-      atom.isFractional = true;
-      atom.groupId = static_cast<std::uint8_t>(componentB.lambdaGC.computeDUdlambda);
+      atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
     }
 
     for (Atom& atom : selectedIntegerMoleculeB)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = std::uint8_t{0};
+      atom.setScalingOff();
       atom.position = systemA.simulationBox.randomPosition(random);
     }
 
@@ -397,9 +393,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       {
         atom.moleculeId = static_cast<std::uint16_t>(
             systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-        atom.setScaling(oldLambda);
-        atom.isFractional = true;
-        atom.groupId = static_cast<std::uint8_t>(componentB.lambdaGC.computeDUdlambda);
+        atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
       }
 
       systemA.updateMoleculeAtomInformation();

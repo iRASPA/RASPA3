@@ -470,15 +470,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // deactivate the fractional pair
     for (Atom& atom : fractionalMoleculeA)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = false;
-      atom.isFractional = false;
+      atom.setScalingOff();
     }
     for (Atom& atom : fractionalMoleculeB)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = false;
-      atom.isFractional = false;
+      atom.setScalingOff();
     }
 
     RunningEnergy energyDifference{};
@@ -487,10 +483,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const bool groupIdA = componentA.lambdaPairSwapCB.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeA)
     {
-      atom.scalingVDW = Scaling::scalingVDW(newLambda);
-      atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-      atom.groupId = groupIdA;
-      atom.isFractional = true;
+      atom.setScalingToFractional(newLambda, groupIdA);
     }
 
     if (system.insideBlockedPockets(componentA, newFractionalMoleculeA))
@@ -533,10 +526,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const bool groupIdB = componentA.lambdaPairSwapCB.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeB)
     {
-      atom.scalingVDW = Scaling::scalingVDW(newLambda);
-      atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-      atom.groupId = groupIdB;
-      atom.isFractional = true;
+      atom.setScalingToFractional(newLambda, groupIdB);
     }
 
     if (system.insideBlockedPockets(componentBRef, newFractionalMoleculeB))

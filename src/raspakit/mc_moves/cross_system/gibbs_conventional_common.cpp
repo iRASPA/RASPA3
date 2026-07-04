@@ -54,9 +54,7 @@ void applyTargetScaling(std::span<Atom> atoms, GibbsMoveKind moveKind, double la
         atom.setScalingToInteger();
         break;
       case GibbsMoveKind::Delete:
-        atom.setScalingFullyOff();
-        atom.groupId = false;
-        atom.isFractional = true;
+        atom.setScalingToInactiveFractional();
         break;
       case GibbsMoveKind::LambdaChange:
         atom.setScaling(lambda);
@@ -143,9 +141,7 @@ void acceptLambdaScaling(System& system, std::size_t selectedComponent, std::siz
   const bool groupId = system.components[selectedComponent].lambdaGibbs.computeDUdlambda;
   for (Atom& atom : fractionalMolecule)
   {
-    atom.setScaling(lambdaNew);
-    atom.isFractional = true;
-    atom.groupId = groupId;
+    atom.setScalingToFractional(lambdaNew, groupId);
   }
   Component& component = system.components[selectedComponent];
   component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, lambdaNew));
@@ -164,9 +160,7 @@ void acceptInsertStep(System& system, std::size_t selectedComponent, std::size_t
   for (Atom& atom : atoms)
   {
     atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-    atom.groupId = component.lambdaGibbs.computeDUdlambda;
-    atom.setScaling(remainderLambda);
-    atom.isFractional = true;
+    atom.setScalingToFractional(remainderLambda, component.lambdaGibbs.computeDUdlambda);
   }
 
   system.insertMolecule(selectedComponent, molecule, atoms);
@@ -193,9 +187,7 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
 
   for (Atom& atom : fractionalMolecule)
   {
-    atom.setScalingFullyOff();
-    atom.groupId = false;
-    atom.isFractional = true;
+    atom.setScalingToInactiveFractional();
   }
 
   std::vector<Atom> savedFractional(fractionalMolecule.begin(), fractionalMolecule.end());
@@ -207,9 +199,7 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
   const bool groupId = component.lambdaGibbs.computeDUdlambda;
   for (Atom& atom : newFractionalMolecule)
   {
-    atom.setScaling(remainderLambda);
-    atom.isFractional = true;
-    atom.groupId = groupId;
+    atom.setScalingToFractional(remainderLambda, groupId);
   }
 
   system.deleteMolecule(selectedComponent, selectedIntegerMoleculeIndex, savedFractional);
@@ -428,9 +418,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       {
         atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdA);
         atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-        atom.groupId = groupIdA;
-        atom.isFractional = true;
-        atom.setScaling(lambdaNewA);
+        atom.setScalingToFractional(lambdaNewA, groupIdA);
       }
 
       std::optional<RunningEnergy> insertEnergyA =
@@ -459,11 +447,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       std::copy(oldSelectedMoleculeB.begin(), oldSelectedMoleculeB.end(), selectedMoleculeB.begin());
 
       std::vector<Atom> trialSelectedB(selectedMoleculeB.begin(), selectedMoleculeB.end());
-      applyTargetScaling(trialSelectedB, GibbsMoveKind::LambdaChange, lambdaNewB);
       for (Atom& atom : trialSelectedB)
       {
-        atom.groupId = componentB.lambdaGibbs.computeDUdlambda;
-        atom.isFractional = true;
+        atom.setScalingToFractional(lambdaNewB, componentB.lambdaGibbs.computeDUdlambda);
       }
       std::optional<RunningEnergy> promoteEnergyB =
           computeMoleculeEnergyDifference(systemB, trialSelectedB, selectedMoleculeB);
@@ -477,11 +463,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     else
     {
       std::vector<Atom> trialSelectedB(selectedMoleculeB.begin(), selectedMoleculeB.end());
-      applyTargetScaling(trialSelectedB, GibbsMoveKind::LambdaChange, lambdaNewB);
       for (Atom& atom : trialSelectedB)
       {
-        atom.groupId = componentB.lambdaGibbs.computeDUdlambda;
-        atom.isFractional = true;
+        atom.setScalingToFractional(lambdaNewB, componentB.lambdaGibbs.computeDUdlambda);
       }
 
       std::optional<RunningEnergy> retraceEnergyB =
@@ -520,11 +504,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       std::copy(oldSelectedMoleculeA.begin(), oldSelectedMoleculeA.end(), selectedMoleculeA.begin());
 
       std::vector<Atom> trialSelectedA(selectedMoleculeA.begin(), selectedMoleculeA.end());
-      applyTargetScaling(trialSelectedA, GibbsMoveKind::LambdaChange, lambdaNewA);
       for (Atom& atom : trialSelectedA)
       {
-        atom.groupId = componentA.lambdaGibbs.computeDUdlambda;
-        atom.isFractional = true;
+        atom.setScalingToFractional(lambdaNewA, componentA.lambdaGibbs.computeDUdlambda);
       }
       std::optional<RunningEnergy> promoteEnergyA =
           computeMoleculeEnergyDifference(systemA, trialSelectedA, selectedMoleculeA);
@@ -538,11 +520,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     else
     {
       std::vector<Atom> trialSelectedA(selectedMoleculeA.begin(), selectedMoleculeA.end());
-      applyTargetScaling(trialSelectedA, GibbsMoveKind::LambdaChange, lambdaNewA);
       for (Atom& atom : trialSelectedA)
       {
-        atom.groupId = componentA.lambdaGibbs.computeDUdlambda;
-        atom.isFractional = true;
+        atom.setScalingToFractional(lambdaNewA, componentA.lambdaGibbs.computeDUdlambda);
       }
 
       std::optional<RunningEnergy> retraceEnergyA =
@@ -592,9 +572,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       {
         atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdB);
         atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-        atom.groupId = groupIdB;
-        atom.isFractional = true;
-        atom.setScaling(lambdaNewB);
+        atom.setScalingToFractional(lambdaNewB, groupIdB);
       }
 
       std::optional<RunningEnergy> insertEnergyB =

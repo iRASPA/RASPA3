@@ -158,8 +158,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
   const double effectiveLambda = isReactant ? (1.0 - lambda) : lambda;
   for (Atom& atom : atoms)
   {
-    atom.setScaling(effectiveLambda);
-    atom.isFractional = true;
+    atom.setScalingToFractional(effectiveLambda);
   }
 }
 
@@ -669,8 +668,7 @@ void applySerialFractionalScaling(std::span<Atom> atoms, double lambda) noexcept
   // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]
   for (Atom& atom : atoms)
   {
-    atom.setScaling(lambda);
-    atom.isFractional = true;
+    atom.setScalingToFractional(lambda);
   }
 }
 

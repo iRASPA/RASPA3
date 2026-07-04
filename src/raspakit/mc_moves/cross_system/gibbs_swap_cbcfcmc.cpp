@@ -89,26 +89,17 @@ std::vector<Atom> buildSerialFlagSwapTrialFractionalAtoms(const System& system, 
     std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, indexFractionalMolecule);
     for (Atom atom : fractionalMolecule)
     {
-      atom.isFractional = true;
       if (systemBecomesActive)
       {
-        if (componentId == selectedComponent)
-        {
-          atom.setScaling(selectedActiveLambda);
-          atom.groupId = static_cast<std::uint8_t>(system.components[componentId].lambdaGC.computeDUdlambda);
-        }
-        else
-        {
-          const double lambda = lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
-          atom.setScaling(lambda);
-          atom.groupId = static_cast<std::uint8_t>(system.components[componentId].lambdaGC.computeDUdlambda);
-        }
+        const double lambda = (componentId == selectedComponent)
+                                  ? selectedActiveLambda
+                                  : lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
+        atom.setScalingToFractional(lambda, system.components[componentId].lambdaGC.computeDUdlambda);
       }
       else
       {
         // inactive fractional molecules must not contribute dUdlambda
-        atom.setScalingFullyOff();
-        atom.groupId = std::uint8_t{0};
+        atom.setScalingToInactiveFractional();
       }
       atoms.push_back(atom);
     }
@@ -179,18 +170,15 @@ std::optional<RunningEnergy> computeSerialFlagSwapOtherComponentsEnergyDifferenc
     std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, index);
     for (Atom atom : fractionalMolecule)
     {
-      atom.isFractional = true;
       if (systemBecomesActive)
       {
         const double lambda = lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
-        atom.setScaling(lambda);
-        atom.groupId = static_cast<std::uint8_t>(system.components[componentId].lambdaGC.computeDUdlambda);
+        atom.setScalingToFractional(lambda, system.components[componentId].lambdaGC.computeDUdlambda);
       }
       else
       {
         // inactive fractional molecules must not contribute dUdlambda
-        atom.setScalingFullyOff();
-        atom.groupId = std::uint8_t{0};
+        atom.setScalingToInactiveFractional();
       }
       newAtomsCombined.push_back(atom);
     }
@@ -219,26 +207,17 @@ void applySerialGibbsFlagSwapScaling(System& system, std::size_t selectedCompone
     std::span<Atom> fractionalMolecule = system.spanOfMolecule(componentId, indexFractionalMolecule);
     for (Atom& atom : fractionalMolecule)
     {
-      atom.isFractional = true;
       if (systemBecomesActive)
       {
-        if (componentId == selectedComponent)
-        {
-          atom.setScaling(selectedActiveLambda);
-          atom.groupId = static_cast<std::uint8_t>(system.components[componentId].lambdaGC.computeDUdlambda);
-        }
-        else
-        {
-          const double lambda = lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
-          atom.setScaling(lambda);
-          atom.groupId = static_cast<std::uint8_t>(system.components[componentId].lambdaGC.computeDUdlambda);
-        }
+        const double lambda = (componentId == selectedComponent)
+                                  ? selectedActiveLambda
+                                  : lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
+        atom.setScalingToFractional(lambda, system.components[componentId].lambdaGC.computeDUdlambda);
       }
       else
       {
         // inactive fractional molecules must not contribute dUdlambda
-        atom.setScalingFullyOff();
-        atom.groupId = std::uint8_t{0};
+        atom.setScalingToInactiveFractional();
       }
     }
   }
@@ -446,8 +425,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     for (Atom& atom : selectedIntegerMoleculeB)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = std::uint8_t{0};
+      atom.setScalingOff();
       atom.position = systemB.simulationBox.randomPosition(random);
     }
 
@@ -456,9 +434,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       atom.moleculeId = static_cast<std::uint16_t>(
           systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-      atom.setScaling(oldLambda);
-      atom.groupId = static_cast<std::uint8_t>(componentB.lambdaGC.computeDUdlambda);
-      atom.isFractional = true;
+      atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
     }
 
     RunningEnergy intraFractionalDifferenceB =

@@ -361,14 +361,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double correctionFactorEwald = std::exp(
           -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy()));
 
-      // Deactivate scaling for the fractional molecule
+      // Deactivate scaling for the fractional molecule; it remains the (parked) fractional slot
       // Before: lambda and fractional computed fully
       // After: 0.0 and integer computed using grids (or fully if without grids)
       for (Atom& atom : fractionalMolecule)
       {
-        atom.setScalingFullyOff();
-        atom.groupId = false;
-        atom.isFractional = false;
+        atom.setScalingToInactiveFractional();
       }
 
       // Save the state of the new fractional molecule
@@ -383,10 +381,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
       for (Atom& atom : newFractionalMolecule)
       {
-        atom.scalingVDW = Scaling::scalingVDW(newLambda);
-        atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-        atom.groupId = groupId;
-        atom.isFractional = true;
+        atom.setScalingToFractional(newLambda, groupId);
       }
 
       // Check if the new fractional molecule is inside blocked pockets

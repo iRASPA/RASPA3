@@ -235,18 +235,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdA);
       atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-      atom.groupId = groupIdA;
-      atom.isFractional = true;
-      atom.setScaling(newLambda);
+      atom.setScalingToFractional(newLambda, groupIdA);
     }
     const bool groupIdB = componentA.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : trialMoleculeB.second)
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdB);
       atom.componentId = static_cast<std::uint8_t>(componentB);
-      atom.groupId = groupIdB;
-      atom.isFractional = true;
-      atom.setScaling(newLambda);
+      atom.setScalingToFractional(newLambda, groupIdB);
     }
 
     if (system.insideBlockedPockets(componentA, trialMoleculeA.second) ||
@@ -418,9 +414,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     // (1a) fractional molecule of component A is switched off (lambda=0)
     for (Atom& atom : fractionalMoleculeA)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = false;
-      atom.isFractional = false;
+      atom.setScalingOff();
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -457,9 +451,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     // (1b) fractional molecule of component B is switched off (lambda=0)
     for (Atom& atom : fractionalMoleculeB)
     {
-      atom.setScalingFullyOff();
-      atom.groupId = false;
-      atom.isFractional = false;
+      atom.setScalingOff();
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -496,10 +488,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const bool groupIdA = componentA.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeA)
     {
-      atom.scalingVDW = Scaling::scalingVDW(newLambda);
-      atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-      atom.groupId = groupIdA;
-      atom.isFractional = true;
+      atom.setScalingToFractional(newLambda, groupIdA);
     }
 
     if (system.insideBlockedPockets(componentA, newFractionalMoleculeA))
@@ -543,10 +532,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const bool groupIdB = componentA.lambdaPairSwap.computeDUdlambda;
     for (Atom& atom : newFractionalMoleculeB)
     {
-      atom.scalingVDW = Scaling::scalingVDW(newLambda);
-      atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-      atom.groupId = groupIdB;
-      atom.isFractional = true;
+      atom.setScalingToFractional(newLambda, groupIdB);
     }
 
     if (system.insideBlockedPockets(componentBRef, newFractionalMoleculeB))

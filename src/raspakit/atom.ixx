@@ -99,12 +99,26 @@ export struct Atom
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
   };
 
+  // === CFC scaling-state API ===================================================================
+  //
+  // In CFCMC an atom is in exactly one of four states, characterized by the triple
+  // (scalingVDW/scalingCoulomb, groupId, isFractional):
+  //
+  //   integer              : scaling 1        groupId 0                isFractional false
+  //   fractional at lambda : scaling(lambda)  groupId computeDUdlambda isFractional true
+  //   inactive fractional  : scaling 0        groupId 0                isFractional true
+  //   switched off         : scaling 0        groupId 0                isFractional false
+  //
+  // The setScalingTo...() methods below are complete state transitions: they leave the atom in a
+  // consistent state and no manual groupId/isFractional bookkeeping is needed at the call site.
+  // setScaling() is the lambda-only update for atoms whose state is already correct.
+
   /**
-   * \brief Sets the scaling factors based on lambda.
+   * \brief Sets the scaling factors based on lambda; flags are left untouched.
    *
-   * Adjusts the scaling factors for van der Waals and Coulomb interactions
-   * linearly based on the provided lambda value. Scaling for van der Waals
-   * is active from 0 to 0.5, and Coulomb scaling is active from 0.5 to 1.0.
+   * Adjusts the scaling factors for van der Waals and Coulomb interactions using the staged
+   * schedule (VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]). Use this for
+   * lambda-changes on atoms whose groupId/isFractional state is already correct.
    *
    * \param lambda The scaling parameter.
    */
@@ -115,39 +129,76 @@ export struct Atom
   }
 
   /**
-   * \brief Fully activates scaling factors.
+   * \brief Transition to the integer state.
    *
-   * Sets both van der Waals and Coulomb scaling factors to 1.0, fully
-   * activating the interactions.
-   */
-  void setScalingFullyOn()
-  {
-    scalingVDW = 1.0;
-    scalingCoulomb = 1.0;
-  }
-
-  /**
-   * \brief Fully deactivates scaling factors.
-   *
-   * Sets both van der Waals and Coulomb scaling factors to 0.0, fully
-   * deactivating the interactions.
-   */
-  void setScalingFullyOff()
-  {
-    scalingVDW = 0.0;
-    scalingCoulomb = 0.0;
-  }
-
-  /**
-   * \brief Sets scaling factors to integer values.
-   *
-   * Sets both van der Waals and Coulomb scaling factors to 1.0 and resets
-   * the group ID to 0.
+   * Fully couples the atom (scaling 1), removes the dU/dlambda tag, and clears the
+   * fractional marker.
    */
   void setScalingToInteger()
   {
     scalingVDW = 1.0;
     scalingCoulomb = 1.0;
+    groupId = false;
+    isFractional = false;
+  }
+
+  /**
+   * \brief Transition to the active-fractional state at the given lambda.
+   *
+   * Applies the staged scaling schedule, tags the atom for dU/dlambda tracking when
+   * computeDUdlambda is set, and marks it fractional.
+   *
+   * \param lambda The coupling parameter.
+   * \param computeDUdlambda Whether this atom contributes to dU/dlambda.
+   */
+  void setScalingToFractional(double lambda, bool computeDUdlambda)
+  {
+    setScaling(lambda);
+    groupId = computeDUdlambda;
+    isFractional = true;
+  }
+
+  /**
+   * \brief Transition to the active-fractional state, preserving the dU/dlambda tag.
+   *
+   * Applies the staged scaling schedule and marks the atom fractional. The groupId is left
+   * untouched for code that manages per-slot dU/dlambda tags separately (e.g. reaction
+   * fractional molecules).
+   *
+   * \param lambda The coupling parameter.
+   */
+  void setScalingToFractional(double lambda)
+  {
+    setScaling(lambda);
+    isFractional = true;
+  }
+
+  /**
+   * \brief Transition to the inactive-fractional state.
+   *
+   * Decouples the atom completely (scaling 0) and removes the dU/dlambda tag, but keeps the
+   * fractional marker: the atom remains a (parked) fractional slot, e.g. a fractional molecule
+   * at lambda = 0 that is about to be deleted or that belongs to the inactive Gibbs box.
+   */
+  void setScalingToInactiveFractional()
+  {
+    scalingVDW = 0.0;
+    scalingCoulomb = 0.0;
+    groupId = false;
+    isFractional = true;
+  }
+
+  /**
+   * \brief Transition to the switched-off state.
+   *
+   * Decouples the atom completely (scaling 0), removes the dU/dlambda tag, and clears the
+   * fractional marker. Used for molecules leaving the system (e.g. an integer molecule being
+   * transferred out of a Gibbs box, or a fractional pair being deleted).
+   */
+  void setScalingOff()
+  {
+    scalingVDW = 0.0;
+    scalingCoulomb = 0.0;
     groupId = false;
     isFractional = false;
   }

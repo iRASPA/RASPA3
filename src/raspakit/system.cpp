@@ -253,9 +253,7 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
   for (Atom& atom : atoms)
   {
     atom.moleculeId = static_cast<std::uint16_t>(moleculeIndex);
-    atom.groupId = groupId;
-    atom.isFractional = true;
-    atom.setScaling(l);
+    atom.setScalingToFractional(l, groupId);
   }
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
 }
@@ -268,8 +266,7 @@ void System::insertReactionFractionalMolecule(std::size_t selectedComponent, std
   const double effectiveLambda = isReactant ? (1.0 - lambda) : lambda;
   for (Atom& atom : atoms)
   {
-    atom.setScaling(effectiveLambda);
-    atom.isFractional = true;
+    atom.setScalingToFractional(effectiveLambda);
   }
 
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
@@ -365,8 +362,7 @@ void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponen
   // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]
   for (Atom& atom : atoms)
   {
-    atom.setScaling(lambda);
-    atom.isFractional = true;
+    atom.setScalingToFractional(lambda);
   }
 
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
@@ -597,9 +593,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
         for (Atom& atom : atoms)
         {
-          atom.isFractional = true;
-          atom.groupId = groupId;
-          atom.setScaling(0.5);
+          atom.setScalingToFractional(0.5, groupId);
         }
         insertFractionalMoleculeAtIndex(
             componentId, indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId),
@@ -1315,9 +1309,7 @@ void System::initializeGibbsConventionalFractionalMolecules() noexcept
     const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
     for (Atom& atom : fractionalMolecule)
     {
-      atom.setScaling(0.5);
-      atom.isFractional = true;
-      atom.groupId = groupId;
+      atom.setScalingToFractional(0.5, groupId);
     }
 
     PropertyLambdaProbabilityHistogram& lambdaGibbs = components[componentId].lambdaGibbs;

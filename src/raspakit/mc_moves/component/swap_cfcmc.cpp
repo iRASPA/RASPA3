@@ -177,9 +177,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                   {
                     atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeId);
                     atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-                    atom.groupId = groupId;
-                    atom.isFractional = true;
-                    atom.setScaling(newLambda);
+                    atom.setScalingToFractional(newLambda, groupId);
                   });
 
     if ((system.insideBlockedPockets(component, trialMolecule.second)))
@@ -335,12 +333,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       std::vector<Atom> oldFractionalMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
       std::vector<Atom> oldNewFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
 
-      // Set scaling to zero for deletion
+      // Set scaling to zero for deletion; the molecule remains the (parked) fractional slot
       for (Atom& atom : fractionalMolecule)
       {
-        atom.setScalingFullyOff();
-        atom.groupId = false;
-        atom.isFractional = true;
+        atom.setScalingToInactiveFractional();
       }
 
       if ((system.insideBlockedPockets(component, fractionalMolecule)))
@@ -432,10 +428,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
       for (Atom& atom : newFractionalMolecule)
       {
-        atom.scalingVDW = Scaling::scalingVDW(newLambda);
-        atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
-        atom.groupId = groupId;
-        atom.isFractional = true;
+        atom.setScalingToFractional(newLambda, groupId);
       }
 
       // Compute external field energy contribution
