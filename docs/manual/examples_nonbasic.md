@@ -465,7 +465,7 @@ We can compute Vapor-Liquid Equilibrium (VLE) using the Gibbs-ensemble.
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [256, 256]
     }
   ]

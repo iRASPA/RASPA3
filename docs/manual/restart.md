@@ -37,7 +37,7 @@ Restart-files are automatically written (and updated every 5000 cycles). Conside
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [256, 256]
     }
   ]
@@ -144,7 +144,7 @@ positions and energies.
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [0, 0]
     }
   ]

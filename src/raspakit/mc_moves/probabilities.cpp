@@ -19,7 +19,7 @@ MCMoveProbabilities::MCMoveProbabilities(double translationProbability, double r
                                          double widomCFCMCProbability, double widomCBCFCMCProbability,
                                          double parallelTemperingProbability, double hybridMCProbability,
                                          double reactionCBMCProbability, double reactionConventionalCFCMCProbability,
-                                         double reactionConventionalCFCMCCBMCProbability):
+                                         double reactionConventionalCBCFCMCProbability):
                                                        probabilities(std::to_underlying(Move::Types::Count))
 {
   probabilities[std::to_underlying(Move::Types::Translation)] = translationProbability;
@@ -45,7 +45,7 @@ MCMoveProbabilities::MCMoveProbabilities(double translationProbability, double r
   probabilities[std::to_underlying(Move::Types::HybridMC)] = hybridMCProbability;
   probabilities[std::to_underlying(Move::Types::ReactionCBMC)] = reactionCBMCProbability;
   probabilities[std::to_underlying(Move::Types::ReactionConventionalCFCMC)] = reactionConventionalCFCMCProbability;
-  probabilities[std::to_underlying(Move::Types::ReactionConventionalCFCMCCBMC)] = reactionConventionalCFCMCCBMCProbability;
+  probabilities[std::to_underlying(Move::Types::ReactionConventionalCBCFCMC)] = reactionConventionalCBCFCMCProbability;
 }
 
 const std::vector<double> MCMoveProbabilities::normalizedMap() const
@@ -133,12 +133,12 @@ std::string MCMoveProbabilities::repr()
              normalized_probabilities[std::to_underlying(Move::Types::ReactionCBMC)]);
   std::print(stream, "reactionConventionalCFCMCProbability: {}\n",
              normalized_probabilities[std::to_underlying(Move::Types::ReactionConventionalCFCMC)]);
-  std::print(stream, "reactionConventionalCFCMCCBMCProbability: {}\n",
-             normalized_probabilities[std::to_underlying(Move::Types::ReactionConventionalCFCMCCBMC)]);
+  std::print(stream, "reactionConventionalCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::ReactionConventionalCBCFCMC)]);
   std::print(stream, "reactionCFCMCProbability: {}\n",
              normalized_probabilities[std::to_underlying(Move::Types::ReactionCFCMC)]);
-  std::print(stream, "reactionCFCMCCBMCProbability: {}\n",
-             normalized_probabilities[std::to_underlying(Move::Types::ReactionCFCMCCBMC)]);
+  std::print(stream, "reactionCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::ReactionCBCFCMC)]);
 
   return stream.str();
 }

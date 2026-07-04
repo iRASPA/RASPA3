@@ -1,6 +1,6 @@
 module;
 
-module mc_moves_reaction_cfcmc_cbmc;
+module mc_moves_reaction_cbcfcmc;
 
 import std;
 
@@ -11,9 +11,9 @@ import running_energy;
 import system;
 import mc_moves_reaction_common;
 
-std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMCCBMC(RandomNumber& random, System& system)
+std::optional<RunningEnergy> MC_Moves::reactionMove_CBCFCMC(RandomNumber& random, System& system)
 {
-  const Move::Types move = Move::Types::ReactionCFCMCCBMC;
+  const Move::Types move = Move::Types::ReactionCBCFCMC;
 
   if (system.reactions.list.empty())
   {

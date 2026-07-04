@@ -1,6 +1,6 @@
 module;
 
-module mc_moves_reaction_conventional_cfcmc_cbmc;
+module mc_moves_reaction_conventional_cbcfcmc;
 
 import std;
 
@@ -14,7 +14,7 @@ import mc_moves_reaction_common;
 // lambda changes within [0, 1] (eq. 26) and in-place boundary-crossing reactions (eq. 27). The shared
 // implementation uses CBMC growth referenced to the ideal-gas Rosenbluth weights and the staged
 // coupling schedule of scaling.ixx.
-std::optional<RunningEnergy> MC_Moves::reactionMove_ConventionalCFCMCCBMC(RandomNumber& random, System& system)
+std::optional<RunningEnergy> MC_Moves::reactionMove_ConventionalCBCFCMC(RandomNumber& random, System& system)
 {
-  return ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCFCMCCBMC);
+  return ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCBCFCMC);
 }

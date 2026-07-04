@@ -174,12 +174,12 @@ MCMoveProbabilities makeGibbsConventionalCFCMCProbabilities()
   return probabilities;
 }
 
-MCMoveProbabilities makeGibbsConventionalCFCMCCBMCProbabilities()
+MCMoveProbabilities makeGibbsConventionalCBCFCMCProbabilities()
 {
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(Move::Types::Rotation, 1.0);
-  probabilities.setProbability(Move::Types::GibbsConventionalCFCMCCBMC, 1.0);
+  probabilities.setProbability(Move::Types::GibbsConventionalCBCFCMC, 1.0);
   return probabilities;
 }
 
@@ -371,7 +371,7 @@ TEST(MC_THERMODYNAMIC_INTEGRATION_DRIFT, gibbs_methane_conventional_cfcmc)
 TEST(MC_THERMODYNAMIC_INTEGRATION_DRIFT, gibbs_methane_conventional_cbcfcbmc)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();
-  MCMoveProbabilities probabilities = makeGibbsConventionalCFCMCCBMCProbabilities();
+  MCMoveProbabilities probabilities = makeGibbsConventionalCBCFCMCProbabilities();
 
   Component methane = Component::makeMethane(forceField, 0);
   methane.mc_moves_probabilities = probabilities;

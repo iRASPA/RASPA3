@@ -670,13 +670,13 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
     The relative probability to attempt a insertion or deletion move via
     `CB/CFCMC` scheme.
 
--   `GibbsSwapProbability" : floating-point-number`
+-   `GibbsSwapCBMCProbability" : floating-point-number`
     The relative probability to attempt a Gibbs swap MC move for the
     current component. The 'GibbsSwapMove' transfers a randomly selected
     particle from one box to the other (50% probability to transfer a
     particle from box `I` to `II`, an 50% visa versa).
 
--   `Gibbs_CFCMC_SwapProbability" : floating-point-number`
+-   `GibbsSwapCFCMCProbability" : floating-point-number`
     The relative probability to attempt a Gibbs swap MC move for the
     current component using the `CFCMC` scheme.
 

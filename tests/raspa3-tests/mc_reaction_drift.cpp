@@ -18,7 +18,7 @@ import reactions;
 import mc_moves_reaction_common;
 import mc_moves_reaction_cfcmc;
 import mc_moves_reaction_conventional_cfcmc;
-import mc_moves_reaction_conventional_cfcmc_cbmc;
+import mc_moves_reaction_conventional_cbcfcmc;
 import randomnumbers;
 
 namespace {
@@ -141,7 +141,7 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
   reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -183,7 +183,7 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
   reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -262,7 +262,7 @@ System makeZeoliteMultiComponentReactionSystem(const MCMoveProbabilities& system
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
   reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -359,7 +359,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc)
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -401,7 +401,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary)
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -517,7 +517,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -540,7 +540,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_whole_molecule)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_whole_molecule)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -562,7 +562,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_boundary)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -584,7 +584,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_whole_molecule_boundary)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_whole_molecule_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -618,7 +618,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_multi_stoichiometry_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -629,7 +629,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_multi_stoichiometry_boundary)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_multi_stoichiometry)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -688,7 +688,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_multi)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {50, 25});
   ASSERT_TRUE(system.forceField.useCharge);
@@ -724,7 +724,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_boundary)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_multi_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {50, 25});
   ASSERT_TRUE(system.forceField.useCharge);
@@ -930,7 +930,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc_zeolite)
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_zeolite)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
 
   System system = makeZeolitePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -952,7 +952,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc_zeolite_boundary)
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_zeolite_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
 
   System system = makeZeolitePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -974,7 +974,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_zeolite_boundary)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_zeolite_boundary)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeZeolitePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -1008,7 +1008,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_zeolite)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_cbmc_zeolite)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMCCBMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeZeolitePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -1270,7 +1270,7 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
   systemProbabilities.setProbability(
-      useCBMC ? Move::Types::ReactionConventionalCFCMCCBMC : Move::Types::ReactionConventionalCFCMC, 1.0);
+      useCBMC ? Move::Types::ReactionConventionalCBCFCMC : Move::Types::ReactionConventionalCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -1285,7 +1285,7 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
     const double lambdaBefore = system.reactions.list[0].currentLambda;
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta =
-        useCBMC ? MC_Moves::reactionMove_ConventionalCFCMCCBMC(random, system)
+        useCBMC ? MC_Moves::reactionMove_ConventionalCBCFCMC(random, system)
                 : MC_Moves::reactionMove_ConventionalCFCMC(random, system);
     if (delta)
     {

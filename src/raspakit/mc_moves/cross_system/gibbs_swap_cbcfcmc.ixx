@@ -1,6 +1,6 @@
 module;
 
-export module mc_moves_gibbs_swap_cfcbmc_cbmc;
+export module mc_moves_gibbs_swap_cbcfcmc;
 
 import std;
 

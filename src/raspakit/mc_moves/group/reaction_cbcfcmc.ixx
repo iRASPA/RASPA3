@@ -1,6 +1,6 @@
 module;
 
-export module mc_moves_reaction_cfcmc_cbmc;
+export module mc_moves_reaction_cbcfcmc;
 
 import std;
 
@@ -12,5 +12,5 @@ import system;
 
 export namespace MC_Moves
 {
-std::optional<RunningEnergy> reactionMove_CFCMCCBMC(RandomNumber& random, System& system);
+std::optional<RunningEnergy> reactionMove_CBCFCMC(RandomNumber& random, System& system);
 }

@@ -13,33 +13,33 @@ export struct Move
     Rotation = 2,
     RandomRotation = 3,
     VolumeChange = 4,
-    ReinsertionCBMC = 5,
-    PartialReinsertionCBMC = 6,
-    IdentityChangeCBMC = 7,
-    Swap = 8,
-    SwapCBMC = 9,
-    SwapCFCMC = 10,
-    SwapCBCFCMC = 11,
-    GibbsVolume = 12,
-    GibbsSwapCBMC = 13,
-    GibbsSwapCFCMC = 14,
-    GibbsIdentityChangeCBMC = 15,
-    Widom = 16,
-    WidomCFCMC = 17,
-    WidomCBCFCMC = 18,
-    ParallelTempering = 19,
-    HybridMC = 20,
-    ReactionCBMC = 21,
-    ReactionConventionalCFCMC = 22,
-    ReactionConventionalCFCMCCBMC = 23,
-    ReactionCFCMC = 24,
-    ReactionCFCMCCBMC = 25,
-    GibbsSwapCBCFCMC = 26,
-    GibbsConventionalCFCMC = 27,
-    GibbsConventionalCFCMCCBMC = 28,
-    PairSwap = 29,
-    PairSwapCBMC = 30,
-    AnisotropicVolumeChange = 31,
+    AnisotropicVolumeChange = 5,
+    ReinsertionCBMC = 6,
+    PartialReinsertionCBMC = 7,
+    IdentityChangeCBMC = 8,
+    Swap = 9,
+    SwapCBMC = 10,
+    SwapCFCMC = 11,
+    SwapCBCFCMC = 12,
+    GibbsVolume = 13,
+    GibbsSwapCBMC = 14,
+    GibbsConventionalCFCMC = 15,      // parallel CFCMC Gibbs
+    GibbsConventionalCBCFCMC = 16,    // parallel CFCMC/CBMC Gibbs
+    GibbsSwapCFCMC = 17,              // serial CFCMC Gibbs
+    GibbsSwapCBCFCMC = 18,            // serial CFCMC/CBMC Gibbs
+    GibbsIdentityChangeCBMC = 19,
+    Widom = 20,
+    WidomCFCMC = 21,
+    WidomCBCFCMC = 22,
+    ParallelTempering = 23,
+    HybridMC = 24,
+    ReactionCBMC = 25,
+    ReactionConventionalCFCMC = 26,    // parallel CFCMC reaction MC
+    ReactionConventionalCBCFCMC = 27,  // parallel CFCMC/CBMC reaction MC
+    ReactionCFCMC = 28,                // serial CFCMC reaction MC
+    ReactionCBCFCMC = 29,              // serial CFCMC/CBMC reaction MC
+    PairSwap = 30,
+    PairSwapCBMC = 31,
     PairSwapCFCMC = 32,
     PairSwapCBCFCMC = 33,
     Count = 34
@@ -67,12 +67,12 @@ export inline std::unordered_set<Move::Types> crossSystemMoves = {Move::Types::G
                                                                   Move::Types::GibbsSwapCFCMC,
                                                                   Move::Types::GibbsSwapCBCFCMC,
                                                                   Move::Types::GibbsConventionalCFCMC,
-                                                                  Move::Types::GibbsConventionalCFCMCCBMC,
+                                                                  Move::Types::GibbsConventionalCBCFCMC,
                                                                   Move::Types::GibbsIdentityChangeCBMC,
                                                                   Move::Types::ParallelTempering};
 
 export inline std::unordered_set<Move::Types> groupMoves = {Move::Types::ReactionCBMC, Move::Types::ReactionConventionalCFCMC,
-                                                            Move::Types::ReactionConventionalCFCMCCBMC,
+                                                            Move::Types::ReactionConventionalCBCFCMC,
                                                             Move::Types::ReactionCFCMC,
-                                                            Move::Types::ReactionCFCMCCBMC};
+                                                            Move::Types::ReactionCBCFCMC};
 

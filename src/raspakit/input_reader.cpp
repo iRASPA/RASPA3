@@ -511,68 +511,48 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("Gibbs_CFCMC_SwapProbability") && item["Gibbs_CFCMC_SwapProbability"].is_number_float())
+      if (item.contains("GibbsSwapCFCMCProbability") && item["GibbsSwapCFCMCProbability"].is_number_float())
       {
-        double gibbsSwapCFCMCProbability = item["Gibbs_CFCMC_SwapProbability"].get<double>();
+        double gibbsSwapCFCMCProbability = item["GibbsSwapCFCMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsSwapCFCMC, gibbsSwapCFCMCProbability);
         }
       }
 
-      if (item.contains("Gibbs_CFCMC_CBMC_SwapProbability") &&
-          item["Gibbs_CFCMC_CBMC_SwapProbability"].is_number_float())
+      if (item.contains("GibbsSwapCBCFCMCProbability") && item["GibbsSwapCBCFCMCProbability"].is_number_float())
       {
-        double gibbsSwapCBCFCMCProbability = item["Gibbs_CFCMC_CBMC_SwapProbability"].get<double>();
+        double gibbsSwapCBCFCMCProbability = item["GibbsSwapCBCFCMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsSwapCBCFCMC, gibbsSwapCBCFCMCProbability);
         }
       }
 
-      if (item.contains("Gibbs_Conventional_CFCMC_CBMC_Probability") &&
-          item["Gibbs_Conventional_CFCMC_CBMC_Probability"].is_number_float())
+      if (item.contains("GibbsConventionalCBCFCMCProbability") &&
+          item["GibbsConventionalCBCFCMCProbability"].is_number_float())
       {
-        double gibbsConventionalCFCMCCBMCProbability =
-            item["Gibbs_Conventional_CFCMC_CBMC_Probability"].get<double>();
+        double gibbsConventionalCBCFCMCProbability = item["GibbsConventionalCBCFCMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMCCBMC,
-                                               gibbsConventionalCFCMCCBMCProbability);
+          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCBCFCMC,
+                                               gibbsConventionalCBCFCMCProbability);
         }
       }
 
-      if (item.contains("CBCFGibbsProbability") && item["CBCFGibbsProbability"].is_number_float())
+      if (item.contains("GibbsConventionalCFCMCProbability") &&
+          item["GibbsConventionalCFCMCProbability"].is_number_float())
       {
-        double cbCfGibbsProbability = item["CBCFGibbsProbability"].get<double>();
-        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
-        {
-          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMCCBMC, cbCfGibbsProbability);
-        }
-      }
-
-      if (item.contains("Gibbs_Conventional_CFCMC_Probability") &&
-          item["Gibbs_Conventional_CFCMC_Probability"].is_number_float())
-      {
-        double gibbsConventionalCFCMCProbability = item["Gibbs_Conventional_CFCMC_Probability"].get<double>();
+        double gibbsConventionalCFCMCProbability = item["GibbsConventionalCFCMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMC, gibbsConventionalCFCMCProbability);
         }
       }
 
-      if (item.contains("CFGibbsProbability") && item["CFGibbsProbability"].is_number_float())
+      if (item.contains("GibbsSwapCBMCProbability") && item["GibbsSwapCBMCProbability"].is_number_float())
       {
-        double cfGibbsProbability = item["CFGibbsProbability"].get<double>();
-        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
-        {
-          move_probabilities[i].setProbability(Move::Types::GibbsConventionalCFCMC, cfGibbsProbability);
-        }
-      }
-
-      if (item.contains("GibbsSwapProbability") && item["GibbsSwapProbability"].is_number_float())
-      {
-        double gibbsSwapCBMCProbability = item["GibbsSwapProbability"].get<double>();
+        double gibbsSwapCBMCProbability = item["GibbsSwapCBMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsSwapCBMC, gibbsSwapCBMCProbability);
@@ -1047,92 +1027,36 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
       }
 
-      bool anySerialRxCFC = false;
-      if (value.contains("SerialRxCFC") && value["SerialRxCFC"].is_boolean() && value["SerialRxCFC"].get<bool>())
-      {
-        anySerialRxCFC = true;
-      }
-      if (value.contains("Reactions") && value["Reactions"].is_array())
-      {
-        for (const auto& reactionItem : value["Reactions"])
-        {
-          if (reactionItem.contains("SerialRxCFC") && reactionItem["SerialRxCFC"].is_boolean() &&
-              reactionItem["SerialRxCFC"].get<bool>())
-          {
-            anySerialRxCFC = true;
-            break;
-          }
-        }
-      }
-
       if (value.contains("ReactionProbability") && value["ReactionProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::ReactionCBMC,
                                               value["ReactionProbability"].get<double>());
       }
 
-      if (value.contains("ConventionalCFCRXMCProbability") &&
-          value["ConventionalCFCRXMCProbability"].is_number_float())
+      if (value.contains("ReactionConventionalCFCMCProbability") &&
+          value["ReactionConventionalCFCMCProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMC,
-                                              value["ConventionalCFCRXMCProbability"].get<double>());
-      }
-      else if (value.contains("CFCRXMCProbability") && value["CFCRXMCProbability"].is_number_float() &&
-               !anySerialRxCFC)
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMC,
-                                              value["CFCRXMCProbability"].get<double>());
+                                              value["ReactionConventionalCFCMCProbability"].get<double>());
       }
 
-      if (value.contains("ConventionalCFCRXMCLambdaChangeMoveProbability") &&
-          value["ConventionalCFCRXMCLambdaChangeMoveProbability"].is_number_float())
+      if (value.contains("ReactionConventionalCBCFCMCProbability") &&
+          value["ReactionConventionalCBCFCMCProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
-                                              value["ConventionalCFCRXMCLambdaChangeMoveProbability"].get<double>());
-      }
-      else if (value.contains("ProbabilityCFCRXMCLambdaChangeMove") &&
-               value["ProbabilityCFCRXMCLambdaChangeMove"].is_number_float())
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
-                                              value["ProbabilityCFCRXMCLambdaChangeMove"].get<double>());
+        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC,
+                                              value["ReactionConventionalCBCFCMCProbability"].get<double>());
       }
 
-      if (value.contains("ConventionalCFCRXMCCBMCProbability") &&
-          value["ConventionalCFCRXMCCBMCProbability"].is_number_float())
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
-                                              value["ConventionalCFCRXMCCBMCProbability"].get<double>());
-      }
-      else if (value.contains("CFCRXMCCBMCProbability") && value["CFCRXMCCBMCProbability"].is_number_float() &&
-               !anySerialRxCFC)
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionConventionalCFCMCCBMC,
-                                              value["CFCRXMCCBMCProbability"].get<double>());
-      }
-
-      if (value.contains("CFCRXMCProbability") && value["CFCRXMCProbability"].is_number_float() && anySerialRxCFC)
+      if (value.contains("ReactionCFCMCProbability") && value["ReactionCFCMCProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC,
-                                              value["CFCRXMCProbability"].get<double>());
-      }
-      else if (value.contains("SerialCFCRXMCProbability") &&
-               value["SerialCFCRXMCProbability"].is_number_float())
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC,
-                                              value["SerialCFCRXMCProbability"].get<double>());
+                                              value["ReactionCFCMCProbability"].get<double>());
       }
 
-      if (value.contains("CFCRXMCCBMCProbability") && value["CFCRXMCCBMCProbability"].is_number_float() &&
-          anySerialRxCFC)
+      if (value.contains("ReactionCBCFCMCProbability") && value["ReactionCBCFCMCProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMCCBMC,
-                                              value["CFCRXMCCBMCProbability"].get<double>());
-      }
-      else if (value.contains("SerialCFCRXMCCBMCProbability") &&
-               value["SerialCFCRXMCCBMCProbability"].is_number_float())
-      {
-        mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMCCBMC,
-                                              value["SerialCFCRXMCCBMCProbability"].get<double>());
+        mc_moves_probabilities.setProbability(Move::Types::ReactionCBCFCMC,
+                                              value["ReactionCBCFCMCProbability"].get<double>());
       }
 
       if (value.contains("Reactions") && value["Reactions"].is_array())
@@ -1156,18 +1080,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           defaultLambdaSwitchPoint = value["LambdaSwitchPoint"].get<double>();
         }
 
-        bool defaultSerialRxCFC = false;
-        if (value.contains("SerialRxCFC") && value["SerialRxCFC"].is_boolean())
-        {
-          defaultSerialRxCFC = value["SerialRxCFC"].get<bool>();
-        }
-        else if ((value.contains("SerialCFCRXMCProbability") && value["SerialCFCRXMCProbability"].is_number_float()) ||
-                 (value.contains("SerialCFCRXMCCBMCProbability") &&
-                  value["SerialCFCRXMCCBMCProbability"].is_number_float()))
-        {
-          // the serial reaction moves were explicitly requested, so default the reactions to serial Rx/CFC
-          defaultSerialRxCFC = true;
-        }
+        // Serial versus parallel Rx/CFC is implied by the selected reaction moves: the serial moves are
+        // ReactionCFCMC and ReactionCBCFCMC, the parallel moves are the 'conventional' variants.
+        const bool serialRxCFC =
+            (value.contains("ReactionCFCMCProbability") && value["ReactionCFCMCProbability"].is_number_float()) ||
+            (value.contains("ReactionCBCFCMCProbability") && value["ReactionCBCFCMCProbability"].is_number_float());
 
         std::size_t reactionId = 0;
         for (const auto& reactionItem : value["Reactions"])
@@ -1182,7 +1099,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           reaction.maximumLambdaChange = defaultMaximumLambdaChange;
           reaction.maximumLambdaChangeProducts = defaultMaximumLambdaChangeProducts;
           reaction.lambdaSwitchPoint = defaultLambdaSwitchPoint;
-          reaction.serialRxCFC = defaultSerialRxCFC;
+          reaction.serialRxCFC = serialRxCFC;
 
           if (reactionItem.contains("MaximumReactionLambdaChange") &&
               reactionItem["MaximumReactionLambdaChange"].is_number())
@@ -1198,10 +1115,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (reactionItem.contains("LambdaSwitchPoint") && reactionItem["LambdaSwitchPoint"].is_number())
           {
             reaction.lambdaSwitchPoint = reactionItem["LambdaSwitchPoint"].get<double>();
-          }
-          if (reactionItem.contains("SerialRxCFC") && reactionItem["SerialRxCFC"].is_boolean())
-          {
-            reaction.serialRxCFC = reactionItem["SerialRxCFC"].get<bool>();
           }
           jsonReactions[systemId].push_back(reaction);
           ++reactionId;
@@ -2081,18 +1994,13 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MacroStateMaximumNumberOfMolecules",
     "RestartFileName",
     "ReactionProbability",
-    "ConventionalCFCRXMCProbability",
-    "ConventionalCFCRXMCLambdaChangeMoveProbability",
-    "ConventionalCFCRXMCCBMCProbability",
-    "CFCRXMCProbability",
-    "CFCRXMCCBMCProbability",
-    "ProbabilityCFCRXMCLambdaChangeMove",
-    "SerialCFCRXMCProbability",
-    "SerialCFCRXMCCBMCProbability",
+    "ReactionConventionalCFCMCProbability",
+    "ReactionConventionalCBCFCMCProbability",
+    "ReactionCFCMCProbability",
+    "ReactionCBCFCMCProbability",
     "MaximumReactionLambdaChange",
     "MaximumReactionLambdaChangeProducts",
     "LambdaSwitchPoint",
-    "SerialRxCFC",
     "Reactions"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
@@ -2116,11 +2024,11 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "MaximumPairDistance",
     "CFCMC_SwapProbability",
     "CFCMC_CBMC_SwapProbability",
-    "GibbsSwapProbability",
-    "Gibbs_CFCMC_SwapProbability",
-    "Gibbs_CFCMC_CBMC_SwapProbability",
-    "Gibbs_Conventional_CFCMC_Probability",
-    "CFGibbsProbability",
+    "GibbsSwapCBMCProbability",
+    "GibbsSwapCFCMCProbability",
+    "GibbsSwapCBCFCMCProbability",
+    "GibbsConventionalCFCMCProbability",
+    "GibbsConventionalCBCFCMCProbability",
     "GibbsIdentityChangeProbability",
     "WidomProbability",
     "CFCMC_WidomProbability",
@@ -2139,7 +2047,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::reactionOptions = {
     "Reactants", "Products", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
-    "LambdaSwitchPoint", "SerialRxCFC"};
+    "LambdaSwitchPoint"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {

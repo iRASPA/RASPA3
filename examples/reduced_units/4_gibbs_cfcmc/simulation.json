@@ -34,7 +34,7 @@
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 0.25,
       "WidomProbability" : 0.5,
-      "Gibbs_CFCMC_SwapProbability" : 1.0,
+      "GibbsSwapCFCMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [128, 128]
     }
   ]

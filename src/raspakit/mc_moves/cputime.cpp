@@ -202,7 +202,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{
-                  //Move::Types::ReactionConventionalCFCMCCBMC [23],
+                  //Move::Types::ReactionConventionalCBCFCMC [23],
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{
@@ -210,7 +210,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{
-                  //Move::Types::ReactionCFCMCCBMC [25],
+                  //Move::Types::ReactionCBCFCMC [25],
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{
@@ -231,7 +231,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{
-                  //Move::Types::GibbsConventionalCFCMCCBMC [28],
+                  //Move::Types::GibbsConventionalCBCFCMC [28],
                   {"Total", std::chrono::duration<double>::zero()},
                 },
                 std::map<std::string, std::chrono::duration<double>>{

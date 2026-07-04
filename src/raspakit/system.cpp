@@ -961,7 +961,7 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -1013,7 +1013,7 @@ void System::determineFractionalComponents()
     }
 
     if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
+        components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0)
     {
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
       components[i].hasFractionalMolecule = true;
@@ -1119,7 +1119,7 @@ std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size
     case Move::Types::GibbsSwapCBCFCMC:
       return indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::GibbsConventionalCFCMC:
-    case Move::Types::GibbsConventionalCFCMCCBMC:
+    case Move::Types::GibbsConventionalCBCFCMC:
       return indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     default:
       return indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
@@ -1179,9 +1179,9 @@ void System::precomputeReactionFractionalLayout() noexcept
       reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
 
   const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0;
+                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
   const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+                         mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
 
   if (!useParallel && !useSerial)
   {
@@ -1263,9 +1263,9 @@ void System::syncReactionFractionalMoleculeIndices() noexcept
 bool System::usesReactionConventionalCFCMC() const noexcept
 {
   return mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-         mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0 ||
+         mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0 ||
          mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+         mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
 }
 
 bool System::usesGibbsConventionalCFCMC() const noexcept
@@ -1273,7 +1273,7 @@ bool System::usesGibbsConventionalCFCMC() const noexcept
   for (const Component& component : components)
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMCCBMC) > 0.0)
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0)
     {
       return true;
     }
@@ -1690,9 +1690,9 @@ void System::createReactionFractionalMolecules()
   }
 
   const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) > 0.0;
+                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
   const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) > 0.0;
+                         mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
 
   precomputeReactionFractionalLayout();
 
@@ -1736,7 +1736,7 @@ void System::createParallelReactionFractionalMolecules()
   }
 
   if (mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) <= 0.0 &&
-      mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMCCBMC) <= 0.0)
+      mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) <= 0.0)
   {
     return;
   }
@@ -1808,7 +1808,7 @@ void System::createSerialReactionFractionalMolecules()
   }
 
   if (mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) <= 0.0 &&
-      mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMCCBMC) <= 0.0)
+      mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) <= 0.0)
   {
     return;
   }

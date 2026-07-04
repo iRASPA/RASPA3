@@ -323,7 +323,7 @@ Shifted potential at a  cutoff of \f$r_c=2.5\sigma\f$.
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 0.25,
       "WidomProbability" : 0.25,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [128, 128]
     }
   ]
@@ -400,7 +400,7 @@ Vapor
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 0.25,
       "WidomProbability" : 0.5,
-      "Gibbs_CFCMC_SwapProbability" : 1.0,
+      "GibbsSwapCFCMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [128, 128]
     }
   ]
