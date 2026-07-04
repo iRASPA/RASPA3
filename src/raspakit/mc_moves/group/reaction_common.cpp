@@ -1497,7 +1497,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction,
   parallelReactions.reserve(system.reactions.list.size());
   for (Reaction& candidate : system.reactions.list)
   {
-    if (!candidate.serialRxCFC && candidate.reactantFractionalMoleculeIds.size() == system.components.size())
+    if (candidate.isParallelRxCFC() && candidate.reactantFractionalMoleculeIds.size() == system.components.size())
     {
       parallelReactions.push_back(&candidate);
     }

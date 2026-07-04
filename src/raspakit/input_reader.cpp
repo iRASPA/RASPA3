@@ -1074,17 +1074,30 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           defaultMaximumLambdaChangeProducts = value["MaximumReactionLambdaChangeProducts"].get<double>();
         }
 
-        double defaultLambdaSwitchPoint = 0.5;
+        double defaultLambdaSwitchPoint = 0.3;
         if (value.contains("LambdaSwitchPoint") && value["LambdaSwitchPoint"].is_number())
         {
           defaultLambdaSwitchPoint = value["LambdaSwitchPoint"].get<double>();
         }
 
-        // Serial versus parallel Rx/CFC is implied by the selected reaction moves: the serial moves are
-        // ReactionCFCMC and ReactionCBCFCMC, the parallel moves are the 'conventional' variants.
-        const bool serialRxCFC =
-            (value.contains("ReactionCFCMCProbability") && value["ReactionCFCMCProbability"].is_number_float()) ||
-            (value.contains("ReactionCBCFCMCProbability") && value["ReactionCBCFCMCProbability"].is_number_float());
+        // Each reaction is driven by one reaction move, declared per reaction with the "Move" key.
+        // The serial moves are ReactionCFCMC and ReactionCBCFCMC, the parallel moves the 'conventional'
+        // variants. When the enabled reaction moves are unambiguous the "Move" key may be omitted.
+        const bool serialRxCFCEnabled = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+                                        mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+        const bool parallelRxCFCEnabled =
+            mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
+            mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
+
+        const auto parseReactionMove = [](const std::string& moveName) -> std::optional<Move::Types>
+        {
+          if (moveName == "ReactionCBMC") return Move::Types::ReactionCBMC;
+          if (moveName == "ReactionCFCMC") return Move::Types::ReactionCFCMC;
+          if (moveName == "ReactionCBCFCMC") return Move::Types::ReactionCBCFCMC;
+          if (moveName == "ReactionConventionalCFCMC") return Move::Types::ReactionConventionalCFCMC;
+          if (moveName == "ReactionConventionalCBCFCMC") return Move::Types::ReactionConventionalCBCFCMC;
+          return std::nullopt;
+        };
 
         std::size_t reactionId = 0;
         for (const auto& reactionItem : value["Reactions"])
@@ -1099,7 +1112,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           reaction.maximumLambdaChange = defaultMaximumLambdaChange;
           reaction.maximumLambdaChangeProducts = defaultMaximumLambdaChangeProducts;
           reaction.lambdaSwitchPoint = defaultLambdaSwitchPoint;
-          reaction.serialRxCFC = serialRxCFC;
 
           if (reactionItem.contains("MaximumReactionLambdaChange") &&
               reactionItem["MaximumReactionLambdaChange"].is_number())
@@ -1116,6 +1128,68 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           {
             reaction.lambdaSwitchPoint = reactionItem["LambdaSwitchPoint"].get<double>();
           }
+
+          if (reactionItem.contains("Move"))
+          {
+            if (!reactionItem["Move"].is_string())
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: reaction {} key 'Move' must be a string\n", reactionId));
+            }
+            const std::string moveName = reactionItem["Move"].get<std::string>();
+            const std::optional<Move::Types> parsedMove = parseReactionMove(moveName);
+            if (!parsedMove.has_value())
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: reaction {} has unknown 'Move' value '{}'; valid values are "
+                              "'ReactionCBMC', 'ReactionCFCMC', 'ReactionCBCFCMC', 'ReactionConventionalCFCMC', "
+                              "'ReactionConventionalCBCFCMC'\n",
+                              reactionId, moveName));
+            }
+            reaction.reactionMove = parsedMove.value();
+          }
+          else if (serialRxCFCEnabled && parallelRxCFCEnabled)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: both serial (ReactionCFCMC/ReactionCBCFCMC) and parallel "
+                            "(ReactionConventionalCFCMC/ReactionConventionalCBCFCMC) reaction moves are enabled; "
+                            "reaction {} must declare which move drives it with the 'Move' key\n",
+                            reactionId));
+          }
+          else if (serialRxCFCEnabled)
+          {
+            reaction.reactionMove = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0
+                                        ? Move::Types::ReactionCFCMC
+                                        : Move::Types::ReactionCBCFCMC;
+          }
+          else if (parallelRxCFCEnabled)
+          {
+            reaction.reactionMove =
+                mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0
+                    ? Move::Types::ReactionConventionalCFCMC
+                    : Move::Types::ReactionConventionalCBCFCMC;
+          }
+          else
+          {
+            reaction.reactionMove = Move::Types::ReactionCBMC;
+          }
+
+          if (reaction.isSerialRxCFC() && !serialRxCFCEnabled)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: reaction {} declares serial move '{}' but neither "
+                            "'ReactionCFCMCProbability' nor 'ReactionCBCFCMCProbability' is set\n",
+                            reactionId, Move::moveNames[std::to_underlying(reaction.reactionMove)]));
+          }
+          if (reaction.isParallelRxCFC() && !parallelRxCFCEnabled)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: reaction {} declares parallel move '{}' but neither "
+                            "'ReactionConventionalCFCMCProbability' nor 'ReactionConventionalCBCFCMCProbability' "
+                            "is set\n",
+                            reactionId, Move::moveNames[std::to_underlying(reaction.reactionMove)]));
+          }
+
           jsonReactions[systemId].push_back(reaction);
           ++reactionId;
         }
@@ -2046,7 +2120,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "LnPartitionFunction"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::reactionOptions = {
-    "Reactants", "Products", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
+    "Reactants", "Products", "Move", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
     "LambdaSwitchPoint"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)

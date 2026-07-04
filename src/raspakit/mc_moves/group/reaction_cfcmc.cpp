@@ -24,11 +24,11 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(RandomNumber& random, 
 
   std::vector<Reaction*> serialReactions;
   serialReactions.reserve(system.reactions.list.size());
-  for (Reaction& reaction : system.reactions.list)
+  for (Reaction& candidate : system.reactions.list)
   {
-    if (reaction.serialRxCFC)
+    if (candidate.isSerialRxCFC())
     {
-      serialReactions.push_back(&reaction);
+      serialReactions.push_back(&candidate);
     }
   }
   if (serialReactions.empty())
@@ -36,8 +36,8 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(RandomNumber& random, 
     return std::nullopt;
   }
 
-  Reaction& reaction =
-      *serialReactions[static_cast<std::size_t>(random.uniform_integer(0, static_cast<int>(serialReactions.size()) - 1))];
+  Reaction& reaction = *serialReactions[static_cast<std::size_t>(
+      random.uniform_integer(0, static_cast<int>(serialReactions.size()) - 1))];
 
   const std::vector<std::size_t>& activeIdsExist =
       reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry : reaction.productStoichiometry;

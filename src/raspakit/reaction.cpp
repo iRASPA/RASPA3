@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import stringutils;
+import mc_moves_move_types;
 
 std::string Reaction::printStatus() const
 {
@@ -46,7 +47,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
   archive << r.maximumLambdaChange;
   archive << r.maximumLambdaChangeProducts;
   archive << r.lambdaSwitchPoint;
-  archive << r.serialRxCFC;
+  archive << static_cast<std::uint64_t>(r.reactionMove);
   archive << r.fractionalSideIsReactants;
   archive << r.reactantFractionalMoleculeIds;
   archive << r.productFractionalMoleculeIds;
@@ -80,7 +81,20 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
     archive >> r.maximumLambdaChange;
     archive >> r.maximumLambdaChangeProducts;
     archive >> r.lambdaSwitchPoint;
-    archive >> r.serialRxCFC;
+    if (versionNumber >= 4)
+    {
+      std::uint64_t reactionMove;
+      archive >> reactionMove;
+      r.reactionMove = static_cast<Move::Types>(reactionMove);
+    }
+    else
+    {
+      // version 3 stored a per-reaction serial/parallel flag; map it onto the driving move
+      bool legacySerialRxCFC;
+      archive >> legacySerialRxCFC;
+      r.reactionMove =
+          legacySerialRxCFC ? Move::Types::ReactionCFCMC : Move::Types::ReactionConventionalCFCMC;
+    }
     archive >> r.fractionalSideIsReactants;
     archive >> r.reactantFractionalMoleculeIds;
     archive >> r.productFractionalMoleculeIds;

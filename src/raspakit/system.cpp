@@ -1132,7 +1132,7 @@ std::size_t System::parallelReactionFractionalMoleculeIndex(std::size_t reaction
   std::size_t index = indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(componentId);
   for (std::size_t r = 0; r < reactionId; ++r)
   {
-    if (reactions.list[r].serialRxCFC)
+    if (!reactions.list[r].isParallelRxCFC())
     {
       continue;
     }
@@ -1161,7 +1161,7 @@ std::size_t System::serialReactionFractionalMoleculeIndex(std::size_t reactionId
   for (std::size_t r = 0; r < reactionId; ++r)
   {
     const Reaction& reaction = reactions.list[r];
-    if (!reaction.serialRxCFC || numberOfReactionFractionalMoleculesPerComponent_CFCMC[r][componentId] == 0)
+    if (!reaction.isSerialRxCFC() || numberOfReactionFractionalMoleculesPerComponent_CFCMC[r][componentId] == 0)
     {
       continue;
     }
@@ -1178,10 +1178,8 @@ void System::precomputeReactionFractionalLayout() noexcept
   numberOfReactionFractionalMoleculesPerComponent_CFCMC.assign(
       reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
 
-  const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
-  const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+  const bool useSerial = usesSerialReactionCFCMC();
+  const bool useParallel = usesParallelReactionCFCMC();
 
   if (!useParallel && !useSerial)
   {
@@ -1193,7 +1191,7 @@ void System::precomputeReactionFractionalLayout() noexcept
     const Reaction& reaction = reactions.list[reactionId];
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         if (!useSerial)
         {
@@ -1204,7 +1202,7 @@ void System::precomputeReactionFractionalLayout() noexcept
         numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[componentId] += count;
         numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][componentId] = count;
       }
-      else
+      else if (reaction.isParallelRxCFC())
       {
         if (!useParallel)
         {
@@ -1221,13 +1219,15 @@ void System::precomputeReactionFractionalLayout() noexcept
 
 void System::syncReactionFractionalMoleculeIndices() noexcept
 {
+  const bool useSerial = usesSerialReactionCFCMC();
+  const bool useParallel = usesParallelReactionCFCMC();
   for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
   {
     Reaction& reaction = reactions.list[reactionId];
     reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
     reaction.productFractionalMoleculeIds.assign(components.size(), {});
 
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC() && useSerial)
     {
       std::vector<std::vector<std::size_t>>& activeIds =
           reaction.fractionalSideIsReactants ? reaction.reactantFractionalMoleculeIds
@@ -1241,6 +1241,11 @@ void System::syncReactionFractionalMoleculeIndices() noexcept
           activeIds[componentId].push_back(serialReactionFractionalMoleculeIndex(reactionId, componentId, k));
         }
       }
+      continue;
+    }
+
+    if (!reaction.isParallelRxCFC() || !useParallel)
+    {
       continue;
     }
 
@@ -1262,9 +1267,18 @@ void System::syncReactionFractionalMoleculeIndices() noexcept
 
 bool System::usesReactionConventionalCFCMC() const noexcept
 {
+  return usesParallelReactionCFCMC() || usesSerialReactionCFCMC();
+}
+
+bool System::usesParallelReactionCFCMC() const noexcept
+{
   return mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-         mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0 ||
-         mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+         mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
+}
+
+bool System::usesSerialReactionCFCMC() const noexcept
+{
+  return mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
          mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
 }
 
@@ -1353,7 +1367,7 @@ bool System::hasReactionFractionalMolecules() const noexcept
 
 PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(Reaction& reaction) noexcept
 {
-  if (!reaction.serialRxCFC)
+  if (!reaction.isSerialRxCFC())
   {
     return reaction.lambda;
   }
@@ -1362,7 +1376,7 @@ PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(Reacti
 
 const PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(const Reaction& reaction) const noexcept
 {
-  if (!reaction.serialRxCFC)
+  if (!reaction.isSerialRxCFC())
   {
     return reaction.lambda;
   }
@@ -1390,7 +1404,7 @@ void System::syncReactionLambdaBin(Reaction& reaction) noexcept
     histogram.setCurrentBin(bin);
   };
 
-  if (!reaction.serialRxCFC)
+  if (!reaction.isSerialRxCFC())
   {
     setBinFromLambda(reaction.lambda, reaction.currentLambda);
     return;
@@ -1427,7 +1441,7 @@ void System::reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogra
     }
 
     reaction.lambda.WangLandauIteration(phase, hasFractionals);
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC())
     {
       reaction.lambdaProductSide.WangLandauIteration(phase, hasFractionals);
     }
@@ -1444,7 +1458,7 @@ void System::reactionLambdaSampleOccupancy() noexcept
   const bool hasFractionals = hasReactionFractionalMolecules();
   for (Reaction& reaction : reactions.list)
   {
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC())
     {
       // sample both sides so that each histogram's occupancy measures the fraction of samples for
       // which that side held the fractional molecules
@@ -1461,7 +1475,7 @@ void System::reactionLambdaClearBookkeeping() noexcept
   for (Reaction& reaction : reactions.list)
   {
     reaction.lambda.clear();
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC())
     {
       reaction.lambdaProductSide.clear();
     }
@@ -1479,7 +1493,7 @@ void System::reactionLambdaFinalize() noexcept
   for (Reaction& reaction : reactions.list)
   {
     reaction.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, hasFractionals);
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC())
     {
       reaction.lambdaProductSide.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                                      hasFractionals);
@@ -1508,7 +1522,7 @@ void System::reactionLambdaNormalize(double minBias) noexcept
   for (Reaction& reaction : reactions.list)
   {
     reaction.lambda.normalize(minBias);
-    if (reaction.serialRxCFC)
+    if (reaction.isSerialRxCFC())
     {
       reaction.lambdaProductSide.normalize(minBias);
     }
@@ -1689,10 +1703,8 @@ void System::createReactionFractionalMolecules()
                                      components.front().lambdaGC.numberOfSamplePoints);
   }
 
-  const bool useParallel = mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
-                           mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
-  const bool useSerial = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+  const bool useParallel = usesParallelReactionCFCMC();
+  const bool useSerial = usesSerialReactionCFCMC();
 
   precomputeReactionFractionalLayout();
 
@@ -1735,8 +1747,7 @@ void System::createParallelReactionFractionalMolecules()
     return;
   }
 
-  if (mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) <= 0.0 &&
-      mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) <= 0.0)
+  if (!usesParallelReactionCFCMC())
   {
     return;
   }
@@ -1746,7 +1757,7 @@ void System::createParallelReactionFractionalMolecules()
   for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
   {
     Reaction& reaction = reactions.list[reactionId];
-    if (reaction.serialRxCFC)
+    if (!reaction.isParallelRxCFC())
     {
       continue;
     }
@@ -1807,8 +1818,7 @@ void System::createSerialReactionFractionalMolecules()
     return;
   }
 
-  if (mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) <= 0.0 &&
-      mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) <= 0.0)
+  if (!usesSerialReactionCFCMC())
   {
     return;
   }
@@ -1818,7 +1828,7 @@ void System::createSerialReactionFractionalMolecules()
   for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
   {
     Reaction& reaction = reactions.list[reactionId];
-    if (!reaction.serialRxCFC)
+    if (!reaction.isSerialRxCFC())
     {
       continue;
     }
@@ -2049,7 +2059,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
     for (const Reaction& reaction : reactions.list)
     {
       const double lambda = reaction.currentLambda;
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
@@ -2123,7 +2133,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
     for (const Reaction& reaction : reactions.list)
     {
       const double lambda = reaction.currentLambda;
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
@@ -2239,7 +2249,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
     for (const Reaction& reaction : reactions.list)
     {
       const double lambda = reaction.currentLambda;
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
@@ -2311,7 +2321,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     for (const Reaction& reaction : reactions.list)
     {
       const double lambda = reaction.currentLambda;
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
@@ -3305,7 +3315,7 @@ std::string System::writeMCMoveStatistics() const
   {
     for (const Reaction& reaction : reactions.list)
     {
-      if (reaction.serialRxCFC)
+      if (reaction.isSerialRxCFC())
       {
         std::print(stream, "reaction {} lambda statistics (reactant side, occupancy {:.6f}):\n", reaction.id,
                    reaction.lambda.occupancy());

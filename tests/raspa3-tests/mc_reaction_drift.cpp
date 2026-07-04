@@ -93,6 +93,17 @@ Component makeAlkaneFromExample(const ForceField &forceField, std::size_t compon
                    21, probabilities, std::nullopt, false);
 }
 
+Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities &probabilities)
+{
+  if (probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0) return Move::Types::ReactionCFCMC;
+  if (probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0) return Move::Types::ReactionCBCFCMC;
+  if (probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0)
+    return Move::Types::ReactionConventionalCFCMC;
+  if (probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0)
+    return Move::Types::ReactionConventionalCBCFCMC;
+  return Move::Types::ReactionCBMC;
+}
+
 void checkEnergyDrift(System &s)
 {
   constexpr double tolerance = 1e-6;
@@ -140,8 +151,7 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
                          5, systemProbabilities);
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
-  reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+  reaction.reactionMove = reactionMoveFromProbabilities(systemProbabilities);
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -182,8 +192,7 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
                          5, systemProbabilities);
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
-  reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+  reaction.reactionMove = reactionMoveFromProbabilities(systemProbabilities);
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -195,7 +204,7 @@ System makeCO2N2TwoSerialReactionSystem(const MCMoveProbabilities& systemProbabi
 {
   System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, std::move(initialCounts));
   Reaction reaction2(1, std::move(secondReactants), std::move(secondProducts));
-  reaction2.serialRxCFC = true;
+  reaction2.reactionMove = Move::Types::ReactionCFCMC;
   system.reactions.list.push_back(reaction2);
   return system;
 }
@@ -219,11 +228,11 @@ System makeMixedParallelSerialReactionSystem(const MCMoveProbabilities& systemPr
                          std::vector<std::size_t>{40, 0}, 5, systemProbabilities);
 
   Reaction parallelReaction(0, {2, 0}, {0, 2});
-  parallelReaction.serialRxCFC = false;
+  parallelReaction.reactionMove = Move::Types::ReactionConventionalCFCMC;
   system.reactions.list.push_back(parallelReaction);
 
   Reaction serialReaction(1, {2, 0}, {0, 2});
-  serialReaction.serialRxCFC = true;
+  serialReaction.reactionMove = Move::Types::ReactionCFCMC;
   system.reactions.list.push_back(serialReaction);
   return system;
 }
@@ -231,10 +240,9 @@ System makeMixedParallelSerialReactionSystem(const MCMoveProbabilities& systemPr
 System makeTwoParallelReactionSystem(const MCMoveProbabilities& systemProbabilities)
 {
   System system = makePropaneButaneReactionSystem(systemProbabilities);
-  system.reactions.list[0].serialRxCFC = false;
 
   Reaction reaction2(1, {2, 0}, {0, 2});
-  reaction2.serialRxCFC = false;
+  reaction2.reactionMove = Move::Types::ReactionConventionalCFCMC;
   system.reactions.list.push_back(reaction2);
   return system;
 }
@@ -261,8 +269,7 @@ System makeZeoliteMultiComponentReactionSystem(const MCMoveProbabilities& system
                          std::move(initialCounts), 5, systemProbabilities);
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
-  reaction.serialRxCFC = systemProbabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
-                         systemProbabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
+  reaction.reactionMove = reactionMoveFromProbabilities(systemProbabilities);
   system.reactions.list.push_back(reaction);
   return system;
 }
@@ -752,7 +759,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_init)
 
   System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {60, 20});
   Reaction reaction2(1, {0, 0}, {0, 0});
-  reaction2.serialRxCFC = true;
+  reaction2.reactionMove = Move::Types::ReactionCFCMC;
   system.reactions.list.push_back(reaction2);
   EXPECT_EQ(system.reactions.list.size(), 2uz);
   system.createReactionFractionalMolecules();
@@ -824,6 +831,8 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_side_flip_dri
   checkEnergyDrift(system);
 }
 
+// serial and parallel Rx/CFC reactions can coexist in one system; each reaction declares the move
+// that drives it and gets slots in the corresponding fractional-molecule region
 TEST(MC_REACTION_DRIFT, reaction_mixed_parallel_serial_fractionals_init)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
@@ -836,8 +845,8 @@ TEST(MC_REACTION_DRIFT, reaction_mixed_parallel_serial_fractionals_init)
 
   const Reaction& parallelReaction = system.reactions.list[0];
   const Reaction& serialReaction = system.reactions.list[1];
-  EXPECT_FALSE(parallelReaction.serialRxCFC);
-  EXPECT_TRUE(serialReaction.serialRxCFC);
+  EXPECT_TRUE(parallelReaction.isParallelRxCFC());
+  EXPECT_TRUE(serialReaction.isSerialRxCFC());
   EXPECT_EQ(parallelReaction.reactantFractionalMoleculeIds[0].size(), 2uz);
   EXPECT_EQ(parallelReaction.productFractionalMoleculeIds[1].size(), 2uz);
   EXPECT_EQ(serialReaction.reactantFractionalMoleculeIds[0].size(), 2uz);
@@ -862,8 +871,6 @@ TEST(MC_REACTION_DRIFT, reaction_parallel_two_reactions_init)
   system.checkMoleculeIds();
 
   EXPECT_EQ(system.reactions.list.size(), 2uz);
-  EXPECT_FALSE(system.reactions.list[0].serialRxCFC);
-  EXPECT_FALSE(system.reactions.list[1].serialRxCFC);
   EXPECT_EQ(system.reactions.list[0].reactantFractionalMoleculeIds[0].size(), 2uz);
   EXPECT_EQ(system.reactions.list[1].reactantFractionalMoleculeIds[0].size(), 2uz);
   EXPECT_EQ(system.numberOfReactionFractionalMoleculesPerComponent_CFCMC[0][0], 2uz);

@@ -81,7 +81,7 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, swap_and_serial_reaction_layout)
                          std::vector<std::size_t>{20, 10}, 5, systemProbabilities);
 
   Reaction reaction(0, {2, 0}, {0, 2});
-  reaction.serialRxCFC = true;
+  reaction.reactionMove = Move::Types::ReactionCFCMC;
   system.reactions.list.push_back(reaction);
   system.createReactionFractionalMolecules();
   system.checkMoleculeIds();
@@ -121,7 +121,7 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, parallel_reaction_and_swap_layout)
                          std::vector<std::size_t>{20, 10}, 5, systemProbabilities);
 
   Reaction reaction(0, {2, 0}, {0, 2});
-  reaction.serialRxCFC = false;
+  reaction.reactionMove = Move::Types::ReactionConventionalCFCMC;
   system.reactions.list.push_back(reaction);
   system.createReactionFractionalMolecules();
   system.checkMoleculeIds();
@@ -160,9 +160,9 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, combined_moves_short_drift)
                          std::vector<std::size_t>{20, 10}, 5, systemProbabilities);
 
   Reaction serialReaction(0, {2, 0}, {0, 2});
-  serialReaction.serialRxCFC = true;
+  serialReaction.reactionMove = Move::Types::ReactionCFCMC;
   Reaction parallelReaction(1, {2, 0}, {0, 2});
-  parallelReaction.serialRxCFC = false;
+  parallelReaction.reactionMove = Move::Types::ReactionConventionalCFCMC;
   system.reactions.list.push_back(serialReaction);
   system.reactions.list.push_back(parallelReaction);
   system.createReactionFractionalMolecules();

@@ -395,6 +395,8 @@ export struct System
   void syncReactionLambdaBin(Reaction& reaction) noexcept;
   void syncReactionLambdaBins() noexcept;
   [[nodiscard]] bool usesReactionConventionalCFCMC() const noexcept;
+  [[nodiscard]] bool usesSerialReactionCFCMC() const noexcept;
+  [[nodiscard]] bool usesParallelReactionCFCMC() const noexcept;
   [[nodiscard]] bool usesGibbsConventionalCFCMC() const noexcept;
   void initializeGibbsConventionalFractionalMolecules() noexcept;
   void initializeGibbsSwapFractionalMoleculeGroupIds() noexcept;

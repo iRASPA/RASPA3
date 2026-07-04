@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import property_lambda_probability_histogram;
+import mc_moves_move_types;
 import json;
 
 /**
@@ -45,7 +46,7 @@ export struct Reaction
 
   bool operator==(Reaction const &) const = default;
 
-  std::uint64_t versionNumber{3};  ///< Version number of the Reaction struct.
+  std::uint64_t versionNumber{4};  ///< Version number of the Reaction struct.
 
   std::size_t id;                                  ///< Unique identifier for the reaction.
   /// Stoichiometry of reactants (one entry per adsorbate component; values may exceed 1).
@@ -56,12 +57,30 @@ export struct Reaction
   PropertyLambdaProbabilityHistogram lambda;             ///< Bias histogram (reactant-side fractionals, serial Rx/CFC).
   PropertyLambdaProbabilityHistogram lambdaProductSide;  ///< Bias histogram (product-side fractionals, serial Rx/CFC).
 
+  /// The reaction move that drives this reaction, declared per reaction in the input ("Move" key).
+  /// The serial moves (ReactionCFCMC, ReactionCBCFCMC) and parallel moves (ReactionConventionalCFCMC,
+  /// ReactionConventionalCBCFCMC) imply different fractional-molecule layouts; ReactionCBMC uses none.
+  Move::Types reactionMove{Move::Types::ReactionCBMC};
+
+  /// Whether this reaction is driven by a serial Rx/CFC move (single fractional side).
+  [[nodiscard]] bool isSerialRxCFC() const noexcept
+  {
+    return reactionMove == Move::Types::ReactionCFCMC || reactionMove == Move::Types::ReactionCBCFCMC;
+  }
+
+  /// Whether this reaction is driven by a parallel Rx/CFC move (reactant and product fractionals).
+  [[nodiscard]] bool isParallelRxCFC() const noexcept
+  {
+    return reactionMove == Move::Types::ReactionConventionalCFCMC ||
+           reactionMove == Move::Types::ReactionConventionalCBCFCMC;
+  }
+
   double currentLambda{0.0};           ///< Current coupling parameter λ ∈ [0, 1].
   double maximumLambdaChange{0.3};     ///< Maximum random change in λ (reactant-side, serial or parallel).
   double maximumLambdaChangeProducts{0.3};  ///< Maximum λ change when product-side fractionals are present (serial).
-  double lambdaSwitchPoint{0.5};       ///< λ threshold for fractional vs whole-molecule reaction moves (serial).
+  double lambdaSwitchPoint{0.3};  ///< λ threshold for fractional vs whole-molecule reaction moves (serial);
+                                  ///< default λsec = 0.3 (10.1021/acs.jctc.7b00092, section 4).
 
-  bool serialRxCFC{false};              ///< Use serial Rx/CFC (single fractional side) instead of parallel Rx/CFC.
   bool fractionalSideIsReactants{true};  ///< δ: true = reactant fractionals present, false = product fractionals.
 
   /// Molecule indices (per component) for reactant fractional molecules used in CFC-RXMC.
