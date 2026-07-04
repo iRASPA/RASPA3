@@ -81,7 +81,7 @@ export struct ForceField
     Triquintic = 27
   };
 
-  std::uint64_t versionNumber{1};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{2};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.
@@ -95,6 +95,8 @@ export struct ForceField
   bool cutOffCoulombAutomatic{true};
   double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
   double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
+
+  double temperature{300.0};  ///< External temperature, used by temperature-dependent potentials (Feynman-Hibbs).
 
   std::size_t numberOfPseudoAtoms{0};     ///< Number of pseudo-atoms defined in the force field.
   std::vector<PseudoAtom> pseudoAtoms{};  ///< List of pseudo-atoms in the force field.
@@ -204,6 +206,16 @@ export struct ForceField
    * \return The cut-off distance for VDW interactions.
    */
   double cutOffVDW(std::size_t i, std::size_t j) const;
+
+  /**
+   * \brief Pre-computes derived constants for each pair interaction.
+   *
+   * Computes per-pair derived constants: the Feynman-Hibbs temperature pre-factor, the
+   * shifted-force cutoff constants, and the soft-core reference diameter used in the
+   * continuous-fractional lambda-scaling. Must be called before preComputePotentialShift()
+   * and preComputeTailCorrection(), and re-called when the temperature changes.
+   */
+  void preComputeDerivedParameters();
 
   /**
    * \brief Pre-computes the potential shift for interactions.

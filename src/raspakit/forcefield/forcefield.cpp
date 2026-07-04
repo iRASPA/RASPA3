@@ -127,6 +127,7 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
   }
 
   applyMixingRule();
+  preComputeDerivedParameters();
   preComputePotentialShift();
   preComputeTailCorrection();
 }
@@ -239,17 +240,17 @@ ForceField::ForceField(std::string filePath)
           std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", jsonName));
     }
 
-    if (scannedJsonParameters.size() < 2)
-    {
-      throw std::runtime_error(
-          std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n", item["parameters"].dump()));
-    }
-
-    double param0 = scannedJsonParameters[0];
-    double param1 = scannedJsonParameters[1];
     VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
 
-    data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0, param1, type);
+    try
+    {
+      data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(type, scannedJsonParameters);
+    }
+    catch (const std::exception& ex)
+    {
+      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n{}\n",
+                                           item["parameters"].dump(), ex.what()));
+    }
   }
 
   // Set mixing rule and cut-off values
@@ -316,29 +317,18 @@ ForceField::ForceField(std::string filePath)
                       item["parameters"].dump(), ex.what()));
     }
 
-    if (scannedJsonParameters.size() < 2)
-    {
-      throw std::runtime_error(
-          std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n", item["parameters"].dump()));
-    }
-
-    double param0 = scannedJsonParameters[0];
-    double param1 = scannedJsonParameters[1];
-
     VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
 
-    data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = VDWParameters(param0, param1, type);
-    data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = VDWParameters(param0, param1, type);
-
-    if (scannedJsonParameters.size() > 2)
+    try
     {
-      data[indexA.value() * numberOfPseudoAtoms + indexB.value()].parameters.z = scannedJsonParameters[2];
-      data[indexB.value() * numberOfPseudoAtoms + indexA.value()].parameters.z = scannedJsonParameters[2];
+      VDWParameters binaryInteraction = VDWParameters(type, scannedJsonParameters);
+      data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
+      data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
     }
-    if (scannedJsonParameters.size() > 3)
+    catch (const std::exception& ex)
     {
-      data[indexA.value() * numberOfPseudoAtoms + indexB.value()].parameters.w = scannedJsonParameters[3];
-      data[indexB.value() * numberOfPseudoAtoms + indexA.value()].parameters.w = scannedJsonParameters[3];
+      throw std::runtime_error(std::format("[ReadForceFieldBinaryInteractions]: incorrect vdw parameters {}\n{}\n",
+                                           item["parameters"].dump(), ex.what()));
     }
   }
 
@@ -679,7 +669,9 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
-  // after knowing the tail-correction settings and the cutoff, compute the shifts and tail-corrections for each pair
+  // after knowing the tail-correction settings and the cutoff, compute the derived parameters,
+  // shifts, and tail-corrections for each pair
+  preComputeDerivedParameters();
   preComputePotentialShift();
   preComputeTailCorrection();
 
@@ -970,6 +962,18 @@ double ForceField::cutOffVDW(std::size_t i, std::size_t j) const
   return cutOffMoleculeVDW;
 }
 
+void ForceField::preComputeDerivedParameters()
+{
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    {
+      double cut_off_vdw = cutOffVDW(i, j);
+      data[i * numberOfPseudoAtoms + j].computeDerivedParameters(cut_off_vdw, temperature);
+    }
+  }
+}
+
 void ForceField::preComputePotentialShift()
 {
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
@@ -997,12 +1001,10 @@ void ForceField::preComputeTailCorrection()
       if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
         double cut_off_vdw = cutOffVDW(i, j);
-        VDWParameters::Type potentialType = data[i * numberOfPseudoAtoms + j].type;
-        double4 parameters = data[i * numberOfPseudoAtoms + j].parameters;
         data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy =
-            Potentials::potentialCorrectionVDW(potentialType, parameters, cut_off_vdw);
+            Potentials::potentialCorrectionVDW(data[i * numberOfPseudoAtoms + j], cut_off_vdw);
         data[i * numberOfPseudoAtoms + j].tailCorrectionPressure =
-            Potentials::potentialCorrectionPressure(potentialType, parameters, cut_off_vdw);
+            Potentials::potentialCorrectionPressure(data[i * numberOfPseudoAtoms + j], cut_off_vdw);
       }
     }
   }
@@ -1197,7 +1199,27 @@ std::string ForceField::printForceFieldStatus() const
           std::print(stream, "{:8} - {:8} None\n", pseudoAtoms[i].name, pseudoAtoms[j].name);
           break;
         default:
+        {
+          const VDWParameters& vdw = data[i * numberOfPseudoAtoms + j];
+          VDWParameters::ParameterMetadata metadata = VDWParameters::parameterMetadata(vdw.type);
+          std::string parameterString{};
+          for (std::size_t k = 0; k < metadata.count; ++k)
+          {
+            double value = k < 4 ? vdw.parameters[k] : vdw.parameters2[k - 4];
+            if (metadata.isEnergy[k])
+            {
+              value *= Units::EnergyToKelvin;
+            }
+            std::format_to(std::back_inserter(parameterString), "p{}: {:9.5f}{}", k, value,
+                           k + 1 < metadata.count ? ", " : "");
+          }
+          std::print(stream, "{:8} - {:8} {} {}\n", pseudoAtoms[i].name, pseudoAtoms[j].name,
+                     VDWParameters::nameOfType(vdw.type), parameterString);
+          std::print(stream, "{:34} shift: {:9.5f} [{}], tailcorrections: {}\n", std::string(""),
+                     Units::EnergyToKelvin * vdw.shift, Units::displayedUnitOfEnergyString,
+                     tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
           break;
+        }
       }
     }
   }
@@ -1400,6 +1422,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.cutOffCoulombAutomatic;
   archive << f.cutOffCoulomb;
   archive << f.dualCutOff;
+  archive << f.temperature;
 
   archive << f.numberOfPseudoAtoms;
   archive << f.pseudoAtoms;
@@ -1475,6 +1498,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.cutOffCoulombAutomatic;
   archive >> f.cutOffCoulomb;
   archive >> f.dualCutOff;
+  archive >> f.temperature;
 
   archive >> f.numberOfPseudoAtoms;
   archive >> f.pseudoAtoms;

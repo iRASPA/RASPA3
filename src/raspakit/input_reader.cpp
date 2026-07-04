@@ -893,6 +893,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOff"].get<double>();
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOff"].get<double>();
+        forceFields[systemId]->preComputeDerivedParameters();
         forceFields[systemId]->preComputePotentialShift();
         forceFields[systemId]->preComputeTailCorrection();
       }
@@ -905,6 +906,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOffVDW"].get<double>();
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOffVDW"].get<double>();
+        forceFields[systemId]->preComputeDerivedParameters();
         forceFields[systemId]->preComputePotentialShift();
         forceFields[systemId]->preComputeTailCorrection();
       }
@@ -916,6 +918,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOffFrameworkVDW"].get<double>();
+        forceFields[systemId]->preComputeDerivedParameters();
         forceFields[systemId]->preComputePotentialShift();
         forceFields[systemId]->preComputeTailCorrection();
       }
@@ -927,6 +930,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOffMoleculeVDW"].get<double>();
+        forceFields[systemId]->preComputeDerivedParameters();
         forceFields[systemId]->preComputePotentialShift();
         forceFields[systemId]->preComputeTailCorrection();
       }

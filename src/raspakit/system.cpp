@@ -141,6 +141,16 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   input_pressureTensorDiagonal = double3(input_pressure, input_pressure, input_pressure);
   pressureTensorDiagonal = double3(pressure, pressure, pressure);
 
+  // Temperature-dependent potentials (Feynman-Hibbs) require the external temperature;
+  // recompute the derived constants, shifts, and tail-corrections with the system temperature.
+  if (forceField.temperature != T)
+  {
+    forceField.temperature = T;
+    forceField.preComputeDerivedParameters();
+    forceField.preComputePotentialShift();
+    forceField.preComputeTailCorrection();
+  }
+
   if (box.has_value())
   {
     simulationBox = box.value();
