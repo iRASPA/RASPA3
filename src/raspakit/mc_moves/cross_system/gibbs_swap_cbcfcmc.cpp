@@ -42,24 +42,12 @@ GibbsSwapFractionalSnapshot saveGibbsSwapFractionalMolecules(const System& syste
     {
       continue;
     }
-    const std::size_t index =
-        system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCBCFCMC, componentId);
+    const std::size_t index = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCBCFCMC, componentId);
     std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, index);
     snapshot.emplace_back(std::make_pair(componentId, index),
                           std::vector<Atom>(fractionalMolecule.begin(), fractionalMolecule.end()));
   }
   return snapshot;
-}
-
-std::vector<Atom> flattenGibbsSwapFractionalSnapshot(const GibbsSwapFractionalSnapshot& snapshot)
-{
-  std::vector<Atom> atoms;
-  for (const auto& [indices, moleculeAtoms] : snapshot)
-  {
-    (void)indices;
-    atoms.insert(atoms.end(), moleculeAtoms.begin(), moleculeAtoms.end());
-  }
-  return atoms;
 }
 
 void restoreGibbsSwapFractionalMolecules(System& system, const GibbsSwapFractionalSnapshot& snapshot)
@@ -70,41 +58,6 @@ void restoreGibbsSwapFractionalMolecules(System& system, const GibbsSwapFraction
     std::span<Atom> fractionalMolecule = system.spanOfMolecule(componentId, index);
     std::copy(moleculeAtoms.begin(), moleculeAtoms.end(), fractionalMolecule.begin());
   }
-}
-
-std::vector<Atom> buildSerialFlagSwapTrialFractionalAtoms(const System& system, std::size_t selectedComponent,
-                                                          bool systemBecomesActive, double selectedActiveLambda,
-                                                          const System& lambdaSourceSystem)
-{
-  std::vector<Atom> atoms;
-  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
-  {
-    if (system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] == 0)
-    {
-      continue;
-    }
-
-    const std::size_t indexFractionalMolecule =
-        system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCBCFCMC, componentId);
-    std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, indexFractionalMolecule);
-    for (Atom atom : fractionalMolecule)
-    {
-      if (systemBecomesActive)
-      {
-        const double lambda = (componentId == selectedComponent)
-                                  ? selectedActiveLambda
-                                  : lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
-        atom.setScalingToFractional(lambda, system.components[componentId].lambdaGC.computeDUdlambda);
-      }
-      else
-      {
-        // inactive fractional molecules must not contribute dUdlambda
-        atom.setScalingToInactiveFractional();
-      }
-      atoms.push_back(atom);
-    }
-  }
-  return atoms;
 }
 
 std::optional<RunningEnergy> computeGibbsSwapFractionalMoleculesEnergyDifference(
@@ -130,12 +83,10 @@ std::optional<RunningEnergy> computeGibbsSwapFractionalMoleculesEnergyDifference
       system.simulationBox, newAtomsCombined, oldAtomsCombined, system.netCharge);
 
   RunningEnergy tailDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), newAtomsCombined,
-                                                              oldAtomsCombined) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newAtomsCombined,
-                                                                 oldAtomsCombined);
+      Interactions::computeInterMolecularTailEnergyDifference(
+          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newAtomsCombined, oldAtomsCombined) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(
+          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newAtomsCombined, oldAtomsCombined);
 
   return frameworkDifference.value() + moleculeDifference.value() + ewaldDifference + tailDifference;
 }
@@ -144,9 +95,43 @@ std::optional<RunningEnergy> computeSerialFlagSwapFractionalEnergyDifference(
     System& system, const GibbsSwapFractionalSnapshot& beforeSnapshot, std::size_t selectedComponent,
     bool systemBecomesActive, double selectedActiveLambda, const System& lambdaSourceSystem) noexcept
 {
-  const std::vector<Atom> oldAtomsCombined = flattenGibbsSwapFractionalSnapshot(beforeSnapshot);
-  const std::vector<Atom> newAtomsCombined = buildSerialFlagSwapTrialFractionalAtoms(
-      system, selectedComponent, systemBecomesActive, selectedActiveLambda, lambdaSourceSystem);
+  std::vector<Atom> oldAtomsCombined;
+  for (const auto& [indices, moleculeAtoms] : beforeSnapshot)
+  {
+    (void)indices;
+    oldAtomsCombined.insert(oldAtomsCombined.end(), moleculeAtoms.begin(), moleculeAtoms.end());
+  }
+
+  // trial state: all fractional molecules take the scaling of the target activity state
+  std::vector<Atom> newAtomsCombined;
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    if (system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] == 0)
+    {
+      continue;
+    }
+
+    const std::size_t indexFractionalMolecule =
+        system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCBCFCMC, componentId);
+    std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, indexFractionalMolecule);
+    for (Atom atom : fractionalMolecule)
+    {
+      if (systemBecomesActive)
+      {
+        const double lambda = (componentId == selectedComponent)
+                                  ? selectedActiveLambda
+                                  : lambdaSourceSystem.components[componentId].lambdaGC.lambdaValue();
+        atom.setScalingToFractional(lambda, system.components[componentId].lambdaGC.computeDUdlambda);
+      }
+      else
+      {
+        // inactive fractional molecules must not contribute dUdlambda
+        atom.setScalingToInactiveFractional();
+      }
+      newAtomsCombined.push_back(atom);
+    }
+  }
+
   return computeGibbsSwapFractionalMoleculesEnergyDifference(system, newAtomsCombined, oldAtomsCombined);
 }
 
@@ -223,15 +208,6 @@ void applySerialGibbsFlagSwapScaling(System& system, std::size_t selectedCompone
   }
 }
 
-void applyOtherComponentFlagSwapScaling(System& systemBecomingInactive, System& systemBecomingActive,
-                                        std::size_t selectedComponent, double selectedActiveLambda)
-{
-  applySerialGibbsFlagSwapScaling(systemBecomingInactive, selectedComponent, false, selectedActiveLambda,
-                                  systemBecomingInactive);
-  applySerialGibbsFlagSwapScaling(systemBecomingActive, selectedComponent, true, selectedActiveLambda,
-                                  systemBecomingInactive);
-}
-
 void syncOtherComponentLambdaBins(System& systemBecomingInactive, System& systemBecomingActive,
                                   std::size_t selectedComponent)
 {
@@ -305,8 +281,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
     for (Atom& atom : fractionalMoleculeA)
     {
-      atom.moleculeId = static_cast<std::uint32_t>(
-          systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+      atom.moleculeId =
+          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
     }
 
     RunningEnergy intraFractionalDifferenceA =
@@ -368,10 +344,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceGrowA =
-        Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                                                systemA.spanOfMoleculeAtoms(),
-                                                                std::span(growData->atom.begin(), growData->atom.end()),
-                                                                {}) +
+        Interactions::computeInterMolecularTailEnergyDifference(
+            systemA.forceField, systemA.simulationBox, systemA.spanOfMoleculeAtoms(),
+            std::span(growData->atom.begin(), growData->atom.end()), {}) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(),
             std::span(growData->atom.begin(), growData->atom.end()), {});
@@ -409,19 +384,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceRetraceB =
-        Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                systemB.spanOfMoleculeAtoms(), {},
-                                                                selectedIntegerMoleculeB) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                   systemB.spanOfFrameworkAtoms(), {},
-                                                                   selectedIntegerMoleculeB);
+        Interactions::computeInterMolecularTailEnergyDifference(
+            systemB.forceField, systemB.simulationBox, systemB.spanOfMoleculeAtoms(), {}, selectedIntegerMoleculeB) +
+        Interactions::computeFrameworkMoleculeTailEnergyDifference(
+            systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(), {}, selectedIntegerMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-Tail"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-Tail"] += (time_end - time_begin);
 
-    double correctionFactorEwaldRetraceB = std::exp(
-        systemB.beta *
-        (EwaldFourierDifferenceRetraceB.potentialEnergy() + tailEnergyDifferenceRetraceB.potentialEnergy()));
+    double correctionFactorEwaldRetraceB = std::exp(systemB.beta * (EwaldFourierDifferenceRetraceB.potentialEnergy() +
+                                                                    tailEnergyDifferenceRetraceB.potentialEnergy()));
 
     for (Atom& atom : selectedIntegerMoleculeB)
     {
@@ -432,8 +404,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
     for (Atom& atom : fractionalMoleculeB)
     {
-      atom.moleculeId = static_cast<std::uint16_t>(
-          systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
+      atom.moleculeId =
+          static_cast<std::uint16_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
       atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
     }
 
@@ -536,8 +508,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
       for (Atom& atom : fractionalMoleculeA)
       {
-        atom.moleculeId = static_cast<std::uint16_t>(
-            systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+        atom.moleculeId =
+            static_cast<std::uint16_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
         atom.isFractional = true;
       }
 
@@ -555,13 +527,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
       for (Atom& atom : fractionalMoleculeB)
       {
-        atom.moleculeId = static_cast<std::uint16_t>(
-            systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
+        atom.moleculeId =
+            static_cast<std::uint16_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
         atom.isFractional = true;
       }
 
       const double activeLambda = componentB.lambdaGC.lambdaValue();
-      applyOtherComponentFlagSwapScaling(systemA, systemB, selectedComponent, activeLambda);
+      applySerialGibbsFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
+      applySerialGibbsFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
 
       systemA.updateMoleculeAtomInformation();
       systemB.updateMoleculeAtomInformation();
@@ -602,15 +575,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       atom.isFractional = true;
       atom.groupId = std::uint8_t{0};
-      atom.moleculeId = static_cast<std::uint32_t>(
-          systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+      atom.moleculeId =
+          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
     }
     for (Atom& atom : fractionalMoleculeB)
     {
       atom.isFractional = true;
       atom.groupId = static_cast<std::uint8_t>(componentB.lambdaGC.computeDUdlambda);
-      atom.moleculeId = static_cast<std::uint32_t>(
-          systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
+      atom.moleculeId =
+          static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
     }
 
     RunningEnergy intraEnergyDifferenceA =
@@ -711,13 +684,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.mc_moves_cputime[move]["LambdaShuffle-Ewald"] += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy tailEnergyDifferenceB =
-        Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                systemB.spanOfMoleculeAtoms(), fractionalMoleculeB,
-                                                                oldFractionalMoleculeB) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                   systemB.spanOfFrameworkAtoms(), fractionalMoleculeB,
-                                                                   oldFractionalMoleculeB);
+    RunningEnergy tailEnergyDifferenceB = Interactions::computeInterMolecularTailEnergyDifference(
+                                              systemB.forceField, systemB.simulationBox, systemB.spanOfMoleculeAtoms(),
+                                              fractionalMoleculeB, oldFractionalMoleculeB) +
+                                          Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                                              systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(),
+                                              fractionalMoleculeB, oldFractionalMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaShuffle-Tail"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaShuffle-Tail"] += (time_end - time_begin);
@@ -741,10 +713,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
     double idealGasRosenbluthWeight = componentB.idealGasRosenbluthWeight.value_or(1.0);
 
-    if (random.uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                                std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() +
-                                                           energyDifferenceB.potentialEnergy()) +
-                                         biasTerm))
+    if (random.uniform() <
+        preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
+            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) +
+                     biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
@@ -762,7 +734,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
       const double activeLambda = componentB.lambdaGC.lambdaValue();
-      applyOtherComponentFlagSwapScaling(systemA, systemB, selectedComponent, activeLambda);
+      applySerialGibbsFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
+      applySerialGibbsFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
 
       systemA.updateMoleculeAtomInformation();
       systemB.updateMoleculeAtomInformation();

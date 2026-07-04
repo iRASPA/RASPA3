@@ -39,38 +39,5 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(RandomNumber& random, 
   Reaction& reaction = *serialReactions[static_cast<std::size_t>(
       random.uniform_integer(0, static_cast<int>(serialReactions.size()) - 1))];
 
-  const std::vector<std::size_t>& activeIdsExist =
-      reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry : reaction.productStoichiometry;
-  if (ReactionCommon::totalStoichiometry(activeIdsExist) == 0)
-  {
-    return std::nullopt;
-  }
-
-  ReactionCommon::SerialMoveKind subMove = ReactionCommon::SerialMoveKind::LambdaChange;
-  if (reaction.lambdaSwitchPoint > 1.0)
-  {
-    subMove = ReactionCommon::SerialMoveKind::LambdaChange;
-  }
-  else if (reaction.currentLambda < reaction.lambdaSwitchPoint)
-  {
-    subMove = random.uniform() < 0.5 ? ReactionCommon::SerialMoveKind::LambdaChange
-                                      : ReactionCommon::SerialMoveKind::FractionalReaction;
-  }
-  else
-  {
-    subMove = random.uniform() < 0.5 ? ReactionCommon::SerialMoveKind::LambdaChange
-                                      : ReactionCommon::SerialMoveKind::WholeMoleculeReaction;
-  }
-
-  switch (subMove)
-  {
-    case ReactionCommon::SerialMoveKind::LambdaChange:
-      return ReactionCommon::serialLambdaChangeMove(random, system, reaction, move);
-    case ReactionCommon::SerialMoveKind::FractionalReaction:
-      return ReactionCommon::serialFractionalReactionMove(random, system, reaction, move, false);
-    case ReactionCommon::SerialMoveKind::WholeMoleculeReaction:
-      return ReactionCommon::serialWholeMoleculeReactionMove(random, system, reaction, move, false);
-  }
-
-  return std::nullopt;
+  return ReactionCommon::serialReactionMove(random, system, reaction, move, false);
 }

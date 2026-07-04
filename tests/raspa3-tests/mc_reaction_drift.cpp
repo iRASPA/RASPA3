@@ -21,7 +21,8 @@ import mc_moves_reaction_conventional_cfcmc;
 import mc_moves_reaction_conventional_cbcfcmc;
 import randomnumbers;
 
-namespace {
+namespace
+{
 
 constexpr double kReactionDriftVDWCutoff = 50.0;
 constexpr size_t kReactionDriftCycles = 20;
@@ -36,10 +37,9 @@ std::filesystem::path repositoryRoot()
 
 ForceField makeAlkaneForceField()
 {
-  return ForceField({{"CH3", false, 15.04, 0.0, 0.0, 6, false},
-                     {"CH2", false, 14.03, 0.0, 0.0, 6, false}},
+  return ForceField({{"CH3", false, 15.04, 0.0, 0.0, 6, false}, {"CH2", false, 14.03, 0.0, 0.0, 6, false}},
                     {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, kReactionDriftVDWCutoff,
-                     kReactionDriftVDWCutoff, 12.0, true, true, false);
+                    kReactionDriftVDWCutoff, 12.0, true, true, false);
 }
 
 ForceField makeZeoliteAlkaneForceField()
@@ -81,19 +81,19 @@ ForceField makeZeoliteAlkaneForceField()
                      {98.0, 3.75},
                      {46.0, 3.95}},
                     ForceField::MixingRule::Lorentz_Berthelot, kReactionDriftVDWCutoff, kReactionDriftVDWCutoff, 12.0,
-                     true, false, true);
+                    true, false, true);
 }
 
-Component makeAlkaneFromExample(const ForceField &forceField, std::size_t componentId, std::string_view name,
-                                const MCMoveProbabilities &probabilities)
+Component makeAlkaneFromExample(const ForceField& forceField, std::size_t componentId, std::string_view name,
+                                const MCMoveProbabilities& probabilities)
 {
   const std::filesystem::path moleculePath =
       repositoryRoot() / "examples/basic/4_mc_binary_mixture_propane_butane_in_box" / name;
-  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), moleculePath.string(), 5,
-                   21, probabilities, std::nullopt, false);
+  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), moleculePath.string(), 5, 21,
+                   probabilities, std::nullopt, false);
 }
 
-Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities &probabilities)
+Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities& probabilities)
 {
   if (probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0) return Move::Types::ReactionCFCMC;
   if (probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0) return Move::Types::ReactionCBCFCMC;
@@ -104,7 +104,7 @@ Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities &probabiliti
   return Move::Types::ReactionCBMC;
 }
 
-void checkEnergyDrift(System &s)
+void checkEnergyDrift(System& s)
 {
   constexpr double tolerance = 1e-6;
   RunningEnergy recomputedEnergies = s.computeTotalEnergies();
@@ -156,7 +156,7 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
   return system;
 }
 
-System makePropaneButaneReactionSystem(const MCMoveProbabilities &systemProbabilities)
+System makePropaneButaneReactionSystem(const MCMoveProbabilities& systemProbabilities)
 {
   return makeMultiComponentReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {40, 20});
 }
@@ -166,8 +166,7 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
                                      std::vector<std::size_t> productStoichiometry,
                                      std::vector<std::size_t> initialCounts)
 {
-  const std::filesystem::path exampleDir =
-      repositoryRoot() / "examples/basic/2_mc_co2_n2_in_two_independent_boxes";
+  const std::filesystem::path exampleDir = repositoryRoot() / "examples/basic/2_mc_co2_n2_in_two_independent_boxes";
   ForceField forceField = ForceField::readForceField(exampleDir.string(), "force_field.json").value();
   forceField.chargeMethod = ForceField::ChargeMethod::Ewald;
   forceField.useCharge = true;
@@ -188,8 +187,8 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
   co2.lnPartitionFunction = 55.0;
   n2.lnPartitionFunction = 53.0;
 
-  System system = System(forceField, box, false, 300.0, 101300.0, 1.0, {}, {co2, n2}, {}, std::move(initialCounts),
-                         5, systemProbabilities);
+  System system = System(forceField, box, false, 300.0, 101300.0, 1.0, {}, {co2, n2}, {}, std::move(initialCounts), 5,
+                         systemProbabilities);
 
   Reaction reaction(0, std::move(reactantStoichiometry), std::move(productStoichiometry));
   reaction.reactionMove = reactionMoveFromProbabilities(systemProbabilities);
@@ -297,7 +296,7 @@ void runReactionDriftTest(std::vector<System> systems)
 
   mc.run();
 
-  for (System &s : mc.systems)
+  for (System& s : mc.systems)
   {
     checkEnergyDrift(s);
   }
@@ -321,7 +320,7 @@ void runReactionBoundaryDriftTest(std::vector<System> systems)
 
   mc.run();
 
-  for (System &s : mc.systems)
+  for (System& s : mc.systems)
   {
     checkEnergyDrift(s);
   }
@@ -389,10 +388,7 @@ void setupBoundaryCrossingReaction(System& system)
   system.runningEnergies = system.computeTotalEnergies();
 }
 
-void setupCBMCStoichiometryBoundaryReaction(System& system)
-{
-  system.runningEnergies = system.computeTotalEnergies();
-}
+void setupCBMCStoichiometryBoundaryReaction(System& system) { system.runningEnergies = system.computeTotalEnergies(); }
 
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary)
 {
@@ -492,7 +488,7 @@ void runSerialReactionBoundaryDriftTest(std::vector<System> systems)
 
   mc.run();
 
-  for (System &s : mc.systems)
+  for (System& s : mc.systems)
   {
     checkEnergyDrift(s);
   }
@@ -1052,9 +1048,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_whole_molecule_single
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialWholeMoleculeReactionMove(random, system, system.reactions.list[0],
-                                                                  Move::Types::ReactionCFCMC, false);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::WholeMoleculeReaction);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1086,9 +1082,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_fractional_single_mov
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialFractionalReactionMove(random, system, system.reactions.list[0],
-                                                               Move::Types::ReactionCFCMC, false);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::FractionalReaction);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1121,9 +1117,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_lambda_single_move_dr
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialLambdaChangeMove(random, system, system.reactions.list[0],
-                                                         Move::Types::ReactionCFCMC);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1155,9 +1151,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_lambda_single_
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialLambdaChangeMove(random, system, system.reactions.list[0],
-                                                         Move::Types::ReactionCFCMC);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1188,9 +1184,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_single_move_dr
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialFractionalReactionMove(random, system, system.reactions.list[0],
-                                                               Move::Types::ReactionCFCMC, false);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::FractionalReaction);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1221,9 +1217,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_fractional_single_move_drift)
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialFractionalReactionMove(random, system, system.reactions.list[0],
-                                                               Move::Types::ReactionCFCMC, false);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::FractionalReaction);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1253,9 +1249,9 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_lambda_single_move_drift)
   for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        MC_Moves::ReactionCommon::serialLambdaChangeMove(random, system, system.reactions.list[0],
-                                                         Move::Types::ReactionCFCMC);
+    std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
+        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1269,7 +1265,8 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_lambda_single_move_drift)
   FAIL() << "No accepted serial lambda move in " << kReactionDriftSingleMoveAttempts << " attempts";
 }
 
-namespace {
+namespace
+{
 
 // deterministic per-accept drift check for the conventional (parallel) reaction CFCMC moves,
 // including the lambda boundary crossings (ForwardInsert / BackwardDelete)
@@ -1291,14 +1288,13 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
   {
     const double lambdaBefore = system.reactions.list[0].currentLambda;
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
-    std::optional<RunningEnergy> delta =
-        useCBMC ? MC_Moves::reactionMove_ConventionalCBCFCMC(random, system)
-                : MC_Moves::reactionMove_ConventionalCFCMC(random, system);
+    std::optional<RunningEnergy> delta = useCBMC ? MC_Moves::reactionMove_ConventionalCBCFCMC(random, system)
+                                                 : MC_Moves::reactionMove_ConventionalCFCMC(random, system);
     if (delta)
     {
       ++accepted;
-      SCOPED_TRACE(testing::Message() << "attempt " << attempt << " accept " << accepted << " lambda "
-                                      << lambdaBefore << " -> " << system.reactions.list[0].currentLambda);
+      SCOPED_TRACE(testing::Message() << "attempt " << attempt << " accept " << accepted << " lambda " << lambdaBefore
+                                      << " -> " << system.reactions.list[0].currentLambda);
       system.runningEnergies += delta.value();
       RunningEnergy afterRecomputed = system.computeTotalEnergies();
       RunningEnergy actualDelta = afterRecomputed - beforeRecomputed;
@@ -1314,12 +1310,6 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
 
 }  // namespace
 
-TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary_per_move_drift)
-{
-  runConventionalBoundaryPerMoveDrift(false);
-}
+TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary_per_move_drift) { runConventionalBoundaryPerMoveDrift(false); }
 
-TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_boundary_per_move_drift)
-{
-  runConventionalBoundaryPerMoveDrift(true);
-}
+TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_boundary_per_move_drift) { runConventionalBoundaryPerMoveDrift(true); }

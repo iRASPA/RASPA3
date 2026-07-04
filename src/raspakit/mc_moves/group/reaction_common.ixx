@@ -35,10 +35,8 @@ struct MoleculeGroupRetraceData
   RunningEnergy energies{};
 };
 
-void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double lambda) noexcept;
-
-void appendAllReactionFractionalMoleculeExclusions(
-    const System& system, std::vector<std::pair<std::size_t, std::size_t>>& exclude) noexcept;
+void appendAllReactionFractionalMoleculeExclusions(const System& system,
+                                                   std::vector<std::pair<std::size_t, std::size_t>>& exclude) noexcept;
 
 [[nodiscard]] std::size_t totalStoichiometry(std::span<const std::size_t> stoichiometry) noexcept;
 
@@ -58,24 +56,10 @@ void appendAllReactionFractionalMoleculeExclusions(
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
 
-[[nodiscard]] std::vector<Atom> collectReactionFractionalAtoms(System& system, Reaction& reaction) noexcept;
-
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
-
-[[nodiscard]] std::optional<RunningEnergy> computeReactionFractionalScalingEnergyDifference(
-    System& system, Reaction& reaction, double lambdaOld, double lambdaNew,
-    bool includeEwaldCorrections = true) noexcept;
 
 [[nodiscard]] double computeReactionEquilibriumLogTerm(const System& system, const Reaction& reaction,
                                                        ReactionMoveKind moveKind) noexcept;
-
-[[nodiscard]] std::optional<RunningEnergy> computeGroupSwapEnergyDifference(
-    System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms,
-    bool includeTailCorrections = true, bool includeEwaldCorrections = true,
-    std::span<const Atom> excludeFromBackground = {}) noexcept;
-
-[[nodiscard]] RunningEnergy computeGroupSwapTailEnergyDifference(System& system, std::span<const Atom> newAtoms,
-                                                                 std::span<const Atom> oldAtoms) noexcept;
 
 void deleteSelectedMolecules(System& system,
                              std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules) noexcept;
@@ -93,19 +77,13 @@ enum class SerialMoveKind : std::uint8_t
   WholeMoleculeReaction = 2
 };
 
-void applySerialFractionalScaling(std::span<Atom> atoms, double lambda) noexcept;
-
 void setSerialReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
 
-[[nodiscard]] std::optional<RunningEnergy> serialLambdaChangeMove(RandomNumber& random, System& system,
-                                                                   Reaction& reaction, Move::Types move) noexcept;
-
-[[nodiscard]] std::optional<RunningEnergy> serialFractionalReactionMove(RandomNumber& random, System& system,
-                                                                        Reaction& reaction, Move::Types move,
-                                                                        bool useCBMC) noexcept;
-
-[[nodiscard]] std::optional<RunningEnergy> serialWholeMoleculeReactionMove(RandomNumber& random, System& system,
-                                                                           Reaction& reaction, Move::Types move,
-                                                                           bool useCBMC) noexcept;
+// Monolithic serial Rx/CFC move: contains the lambda-change, fractional-reaction, and
+// whole-molecule-reaction sub-moves. The sub-move is picked randomly using the lambda switch point,
+// unless 'forcedKind' selects one deterministically (used by the tests).
+[[nodiscard]] std::optional<RunningEnergy> serialReactionMove(
+    RandomNumber& random, System& system, Reaction& reaction, Move::Types move, bool useCBMC,
+    std::optional<SerialMoveKind> forcedKind = std::nullopt) noexcept;
 
 }  // namespace MC_Moves::ReactionCommon
