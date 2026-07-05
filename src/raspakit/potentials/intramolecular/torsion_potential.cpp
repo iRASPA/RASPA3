@@ -96,14 +96,12 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
       // p_1/k_B [K]
       // p_2/k_B [K]
       // p_3/k_B [K]
-      // p_4/k_B [K]
-      // p_5     [degrees]
+      // p_4     [degrees]
       parameters[0] *= Units::KelvinToEnergy;
       parameters[1] *= Units::KelvinToEnergy;
       parameters[2] *= Units::KelvinToEnergy;
       parameters[3] *= Units::KelvinToEnergy;
-      parameters[4] *= Units::KelvinToEnergy;
-      parameters[5] *= Units::DegreesToRadians;
+      parameters[4] *= Units::DegreesToRadians;
       break;
     case TorsionType::CVFF:
       // p_0*(1+cos(p_1*phi-p_2))
@@ -112,7 +110,7 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
       // p_1     [-]
       // p_2     [degrees]
       parameters[0] *= Units::KelvinToEnergy;
-      parameters[1] *= Units::DegreesToRadians;
+      parameters[2] *= Units::DegreesToRadians;
       break;
     case TorsionType::CFF:
       // p_0*(1-cos(phi))+p_1*(1-cos(2*phi))+p_2*(1-cos(3*phi))
@@ -189,6 +187,16 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
       parameters[3] *= Units::KelvinToEnergy;
       parameters[4] *= Units::KelvinToEnergy;
       parameters[5] *= Units::KelvinToEnergy;
+      break;
+    case TorsionType::CVFFBlocked:
+      // Blocked pocket detection; energy is defined as zero.
+      // ====================================================
+      // p_0     [rad]
+      // p_1/k_B [K]
+      // p_2     [-]
+      // p_3     [rad]
+      // p_4     [rad]
+      parameters[1] *= Units::KelvinToEnergy;
       break;
   }
 }
@@ -364,6 +372,17 @@ std::string TorsionPotential::print() const
           parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
           parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin,
           parameters[5] * Units::EnergyToKelvin);
+    case TorsionType::CVFFBlocked:
+      // p_0     [rad]
+      // p_1/k_B [K]
+      // p_2     [-]
+      // p_3     [rad]
+      // p_4     [rad]
+      return std::format(
+          "{} - {} - {} - {} : CVFF_BLOCKED p_0={:g} [rad], p_1/k_B={:g} [K], p_2={:g} [-], p_3={:g} [rad], "
+          "p_4={:g} [rad]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0],
+          parameters[1] * Units::EnergyToKelvin, parameters[2], parameters[3], parameters[4]);
     default:
       std::unreachable();
   }
@@ -408,6 +427,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       temp = phi - parameters[1];
+      temp -= std::rint(temp / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       temp2 = temp * temp;
       return 0.5 * parameters[0] * temp2;
     case TorsionType::HarmonicCosine:
@@ -415,9 +435,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
-      phi = std::copysign(std::acos(cos_phi), sign);
-      return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
+      temp = cos_phi - parameters[1];
+      return 0.5 * parameters[0] * temp * temp;
     case TorsionType::ThreeCosine:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================
@@ -471,7 +490,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       phi -= parameters[4];  // shift Phi as Phi+parameters[4]
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       shifted_cos_phi = std::cos(phi);
-      shifted_cos_phi2 = shifted_cos_phi;
+      shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
       return parameters[0] + parameters[1] + parameters[3] + (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi -
              2.0 * parameters[2] * shifted_cos_phi2 + 4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
     case TorsionType::CVFF:
@@ -553,6 +572,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
                            cos_phi2 * (parameters[5] * (3.0 - 4.0 * cos_phi2) * (3.0 - 4.0 * cos_phi2) +
                                        4.0 * parameters[3] * (cos_phi2 - 1.0) +
                                        2.0 * cos_phi * (parameters[2] + parameters[4] * (4.0 * cos_phi2 - 5.0)))));
+    case TorsionType::CVFFBlocked:
+      // Blocked pocket detection; the energy contribution is defined as zero (as in RASPA2).
+      return 0.0;
     default:
       std::unreachable();
   }

@@ -87,7 +87,7 @@ std::string UreyBradleyPotential::print() const
                          identifiers[0], identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1],
                          parameters[2] * Units::EnergyToKelvin);
     case UreyBradleyType::RestrainedHarmonic:
-      return std::format("{} - {} : BUCKINGHAM p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+      return std::format("{} - {} : RESTRAINED_HARMONIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
     case UreyBradleyType::Quartic:
       return std::format("{} - {} : QUARTIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [K/Å^3], p_3={:g} [K/Å^4]\n",
@@ -168,7 +168,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       do
       {
         ureyBradley_length = 3.0 * random.uniform();
-        temp = std::pow(parameters[1] / (ureyBradley_length * ureyBradley_length), 3);
+        temp = std::pow((parameters[1] * parameters[1]) / (ureyBradley_length * ureyBradley_length), 3);
         energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
       } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
       return ureyBradley_length;
@@ -295,7 +295,7 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1] / rr);
+      rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       return 4.0 * parameters[0] * (temp * (temp - 1.0));
     case UreyBradleyType::Buckingham:
@@ -304,7 +304,7 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
+      rri = 1.0 / rr;
       temp = rri * rri * rri;
       return parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
     case UreyBradleyType::RestrainedHarmonic:

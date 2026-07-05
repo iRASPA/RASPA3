@@ -29,7 +29,7 @@ export enum class BondBendType : std::size_t {
   TruncatedHarmonic = 3,
   ScreenedHarmonic = 4,
   ScreenedVessal = 5,
-  TruncatedVessal = 7
+  TruncatedVessal = 6
 };
 
 /**

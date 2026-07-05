@@ -65,13 +65,12 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
       parameters[3] *= Units::KelvinToEnergy;
       break;
     case BendType::HarmonicCosine:
-      // p_0*(1+cos(p_1*theta-p_2))
+      // (1/2)*p_0*(cos(theta)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
-      // p_1     [-]
-      // p_2     [degrees]
+      // p_1     [degrees]
       parameters[0] *= Units::KelvinToEnergy;
-      parameters[2] *= Units::DegreesToRadians;
+      parameters[1] = std::cos(parameters[1] * Units::DegreesToRadians);
       break;
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
@@ -157,7 +156,8 @@ std::string BendPotential::print() const
       // p_0/k_B [K]
       // p_1     [degrees]
       return std::format("{} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K], p_1={:g} [degrees]\n", identifiers[0],
-                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1]);
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+                         std::acos(parameters[1]) * Units::RadiansToDegrees);
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
       // ===============================================
@@ -270,7 +270,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       {
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - std::cos(parameters[1]), 2);
+        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - parameters[1], 2);
       } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::Cosine:
@@ -324,36 +324,26 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
   double cos_theta, theta;
   double temp, temp2;
 
-  // For four atoms, compute the in-plane angles
+  // For four atoms, compute the in-plane angle: project B onto the A-C-D plane
   if (posD.has_value())
   {
     double3 dr_ad = posA - posD.value();
-    double r_ad = std::sqrt(double3::dot(dr_ad, dr_ad));
-    dr_ad /= r_ad;
-
     double3 dr_bd = posB - posD.value();
-    double r_bd = std::sqrt(double3::dot(dr_bd, dr_bd));
-    dr_bd /= r_bd;
-
     double3 dr_cd = posC - posD.value();
-    double r_cd = std::sqrt(double3::dot(dr_cd, dr_cd));
-    dr_cd /= r_cd;
 
-    double3 t = double3::cross(r_ad, r_cd);
+    double3 t = double3::cross(dr_ad, dr_cd);
     double rt2 = double3::dot(t, t);
-    double delta = -double3::dot(t, r_bd) / rt2;
+    double delta = -double3::dot(t, dr_bd) / rt2;
 
     double3 ip = posB + delta * t;
 
     double3 ap = posA - ip;
     double rap2 = double3::dot(ap, ap);
-    ap /= rap2;
 
     double3 cp = posC - ip;
     double rcp2 = double3::dot(cp, cp);
-    cp /= rcp2;
 
-    cos_theta = double3::dot(ap, cp);
+    cos_theta = double3::dot(ap, cp) / std::sqrt(rap2 * rcp2);
     cos_theta = std::clamp(cos_theta, -1.0, 1.0);
     theta = std::acos(cos_theta);
   }

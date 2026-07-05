@@ -37,7 +37,8 @@ export enum class TorsionType : std::size_t {
   OPLS = 11,
   MM3 = 12,
   FourierSeries = 13,
-  FourierSeries2 = 14
+  FourierSeries2 = 14,
+  CVFFBlocked = 15
 };
 
 /**
@@ -91,7 +92,7 @@ export struct TorsionPotential
    *
    * A static vector indicating the number of parameters needed for each torsion type.
    */
-  static inline std::array<std::size_t, 8> numberOfTorsionParameters{0, 2, 2, 1, 2, 2, 2, 1};
+  static inline std::array<std::size_t, 16> numberOfTorsionParameters{1, 2, 2, 3, 6, 4, 5, 5, 3, 3, 3, 4, 3, 6, 6, 5};
 
   /**
    * \brief Mapping of torsion type strings to TorsionType enums.
@@ -104,9 +105,12 @@ export struct TorsionPotential
       {"HARMONIC_COSINE", TorsionType::HarmonicCosine},
       {"THREE_COSINE", TorsionType::ThreeCosine},
       {"SIX_COSINE", TorsionType::RyckaertBellemans},
+      {"RYCKAERT_BELLEMANS", TorsionType::RyckaertBellemans},
       {"TRAPPE", TorsionType::TraPPE},
       {"TRAPPE_EXTENDED", TorsionType::TraPPE_Extended},
+      {"MOD_TRAPPE", TorsionType::ModifiedTraPPE},
       {"CVFF", TorsionType::CVFF},
+      {"CVFF_BLOCKED", TorsionType::CVFFBlocked},
       {"CFF", TorsionType::CFF},
       {"CFF2", TorsionType::CFF2},
       {"OPLS", TorsionType::OPLS},

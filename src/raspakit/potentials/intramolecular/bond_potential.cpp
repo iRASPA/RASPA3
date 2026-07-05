@@ -92,7 +92,7 @@ std::string BondPotential::print() const
                          identifiers[0], identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1],
                          parameters[2] * Units::EnergyToKelvin);
     case BondType::RestrainedHarmonic:
-      return std::format("{} - {} : BUCKINGHAM p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+      return std::format("{} - {} : RESTRAINED_HARMONIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
     case BondType::Quartic:
       return std::format("{} - {} : QUARTIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [K/Å^3], p_3={:g} [K/Å^4]\n",
@@ -174,7 +174,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       do
       {
         bond_length = 3.0 * random.uniform();
-        temp = std::pow(parameters[1] / (bond_length * bond_length), 3);
+        temp = std::pow((parameters[1] * parameters[1]) / (bond_length * bond_length), 3);
         energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
       } while (random.uniform() > (bond_length * bond_length) * std::exp(-beta * energy));
       return bond_length;
@@ -303,7 +303,7 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1] / rr);
+      rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       return 4.0 * parameters[0] * (temp * (temp - 1.0));
     case BondType::Buckingham:
@@ -312,7 +312,7 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
+      rri = 1.0 / rr;
       temp = rri * rri * rri;
       return parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
     case BondType::RestrainedHarmonic:
@@ -419,7 +419,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1] / rr);
+      rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       U = 4.0 * parameters[0] * (temp * (temp - 1.0));
       DF = 0.0;
@@ -430,7 +430,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
+      rri = 1.0 / rr;
       temp = rri * rri * rri;
       U = parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
       DF = 0.0;

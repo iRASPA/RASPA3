@@ -357,6 +357,22 @@ export struct Component
   std::vector<TorsionPotential> readTorsionPotentials(const ForceField &forceField,
                                                       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
+  std::vector<UreyBradleyPotential> readUreyBradleyPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<InversionBendPotential> readInversionBendPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<OutOfPlaneBendPotential> readOutOfPlaneBendPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<TorsionPotential> readImproperTorsionPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BondBondPotential> readBondBondPotentials(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BondBendPotential> readBondBendPotentials(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BondTorsionPotential> readBondTorsionPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BendBendPotential> readBendBendPotentials(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BendTorsionPotential> readBendTorsionPotentials(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
   std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(
       const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<CoulombPotential> readCoulombPotentials(

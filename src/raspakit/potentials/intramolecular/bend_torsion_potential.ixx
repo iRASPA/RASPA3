@@ -94,10 +94,15 @@ export struct BendTorsionPotential
    * A static map that associates bend_torsion type names with their corresponding BendTorsionType enumeration values.
    */
   static inline std::map<std::string, BendTorsionType, caseInsensitiveComparator> definitionForString{
-      {"SMOOTHED", BendTorsionType::Smoothed},          {"SMOOTHED_THREE_COSINE", BendTorsionType::SmoothedThreeCosine},
-      {"NICHOLAS", BendTorsionType::Nicholas},          {"CFF", BendTorsionType::CFF},
-      {"SMOOTHED_CFF", BendTorsionType::SmoothedCFF},   {"SMOOTHED_CFF2", BendTorsionType::SmoothedCFF2},
-      {"SMOOTHED_CFF2", BendTorsionType::SmoothedCFF3}, {"CVFF", BendTorsionType::CVFF}};
+      {"SMOOTHED", BendTorsionType::Smoothed},
+      {"SMOOTHED_THREE_COSINE", BendTorsionType::SmoothedThreeCosine},
+      {"NICHOLAS", BendTorsionType::Nicholas},
+      {"CFF", BendTorsionType::CFF},
+      {"SMOOTHED_CFF", BendTorsionType::SmoothedCFF},
+      {"SMOOTHED_CFF2", BendTorsionType::SmoothedCFF2},
+      {"SMOOTHED_CFF3", BendTorsionType::SmoothedCFF3},
+      {"SMOOTHED_CFF_BEND_TORSION_CROSS", BendTorsionType::SmoothedCFF3},
+      {"CVFF", BendTorsionType::CVFF}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
 

@@ -25,7 +25,7 @@ BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, Ben
       // p_0/k_B [K/rad^2)]
       // p_1     [degrees]
       // p_2     [degrees]
-      parameters[0] *= Units::EnergyToKelvin;
+      parameters[0] *= Units::KelvinToEnergy;
       parameters[1] *= Units::DegreesToRadians;
       parameters[2] *= Units::DegreesToRadians;
       break;
@@ -54,7 +54,7 @@ std::string BendBendPotential::print() const
       // p_0/k_B [K/rad^2)]
       // p_1     [degrees]
       // p_2     [degrees]
-      return std::format("{} - {} - {} - {} : CFF p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [degrees]\n",
+      return std::format("{} - {} - {} - {} : CVFF p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [degrees]\n",
                          identifiers[0], identifiers[1], identifiers[2], identifiers[3],
                          parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees,
                          parameters[2] * Units::RadiansToDegrees);
@@ -83,18 +83,46 @@ std::string BendBendPotential::print() const
   }
 }
 
-double BendBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
-                                          [[maybe_unused]] const double3 &posC,
-                                          [[maybe_unused]] const double3 &posD) const
+double BendBendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
+                                          const double3 &posD) const
 {
+  // Theta1 is the angle A-B-C, Theta2 is the angle A-B-D (atom B is the central atom)
+  double3 dr_ab = posA - posB;
+  double r_ab = std::sqrt(double3::dot(dr_ab, dr_ab));
+  dr_ab /= r_ab;
+
+  double3 dr_bc = posC - posB;
+  double r_bc = std::sqrt(double3::dot(dr_bc, dr_bc));
+  dr_bc /= r_bc;
+
+  double3 dr_bd = posD - posB;
+  double r_bd = std::sqrt(double3::dot(dr_bd, dr_bd));
+  dr_bd /= r_bd;
+
+  double cos_theta1 = std::clamp(double3::dot(dr_ab, dr_bc), -1.0, 1.0);
+  double theta1 = std::acos(cos_theta1);
+
+  double cos_theta2 = std::clamp(double3::dot(dr_ab, dr_bd), -1.0, 1.0);
+  double theta2 = std::acos(cos_theta2);
+
   switch (type)
   {
     case BendBendType::CVFF:
-      return 0.0;
     case BendBendType::CFF:
-      return 0.0;
+      // p_0*(Theta1-p_1)*(Theta2-p_2)
+      // ===================================
+      // p_0/k_B [K/rad^2)]
+      // p_1     [degrees]
+      // p_2     [degrees]
+      return parameters[0] * (theta1 - parameters[1]) * (theta2 - parameters[2]);
     case BendBendType::MM3:
-      return 0.0;
+      // -p_0*(Theta1-p_1)*(Theta2-p_2)
+      // ===================================
+      // p_0     [mdyne A/rad^2]
+      // p_1     [degrees]
+      // p_2     [degrees]
+      return -parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta1 - parameters[1]) *
+             (theta2 - parameters[2]);
     default:
       std::unreachable();
   }

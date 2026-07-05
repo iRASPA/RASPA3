@@ -48,7 +48,7 @@ InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identi
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      parameters[0] *= 0.021914 * Units::KCalPerMolToEnergy;
+      parameters[0] *= 0.02191418 * Units::KCalPerMolToEnergy;
       parameters[1] *= Units::DegreesToRadians;
       break;
     default:

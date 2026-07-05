@@ -356,6 +356,15 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.bonds = readBondPotentials(forceField, parsed_data);
     intraMolecularPotentials.bends = readBendPotentials(forceField, parsed_data);
     intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
+    intraMolecularPotentials.ureyBradleys = readUreyBradleyPotentials(parsed_data);
+    intraMolecularPotentials.inversionBends = readInversionBendPotentials(parsed_data);
+    intraMolecularPotentials.outOfPlaneBends = readOutOfPlaneBendPotentials(parsed_data);
+    intraMolecularPotentials.improperTorsions = readImproperTorsionPotentials(parsed_data);
+    intraMolecularPotentials.bondBonds = readBondBondPotentials(parsed_data);
+    intraMolecularPotentials.bondBends = readBondBendPotentials(parsed_data);
+    intraMolecularPotentials.bondTorsions = readBondTorsionPotentials(parsed_data);
+    intraMolecularPotentials.bendBends = readBendBendPotentials(parsed_data);
+    intraMolecularPotentials.bendTorsions = readBendTorsionPotentials(parsed_data);
     intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
     intraMolecularPotentials.coulombs = readCoulombPotentials(forceField, parsed_data);
 
@@ -1330,6 +1339,128 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(
   }
 
   return torsion_potentials;
+}
+
+// Generic reader for the internal potentials that are explicitly listed in the molecule-file with
+// atom indices (Urey-Bradley, inversion bends, improper torsions, and the cross terms). Each JSON
+// entry has the form [[id_0, ..., id_{N-1}], "TYPE", [p_0, p_1, ...]].
+template <typename PotentialType, std::size_t N, typename TypeEnum>
+static std::vector<PotentialType> readExplicitInternalPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data, const std::string &key,
+    const std::map<std::string, TypeEnum, caseInsensitiveComparator> &definitionForString)
+{
+  std::vector<PotentialType> potentials{};
+
+  if (!parsed_data.contains(key)) return potentials;
+
+  for (auto &[_, item] : parsed_data[key].items())
+  {
+    if (!item.is_array())
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+    }
+
+    if (item.size() != 3)
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an array with three elements, "
+                      "(1) an array with the {} identifiers, (2) the potential type, "
+                      "and (3) an array containing the potential parameters\n",
+                      item.dump(), N));
+    }
+
+    try
+    {
+      std::vector<std::size_t> identifiers = item[0].get<std::vector<std::size_t>>();
+      if (identifiers.size() != N)
+      {
+        throw std::runtime_error(std::format("expected {} identifiers, got {}", N, identifiers.size()));
+      }
+
+      std::string potential_name = item[1].get<std::string>();
+      if (!definitionForString.contains(potential_name))
+      {
+        throw std::runtime_error(std::format("unknown potential type '{}'", potential_name));
+      }
+
+      std::vector<double> potential_parameters =
+          item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+
+      std::array<std::size_t, N> ids{};
+      std::copy(identifiers.begin(), identifiers.end(), ids.begin());
+
+      potentials.push_back(PotentialType(ids, definitionForString.at(potential_name), potential_parameters));
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(std::format("Error in {}-potential ({}): {}\n", key, item.dump(), e.what()));
+    }
+  }
+
+  return potentials;
+}
+
+std::vector<UreyBradleyPotential> Component::readUreyBradleyPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<UreyBradleyPotential, 2>(parsed_data, "UreyBradleys",
+                                                                 UreyBradleyPotential::definitionForString);
+}
+
+std::vector<InversionBendPotential> Component::readInversionBendPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<InversionBendPotential, 4>(parsed_data, "InversionBends",
+                                                                   InversionBendPotential::definitionForString);
+}
+
+std::vector<OutOfPlaneBendPotential> Component::readOutOfPlaneBendPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<OutOfPlaneBendPotential, 4>(parsed_data, "OutOfPlaneBends",
+                                                                    OutOfPlaneBendPotential::definitionForString);
+}
+
+std::vector<TorsionPotential> Component::readImproperTorsionPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<TorsionPotential, 4>(parsed_data, "ImproperTorsions",
+                                                             TorsionPotential::definitionForString);
+}
+
+std::vector<BondBondPotential> Component::readBondBondPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<BondBondPotential, 3>(parsed_data, "BondBonds",
+                                                              BondBondPotential::definitionForString);
+}
+
+std::vector<BondBendPotential> Component::readBondBendPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<BondBendPotential, 4>(parsed_data, "BondBends",
+                                                              BondBendPotential::definitionForString);
+}
+
+std::vector<BondTorsionPotential> Component::readBondTorsionPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<BondTorsionPotential, 4>(parsed_data, "BondTorsions",
+                                                                 BondTorsionPotential::definitionForString);
+}
+
+std::vector<BendBendPotential> Component::readBendBendPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<BendBendPotential, 4>(parsed_data, "BendBends",
+                                                              BendBendPotential::definitionForString);
+}
+
+std::vector<BendTorsionPotential> Component::readBendTorsionPotentials(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  return readExplicitInternalPotentials<BendTorsionPotential, 4>(parsed_data, "BendTorsions",
+                                                                 BendTorsionPotential::definitionForString);
 }
 
 std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(

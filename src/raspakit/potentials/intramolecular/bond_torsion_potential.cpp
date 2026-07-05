@@ -56,10 +56,30 @@ std::string BondTorsionPotential::print() const
   }
 }
 
-double BondTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
-                                             [[maybe_unused]] const double3 &posC,
-                                             [[maybe_unused]] const double3 &posD) const
+double BondTorsionPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
+                                             const double3 &posD) const
 {
+  double temp;
+
+  double3 Dab = posA - posB;
+
+  double3 Dcb = posC - posB;
+  double r_bc = std::sqrt(double3::dot(Dcb, Dcb));
+  Dcb /= r_bc;
+
+  double3 Ddc = posD - posC;
+
+  double dot_ab = double3::dot(Dab, Dcb);
+  double dot_dc = double3::dot(Ddc, Dcb);
+
+  double3 dr = (Dab - dot_ab * Dcb).normalized();
+  double3 ds = (Ddc - dot_dc * Dcb).normalized();
+
+  // compute Cos(Phi)
+  // Phi is defined in protein convention Phi(trans)=Pi
+  double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
+  double cos_phi2 = cos_phi * cos_phi;
+
   switch (type)
   {
     case BondTorsionType::MM3:
@@ -69,7 +89,9 @@ double BondTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &pos
       // p_1     [kcal/A mole]
       // p_2     [kcal/A mole]
       // p_3     [A]
-      return 0.0;
+      temp = (r_bc - parameters[3]);
+      return parameters[0] * temp * cos_phi + parameters[1] * temp * (2.0 * cos_phi2 - 1.0) +
+             parameters[2] * temp * (4.0 * cos_phi2 * cos_phi - 3.0 * cos_phi);
     default:
       std::unreachable();
   }

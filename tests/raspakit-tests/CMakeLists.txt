@@ -29,6 +29,7 @@ add_executable(unit_tests_raspakit
   intramolecular_energy_gradient_strain_bends.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
+  internal_potentials.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)
