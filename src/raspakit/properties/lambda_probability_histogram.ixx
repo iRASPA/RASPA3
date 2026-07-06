@@ -71,6 +71,10 @@ export struct PropertyLambdaProbabilityHistogram
 
   // dU/dlambda-histogram
   bool computeDUdlambda;
+  // 1-based thermodynamic-integration group id assigned by System::assignDUdlambdaGroups();
+  // 0 when this lambda coordinate is not tracked. Atoms of the corresponding fractional molecule
+  // carry this id in Atom::groupId, and RunningEnergy accumulates dU/dlambda per group.
+  std::uint8_t dUdlambdaGroupId{0};
   std::vector<std::vector<std::pair<double, double>>> bookKeepingDUdlambda;
 
   // fractional molecule occupancy

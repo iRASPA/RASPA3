@@ -40,12 +40,15 @@ static double scaledChargeDifference(std::span<const Atom> newAtoms, std::span<c
   return charge;
 }
 
-// summed (unscaled) charge of the dU/dlambda group-tagged atoms; used as the 'external' charge
-// derivative for the net-charge correction when the partner molecule of the pair is updated
-static double groupChargeSum(std::span<const Atom> atoms)
+// per-group summed (unscaled) charge of the dU/dlambda group-tagged atoms; used as the 'external'
+// charge derivative for the net-charge correction when the partner molecule of the pair is updated
+static std::array<double, maximumNumberOfDUDlambdaGroups> groupChargeSum(std::span<const Atom> atoms)
 {
-  double charge = 0.0;
-  for (const Atom& atom : atoms) charge += (static_cast<bool>(atom.groupId) ? atom.charge : 0.0);
+  std::array<double, maximumNumberOfDUDlambdaGroups> charge{};
+  for (const Atom& atom : atoms)
+  {
+    if (atom.groupId != 0) charge[atom.groupId - 1] += atom.charge;
+  }
   return charge;
 }
 
@@ -242,7 +245,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, componentA.growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeA, newLambda,
-        componentA.lambdaPairSwapCB.computeDUdlambda, true);
+        componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -272,7 +275,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
         system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA, system.beta, componentBRef.growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeB, newLambda,
-        componentA.lambdaPairSwapCB.computeDUdlambda, true);
+        componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -480,7 +483,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     RunningEnergy energyDifference{};
 
     // (2a) the selected integer molecule of component A becomes fractional with lambda_new
-    const bool groupIdA = componentA.lambdaPairSwapCB.computeDUdlambda;
+    const std::uint8_t groupIdA = componentA.lambdaPairSwapCB.dUdlambdaGroupId;
     for (Atom& atom : newFractionalMoleculeA)
     {
       atom.setScalingToFractional(newLambda, groupIdA);
@@ -523,7 +526,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2b) the selected integer molecule of component B becomes fractional with lambda_new
-    const bool groupIdB = componentA.lambdaPairSwapCB.computeDUdlambda;
+    const std::uint8_t groupIdB = componentA.lambdaPairSwapCB.dUdlambdaGroupId;
     for (Atom& atom : newFractionalMoleculeB)
     {
       atom.setScalingToFractional(newLambda, groupIdB);

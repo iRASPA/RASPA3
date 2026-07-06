@@ -159,6 +159,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   removeRedundantMoves();
   determineSwappableComponents();
   determineFractionalComponents();
+  assignDUdlambdaGroups();
   rescaleMoveProbabilities();
   rescaleMolarFractions();
   computeNumberOfPseudoAtoms();
@@ -259,7 +260,7 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
                                       std::vector<Atom> atoms, std::size_t moleculeIndex)
 {
   const double l = 0.0;
-  const bool groupId = fractionalSlotComputesDUdlambda(selectedComponent, moleculeIndex);
+  const std::uint8_t groupId = fractionalSlotDUdlambdaGroupId(selectedComponent, moleculeIndex);
   for (Atom& atom : atoms)
   {
     atom.moleculeId = static_cast<std::uint16_t>(moleculeIndex);
@@ -270,13 +271,13 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
 
 void System::insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
                                               [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
-                                              bool isReactant, double lambda)
+                                              bool isReactant, double lambda, std::uint8_t dUdlambdaGroupId)
 {
   // staged schedule from scaling.ixx; reactants are coupled with (1 - lambda)
   const double effectiveLambda = isReactant ? (1.0 - lambda) : lambda;
   for (Atom& atom : atoms)
   {
-    atom.setScalingToFractional(effectiveLambda);
+    atom.setScalingToFractional(effectiveLambda, dUdlambdaGroupId);
   }
 
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
@@ -367,12 +368,12 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
 
 void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
                                                     [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms,
-                                                    double lambda)
+                                                    double lambda, std::uint8_t dUdlambdaGroupId)
 {
   // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]
   for (Atom& atom : atoms)
   {
-    atom.setScalingToFractional(lambda);
+    atom.setScalingToFractional(lambda, dUdlambdaGroupId);
   }
 
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
@@ -507,21 +508,14 @@ void System::checkMoleculeIds()
       std::size_t indexFractionalMolecule = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
       std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, indexFractionalMolecule);
 
+      const std::uint8_t expectedGroupId = components[componentId].lambdaGC.dUdlambdaGroupId;
       for (const Atom& atom : fractionalMolecule)
       {
-        if (components[componentId].lambdaGC.computeDUdlambda)
+        if (atom.groupId != expectedGroupId)
         {
-          if (static_cast<std::size_t>(atom.groupId) == 0)
-          {
-            throw std::runtime_error(std::format("Wrong group-id detected! (0 where it should be 1)\n"));
-          }
-        }
-        else
-        {
-          if (static_cast<std::size_t>(atom.groupId) == 1)
-          {
-            throw std::runtime_error(std::format("Wrong group-id detected! (1 where it should be 0)\n"));
-          }
+          throw std::runtime_error(std::format("Wrong group-id detected! ({} where it should be {})\n",
+                                               static_cast<std::size_t>(atom.groupId),
+                                               static_cast<std::size_t>(expectedGroupId)));
         }
       }
     }
@@ -540,7 +534,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     {
       numberOfMoleculesPerComponent[componentId] = 0;
 
-      auto growFractionalMolecule = [&](bool groupId) -> std::optional<ChainGrowData>
+      auto growFractionalMolecule = [&](std::uint8_t groupId) -> std::optional<ChainGrowData>
       {
         std::optional<ChainGrowData> growData = std::nullopt;
         do
@@ -559,7 +553,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         const std::size_t slot = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
@@ -567,7 +561,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         const std::size_t slot = indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
@@ -575,7 +569,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         const std::size_t slot = indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
@@ -583,7 +577,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         const std::size_t slot = indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
@@ -591,16 +585,15 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         const std::size_t slot = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(fractionalSlotComputesDUdlambda(componentId, slot));
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
       }
 
       if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
-        const std::optional<ChainGrowData> growData =
-            growFractionalMolecule(components[componentId].lambdaGibbs.computeDUdlambda);
+        const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
+        const std::optional<ChainGrowData> growData = growFractionalMolecule(groupId);
         std::vector<Atom> atoms = growData->atom;
-        const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
         for (Atom& atom : atoms)
         {
           atom.setScalingToFractional(0.5, groupId);
@@ -1316,7 +1309,7 @@ void System::initializeGibbsConventionalFractionalMolecules() noexcept
     const std::size_t fractionalMoleculeIndex =
         indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId);
     std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
-    const bool groupId = components[componentId].lambdaGibbs.computeDUdlambda;
+    const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
     for (Atom& atom : fractionalMolecule)
     {
       atom.setScalingToFractional(0.5, groupId);
@@ -1344,10 +1337,11 @@ void System::initializeGibbsSwapFractionalMoleculeGroupIds() noexcept
 
     const std::size_t fractionalMoleculeIndex = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
     std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
-    const bool groupId = containsTheFractionalMolecule && components[componentId].lambdaGC.computeDUdlambda;
+    const std::uint8_t groupId =
+        containsTheFractionalMolecule ? components[componentId].lambdaGC.dUdlambdaGroupId : std::uint8_t{0};
     for (Atom& atom : fractionalMolecule)
     {
-      atom.groupId = static_cast<std::uint8_t>(groupId);
+      atom.groupId = groupId;
     }
   }
 }
@@ -1383,6 +1377,22 @@ const PropertyLambdaProbabilityHistogram& System::activeReactionLambdaHistogram(
     return reaction.lambda;
   }
   return reaction.fractionalSideIsReactants ? reaction.lambda : reaction.lambdaProductSide;
+}
+
+// dU/dlambda of a reaction lambda coordinate. Serial Rx/CFC couples the active side directly at
+// lambda, so the plain per-group derivative applies. Parallel Rx/CFC couples products at lambda
+// and reactants at (1 - lambda); the chain rule d(1 - lambda)/dlambda = -1 makes the reactant
+// contribution enter with a minus sign, evaluated at the reactant coupling (1 - lambda).
+double System::reactionDUdlambda(const Reaction& reaction) const noexcept
+{
+  const double lambda = reaction.currentLambda;
+  if (reaction.isParallelRxCFC())
+  {
+    return runningEnergies.dudlambda(lambda, reaction.dUdlambdaGroup(false)) -
+           runningEnergies.dudlambda(1.0 - lambda, reaction.dUdlambdaGroup(true));
+  }
+  const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+  return runningEnergies.dudlambda(lambda, histogram.dUdlambdaGroupId);
 }
 
 void System::initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins)
@@ -1549,10 +1559,101 @@ bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types 
   return component.mc_moves_probabilities.getProbability(move) > 0.0;
 }
 
-// Whether the fractional molecule in the given slot carries dU/dlambda group-tagging. The pair-swap
-// slots follow the histogram of the driving (lower-index) component of the pair; all other slots
-// follow the legacy lambdaGC/lambdaGibbs flags of the component itself.
-bool System::fractionalSlotComputesDUdlambda(std::size_t componentId, std::size_t slotIndex) const noexcept
+// Assigns sequential 1-based thermodynamic-integration group ids to all lambda histograms with
+// computeDUdlambda enabled. Atoms of the corresponding fractional molecules carry this id in
+// Atom::groupId, and RunningEnergy accumulates dU/dlambda separately per group, so up to
+// maximumNumberOfDUDlambdaGroups lambda coordinates can be followed simultaneously.
+void System::assignDUdlambdaGroups()
+{
+  std::uint8_t nextGroupId = 1;
+  auto assign = [&nextGroupId](PropertyLambdaProbabilityHistogram& histogram)
+  {
+    histogram.dUdlambdaGroupId = 0;
+    if (!histogram.computeDUdlambda) return;
+    if (nextGroupId > maximumNumberOfDUDlambdaGroups)
+    {
+      throw std::runtime_error(
+          std::format("Too many thermodynamic integrations: at most {} lambda coordinates can be "
+                      "followed simultaneously (Atom::groupId slots)\n",
+                      maximumNumberOfDUDlambdaGroups));
+    }
+    histogram.dUdlambdaGroupId = nextGroupId;
+    ++nextGroupId;
+  };
+
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    // only histograms that actually drive a fractional molecule consume a group slot
+    const bool hasGCStyleSlot = numberOfGCFractionalMoleculesPerComponent_CFCMC[i] > 0 ||
+                                numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] > 0 ||
+                                numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] > 0;
+    if (hasGCStyleSlot)
+    {
+      assign(components[i].lambdaGC);
+    }
+    else
+    {
+      components[i].lambdaGC.dUdlambdaGroupId = 0;
+    }
+
+    if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] > 0)
+    {
+      assign(components[i].lambdaGibbs);
+    }
+    else
+    {
+      components[i].lambdaGibbs.dUdlambdaGroupId = 0;
+    }
+
+    // the pair-swap histograms live on the driving (lower-index) component of the pair
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
+    {
+      assign(components[i].lambdaPairSwap);
+    }
+    else
+    {
+      components[i].lambdaPairSwap.dUdlambdaGroupId = 0;
+    }
+    if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
+    {
+      assign(components[i].lambdaPairSwapCB);
+    }
+    else
+    {
+      components[i].lambdaPairSwapCB.dUdlambdaGroupId = 0;
+    }
+  }
+
+  // Reaction lambda coordinates. Serial Rx/CFC has one fractional side at a time, coupled directly
+  // at lambda, so one group shared between both side histograms suffices. Parallel Rx/CFC couples
+  // reactants at (1 - lambda) and products at lambda simultaneously; the two opposite chain-rule
+  // factors require separate groups (combined at sampling time in reactionDUdlambda()).
+  for (Reaction& reaction : reactions.list)
+  {
+    reaction.lambda.dUdlambdaGroupId = 0;
+    reaction.lambdaProductSide.dUdlambdaGroupId = 0;
+    if (!reaction.lambda.computeDUdlambda)
+    {
+      continue;
+    }
+    if (reaction.isSerialRxCFC())
+    {
+      assign(reaction.lambda);
+      reaction.lambdaProductSide.dUdlambdaGroupId = reaction.lambda.dUdlambdaGroupId;
+    }
+    else if (reaction.isParallelRxCFC())
+    {
+      assign(reaction.lambda);
+      assign(reaction.lambdaProductSide);
+    }
+  }
+}
+
+// The 1-based dU/dlambda group id carried by the fractional molecule in the given slot (0 when the
+// slot is not tracked). The pair-swap slots follow the histogram of the driving (lower-index)
+// component of the pair; the GC, pair-GC, and Gibbs-swap slots follow the component's lambdaGC
+// histogram; the Gibbs-conventional slot follows lambdaGibbs.
+std::uint8_t System::fractionalSlotDUdlambdaGroupId(std::size_t componentId, std::size_t slotIndex) const noexcept
 {
   std::size_t driver = componentId;
   if (components[componentId].pairComponentId.has_value() &&
@@ -1567,13 +1668,23 @@ bool System::fractionalSlotComputesDUdlambda(std::size_t componentId, std::size_
 
   if (slotIndex >= pairSwapBegin && slotIndex < pairSwapEnd)
   {
-    return components[driver].lambdaPairSwap.computeDUdlambda;
+    return components[driver].lambdaPairSwap.dUdlambdaGroupId;
   }
   if (slotIndex >= pairSwapEnd && slotIndex < pairSwapCBEnd)
   {
-    return components[driver].lambdaPairSwapCB.computeDUdlambda;
+    return components[driver].lambdaPairSwapCB.dUdlambdaGroupId;
   }
-  return components[componentId].lambdaGC.computeDUdlambda || components[componentId].lambdaGibbs.computeDUdlambda;
+
+  const std::size_t gibbsConventionalBegin =
+      indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId);
+  const std::size_t gibbsConventionalEnd =
+      gibbsConventionalBegin + numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId];
+  if (slotIndex >= gibbsConventionalBegin && slotIndex < gibbsConventionalEnd)
+  {
+    return components[componentId].lambdaGibbs.dUdlambdaGroupId;
+  }
+
+  return components[componentId].lambdaGC.dUdlambdaGroupId;
 }
 
 void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept
@@ -1686,8 +1797,7 @@ void System::reactionLambdaSampleProductionHistograms(std::size_t blockIndex, do
   {
     PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
     syncReactionLambdaBin(reaction);
-    const double lambda = reaction.currentLambda;
-    const double dudlambda = runningEnergies.dudlambda(lambda);
+    const double dudlambda = reactionDUdlambda(reaction);
     histogram.sampleHistogram(blockIndex, totalDensity, dudlambda, hasFractionals, weight);
   }
 }
@@ -1704,6 +1814,10 @@ void System::createReactionFractionalMolecules()
     initializeReactionLambdaHistograms(components.front().lambdaGC.numberOfBlocks,
                                      components.front().lambdaGC.numberOfSamplePoints);
   }
+
+  // the histograms above are fresh objects: (re-)assign the thermodynamic-integration group ids
+  // before any fractional molecule is inserted (insertion tags the atoms with these ids)
+  assignDUdlambdaGroups();
 
   const bool useParallel = usesParallelReactionCFCMC();
   const bool useSerial = usesSerialReactionCFCMC();
@@ -1781,14 +1895,14 @@ void System::createParallelReactionFractionalMolecules()
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
               interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
               spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), reactantScaling, false,
-              true);
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), reactantScaling,
+              reaction.dUdlambdaGroup(true), true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex =
             parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k);
         insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, true,
-                                         reaction.currentLambda);
+                                         reaction.currentLambda, reaction.dUdlambdaGroup(true));
       }
 
       const double productScaling = reaction.currentLambda;
@@ -1801,13 +1915,13 @@ void System::createParallelReactionFractionalMolecules()
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
               interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
               spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), productScaling, false,
-              true);
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), productScaling,
+              reaction.dUdlambdaGroup(false), true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
         insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, false,
-                                         reaction.currentLambda);
+                                         reaction.currentLambda, reaction.dUdlambdaGroup(false));
       }
     }
   }
@@ -1851,11 +1965,13 @@ void System::createSerialReactionFractionalMolecules()
               random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
               interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
               spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0, false, true);
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0,
+              reaction.lambda.dUdlambdaGroupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex = serialReactionFractionalMoleculeIndex(reactionId, componentId, k);
-        insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, 0.0);
+        insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, 0.0,
+                                               reaction.lambda.dUdlambdaGroupId);
       }
     }
   }
@@ -2045,7 +2161,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 componentId, c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -2066,7 +2182,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
                    "occupancy reactants: ({:3f}) products: ({:3f})\n",
-                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.id, lambda, reactionDUdlambda(reaction),
                    reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
                    reaction.lambdaProductSide.occupancy());
         continue;
@@ -2074,7 +2190,8 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction),
+                 static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -2119,7 +2236,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -2140,7 +2257,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
                    "occupancy reactants: ({:3f}) products: ({:3f})\n",
-                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.id, lambda, reactionDUdlambda(reaction),
                    reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
                    reaction.lambdaProductSide.occupancy());
         continue;
@@ -2148,7 +2265,8 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction),
+                 static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -2235,7 +2353,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -2256,7 +2374,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
                    "occupancy reactants: ({:3f}) products: ({:3f})\n",
-                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.id, lambda, reactionDUdlambda(reaction),
                    reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
                    reaction.lambdaProductSide.occupancy());
         continue;
@@ -2264,7 +2382,8 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction),
+                 static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -2307,7 +2426,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -2328,7 +2447,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
         std::print(stream,
                    "reaction {:3d} lambda: {: g} dUdlambda: {: g} fractional side: {} "
                    "occupancy reactants: ({:3f}) products: ({:3f})\n",
-                   reaction.id, lambda, runningEnergies.dudlambda(lambda),
+                   reaction.id, lambda, reactionDUdlambda(reaction),
                    reaction.fractionalSideIsReactants ? "reactants" : "products", reaction.lambda.occupancy(),
                    reaction.lambdaProductSide.occupancy());
         continue;
@@ -2336,7 +2455,8 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, runningEnergies.dudlambda(lambda), static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction),
+                 static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -2605,7 +2725,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -2793,28 +2913,31 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
         static_cast<double>(numberOfIntegerMoleculesPerComponent[componentId]) / simulationBox.volume;
 
     double lambda = component.lambdaGC.lambdaValue();
-    double dudlambda = runningEnergies.dudlambda(lambda);
+    double dudlambda = runningEnergies.dudlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
     if (usesGibbsConventionalCFCMC())
     {
       const double gibbsLambda = component.lambdaGibbs.lambdaValue();
-      const double gibbsDudlambda = runningEnergies.dudlambda(gibbsLambda);
+      const double gibbsDudlambda = runningEnergies.dudlambda(gibbsLambda, component.lambdaGibbs.dUdlambdaGroupId);
       component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
     }
 
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
     {
       const double pairLambda = component.lambdaPairSwap.lambdaValue();
-      component.lambdaPairSwap.sampleHistogram(currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda),
-                                               containsTheFractionalMolecule, w);
+      component.lambdaPairSwap.sampleHistogram(
+          currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
     }
 
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
     {
       const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
-      component.lambdaPairSwapCB.sampleHistogram(currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda),
-                                                 containsTheFractionalMolecule, w);
+      component.lambdaPairSwapCB.sampleHistogram(
+          currentBlock, componentDensity,
+          runningEnergies.dudlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
     }
 
     ++componentId;

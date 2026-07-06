@@ -112,11 +112,11 @@ std::string RunningEnergy::printMC() const
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaVDW(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Real{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaCharge(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Ewald{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaEwald(), Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();
@@ -208,14 +208,14 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
              Units::displayedUnitOfEnergyConversionString, conv * polarization, conv * other.polarization,
              conv * drift.polarization);
   std::print(stream, "    dU/dlambda VDW{}         | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
-             Units::displayedUnitOfEnergyConversionString, conv * dudlambdaVDW, conv * other.dudlambdaVDW,
-             conv * drift.dudlambdaVDW);
+             Units::displayedUnitOfEnergyConversionString, conv * totalDudlambdaVDW(), conv * other.totalDudlambdaVDW(),
+             conv * drift.totalDudlambdaVDW());
   std::print(stream, "    dU/dlambda Real{}        | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
-             Units::displayedUnitOfEnergyConversionString, conv * dudlambdaCharge, conv * other.dudlambdaCharge,
-             conv * drift.dudlambdaCharge);
+             Units::displayedUnitOfEnergyConversionString, conv * totalDudlambdaCharge(), conv * other.totalDudlambdaCharge(),
+             conv * drift.totalDudlambdaCharge());
   std::print(stream, "    dU/dlambda Ewald{}       | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
-             Units::displayedUnitOfEnergyConversionString, conv * dudlambdaEwald, conv * other.dudlambdaEwald,
-             conv * drift.dudlambdaEwald);
+             Units::displayedUnitOfEnergyConversionString, conv * totalDudlambdaEwald(), conv * other.totalDudlambdaEwald(),
+             conv * drift.totalDudlambdaEwald());
   std::print(stream, "-------------------------------------------------------------------------------\n");
 
   return stream.str();
@@ -279,11 +279,11 @@ std::string RunningEnergy::printMD() const
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaVDW(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Real{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaCharge(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Ewald{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaEwald(), Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
   std::print(stream, "Total kinetic energy{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * kineticEnergy(), Units::displayedUnitOfEnergyString);
@@ -358,11 +358,11 @@ std::string RunningEnergy::printMC(const std::string &label) const
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaVDW(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Real{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaCharge(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Ewald{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaEwald(), Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();
@@ -433,11 +433,11 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
   std::print(stream, "    polarization{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaVDW(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Real{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaCharge(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Ewald{}       {: .6e} [{}]\n\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaEwald(), Units::displayedUnitOfEnergyString);
   std::print(stream, "Total kinetic energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * kineticEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    translation kinetic{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -482,9 +482,9 @@ nlohmann::json RunningEnergy::jsonMC() const
   status["intra VDW [K]"] = conv * intraVDW;
   status["intra Coulombic [K]"] = conv * intraCoul;
   status["polarization [K]"] = conv * polarization;
-  status["dU/dlambda VDW [K]"] = conv * dudlambdaVDW;
-  status["dU/dlambda Real [K]"] = conv * dudlambdaCharge;
-  status["dU/dlambda Ewald [K]"] = conv * dudlambdaEwald;
+  status["dU/dlambda VDW [K]"] = conv * totalDudlambdaVDW();
+  status["dU/dlambda Real [K]"] = conv * totalDudlambdaCharge();
+  status["dU/dlambda Ewald [K]"] = conv * totalDudlambdaEwald();
 
   return status;
 }
@@ -561,11 +561,11 @@ std::string RunningEnergy::repr() const
   std::print(stream, "    polarization{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaVDW(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Real{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaCharge(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda Ewald{}       {: .6e} [{}]\n\n", Units::displayedUnitOfEnergyConversionString,
-             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+             conv * totalDudlambdaEwald(), Units::displayedUnitOfEnergyString);
   std::print(stream, "Total kinetic energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * kineticEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    translation kinetic{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,

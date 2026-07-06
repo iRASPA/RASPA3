@@ -20,9 +20,10 @@ export namespace Potentials
  * method in the provided force field. It handles different charge calculation
  * methods such as Ewald, Coulomb, Wolf, and ModifiedWolf.
  *
+ * The returned HessianFactor.dUdlambda holds the symmetric derivative factor X such that
+ *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
+ *
  * \param forcefield The force field configuration containing charge method and parameters.
- * \param groupIdA Boolean indicating if the first group ID is active.
- * \param groupIdB Boolean indicating if the second group ID is active.
  * \param scalingA Scaling factor for the first interaction.
  * \param scalingB Scaling factor for the second interaction.
  * \param rr The distance squared between the two charges.
@@ -34,7 +35,6 @@ export namespace Potentials
  * \note This function returns derivates as D[U[r], r] / r, where U[r] is the potential energy.
  */
 [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(const ForceField& forcefield,
-                                                                      const bool& groupIdA, const bool& groupIdB,
                                                                       const double& scalingA, const double& scalingB,
                                                                       const double& rr, const double& r,
                                                                       const double& chargeA, const double& chargeB)
@@ -48,7 +48,7 @@ export namespace Potentials
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
       return HessianFactor(
-          scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
+          scaling * temp, temp,
           -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
               ((std::erfc(alpha * r) +
                 2.0 * alpha * r * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>) /

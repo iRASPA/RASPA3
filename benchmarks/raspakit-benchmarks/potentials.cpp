@@ -57,7 +57,7 @@ static void BM_PotentialVDWEnergyLennardJones(benchmark::State& state)
     for (std::size_t i = 0; i < N; ++i)
     {
       Potentials::EnergyFactor ef =
-          Potentials::potentialVDWEnergy(forceField, false, false, 1.0, 1.0, rrs[i], typeAs[i], typeBs[i]);
+          Potentials::potentialVDWEnergy(forceField, 1.0, 1.0, rrs[i], typeAs[i], typeBs[i]);
       energySum += ef.energy;
       dudlambdaSum += ef.dUdlambda;
     }
@@ -94,7 +94,7 @@ static void BM_PotentialVDWEnergyLennardJonesFractional(benchmark::State& state)
     for (std::size_t i = 0; i < N; ++i)
     {
       Potentials::EnergyFactor ef =
-          Potentials::potentialVDWEnergy(forceField, true, false, 0.65, 1.0, rrs[i], typeAs[i], typeBs[i]);
+          Potentials::potentialVDWEnergy(forceField, 0.65, 1.0, rrs[i], typeAs[i], typeBs[i]);
       energySum += ef.energy;
       dudlambdaSum += ef.dUdlambda;
     }

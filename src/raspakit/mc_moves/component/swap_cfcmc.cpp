@@ -171,7 +171,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Copy atoms from the old fractional molecule, including the groupIds
     std::size_t upcomingMoleculeId = system.numberOfMolecules();
 
-    bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
+    std::uint8_t groupId = system.components[selectedComponent].lambdaGC.dUdlambdaGroupId;
     std::for_each(std::begin(trialMolecule.second), std::end(trialMolecule.second),
                   [selectedComponent, upcomingMoleculeId, groupId, newLambda](Atom& atom)
                   {
@@ -425,7 +425,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       double newLambda = deltaLambda * static_cast<double>(newBin);
 
       // Update new fractional molecule with new lambda
-      bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
+      std::uint8_t groupId = system.components[selectedComponent].lambdaGC.dUdlambdaGroupId;
       for (Atom& atom : newFractionalMolecule)
       {
         atom.setScalingToFractional(newLambda, groupId);

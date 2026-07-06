@@ -40,15 +40,18 @@ export namespace Potentials
  *   dU/dlambda = u(r_soft) + lambda * (-u'(r_soft)) * r_soft * (1 - lambda) * w^6 / (6 r_soft^6)
  * where -u'(r_soft) * r_soft is computed analytically per potential ('deriv' below).
  *
+ * The returned EnergyFactor.dUdlambda holds the symmetric derivative factor X such that
+ *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
+ * The caller routes these per-atom derivatives into the dU/dlambda accumulator of the
+ * thermodynamic-integration group (Atom::groupId) each atom belongs to.
+ *
  * \param forcefield The force field parameters used for the calculation.
- * \param groupIdA Boolean indicating if the first atom is part of a specific group.
- * \param groupIdB Boolean indicating if the second atom is part of a specific group.
  * \param scalingA Scaling factor for the first atom's interactions.
  * \param scalingB Scaling factor for the second atom's interactions.
  * \param rr The squared distance between the two atoms.
  * \param typeA The type identifier for the first atom.
  * \param typeB The type identifier for the second atom.
- * \return An EnergyFactor object containing the calculated potential energy and lambda derivative.
+ * \return An EnergyFactor object containing the calculated potential energy and the derivative factor.
  */
 
 // Slow path with the potential types ported from RASPA2. Deliberately not inlined: keeping
@@ -57,9 +60,8 @@ export namespace Potentials
 // convention makes this rarely-taken call save the registers itself, so the caller's hot
 // loop does not have to spill around it.
 [[clang::noinline]] [[clang::preserve_most]] inline EnergyFactor potentialVDWEnergyRare(
-    const ForceField& forcefield, const bool groupIdA, const bool groupIdB, const double scalingA,
-    const double scalingB, const double rr, const std::size_t typeA, const std::size_t typeB,
-    VDWParameters::Type potentialType)
+    const ForceField& forcefield, const double scalingA, const double scalingB, const double rr,
+    const std::size_t typeA, const std::size_t typeB, VDWParameters::Type potentialType)
 {
   double scaling = scalingA * scalingB;
   switch (potentialType)
@@ -77,8 +79,7 @@ export namespace Potentials
       double term = repulsion - dispersion - p.shift;
       double deriv = p.parameters.y * rs * repulsion - 6.0 * dispersion;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::Morse:
     {
@@ -87,8 +88,7 @@ export namespace Potentials
       double r = std::sqrt(rr);
       double expTerm = std::exp(-p.parameters.y * (r - p.parameters.z));
       double term = p.parameters.x * ((1.0 - expTerm) * (1.0 - expTerm) - 1.0) - p.shift;
-      return EnergyFactor(scaling * term,
-                          (groupIdA ? scalingB * term : 0.0) + (groupIdB ? scalingA * term : 0.0));
+      return EnergyFactor(scaling * term, term);
     }
     case VDWParameters::Type::FeynmannHibbs:
     {
@@ -109,8 +109,7 @@ export namespace Potentials
       double deriv =
           eps4 * (12.0 * u12 - 6.0 * u6) + eps4 * fh * (14.0 * 132.0 * u12 - 8.0 * 30.0 * u6) / rs2;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::MM3:
     {
@@ -141,8 +140,7 @@ export namespace Potentials
         deriv = (12.0 * rs / sigma) * repulsion - 6.0 * dispersion;
       }
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::BornHugginsMeyer:
     {
@@ -161,8 +159,7 @@ export namespace Potentials
       double term = repulsion - dispersion6 - dispersion8 - p.shift;
       double deriv = p.parameters.y * rs * repulsion - 6.0 * dispersion6 - 8.0 * dispersion8;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::LennardJonesShiftedForce:
     {
@@ -183,8 +180,7 @@ export namespace Potentials
       double term = eps4 * (u12 - u6 - c6 * (c6 - 1.0) + linearCoefficient * (rs - rc) / rc);
       double deriv = eps4 * (12.0 * u12 - 6.0 * u6) - eps4 * linearCoefficient * rs / rc;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::Potential12_6:
     {
@@ -199,8 +195,7 @@ export namespace Potentials
       double term = repulsion - dispersion - p.shift;
       double deriv = 12.0 * repulsion - 6.0 * dispersion;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::Potential12_6_2_0:
     {
@@ -217,8 +212,7 @@ export namespace Potentials
       double term = term12 + term6 + term2 + p.parameters.w - p.shift;
       double deriv = 12.0 * term12 + 6.0 * term6 + 2.0 * term2;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::CFF9_6:
     {
@@ -234,8 +228,7 @@ export namespace Potentials
       double term = repulsion - dispersion - p.shift;
       double deriv = 9.0 * repulsion - 6.0 * dispersion;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::CFFEpsilonSigma:
     {
@@ -254,8 +247,7 @@ export namespace Potentials
       double term = repulsion - dispersion - p.shift;
       double deriv = 9.0 * repulsion - 6.0 * dispersion;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::MatsuokaClementiYoshimine:
     {
@@ -264,8 +256,7 @@ export namespace Potentials
       double r = std::sqrt(rr);
       double term = p.parameters.x * std::exp(-p.parameters.y * r) +
                     p.parameters.z * std::exp(-p.parameters.w * r) - p.shift;
-      return EnergyFactor(scaling * term,
-                          (groupIdA ? scalingB * term : 0.0) + (groupIdB ? scalingA * term : 0.0));
+      return EnergyFactor(scaling * term, term);
     }
     case VDWParameters::Type::Generic:
     {
@@ -290,8 +281,7 @@ export namespace Potentials
       double deriv = p.parameters.y * rs * repulsion - 4.0 * dispersion4 - 6.0 * dispersion6 -
                      8.0 * dispersion8 - 10.0 * dispersion10;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::PellenqNicholson:
     {
@@ -327,8 +317,7 @@ export namespace Potentials
       double deriv = b * rs * repulsion - 6.0 * dispersion6 - 8.0 * dispersion8 - 10.0 * dispersion10 +
                      dampingDeriv;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::HydratedIonWater:
     {
@@ -351,8 +340,7 @@ export namespace Potentials
       double deriv =
           p.parameters.y * rs * repulsion - 4.0 * dispersion4 - 6.0 * dispersion6 - 12.0 * repulsion12;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::Mie:
     {
@@ -367,8 +355,7 @@ export namespace Potentials
       double term = repulsion - attraction - p.shift;
       double deriv = p.parameters.y * repulsion - p.parameters.w * attraction;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::WeeksChandlerAndersen:
     {
@@ -391,8 +378,7 @@ export namespace Potentials
       double term = eps4 * (u12 - u6) - eps4 * (gcut * gcut - gcut);
       double dlambda_term = scaling * (inv * sigma6 * eps4 * (12.0 * u12 - 6.0 * u6) / (6.0 * x6) -
                                        eps4 * inv * (2.0 * gcut - 1.0) * gcut * gcut);
-      return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+      return EnergyFactor(scaling * term, term + dlambda_term);
     }
     case VDWParameters::Type::RepulsiveHarmonic:
     {
@@ -409,8 +395,7 @@ export namespace Potentials
   return EnergyFactor(0.0, 0.0);
 }
 
-[[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const bool& groupIdA,
-                                                                const bool& groupIdB, const double& scalingA,
+[[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const double& scalingA,
                                                                 const double& scalingB, const double& rr,
                                                                 const std::size_t& typeA, const std::size_t& typeB)
 {
@@ -433,10 +418,9 @@ export namespace Potentials
     double rri6 = rri3 * rri3;
     double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
     double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
-    return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                            (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+    return EnergyFactor(scaling * term, term + dlambda_term);
   }
 
-  return potentialVDWEnergyRare(forcefield, groupIdA, groupIdB, scalingA, scalingB, rr, typeA, typeB, potentialType);
+  return potentialVDWEnergyRare(forcefield, scalingA, scalingB, rr, typeA, typeB, potentialType);
 };
 }  // namespace Potentials

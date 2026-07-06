@@ -19,20 +19,23 @@ export namespace Potentials
  * force field's charge method. It accounts for scaling factors and the distance between
  * atoms. Supported charge methods include Ewald, Coulomb, Wolf, and ModifiedWolf.
  *
+ * The returned EnergyFactor.dUdlambda holds the symmetric derivative factor X such that
+ *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
+ * The caller routes these per-atom derivatives into the dU/dlambda accumulator of the
+ * thermodynamic-integration group (Atom::groupId) each atom belongs to.
+ *
  * \param forcefield The force field parameters, including charge method and Ewald alpha.
- * \param groupIdA Indicates if atom A belongs to a group affecting the scaling.
- * \param groupIdB Indicates if atom B belongs to a group affecting the scaling.
  * \param scalingA Scaling factor for atom A.
  * \param scalingB Scaling factor for atom B.
  * \param r Distance between the two atoms.
  * \param chargeA Electric charge of atom A.
  * \param chargeB Electric charge of atom B.
- * \return An EnergyFactor object containing the computed Coulomb energy and any group-related scaling.
+ * \return An EnergyFactor object containing the computed Coulomb energy and the derivative factor.
  */
-[[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA,
-                                                                    const bool& groupIdB, const double& scalingA,
-                                                                    const double& scalingB, const double& r,
-                                                                    const double& chargeA, const double& chargeB)
+[[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield,
+                                                                    const double& scalingA, const double& scalingB,
+                                                                    const double& r, const double& chargeA,
+                                                                    const double& chargeB)
 {
   double scaling = scalingA * scalingB;
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
@@ -42,9 +45,7 @@ export namespace Potentials
     {
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      EnergyFactor result =
-          EnergyFactor(scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0));
-      return result;
+      return EnergyFactor(scaling * temp, temp);
     }
     case ForceField::ChargeMethod::Coulomb:
     {

@@ -47,7 +47,7 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling = 1.0,
-    bool isFractional = false) noexcept;
+    bool isFractional = false, std::uint8_t dUdlambdaGroupId = 0) noexcept;
 
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
     RandomNumber& random, System& system,

@@ -36,12 +36,15 @@ static double scaledChargeDifference(std::span<const Atom> newAtoms, std::span<c
   return charge;
 }
 
-// summed (unscaled) charge of the dU/dlambda group-tagged atoms; used as the 'external' charge
-// derivative for the net-charge correction when the partner molecule of the pair is updated
-static double groupChargeSum(std::span<const Atom> atoms)
+// per-group summed (unscaled) charge of the dU/dlambda group-tagged atoms; used as the 'external'
+// charge derivative for the net-charge correction when the partner molecule of the pair is updated
+static std::array<double, maximumNumberOfDUDlambdaGroups> groupChargeSum(std::span<const Atom> atoms)
 {
-  double charge = 0.0;
-  for (const Atom& atom : atoms) charge += (static_cast<bool>(atom.groupId) ? atom.charge : 0.0);
+  std::array<double, maximumNumberOfDUDlambdaGroups> charge{};
+  for (const Atom& atom : atoms)
+  {
+    if (atom.groupId != 0) charge[atom.groupId - 1] += atom.charge;
+  }
   return charge;
 }
 
@@ -230,14 +233,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const std::size_t upcomingMoleculeIdA = system.numberOfMolecules();
     const std::size_t upcomingMoleculeIdB = system.numberOfMolecules() + 1;
 
-    const bool groupIdA = componentA.lambdaPairSwap.computeDUdlambda;
+    const std::uint8_t groupIdA = componentA.lambdaPairSwap.dUdlambdaGroupId;
     for (Atom& atom : trialMoleculeA.second)
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdA);
       atom.componentId = static_cast<std::uint8_t>(selectedComponent);
       atom.setScalingToFractional(newLambda, groupIdA);
     }
-    const bool groupIdB = componentA.lambdaPairSwap.computeDUdlambda;
+    const std::uint8_t groupIdB = componentA.lambdaPairSwap.dUdlambdaGroupId;
     for (Atom& atom : trialMoleculeB.second)
     {
       atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdB);
@@ -485,7 +488,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2a) the selected integer molecule of component A becomes fractional with lambda_new
-    const bool groupIdA = componentA.lambdaPairSwap.computeDUdlambda;
+    const std::uint8_t groupIdA = componentA.lambdaPairSwap.dUdlambdaGroupId;
     for (Atom& atom : newFractionalMoleculeA)
     {
       atom.setScalingToFractional(newLambda, groupIdA);
@@ -529,7 +532,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
 
     // (2b) the selected integer molecule of component B becomes fractional with lambda_new
-    const bool groupIdB = componentA.lambdaPairSwap.computeDUdlambda;
+    const std::uint8_t groupIdB = componentA.lambdaPairSwap.dUdlambdaGroupId;
     for (Atom& atom : newFractionalMoleculeB)
     {
       atom.setScalingToFractional(newLambda, groupIdB);

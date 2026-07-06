@@ -15,6 +15,8 @@ import cbmc_chain_data;
 import randomnumbers;
 import system;
 import forcefield;
+import units;
+import running_energy;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
@@ -68,30 +70,43 @@ void acceptChargedEwaldMove(System& system) noexcept
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newAtoms, oldAtoms, system.netCharge);
 
-  // the combined difference double-counts intra-group exclusion terms; recompute them per molecule
-  double correctedExclusion = 0.0;
-  const std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEikSnapshot = system.totalEik;
+  // The combined difference treats each atom set as one big molecule and therefore adds spurious
+  // cross-molecule exclusion (erf) pairs, to both the energy and the per-group dU/dlambda. Undo
+  // the all-pairs exclusion terms and re-add the true intra-molecular ones.
+  auto accumulateExclusion = [&system](std::span<const Atom> atoms, double sign, RunningEnergy& accumulator)
+  {
+    const double alpha = system.forceField.EwaldAlpha;
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+    {
+      for (std::size_t j = i + 1; j != atoms.size(); ++j)
+      {
+        double3 dr = atoms[i].position - atoms[j].position;
+        dr = system.simulationBox.applyPeriodicBoundaryConditions(dr);
+        const double r = std::sqrt(double3::dot(dr, dr));
+        const double temp =
+            sign * Units::CoulombicConversionFactor * atoms[i].charge * atoms[j].charge * std::erf(alpha * r) / r;
+        accumulator.ewald_exclusion += atoms[i].scalingCoulomb * atoms[j].scalingCoulomb * temp;
+        accumulator.addDudlambdaEwald(atoms[i].groupId, atoms[j].groupId, atoms[i].scalingCoulomb,
+                                      atoms[j].scalingCoulomb, temp);
+      }
+    }
+  };
+  // remove the all-pairs terms the combined call added (+pairs(old), -pairs(new))
+  accumulateExclusion(oldAtoms, -1.0, ewaldCombined);
+  accumulateExclusion(newAtoms, +1.0, ewaldCombined);
+  // add the intra-molecular exclusion terms per molecule
   for (const std::vector<Atom>& oldMolecule : oldMolecules)
   {
-    const RunningEnergy ewald = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, std::span<const Atom>{}, oldMolecule);
-    correctedExclusion += ewald.ewald_exclusion;
-    system.totalEik = totalEikSnapshot;
+    accumulateExclusion(oldMolecule, +1.0, ewaldCombined);
   }
   for (const std::vector<Atom>& newMolecule : newMolecules)
   {
-    const RunningEnergy ewald = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, newMolecule, std::span<const Atom>{});
-    correctedExclusion += ewald.ewald_exclusion;
-    system.totalEik = totalEikSnapshot;
+    accumulateExclusion(newMolecule, -1.0, ewaldCombined);
   }
-  ewaldCombined.ewald_exclusion = correctedExclusion;
 
   // rebuild totalEik by replacing the molecules one at a time, keeping storedEik untouched
-  const std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEikSnapshot = system.storedEik;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> workingStoredEik = storedEikSnapshot;
+  const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEikSnapshot = system.storedEik;
+  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> workingStoredEik = storedEikSnapshot;
   for (const std::vector<Atom>& oldMolecule : oldMolecules)
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -138,14 +153,15 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
   }
 }
 
-void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double lambda) noexcept
+void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double lambda,
+                                std::uint8_t dUdlambdaGroupId) noexcept
 {
   // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1].
   // Reactants are coupled with (1 - lambda) so that their electrostatics vanish first.
   const double effectiveLambda = isReactant ? (1.0 - lambda) : lambda;
   for (Atom& atom : atoms)
   {
-    atom.setScalingToFractional(effectiveLambda);
+    atom.setScalingToFractional(effectiveLambda, dUdlambdaGroupId);
   }
 }
 
@@ -197,7 +213,8 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
-    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling, bool isFractional) noexcept
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling, bool isFractional,
+    std::uint8_t dUdlambdaGroupId) noexcept
 {
   MoleculeGroupGrowData result;
 
@@ -233,7 +250,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
           random, component, componentId, system.hasExternalField, system.forceField, system.simulationBox,
           system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
           system.spanOfFrameworkAtoms(), background, system.beta, component.growType, cutOffFrameworkVDW,
-          cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, scaling, false, isFractional);
+          cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
 
       if (!growData)
       {
@@ -346,11 +363,13 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     for (const std::size_t moleculeId : reaction.reactantFractionalMoleculeIds[componentId])
     {
-      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), true, lambda);
+      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), true, lambda,
+                                 reaction.dUdlambdaGroup(true));
     }
     for (const std::size_t moleculeId : reaction.productFractionalMoleculeIds[componentId])
     {
-      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), false, lambda);
+      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), false, lambda,
+                                 reaction.dUdlambdaGroup(false));
     }
   }
 }
@@ -555,12 +574,12 @@ void insertGrownMolecules(System& system, std::span<const ChainGrowData> growDat
   }
 }
 
-void applySerialFractionalScaling(std::span<Atom> atoms, double lambda) noexcept
+void applySerialFractionalScaling(std::span<Atom> atoms, double lambda, std::uint8_t dUdlambdaGroupId) noexcept
 {
   // staged schedule from scaling.ixx: VDW switches on for lambda in [0, 0.5], Coulomb in [0.5, 1]
   for (Atom& atom : atoms)
   {
-    atom.setScalingToFractional(lambda);
+    atom.setScalingToFractional(lambda, dUdlambdaGroupId);
   }
 }
 
@@ -573,7 +592,9 @@ void setSerialReactionFractionalScaling(System& system, Reaction& reaction, doub
   {
     for (const std::size_t moleculeId : activeIds[componentId])
     {
-      applySerialFractionalScaling(system.spanOfMolecule(componentId, moleculeId), lambda);
+      // serial mode: both sides share one dU/dlambda group (only one side is fractional at a time)
+      applySerialFractionalScaling(system.spanOfMolecule(componentId, moleculeId), lambda,
+                                   reaction.lambda.dUdlambdaGroupId);
     }
   }
 }
@@ -657,7 +678,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     {
       const ChainGrowData& data = growData[growIndex++];
       const std::size_t moleculeIndex = system.serialReactionFractionalMoleculeIndex(reaction.id, componentId, n);
-      system.insertSerialReactionFractionalMolecule(componentId, moleculeIndex, data.molecule, data.atom, lambda);
+      system.insertSerialReactionFractionalMolecule(componentId, moleculeIndex, data.molecule, data.atom, lambda,
+                                                    reaction.lambda.dUdlambdaGroupId);
       targetIds[componentId].push_back(moleculeIndex);
     }
   }
@@ -777,7 +799,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     if (!oldAtoms.empty())
     {
       std::vector<Atom> newAtoms = oldAtoms;
-      applySerialFractionalScaling(newAtoms, lambdaNew);
+      applySerialFractionalScaling(newAtoms, lambdaNew, reaction.lambda.dUdlambdaGroupId);
 
       const bool useChargedEwald = system.forceField.useCharge;
       scalingDifference = computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms, true, !useChargedEwald);
@@ -844,7 +866,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
     // grow the new fractional molecules at coupling lambda (staged scaling applied via Atom::setScaling)
     std::optional<MoleculeGroupGrowData> growData =
-        growMoleculeGroupInsertion(random, system, newStoichiometry, removedMolecules, reaction.currentLambda, true);
+        growMoleculeGroupInsertion(random, system, newStoichiometry, removedMolecules, reaction.currentLambda, true,
+                                   reaction.lambda.dUdlambdaGroupId);
     if (!growData)
     {
       return std::nullopt;
@@ -971,7 +994,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     atom.setScalingToInteger();
   }
   std::vector<Atom> newFractionalAtoms = oldIntegerAtoms;
-  applySerialFractionalScaling(newFractionalAtoms, reaction.currentLambda);
+  applySerialFractionalScaling(newFractionalAtoms, reaction.currentLambda, reaction.lambda.dUdlambdaGroupId);
 
   std::vector<Atom> oldAtoms = oldFractionalAtoms;
   oldAtoms.insert(oldAtoms.end(), oldIntegerAtoms.begin(), oldIntegerAtoms.end());
@@ -1154,8 +1177,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     atom.setScalingToInteger();
   }
+  // forward demotes whole reactant molecules into reactant fractionals, backward demotes products
   std::vector<Atom> demotedNewAtoms = demotedOldAtoms;
-  applyLinearReactionScaling(demotedNewAtoms, forward, lambdaNew);
+  applyLinearReactionScaling(demotedNewAtoms, forward, lambdaNew, reaction.dUdlambdaGroup(forward));
 
   std::vector<Atom> rescaleNewAtoms = promotedNewAtoms;
   rescaleNewAtoms.insert(rescaleNewAtoms.end(), demotedNewAtoms.begin(), demotedNewAtoms.end());
@@ -1194,8 +1218,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   writeAtomsToSpans(selectedMolecules, demotedNewAtoms);
 
   const double growScaling = forward ? lambdaNew : (1.0 - lambdaNew);
+  // forward grows product-side ghost fractionals, backward grows reactant-side ones
   std::optional<MoleculeGroupGrowData> growData =
-      growMoleculeGroupInsertion(random, system, growStoichiometry, ghostMolecules, growScaling, true);
+      growMoleculeGroupInsertion(random, system, growStoichiometry, ghostMolecules, growScaling, true,
+                                 reaction.dUdlambdaGroup(!forward));
   if (!growData)
   {
     restoreOldScalings();
@@ -1334,12 +1360,13 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       {
         TransformedMolecule& demoted = demotedMolecules[demotedIndex++];
         system.insertReactionFractionalMolecule(componentId, slotIndex, demoted.molecule, std::move(demoted.atoms),
-                                                true, lambdaNew);
+                                                true, lambdaNew, reaction.dUdlambdaGroup(true));
       }
       else
       {
         const ChainGrowData& grown = growData->molecules[grownIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atom, true, lambdaNew);
+        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atom, true, lambdaNew,
+                                                reaction.dUdlambdaGroup(true));
       }
     }
     for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
@@ -1348,13 +1375,14 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       if (forward)
       {
         const ChainGrowData& grown = growData->molecules[grownIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atom, false, lambdaNew);
+        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atom, false, lambdaNew,
+                                                reaction.dUdlambdaGroup(false));
       }
       else
       {
         TransformedMolecule& demoted = demotedMolecules[demotedIndex++];
         system.insertReactionFractionalMolecule(componentId, slotIndex, demoted.molecule, std::move(demoted.atoms),
-                                                false, lambdaNew);
+                                                false, lambdaNew, reaction.dUdlambdaGroup(false));
       }
     }
   }
@@ -1423,7 +1451,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
         std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
         oldAtoms.insert(oldAtoms.end(), molecule.begin(), molecule.end());
         std::vector<Atom> trialMolecule(molecule.begin(), molecule.end());
-        applyLinearReactionScaling(trialMolecule, true, lambdaNew);
+        applyLinearReactionScaling(trialMolecule, true, lambdaNew, reaction.dUdlambdaGroup(true));
         newAtoms.insert(newAtoms.end(), trialMolecule.begin(), trialMolecule.end());
       }
       for (const std::size_t moleculeId : reaction.productFractionalMoleculeIds[componentId])
@@ -1431,7 +1459,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
         std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
         oldAtoms.insert(oldAtoms.end(), molecule.begin(), molecule.end());
         std::vector<Atom> trialMolecule(molecule.begin(), molecule.end());
-        applyLinearReactionScaling(trialMolecule, false, lambdaNew);
+        applyLinearReactionScaling(trialMolecule, false, lambdaNew, reaction.dUdlambdaGroup(false));
         newAtoms.insert(newAtoms.end(), trialMolecule.begin(), trialMolecule.end());
       }
     }

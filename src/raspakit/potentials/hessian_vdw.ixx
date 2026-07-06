@@ -19,9 +19,10 @@ export namespace Potentials
  * It returns derivatives as D[U[r], r] / r to avoid computing the square root for
  * Lennard-Jones (LJ) potential, as only the squared distance (rr) is required.
  *
+ * The returned HessianFactor.dUdlambda holds the symmetric derivative factor X such that
+ *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
+ *
  * \param forcefield The force field parameters defining the interaction.
- * \param groupIdA The group identifier for atom A.
- * \param groupIdB The group identifier for atom B.
  * \param scalingA Scaling factor for atom A.
  * \param scalingB Scaling factor for atom B.
  * \param rr The squared distance between the two atoms.
@@ -30,8 +31,7 @@ export namespace Potentials
  *
  * \return A HessianFactor object containing the computed energy, gradient, and Hessian.
  */
-[[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield, const bool& groupIdA,
-                                                                  const bool& groupIdB, const double& scalingA,
+[[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield, const double& scalingA,
                                                                   const double& scalingB, const double& rr,
                                                                   const std::size_t& typeA, const std::size_t& typeB)
 {
@@ -54,8 +54,7 @@ export namespace Potentials
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
 
       return HessianFactor(
-          scaling * term,
-          (groupIdA ? scalingB * (term + dlambda_term) : 0.0) + (groupIdB ? scalingA * (term + dlambda_term) : 0.0),
+          scaling * term, term + dlambda_term,
           12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr,
           24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr));
     }

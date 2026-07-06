@@ -74,7 +74,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
               if (rr < cutoff * cutoff)
               {
                 Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
-                  forceField, 0, 0, 1.0, 1.0, rr, probe_type.value(), typeB);
+                  forceField, 1.0, 1.0, rr, probe_type.value(), typeB);
 
                 energy += energyFactor.energy;
               }

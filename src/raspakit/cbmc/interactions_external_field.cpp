@@ -48,7 +48,7 @@ import interpolation_energy_grid;
         [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
         [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
         [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
-        [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
+        [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
         [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
         [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
         [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
@@ -203,7 +203,7 @@ import interpolation_energy_grid;
 
         }
         energySum.externalFieldVDW += energyFactor.energy;
-        energySum.dudlambdaVDW += energyFactor.dUdlambda;
+        energySum.addDudlambdaVDW(groupIdA, 0, 1.0, 1.0, energyFactor.dUdlambda);
       }
       ++index;
     }

@@ -209,9 +209,9 @@ export struct System
   std::vector<std::complex<double>> eik_x{};
   std::vector<std::complex<double>> eik_y{};
   std::vector<std::complex<double>> eik_z{};
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik{};
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik{};
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik{};
+  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik{};
+  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik{};
+  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> totalEik{};
   double CoulombicFourierEnergySingleIon{0.0};
   double netCharge{0.0};
   double netChargeFramework{0.0};
@@ -392,6 +392,7 @@ export struct System
   void syncReactionFractionalMoleculeIndices() noexcept;
   void incrementReactionFractionalMoleculeIds(std::size_t componentId) noexcept;
   void initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins);
+  [[nodiscard]] double reactionDUdlambda(const Reaction &reaction) const noexcept;
   void syncReactionLambdaBin(Reaction& reaction) noexcept;
   void syncReactionLambdaBins() noexcept;
   [[nodiscard]] bool usesReactionConventionalCFCMC() const noexcept;
@@ -409,7 +410,9 @@ export struct System
   void reactionLambdaClearBookkeeping() noexcept;
   void reactionLambdaFinalize() noexcept;
   [[nodiscard]] bool componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
-  [[nodiscard]] bool fractionalSlotComputesDUdlambda(std::size_t componentId, std::size_t slotIndex) const noexcept;
+  void assignDUdlambdaGroups();
+  [[nodiscard]] std::uint8_t fractionalSlotDUdlambdaGroupId(std::size_t componentId,
+                                                            std::size_t slotIndex) const noexcept;
   void pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept;
   void pairSwapLambdaSampleOccupancy() noexcept;
   void pairSwapLambdaClearBookkeeping() noexcept;
@@ -447,9 +450,11 @@ export struct System
   void insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
                                        std::vector<Atom> atoms);
   void insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
-                                        std::vector<Atom> atoms, bool isReactant, double lambda);
+                                        std::vector<Atom> atoms, bool isReactant, double lambda,
+                                        std::uint8_t dUdlambdaGroupId);
   void insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
-                                              const Molecule &molecule, std::vector<Atom> atoms, double lambda);
+                                              const Molecule &molecule, std::vector<Atom> atoms, double lambda,
+                                              std::uint8_t dUdlambdaGroupId);
   void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
   void deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
                                   const std::span<Atom> atoms);

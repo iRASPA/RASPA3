@@ -150,7 +150,7 @@ TEST(vdw_potentials, RASPA2_reference_values_at_full_coupling)
     for (double r : testCase.distances)
     {
       Potentials::EnergyFactor value =
-          Potentials::potentialVDWEnergy(forceField, false, false, 1.0, 1.0, r * r, 0, 0);
+          Potentials::potentialVDWEnergy(forceField, 1.0, 1.0, r * r, 0, 0);
       double energyInKelvin = value.energy * Units::EnergyToKelvin;
       double reference = referenceEnergyInKelvin(testCase, r);
       double tolerance = std::max(1e-8, 1e-8 * std::abs(reference));
@@ -167,7 +167,7 @@ TEST(vdw_potentials, shifted_potential_is_zero_at_cutoff)
     ForceField forceField = makeForceField(testCase, true);
     double rc = 12.0;
     Potentials::EnergyFactor value =
-        Potentials::potentialVDWEnergy(forceField, false, false, 1.0, 1.0, rc * rc, 0, 0);
+        Potentials::potentialVDWEnergy(forceField, 1.0, 1.0, rc * rc, 0, 0);
     EXPECT_NEAR(value.energy * Units::EnergyToKelvin, 0.0, 1e-8) << VDWParameters::nameOfType(testCase.type);
   }
 }
@@ -182,7 +182,7 @@ TEST(vdw_potentials, finite_at_zero_distance_for_fractional_lambda)
       for (double rr : {1e-10, 1e-4, 0.01, 1.0})
       {
         Potentials::EnergyFactor value =
-            Potentials::potentialVDWEnergy(forceField, true, false, scaling, 1.0, rr, 0, 0);
+            Potentials::potentialVDWEnergy(forceField, scaling, 1.0, rr, 0, 0);
         EXPECT_TRUE(std::isfinite(value.energy))
             << VDWParameters::nameOfType(testCase.type) << " at rr = " << rr << ", lambda = " << scaling;
         EXPECT_TRUE(std::isfinite(value.dUdlambda))
@@ -206,17 +206,18 @@ TEST(vdw_potentials, lambda_derivative_matches_finite_difference)
       {
         double rr = r * r;
         Potentials::EnergyFactor value =
-            Potentials::potentialVDWEnergy(forceField, true, false, scalingA, scalingB, rr, 0, 0);
+            Potentials::potentialVDWEnergy(forceField, scalingA, scalingB, rr, 0, 0);
 
         double delta = 1e-6;
         Potentials::EnergyFactor forward =
-            Potentials::potentialVDWEnergy(forceField, true, false, scalingA + 0.5 * delta, scalingB, rr, 0, 0);
+            Potentials::potentialVDWEnergy(forceField, scalingA + 0.5 * delta, scalingB, rr, 0, 0);
         Potentials::EnergyFactor backward =
-            Potentials::potentialVDWEnergy(forceField, true, false, scalingA - 0.5 * delta, scalingB, rr, 0, 0);
+            Potentials::potentialVDWEnergy(forceField, scalingA - 0.5 * delta, scalingB, rr, 0, 0);
         double finiteDifference = (forward.energy - backward.energy) / delta;
 
+        // dUdlambda holds the symmetric derivative factor X with dU/d(scalingA) = scalingB * X
         double tolerance = std::max(1e-4, 1e-6 * std::abs(finiteDifference));
-        EXPECT_NEAR(value.dUdlambda, finiteDifference, tolerance)
+        EXPECT_NEAR(scalingB * value.dUdlambda, finiteDifference, tolerance)
             << VDWParameters::nameOfType(testCase.type) << " at r = " << r << ", lambdaA = " << scalingA;
       }
     }
@@ -232,7 +233,7 @@ TEST(vdw_potentials, wca_continuous_at_internal_cutoff)
   for (double scaling : {0.2, 0.5, 0.8, 1.0})
   {
     Potentials::EnergyFactor below =
-        Potentials::potentialVDWEnergy(forceField, false, false, scaling, 1.0, rrCut * (1.0 - 1e-12), 0, 0);
+        Potentials::potentialVDWEnergy(forceField, scaling, 1.0, rrCut * (1.0 - 1e-12), 0, 0);
     EXPECT_NEAR(below.energy * Units::EnergyToKelvin, 0.0, 1e-6) << "lambda = " << scaling;
   }
 }

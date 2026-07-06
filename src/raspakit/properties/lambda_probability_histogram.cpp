@@ -532,6 +532,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.bookKeepingDensity;
 
   archive << p.computeDUdlambda;
+  archive << p.dUdlambdaGroupId;
   archive << p.bookKeepingDUdlambda;
 
   archive << p.occupancyCount;
@@ -564,6 +565,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLamb
   archive >> p.bookKeepingDensity;
 
   archive >> p.computeDUdlambda;
+  archive >> p.dUdlambdaGroupId;
   archive >> p.bookKeepingDUdlambda;
 
   archive >> p.occupancyCount;

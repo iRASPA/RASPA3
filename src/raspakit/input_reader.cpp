@@ -36,6 +36,7 @@ import property_vacf;
 import write_lammps_data;
 import thermostat;
 import cif_reader;
+import running_energy;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -1873,6 +1874,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         ++numberOfDUDlambda;
       }
+      if (systems[i].components[j].lambdaGibbs.computeDUdlambda)
+      {
+        ++numberOfDUDlambda;
+      }
       if (systems[i].components[j].lambdaPairSwap.computeDUdlambda)
       {
         ++numberOfDUDlambda;
@@ -1882,12 +1887,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         ++numberOfDUDlambda;
       }
     }
-    if (numberOfDUDlambda > 1)
+    // serial Rx/CFC reactions consume one dU/dlambda group; parallel Rx/CFC reactions consume two
+    // (reactants coupled at 1-lambda and products at lambda need separate accumulators)
+    for (const Reaction& reaction : systems[i].reactions.list)
+    {
+      if (reaction.isSerialRxCFC())
+      {
+        numberOfDUDlambda += 1;
+      }
+      else if (reaction.isParallelRxCFC())
+      {
+        numberOfDUDlambda += 2;
+      }
+    }
+    if (numberOfDUDlambda > maximumNumberOfDUDlambdaGroups)
     {
       throw std::runtime_error(
-          std::format("Error [System {}]: multiple thermodynamic integrations present "
-                      "(there can be only one)\n",
-                      i));
+          std::format("Error [System {}]: too many thermodynamic integrations present "
+                      "({} requested, at most {} lambda coordinates can be followed simultaneously)\n",
+                      i, numberOfDUDlambda, maximumNumberOfDUDlambdaGroups));
     }
   }
 

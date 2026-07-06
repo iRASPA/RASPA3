@@ -37,7 +37,7 @@ import interpolation_energy_grid;
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, bool groupId,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, std::uint8_t groupId,
     bool isFractional) noexcept
 {
   std::size_t startingBead = component.startingBead;
@@ -338,7 +338,7 @@ import interpolation_energy_grid;
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, const Atom &oldStartingBead,
-    double scaling, bool groupId, bool isFractional, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    double scaling, std::uint8_t groupId, bool isFractional, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];
@@ -452,7 +452,7 @@ import interpolation_energy_grid;
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double3 fixedFirstBeadPosition,
-    double scaling, bool groupId, bool isFractional) noexcept
+    double scaling, std::uint8_t groupId, bool isFractional) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];

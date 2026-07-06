@@ -30,7 +30,7 @@ export namespace CBMC
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, bool groupId,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double scaling, std::uint8_t groupId,
     bool isFractional) noexcept;
 
 // deletion
@@ -89,7 +89,7 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, const Atom &oldStartingBead,
-    double scaling, bool groupId, bool isFractional,
+    double scaling, std::uint8_t groupId, bool isFractional,
     std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 // identity change deletion
@@ -110,7 +110,7 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule, double3 fixedFirstBeadPosition,
-    double scaling, bool groupId, bool isFractional) noexcept;
+    double scaling, std::uint8_t groupId, bool isFractional) noexcept;
 
 [[nodiscard]] ChainRetraceData retraceMoleculePairSecondSwapDeletion(
     const Component &component, bool hasExternalField, const ForceField &forceField,

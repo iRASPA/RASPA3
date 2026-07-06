@@ -146,9 +146,9 @@ void expectNoEnergyDrift(System &system)
   EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
   EXPECT_NEAR(drift.tail, 0.0, 1e-6);
   EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
 }
 
 // Serial Gibbs CFCMC: active fractional molecule in the first system only (see MonteCarlo::setup).
@@ -476,7 +476,7 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcbmc_gibbs_only_single_acce
       EXPECT_NEAR(delta->first.potentialEnergy(), actualDeltaA.potentialEnergy(), 1e-6)
           << "attempt=" << attempt << " component=" << component;
       EXPECT_NEAR(delta->first.moleculeMoleculeVDW, actualDeltaA.moleculeMoleculeVDW, 1e-6);
-      EXPECT_NEAR(delta->first.dudlambdaVDW, actualDeltaA.dudlambdaVDW, 1e-6);
+      EXPECT_NEAR(delta->first.totalDudlambdaVDW(), actualDeltaA.totalDudlambdaVDW(), 1e-6);
       EXPECT_NEAR(delta->second.potentialEnergy(), actualDeltaB.potentialEnergy(), 1e-6);
       expectNoEnergyDrift(systemA);
       expectNoEnergyDrift(systemB);
@@ -532,14 +532,14 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcbmc_gibbs_only_many_accept
     RunningEnergy afterB = systemB.computeTotalEnergies();
     SCOPED_TRACE("accept=" + std::to_string(acceptCount) + " component=" + std::to_string(component));
     ASSERT_NEAR(delta->first.moleculeMoleculeVDW, (afterA - beforeA).moleculeMoleculeVDW, 1e-6);
-    ASSERT_NEAR(delta->first.dudlambdaVDW, (afterA - beforeA).dudlambdaVDW, 1e-6);
+    ASSERT_NEAR(delta->first.totalDudlambdaVDW(), (afterA - beforeA).totalDudlambdaVDW(), 1e-6);
     ASSERT_NEAR(delta->second.moleculeMoleculeVDW, (afterB - beforeB).moleculeMoleculeVDW, 1e-6);
-    ASSERT_NEAR(delta->second.dudlambdaVDW, (afterB - beforeB).dudlambdaVDW, 1e-6);
+    ASSERT_NEAR(delta->second.totalDudlambdaVDW(), (afterB - beforeB).totalDudlambdaVDW(), 1e-6);
 
     // the inactive box has all its fractional molecules switched off with groupId 0,
     // so it must have no dUdlambda contribution at all
     const RunningEnergy &inactiveAfter = systemA.containsTheFractionalMolecule ? afterB : afterA;
-    ASSERT_NEAR(inactiveAfter.dudlambdaVDW, 0.0, 1e-8);
+    ASSERT_NEAR(inactiveAfter.totalDudlambdaVDW(), 0.0, 1e-8);
 
     expectNoEnergyDrift(systemA);
     expectNoEnergyDrift(systemB);

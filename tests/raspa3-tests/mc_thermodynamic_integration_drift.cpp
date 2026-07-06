@@ -48,9 +48,9 @@ void expectNoThermodynamicIntegrationDrift(System& system)
   EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
   EXPECT_NEAR(drift.tail, 0.0, 1e-6);
   EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-  EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+  EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
 }
 
 void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfCycles = 20)

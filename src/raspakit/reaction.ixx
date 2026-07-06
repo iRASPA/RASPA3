@@ -75,6 +75,15 @@ export struct Reaction
            reactionMove == Move::Types::ReactionConventionalCBCFCMC;
   }
 
+  /// The 1-based dU/dlambda group id (0 = untracked) carried by the fractional molecules of the
+  /// given side. Parallel Rx/CFC uses two distinct groups because reactants are coupled at
+  /// (1 - lambda) and products at lambda; serial Rx/CFC shares one group between both sides
+  /// (only one side is fractional at a time, coupled directly at lambda).
+  [[nodiscard]] std::uint8_t dUdlambdaGroup(bool reactantSide) const noexcept
+  {
+    return reactantSide ? lambda.dUdlambdaGroupId : lambdaProductSide.dUdlambdaGroupId;
+  }
+
   double currentLambda{0.0};           ///< Current coupling parameter λ ∈ [0, 1].
   double maximumLambdaChange{0.3};     ///< Maximum random change in λ (reactant-side, serial or parallel).
   double maximumLambdaChangeProducts{0.3};  ///< Maximum λ change when product-side fractionals are present (serial).

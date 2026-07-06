@@ -19,9 +19,10 @@ export namespace Potentials
  * It returns D[U[r], r] / r to avoid computing the square root for Lennard-Jones (LJ) potential,
  * as only the squared distance (rr) is required.
  *
+ * The returned GradientFactor.dUdlambda holds the symmetric derivative factor X such that
+ *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
+ *
  * \param forcefield The force field parameters defining the interaction.
- * \param groupIdA The group identifier for atom A.
- * \param groupIdB The group identifier for atom B.
  * \param scalingA Scaling factor for atom A.
  * \param scalingB Scaling factor for atom B.
  * \param rr The squared distance between the two atoms.
@@ -30,10 +31,10 @@ export namespace Potentials
  *
  * \return A ForceFactor object containing the computed forces.
  */
-[[clang::always_inline]] inline GradientFactor potentialVDWGradient(const ForceField& forcefield, const bool& groupIdA,
-                                                                    const bool& groupIdB, const double& scalingA,
-                                                                    const double& scalingB, const double& rr,
-                                                                    const std::size_t& typeA, const std::size_t& typeB)
+[[clang::always_inline]] inline GradientFactor potentialVDWGradient(const ForceField& forcefield,
+                                                                    const double& scalingA, const double& scalingB,
+                                                                    const double& rr, const std::size_t& typeA,
+                                                                    const std::size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -52,10 +53,8 @@ export namespace Potentials
       double rri6 = rri3 * rri3;
       double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
-      return GradientFactor(
-          scaling * term,
-          (groupIdA ? scalingB * (term + dlambda_term) : 0.0) + (groupIdB ? scalingA * (term + dlambda_term) : 0.0),
-          12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr);
+      return GradientFactor(scaling * term, term + dlambda_term,
+                            12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr);
     }
     case VDWParameters::Type::RepulsiveHarmonic:
     {

@@ -270,7 +270,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       atom.moleculeId = static_cast<std::uint16_t>(
           systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-      atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
+      atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
     }
 
     for (Atom& atom : selectedIntegerMoleculeB)
@@ -393,7 +393,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       {
         atom.moleculeId = static_cast<std::uint16_t>(
             systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-        atom.setScalingToFractional(oldLambda, componentB.lambdaGC.computeDUdlambda);
+        atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
       }
 
       systemA.updateMoleculeAtomInformation();

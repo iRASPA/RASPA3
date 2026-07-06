@@ -108,9 +108,9 @@ TEST(MC_MUVT_DRIFT, insertion)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -194,9 +194,9 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -280,9 +280,9 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -366,9 +366,9 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -444,9 +444,9 @@ TEST(MC_MUVT_DRIFT, identity_change)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -525,9 +525,9 @@ TEST(MC_MUVT_DRIFT, identity_change_cfcmc)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -675,9 +675,9 @@ TEST(MC_MUVT_DRIFT, identity_change_co2_propane_butane)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -742,9 +742,9 @@ TEST(MC_MUVT_DRIFT, identity_change_propane_butane_tail_corrections)
     EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
   }
 }
 
@@ -989,9 +989,9 @@ TEST(MC_MUVT_DRIFT, pair_swap_cfcmc_thermodynamic_integration_na_cl)
     EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
     EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-5);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-4);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-4);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-4);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-4);
   }
 }
 
@@ -1050,9 +1050,9 @@ TEST(MC_MUVT_DRIFT, pair_swap_cbcfcmc_thermodynamic_integration_na_cl)
     EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
     EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
-    EXPECT_NEAR(drift.dudlambdaVDW, 0.0, 1e-5);
-    EXPECT_NEAR(drift.dudlambdaCharge, 0.0, 1e-4);
-    EXPECT_NEAR(drift.dudlambdaEwald, 0.0, 1e-4);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-4);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-4);
   }
 }
 

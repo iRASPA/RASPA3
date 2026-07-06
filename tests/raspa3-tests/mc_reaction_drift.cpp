@@ -124,9 +124,9 @@ void checkEnergyDrift(System& s)
   EXPECT_NEAR(drift.intraCoul, 0.0, tolerance);
   EXPECT_NEAR(drift.tail, 0.0, tolerance);
   EXPECT_NEAR(drift.polarization, 0.0, tolerance);
-  EXPECT_NEAR(drift.dudlambdaVDW, 0.0, tolerance);
-  EXPECT_NEAR(drift.dudlambdaCharge, 0.0, tolerance);
-  EXPECT_NEAR(drift.dudlambdaEwald, 0.0, tolerance);
+  EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, tolerance);
+  EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, tolerance);
+  EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, tolerance);
 }
 
 System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabilities,
@@ -1313,3 +1313,78 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary_per_move_drift) { runConventionalBoundaryPerMoveDrift(false); }
 
 TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_boundary_per_move_drift) { runConventionalBoundaryPerMoveDrift(true); }
+
+// Thermodynamic integration for a parallel (conventional) Rx/CFC reaction: reactants are coupled at
+// (1 - lambda) and products at lambda, tracked in two separate dU/dlambda groups. The combined
+// derivative returned by System::reactionDUdlambda must match the finite difference of the total
+// potential energy with respect to the reaction lambda.
+TEST(MC_REACTION_DRIFT, reaction_parallel_dudlambda_finite_difference)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 1.0);
+
+  System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {30, 10});
+  ASSERT_TRUE(system.forceField.useCharge);
+  system.createReactionFractionalMolecules();
+
+  Reaction& reaction = system.reactions.list[0];
+  ASSERT_NE(reaction.dUdlambdaGroup(true), 0);
+  ASSERT_NE(reaction.dUdlambdaGroup(false), 0);
+  ASSERT_NE(reaction.dUdlambdaGroup(true), reaction.dUdlambdaGroup(false));
+
+  // one lambda in the VDW segment [0, 0.5] and one in the Coulomb segment [0.5, 1]
+  for (const double lambda : {0.23, 0.77})
+  {
+    MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, lambda);
+    reaction.currentLambda = lambda;
+    system.runningEnergies = system.computeTotalEnergies();
+    const double analytic = system.reactionDUdlambda(reaction);
+
+    const double delta = 1e-6;
+    MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, lambda + 0.5 * delta);
+    const double forward = system.computeTotalEnergies().potentialEnergy();
+    MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, lambda - 0.5 * delta);
+    const double backward = system.computeTotalEnergies().potentialEnergy();
+    const double finiteDifference = (forward - backward) / delta;
+
+    EXPECT_NEAR(analytic, finiteDifference, 1e-3) << "lambda " << lambda;
+
+    // restore the central state for the next iteration
+    MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, lambda);
+  }
+}
+
+// Thermodynamic integration for a serial Rx/CFC reaction: the active fractional side is coupled
+// directly at lambda and both side histograms share one dU/dlambda group.
+TEST(MC_REACTION_DRIFT, reaction_serial_dudlambda_finite_difference)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+
+  System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {30, 10});
+  ASSERT_TRUE(system.forceField.useCharge);
+  system.createReactionFractionalMolecules();
+
+  Reaction& reaction = system.reactions.list[0];
+  ASSERT_NE(reaction.lambda.dUdlambdaGroupId, 0);
+  ASSERT_EQ(reaction.lambda.dUdlambdaGroupId, reaction.lambdaProductSide.dUdlambdaGroupId);
+
+  for (const double lambda : {0.23, 0.77})
+  {
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, lambda);
+    reaction.currentLambda = lambda;
+    system.runningEnergies = system.computeTotalEnergies();
+    const double analytic = system.reactionDUdlambda(reaction);
+
+    const double delta = 1e-6;
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, lambda + 0.5 * delta);
+    const double forward = system.computeTotalEnergies().potentialEnergy();
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, lambda - 0.5 * delta);
+    const double backward = system.computeTotalEnergies().potentialEnergy();
+    const double finiteDifference = (forward - backward) / delta;
+
+    EXPECT_NEAR(analytic, finiteDifference, 1e-3) << "lambda " << lambda;
+
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, lambda);
+  }
+}

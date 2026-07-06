@@ -31,7 +31,7 @@ export struct Atom
   std::uint32_t moleculeId{0};    ///< Identifier for the molecule this atom belongs to.
   std::uint16_t type{0};          ///< Pseudo-atom type identifier of the atom.
   std::uint8_t componentId{0};    ///< Component identifier within the system.
-  std::uint8_t groupId : 4;       ///< Group identifier, defaults to false.
+  std::uint8_t groupId : 4;       ///< 1-based dU/dlambda group id (0 = not tracked).
   std::uint8_t isFractional : 4;  ///< Fractional or not, defaults to false.
 
   /**
@@ -104,10 +104,14 @@ export struct Atom
   // In CFCMC an atom is in exactly one of four states, characterized by the triple
   // (scalingVDW/scalingCoulomb, groupId, isFractional):
   //
-  //   integer              : scaling 1        groupId 0                isFractional false
-  //   fractional at lambda : scaling(lambda)  groupId computeDUdlambda isFractional true
-  //   inactive fractional  : scaling 0        groupId 0                isFractional true
-  //   switched off         : scaling 0        groupId 0                isFractional false
+  //   integer              : scaling 1        groupId 0                 isFractional false
+  //   fractional at lambda : scaling(lambda)  groupId dUdlambda-group   isFractional true
+  //   inactive fractional  : scaling 0        groupId 0                 isFractional true
+  //   switched off         : scaling 0        groupId 0                 isFractional false
+  //
+  // The groupId is the 1-based thermodynamic-integration group of the lambda coordinate this atom
+  // belongs to (up to maximumNumberOfDUDlambdaGroups groups can be tracked simultaneously);
+  // groupId 0 means the atom does not contribute to any dU/dlambda accumulator.
   //
   // The setScalingTo...() methods below are complete state transitions: they leave the atom in a
   // consistent state and no manual groupId/isFractional bookkeeping is needed at the call site.
@@ -145,16 +149,16 @@ export struct Atom
   /**
    * \brief Transition to the active-fractional state at the given lambda.
    *
-   * Applies the staged scaling schedule, tags the atom for dU/dlambda tracking when
-   * computeDUdlambda is set, and marks it fractional.
+   * Applies the staged scaling schedule, tags the atom with the 1-based dU/dlambda group of its
+   * lambda coordinate (0 disables tracking), and marks it fractional.
    *
    * \param lambda The coupling parameter.
-   * \param computeDUdlambda Whether this atom contributes to dU/dlambda.
+   * \param dUdlambdaGroupId The 1-based dU/dlambda group id (0 means no tracking).
    */
-  void setScalingToFractional(double lambda, bool computeDUdlambda)
+  void setScalingToFractional(double lambda, std::uint8_t dUdlambdaGroupId)
   {
     setScaling(lambda);
-    groupId = computeDUdlambda;
+    groupId = dUdlambdaGroupId;
     isFractional = true;
   }
 

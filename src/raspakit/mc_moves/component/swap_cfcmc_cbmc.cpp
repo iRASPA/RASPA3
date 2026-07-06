@@ -192,7 +192,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         system.interpolationGrids, system.externalFieldInterpolationGrid,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
         cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule, newLambda,
-        system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
+        system.components[selectedComponent].lambdaGC.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -378,7 +378,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double newLambda = deltaLambda * static_cast<double>(newBin);
 
       // Update the new fractional molecule with the new lambda
-      bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
+      std::uint8_t groupId = system.components[selectedComponent].lambdaGC.dUdlambdaGroupId;
       for (Atom& atom : newFractionalMolecule)
       {
         atom.setScalingToFractional(newLambda, groupId);
