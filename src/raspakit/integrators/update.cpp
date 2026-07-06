@@ -18,6 +18,7 @@ import forcefield;
 import interactions_ewald;
 import interactions_intermolecular;
 import interactions_framework_molecule;
+import interactions_internal;
 import integrators_cputime;
 import integrators_compute;
 import randomnumbers;
@@ -226,7 +227,8 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 }
 
 RunningEnergy Integrators::updateGradients(
-    std::span<Atom> moleculeAtomPositions, std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
+    std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+    std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
@@ -258,9 +260,16 @@ RunningEnergy Integrators::updateGradients(
       numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
   RunningEnergy internal_energies{};
-  for (const Component& component : components)
+  std::size_t molecule_index = 0;
+  for (std::size_t i = 0; i < components.size(); ++i)
   {
-    internal_energies += component.intraMolecularPotentials.computeInternalGradient(moleculeAtomPositions);
+    if (numberOfMoleculesPerComponent[i] > 0)
+    {
+      std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
+      internal_energies += Interactions::computeIntraMolecularGradient(components[i].intraMolecularPotentials,
+                                                                       span_molecules, moleculeAtomPositions);
+    }
+    molecule_index += numberOfMoleculesPerComponent[i];
   }
 
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();

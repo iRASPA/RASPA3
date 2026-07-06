@@ -7,6 +7,8 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import units;
 
 VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
                                            std::vector<double> vector_parameters, double scaling)
@@ -59,6 +61,49 @@ double VanDerWaalsPotential::calculateEnergy(const double3 &posA, const double3 
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 2>, double3x3> VanDerWaalsPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB) const
+{
+  double temp;
+  double U{}, DF{};
+  double3 du_dr, du_da, du_db;
+  double3x3 strain_derivative{};
+
+  double3 dr = posA - posB;
+  double rr = double3::dot(dr, dr);
+  double r = std::sqrt(rr);
+
+  switch (type)
+  {
+    case VanDerWaalsType::LennardJones:
+      temp = (parameters[1] / rr) * (parameters[1] / rr) * (parameters[1] / rr);
+      U = scaling * 4.0 * parameters[0] * (temp * (temp - 1.0));
+      if (r > 0.0)
+      {
+        DF = scaling * 24.0 * parameters[0] * (temp * (1.0 - 2.0 * temp)) / rr;
+      }
+      break;
+    default:
+      std::unreachable();
+  }
+
+  du_dr = DF * dr;
+  du_da = du_dr;
+  du_db = -du_dr;
+
+  strain_derivative.ax = dr.x * du_dr.x;
+  strain_derivative.bx = dr.y * du_dr.x;
+  strain_derivative.cx = dr.z * du_dr.x;
+  strain_derivative.ay = dr.x * du_dr.y;
+  strain_derivative.by = dr.y * du_dr.y;
+  strain_derivative.cy = dr.z * du_dr.y;
+  strain_derivative.az = dr.x * du_dr.z;
+  strain_derivative.bz = dr.y * du_dr.z;
+  strain_derivative.cz = dr.z * du_dr.z;
+
+  return {U, {du_da, du_db}, strain_derivative};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDerWaalsPotential &b)

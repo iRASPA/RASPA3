@@ -7,6 +7,8 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import units;
 
 BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type,
                                      std::vector<double> vector_parameters)
@@ -259,6 +261,121 @@ double BondBendPotential::calculateEnergy(const double3 &posA, const double3 &po
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 3>, double3x3> BondBendPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB, const double3 &posC) const
+{
+  double temp, temp2, exp_term, pow_rab8, pow_rbc8;
+  double gamma, gamsa, gamsc, pterm;
+  double3x3 strain_derivative{};
+
+  double3 Rab_vec = posA - posB;
+  double rab = std::sqrt(double3::dot(Rab_vec, Rab_vec));
+  double3 Rab = Rab_vec / rab;
+
+  double3 Rbc_vec = posC - posB;
+  double rbc = std::sqrt(double3::dot(Rbc_vec, Rbc_vec));
+  double3 Rbc = Rbc_vec / rbc;
+
+  double cos_theta = std::clamp(double3::dot(Rab, Rbc), -1.0, 1.0);
+  double theta = std::acos(cos_theta);
+  double sin_theta = std::max(1.0e-8, std::sqrt(1.0 - cos_theta * cos_theta));
+
+  switch (type)
+  {
+    case BondBendType::CVFF:
+    case BondBendType::CFF:
+      pterm = (theta - parameters[0]) * (parameters[1] * (rab - parameters[2]) + parameters[3] * (rbc - parameters[4]));
+      gamma = (parameters[1] * (rab - parameters[2]) + parameters[3] * (rbc - parameters[4])) / sin_theta;
+      gamsa = -parameters[1] * (theta - parameters[0]);
+      gamsc = -parameters[3] * (theta - parameters[0]);
+      break;
+    case BondBendType::MM3:
+      pterm = parameters[0] * ((rab - parameters[1]) + (rbc - parameters[2])) * Units::RadiansToDegrees *
+              (theta - parameters[3]);
+      gamma = parameters[0] * Units::RadiansToDegrees * ((rab - parameters[1]) + (rbc - parameters[2])) / sin_theta;
+      gamsa = -parameters[0] * Units::RadiansToDegrees * (theta - parameters[3]);
+      gamsc = gamsa;
+      break;
+    case BondBendType::TruncatedHarmonic:
+      temp = theta - parameters[1];
+      exp_term = std::exp(-(std::pow(rab, 8) + std::pow(rbc, 8)) / std::pow(parameters[2], 8));
+      pterm = 0.5 * parameters[0] * temp * temp * exp_term;
+      gamma = (parameters[0] * (theta - parameters[1]) * exp_term) / sin_theta;
+      gamsa = (8.0 * pterm / std::pow(parameters[2], 8)) * std::pow(rab, 7);
+      gamsc = (8.0 * pterm / std::pow(parameters[2], 8)) * std::pow(rbc, 7);
+      break;
+    case BondBendType::ScreenedHarmonic:
+      temp = theta - parameters[1];
+      exp_term = std::exp(-(rab / parameters[2] + rbc / parameters[3]));
+      pterm = 0.5 * parameters[0] * temp * temp * exp_term;
+      gamma = (parameters[0] * (theta - parameters[1]) * exp_term) / sin_theta;
+      gamsa = pterm / parameters[2];
+      gamsc = pterm / parameters[3];
+      break;
+    case BondBendType::ScreenedVessal:
+      temp = (parameters[1] - std::numbers::pi) * (parameters[1] - std::numbers::pi) -
+             (theta - std::numbers::pi) * (theta - std::numbers::pi);
+      exp_term = std::exp(-(rab / parameters[2] + rbc / parameters[3]));
+      pterm = (parameters[0] / (8.0 * (theta - std::numbers::pi) * (theta - std::numbers::pi))) * temp * temp *
+              exp_term;
+      gamma = (parameters[0] / (2.0 * (theta - std::numbers::pi) * (theta - std::numbers::pi)) *
+               ((parameters[1] - std::numbers::pi) * (parameters[1] - std::numbers::pi) -
+                (theta - std::numbers::pi) * (theta - std::numbers::pi)) *
+               (theta - std::numbers::pi) * exp_term) /
+              sin_theta;
+      gamsa = pterm / parameters[2];
+      gamsc = pterm / parameters[3];
+      break;
+    case BondBendType::TruncatedVessal:
+      temp = theta - parameters[1];
+      temp2 = theta + parameters[1] - 2.0 * std::numbers::pi;
+      pow_rab8 = std::pow(rab, 8);
+      pow_rbc8 = std::pow(rbc, 8);
+      exp_term = std::exp(-(pow_rab8 + pow_rbc8) / std::pow(parameters[3], 8));
+      pterm = parameters[0] *
+              (std::pow(theta, parameters[2]) * temp * temp * temp2 * temp2 -
+               0.5 * parameters[2] * std::pow(std::numbers::pi, parameters[2] - 1.0) * temp * temp *
+                   std::pow(std::numbers::pi - parameters[1], 3.0)) *
+              exp_term;
+      gamma = (parameters[0] *
+               (std::pow(theta, parameters[2] - 1.0) * (theta - parameters[1]) * (theta + parameters[1] - 2.0 * std::numbers::pi) *
+                    ((parameters[2] + 4.0) * (theta - parameters[1]) * (theta - parameters[1]) -
+                     2.0 * std::numbers::pi * (parameters[2] + 2.0) * theta + parameters[2] * parameters[1] *
+                                                                                      (2.0 * std::numbers::pi - parameters[1])) -
+                parameters[2] * std::pow(std::numbers::pi, parameters[2] - 1.0) * (theta - parameters[1]) *
+                    std::pow(std::numbers::pi - parameters[1], 3.0)) *
+               exp_term) /
+              sin_theta;
+      gamsa = (8.0 * pterm / std::pow(parameters[3], 8)) * std::pow(rab, 7);
+      gamsc = (8.0 * pterm / std::pow(parameters[3], 8)) * std::pow(rbc, 7);
+      break;
+    default:
+      std::unreachable();
+  }
+
+  double3 du_da = {
+      -(gamma * (Rbc.x - Rab.x * cos_theta) / rab + gamsa * Rab.x),
+      -(gamma * (Rbc.y - Rab.y * cos_theta) / rab + gamsa * Rab.y),
+      -(gamma * (Rbc.z - Rab.z * cos_theta) / rab + gamsa * Rab.z)};
+  double3 du_dc = {
+      -(gamma * (Rab.x - Rbc.x * cos_theta) / rbc + gamsc * Rbc.x),
+      -(gamma * (Rab.y - Rbc.y * cos_theta) / rbc + gamsc * Rbc.y),
+      -(gamma * (Rab.z - Rbc.z * cos_theta) / rbc + gamsc * Rbc.z)};
+  double3 du_db = -(du_da + du_dc);
+
+  strain_derivative.ax = rab * Rab_vec.x * du_da.x + rbc * Rbc_vec.x * du_dc.x;
+  strain_derivative.bx = rab * Rab_vec.y * du_da.x + rbc * Rbc_vec.y * du_dc.x;
+  strain_derivative.cx = rab * Rab_vec.z * du_da.x + rbc * Rbc_vec.z * du_dc.x;
+  strain_derivative.ay = rab * Rab_vec.x * du_da.y + rbc * Rbc_vec.x * du_dc.y;
+  strain_derivative.by = rab * Rab_vec.y * du_da.y + rbc * Rbc_vec.y * du_dc.y;
+  strain_derivative.cy = rab * Rab_vec.z * du_da.y + rbc * Rbc_vec.z * du_dc.y;
+  strain_derivative.az = rab * Rab_vec.x * du_da.z + rbc * Rbc_vec.x * du_dc.z;
+  strain_derivative.bz = rab * Rab_vec.y * du_da.z + rbc * Rbc_vec.y * du_dc.z;
+  strain_derivative.cz = rab * Rab_vec.z * du_da.z + rbc * Rbc_vec.z * du_dc.z;
+
+  return {pterm, {du_da, du_db, du_dc}, strain_derivative};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondBendPotential &b)

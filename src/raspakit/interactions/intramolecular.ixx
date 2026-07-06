@@ -46,4 +46,15 @@ std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
 std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
     const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
 
+RunningEnergy computeIntraMolecularGradient(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+                                              std::span<const Molecule> moleculeData,
+                                              std::span<Atom> moleculeAtoms) noexcept;
+
+std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const std::span<Atom> atoms);
+
+std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+
 };  // namespace Interactions

@@ -5,6 +5,7 @@ export module integrators_update;
 import std;
 
 import molecule;
+import molecule;
 import atom;
 import component;
 import running_energy;
@@ -112,7 +113,8 @@ void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, 
  * \return The total running energy computed from interactions.
  */
 RunningEnergy updateGradients(
-    std::span<Atom> moleculeAtomPositions, std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
+    std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+    std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,

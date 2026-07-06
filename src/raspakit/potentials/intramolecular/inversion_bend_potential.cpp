@@ -7,6 +7,8 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import units;
 
 InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identifiers, InversionBendType type,
                                                std::vector<double> vector_parameters)
@@ -198,6 +200,129 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
+{
+  double c, e, dot, chi, temp, temp2, dedcos, term;
+  double3 dccd_a, dccd_c, dccd_d, deed_a, deed_c, deed_d;
+  double3 du_da, du_db, du_dc, du_dd;
+  double3x3 strain_derivative{};
+
+  double3 Rab = posA - posB;
+  double rab2 = double3::dot(Rab, Rab);
+  double rrab = std::sqrt(rab2);
+
+  double3 Rbc = posC - posB;
+  double rbc2 = double3::dot(Rbc, Rbc);
+
+  double3 Rbd = posD - posB;
+  double rbd2 = double3::dot(Rbd, Rbd);
+
+  double3 Rac = posC - posA;
+  double rac2 = double3::dot(Rac, Rac);
+
+  double3 Rad = posD - posA;
+  double rad2 = double3::dot(Rad, Rad);
+
+  const bool use_acd_plane = type == InversionBendType::Harmonic2 || type == InversionBendType::HarmonicCosine2 ||
+                             type == InversionBendType::Planar2 || type == InversionBendType::MM3;
+
+  if (use_acd_plane)
+  {
+    dot = double3::dot(Rad, Rac);
+    c = rac2 * rad2 - dot * dot;
+  }
+  else
+  {
+    dot = double3::dot(Rbc, Rbd);
+    c = rbc2 * rbd2 - dot * dot;
+  }
+
+  e = double3::dot(Rab, double3::cross(Rbd, Rbc));
+  double cos_chi = std::sqrt(std::max(0.0, rab2 - e * e / c)) / rrab;
+  cos_chi = std::clamp(cos_chi, -1.0, 1.0);
+
+  double U{};
+  switch (type)
+  {
+    case InversionBendType::Harmonic:
+    case InversionBendType::Harmonic2:
+      chi = std::acos(cos_chi);
+      temp = chi - parameters[1];
+      U = 0.5 * parameters[0] * temp * temp;
+      dedcos = -std::copysign(1.0, e) * (parameters[0] * temp / std::sqrt(c * (rab2 - e * e / c)));
+      break;
+    case InversionBendType::HarmonicCosine:
+    case InversionBendType::HarmonicCosine2:
+      chi = std::acos(cos_chi);
+      temp = cos_chi - parameters[1];
+      U = 0.5 * parameters[0] * temp * temp;
+      dedcos = std::copysign(1.0, e) * parameters[0] * temp * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
+      break;
+    case InversionBendType::Planar:
+    case InversionBendType::Planar2:
+      chi = std::acos(cos_chi);
+      U = parameters[0] * (1.0 - cos_chi);
+      dedcos = -std::copysign(1.0, e) * parameters[0] * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
+      break;
+    case InversionBendType::MM3:
+      chi = std::acos(cos_chi);
+      temp = (chi - parameters[1]) * Units::RadiansToDegrees;
+      temp2 = temp * temp;
+      U = parameters[0] * temp2 *
+          (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+      dedcos = -std::copysign(1.0, e) * parameters[0] * temp * Units::RadiansToDegrees *
+               (2.0 - 3.0 * 0.014 * temp + 4.0 * 5.6e-5 * temp2 - 5.0 * 7.0e-7 * temp * temp2 +
+                6.0 * 2.2e-8 * temp2 * temp2) /
+               std::sqrt(c * (rab2 - e * e / c));
+      break;
+    default:
+      std::unreachable();
+  }
+
+  if (use_acd_plane)
+  {
+    term = e / c;
+    dccd_c = {(Rac.x * rad2 - Rad.x * dot) * term, (Rac.y * rad2 - Rad.y * dot) * term,
+              (Rac.z * rad2 - Rad.z * dot) * term};
+    dccd_d = {(Rad.x * rac2 - Rac.x * dot) * term, (Rad.y * rac2 - Rac.y * dot) * term,
+              (Rad.z * rac2 - Rac.z * dot) * term};
+    dccd_a = -(dccd_c + dccd_d);
+  }
+  else
+  {
+    term = e / c;
+    dccd_a = {0.0, 0.0, 0.0};
+    dccd_c = {(Rbc.x * rbd2 - Rbd.x * dot) * term, (Rbc.y * rbd2 - Rbd.y * dot) * term,
+              (Rbc.z * rbd2 - Rbd.z * dot) * term};
+    dccd_d = {(Rbd.x * rbc2 - Rbc.x * dot) * term, (Rbd.y * rbc2 - Rbc.y * dot) * term,
+              (Rbd.z * rbc2 - Rbc.z * dot) * term};
+  }
+
+  term = e / rab2;
+  deed_a = {Rbd.y * Rbc.z - Rbd.z * Rbc.y + Rab.x * term, Rbd.z * Rbc.x - Rbd.x * Rbc.z + Rab.y * term,
+            Rbd.x * Rbc.y - Rbd.y * Rbc.x + Rab.z * term};
+  deed_c = {Rab.y * Rbd.z - Rab.z * Rbd.y, Rab.z * Rbd.x - Rab.x * Rbd.z, Rab.x * Rbd.y - Rab.y * Rbd.x};
+  deed_d = {Rbc.y * Rab.z - Rbc.z * Rab.y, Rbc.z * Rab.x - Rbc.x * Rab.z, Rbc.x * Rab.y - Rbc.y * Rab.x};
+
+  du_da = dedcos * (dccd_a + deed_a);
+  du_dc = dedcos * (dccd_c + deed_c);
+  du_dd = dedcos * (dccd_d + deed_d);
+  du_db = -(du_da + du_dc + du_dd);
+
+  strain_derivative.ax = Rab.x * du_da.x + Rbc.x * du_dc.x + Rbd.x * du_dd.x;
+  strain_derivative.bx = Rab.y * du_da.x + Rbc.y * du_dc.x + Rbd.y * du_dd.x;
+  strain_derivative.cx = Rab.z * du_da.x + Rbc.z * du_dc.x + Rbd.z * du_dd.x;
+  strain_derivative.ay = Rab.x * du_da.y + Rbc.x * du_dc.y + Rbd.x * du_dd.y;
+  strain_derivative.by = Rab.y * du_da.y + Rbc.y * du_dc.y + Rbd.y * du_dd.y;
+  strain_derivative.cy = Rab.z * du_da.y + Rbc.z * du_dc.y + Rbd.z * du_dd.y;
+  strain_derivative.az = Rab.x * du_da.z + Rbc.x * du_dc.z + Rbd.x * du_dd.z;
+  strain_derivative.bz = Rab.y * du_da.z + Rbc.y * du_dc.z + Rbd.y * du_dd.z;
+  strain_derivative.cz = Rab.z * du_da.z + Rbc.z * du_dc.z + Rbd.z * du_dd.z;
+
+  return {U, {du_da, du_db, du_dc, du_dd}, strain_derivative};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InversionBendPotential &b)

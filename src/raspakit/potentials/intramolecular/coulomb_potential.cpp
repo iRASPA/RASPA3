@@ -8,6 +8,7 @@ import archive;
 import randomnumbers;
 import units;
 import double3;
+import double3x3;
 
 CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type,
                                    double chargeA, double chargeB, double scaling)
@@ -47,6 +48,47 @@ double CoulombPotential::calculateEnergy(const double3 &posA, const double3 &pos
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 2>, double3x3> CoulombPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB) const
+{
+  double3 dr = posA - posB;
+  double rr = double3::dot(dr, dr);
+  double r = std::sqrt(rr);
+
+  double U{};
+  double DF{};
+
+  switch (type)
+  {
+    case CoulombType::Coulomb:
+      U = scaling * Units::CoulombicConversionFactor * chargeA * chargeB / r;
+      if (r > 0.0)
+      {
+        DF = scaling * Units::CoulombicConversionFactor * chargeA * chargeB / (rr * r);
+      }
+      break;
+    default:
+      std::unreachable();
+  }
+
+  double3 du_dr = DF * dr;
+  double3 du_da = du_dr;
+  double3 du_db = -du_dr;
+
+  double3x3 strain_derivative{};
+  strain_derivative.ax = dr.x * du_dr.x;
+  strain_derivative.bx = dr.y * du_dr.x;
+  strain_derivative.cx = dr.z * du_dr.x;
+  strain_derivative.ay = dr.x * du_dr.y;
+  strain_derivative.by = dr.y * du_dr.y;
+  strain_derivative.cy = dr.z * du_dr.y;
+  strain_derivative.az = dr.x * du_dr.z;
+  strain_derivative.bz = dr.y * du_dr.z;
+  strain_derivative.cz = dr.z * du_dr.z;
+
+  return {U, {du_da, du_db}, strain_derivative};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const CoulombPotential &b)

@@ -53,7 +53,7 @@ RunningEnergy Integrators::velocityVerlet(
 
   // compute the gradient on all the atoms
   RunningEnergy runningEnergies = updateGradients(
-      moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      moleculeData, moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
       totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 
   // compute the gradients on the center of mass and the orientation

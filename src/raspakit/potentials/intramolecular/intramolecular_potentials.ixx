@@ -73,6 +73,8 @@ struct IntraMolecularPotentials
 
   RunningEnergy computeInternalGradient(const std::span<Atom> atoms) const;
 
+  std::pair<RunningEnergy, double3x3> computeInternalStrainDerivative(const std::span<Atom> atoms) const;
+
   Potentials::IntraMolecularPotentials filteredInteractions(std::size_t numberOfBeads,
                                                             const std::span<std::size_t> beadsAlreadyPlaced,
                                                             const std::span<std::size_t> beadsToBePlaced) const;

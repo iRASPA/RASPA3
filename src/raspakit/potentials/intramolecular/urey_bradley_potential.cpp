@@ -7,6 +7,9 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import bond_potential;
+import distance_potential_gradient_strain;
 
 UreyBradleyPotential::UreyBradleyPotential(std::array<std::size_t, 2> identifiers, UreyBradleyType type,
                                            std::vector<double> vector_parameters)
@@ -349,6 +352,13 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 2>, double3x3> UreyBradleyPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB) const
+{
+  const auto bond_type = static_cast<BondType>(std::to_underlying(type));
+  return Potentials::Internal::distancePotentialEnergyGradientStrain(bond_type, parameters, posA, posB, false);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const UreyBradleyPotential &b)

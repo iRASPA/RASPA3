@@ -7,6 +7,7 @@ import std;
 import archive;
 import atom;
 import chiral_center;
+import double3x3;
 import bond_potential;
 import urey_bradley_potential;
 import bend_potential;
@@ -482,12 +483,219 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraCoulombE
   return energies;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(
-    [[maybe_unused]] const std::span<Atom> atoms) const
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(const std::span<Atom> atoms) const
+{
+  return computeInternalStrainDerivative(atoms).first;
+}
+
+std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::computeInternalStrainDerivative(
+    const std::span<Atom> atoms) const
 {
   RunningEnergy energies{};
+  double3x3 strain_derivative{};
 
-  return energies;
+  for (const BondPotential &bond : bonds)
+  {
+    std::size_t A = bond.identifiers[0];
+    std::size_t B = bond.identifiers[1];
+    auto [energy, gradient, strain] = bond.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
+    energies.bond += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    strain_derivative += strain;
+  }
+
+  for (const UreyBradleyPotential &ureyBradley : ureyBradleys)
+  {
+    std::size_t A = ureyBradley.identifiers[0];
+    std::size_t B = ureyBradley.identifiers[1];
+    auto [energy, gradient, strain] =
+        ureyBradley.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
+    energies.ureyBradley += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    strain_derivative += strain;
+  }
+
+  for (const BendPotential &bend : bends)
+  {
+    std::size_t A = bend.identifiers[0];
+    std::size_t B = bend.identifiers[1];
+    std::size_t C = bend.identifiers[2];
+    auto [energy, gradient, strain] =
+        bend.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
+    energies.bend += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    strain_derivative += strain;
+  }
+
+  for (const TorsionPotential &torsion : torsions)
+  {
+    std::size_t A = torsion.identifiers[0];
+    std::size_t B = torsion.identifiers[1];
+    std::size_t C = torsion.identifiers[2];
+    std::size_t D = torsion.identifiers[3];
+    auto [energy, gradient, strain] = torsion.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position,
+                                                                            atoms[C].position, atoms[D].position);
+    energies.torsion += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const TorsionPotential &improperTorsion : improperTorsions)
+  {
+    std::size_t A = improperTorsion.identifiers[0];
+    std::size_t B = improperTorsion.identifiers[1];
+    std::size_t C = improperTorsion.identifiers[2];
+    std::size_t D = improperTorsion.identifiers[3];
+    auto [energy, gradient, strain] =
+        improperTorsion.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position,
+                                                      atoms[D].position);
+    energies.improperTorsion += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
+  {
+    std::size_t A = vanDerWaal.identifiers[0];
+    std::size_t B = vanDerWaal.identifiers[1];
+    auto [energy, gradient, strain] =
+        vanDerWaal.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
+    energies.intraVDW += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    strain_derivative += strain;
+  }
+
+  for (const CoulombPotential &coulomb : coulombs)
+  {
+    std::size_t A = coulomb.identifiers[0];
+    std::size_t B = coulomb.identifiers[1];
+    auto [energy, gradient, strain] = coulomb.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
+    energies.intraCoul += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    strain_derivative += strain;
+  }
+
+  for (const InversionBendPotential &inversionBend : inversionBends)
+  {
+    std::size_t A = inversionBend.identifiers[0];
+    std::size_t B = inversionBend.identifiers[1];
+    std::size_t C = inversionBend.identifiers[2];
+    std::size_t D = inversionBend.identifiers[3];
+    auto [energy, gradient, strain] = inversionBend.potentialEnergyGradientStrain(
+        atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.inversionBend += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
+  {
+    std::size_t A = outOfPlaneBend.identifiers[0];
+    std::size_t B = outOfPlaneBend.identifiers[1];
+    std::size_t C = outOfPlaneBend.identifiers[2];
+    std::size_t D = outOfPlaneBend.identifiers[3];
+    auto [energy, gradient, strain] = outOfPlaneBend.potentialEnergyGradientStrain(
+        atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.outOfPlaneBend += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const BondBondPotential &bondBond : bondBonds)
+  {
+    std::size_t A = bondBond.identifiers[0];
+    std::size_t B = bondBond.identifiers[1];
+    std::size_t C = bondBond.identifiers[2];
+    auto [energy, gradient, strain] =
+        bondBond.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
+    energies.bondBond += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    strain_derivative += strain;
+  }
+
+  for (const BondBendPotential &bondBend : bondBends)
+  {
+    std::size_t A = bondBend.identifiers[0];
+    std::size_t B = bondBend.identifiers[1];
+    std::size_t C = bondBend.identifiers[2];
+    auto [energy, gradient, strain] =
+        bondBend.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
+    energies.bondBend += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    strain_derivative += strain;
+  }
+
+  for (const BendBendPotential &bendBend : bendBends)
+  {
+    std::size_t A = bendBend.identifiers[0];
+    std::size_t B = bendBend.identifiers[1];
+    std::size_t C = bendBend.identifiers[2];
+    std::size_t D = bendBend.identifiers[3];
+    auto [energy, gradient, strain] = bendBend.potentialEnergyGradientStrain(
+        atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bendBend += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const BendTorsionPotential &bendTorsion : bendTorsions)
+  {
+    std::size_t A = bendTorsion.identifiers[0];
+    std::size_t B = bendTorsion.identifiers[1];
+    std::size_t C = bendTorsion.identifiers[2];
+    std::size_t D = bendTorsion.identifiers[3];
+    auto [energy, gradient, strain] = bendTorsion.potentialEnergyGradientStrain(
+        atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bendTorsion += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  for (const BondTorsionPotential &bondTorsion : bondTorsions)
+  {
+    std::size_t A = bondTorsion.identifiers[0];
+    std::size_t B = bondTorsion.identifiers[1];
+    std::size_t C = bondTorsion.identifiers[2];
+    std::size_t D = bondTorsion.identifiers[3];
+    auto [energy, gradient, strain] = bondTorsion.potentialEnergyGradientStrain(
+        atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bondTorsion += energy;
+    atoms[A].gradient += gradient[0];
+    atoms[B].gradient += gradient[1];
+    atoms[C].gradient += gradient[2];
+    atoms[D].gradient += gradient[3];
+    strain_derivative += strain;
+  }
+
+  return {energies, strain_derivative};
 }
 
 // compute the internal interactions that affect laying out the 'beadsToBePlaced'.

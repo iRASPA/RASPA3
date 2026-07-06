@@ -393,7 +393,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
   [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
-      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 

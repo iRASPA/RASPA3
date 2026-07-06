@@ -3081,7 +3081,7 @@ void System::precomputeTotalRigidEnergy() noexcept
 void System::precomputeTotalGradients() noexcept
 {
   runningEnergies = Integrators::updateGradients(
-      spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      moleculeData, spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
       totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 }
 
@@ -3278,6 +3278,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
       pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
+
+      pressureInfo.second += Interactions::computeIntraMolecularStrainDerivative(
+          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms())
+                                         .second;
     }
 
     molecule_index += numberOfMoleculesPerComponent[i];

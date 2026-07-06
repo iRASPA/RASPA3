@@ -8,6 +8,7 @@ import stringutils;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
 import units;
 
 /**
@@ -89,6 +90,9 @@ export struct VanDerWaalsPotential
       {"LENNARD_JONES", VanDerWaalsType::LennardJones}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
+
+  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                      const double3 &posB) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDerWaalsPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsPotential &b);
