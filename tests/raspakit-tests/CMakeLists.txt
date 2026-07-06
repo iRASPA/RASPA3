@@ -30,6 +30,9 @@ add_executable(unit_tests_raspakit
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp
+  janaf.cpp
+  nasa_polynomials.cpp
+  partition_function.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

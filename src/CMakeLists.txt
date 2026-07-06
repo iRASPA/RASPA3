@@ -29,7 +29,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/grid_opencl/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration_opencl/*.cpp
-  ${PROJECT_SOURCE_DIR}/utilitykit/*.cpp)
+  ${PROJECT_SOURCE_DIR}/raspakit/utilities/*.cpp)
 
 file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/foundationkit/*.ixx
@@ -60,7 +60,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/grid_opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration_opencl/*.ixx
-  ${PROJECT_SOURCE_DIR}/utilitykit/*.ixx)
+  ${PROJECT_SOURCE_DIR}/raspakit/utilities/*.ixx)
 
 add_library(${PROJECT_NAME}_base STATIC ${PCH_HEADER} ${PCH_SOURCE})
 set_target_properties(${PROJECT_NAME}_base PROPERTIES POSITION_INDEPENDENT_CODE TRUE)

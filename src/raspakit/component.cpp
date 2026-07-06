@@ -570,6 +570,10 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
   }
+  if (lnPartitionFunction != 0.0)
+  {
+    std::print(stream, "    Ln partition function:        {:10.4f} [ln(q/V) with q/V in A^-3]\n", lnPartitionFunction);
+  }
   for (std::size_t i = 0; i != atoms.size(); ++i)
   {
     std::size_t atomType = static_cast<std::size_t>(atoms[i].type);
@@ -826,6 +830,11 @@ nlohmann::json Component::jsonStatus() const
   if (fugacityCoefficient.has_value())
   {
     status["fugacityCoefficient"] = fugacityCoefficient.value();
+  }
+
+  if (lnPartitionFunction != 0.0)
+  {
+    status["lnPartitionFunction"] = lnPartitionFunction;
   }
 
   switch (shapeType)

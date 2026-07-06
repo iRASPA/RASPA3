@@ -23,6 +23,7 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 import reaction;
 import reactions;
+import partition_function;
 import transition_matrix;
 import property_conventional_rdf;
 import property_rdf;
@@ -343,6 +344,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       jsonNumberOfSystems, std::vector<std::vector<double3>>(jsonNumberOfComponents, std::vector<double3>()));
 
   std::vector<std::vector<Reaction>> jsonReactions(jsonNumberOfSystems);
+
+  // species names of components whose 'LnPartitionFunction' is computed from the embedded
+  // thermochemical databases; resolved per system once 'ExternalTemperature' is known
+  std::vector<std::optional<std::string>> jsonLnPartitionFunctionSpecies(jsonNumberOfComponents);
 
   // Parse component options
   if (parsed_data.contains("Components"))
@@ -851,6 +856,26 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           jsonComponents[i][componentId].lnPartitionFunction = lnPartitionFunction;
         }
       }
+      // "auto" computes ln(q/V) from the embedded thermochemical databases (NASA polynomials
+      // as the primary source, JANAF tables as fallback) using the component name; any other
+      // string is used as the species name for the lookup. The value is evaluated at the
+      // 'ExternalTemperature' of each system.
+      else if (item.contains("LnPartitionFunction") && item["LnPartitionFunction"].is_string())
+      {
+        std::string speciesName = item["LnPartitionFunction"].get<std::string>();
+        if (caseInSensStringCompare(speciesName, "auto"))
+        {
+          speciesName = jsonComponentName;
+        }
+        if (!PartitionFunction::contains(speciesName))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}' (id {}): no thermochemical data found for species "
+                          "'{}'; use a different species name or specify 'LnPartitionFunction' as a number\n",
+                          jsonComponentName, componentId, speciesName));
+        }
+        jsonLnPartitionFunctionSpecies[componentId] = speciesName;
+      }
 
       if (item.contains("LambdaBiasFileName") && item["LambdaBiasFileName"].is_array())
       {
@@ -1227,6 +1252,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ChemicalPotential"))
       {
         P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
+      }
+
+      // resolve 'LnPartitionFunction' entries given as species names at this system's temperature
+      for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
+      {
+        if (jsonLnPartitionFunctionSpecies[i].has_value())
+        {
+          jsonComponents[systemId][i].lnPartitionFunction =
+              PartitionFunction::logPartitionFunction(jsonLnPartitionFunctionSpecies[i].value(), T);
+        }
       }
 
       bool hasExternalField = false;
