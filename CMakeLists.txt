@@ -89,11 +89,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 include(FetchContent)
 
-FetchContent_Declare(voro++
-  GIT_REPOSITORY https://github.com/chr1shr/voro.git
-  EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(voro++)
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
 set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
@@ -113,7 +108,6 @@ function(raspa_target_link_libraries target_name)
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
-      voro++
       ${TORCH_LIBRARIES}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
@@ -126,7 +120,6 @@ function(raspa_target_link_libraries target_name)
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
-      voro++
       ${TORCH_LIBRARIES}
       OpenMP::OpenMP_CXX
       -Wl,--as-needed OpenCL::OpenCL
@@ -144,7 +137,6 @@ function(raspa_target_link_libraries target_name)
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       ${HDF5_LIBRARIES_TO_EXPORT}
-      voro++
       ${TORCH_LIBRARIES}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
@@ -155,7 +147,6 @@ function(raspa_target_link_libraries target_name)
       PUBLIC
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      voro++
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       ${TORCH_LIBRARIES}
       $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a

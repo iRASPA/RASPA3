@@ -33,6 +33,8 @@ add_executable(unit_tests_raspakit
   janaf.cpp
   nasa_polynomials.cpp
   partition_function.cpp
+  voronoi.cpp
+  voronoi_analysis.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)
