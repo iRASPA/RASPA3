@@ -26,6 +26,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import interactions_polarization;
 import mc_moves_move_types;
 
 double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
@@ -93,10 +94,44 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   component.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
 
-  // Compute the correction factor from Ewald and tail energy differences.
-  double correctionFactorEwald =
-      // std::exp(-system.beta * (energyFourierDifference.potentialEnergy()));
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
+  RunningEnergy polarizationDifference;
+  if (system.forceField.computePolarization)
+  {
+    std::vector<double3> newElectricField(newMolecule.size());
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(), newElectricField, {},
+                                                                  growData->atom, {});
+
+    Interactions::computeEwaldFourierElectricFieldDifference(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, newElectricField, {}, growData->atom, {});
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      std::vector<double3> electricFieldNeighborDelta(system.spanOfMoleculeAtoms().size(),
+                                                      double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricField,
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atom, {});
+
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, newElectricField,
+                                                                               {}, growData->atom, {});
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
+    else
+    {
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, newElectricField,
+                                                                               {}, growData->atom, {});
+    }
+  }
+
+  // Compute the correction factor from Ewald, tail and polarization energy differences.
+  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
+                                                          tailEnergyDifference.potentialEnergy() +
+                                                          polarizationDifference.potentialEnergy()));
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 

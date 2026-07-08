@@ -92,6 +92,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Update the constructed count for the move statistics
     component.mc_moves_statistics.addConstructed(move, 1);
 
+    std::vector<double3> electricFieldNeighborDelta;
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
@@ -106,9 +107,27 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
           system.totalEik, system.forceField, system.simulationBox, {}, old_electric_field, {}, old_molecule);
 
+      // Molecule-molecule polarization: field on the deleted molecule plus the change of the field on every
+      // remaining molecule (inter-molecular energy is already accounted for through CBMC, discard returned energy).
+      if (!system.forceField.omitInterPolarization)
+      {
+        electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+        [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, electricFieldNeighborDelta, std::span<double3>{},
+                old_electric_field, system.spanOfMoleculeAtoms(), {}, old_molecule);
+      }
+
       // Compute polarization energy difference
       polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, {},
                                                                                  old_electric_field, {}, old_molecule);
+
+      if (!system.forceField.omitInterPolarization)
+      {
+        polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+            system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+            system.spanOfMoleculeAtoms());
+      }
     }
 
     // Calculate the correction factor for Ewald summation
@@ -141,6 +160,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       component.mc_moves_statistics.addAccepted(move, 1);
 
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+
+      if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
       return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,

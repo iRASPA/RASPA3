@@ -151,6 +151,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
@@ -163,8 +164,34 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
         system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
         growData->atom, old_molecule);
 
+    // Molecule-molecule polarization: the old and new molecule occupy the same "slot", so the grown atoms are given
+    // the old molecule's id for the field-difference so that the transformed molecule's own atoms are skipped (only
+    // the field change on the surrounding molecules is retained). The inter-molecular energy is already accounted for
+    // through CBMC, so the returned energy is discarded.
+    if (!system.forceField.omitInterPolarization)
+    {
+      std::vector<Atom> newAtomsForField(growData->atom.begin(), growData->atom.end());
+      if (!old_molecule.empty())
+      {
+        for (Atom &atom : newAtomsForField) atom.moleculeId = old_molecule.front().moleculeId;
+      }
+
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, new_electric_field,
+              old_electric_field, system.spanOfMoleculeAtoms(), newAtomsForField, old_molecule);
+    }
+
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
         system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   const double correctionFactorEwald =
@@ -195,6 +222,16 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
                                            tailEnergyDifference + polarizationDifference;
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+
+    // Apply the field changes on the surrounding molecules before the old molecule is removed and the new one added.
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     std::vector<Atom> acceptedAtoms(growData->atom.begin(), growData->atom.end());
     for (Atom &atom : acceptedAtoms)

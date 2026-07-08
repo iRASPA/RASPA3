@@ -94,10 +94,25 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  // Compute molecule-molecule energy contribution
+  // Compute molecule-molecule energy contribution. When molecule-molecule polarization is enabled the same
+  // neighbor loop also produces (i) the inter-molecular electric field on the moved molecule (new and old) and
+  // (ii) the change of the electric field on every other atom, so that the neighbor polarization energy can be
+  // updated incrementally.
   time_begin = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+  std::vector<double3> electricFieldNeighborDelta;
+  std::optional<RunningEnergy> interMolecule;
+  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  {
+    electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+    interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+        system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
+        electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+  }
+  else
+  {
+    interMolecule = Interactions::computeInterMolecularEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+  }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
@@ -126,9 +141,17 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
-    // Compute polarization energy difference
+    // Polarization energy change of the moved molecule (framework + reciprocal [+ inter-molecular] field).
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
         system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+
+    // Polarization energy change of all other molecules whose field changed because this molecule moved.
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   // Calculate the total energy difference
@@ -151,10 +174,20 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;
 
-    // Update the electric field if polarization is computed
+    // Commit the electric field to the stored (committed) field so that the running polarization energy stays
+    // consistent with a full recomputation. In the framework-only model moving one molecule only changes its own
+    // field; with molecule-molecule polarization the neighbor field changes are applied as well.
     if (system.forceField.computePolarization)
     {
-      std::span<double3> electricFieldMolecule = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
+      if (!system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+      std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
       std::copy(electricFieldMoleculeNew.begin(), electricFieldMoleculeNew.end(), electricFieldMolecule.begin());
     }
 

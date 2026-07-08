@@ -47,6 +47,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     // Copy the current electric field if polarization is computed
     std::vector<double3> electricFieldMoleculeOld(molecule.size());
+    std::vector<double3> electricFieldNeighborDelta;
 
     // Compute external field energy contribution
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
@@ -70,9 +71,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     }
     if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-    // Compute molecule-molecule energy contribution
-    std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, molecule);
+    // Compute molecule-molecule energy contribution (and, for molecule-molecule polarization, the electric field
+    // on the deleted molecule as well as the change of the field on every remaining molecule)
+    std::optional<RunningEnergy> interMolecule;
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+          system.forceField, system.simulationBox, electricFieldNeighborDelta, std::span<double3>{},
+          electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), {}, molecule);
+    }
+    else
+    {
+      interMolecule = Interactions::computeInterMolecularEnergyDifference(
+          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, molecule);
+    }
     if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute Ewald Fourier energy difference
@@ -113,9 +126,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
-      // Compute polarization energy difference
+      // Polarization energy of the deleted molecule
       polarizationDifference = Interactions::computePolarizationEnergyDifference(
           system.forceField, {}, electricFieldMoleculeOld, {}, molecule);
+
+      // Polarization energy change of all remaining molecules whose field changes due to the deletion
+      if (!system.forceField.omitInterPolarization)
+      {
+        polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+            system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+            system.spanOfMoleculeAtoms());
+      }
     }
 
     // Get the total difference in energy
@@ -151,6 +172,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
       // Accept Ewald move and delete molecule from system
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+
+      // Apply the field changes on the remaining molecules before the deleted molecule (and its field) is removed.
+      if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
       return {-energyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};

@@ -884,3 +884,140 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
 
   return std::optional{energySum};
 }
+
+std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<double3> electricFieldNeighborDelta,
+    std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+{
+  double3 dr;
+  double rr;
+
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+  if (forceField.omitInterPolarization) return energySum;
+
+  bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+  const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  // it1 runs over every atom currently in the system (the "neighbors"); atoms belonging to the moved molecule are
+  // skipped through the moleculeId comparison so their neighbor-delta entries remain zero.
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+  {
+    std::size_t indexA = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it1));
+    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+    double3 posA = it1->position;
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
+    std::uint8_t groupIdA = it1->groupId;
+    double scalingVDWA = it1->scalingVDW;
+    double scalingCoulombA = it1->scalingCoulomb;
+    double chargeA = it1->charge;
+
+    for (std::span<const Atom>::iterator it2 = newatoms.begin(); it2 != newatoms.end(); ++it2)
+    {
+      std::size_t indexB = static_cast<std::size_t>(std::distance(newatoms.begin(), it2));
+      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
+
+      if (molA != molB)
+      {
+        double3 posB = it2->position;
+        std::size_t typeB = static_cast<std::size_t>(it2->type);
+        std::uint8_t groupIdB = it2->groupId;
+        double scalingVDWB = it2->scalingVDW;
+        double scalingCoulombB = it2->scalingCoulomb;
+        double chargeB = it2->charge;
+
+        dr = posA - posB;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        rr = double3::dot(dr, dr);
+
+        if (rr < cutOffMoleculeVDWSquared)
+        {
+          Potentials::EnergyFactor energyFactor =
+              Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          if (energyFactor.energy > overlapCriteria) return std::nullopt;
+
+          energySum.moleculeMoleculeVDW += energyFactor.energy;
+          energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
+        }
+        if (useCharge && rr < cutOffChargeSquared)
+        {
+          double r = std::sqrt(rr);
+          Potentials::EnergyFactor energyFactor =
+              Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+          energySum.moleculeMoleculeCharge += energyFactor.energy;
+          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
+
+          Potentials::GradientFactor gradient =
+              Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
+
+          // field on the neighbor atom due to the moved atom at its new position (added contribution)
+          Potentials::GradientFactor gradientFactorA = scalingCoulombB * chargeB * gradient;
+          electricFieldNeighborDelta[indexA] -= gradientFactorA.gradientFactor * dr;
+
+          // field on the moved atom (new position) due to the neighbor
+          Potentials::GradientFactor gradientFactorB = scalingCoulombA * chargeA * gradient;
+          electricFieldMoleculeNew[indexB] += gradientFactorB.gradientFactor * dr;
+        }
+      }
+    }
+
+    for (std::span<const Atom>::iterator it2 = oldatoms.begin(); it2 != oldatoms.end(); ++it2)
+    {
+      std::size_t indexB = static_cast<std::size_t>(std::distance(oldatoms.begin(), it2));
+      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
+
+      if (molA != molB)
+      {
+        double3 posB = it2->position;
+        std::size_t typeB = static_cast<std::size_t>(it2->type);
+        std::uint8_t groupIdB = it2->groupId;
+        double scalingVDWB = it2->scalingVDW;
+        double scalingCoulombB = it2->scalingCoulomb;
+        double chargeB = it2->charge;
+
+        dr = posA - posB;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        rr = double3::dot(dr, dr);
+
+        if (rr < cutOffMoleculeVDWSquared)
+        {
+          Potentials::EnergyFactor energyFactor =
+              Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+
+          energySum.moleculeMoleculeVDW -= energyFactor.energy;
+          energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -energyFactor.dUdlambda);
+        }
+        if (useCharge && rr < cutOffChargeSquared)
+        {
+          double r = std::sqrt(rr);
+          Potentials::EnergyFactor energyFactor =
+              Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+          energySum.moleculeMoleculeCharge -= energyFactor.energy;
+          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, -energyFactor.dUdlambda);
+
+          Potentials::GradientFactor gradient =
+              Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
+
+          // remove the contribution of the moved atom at its old position from the neighbor field
+          Potentials::GradientFactor gradientFactorA = scalingCoulombB * chargeB * gradient;
+          electricFieldNeighborDelta[indexA] += gradientFactorA.gradientFactor * dr;
+
+          // field on the moved atom (old position) due to the neighbor. NOTE: the "Old" buffer follows the same
+          // convention as computeFrameworkMoleculeEnergyDifference and energyDifferenceEwaldFourier, which store
+          // the negated old field (it is only ever used squared in computePolarizationEnergyDifference); use -=
+          // here as well so the framework, reciprocal and inter-molecular contributions stay sign-consistent.
+          Potentials::GradientFactor gradientFactorB = scalingCoulombA * chargeA * gradient;
+          electricFieldMoleculeOld[indexB] -= gradientFactorB.gradientFactor * dr;
+        }
+      }
+    }
+  }
+
+  return std::optional{energySum};
+}

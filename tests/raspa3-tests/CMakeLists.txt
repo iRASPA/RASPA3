@@ -6,6 +6,7 @@ add_executable(unit_tests_raspa3
   mc_muvt_grids_drift.cpp
   mc_npt_drift.cpp
   mc_nvt_drift.cpp
+  mc_nvt_polarization_drift.cpp
   mc_nvt_grids_drift.cpp
   mc_reaction_drift.cpp
   main.cpp)

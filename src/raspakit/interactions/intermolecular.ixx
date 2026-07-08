@@ -212,4 +212,28 @@ std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
     const ForceField &forceField, const SimulationBox &box, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes the inter-molecular energy and electric-field difference for a single-molecule move.
+ *
+ * Variant of \ref computeInterMolecularElectricFieldDifference tailored to polarization in translation/rotation
+ * moves. Besides the van der Waals and Coulombic energy difference (with overlap detection), it fills three
+ * separate electric-field buffers using bare Coulomb gradients between *different* molecules:
+ *   - \p electricFieldMoleculeNew : field on the moved molecule at its trial positions (accumulated, size = moved
+ *     molecule),
+ *   - \p electricFieldMoleculeOld : field on the moved molecule at its current positions (accumulated, size = moved
+ *     molecule),
+ *   - \p electricFieldNeighborDelta : the change (new - old) of the field on every other atom in the system caused
+ *     by moving the molecule (accumulated, size = all molecule atoms; entries of the moved molecule stay zero).
+ *
+ * Keeping the moved-molecule new and old contributions separate allows the polarization energy of the moved
+ * molecule to be evaluated directly, while the neighbor delta is combined with the stored field to obtain the
+ * neighbors' polarization-energy change incrementally.
+ *
+ * \return The inter-molecular energy difference, or std::nullopt if an overlap is detected.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularPolarizationElectricFieldDifference(
+    const ForceField &forceField, const SimulationBox &box, std::span<double3> electricFieldNeighborDelta,
+    std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 };  // namespace Interactions

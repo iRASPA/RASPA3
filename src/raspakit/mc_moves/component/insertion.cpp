@@ -50,6 +50,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
       component.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
 
   std::vector<double3> electricFieldMoleculeNew(trialMolecule.second.size());
+  std::vector<double3> electricFieldNeighborDelta;
 
   // Check if the trial molecule is inside blocked pockets; reject if true.
   if (system.insideBlockedPockets(component, trialMolecule.second))
@@ -92,9 +93,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   }
   if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  // compute molecule-molecule energy contribution
-  std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
+  // compute molecule-molecule energy contribution (and, for molecule-molecule polarization, the electric field on
+  // the inserted molecule as well as the change of the field on every existing molecule)
+  std::optional<RunningEnergy> interMolecule;
+  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  {
+    electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+    interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+        system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
+        std::span<double3>{}, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
+  }
+  else
+  {
+    interMolecule = Interactions::computeInterMolecularEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
+  }
   if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // Compute Ewald Fourier energy difference and update CPU time statistics.
@@ -133,9 +146,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
-    // Compute polarization energy difference
+    // Polarization energy of the inserted molecule
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
         system.forceField, electricFieldMoleculeNew, {}, trialMolecule.second, {});
+
+    // Polarization energy change of all existing molecules whose field changes due to the insertion
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   // get the total difference in energy
@@ -166,6 +187,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     component.mc_moves_statistics.addAccepted(move, 0);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+
+    // Apply the field changes on the existing molecules before the new molecule (and its field) is appended.
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
+
     system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second,
                                       electricFieldMoleculeNew);
 

@@ -145,6 +145,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
 
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
@@ -164,9 +165,42 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
         system.totalEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atom, {});
 
+    if (!system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+
+      // Field on the two inserted molecules from the existing molecules, and the reciprocal field change on those
+      // existing molecules (the inter-molecular energy is already captured by the CBMC growth).
+      [[maybe_unused]] std::optional<RunningEnergy> eA =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricFieldA,
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataA->atom, {});
+      [[maybe_unused]] std::optional<RunningEnergy> eB =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricFieldB,
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataB->atom, {});
+
+      // Mutual A-B field (their interaction energy is already included through CBMC growth of B in the presence of A).
+      std::vector<double3> fieldOnAfromB(growDataA->atom.size());
+      std::vector<double3> fieldOnBfromA(growDataB->atom.size());
+      [[maybe_unused]] std::optional<RunningEnergy> eAB =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, fieldOnAfromB, fieldOnBfromA, std::span<double3>{},
+              growDataA->atom, growDataB->atom, {});
+      for (std::size_t i = 0; i < newElectricFieldA.size(); ++i) newElectricFieldA[i] += fieldOnAfromB[i];
+      for (std::size_t i = 0; i < newElectricFieldB.size(); ++i) newElectricFieldB[i] += fieldOnBfromA[i];
+    }
+
     polarizationDifference =
         Interactions::computePolarizationEnergyDifference(system.forceField, newElectricFieldA, {}, growDataA->atom) +
         Interactions::computePolarizationEnergyDifference(system.forceField, newElectricFieldB, {}, growDataB->atom);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   const double correctionFactorEwald =
@@ -203,6 +237,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwapCBMC, 0);
+
+    // Commit the field changes on the existing molecules before appending the two new molecules (and their fields).
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, newMoleculeA,
@@ -345,6 +389,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
 
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
@@ -364,9 +409,42 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
         system.totalEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atom, {});
 
+    if (!system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+
+      // Field on the two inserted molecules from the existing molecules, and the reciprocal field change on those
+      // existing molecules (the inter-molecular energy is already captured by the CBMC growth).
+      [[maybe_unused]] std::optional<RunningEnergy> eA =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricFieldA,
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataA->atom, {});
+      [[maybe_unused]] std::optional<RunningEnergy> eB =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricFieldB,
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataB->atom, {});
+
+      // Mutual A-B field (their interaction energy is already included through CBMC growth of B in the presence of A).
+      std::vector<double3> fieldOnAfromB(growDataA->atom.size());
+      std::vector<double3> fieldOnBfromA(growDataB->atom.size());
+      [[maybe_unused]] std::optional<RunningEnergy> eAB =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, fieldOnAfromB, fieldOnBfromA, std::span<double3>{},
+              growDataA->atom, growDataB->atom, {});
+      for (std::size_t i = 0; i < newElectricFieldA.size(); ++i) newElectricFieldA[i] += fieldOnAfromB[i];
+      for (std::size_t i = 0; i < newElectricFieldB.size(); ++i) newElectricFieldB[i] += fieldOnBfromA[i];
+    }
+
     polarizationDifference =
         Interactions::computePolarizationEnergyDifference(system.forceField, newElectricFieldA, {}, growDataA->atom) +
         Interactions::computePolarizationEnergyDifference(system.forceField, newElectricFieldB, {}, growDataB->atom);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   const double correctionFactorEwald =
@@ -403,6 +481,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwap, 0);
+
+    // Commit the field changes on the existing molecules before appending the two new molecules (and their fields).
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, newMoleculeA,

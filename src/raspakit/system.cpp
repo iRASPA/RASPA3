@@ -3171,10 +3171,20 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeElectricField(
         forceField, simulationBox, moleculeElectricField, frameworkAtomPositions, moleculeAtomPositions);
 
-    RunningEnergy intermolecularEnergy =
-        Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
-    // RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-    //     forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    // When molecule-molecule polarization is requested, the inter-molecular electric field has to be added
+    // to the stored field so that the polarization energy is consistent with the incremental Monte-Carlo moves
+    // (which maintain the same field). Otherwise only the framework field contributes and the plain
+    // inter-molecular energy is sufficient.
+    RunningEnergy intermolecularEnergy;
+    if (forceField.omitInterPolarization)
+    {
+      intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+    }
+    else
+    {
+      intermolecularEnergy = Interactions::computeInterMolecularElectricField(
+          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    }
 
     RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
         forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);

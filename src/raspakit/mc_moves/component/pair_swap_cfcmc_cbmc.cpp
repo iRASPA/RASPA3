@@ -21,8 +21,21 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import interactions_polarization;
 import mc_moves_move_types;
 import scaling;
+
+static void accumulateInterMolecularFieldDelta(System& system, std::span<const Atom> newAtoms,
+                                               std::span<const Atom> oldAtoms,
+                                               std::span<double3> electricFieldNeighborDelta)
+{
+  std::vector<double3> fieldNew(newAtoms.size());
+  std::vector<double3> fieldOld(oldAtoms.size());
+  [[maybe_unused]] std::optional<RunningEnergy> energy =
+      Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+          system.forceField, system.simulationBox, electricFieldNeighborDelta, fieldNew, fieldOld,
+          system.spanOfMoleculeAtoms(), newAtoms, oldAtoms);
+}
 
 // The pair CB/CFCMC move handles two molecules (one of each linked component) that share a single
 // lambda. Energy differences are computed sequentially, one molecule at a time: the first molecule is
@@ -294,6 +307,79 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
+    std::vector<double3> electricFieldNeighborDelta;
+    std::vector<double3> grownElectricFieldA(growDataA->atom.size());
+    std::vector<double3> grownElectricFieldB(growDataB->atom.size());
+    RunningEnergy polarizationDifference;
+    if (system.forceField.computePolarization)
+    {
+      if (!system.forceField.omitInterPolarization)
+      {
+        electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+        accumulateInterMolecularFieldDelta(system, fractionalMoleculeA, oldFractionalMoleculeA,
+                                           electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, fractionalMoleculeB, oldFractionalMoleculeB,
+                                           electricFieldNeighborDelta);
+
+        Interactions::computeFrameworkMoleculeElectricFieldDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldA, {},
+            growDataA->atom, {});
+        Interactions::computeEwaldFourierElectricFieldDifference(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atom, {});
+
+        Interactions::computeFrameworkMoleculeElectricFieldDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldB, {},
+            growDataB->atom, {});
+        Interactions::computeEwaldFourierElectricFieldDifference(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atom, {});
+
+        accumulateInterMolecularFieldDelta(system, growDataA->atom, {}, electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, growDataB->atom, {}, electricFieldNeighborDelta);
+
+        std::vector<double3> fieldOnAfromB(growDataA->atom.size());
+        std::vector<double3> fieldOnBfromA(growDataB->atom.size());
+        [[maybe_unused]] std::optional<RunningEnergy> mutualEnergy =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, fieldOnAfromB, fieldOnBfromA, std::span<double3>{},
+                growDataA->atom, growDataB->atom, {});
+        for (std::size_t i = 0; i < grownElectricFieldA.size(); ++i) grownElectricFieldA[i] += fieldOnAfromB[i];
+        for (std::size_t i = 0; i < grownElectricFieldB.size(); ++i) grownElectricFieldB[i] += fieldOnBfromA[i];
+
+        polarizationDifference =
+            Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldA, {},
+                                                              growDataA->atom, {}) +
+            Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldB, {},
+                                                              growDataB->atom, {}) +
+            Interactions::computePolarizationEnergyNeighborDifference(
+                system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+                system.spanOfMoleculeAtoms());
+      }
+      else
+      {
+        Interactions::computeFrameworkMoleculeElectricFieldDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldA, {},
+            growDataA->atom, {});
+        Interactions::computeEwaldFourierElectricFieldDifference(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atom, {});
+
+        Interactions::computeFrameworkMoleculeElectricFieldDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldB, {},
+            growDataB->atom, {});
+        Interactions::computeEwaldFourierElectricFieldDifference(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atom, {});
+
+        polarizationDifference =
+            Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldA, {},
+                                                              growDataA->atom, {}) +
+            Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldB, {},
+                                                              growDataB->atom, {});
+      }
+    }
+
     // Ewald and tail-correction energy contributions of the grown pair
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
@@ -318,7 +404,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
     const double correctionFactorEwald = std::exp(
-        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy()));
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy() +
+                        polarizationDifference.potentialEnergy()));
 
     // Calculate acceptance probability
     const double preFactor =
@@ -346,21 +433,55 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       lambda.setCurrentBin(newBin);
 
-      // insert the new fractional molecule of component A and swap it into the fractional slot
-      system.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atom);
+      if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+
+      if (system.forceField.computePolarization)
+      {
+        system.insertMoleculePolarization(selectedComponent, growDataA->molecule, growDataA->atom,
+                                          grownElectricFieldA);
+      }
+      else
+      {
+        system.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atom);
+      }
       std::size_t lastMoleculeIdA = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
       std::span<Atom> lastMoleculeA = system.spanOfMolecule(selectedComponent, lastMoleculeIdA);
       fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
       std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), lastMoleculeA.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> fieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+        std::span<double3> fieldLastA = system.spanElectricFieldOld(selectedComponent, lastMoleculeIdA);
+        std::swap_ranges(fieldFractionalA.begin(), fieldFractionalA.end(), fieldLastA.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeIdA)]);
 
-      // insert the new fractional molecule of component B and swap it into the fractional slot
-      system.insertMolecule(componentB, growDataB->molecule, growDataB->atom);
+      if (system.forceField.computePolarization)
+      {
+        system.insertMoleculePolarization(componentB, growDataB->molecule, growDataB->atom, grownElectricFieldB);
+      }
+      else
+      {
+        system.insertMolecule(componentB, growDataB->molecule, growDataB->atom);
+      }
       std::size_t lastMoleculeIdB = system.numberOfMoleculesPerComponent[componentB] - 1;
       std::span<Atom> lastMoleculeB = system.spanOfMolecule(componentB, lastMoleculeIdB);
       fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
       std::swap_ranges(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), lastMoleculeB.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> fieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
+        std::span<double3> fieldLastB = system.spanElectricFieldOld(componentB, lastMoleculeIdB);
+        std::swap_ranges(fieldFractionalB.begin(), fieldFractionalB.end(), fieldLastB.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)],
                 system.moleculeData[system.moleculeIndexOfComponent(componentB, lastMoleculeIdB)]);
 
@@ -369,7 +490,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
       return {energyDifference + growDataA->energies + growDataB->energies + energyFourierDifference +
-                  tailEnergyDifferenceGrow,
+                  tailEnergyDifferenceGrow + polarizationDifference,
               double3(0.0, 1.0 - Pacc, Pacc)};
     }
 
@@ -466,9 +587,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
-
-    const double correctionFactorEwald = std::exp(
-        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy()));
 
     // deactivate the fractional pair
     for (Atom& atom : fractionalMoleculeA)
@@ -570,6 +688,55 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
+    std::vector<double3> electricFieldNeighborDelta;
+    RunningEnergy polarizationDifference;
+    if (system.forceField.computePolarization)
+    {
+      std::span<double3> storedFieldFractionalA =
+          system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+      std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
+      polarizationDifference =
+          Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldFractionalA, {},
+                                                            fractionalMoleculeA) +
+          Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldFractionalB, {},
+                                                            fractionalMoleculeB);
+
+      if (!system.forceField.omitInterPolarization)
+      {
+        electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+        accumulateInterMolecularFieldDelta(system, fractionalMoleculeA, oldFractionalMoleculeA,
+                                           electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, fractionalMoleculeB, oldFractionalMoleculeB,
+                                           electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, newFractionalMoleculeA, oldNewFractionalMoleculeA,
+                                           electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, newFractionalMoleculeB, oldNewFractionalMoleculeB,
+                                           electricFieldNeighborDelta);
+
+        std::span<Atom> allAtoms = system.spanOfMoleculeAtoms();
+        std::size_t offsetFractionalA =
+            static_cast<std::size_t>(fractionalMoleculeA.data() - allAtoms.data());
+        for (std::size_t k = 0; k < fractionalMoleculeA.size(); ++k)
+        {
+          electricFieldNeighborDelta[offsetFractionalA + k] = double3(0.0, 0.0, 0.0);
+        }
+        std::size_t offsetFractionalB =
+            static_cast<std::size_t>(fractionalMoleculeB.data() - allAtoms.data());
+        for (std::size_t k = 0; k < fractionalMoleculeB.size(); ++k)
+        {
+          electricFieldNeighborDelta[offsetFractionalB + k] = double3(0.0, 0.0, 0.0);
+        }
+
+        polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+            system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+            system.spanOfMoleculeAtoms());
+      }
+    }
+
+    const double correctionFactorEwald = std::exp(
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy() +
+                        polarizationDifference.potentialEnergy()));
+
     // Calculate acceptance probability
     const double preFactor =
         correctionFactorEwald * (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
@@ -595,8 +762,26 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       lambda.setCurrentBin(newBin);
 
+      if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+
       // component A: swap the new fractional molecule into the fractional slot and delete the old one
       std::swap_ranges(newFractionalMoleculeA.begin(), newFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> storedFieldFractionalA =
+            system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+        std::span<double3> storedFieldSelectedA =
+            system.spanElectricFieldOld(selectedComponent, selectedMoleculeA);
+        std::swap_ranges(storedFieldFractionalA.begin(), storedFieldFractionalA.end(),
+                         storedFieldSelectedA.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMoleculeA)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)]);
       system.deleteMolecule(selectedComponent, selectedMoleculeA, newFractionalMoleculeA);
@@ -605,6 +790,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
       newFractionalMoleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
       std::swap_ranges(newFractionalMoleculeB.begin(), newFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
+        std::span<double3> storedFieldSelectedB =
+            system.spanElectricFieldOld(componentB, selectedMoleculeB);
+        std::swap_ranges(storedFieldFractionalB.begin(), storedFieldFractionalB.end(),
+                         storedFieldSelectedB.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, selectedMoleculeB)],
                 system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)]);
       system.deleteMolecule(componentB, selectedMoleculeB, newFractionalMoleculeB);
@@ -612,7 +805,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
       return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceDataA.energies -
-                  retraceDataB.energies,
+                  retraceDataB.energies + polarizationDifference,
               double3(Pacc, 1.0 - Pacc, 0.0)};
     }
 
@@ -722,12 +915,34 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     componentA.mc_moves_statistics.addConstructed(move, 2);
 
+    std::vector<double3> electricFieldNeighborDelta;
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      accumulateInterMolecularFieldDelta(system, fractionalMoleculeA, oldFractionalMoleculeA,
+                                         electricFieldNeighborDelta);
+      accumulateInterMolecularFieldDelta(system, fractionalMoleculeB, oldFractionalMoleculeB,
+                                         electricFieldNeighborDelta);
+      energyDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
+
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
 
     if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       componentA.mc_moves_statistics.addAccepted(move, 2);
+
+      if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
 
       lambda.setCurrentBin(newBin);
 

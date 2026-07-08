@@ -140,6 +140,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
                                  (energyOld->potentialEnergy() - retraceData->energies.potentialEnergy())));
   }
 
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
@@ -152,9 +153,28 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
         system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
         growData->atom, old_molecule);
 
+    // Molecule-molecule polarization: add the inter-molecular field on the reinserted molecule and the change of
+    // the field on every other molecule (the inter-molecular energy is already accounted for through CBMC, so the
+    // returned energy is intentionally discarded here).
+    if (!system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, new_electric_field,
+              old_electric_field, system.spanOfMoleculeAtoms(), growData->atom, old_molecule);
+    }
+
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
         system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   // Compute correction factor from the Fourier energy difference.
@@ -170,6 +190,15 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
     std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());

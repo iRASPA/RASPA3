@@ -1937,7 +1937,6 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
   bool omitInterInteractions = forceField.omitInterInteractions;
-  bool omitInterPolarization = forceField.omitInterPolarization;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -2108,7 +2107,6 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
       for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
         std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
-        std::span<double3> electricField = std::span(&electricFieldMolecules[index], size);
         for (std::size_t i = 0; i != span.size(); i++)
         {
           double chargeA = span[i].charge;
@@ -2136,15 +2134,13 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
                 energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
               }
 
-              double temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
-                            std::exp(-(alpha * alpha * r * r)) / rr;
-              double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
-              double Bt1 = temp + Bt0 / rr;
-              if (!omitInterPolarization)
-              {
-                electricField[i] += scalingB * chargeB * Bt1 * dr;
-                electricField[j] -= scalingA * chargeA * Bt1 * dr;
-              }
+              // NOTE: the intra-molecular Ewald reciprocal-space exclusion does NOT contribute to the
+              // polarization electric field in this model. The reciprocal field is built solely from the
+              // (fixed) framework structure factor, so there is no intra-molecular reciprocal term to
+              // exclude. Adsorbate-adsorbate polarization is handled entirely in real space by
+              // computeInterMolecularElectricField / -Difference (different molecules only). Adding the
+              // Bt1 term here would make the stored field inconsistent with the incremental Monte-Carlo
+              // moves and introduce energy drift. The exclusion energy itself is still accounted for above.
             }
           }
         }

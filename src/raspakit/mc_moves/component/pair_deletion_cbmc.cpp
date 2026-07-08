@@ -21,6 +21,78 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
+// Polarization energy change when the pair (molecule A, molecule B) is removed. The two removed molecules lose their
+// own polarization energy (evaluated with their full stored field, which already contains the framework, reciprocal
+// and inter-molecular contributions) and, when inter-molecular polarization is active, the field on all remaining
+// molecules changes because A and B disappear. The resulting field change on the remaining molecules is returned in
+// \p electricFieldNeighborDelta so the caller can commit it on acceptance.
+static RunningEnergy pairDeletionPolarizationDifference(System& system, std::size_t selectedComponent,
+                                                        std::size_t selectedMolecule, std::size_t componentB,
+                                                        std::size_t selectedMoleculeB, std::span<Atom> moleculeA,
+                                                        std::span<Atom> moleculeB, std::span<const Atom> oldMoleculeA,
+                                                        std::span<const Atom> oldMoleculeB,
+                                                        std::vector<double3>& electricFieldNeighborDelta)
+{
+  RunningEnergy polarizationDifference;
+  if (!system.forceField.computePolarization) return polarizationDifference;
+
+  if (!system.forceField.omitInterPolarization)
+  {
+    std::span<double3> storedFieldA = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
+    std::span<double3> storedFieldB = system.spanElectricFieldOld(componentB, selectedMoleculeB);
+    polarizationDifference =
+        Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldA, {}, moleculeA) +
+        Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldB, {}, moleculeB);
+
+    electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+    std::vector<double3> removedFieldA(moleculeA.size());
+    std::vector<double3> removedFieldB(moleculeB.size());
+    [[maybe_unused]] std::optional<RunningEnergy> eA =
+        Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+            system.forceField, system.simulationBox, electricFieldNeighborDelta, std::span<double3>{}, removedFieldA,
+            system.spanOfMoleculeAtoms(), {}, oldMoleculeA);
+    [[maybe_unused]] std::optional<RunningEnergy> eB =
+        Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+            system.forceField, system.simulationBox, electricFieldNeighborDelta, std::span<double3>{}, removedFieldB,
+            system.spanOfMoleculeAtoms(), {}, oldMoleculeB);
+
+    // The two removed molecules must not appear in the neighbor sum; their own change is already accounted for above.
+    std::span<Atom> allAtoms = system.spanOfMoleculeAtoms();
+    std::size_t offsetA = static_cast<std::size_t>(moleculeA.data() - allAtoms.data());
+    for (std::size_t k = 0; k < moleculeA.size(); ++k) electricFieldNeighborDelta[offsetA + k] = double3(0.0, 0.0, 0.0);
+    std::size_t offsetB = static_cast<std::size_t>(moleculeB.data() - allAtoms.data());
+    for (std::size_t k = 0; k < moleculeB.size(); ++k) electricFieldNeighborDelta[offsetB + k] = double3(0.0, 0.0, 0.0);
+
+    polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+        system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+        system.spanOfMoleculeAtoms());
+  }
+  else
+  {
+    std::vector<double3> oldElectricFieldA = std::vector<double3>(moleculeA.size());
+    std::vector<double3> oldElectricFieldB = std::vector<double3>(moleculeB.size());
+
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldA,
+                                                                  {}, oldMoleculeA);
+    Interactions::computeEwaldFourierElectricFieldDifference(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldA, {}, oldMoleculeA);
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldB,
+                                                                  {}, oldMoleculeB);
+    Interactions::computeEwaldFourierElectricFieldDifference(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldB, {}, oldMoleculeB);
+
+    polarizationDifference =
+        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldA, {}, moleculeA) +
+        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldB, {}, moleculeB);
+  }
+
+  return polarizationDifference;
+}
+
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(RandomNumber& random, System& system,
                                                                                  std::size_t selectedComponent,
                                                                                  std::size_t selectedMolecule)
@@ -174,32 +246,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
 
-  RunningEnergy polarizationDifference;
-  if (system.forceField.computePolarization)
-  {
-    std::vector<double3> oldElectricFieldA = std::vector<double3>(moleculeA.size());
-    std::vector<double3> oldElectricFieldB = std::vector<double3>(moleculeB.size());
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldA,
-                                                                  {}, oldMoleculeA);
-
-    Interactions::computeEwaldFourierElectricFieldDifference(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldA, {}, oldMoleculeA);
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldB,
-                                                                  {}, oldMoleculeB);
-
-    Interactions::computeEwaldFourierElectricFieldDifference(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldB, {}, oldMoleculeB);
-
-    polarizationDifference =
-        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldA, {}, moleculeA) +
-        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldB, {}, moleculeB);
-  }
+  std::vector<double3> electricFieldNeighborDelta;
+  RunningEnergy polarizationDifference =
+      pairDeletionPolarizationDifference(system, selectedComponent, selectedMolecule, componentB, selectedMoleculeB,
+                                         moleculeA, moleculeB, oldMoleculeA, oldMoleculeB, electricFieldNeighborDelta);
 
   const double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
@@ -238,6 +288,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwapCBMC, 1);
+
+    // Commit the field changes on the remaining molecules (the removed molecules' own entries were zeroed).
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeB);
@@ -410,32 +470,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
 
-  RunningEnergy polarizationDifference;
-  if (system.forceField.computePolarization)
-  {
-    std::vector<double3> oldElectricFieldA = std::vector<double3>(moleculeA.size());
-    std::vector<double3> oldElectricFieldB = std::vector<double3>(moleculeB.size());
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldA,
-                                                                  {}, oldMoleculeA);
-
-    Interactions::computeEwaldFourierElectricFieldDifference(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldA, {}, oldMoleculeA);
-
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), {}, oldElectricFieldB,
-                                                                  {}, oldMoleculeB);
-
-    Interactions::computeEwaldFourierElectricFieldDifference(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldB, {}, oldMoleculeB);
-
-    polarizationDifference =
-        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldA, {}, moleculeA) +
-        Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldB, {}, moleculeB);
-  }
+  std::vector<double3> electricFieldNeighborDelta;
+  RunningEnergy polarizationDifference =
+      pairDeletionPolarizationDifference(system, selectedComponent, selectedMolecule, componentB, selectedMoleculeB,
+                                         moleculeA, moleculeB, oldMoleculeA, oldMoleculeB, electricFieldNeighborDelta);
 
   const double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
@@ -474,6 +512,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwap, 1);
+
+    // Commit the field changes on the remaining molecules (the removed molecules' own entries were zeroed).
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
                                                system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeB);
