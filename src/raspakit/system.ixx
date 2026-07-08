@@ -369,21 +369,26 @@ export struct System
                            std::size_t(0), [](const std::size_t &acc, const std::size_t &b) { return acc + b; });
   }
 
-  // The system weight is the sum of the weights of all the components
+  // The biased-to-Boltzmann reweighting factor of a configuration removes the bias of every
+  // fractional molecule simultaneously. The biasing weight functions W_i(lambda_i) add in the
+  // exponent, so the per-configuration weight is exp(-sum_i W_i) = prod_i exp(-W_i), i.e. the
+  // product of the individual lambda weights (each weight() already equals exp(-W_i)). This
+  // reduces to a single term when only one fractional molecule is present; inactive lambda
+  // coordinates contribute exp(0) = 1 and drop out of the product.
   // Improving the accuracy of computing chemical potentials in CFCMC simulations
   // A. Rahbari, R. Hens, D. Dubbeldam, and T.J.H Vlugt
   // Mol. Phys.  117(23-24), 3493-3508, 2019
   double weight() const
   {
     double w = std::transform_reduce(
-        components.begin(), components.end(), 0.0, [](const double &acc, const double &b) { return acc + b; },
-        [](const Component &component) { return component.lambdaGC.weight() + component.lambdaGibbs.weight(); });
+        components.begin(), components.end(), 1.0, [](const double &acc, const double &b) { return acc * b; },
+        [](const Component &component) { return component.lambdaGC.weight() * component.lambdaGibbs.weight(); });
 
     if (usesReactionConventionalCFCMC())
     {
       for (const Reaction &reaction : reactions.list)
       {
-        w += activeReactionLambdaHistogram(reaction).weight();
+        w *= activeReactionLambdaHistogram(reaction).weight();
       }
     }
 
