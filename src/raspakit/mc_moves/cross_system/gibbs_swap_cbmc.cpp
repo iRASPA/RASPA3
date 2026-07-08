@@ -62,8 +62,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)
-  componentA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growData) return std::nullopt;  // Insertion failed, return
 
@@ -81,8 +81,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation
-  componentA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference for system A
   time_begin = std::chrono::system_clock::now();
@@ -94,8 +94,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for tail energy computation
-  componentA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Compute correction factor for Ewald energies in system A
   double correctionFactorEwaldA =
@@ -120,8 +120,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC deletion (non-Ewald part)
-  componentA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // Compute Ewald Fourier energy difference for system B
   time_begin = std::chrono::system_clock::now();
@@ -131,8 +131,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation
-  componentA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference for system B
   time_begin = std::chrono::system_clock::now();
@@ -144,8 +144,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for tail energy computation
-  componentA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  systemA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  componentA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Update statistics for retraced molecules in system B
   componentB.mc_moves_statistics.addConstructed(move);

@@ -64,8 +64,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     time_end = std::chrono::system_clock::now();
 
     // Update the CPU time statistics for the non-Ewald part of the move
-    component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+    component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
     // Compute the energy difference in Fourier space due to the deletion
     time_begin = std::chrono::system_clock::now();
@@ -74,8 +74,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         system.simulationBox, {}, molecule, system.netCharge);
     time_end = std::chrono::system_clock::now();
     // Update the CPU time statistics for the Ewald part of the move
-    component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+    component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
     // Compute the tail energy difference due to the deletion
     time_begin = std::chrono::system_clock::now();
@@ -86,8 +86,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
     time_end = std::chrono::system_clock::now();
     // Update the CPU time statistics for the tail corrections
-    component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+    component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
     // Update the constructed count for the move statistics
     component.mc_moves_statistics.addConstructed(move, 1);

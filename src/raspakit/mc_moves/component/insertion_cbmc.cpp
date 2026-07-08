@@ -61,8 +61,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
-  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -87,8 +87,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the Ewald part of the move
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference due to long-range corrections
   time_begin = std::chrono::system_clock::now();
@@ -100,8 +100,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the tail corrections
-  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

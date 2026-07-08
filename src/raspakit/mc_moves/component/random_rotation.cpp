@@ -68,8 +68,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
       system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   // Compute framework-molecule energy contribution
@@ -90,8 +90,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   }
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
   // Compute molecule-molecule energy contribution
@@ -100,8 +100,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Compute Ewald energy contribution
@@ -122,8 +122,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   }
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

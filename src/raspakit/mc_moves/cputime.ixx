@@ -27,7 +27,24 @@ export struct MCMoveCpuTime
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
-  std::array<std::map<std::string, std::chrono::duration<double>>, std::to_underlying(Move::Types::Count)> timingMap;
+  /// Timings for a single move, indexed by Move::Timing (value-initialized to zero).
+  using TimingRow = std::array<std::chrono::duration<double>, std::to_underlying(Move::Timing::Count)>;
+
+  /// Per-move timings, indexed by Move::Types then Move::Timing.
+  std::array<TimingRow, std::to_underlying(Move::Types::Count)> timingMap{};
+
+  /// Lightweight views returned by operator[] so call sites can write cputime[move][Move::Timing::X].
+  struct TimingRowRef
+  {
+    TimingRow& row;
+    std::chrono::duration<double>& operator[](Move::Timing t) { return row[std::to_underlying(t)]; }
+    const std::chrono::duration<double>& operator[](Move::Timing t) const { return row[std::to_underlying(t)]; }
+  };
+  struct ConstTimingRowRef
+  {
+    const TimingRow& row;
+    const std::chrono::duration<double>& operator[](Move::Timing t) const { return row[std::to_underlying(t)]; }
+  };
 
   std::chrono::duration<double> propertySampling{0.0};            ///< Time spent on property sampling.
   std::chrono::duration<double> energyPressureComputation{0.0};   ///< Time spent on energy and pressure computations.
@@ -45,9 +62,9 @@ export struct MCMoveCpuTime
   inline std::chrono::duration<double> total() const
   {
     std::chrono::duration<double> total{0.0};
-    for (auto& moveTiming : timingMap)
+    for (const TimingRow& moveTiming : timingMap)
     {
-      total += moveTiming.at("Total");
+      total += moveTiming[std::to_underlying(Move::Timing::Total)];
     }
     total += propertySampling;
     total += energyPressureComputation;
@@ -107,7 +124,11 @@ export struct MCMoveCpuTime
 
   MCMoveCpuTime(const MCMoveCpuTime&) = default;
 
-  std::map<std::string, std::chrono::duration<double>>& operator[](const Move::Types& move) { return timingMap[std::to_underlying(move)]; }
+  TimingRowRef operator[](const Move::Types& move) { return TimingRowRef{timingMap[std::to_underlying(move)]}; }
+  ConstTimingRowRef operator[](const Move::Types& move) const
+  {
+    return ConstTimingRowRef{timingMap[std::to_underlying(move)]};
+  }
 
   inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
   {
@@ -124,9 +145,9 @@ export struct MCMoveCpuTime
 
     for (std::size_t i = 0; i != timingMap.size(); ++i)
     {
-      for (auto& [timingName, time] : timingMap[i])
+      for (std::size_t j = 0; j != timingMap[i].size(); ++j)
       {
-        time += b.timingMap[i].at(timingName);
+        timingMap[i][j] += b.timingMap[i][j];
       }
     }
     return *this;
@@ -145,9 +166,9 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
 
   for (std::size_t i = 0; i != m.timingMap.size(); ++i)
   {
-    for (auto& [timingName, time] : m.timingMap[i])
+    for (std::size_t j = 0; j != m.timingMap[i].size(); ++j)
     {
-      time = a.timingMap[i].at(timingName) + b.timingMap[i].at(timingName);
+      m.timingMap[i][j] = a.timingMap[i][j] + b.timingMap[i][j];
     }
   }
 

@@ -94,8 +94,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     time_end = std::chrono::system_clock::now();
 
     // Update CPU time statistics for Ewald calculations
-    component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+    component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
     // Compute tail correction energy difference
     time_begin = std::chrono::system_clock::now();
@@ -107,8 +107,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     time_end = std::chrono::system_clock::now();
 
     // Update CPU time statistics for tail corrections
-    component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+    component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)

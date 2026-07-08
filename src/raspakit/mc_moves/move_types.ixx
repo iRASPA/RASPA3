@@ -45,7 +45,67 @@ export struct Move
     Count = 34
   };
 
+  /**
+   * \brief Sub-timing labels recorded per Monte Carlo move.
+   *
+   * This is the union of all timing components any move can report. Each move stores a
+   * fixed-size array indexed by these labels; the subset that a given move actually uses
+   * is described by Move::timingKeys.
+   */
+  enum class Timing : std::size_t
+  {
+    Total = 0,
+    ExternalField,
+    Framework,
+    Molecule,
+    NonEwald,
+    Ewald,
+    Tail,
+    ExternalFieldMolecule,
+    FrameworkMolecule,
+    MoleculeMolecule,
+    InsertionTotal,
+    InsertionExternalField,
+    InsertionFramework,
+    InsertionMolecule,
+    InsertionNonEwald,
+    InsertionEwald,
+    InsertionTail,
+    DeletionTotal,
+    DeletionExternalField,
+    DeletionFramework,
+    DeletionMolecule,
+    DeletionNonEwald,
+    DeletionEwald,
+    DeletionTail,
+    LambdaExternalField,
+    LambdaFramework,
+    LambdaMolecule,
+    LambdaNonEwald,
+    LambdaEwald,
+    LambdaTail,
+    LambdaInterchangeNonEwald,
+    LambdaInterchangeEwald,
+    LambdaInterchangeTail,
+    LambdaChangeNonEwald,
+    LambdaChangeEwald,
+    LambdaChangeTail,
+    LambdaShuffleNonEwald,
+    LambdaShuffleEwald,
+    LambdaShuffleTail,
+    Energy,
+    Fugacity,
+    Integration,
+    Count
+  };
+
   static std::array<std::string, std::to_underlying(Move::Types::Count)> moveNames;
+
+  ///< Display names for each Timing label (index by std::to_underlying(Timing)).
+  static std::array<std::string, std::to_underlying(Move::Timing::Count)> timingNames;
+
+  ///< Ordered list of sub-timings (excluding Total) that each move reports; drives output.
+  static std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> timingKeys;
 };
 
 

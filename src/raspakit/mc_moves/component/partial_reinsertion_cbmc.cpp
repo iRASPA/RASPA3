@@ -78,8 +78,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the non-Ewald part of the move.
-  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // If growth was unsuccessful, exit the move.
   if (!growData) return std::nullopt;
@@ -110,8 +110,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the retracing step.
-  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // Compute the energy difference in the Fourier space due to Ewald summation.
   time_begin = std::chrono::system_clock::now();
@@ -121,8 +121,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   time_end = std::chrono::system_clock::now();
 
   // Record CPU time taken for the Ewald Fourier part of the move.
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   double correctionFactorDualCutOff = 1.0;
   std::optional<RunningEnergy> energyNew;

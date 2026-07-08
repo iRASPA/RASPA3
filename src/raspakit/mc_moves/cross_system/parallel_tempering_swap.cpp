@@ -48,7 +48,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
         Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomData);
     time_end = std::chrono::system_clock::now();
 
-    systemA.mc_moves_cputime[move]["Energy"] += (time_end - time_begin);
+    systemA.mc_moves_cputime[move][Move::Timing::Energy] += (time_end - time_begin);
 
     // Calculate acceptance probability when force fields differ
     acc = std::exp(-systemA.beta * (systemBHamiltonianA.potentialEnergy() - systemA.runningEnergies.potentialEnergy()) -
@@ -72,7 +72,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
                     systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
     time_end = std::chrono::system_clock::now();
 
-    systemA.mc_moves_cputime[move]["Fugacity"] += (time_end - time_begin);
+    systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
   }
 
   // Update constructed move counts for both systems

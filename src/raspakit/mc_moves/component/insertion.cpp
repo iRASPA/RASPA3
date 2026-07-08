@@ -115,8 +115,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   }
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference and update CPU time statistics.
   time_begin = std::chrono::system_clock::now();
@@ -127,8 +127,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
           system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
   time_end = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

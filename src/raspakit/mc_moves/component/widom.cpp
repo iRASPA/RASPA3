@@ -54,8 +54,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
   t2 = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
-  system.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
 
   // If molecule growth failed, terminate the move.
   if (!growData) return 0.0;
@@ -78,8 +78,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       system.simulationBox, newMolecule, {}, system.netCharge);
   t2 = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Ewald"] += (t2 - t1);
-  system.mc_moves_cputime[move]["Ewald"] += (t2 - t1);
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
 
   // Compute the tail corrections for the energy due to the new molecule.
   t1 = std::chrono::system_clock::now();
@@ -90,8 +90,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
   t2 = std::chrono::system_clock::now();
 
-  component.mc_moves_cputime[move]["Tail"] += (t2 - t1);
-  system.mc_moves_cputime[move]["Tail"] += (t2 - t1);
+  component.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
 
   // Compute the correction factor from Ewald and tail energy differences.
   double correctionFactorEwald =

@@ -73,8 +73,8 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
       system.spanOfMoleculeAtoms(), system.beta, newGrowType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
       trialMoleculeId, oldStartingBead, 1.0, false, false, skipBackgroundMolecule);
   std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
-  oldComponentData.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growData)
   {
@@ -102,16 +102,16 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
       system.spanOfMoleculeAtoms(), system.beta, oldGrowType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
       data.oldMoleculeAtoms);
   time_end = std::chrono::system_clock::now();
-  oldComponentData.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
   time_end = std::chrono::system_clock::now();
-  oldComponentData.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   data.tailEnergyDifference =
@@ -122,8 +122,8 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                                                                  system.spanOfFrameworkAtoms(), newMolecule,
                                                                  data.oldMoleculeAtoms);
   time_end = std::chrono::system_clock::now();
-  oldComponentData.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   if (system.forceField.computePolarization)
   {

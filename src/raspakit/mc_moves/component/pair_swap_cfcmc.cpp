@@ -158,8 +158,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceA.has_value())
     {
       restoreFractionalPair();
@@ -173,16 +173,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
     // (1b) fractional molecule of component B becomes integer
     for (Atom& atom : fractionalMoleculeB) atom.setScalingToInteger();
@@ -198,8 +198,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceB.has_value())
     {
       restoreFractionalPair();
@@ -213,16 +213,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
         groupChargeSum(fractionalMoleculeA));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
     // (2) insert a new fractional pair with lambda_new at random positions
     std::pair<Molecule, std::vector<Atom>> trialMoleculeA =
@@ -260,8 +260,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     std::optional<RunningEnergy> nonEwaldDifferenceTrialA =
         computeNonEwaldEnergyDifference(system, trialMoleculeA.second, {}, system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceTrialA.has_value())
     {
       restoreFractionalPair();
@@ -274,15 +274,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
         system.simulationBox, trialMoleculeA.second, {}, runningNetCharge);
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(trialMoleculeA.second, {});
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, trialMoleculeA.second, {}, system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
     // (2b) new fractional molecule of component B; the background includes the trial molecule of A
     std::vector<Atom> moleculeAtomDataWithTrialA(system.spanOfMoleculeAtoms().begin(),
@@ -294,8 +294,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     std::optional<RunningEnergy> nonEwaldDifferenceTrialB =
         computeNonEwaldEnergyDifference(system, trialMoleculeB.second, {}, moleculeAtomDataWithTrialA);
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceTrialB.has_value())
     {
       restoreFractionalPair();
@@ -308,14 +308,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
         system.simulationBox, trialMoleculeB.second, {}, runningNetCharge, groupChargeSum(trialMoleculeA.second));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, trialMoleculeB.second, {}, moleculeAtomDataWithTrialA);
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Insertion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
@@ -425,8 +425,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceA.has_value())
     {
       restoreMolecules();
@@ -440,16 +440,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
     // (1b) fractional molecule of component B is switched off (lambda=0)
     for (Atom& atom : fractionalMoleculeB)
@@ -462,8 +462,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceB.has_value())
     {
       restoreMolecules();
@@ -476,16 +476,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
         system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge);
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
     // (2a) the selected integer molecule of component A becomes fractional with lambda_new
     const std::uint8_t groupIdA = componentA.lambdaPairSwap.dUdlambdaGroupId;
@@ -505,8 +505,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, newFractionalMoleculeA, oldNewFractionalMoleculeA,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceNewA.has_value())
     {
       restoreMolecules();
@@ -520,16 +520,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, newFractionalMoleculeA, oldNewFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(newFractionalMoleculeA, oldNewFractionalMoleculeA);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, newFractionalMoleculeA, oldNewFractionalMoleculeA,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
     // (2b) the selected integer molecule of component B becomes fractional with lambda_new
     const std::uint8_t groupIdB = componentA.lambdaPairSwap.dUdlambdaGroupId;
@@ -549,8 +549,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, newFractionalMoleculeB, oldNewFractionalMoleculeB,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceNewB.has_value())
     {
       restoreMolecules();
@@ -564,15 +564,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, newFractionalMoleculeB, oldNewFractionalMoleculeB, runningNetCharge,
         groupChargeSum(newFractionalMoleculeA));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, newFractionalMoleculeB, oldNewFractionalMoleculeB,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Deletion-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
@@ -657,8 +657,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceA.has_value())
     {
       restoreFractionalPair();
@@ -672,16 +672,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
 
     // rescale the fractional molecule of component B
     for (Atom& atom : fractionalMoleculeB) atom.setScaling(newLambda);
@@ -697,8 +697,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                         system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-NonEwald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-NonEwald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
     if (!nonEwaldDifferenceB.has_value())
     {
       restoreFractionalPair();
@@ -712,15 +712,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
         groupChargeSum(fractionalMoleculeA));
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-Ewald"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-Ewald"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
     energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
                                                     system.spanOfMoleculeAtoms());
     time_end = std::chrono::system_clock::now();
-    componentA.mc_moves_cputime[move]["Lambda-Tail"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["Lambda-Tail"] += (time_end - time_begin);
+    componentA.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
 
     componentA.mc_moves_statistics.addConstructed(move, 2);
 

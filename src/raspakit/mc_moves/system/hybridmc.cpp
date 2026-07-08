@@ -76,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   }
   time_end = std::chrono::system_clock::now();
 
-  system.mc_moves_cputime[move]["Integration"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_statistics.addConstructed(move);
 
   double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());

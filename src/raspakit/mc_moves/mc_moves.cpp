@@ -1380,8 +1380,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
       }
       else
       {
@@ -1397,8 +1397,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
       }
       break;
     }
@@ -1416,8 +1416,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
       }
       else
       {
@@ -1434,8 +1434,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
       }
       break;
     }
@@ -1568,8 +1568,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       else
       {
@@ -1583,8 +1583,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSystem.runningEnergies += energy.value().second;
         }
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       break;
     }
@@ -1608,8 +1608,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       else if (selectedSecondSystem.containsTheFractionalMolecule)
       {
@@ -1627,8 +1627,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       break;
     }
@@ -1652,8 +1652,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       else
       {
@@ -1672,8 +1672,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       break;
     }
@@ -1693,10 +1693,10 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
 
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
-        selectedSecondSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+        selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       break;
     }
@@ -1832,10 +1832,10 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       moveType != Move::Types::GibbsConventionalCBCFCMC &&
       moveType != Move::Types::GibbsIdentityChangeCBMC)
   {
-    selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+    selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
     if (componentMoves.count(moveType))
     {
-      selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Total"] += (t2 - t1);
+      selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
     }
     else

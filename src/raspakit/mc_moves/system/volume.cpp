@@ -65,14 +65,14 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   RunningEnergy newTotalInterEnergy =
       Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new tail corrections
   RunningEnergy newTotalTailEnergy =
       Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new Ewald Fourier energy
@@ -81,7 +81,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
       system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
       system.netChargeFramework);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Sum up all energy contributions
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
@@ -187,13 +187,13 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   RunningEnergy newTotalInterEnergy =
       Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalTailEnergy =
       Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
@@ -201,7 +201,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
       system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
       system.netChargeFramework);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
