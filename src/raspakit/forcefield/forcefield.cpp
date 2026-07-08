@@ -694,6 +694,23 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
+  if (parsed_data.contains("UseRecoilGrowth"))
+  {
+    useRecoilGrowth = parsed_data["UseRecoilGrowth"].get<bool>();
+  }
+
+  if (parsed_data.contains("RecoilGrowthMaximumRecoilLength"))
+  {
+    recoilGrowthMaximumRecoilLength =
+        parsed_data.value("RecoilGrowthMaximumRecoilLength", recoilGrowthMaximumRecoilLength);
+  }
+
+  if (parsed_data.contains("RecoilGrowthNumberOfTrialDirections"))
+  {
+    recoilGrowthNumberOfTrialDirections =
+        parsed_data.value("RecoilGrowthNumberOfTrialDirections", recoilGrowthNumberOfTrialDirections);
+  }
+
   if (parsed_data.contains("UseExternalFieldGrid"))
   {
     useExternalFieldGrid = parsed_data.value("UseExternalFieldGrid", parsed_data["UseExternalFieldGrid"]);
@@ -1446,6 +1463,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.numberOfTrialMovesPerOpenBead;
   archive << f.minimumRosenbluthFactor;
 
+  archive << f.useRecoilGrowth;
+  archive << f.recoilGrowthMaximumRecoilLength;
+  archive << f.recoilGrowthNumberOfTrialDirections;
+
   archive << f.useDualCutOff;
   archive << f.omitInterInteractions;
 
@@ -1521,6 +1542,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.numberOfFirstBeadPositions;
   archive >> f.numberOfTrialMovesPerOpenBead;
   archive >> f.minimumRosenbluthFactor;
+
+  archive >> f.useRecoilGrowth;
+  archive >> f.recoilGrowthMaximumRecoilLength;
+  archive >> f.recoilGrowthNumberOfTrialDirections;
 
   archive >> f.useDualCutOff;
   archive >> f.omitInterInteractions;
@@ -1626,7 +1651,10 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "ExternalFieldRectangularChannelHeight",
     "ExternalPotentialEnergySurfaceOrigin",
     "WriteExternalFieldInterpolationGrid",
-    "InterpolationScheme"};
+    "InterpolationScheme",
+    "UseRecoilGrowth",
+    "RecoilGrowthMaximumRecoilLength",
+    "RecoilGrowthNumberOfTrialDirections"};
 
 void ForceField::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {

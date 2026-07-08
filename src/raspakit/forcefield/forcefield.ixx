@@ -123,6 +123,13 @@ export struct ForceField
   std::size_t numberOfTrialMovesPerOpenBead{ 150 };
   double minimumRosenbluthFactor{ 1e-150 };  ///< Minimum allowed Rosenbluth factor.
 
+  // Recoil-growth (RG) options for flexible molecules (Consta et al., Mol. Phys. 97, 1243 (1999)).
+  // When 'useRecoilGrowth' is true, the flexible-molecule chain is grown/retraced with the recoil
+  // growth algorithm instead of configurational-bias Monte Carlo (CBMC).
+  bool useRecoilGrowth{false};                        ///< Use recoil growth instead of CBMC for flexible molecules.
+  std::size_t recoilGrowthMaximumRecoilLength{2};     ///< Feeler / recoil length 'l' (look-ahead depth).
+  std::size_t recoilGrowthNumberOfTrialDirections{5}; ///< Number of trial directions 'k' per segment in RG.
+
   bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.
 
