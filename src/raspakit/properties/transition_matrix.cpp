@@ -196,7 +196,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.doTMMC;
   archive << m.useBias;
   archive << m.useTMBias;
-  archive << m.rejectOutofBound;
+  archive << m.rejectOutOfBound;
   archive << m.rezeroAfterInitialization;
 
 #if DEBUG_ARCHIVE
@@ -233,7 +233,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.doTMMC;
   archive >> m.useBias;
   archive >> m.useTMBias;
-  archive >> m.rejectOutofBound;
+  archive >> m.rejectOutOfBound;
   archive >> m.rezeroAfterInitialization;
 
 #if DEBUG_ARCHIVE

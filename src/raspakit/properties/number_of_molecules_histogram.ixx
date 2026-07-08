@@ -35,7 +35,7 @@ export struct PropertyNumberOfMoleculesHistogram
         range(range),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        bookKeepingEnergyHistogram(std::vector<std::vector<std::vector<double>>>(
+        bookKeepingMoleculeCountHistogram(std::vector<std::vector<std::vector<double>>>(
             numberOfBlocks, std::vector<std::vector<double>>(numberOfComponents, std::vector<double>(numberOfBins)))),
         numberOfCounts(numberOfBlocks)
   {
@@ -49,7 +49,7 @@ export struct PropertyNumberOfMoleculesHistogram
   std::pair<std::size_t, std::size_t> range;
   std::size_t sampleEvery;
   std::optional<std::size_t> writeEvery;
-  std::vector<std::vector<std::vector<double>>> bookKeepingEnergyHistogram;
+  std::vector<std::vector<std::vector<double>>> bookKeepingMoleculeCountHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
 

@@ -568,11 +568,11 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    std::size_t leastOccuringAtomType = index->first;
+    std::size_t leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
 
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
@@ -785,7 +785,7 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
 {
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
-  std::size_t leastOccuringAtomType{};
+  std::size_t leastOccurringAtomType{};
   if (allowPartialOccupancies)
   {
     reducedAtoms = atoms;
@@ -799,11 +799,11 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    leastOccuringAtomType = index->first;
+    leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
 
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
@@ -844,8 +844,8 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
       {
         std::copy_if(positionInNiggliCell.begin(), positionInNiggliCell.end(),
                      std::back_inserter(reducedPositionsInNiggliCell),
-                     [leastOccuringAtomType](const std::tuple<double3, std::size_t, double>& atom)
-                     { return std::get<1>(atom) == leastOccuringAtomType; });
+                     [leastOccurringAtomType](const std::tuple<double3, std::size_t, double>& atom)
+                     { return std::get<1>(atom) == leastOccurringAtomType; });
       }
 
       SKPointSymmetrySet latticeSymmetries = SKSymmetryCell::findLatticeSymmetry(NiggliUnitCell, symmetryPrecision);
@@ -921,11 +921,11 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    std::size_t leastOccuringAtomType = index->first;
+    std::size_t leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
                                                                          allowPartialOccupancies, symmetryPrecision);

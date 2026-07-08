@@ -62,7 +62,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     std::uint8_t groupIdB = it2->groupId;
     bool isFractional = static_cast<bool>(it2->isFractional);
     double scalingVDWB = it2->scalingVDW;
-    double scaleCoulombB = it2->scalingCoulomb;
+    double scalingCoulombB = it2->scalingCoulomb;
     double chargeB = it2->charge;
 
     if (interpolationGrids[typeB].has_value() && !isFractional)
@@ -81,7 +81,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
         std::size_t typeA = static_cast<std::size_t>(it1->type);
         std::uint8_t groupIdA = it1->groupId;
         double scalingVDWA = it1->scalingVDW;
-        double scaleCoulombA = it1->scalingCoulomb;
+        double scalingCoulombA = it1->scalingCoulomb;
         double chargeA = it1->charge;
 
         dr = posA - posB;
@@ -100,10 +100,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
         {
           double r = std::sqrt(rr);
           Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
-              forceField, scaleCoulombA, scaleCoulombB, r, chargeA, chargeB);
+              forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge += energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scaleCoulombA, scaleCoulombB, energyFactor.dUdlambda);
+          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
         }
       }
     }
@@ -400,7 +400,6 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     double3 posA = it1->position;
-    std::uint8_t groupIdA = it1->groupId;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
@@ -408,7 +407,6 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
     {
       std::size_t indexB = static_cast<std::size_t>(std::distance(newatoms.begin(), it2));
       double3 posB = it2->position;
-      std::uint8_t groupIdB = it2->groupId;
 
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -428,7 +426,6 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
     {
       std::size_t indexB = static_cast<std::size_t>(std::distance(oldatoms.begin(), it2));
       double3 posB = it2->position;
-      std::uint8_t groupIdB = it2->groupId;
 
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -599,7 +596,6 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     posA = it1->position;
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
     std::size_t typeA = static_cast<std::size_t>(it1->type);
-    std::uint8_t groupIdA = it1->groupId;
     bool isFractional = static_cast<bool>(it1->isFractional);
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
@@ -653,7 +649,6 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       {
         posB = it2->position;
         std::size_t typeB = static_cast<std::size_t>(it2->type);
-        std::uint8_t groupIdB = it2->groupId;
         double scalingVDWB = it2->scalingVDW;
         double scalingCoulombB = it2->scalingCoulomb;
         double chargeB = it2->charge;
@@ -848,7 +843,6 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionV
   {
     double3 posB = it1->position;
     std::size_t typeB = static_cast<std::size_t>(it1->type);
-    std::uint8_t groupIdB = it1->groupId;
     double scalingB = it1->scalingVDW;
 
     double3 dr = posA - posB;
@@ -897,7 +891,6 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionC
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     double3 posB = it1->position;
-    std::uint8_t groupIdB = it1->groupId;
     double scalingB = it1->scalingVDW;
     double chargeB = it1->charge;
 

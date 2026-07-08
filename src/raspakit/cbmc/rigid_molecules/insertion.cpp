@@ -59,18 +59,18 @@ import interpolation_energy_grid;
                                                   skipBackgroundMolecule);
   if (externalEnergies.empty()) return std::nullopt;
 
-  std::vector<double> logBoltmannFactors{};
-  std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
+  std::vector<double> logBoltzmannFactors{};
+  std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                  [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * std::get<2>(v).potentialEnergy(); });
 
-  std::size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
+  std::size_t selected = CBMC::selectTrialPosition(random, logBoltzmannFactors);
 
   auto [selected_molecule, selected_atoms, selected_running_energy] = externalEnergies[selected];
 
-  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                                            [](const double &acc, const double &logBoltmannFactor)
-                                            { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltzmannFactor)
+                                            { return acc + std::exp(logBoltzmannFactor); });
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 

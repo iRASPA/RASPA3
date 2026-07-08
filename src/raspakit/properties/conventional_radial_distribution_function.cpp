@@ -23,8 +23,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
   if (moleculeAtoms.empty()) return;
 
-  volume_cummulative += simulationBox.volume;
-  ++volume_count;
+  volumeCumulative += simulationBox.volume;
+  ++volumeSampleCount;
 
 
   for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
@@ -173,7 +173,7 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std:
 //  double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
 //                                           pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
 //                       static_cast<double>(totalNumberOfCounts);
-//  double normalization = (volume_cummulative / volume_count) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+//  double normalization = (volumeCumulative / volumeSampleCount) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
 //
 //  std::vector<double> x(numberOfBins);
 //  std::vector<double> y(numberOfBins);
@@ -207,7 +207,7 @@ PropertyConventionalRadialDistributionFunction::result() const
         double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
                                                  pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
                              static_cast<double>(totalNumberOfCounts);
-        double normalization = (volume_cummulative / volume_count) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+        double normalization = (volumeCumulative / volumeSampleCount) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
         
         std::vector<double> x(numberOfBins);
         std::vector<double> y(numberOfBins);

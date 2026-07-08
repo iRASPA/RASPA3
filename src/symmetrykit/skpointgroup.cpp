@@ -15,7 +15,7 @@ import skrotationmatrix;
 import skrotationaloccurancetable;
 import skpointsymmetryset;
 
-SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol,
+SKPointGroup::SKPointGroup(SKRotationalOccurrenceTable table, std::size_t number, std::string symbol,
                            std::string schoenflies, Holohedry holohedry, Laue laue, bool centrosymmetric,
                            bool enantiomorphic)
     : _table(table),
@@ -31,7 +31,7 @@ SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, std::size_t number,
 
 SKPointGroup::SKPointGroup(SKPointSymmetrySet pointSymmetry) : _table(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 {
-  SKRotationalOccuranceTable table = SKRotationalOccuranceTable(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  SKRotationalOccurrenceTable table = SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
   std::vector<SKRotationMatrix> rotationMatrices = pointSymmetry.rotations();
 
@@ -39,7 +39,7 @@ SKPointGroup::SKPointGroup(SKPointSymmetrySet pointSymmetry) : _table(0, 0, 0, 0
   {
     std::make_signed_t<std::size_t> type =
         static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(rotation.type());
-    table.occurance[type] += 1;
+    table.occurrence[type] += 1;
   }
 
   for (const SKPointGroup& pointGroup : pointGroupData)
@@ -420,69 +420,69 @@ std::map<Laue, std::size_t> SKPointGroup::rotationTypeForBasis = {
 };
 
 std::vector<SKPointGroup> SKPointGroup::pointGroupData =
-    std::vector<SKPointGroup>{SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, "", "",
+    std::vector<SKPointGroup>{SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, "", "",
                                            Holohedry::none, Laue::none, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 0, 0, 0, 0), 1, "1", "C1",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 0, 0, 0, 0), 1, "1", "C1",
                                            Holohedry::triclinic, Laue::laue_1, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 1, 1, 0, 0, 0, 0), 2, "-1", "Ci",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 1, 1, 0, 0, 0, 0), 2, "-1", "Ci",
                                            Holohedry::triclinic, Laue::laue_1, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 1, 0, 0, 0), 3, "2", "C2",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 1, 0, 0, 0), 3, "2", "C2",
                                            Holohedry::monoclinic, Laue::laue_2m, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 1, 0, 1, 0, 0, 0, 0), 4, "m", "Cs",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 1, 0, 1, 0, 0, 0, 0), 4, "m", "Cs",
                                            Holohedry::monoclinic, Laue::laue_2m, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 1, 1, 1, 1, 0, 0, 0), 5, "2/m", "C2h",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 1, 1, 1, 1, 0, 0, 0), 5, "2/m", "C2h",
                                            Holohedry::monoclinic, Laue::laue_2m, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 3, 0, 0, 0), 6, "222", "D2",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 3, 0, 0, 0), 6, "222", "D2",
                                            Holohedry::orthorhombic, Laue::laue_mmm, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 2, 0, 1, 1, 0, 0, 0), 7, "mm2", "C2v",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 2, 0, 1, 1, 0, 0, 0), 7, "mm2", "C2v",
                                            Holohedry::orthorhombic, Laue::laue_mmm, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 3, 1, 1, 3, 0, 0, 0), 8, "mmm", "D2h",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 3, 1, 1, 3, 0, 0, 0), 8, "mmm", "D2h",
                                            Holohedry::orthorhombic, Laue::laue_mmm, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 1, 0, 2, 0), 9, "4", "C4",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 1, 0, 2, 0), 9, "4", "C4",
                                            Holohedry::tetragonal, Laue::laue_4m, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 2, 0, 0, 0, 1, 1, 0, 0, 0), 10, "-4", "S4",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 2, 0, 0, 0, 1, 1, 0, 0, 0), 10, "-4", "S4",
                                            Holohedry::tetragonal, Laue::laue_4m, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 2, 0, 1, 1, 1, 1, 0, 2, 0), 11, "4/m", "C4h",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 2, 0, 1, 1, 1, 1, 0, 2, 0), 11, "4/m", "C4h",
                                            Holohedry::tetragonal, Laue::laue_4m, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 5, 0, 2, 0), 12, "422", "D4",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 5, 0, 2, 0), 12, "422", "D4",
                                            Holohedry::tetragonal, Laue::laue_4mmm, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 4, 0, 1, 1, 0, 2, 0), 13, "4mm", "C4v",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 4, 0, 1, 1, 0, 2, 0), 13, "4mm", "C4v",
                                            Holohedry::tetragonal, Laue::laue_4mmm, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 2, 0, 2, 0, 1, 3, 0, 0, 0), 14, "-42m", "D2d",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 2, 0, 2, 0, 1, 3, 0, 0, 0), 14, "-42m", "D2d",
                                            Holohedry::tetragonal, Laue::laue_4mmm, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 2, 0, 5, 1, 1, 5, 0, 2, 0), 15, "4/mmm", "D4h",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 2, 0, 5, 1, 1, 5, 0, 2, 0), 15, "4/mmm", "D4h",
                                            Holohedry::tetragonal, Laue::laue_4mmm, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 0, 2, 0, 0), 16, "3", "C3",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 0, 2, 0, 0), 16, "3", "C3",
                                            Holohedry::trigonal, Laue::laue_3, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 2, 0, 1, 1, 0, 2, 0, 0), 17, "-3", "C3i",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 2, 0, 1, 1, 0, 2, 0, 0), 17, "-3", "C3i",
                                            Holohedry::trigonal, Laue::laue_3, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 3, 2, 0, 0), 18, "32", "D3",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 3, 2, 0, 0), 18, "32", "D3",
                                            Holohedry::trigonal, Laue::laue_3m, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 3, 0, 1, 0, 2, 0, 0), 19, "3m", "C3v",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 3, 0, 1, 0, 2, 0, 0), 19, "3m", "C3v",
                                            Holohedry::trigonal, Laue::laue_3m, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 2, 3, 1, 1, 3, 2, 0, 0), 20, "-3m", "D3d",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 2, 3, 1, 1, 3, 2, 0, 0), 20, "-3m", "D3d",
                                            Holohedry::trigonal, Laue::laue_3m, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 1, 2, 0, 2), 21, "6", "C6",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 1, 2, 0, 2), 21, "6", "C6",
                                            Holohedry::hexagonal, Laue::laue_6m, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(2, 0, 0, 1, 0, 1, 0, 2, 0, 0), 22, "-6", "C3h",
+                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 0, 1, 0, 1, 0, 2, 0, 0), 22, "-6", "C3h",
                                            Holohedry::hexagonal, Laue::laue_6m, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(2, 0, 2, 1, 1, 1, 1, 2, 0, 2), 23, "6/m", "C6h",
+                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 2, 1, 1, 1, 1, 2, 0, 2), 23, "6/m", "C6h",
                                            Holohedry::hexagonal, Laue::laue_6m, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 7, 2, 0, 2), 24, "622", "D6",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 7, 2, 0, 2), 24, "622", "D6",
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 6, 0, 1, 1, 2, 0, 2), 25, "6mm", "C6v",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 6, 0, 1, 1, 2, 0, 2), 25, "6mm", "C6v",
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(2, 0, 0, 4, 0, 1, 3, 2, 0, 0), 26, "-6m", "D3h",
+                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 0, 4, 0, 1, 3, 2, 0, 0), 26, "-6m", "D3h",
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(2, 0, 2, 7, 1, 1, 7, 2, 0, 2), 27, "6/mmm", "D6h",
+                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 2, 7, 1, 1, 7, 2, 0, 2), 27, "6/mmm", "D6h",
                                            Holohedry::hexagonal, Laue::laue_6mmm, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 3, 8, 0, 0), 28, "23", "T",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 3, 8, 0, 0), 28, "23", "T",
                                            Holohedry::cubic, Laue::laue_m3, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 8, 3, 1, 1, 3, 8, 0, 0), 29, "m-3", "Th",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 8, 3, 1, 1, 3, 8, 0, 0), 29, "m-3", "Th",
                                            Holohedry::cubic, Laue::laue_m3, true, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 0, 0, 0, 0, 1, 9, 8, 6, 0), 30, "432", "O",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 0, 0, 1, 9, 8, 6, 0), 30, "432", "O",
                                            Holohedry::cubic, Laue::laue_m3m, false, true),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 6, 0, 6, 0, 1, 3, 8, 0, 0), 31, "-43m", "Td",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 6, 0, 6, 0, 1, 3, 8, 0, 0), 31, "-43m", "Td",
                                            Holohedry::cubic, Laue::laue_m3m, false, false),
-                              SKPointGroup(SKRotationalOccuranceTable(0, 6, 8, 9, 1, 1, 9, 8, 6, 0), 32, "m-3m", "Oh",
+                              SKPointGroup(SKRotationalOccurrenceTable(0, 6, 8, 9, 1, 1, 9, 8, 6, 0), 32, "m-3m", "Oh",
                                            Holohedry::cubic, Laue::laue_m3m, true, false)};

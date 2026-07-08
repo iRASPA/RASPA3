@@ -40,8 +40,8 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
         // compute the periodic boundary conditions with the single unit cell of the framework
         dr = framework->simulationBox.applyPeriodicBoundaryConditions(dr);
 
-        double lambda = atom.scalingVDW;
-        if (dr.length_squared() < lambda * radius_squared)
+        double vdwScaling = atom.scalingVDW;
+        if (dr.length_squared() < vdwScaling * radius_squared)
         {
           return true;
         }

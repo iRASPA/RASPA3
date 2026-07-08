@@ -36,8 +36,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(RandomNumber& random, 
     return std::nullopt;
   }
 
-  Reaction& reaction = *serialReactions[static_cast<std::size_t>(
-      random.uniform_integer(0, static_cast<int>(serialReactions.size()) - 1))];
+  Reaction& reaction = *serialReactions[random.uniform_integer(0uz, serialReactions.size() - 1uz)];
 
   return ReactionCommon::serialReactionMove(random, system, reaction, move, false);
 }

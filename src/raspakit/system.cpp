@@ -712,10 +712,10 @@ bool System::insideBlockedPockets(const Component& component, std::span<const At
           double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
       for (const Atom& atom : molecule_atoms)
       {
-        double lambda = atom.scalingVDW;
+        double vdwScaling = atom.scalingVDW;
         double3 dr = atom.position - pos;
         dr = framework->simulationBox.applyPeriodicBoundaryConditions(dr);
-        if (dr.length_squared() < lambda * radius_squared)
+        if (dr.length_squared() < vdwScaling * radius_squared)
         {
           return true;
         }
@@ -1087,7 +1087,8 @@ void System::determineFractionalComponents()
       reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
 }
 
-std::size_t System::indexOfGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+std::size_t System::indexOfGCFractionalMoleculesPerComponent_CFCMC(
+    [[maybe_unused]] std::size_t selectedComponent) const noexcept
 {
   return 0;
 }
@@ -1449,9 +1450,9 @@ void System::syncReactionLambdaBin(Reaction& reaction) noexcept
 {
   auto setBinFromLambda = [](PropertyLambdaProbabilityHistogram& histogram, double lambda)
   {
-    const std::size_t bin = std::min(
-        static_cast<std::size_t>(histogram.numberOfSamplePoints * lambda),
-        histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0);
+    const std::size_t bin =
+        std::min(static_cast<std::size_t>(static_cast<double>(histogram.numberOfSamplePoints) * lambda),
+                 histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0uz);
     histogram.setCurrentBin(bin);
   };
 
@@ -4564,6 +4565,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.containsTheFractionalMolecule;
 
   archive << s.atomData;
+  archive << s.atomDynamics;
   archive << s.moleculeData;
   archive << s.electricPotential;
   archive << s.electricField;
@@ -4622,6 +4624,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.writeLammpsData;
 
   archive << s.propertyNumberOfMoleculesEvolution;
+  archive << s.propertyVolumeEvolution;
+  archive << s.propertyConservedEnergyEvolution;
 
   //archive << s.columnNumberOfGridPoints;
   //archive << s.columnTotalPressure;
@@ -4640,6 +4644,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   //archive << s.maxIsothermTerms;
 
   archive << s.interpolationGrids;
+  archive << s.externalFieldInterpolationGrid;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -4714,6 +4719,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.containsTheFractionalMolecule;
 
   archive >> s.atomData;
+  archive >> s.atomDynamics;
   archive >> s.moleculeData;
   archive >> s.electricPotential;
   archive >> s.electricField;
@@ -4772,6 +4778,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.writeLammpsData;
 
   archive >> s.propertyNumberOfMoleculesEvolution;
+  archive >> s.propertyVolumeEvolution;
+  archive >> s.propertyConservedEnergyEvolution;
 
   //archive >> s.columnNumberOfGridPoints;
   //archive >> s.columnTotalPressure;
@@ -4790,6 +4798,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   //archive >> s.maxIsothermTerms;
 
   archive >> s.interpolationGrids;
+  archive >> s.externalFieldInterpolationGrid;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

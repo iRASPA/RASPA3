@@ -65,7 +65,7 @@ double Units::DynamicViscosityConversionFactor =
 double Units::EnthalpyConversionFactor =
     Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // J
 /// Conversion factor for polarizability from simulation units to SI units.
-double Units::PolarizilibityConversionFactor =
+double Units::PolarizabilityConversionFactor =
     Units::ChargeUnit * Units::ChargeUnit * Units::LengthUnit * Units::LengthUnit / Units::EnergyConversionFactor;
 /// Conversion factor for dielectric constant from simulation units to SI units.
 double Units::DielectricConstantConversionFactor =
@@ -173,7 +173,7 @@ void Units::setUnits(Units::System unit_system)
       DensityConversionFactor = MassConversionFactor / VolumeConversionFactor;                // kg/m^3
       DynamicViscosityConversionFactor = MassConversionFactor / LengthUnit / TimeUnit;        // kg.m^-1.s^-1
       EnthalpyConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // J
-      PolarizilibityConversionFactor = ChargeUnit * ChargeUnit * LengthUnit * LengthUnit / EnergyConversionFactor;
+      PolarizabilityConversionFactor = ChargeUnit * ChargeUnit * LengthUnit * LengthUnit / EnergyConversionFactor;
       DielectricConstantConversionFactor =
           TimeUnit * TimeUnit * ChargeUnit * ChargeUnit / (AtomicMassUnit * LengthUnit * LengthUnit * LengthUnit);
       CoulombicConversionFactor =
@@ -256,7 +256,7 @@ void Units::setUnits(Units::System unit_system)
       DensityConversionFactor = 1.0;
       DynamicViscosityConversionFactor = 1.0;
       EnthalpyConversionFactor = 1.0;
-      PolarizilibityConversionFactor = 1.0;
+      PolarizabilityConversionFactor = 1.0;
       DielectricConstantConversionFactor = 1.0;
       CoulombicConversionFactor = 1.0;
       DipoleMomentConversionFactor = 1.0;
@@ -357,7 +357,7 @@ std::string Units::printStatus()
                  unitOfDynamicViscosityString);
       std::print(stream, "Unit of enthalpy:                         {} [{}]\n", Units::EnthalpyConversionFactor,
                  unitOfEnthalpyString);
-      std::print(stream, "Unit of polarizability:                   {} [{}]\n", Units::PolarizilibityConversionFactor,
+      std::print(stream, "Unit of polarizability:                   {} [{}]\n", Units::PolarizabilityConversionFactor,
                  unitOfPolarizabilityString);
       std::print(stream, "Unit of Coulomb potential:                {} [{}]\n",
                  Units::CoulombicConversionFactor * Units::EnergyToKelvin, unitOfCoulombPotentialString);
@@ -421,7 +421,7 @@ std::string Units::printStatus()
                  unitOfDynamicViscosityString);
       std::print(stream, "Unit of enthalpy:                         {} [{}]\n", Units::EnthalpyConversionFactor,
                  unitOfEnthalpyString);
-      std::print(stream, "Unit of polarizability:                   {} [{}]\n", Units::PolarizilibityConversionFactor,
+      std::print(stream, "Unit of polarizability:                   {} [{}]\n", Units::PolarizabilityConversionFactor,
                  unitOfPolarizabilityString);
       std::print(stream, "Unit of Coulomb potential:                {} [{}]\n",
                  Units::CoulombicConversionFactor * Units::EnergyToKelvin, unitOfCoulombPotentialString);
@@ -467,7 +467,7 @@ nlohmann::json Units::jsonStatus()
   units["dipole moment [C.m]"] = Units::DipoleMomentConversionFactor;
   units["electric potential [V]"] = Units::ElectricPotentialConversionFactor;
   units["electric field [V]"] = Units::ElectricFieldConversionFactor;
-  units["polarizability [-]"] = Units::PolarizilibityConversionFactor;
+  units["polarizability [-]"] = Units::PolarizabilityConversionFactor;
   units["dielectric constant [s² C²/(kg m³)]"] = Units::DielectricConstantConversionFactor;
   units["Boltzmann constant [-]"] = Units::KB;
   units["energy [J]"] = Units::EnergyConversionFactor;

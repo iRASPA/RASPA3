@@ -404,9 +404,9 @@ ForceField::ForceField(std::string filePath)
   {
     if (parsed_data["CutOff"].is_string())
     {
-      std::string cutOffCoulombString = parsed_data["CutOff"].get<std::string>();
+      std::string cutOffString = parsed_data["CutOff"].get<std::string>();
 
-      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      if (caseInSensStringCompare(cutOffString, "auto"))
       {
         cutOffFrameworkVDWAutomatic = true;
         cutOffMoleculeVDWAutomatic = true;
@@ -448,9 +448,9 @@ ForceField::ForceField(std::string filePath)
   {
     if (parsed_data["CutOffFrameworkVDW"].is_string())
     {
-      std::string cutOffCoulombString = parsed_data["CutOffFrameworkVDW"].get<std::string>();
+      std::string cutOffFrameworkVdwString = parsed_data["CutOffFrameworkVDW"].get<std::string>();
 
-      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      if (caseInSensStringCompare(cutOffFrameworkVdwString, "auto"))
       {
         cutOffFrameworkVDWAutomatic = true;
       }

@@ -26,8 +26,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
 
   system.mc_moves_statistics.addTrial(move);
 
-  const std::size_t reactionIndex =
-      random.uniform_integer(0, static_cast<int>(system.reactions.list.size()) - 1);
+  const std::size_t reactionIndex = random.uniform_integer(0uz, system.reactions.list.size() - 1uz);
   Reaction& reaction = system.reactions.list[reactionIndex];
 
   const bool forward = random.uniform() < 0.5;

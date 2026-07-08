@@ -33,7 +33,7 @@ export enum class Laue : std::size_t {
 export class SKPointGroup
 {
  public:
-  SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol, std::string schoenflies,
+  SKPointGroup(SKRotationalOccurrenceTable table, std::size_t number, std::string symbol, std::string schoenflies,
                Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic);
   SKPointGroup(SKPointSymmetrySet set);
   static std::vector<SKPointGroup> pointGroupData;
@@ -53,10 +53,10 @@ export class SKPointGroup
 
   SKTransformationMatrix computeBasisCorrection(SKTransformationMatrix basis, Centring& centering);
   const std::optional<SKTransformationMatrix> constructAxes(std::vector<SKRotationMatrix> rotations) const;
-  const SKRotationalOccuranceTable& table() const { return _table; }
+  const SKRotationalOccurrenceTable& table() const { return _table; }
 
  private:
-  SKRotationalOccuranceTable _table;
+  SKRotationalOccurrenceTable _table;
   std::size_t _number = 0;
   std::string _symbol = "";
   std::string _schoenflies = "";

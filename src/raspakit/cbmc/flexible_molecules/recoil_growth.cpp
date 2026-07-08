@@ -198,14 +198,14 @@ std::vector<Trial> generateSegmentTrials(RandomNumber &random, const RecoilConte
                    std::back_inserter(logTorsionBoltzmannFactors),
                    [&](const std::pair<std::vector<Atom>, double> &v) { return -ctx.beta * std::get<1>(v); });
 
-    double rosen_bluth_weight_torsion =
+    double rosenbluth_weight_torsion =
         std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
                         [](const double &acc, const double &logFactor) { return acc + std::exp(logFactor); });
 
     std::size_t selected_torsion = CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
 
     trials.push_back({torsion_orientations[selected_torsion].first,
-                      rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)});
+                      rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)});
   }
 
   return trials;
@@ -338,7 +338,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
   std::size_t numberOfTorsionTrials = ctx.forceField.numberOfTorsionTrialDirections;
 
-  double rosen_bluth_weight_torsion = 0.0;
+  double rosenbluth_weight_torsion = 0.0;
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
     double random_angle = (j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
@@ -353,10 +353,10 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     }
 
     double torsion_energy = segment.intra.calculateTorsionEnergies(chain_atoms);
-    rosen_bluth_weight_torsion += std::exp(-ctx.beta * torsion_energy);
+    rosenbluth_weight_torsion += std::exp(-ctx.beta * torsion_energy);
   }
 
-  return rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrials);
+  return rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials);
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRecoilGrowthMoleculeChainInsertion(
@@ -400,7 +400,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   // never-tried directions are probed with fresh feelers. The '1/k' normalization is the paper's
   // 'k^(N-1)' denominator; it makes the ideal-gas weight identical to CBMC (there m_i == k), so
   // the same IdealGasRosenbluthWeight reference is valid for both schemes.
-  double chain_rosen_bluth_weight = 1.0;
+  double chain_rosenbluth_weight = 1.0;
   RunningEnergy chain_external_energies{};
 
   for (std::size_t seg = 0; seg != ctx.segments.size(); ++seg)
@@ -429,14 +429,14 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
       if (feelerExists(random, ctx, seg + 1, ctx.recoilLength - 1, feeler_atoms)) ++numberOfFeelers;
     }
 
-    chain_rosen_bluth_weight *= static_cast<double>(numberOfFeelers) /
+    chain_rosenbluth_weight *= static_cast<double>(numberOfFeelers) /
                                 static_cast<double>(ctx.numberOfTrialDirections) *
                                 std::exp(-ctx.beta * record.energy.potentialEnergy()) / record.openProbability *
                                 record.selected.torsionWeight;
 
     chain_external_energies += record.energy;
 
-    if (chain_rosen_bluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
+    if (chain_rosenbluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
@@ -454,7 +454,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   Molecule molecule = Molecule(com, simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
                                static_cast<std::size_t>(chain_atoms.front().componentId), chain_atoms.size());
 
-  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight,
+  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
                        0.0);
 }
 
@@ -486,7 +486,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
   std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
-  double chain_rosen_bluth_weight = 1.0;
+  double chain_rosenbluth_weight = 1.0;
   RunningEnergy chain_external_energies{};
 
   for (std::size_t seg = 0; seg != ctx.segments.size(); ++seg)
@@ -537,7 +537,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
     // Same (m_i / k) normalization as the growth routine so that insertion and deletion weights
     // are directly comparable (and comparable to the CBMC ideal-gas reference).
-    chain_rosen_bluth_weight *= static_cast<double>(numberOfFeelers) /
+    chain_rosenbluth_weight *= static_cast<double>(numberOfFeelers) /
                                 static_cast<double>(ctx.numberOfTrialDirections) *
                                 std::exp(-ctx.beta * selected_potential) / open_probability * torsion_weight;
 
@@ -546,5 +546,5 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(old_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
+  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0);
 }

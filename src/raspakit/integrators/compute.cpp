@@ -18,7 +18,7 @@ import running_energy;
 import integrators_cputime;
 
 double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
-                                                      std::span<const Atom> moleculeAtomPositions,
+                                                      [[maybe_unused]] std::span<const Atom> moleculeAtomPositions,
                                                       std::span<const AtomDynamics> moleculeDynamics,
                                                       const std::vector<Component>& components)
 {

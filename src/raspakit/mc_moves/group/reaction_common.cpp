@@ -715,8 +715,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
 [[nodiscard]] double serialBiasFactor(const PropertyLambdaProbabilityHistogram& histogram, double lambda) noexcept
 {
-  const std::size_t bin = std::min(static_cast<std::size_t>(histogram.numberOfSamplePoints * lambda),
-                                   histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0);
+  const std::size_t bin =
+      std::min(static_cast<std::size_t>(static_cast<double>(histogram.numberOfSamplePoints) * lambda),
+               histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0uz);
   return histogram.biasFactor[bin];
 }
 
@@ -776,8 +777,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     PropertyLambdaProbabilityHistogram& lambdaHistogram = activeSerialLambdaHistogram(reaction);
     const double lambdaOld = reaction.currentLambda;
     const std::size_t oldBin =
-        std::min(static_cast<std::size_t>(lambdaHistogram.numberOfSamplePoints * lambdaOld),
-                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0);
+        std::min(static_cast<std::size_t>(static_cast<double>(lambdaHistogram.numberOfSamplePoints) * lambdaOld),
+                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0uz);
     const double biasOld = lambdaHistogram.biasFactor[oldBin];
 
     const double maximumChange =
@@ -789,8 +790,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     }
 
     const std::size_t newBin =
-        std::min(static_cast<std::size_t>(lambdaHistogram.numberOfSamplePoints * lambdaNew),
-                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0);
+        std::min(static_cast<std::size_t>(static_cast<double>(lambdaHistogram.numberOfSamplePoints) * lambdaNew),
+                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0uz);
     const double biasNew = lambdaHistogram.biasFactor[newBin];
 
     // energy difference of rescaling the active fractional molecules to the new lambda

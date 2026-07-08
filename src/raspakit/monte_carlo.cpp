@@ -119,7 +119,7 @@ continueProductionStage:
 
 void MonteCarlo::setup()
 {
-  // this case only happens at first run, not when using a binart-restart file
+  // this case only happens at first run, not when using a binary-restart file
   for (std::size_t system_id{0}; System& system : systems)
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);

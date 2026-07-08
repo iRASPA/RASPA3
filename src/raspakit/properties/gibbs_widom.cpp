@@ -212,7 +212,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << w.numberOfBlocks;
   archive << w.bookKeepingRosenbluthWeight;
-  archive << w.bookKeepingFugacity;
+  archive << w.bookKeepingChemicalPotentialTerms;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -234,7 +234,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyGibb
 
   archive >> w.numberOfBlocks;
   archive >> w.bookKeepingRosenbluthWeight;
-  archive >> w.bookKeepingFugacity;
+  archive >> w.bookKeepingChemicalPotentialTerms;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

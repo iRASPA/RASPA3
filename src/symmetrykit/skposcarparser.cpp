@@ -169,7 +169,7 @@ double3x3 readLatticeVectors(Scanner& scanner, double scale)
     double* components[3][3] = {{&unitCell.ax, &unitCell.ay, &unitCell.az},
                                 {&unitCell.bx, &unitCell.by, &unitCell.bz},
                                 {&unitCell.cx, &unitCell.cy, &unitCell.cz}};
-    for (int componentIndex = 0; componentIndex < 3; ++componentIndex)
+    for (std::size_t componentIndex = 0; componentIndex < 3; ++componentIndex)
     {
       *components[vectorIndex][componentIndex] = scale * std::stod(tokens[componentIndex]);
     }

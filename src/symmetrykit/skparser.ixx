@@ -12,7 +12,7 @@ export class SKParser
  public:
   enum class ImportType : std::int64_t
   {
-    asSeperateProjects = 0,
+    asSeparateProjects = 0,
     asSingleProject = 1,
     asMovieFrames = 2
   };

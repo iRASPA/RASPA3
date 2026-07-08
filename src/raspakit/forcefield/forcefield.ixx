@@ -344,8 +344,8 @@ export struct ForceField
 inline int SGA_stricmp(const char *a, const char *b) const {
   int ca, cb;
   do {
-     ca = * (unsigned char *)a;
-     cb = * (unsigned char *)b;
+     ca = *reinterpret_cast<const unsigned char *>(a);
+     cb = *reinterpret_cast<const unsigned char *>(b);
      ca = std::tolower(std::toupper(ca));
      cb = std::tolower(std::toupper(cb));
      a++;

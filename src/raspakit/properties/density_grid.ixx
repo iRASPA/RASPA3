@@ -73,7 +73,7 @@ export struct PropertyDensityGrid
   std::size_t numberOfSamples{0};
 
   void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,
-              std::span<const Atom> moleculeAtoms, std::size_t currrentCycle);
+              std::span<const Atom> moleculeAtoms, std::size_t currentCycle);
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
                    const std::optional<Framework> &frameworkComponents, const std::vector<Component> &components,
                    std::size_t currentCycle);

@@ -15,18 +15,18 @@ int latticeVectorRank(const std::vector<int3>& vectors)
 {
   // Gaussian elimination on the vectors as rows; count non-zero pivot rows.
   std::array<std::array<double, 3>, 3> basis{};
-  int rank = 0;
+  std::size_t rank = 0;
   for (const int3& v : vectors)
   {
     std::array<double, 3> row{static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z)};
-    for (int r = 0; r < rank; ++r)
+    for (std::size_t r = 0; r < rank; ++r)
     {
       double dot = row[0] * basis[r][0] + row[1] * basis[r][1] + row[2] * basis[r][2];
       double norm = basis[r][0] * basis[r][0] + basis[r][1] * basis[r][1] + basis[r][2] * basis[r][2];
       if (norm > 0.0)
       {
         double factor = dot / norm;
-        for (int d = 0; d < 3; ++d) row[d] -= factor * basis[r][d];
+        for (std::size_t d = 0; d < 3; ++d) row[d] -= factor * basis[r][d];
       }
     }
     double residual = std::sqrt(row[0] * row[0] + row[1] * row[1] + row[2] * row[2]);
@@ -37,7 +37,7 @@ int latticeVectorRank(const std::vector<int3>& vectors)
       if (rank == 3) break;
     }
   }
-  return rank;
+  return static_cast<int>(rank);
 }
 
 ChannelAnalysis ChannelAnalysis::compute(const VoronoiNetwork& network, double probeRadius)

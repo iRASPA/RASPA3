@@ -15,7 +15,7 @@ import forcefield;
 import component;
 import velocity_autocorrelation_function_data;
 
-// Computes Velocity Auto-Correlation Function (VASF)
+// Computes Velocity Auto-Correlation Function (VACF)
 
 export struct PropertyVelocityAutoCorrelationFunction
 {
@@ -106,7 +106,7 @@ export struct PropertyVelocityAutoCorrelationFunction
   void writeOutput(std::size_t systemId, const std::vector<Component> &components, std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
-                                            const PropertyVelocityAutoCorrelationFunction &msd);
+                                            const PropertyVelocityAutoCorrelationFunction &vacf);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive,
-                                            PropertyVelocityAutoCorrelationFunction &msd);
+                                            PropertyVelocityAutoCorrelationFunction &vacf);
 };

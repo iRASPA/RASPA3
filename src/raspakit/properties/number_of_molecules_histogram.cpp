@@ -76,7 +76,7 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
     bin = std::make_signed_t<std::size_t>(numberOfIntegerMoleculesPerComponent[i]) - std::make_signed_t<std::size_t>(range.first);
     if (bin > 0 && bin < std::make_signed_t<std::size_t>(numberOfBins))
     {
-      bookKeepingEnergyHistogram[blockIndex][i][static_cast<std::size_t>(bin)] += weight;
+      bookKeepingMoleculeCountHistogram[blockIndex][i][static_cast<std::size_t>(bin)] += weight;
     }
   }
 
@@ -89,7 +89,7 @@ std::vector<double> PropertyNumberOfMoleculesHistogram::averagedProbabilityHisto
   std::vector<double> averagedData(numberOfBins);
 
   // loop over components, and operate on the vector of bins
-  std::transform(bookKeepingEnergyHistogram[blockIndex][component_id].begin(), bookKeepingEnergyHistogram[blockIndex][component_id].end(),
+  std::transform(bookKeepingMoleculeCountHistogram[blockIndex][component_id].begin(), bookKeepingMoleculeCountHistogram[blockIndex][component_id].end(),
                  averagedData.begin(),
                  [&](const double &sample) { return sample / numberOfCounts[blockIndex]; });
   return averagedData;
@@ -100,7 +100,7 @@ std::vector<double> PropertyNumberOfMoleculesHistogram::averagedProbabilityHisto
   std::vector<double> summedBlocks(numberOfBins);
   for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
-    std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex][component_id].begin(),
+    std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingMoleculeCountHistogram[blockIndex][component_id].begin(),
                    summedBlocks.begin(),
                    [](const double &a, const double &b) { return a + b; });
   }
@@ -218,7 +218,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << hist.range;
   archive << hist.sampleEvery;
   archive << hist.writeEvery;
-  archive << hist.bookKeepingEnergyHistogram;
+  archive << hist.bookKeepingMoleculeCountHistogram;
   archive << hist.numberOfCounts;
   archive << hist.totalNumberOfCounts;
 
@@ -246,7 +246,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyNumb
   archive >> hist.range;
   archive >> hist.sampleEvery;
   archive >> hist.writeEvery;
-  archive >> hist.bookKeepingEnergyHistogram;
+  archive >> hist.bookKeepingMoleculeCountHistogram;
   archive >> hist.numberOfCounts;
   archive >> hist.totalNumberOfCounts;
 

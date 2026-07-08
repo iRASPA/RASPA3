@@ -42,7 +42,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
       [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
+      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
       [[maybe_unused]] double3 posA = it1->position;
 
@@ -230,7 +230,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
+      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
 
       // Fill in the energy based on the atom properties and the fractional position 's'
@@ -389,7 +389,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
+      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
       [[maybe_unused]] double3 posA = it1->position;
       [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();

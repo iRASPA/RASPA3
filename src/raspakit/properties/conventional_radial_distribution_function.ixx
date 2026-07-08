@@ -67,8 +67,8 @@ export struct PropertyConventionalRadialDistributionFunction
   std::size_t totalNumberOfCounts;
   std::vector<std::size_t> numberOfCounts;
   std::vector<std::size_t> pairCount;
-  double volume_cummulative{};
-  double volume_count{};
+  double volumeCumulative{};
+  double volumeSampleCount{};
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
               std::size_t currentCycle, std::size_t block);

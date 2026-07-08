@@ -355,7 +355,7 @@ SKVoronoiCell SKVoronoi::computeCell(std::size_t siteIndex) const
   // arbitrary images are enumerated without a preset range. Every bin in shell k has all
   // of its sites at Cartesian distance at least (k-1)·(minimum bin width) from the site,
   // so the walk can stop once that bound exceeds the search radius above.
-  auto binAndImage = [this](int coordinate, int gridExtent) -> std::pair<int, int>
+  auto binAndImage = [](int coordinate, int gridExtent) -> std::pair<int, int>
   {
     int image = (coordinate >= 0) ? coordinate / gridExtent : -((-coordinate + gridExtent - 1) / gridExtent);
     return {coordinate - image * gridExtent, image};

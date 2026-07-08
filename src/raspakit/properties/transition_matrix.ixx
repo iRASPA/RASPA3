@@ -39,7 +39,7 @@ export struct TransitionMatrix
   bool doTMMC = {false};                     ///< Flag indicating whether to perform TMMC simulation.
   bool useBias = {false};                    ///< Flag indicating whether to use bias for changing macrostates.
   bool useTMBias = {true};                   ///< Flag indicating whether to use Transition Matrix bias.
-  bool rejectOutofBound = {true};            ///< Flag indicating whether to reject moves outside macrostate bounds.
+  bool rejectOutOfBound = {true};            ///< Flag indicating whether to reject moves outside macrostate bounds.
   bool rezeroAfterInitialization = {false};  ///< Flag indicating whether to reset statistics after initialization.
 
   /**

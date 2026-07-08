@@ -36,7 +36,7 @@ std::size_t lambdaBinFromValue(const PropertyLambdaProbabilityHistogram& lambda,
   {
     return 0;
   }
-  std::size_t bin = static_cast<std::size_t>(lambda.numberOfSamplePoints * lambdaValue);
+  std::size_t bin = static_cast<std::size_t>(static_cast<double>(lambda.numberOfSamplePoints) * lambdaValue);
   if (bin == lambda.numberOfSamplePoints)
   {
     --bin;

@@ -84,7 +84,7 @@ export struct Component
 
   enum class Chirality : std::size_t
   {
-    NoCharility = 0,
+    NoChirality = 0,
     S_Chiral = 1,
     R_Chiral = 2
   };

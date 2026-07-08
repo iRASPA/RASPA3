@@ -1045,7 +1045,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_whole_molecule_single
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1079,7 +1079,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_fractional_single_mov
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1114,7 +1114,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_lambda_single_move_dr
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1148,7 +1148,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_lambda_single_
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1181,7 +1181,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_single_move_dr
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1214,7 +1214,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_fractional_single_move_drift)
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
@@ -1246,7 +1246,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_lambda_single_move_drift)
   checkEnergyDrift(system);
 
   RandomNumber random(42);
-  for (int attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(

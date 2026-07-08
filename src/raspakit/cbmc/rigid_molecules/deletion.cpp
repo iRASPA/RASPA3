@@ -49,14 +49,14 @@ import interpolation_energy_grid;
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
                                                   std::make_signed_t<std::size_t>(component.startingBead));
 
-  std::vector<double> logBoltmannFactors{};
-  std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
+  std::vector<double> logBoltzmannFactors{};
+  std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltzmannFactors),
                  [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * v.second.potentialEnergy(); });
 
-  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                                            [](const double &acc, const double &logBoltmannFactor)
-                                            { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltzmannFactor)
+                                            { return acc + std::exp(logBoltzmannFactor); });
 
   return ChainRetraceData(externalEnergies[0].second, RosenbluthWeight / double(forceField.numberOfTrialDirections),
                           0.0);
