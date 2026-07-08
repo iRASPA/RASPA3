@@ -7,6 +7,7 @@ import std;
 import archive;
 import double3x3;
 import atom;
+import atom_dynamics;
 import chiral_center;
 import bond_potential;
 import urey_bradley_potential;
@@ -71,9 +72,10 @@ struct IntraMolecularPotentials
   RunningEnergy computeInternalIntraVanDerWaalsEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalIntraCoulombEnergies(const std::span<const Atom> atoms) const;
 
-  RunningEnergy computeInternalGradient(const std::span<Atom> atoms) const;
+  RunningEnergy computeInternalGradient(std::span<const Atom> atoms, std::span<AtomDynamics> dynamics) const;
 
-  std::pair<RunningEnergy, double3x3> computeInternalStrainDerivative(const std::span<Atom> atoms) const;
+  std::pair<RunningEnergy, double3x3> computeInternalStrainDerivative(std::span<const Atom> atoms,
+                                                                      std::span<AtomDynamics> dynamics) const;
 
   Potentials::IntraMolecularPotentials filteredInteractions(std::size_t numberOfBeads,
                                                             const std::span<std::size_t> beadsAlreadyPlaced,

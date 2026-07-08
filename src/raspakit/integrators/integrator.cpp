@@ -6,6 +6,7 @@ import std;
 
 import molecule;
 import atom;
+import atom_dynamics;
 import component;
 import running_energy;
 import thermostat;
@@ -15,8 +16,9 @@ import integrators_cputime;
 import interpolation_energy_grid;
 
 RunningEnergy Integrators::velocityVerlet(
-    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
-    double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+    const std::vector<Component> &components, double dt, std::optional<Thermostat>& thermostat,
+    std::span<Atom> frameworkAtomPositions,
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,
@@ -29,10 +31,11 @@ RunningEnergy Integrators::velocityVerlet(
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, components);
+    double UKineticTranslation =
+        computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, moleculeDynamics, components);
     double UKineticRotation = computeRotationalKineticEnergy(moleculeData, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(moleculeData, moleculeAtomPositions, components, scaling);
+    scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling);
   }
 
   // Start timing the integration step
@@ -40,10 +43,10 @@ RunningEnergy Integrators::velocityVerlet(
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, moleculeAtomPositions, components, dt);
+  updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt);
 
   // evolve the positions a full timestep
-  updatePositions(moleculeData, moleculeAtomPositions, components, dt);
+  updatePositions(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt);
 
   // evolve the part of rigid bodies involving free rotation
   noSquishFreeRotorOrderTwo(moleculeData, components, dt);
@@ -53,28 +56,30 @@ RunningEnergy Integrators::velocityVerlet(
 
   // compute the gradient on all the atoms
   RunningEnergy runningEnergies = updateGradients(
-      moleculeData, moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      moleculeData, moleculeAtomPositions, moleculeDynamics, frameworkAtomPositions, forceField, simulationBox,
+      components, eik_x, eik_y, eik_z, eik_xy,
       totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 
   // compute the gradients on the center of mass and the orientation
-  updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, components);
+  updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics, components);
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, moleculeAtomPositions, components, dt);
+  updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt);
 
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, components);
+    double UKineticTranslation =
+        computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, moleculeDynamics, components);
     double UKineticRotation = computeRotationalKineticEnergy(moleculeData, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(moleculeData, moleculeAtomPositions, components, scaling);
+    scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling);
   }
 
   // Update the running energies with current kinetic energies
   runningEnergies.translationalKineticEnergy =
-      computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, components);
+      computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, moleculeDynamics, components);
   runningEnergies.rotationalKineticEnergy = computeRotationalKineticEnergy(moleculeData, components);
   if (thermostat.has_value())
   {

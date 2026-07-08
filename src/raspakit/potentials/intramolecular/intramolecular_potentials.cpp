@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import atom;
+import atom_dynamics;
 import chiral_center;
 import double3x3;
 import bond_potential;
@@ -483,13 +484,14 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraCoulombE
   return energies;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(const std::span<Atom> atoms) const
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(std::span<const Atom> atoms,
+                                                                            std::span<AtomDynamics> dynamics) const
 {
-  return computeInternalStrainDerivative(atoms).first;
+  return computeInternalStrainDerivative(atoms, dynamics).first;
 }
 
 std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::computeInternalStrainDerivative(
-    const std::span<Atom> atoms) const
+    std::span<const Atom> atoms, std::span<AtomDynamics> dynamics) const
 {
   RunningEnergy energies{};
   double3x3 strain_derivative{};
@@ -500,8 +502,8 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     std::size_t B = bond.identifiers[1];
     auto [energy, gradient, strain] = bond.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
     energies.bond += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
     strain_derivative += strain;
   }
 
@@ -512,8 +514,8 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] =
         ureyBradley.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
     energies.ureyBradley += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
     strain_derivative += strain;
   }
 
@@ -525,9 +527,9 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] =
         bend.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
     energies.bend += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
     strain_derivative += strain;
   }
 
@@ -540,10 +542,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = torsion.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position,
                                                                             atoms[C].position, atoms[D].position);
     energies.torsion += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -557,10 +559,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
         improperTorsion.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position,
                                                       atoms[D].position);
     energies.improperTorsion += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -571,8 +573,8 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] =
         vanDerWaal.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
     energies.intraVDW += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
     strain_derivative += strain;
   }
 
@@ -582,8 +584,8 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     std::size_t B = coulomb.identifiers[1];
     auto [energy, gradient, strain] = coulomb.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
     energies.intraCoul += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
     strain_derivative += strain;
   }
 
@@ -596,10 +598,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = inversionBend.potentialEnergyGradientStrain(
         atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
     energies.inversionBend += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -612,10 +614,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = outOfPlaneBend.potentialEnergyGradientStrain(
         atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
     energies.outOfPlaneBend += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -627,9 +629,9 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] =
         bondBond.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
     energies.bondBond += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
     strain_derivative += strain;
   }
 
@@ -641,9 +643,9 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] =
         bondBend.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position, atoms[C].position);
     energies.bondBend += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
     strain_derivative += strain;
   }
 
@@ -656,10 +658,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = bendBend.potentialEnergyGradientStrain(
         atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
     energies.bendBend += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -672,10 +674,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = bendTorsion.potentialEnergyGradientStrain(
         atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
     energies.bendTorsion += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 
@@ -688,10 +690,10 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     auto [energy, gradient, strain] = bondTorsion.potentialEnergyGradientStrain(
         atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
     energies.bondTorsion += energy;
-    atoms[A].gradient += gradient[0];
-    atoms[B].gradient += gradient[1];
-    atoms[C].gradient += gradient[2];
-    atoms[D].gradient += gradient[3];
+    dynamics[A].gradient += gradient[0];
+    dynamics[B].gradient += gradient[1];
+    dynamics[C].gradient += gradient[2];
+    dynamics[D].gradient += gradient[3];
     strain_derivative += strain;
   }
 

@@ -7,6 +7,7 @@ import std;
 import molecule;
 import double3;
 import atom;
+import atom_dynamics;
 import component;
 import simd_quatd;
 import double3x3;
@@ -26,7 +27,8 @@ import units;
 import interpolation_energy_grid;
 
 void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                                  const std::vector<Component>& components, std::pair<double, double> scaling)
+                                  std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
+                                  std::pair<double, double> scaling)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   // Scale velocities and orientation momenta of each molecule
@@ -39,10 +41,10 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
     // For flexible molecules all degrees of freedom are translational: scale the atomic velocities
     if (!components[molecule.componentId].rigid)
     {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
-      for (Atom& atom : span)
+      std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      for (AtomDynamics& dynamics : span)
       {
-        atom.velocity *= scaling.first;
+        dynamics.velocity *= scaling.first;
       }
     }
     index += molecule.numberOfAtoms;
@@ -53,6 +55,7 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
 
 void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData,
                                                   std::span<Atom> moleculeAtomPositions,
+                                                  std::span<AtomDynamics> moleculeDynamics,
                                                   const std::vector<Component>& components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -65,10 +68,10 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
 
     if (!components[molecule.componentId].rigid)
     {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
-      for (Atom& atom : span)
+      std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      for (AtomDynamics& dynamics : span)
       {
-        atom.velocity -= totalVelocity;
+        dynamics.velocity -= totalVelocity;
       }
     }
     index += molecule.numberOfAtoms;
@@ -78,6 +81,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
 }
 
 void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                  std::span<const AtomDynamics> moleculeDynamics,
                                   const std::vector<Component>& components, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -91,9 +95,10 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
     if (!components[molecule.componentId].rigid)
     {
       std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
-      for (Atom& atom : span)
+      std::span<const AtomDynamics> spanDynamics = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      for (std::size_t i = 0; i != span.size(); ++i)
       {
-        atom.position += dt * atom.velocity;
+        span[i].position += dt * spanDynamics[i].velocity;
       }
     }
     index += molecule.numberOfAtoms;
@@ -103,7 +108,8 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
 }
 
 void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                                   const std::vector<Component>& components, double dt)
+                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
+                                   double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
@@ -117,7 +123,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     // For flexible molecules the atomic velocities are the integration variables
     if (!components[molecule.componentId].rigid)
     {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
         double mass = components[molecule.componentId].definedAtoms[i].second;
@@ -132,6 +138,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
 
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                                        std::span<Atom> moleculeAtomPositions,
+                                       std::span<AtomDynamics> moleculeDynamics,
                                        const std::vector<Component> components, double temperature)
 {
   std::size_t index{};
@@ -165,7 +172,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
     else
     {
       // Flexible molecule: draw per-atom velocities with variance kBT / m_atom
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       double3 momentum{};
       for (std::size_t i = 0; i != span.size(); i++)
       {
@@ -242,6 +249,7 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
 
 void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
                                                             std::span<Atom> moleculeAtomPositions,
+                                                            std::span<const AtomDynamics> moleculeDynamics,
                                                             std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -250,6 +258,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
   for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+    std::span<const AtomDynamics> spanDynamics = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
 
     double3 com{};
     for (std::size_t i = 0; i != span.size(); i++)
@@ -264,10 +273,10 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
     for (std::size_t i = 0; i != span.size(); i++)
     {
       double mass = components[molecule.componentId].definedAtoms[i].second;
-      com_velocity += mass * span[i].velocity;
+      com_velocity += mass * spanDynamics[i].velocity;
 
       double3 dr = span[i].position - com;
-      angularMomentum += mass * double3::cross(dr, span[i].velocity);
+      angularMomentum += mass * double3::cross(dr, spanDynamics[i].velocity);
     }
     molecule.velocity = com_velocity * molecule.invMass;
 
@@ -284,6 +293,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
 
 void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData,
                                                            std::span<Atom> moleculeAtomPositions,
+                                                           std::span<const AtomDynamics> moleculeDynamics,
                                                            std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -292,7 +302,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
   // Update gradients of center of mass and orientation for each molecule
   for (Molecule& molecule : moleculeData)
   {
-    std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+    std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
     double3 com_gradient{};
     for (std::size_t i = 0; i != span.size(); i++)
     {
@@ -329,8 +339,8 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 }
 
 RunningEnergy Integrators::updateGradients(
-    std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-    std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
+    std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
+    std::span<AtomDynamics> moleculeDynamics, std::span<const Atom> frameworkAtomPositions, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
@@ -342,16 +352,16 @@ RunningEnergy Integrators::updateGradients(
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // Initialize gradients to zero
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dynamics : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   // Compute gradients and energies due to interactions
   RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(
-      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, interpolationGrids);
-  RunningEnergy intermolecularEnergy =
-      Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, moleculeDynamics, interpolationGrids);
+  RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularGradient(
+      forceField, simulationBox, moleculeAtomPositions, moleculeDynamics);
   double netChargeFramework = 0.0;
   for (const Atom& atom : frameworkAtomPositions)
   {
@@ -359,7 +369,7 @@ RunningEnergy Integrators::updateGradients(
   }
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
       eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
-      numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
+      numberOfMoleculesPerComponent, moleculeAtomPositions, moleculeDynamics, netChargeFramework);
 
   RunningEnergy internal_energies{};
   std::size_t molecule_index = 0;
@@ -368,8 +378,8 @@ RunningEnergy Integrators::updateGradients(
     if (numberOfMoleculesPerComponent[i] > 0)
     {
       std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
-      internal_energies += Interactions::computeIntraMolecularGradient(components[i].intraMolecularPotentials,
-                                                                       span_molecules, moleculeAtomPositions);
+      internal_energies += Interactions::computeIntraMolecularGradient(
+          components[i].intraMolecularPotentials, span_molecules, moleculeAtomPositions, moleculeDynamics);
     }
     molecule_index += numberOfMoleculesPerComponent[i];
   }

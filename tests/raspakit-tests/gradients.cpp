@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -35,6 +36,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -43,58 +45,58 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   atomData[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   EXPECT_NEAR(factorInterMolecular.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.36960932, 1e-6);
   EXPECT_NEAR(factorInterMolecular.moleculeMoleculeCharge * Units::EnergyToKelvin, 0.00000000, 1e-6);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, 90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, 17.938271420558, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, 52.398564956433, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, 90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, -17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, 17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 52.398564956433, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, -17.938271420558, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, -90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, 17.938271420558, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, -52.398564956433, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, -90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, -17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, -52.398564956433, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, -17.938271420558, 1e-6);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, 90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, 17.938271420558, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, 52.398564956433, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, 90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, -17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, 17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 52.398564956433, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, -17.938271420558, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, -90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, 17.938271420558, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, -52.398564956433, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, -90.951955774481, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, -17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 17.938271420558, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, -52.398564956433, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -90.951955774481, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, -17.938271420558, 1e-6);
 }
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
@@ -106,6 +108,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 7.08255);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355);
   atomData[2].position = double3(5.93355, 7.93355, 4.78455);
@@ -114,60 +117,60 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   atomData[5].position = double3(5.93355, 3.93355, 4.78455);
 
   RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
 
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeVDW * Units::EnergyToKelvin, -1932.15586114, 1e-6);
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeCharge * Units::EnergyToKelvin, 0.00000000, 1e-6);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, -131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, -90.888952502176, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, -48.847937726172, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, -131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, 90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -48.847937726172, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, -131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 90.888952502176, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, 131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, -90.888952502176, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, 48.847937726172, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, 131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, 90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 48.847937726172, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 90.888952502176, 1e-6);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       system.forceField, system.framework, system.interpolationGrids, system.components, system.simulationBox,
-      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, -131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, -90.888952502176, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, -48.847937726172, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, -131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, 90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -48.847937726172, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, -131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 90.888952502176, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, 131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, -90.888952502176, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, 48.847937726172, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, 131.516544539514, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, 90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -90.888952502176, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 48.847937726172, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 131.516544539514, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 90.888952502176, 1e-6);
 }
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
@@ -183,6 +186,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -191,67 +195,67 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   atomData[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
   RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeVDW * Units::EnergyToKelvin, -1932.15586114, 1e-6);
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeCharge * Units::EnergyToKelvin, 554.41444763, 1e-6);
   EXPECT_NEAR(factorInterMolecular.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.36960932, 1e-6);
   EXPECT_NEAR(factorInterMolecular.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, 466.705848885190, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, 223.065047349758, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, -1259.011389396075, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, 466.705848885189, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, -223.065047349755, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 466.705848885190, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, 223.065047349758, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -1259.011389396075, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 466.705848885189, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, -223.065047349755, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, -466.705848885190, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, 223.065047349758, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, 1259.011389396075, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, -466.705848885189, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, -223.065047349755, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -466.705848885190, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 223.065047349758, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 1259.011389396075, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -466.705848885189, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, -223.065047349755, 1e-6);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo1 = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       system.forceField, system.framework, system.interpolationGrids, system.components, system.simulationBox,
-      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   std::pair<EnergyStatus, double3x3> pressureInfo2 = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.y, 466.705848885190, 1e-6);
-  EXPECT_NEAR(atomData[0].gradient.z, 223.065047349758, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.y, -1259.011389396075, 1e-6);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.y, 466.705848885189, 1e-6);
-  EXPECT_NEAR(atomData[2].gradient.z, -223.065047349755, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 466.705848885190, 1e-6);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, 223.065047349758, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -1259.011389396075, 1e-6);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 466.705848885189, 1e-6);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, -223.065047349755, 1e-6);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.y, -466.705848885190, 1e-6);
-  EXPECT_NEAR(atomData[3].gradient.z, 223.065047349758, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.y, 1259.011389396075, 1e-6);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.y, -466.705848885189, 1e-6);
-  EXPECT_NEAR(atomData[5].gradient.z, -223.065047349755, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -466.705848885190, 1e-6);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 223.065047349758, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 1259.011389396075, 1e-6);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -466.705848885189, 1e-6);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, -223.065047349755, 1e-6);
 }
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
@@ -267,6 +271,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -278,62 +283,62 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   EXPECT_NEAR(
       (factorEwald.ewald_fourier + factorEwald.ewald_self + factorEwald.ewald_exclusion) * Units::EnergyToKelvin,
       -759.67572774 + 38.02930863, 1e-4);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, -362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -241.771707768611, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, 684.800882899876, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, -362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 241.771707768619, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -241.771707768611, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 684.800882899876, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, -362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 241.771707768619, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, 362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, -241.771707768611, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, -684.800882899876, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, 362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 241.771707768619, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -241.771707768611, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, -684.800882899876, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 241.771707768619, 1e-4);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework,
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.netChargeFramework,
       system.netChargePerComponent);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, -362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -241.771707768611, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, 684.800882899876, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, -362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 241.771707768619, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -241.771707768611, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 684.800882899876, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, -362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 241.771707768619, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, 362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, -241.771707768611, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, -684.800882899876, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, 362.766142495638, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 241.771707768619, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -241.771707768611, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, -684.800882899876, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 362.766142495638, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 241.771707768619, 1e-4);
 }
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
@@ -349,6 +354,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -357,67 +363,67 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   atomData[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   [[maybe_unused]] RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
   [[maybe_unused]] RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, 103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, -574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, 103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 18.706660418865, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, -103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, 574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, -103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 18.706660418865, 1e-4);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
   [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
-      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 
   // EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, 103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, -574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, 103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 18.706660418865, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, -103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, 574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, -103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 18.706660418865, 1e-4);
 }
 
 /*
@@ -462,6 +468,7 @@ uint8_t groupId
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, { f }, { c }, { 2 }, 5);
 
   //std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   //std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   //spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   //spanOfMoleculeAtoms[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
@@ -472,7 +479,7 @@ uint8_t groupId
 
   //[[maybe_unused]] ForceFactor factorFrameworkMolecular =
   //  Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox,
-system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   //[[maybe_unused]] ForceFactor factorInterMolecular =
   //  Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
 system.spanOfMoleculeAtoms());
@@ -486,6 +493,7 @@ system.spanOfMoleculeAtoms());
   //}
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   spanOfMoleculeAtoms[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
@@ -495,16 +503,11 @@ system.spanOfMoleculeAtoms());
   spanOfMoleculeAtoms[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   //[[maybe_unused]] ForceFactor factorFrameworkMolecular =
   //  Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox,
-system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   [[maybe_unused]] ForceFactor factorInterMolecular =
-    Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+    Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
 
   double delta = 1e-3;
@@ -555,9 +558,9 @@ z2.frameworkMoleculeVDW + z2.frameworkMoleculeCharge
                 - (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge + z1.frameworkMoleculeVDW +
 z1.frameworkMoleculeCharge)) / delta;
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 }
 */
@@ -572,6 +575,7 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
 
   spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   spanOfMoleculeAtoms[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
@@ -583,15 +587,10 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   [[maybe_unused]] RunningEnergy factor2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
 
   double delta = 1e-5;
@@ -658,9 +657,9 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
          (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge + z1.frameworkMoleculeVDW + z1.frameworkMoleculeCharge)) /
         delta;
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 }
 
@@ -672,19 +671,15 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {50}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   [[maybe_unused]] RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
   [[maybe_unused]] RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
   double tolerance = 1e-6;
@@ -748,9 +743,9 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
          (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge + z1.frameworkMoleculeVDW + z1.frameworkMoleculeCharge)) /
         delta;
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 }
 
@@ -763,18 +758,14 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {10}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   [[maybe_unused]] RunningEnergy factor2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
       system.interpolationGrids);
 
   double delta = 1e-5;
@@ -839,9 +830,9 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
          (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge + z1.frameworkMoleculeVDW + z1.frameworkMoleculeCharge)) /
         delta;
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 }
 
@@ -858,12 +849,8 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
   // std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
-
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
 
   for (size_t i = 0; i < 20; ++i)
   {
@@ -877,7 +864,7 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
   }
 
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
   double tolerance = 1e-4;
@@ -920,8 +907,8 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
         (z2.moleculeMoleculeVDW + z2.moleculeMoleculeCharge - (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge)) /
         delta;
 
-    EXPECT_NEAR(system.atomData[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(system.atomData[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(system.atomData[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(system.atomDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(system.atomDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(system.atomDynamics[i].gradient.z, gradient.z, tolerance);
   }
 }

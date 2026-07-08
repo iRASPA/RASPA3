@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import atom;
+import atom_dynamics;
 import molecule;
 import molecule;
 import simulationbox;
@@ -57,9 +58,10 @@ export struct PropertyRadialDistributionFunction
   std::vector<std::size_t> numberOfCounts;
   std::vector<std::size_t> pairCount;
 
-  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-              const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, std::size_t currentCycle,
-              std::size_t block);
+  void sample(const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+              std::span<const AtomDynamics> frameworkDynamics, const std::vector<Molecule> &molecules,
+              std::span<const Atom> moleculeAtoms, std::span<const AtomDynamics> moleculeDynamics,
+              std::size_t currentCycle, std::size_t block);
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
 

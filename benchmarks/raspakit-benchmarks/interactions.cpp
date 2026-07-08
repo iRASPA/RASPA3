@@ -12,6 +12,7 @@ import framework;
 import component;
 import system;
 import atom;
+import atom_dynamics;
 import factory;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -210,9 +211,12 @@ static void BM_ComputeFrameworkGradientVDW(benchmark::State& state)
     grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::LennardJones);
   }
 
+  std::vector<AtomDynamics> dynamics(N);
+
   for (auto _ : state)
   {
-    auto _ = Interactions::computeFrameworkMoleculeGradient(forceField, f.simulationBox, f.atoms, atoms, {grid});
+    auto _ =
+        Interactions::computeFrameworkMoleculeGradient(forceField, f.simulationBox, f.atoms, atoms, dynamics, {grid});
   }
 
   const char* names[]{"full", "tricubic", "triquintic"};
@@ -250,9 +254,12 @@ static void BM_ComputeFrameworkGradientEwald(benchmark::State& state)
     grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::EwaldReal);
   }
 
+  std::vector<AtomDynamics> dynamics(N);
+
   for (auto _ : state)
   {
-    auto _ = Interactions::computeFrameworkMoleculeGradient(forceField, f.simulationBox, f.atoms, atoms, {grid});
+    auto _ =
+        Interactions::computeFrameworkMoleculeGradient(forceField, f.simulationBox, f.atoms, atoms, dynamics, {grid});
   }
 
   const char* names[]{"full", "tricubic", "triquintic"};

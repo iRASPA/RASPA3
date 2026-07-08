@@ -6,6 +6,7 @@ import std;
 
 import molecule;
 import atom;
+import atom_dynamics;
 import double3;
 import component;
 
@@ -25,6 +26,7 @@ export namespace Integrators
  */
 double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
                                          std::span<const Atom> moleculeAtomPositions,
+                                         std::span<const AtomDynamics> moleculeDynamics,
                                          const std::vector<Component>& components);
 
 /**

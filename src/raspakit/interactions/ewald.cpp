@@ -550,8 +550,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &totalEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData,
-    double netChargeFramework)
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> atomData,
+    std::span<AtomDynamics> atomDynamics, double netChargeFramework)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -703,8 +703,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             std::complex<double> cki = eik_xy[i] * eikz_temp;
             double charge = atomData[i].charge;
             double scaling = atomData[i].scalingCoulomb;
-            atomData[i].gradient -= scaling * charge * 2.0 * temp *
-                                    (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk;
+            atomDynamics[i].gradient -= scaling * charge * 2.0 * temp *
+                                        (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk;
           }
 
           totalEik[nvec] = total;
@@ -734,7 +734,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       std::size_t size = components[l].atoms.size();
       for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
-        std::span<Atom> span = std::span(&atomData[index], size);
+        std::span<const Atom> span = std::span(&atomData[index], size);
+        std::span<AtomDynamics> spanDynamics = std::span(&atomDynamics[index], size);
         for (std::size_t i = 0; i != span.size() - 1; i++)
         {
           double chargeA = span[i].charge;
@@ -762,8 +763,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
             double Bt1 = temp + Bt0 / rr;
             temp = chargeA * chargeB * Bt1;
-            span[i].gradient -= temp * dr;
-            span[j].gradient += temp * dr;
+            spanDynamics[i].gradient -= temp * dr;
+            spanDynamics[j].gradient += temp * dr;
           }
         }
         index += size;
@@ -1455,7 +1456,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomData, double netChargeFramework, std::vector<double> netChargePerComponent) noexcept
+    std::span<const Atom> atomData, std::span<AtomDynamics> atomDynamics, double netChargeFramework,
+    std::vector<double> netChargePerComponent) noexcept
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1606,8 +1608,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
             double charge = atomData[i].charge;
             double scaling = atomData[i].scalingCoulomb;
 
-            atomData[i].gradient -= scaling * charge * 2.0 * temp *
-                                    (cki.imag() * test.real() - cki.real() * test.imag()) * (kvec_x + kvec_y + kvec_z);
+            atomDynamics[i].gradient -= scaling * charge * 2.0 * temp *
+                                        (cki.imag() * test.real() - cki.real() * test.imag()) *
+                                        (kvec_x + kvec_y + kvec_z);
           }
 
           singleIonFourierSum += temp;
@@ -1654,7 +1657,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     std::size_t size = components[l].atoms.size();
     for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      std::span<Atom> span = std::span(&atomData[index], size);
+      std::span<const Atom> span = std::span(&atomData[index], size);
+      std::span<AtomDynamics> spanDynamics = std::span(&atomDynamics[index], size);
       for (std::size_t i = 0; i != span.size() - 1; i++)
       {
         double chargeA = span[i].charge;
@@ -1682,8 +1686,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
           double Bt1 = temp + Bt0 / rr;
           temp = chargeA * chargeB * Bt1;
-          span[i].gradient -= temp * dr;
-          span[j].gradient += temp * dr;
+          spanDynamics[i].gradient -= temp * dr;
+          spanDynamics[j].gradient += temp * dr;
 
           strainDerivative.ax -= temp * dr.x * dr.x;
           strainDerivative.bx -= temp * dr.y * dr.x;

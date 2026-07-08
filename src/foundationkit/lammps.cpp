@@ -7,6 +7,7 @@ import std;
 import double3;
 import component;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import pseudo_atom;
@@ -18,6 +19,7 @@ import bend_potential;
 import torsion_potential;
 
 std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
+                                    std::span<const AtomDynamics> atomDynamics,
                                     std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
                                     const ForceField forceField,
                                     std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
@@ -179,11 +181,13 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
 
   std::print(out, "\nVelocities\n\n");
   idx = 1;  // lammps works with 1-indexing
-  for (const Atom& atom : atomData)
+  for (std::size_t i = 0; i < atomData.size(); ++i)
   {
+    const Atom& atom = atomData[i];
     if (components[atom.componentId].growType == Component::GrowType::Flexible)
     {
-      std::print(out, "  {} {} {} {}\n", idx++, atom.velocity.x, atom.velocity.y, atom.velocity.z);
+      const double3 velocity = atomDynamics[i].velocity;
+      std::print(out, "  {} {} {} {}\n", idx++, velocity.x, velocity.y, velocity.z);
     }
     else
     {

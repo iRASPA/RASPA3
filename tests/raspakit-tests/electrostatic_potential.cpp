@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -74,6 +75,7 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
                          {}, {1, 1, 1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<const Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
   std::span<double> moleculeElectrostaticPotential = system.spanOfMoleculeElectrostaticPotential();
   spanOfMoleculeAtoms[0].position = double3(-1.0, 0.0, 0.0);
@@ -82,9 +84,9 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
   spanOfMoleculeAtoms[3].position = double3(0.0, -1.0, 0.0);
 
   // Initialize gradients to zero
-  for (Atom& atom : spanOfMoleculeAtoms)
+  for (AtomDynamics& dyn : spanOfMoleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   if (system.fixedFrameworkStoredEik.empty())
@@ -161,31 +163,31 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
 
   [[maybe_unused]] RunningEnergy energy4 = Interactions::computeFrameworkMoleculeGradient(
       system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.interpolationGrids);
+      spanOfMoleculeDynamics, system.interpolationGrids);
 
   [[maybe_unused]] RunningEnergy energy5 = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.x / Units::CoulombicConversionFactor, -0.166053, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.y / Units::CoulombicConversionFactor, 0.0883883, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.x / Units::CoulombicConversionFactor, -0.166053, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.y / Units::CoulombicConversionFactor, 0.0883883, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.x / Units::CoulombicConversionFactor, 0.87316, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.y / Units::CoulombicConversionFactor, 0.265165, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.x / Units::CoulombicConversionFactor, 0.87316, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.y / Units::CoulombicConversionFactor, 0.265165, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[2].gradient.x / Units::CoulombicConversionFactor, -0.265165, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[2].gradient.y / Units::CoulombicConversionFactor, 0.295955, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[2].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[2].gradient.x / Units::CoulombicConversionFactor, -0.265165, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[2].gradient.y / Units::CoulombicConversionFactor, 0.295955, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[2].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[3].gradient.x / Units::CoulombicConversionFactor, -0.441942, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[3].gradient.y / Units::CoulombicConversionFactor, -0.649508, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[3].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[3].gradient.x / Units::CoulombicConversionFactor, -0.441942, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[3].gradient.y / Units::CoulombicConversionFactor, -0.649508, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[3].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 }
 
 // Table 5, page 61 thesis D. Dubbeldam
@@ -228,6 +230,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
                          {1, 1, 1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
   frameworkAtomPositions[0].position = double3(-1.0, 0.0, 0.0);
   frameworkAtomPositions[1].position = double3(1.0, 0.0, 0.0);
@@ -236,9 +239,9 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
   spanOfMoleculeAtoms[0].position = double3(0.0, -1.0, 0.0);
 
   // Initialize gradients to zero
-  for (Atom& atom : spanOfMoleculeAtoms)
+  for (AtomDynamics& dyn : spanOfMoleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   if (system.fixedFrameworkStoredEik.empty())
@@ -282,19 +285,19 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
 
   [[maybe_unused]] RunningEnergy energy4 = Interactions::computeFrameworkMoleculeGradient(
       system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.interpolationGrids);
+      spanOfMoleculeDynamics, system.interpolationGrids);
 
   [[maybe_unused]] RunningEnergy energy5 = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.x / Units::CoulombicConversionFactor, -0.441942, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.y / Units::CoulombicConversionFactor, -0.649508, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.x / Units::CoulombicConversionFactor, -0.441942, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.y / Units::CoulombicConversionFactor, -0.649508, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 }
 
 // Table 5, page 61 thesis D. Dubbeldam
@@ -343,6 +346,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
                          {}, {1, 1, 1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
   frameworkAtomPositions[0].position = double3(-1.0, 0.0, 0.0);
   frameworkAtomPositions[1].position = double3(0.0, -1.0, 0.0);
@@ -351,9 +355,9 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
   spanOfMoleculeAtoms[1].position = double3(0.0, 1.0, 0.0);
 
   // Initialize gradients to zero
-  for (Atom& atom : spanOfMoleculeAtoms)
+  for (AtomDynamics& dyn : spanOfMoleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   if (system.fixedFrameworkStoredEik.empty())
@@ -407,23 +411,23 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
 
   [[maybe_unused]] RunningEnergy energy4 = Interactions::computeFrameworkMoleculeGradient(
       system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.interpolationGrids);
+      spanOfMoleculeDynamics, system.interpolationGrids);
 
   [[maybe_unused]] RunningEnergy energy5 = Interactions::computeInterMolecularGradient(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.x / Units::CoulombicConversionFactor, 0.475413, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.y / Units::CoulombicConversionFactor, 0.662913, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.x / Units::CoulombicConversionFactor, 0.475413, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.y / Units::CoulombicConversionFactor, 0.662913, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[0].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.x / Units::CoulombicConversionFactor, 0.132583, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.y / Units::CoulombicConversionFactor, -0.101792, 1e-5);
-  EXPECT_NEAR(spanOfMoleculeAtoms[1].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.x / Units::CoulombicConversionFactor, 0.132583, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.y / Units::CoulombicConversionFactor, -0.101792, 1e-5);
+  EXPECT_NEAR(spanOfMoleculeDynamics[1].gradient.z / Units::CoulombicConversionFactor, 0.0, 1e-5);
 }
 
 // FIX!!!
@@ -445,6 +449,7 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
   system.forceField.omitEwaldFourier = true;
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<const Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
   std::span<double> moleculeElectrostaticPotential = system.spanOfMoleculeElectrostaticPotential();
   spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);

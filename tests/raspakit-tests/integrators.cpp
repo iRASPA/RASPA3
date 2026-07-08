@@ -47,7 +47,7 @@ void print_system(System& system)
 {
   std::cout << "Energy (tr, rot)\n";
   std::cout << Integrators::computeTranslationalKineticEnergy(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                              system.components)
+                                                              system.spanOfMoleculeDynamics(), system.components)
             << std::endl;
   std::cout << Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components) << std::endl;
 
@@ -105,7 +105,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   moleculeData[1].velocity = double3(0.0, 1.0, 0.0);
   moleculeData[1].orientationMomentum = simd_quatd(-10.0, 0.0, 0.0, 0.0);
 
-  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep,
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                              system.components, system.timeStep,
                               system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
                               system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
                               system.fixedFrameworkStoredEik, system.interpolationGrids,
@@ -120,7 +121,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   QUATD_EXPECT_NEAR(system.moleculeData[0].orientationMomentum, simd_quatd(10.000011, 0.0, 0.0, -0.000296), 1e-6);
   QUATD_EXPECT_NEAR(system.moleculeData[1].orientationMomentum, simd_quatd(-10.000011, 0.0, 0.0, -0.000296), 1e-6);
 
-  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep,
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                              system.components, system.timeStep,
                               system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
                               system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
                               system.fixedFrameworkStoredEik, system.interpolationGrids,

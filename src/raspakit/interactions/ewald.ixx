@@ -7,6 +7,7 @@ import std;
 import double3;
 import double3x3;
 import atom;
+import atom_dynamics;
 import running_energy;
 import energy_status;
 import simulationbox;
@@ -203,8 +204,8 @@ RunningEnergy computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &totalEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData,
-    double netChargeFramework = 0.0);
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> atomData,
+    std::span<AtomDynamics> atomDynamics, double netChargeFramework = 0.0);
 
 /**
  * \brief Computes the Ewald Fourier energy and its strain derivative.
@@ -239,7 +240,8 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomData, double netChargeFramework, std::vector<double> netChargePerComponent) noexcept;
+    std::span<const Atom> atomData, std::span<AtomDynamics> atomDynamics, double netChargeFramework,
+    std::vector<double> netChargePerComponent) noexcept;
 
 /**
  * \brief Accepts a move by updating the stored Ewald Fourier components.

@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -32,11 +33,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   for (size_t i = 0; i < 20; ++i)
   {
     atomData[i].charge = 0.0;
@@ -60,7 +56,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   system.atomData[4].scalingVDW = 0.16;
   system.atomData[14].scalingVDW = 0.27;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                     system.spanOfMoleculeAtoms());
+                                                                     system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
@@ -71,7 +67,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   // system.atomData[4].scalingVDW = 0.16 + 0.5 * delta;
   // system.atomData[14].scalingVDW = 0.27 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   system.atomData[8].scalingVDW = 0.15 - 0.5 * delta;
   system.atomData[2].scalingVDW = 0.25 - 0.5 * delta;
@@ -79,7 +75,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   // system.atomData[4].scalingVDW = 0.16 - 0.5 * delta;
   // system.atomData[14].scalingVDW = 0.27 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double dUdlambda = ((energyForward.moleculeMoleculeVDW + energyForward.moleculeMoleculeCharge) -
                       (energyBackward.moleculeMoleculeVDW + energyBackward.moleculeMoleculeCharge)) /
@@ -103,11 +99,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   for (size_t i = 0; i < 20; ++i)
   {
     atomData[i].charge = 1.0;
@@ -131,7 +122,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   system.atomData[4].scalingCoulomb = 0.6;
   system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                     system.spanOfMoleculeAtoms());
+                                                                     system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
@@ -142,7 +133,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   // system.atomData[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
@@ -150,7 +141,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   // system.atomData[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double dUdlambda = ((energyForward.moleculeMoleculeVDW + energyForward.moleculeMoleculeCharge) -
                       (energyBackward.moleculeMoleculeVDW + energyBackward.moleculeMoleculeCharge)) /
@@ -174,11 +165,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   for (size_t i = 0; i < 20; ++i)
   {
     atomData[i].charge = 1.0;
@@ -202,7 +188,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   system.atomData[4].scalingCoulomb = 0.6;
   system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                     system.spanOfMoleculeAtoms());
+                                                                     system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
   double tolerance = 1e-3;
@@ -213,7 +199,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   // system.atomData[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
@@ -221,7 +207,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   // system.atomData[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double dUdlambda = ((energyForward.moleculeMoleculeVDW + energyForward.moleculeMoleculeCharge) -
                       (energyBackward.moleculeMoleculeVDW + energyBackward.moleculeMoleculeCharge)) /
@@ -243,11 +229,6 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   system.atomData[8].groupId = 1;
   system.atomData[2].groupId = 1;
   // system.atomData[12].groupId = 1;
@@ -260,7 +241,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   system.atomData[4].scalingCoulomb = 0.6;
   system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                     system.spanOfMoleculeAtoms());
+                                                                     system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
   double tolerance = 1e-4;
@@ -271,7 +252,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   // system.atomData[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
@@ -279,7 +260,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   // system.atomData[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomData[14].scalingCoulomb = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double dUdlambda = ((energyForward.moleculeMoleculeVDW + energyForward.moleculeMoleculeCharge) -
                       (energyBackward.moleculeMoleculeVDW + energyBackward.moleculeMoleculeCharge)) /
@@ -425,7 +406,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW_TwoGroups)
   system.atomData[12].scalingVDW = 0.34;
   system.atomData[4].scalingVDW = 0.16;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                     system.spanOfMoleculeAtoms());
+                                                                     system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
@@ -434,11 +415,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW_TwoGroups)
   system.atomData[8].scalingVDW = 0.15 + 0.5 * delta;
   system.atomData[2].scalingVDW = 0.25 + 0.5 * delta;
   RunningEnergy forwardGroup1 = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   system.atomData[8].scalingVDW = 0.15 - 0.5 * delta;
   system.atomData[2].scalingVDW = 0.25 - 0.5 * delta;
   RunningEnergy backwardGroup1 = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   system.atomData[8].scalingVDW = 0.15;
   system.atomData[2].scalingVDW = 0.25;
 
@@ -446,11 +427,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW_TwoGroups)
   system.atomData[12].scalingVDW = 0.34 + 0.5 * delta;
   system.atomData[4].scalingVDW = 0.16 + 0.5 * delta;
   RunningEnergy forwardGroup2 = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                            system.spanOfMoleculeAtoms());
+                                                                            system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
   system.atomData[12].scalingVDW = 0.34 - 0.5 * delta;
   system.atomData[4].scalingVDW = 0.16 - 0.5 * delta;
   RunningEnergy backwardGroup2 = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms());
+                                                                             system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double dUdlambdaGroup1 =
       (forwardGroup1.moleculeMoleculeVDW - backwardGroup1.moleculeMoleculeVDW) / delta;

@@ -201,6 +201,7 @@ void System::createFrameworks()
     for (const Atom& atom : atoms)
     {
       atomData.push_back(atom);
+      atomDynamics.push_back(AtomDynamics{});
       electricPotential.push_back(0.0);
       electricField.push_back(double3(0.0, 0.0, 0.0));
       electricFieldNew.push_back(double3(0.0, 0.0, 0.0));
@@ -231,7 +232,9 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
                                              [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms)
 {
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, moleculeIndex);
+  std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
+  atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, moleculeIndex);
   moleculeData.insert(moleculeIterator, molecule);
@@ -296,7 +299,9 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
 {
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
+  atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
 
   std::vector<Molecule>::iterator moleculeIterator =
       indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -332,7 +337,9 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
 {
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
+  atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -389,7 +396,11 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
   }
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
+  std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+  atomDynamics.erase(atomDynamics.cbegin() + atomOffset,
+                     atomDynamics.cbegin() + atomOffset +
+                         static_cast<std::vector<AtomDynamics>::difference_type>(molecule.size()));
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, selectedMolecule);
@@ -422,7 +433,11 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   }
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
+  std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+  atomDynamics.erase(atomDynamics.cbegin() + atomOffset,
+                     atomDynamics.cbegin() + atomOffset +
+                         static_cast<std::vector<AtomDynamics>::difference_type>(molecule.size()));
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, selectedMolecule);
@@ -798,6 +813,30 @@ std::span<Atom> System::spanOfMoleculeAtoms()
 {
   return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
                    atomData.end());
+}
+
+std::span<const AtomDynamics> System::spanOfFrameworkDynamics() const
+{
+  return std::span(atomDynamics.begin(), numberOfFrameworkAtoms);
+}
+
+std::span<AtomDynamics> System::spanOfFrameworkDynamics()
+{
+  return std::span(atomDynamics.begin(), numberOfFrameworkAtoms);
+}
+
+std::span<const AtomDynamics> System::spanOfMoleculeDynamics() const
+{
+  return std::span(
+      atomDynamics.begin() + static_cast<std::vector<AtomDynamics>::difference_type>(numberOfFrameworkAtoms),
+      atomDynamics.end());
+}
+
+std::span<AtomDynamics> System::spanOfMoleculeDynamics()
+{
+  return std::span(
+      atomDynamics.begin() + static_cast<std::vector<AtomDynamics>::difference_type>(numberOfFrameworkAtoms),
+      atomDynamics.end());
 }
 
 std::span<double> System::spanOfMoleculeElectrostaticPotential()
@@ -2312,7 +2351,8 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "\n");
 
   double translationalKineticEnergy =
-      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
+      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                                     components);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -2632,8 +2672,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
              static_cast<double>(currentCycle) * timeStep / 1000.0);
 
-  double translational_kinetic_energy =
-      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
+  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components);
   double translational_temperature =
       2.0 * translational_kinetic_energy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -2884,7 +2924,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
   double translationalKineticEnergy =
-      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
+      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                                     components);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -2962,7 +3003,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomData, moleculeData, simulationBox, forceField,
+    writeLammpsData->update(currentCycle, components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
                             numberOfIntegerMoleculesPerComponent, framework);
   }
 
@@ -2975,9 +3016,11 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   if (propertyRadialDistributionFunction.has_value())
   {
     precomputeTotalGradients();
-    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(), components);
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculeData,
-                                               spanOfMoleculeAtoms(), currentCycle, currentBlock);
+    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(),
+                                                          spanOfMoleculeDynamics(), components);
+    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
+                                               moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                               currentCycle, currentBlock);
   }
 
   if (averageEnergyHistogram.has_value())
@@ -3090,7 +3133,8 @@ void System::precomputeTotalRigidEnergy() noexcept
 void System::precomputeTotalGradients() noexcept
 {
   runningEnergies = Integrators::updateGradients(
-      moleculeData, spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
+      components, eik_x, eik_y, eik_z, eik_xy,
       totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 }
 
@@ -3242,27 +3286,28 @@ void System::computeTotalElectricField() noexcept
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 {
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : atomDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
-      spanOfMoleculeAtoms());
+      spanOfMoleculeAtoms(), spanOfMoleculeDynamics());
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
-  pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
-                                            forceField, components, simulationBox, spanOfMoleculeAtoms()));
+  pressureInfo =
+      pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
+                                 forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
 
   pressureInfo = pair_acc(
       pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                        netChargeFramework, netChargePerComponent));
+                        spanOfMoleculeDynamics(), netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -3289,7 +3334,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
 
       pressureInfo.second += Interactions::computeIntraMolecularStrainDerivative(
-          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms())
+          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms(), spanOfMoleculeDynamics())
                                          .second;
     }
 
@@ -3332,6 +3377,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   for (Molecule& molecule : moleculeData)
   {
     const std::span<Atom> span = {&atomData[molecule.atomIndex], molecule.numberOfAtoms};
+    const std::span<AtomDynamics> spanDynamics = {&atomDynamics[molecule.atomIndex], molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
@@ -3343,19 +3389,22 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     }
     com = com / totalMass;
 
-    for (const Atom& atom : span)
+    for (std::size_t k = 0; k < span.size(); ++k)
     {
-      correctionTerm.ax += (atom.position.x - com.x) * atom.gradient.x;
-      correctionTerm.ay += (atom.position.x - com.x) * atom.gradient.y;
-      correctionTerm.az += (atom.position.x - com.x) * atom.gradient.z;
+      const double3 position = span[k].position;
+      const double3 gradient = spanDynamics[k].gradient;
 
-      correctionTerm.bx += (atom.position.y - com.y) * atom.gradient.x;
-      correctionTerm.by += (atom.position.y - com.y) * atom.gradient.y;
-      correctionTerm.bz += (atom.position.y - com.y) * atom.gradient.z;
+      correctionTerm.ax += (position.x - com.x) * gradient.x;
+      correctionTerm.ay += (position.x - com.x) * gradient.y;
+      correctionTerm.az += (position.x - com.x) * gradient.z;
 
-      correctionTerm.cx += (atom.position.z - com.z) * atom.gradient.x;
-      correctionTerm.cy += (atom.position.z - com.z) * atom.gradient.y;
-      correctionTerm.cz += (atom.position.z - com.z) * atom.gradient.z;
+      correctionTerm.bx += (position.y - com.y) * gradient.x;
+      correctionTerm.by += (position.y - com.y) * gradient.y;
+      correctionTerm.bz += (position.y - com.y) * gradient.z;
+
+      correctionTerm.cx += (position.z - com.z) * gradient.x;
+      correctionTerm.cy += (position.z - com.z) * gradient.y;
+      correctionTerm.cz += (position.z - com.z) * gradient.z;
     }
   }
 

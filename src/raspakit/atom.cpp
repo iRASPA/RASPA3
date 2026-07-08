@@ -11,8 +11,6 @@ import stringutils;
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom)
 {
   archive << atom.position;
-  archive << atom.velocity;
-  archive << atom.gradient;
   archive << atom.charge;
   archive << atom.scalingVDW;
   archive << atom.scalingCoulomb;
@@ -34,8 +32,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom)
   std::uint8_t groupIdBitField;
   std::uint8_t isFractionalBitField;
   archive >> atom.position;
-  archive >> atom.velocity;
-  archive >> atom.gradient;
   archive >> atom.charge;
   archive >> atom.scalingVDW;
   archive >> atom.scalingCoulomb;

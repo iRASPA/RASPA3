@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -69,11 +70,12 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   System system = System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dyn : spanOfMoleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   RunningEnergy energy;
@@ -82,8 +84,8 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework,
-      system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics,
+      system.netChargeFramework, system.netChargePerComponent);
 
   double delta = 1e-5;
   double tolerance = 1e-5;
@@ -137,9 +139,9 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
     gradient.y = (y2.ewaldFourier() - y1.ewaldFourier()) / delta;
     gradient.z = (z2.ewaldFourier() - z1.ewaldFourier()) / delta;
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance) << "Wrong x-gradient";
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance) << "Wrong y-gradient";
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance) << "Wrong x-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance) << "Wrong y-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
   }
 }
 
@@ -296,12 +298,9 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   // std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> spanOfMoleculeDynamics = system.spanOfMoleculeDynamics();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
-
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
+  std::vector<AtomDynamics> atomDynamics(atomData.size());
 
   for (size_t i = 0; i < 20; ++i)
   {
@@ -314,9 +313,9 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
     system.atomData[i + 20].charge = -1.0;
   }
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dyn : atomDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   RunningEnergy energy, rigidenergy;
@@ -324,7 +323,8 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factor = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atomData);
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atomData,
+      atomDynamics);
 
   double delta = 1e-4;
   double tolerance = 1e-4;
@@ -414,8 +414,8 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
                   backward2_z.ewaldFourier()) /
                  (6.0 * delta);
 
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance) << "Wrong x-gradient";
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance) << "Wrong y-gradient";
-    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance) << "Wrong x-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance) << "Wrong y-gradient";
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
   }
 }

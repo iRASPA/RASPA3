@@ -199,7 +199,7 @@ void MolecularDynamics::setup()
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
 
@@ -340,11 +340,11 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   for (std::size_t system_id{0}; System& system : systems)
   {
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
-    Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                      system.temperature);
+    Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                      system.spanOfMoleculeDynamics(), system.components, system.temperature);
 
     Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                 system.components);
+                                                 system.spanOfMoleculeDynamics(), system.components);
     if (system.thermostat.has_value())
     {
       if (!system.framework.has_value() && system.numberOfMolecules() > 1uz)
@@ -357,7 +357,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())
@@ -388,7 +388,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     for (System& system : systems)
     {
       system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+          system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
           system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
           system.numberOfMoleculesPerComponent);
@@ -485,7 +486,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())
@@ -563,7 +564,8 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     for (System& system : systems)
     {
       system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculeData, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+          system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
           system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
           system.numberOfMoleculesPerComponent);

@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -63,11 +64,6 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
   atomData[27].position = double3(1.635112578995, 18.974875387109, 5.600705491777);
   atomData[28].position = double3(1.273978603709, 19.816503820444, 6.294567749071);
   atomData[29].position = double3(0.912844628423, 20.658132253779, 6.988430006364);
-
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
 
   RunningEnergy energy = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData);
 
@@ -131,11 +127,6 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_no_fourier)
   atomData[27].position = double3(1.635112578995, 18.974875387109, 5.600705491777);
   atomData[28].position = double3(1.273978603709, 19.816503820444, 6.294567749071);
   atomData[29].position = double3(0.912844628423, 20.658132253779, 6.988430006364);
-
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
 
   RunningEnergy energy = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData);
 
@@ -205,11 +196,6 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_ewald)
   atomData[28].position = double3(1.27397860, 19.81650382, 6.29456775);
   atomData[29].position = double3(0.91284463, 20.65813225, 6.98843001);
 
-  for (Atom& atom : atomData)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
   system.precomputeTotalRigidEnergy();
   system.CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.forceField, system.simulationBox,
@@ -247,14 +233,15 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, moleculeAtomPositions);
+      system.forceField, system.components, system.simulationBox, moleculeAtomPositions, moleculeDynamics);
 
   std::vector<std::pair<double3x3, double>> strains{
       std::pair{double3x3{double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}},
@@ -352,17 +339,18 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, moleculeAtomPositions);
+      system.forceField, system.components, system.simulationBox, moleculeAtomPositions, moleculeDynamics);
   pressureInfo.first.sumTotal();
 
   std::vector<std::pair<double3x3, double>> strains{
@@ -466,10 +454,11 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
       System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   for (size_t i = 0; i < 20; ++i)
@@ -483,9 +472,9 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
     system.atomData[i + 20].charge = -1.0;
   }
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   RunningEnergy energy, rigidenergy;
@@ -494,7 +483,8 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.atomData, system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.atomData, system.atomDynamics, system.netChargeFramework,
+      system.netChargePerComponent);
   pressureInfo.first.sumTotal();
 
   std::vector<std::pair<double3x3, double>> strains{
@@ -629,14 +619,15 @@ TEST(MC_strain_tensor, Test_10_CO2_in_Box_inter)
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, moleculeAtomPositions);
+      system.forceField, system.components, system.simulationBox, moleculeAtomPositions, moleculeDynamics);
 
   std::vector<std::pair<double3x3, double>> strains{
       std::pair{double3x3{double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}},

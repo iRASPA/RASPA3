@@ -7,6 +7,7 @@ import std;
 import double3;
 import double3x3;
 import atom;
+import atom_dynamics;
 import running_energy;
 import energy_status;
 import simulationbox;
@@ -122,7 +123,8 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \return The total inter-molecular energy contributions.
  */
 RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                            std::span<Atom> moleculeAtoms) noexcept;
+                                            std::span<const Atom> moleculeAtoms,
+                                            std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 /**
  * \brief Computes inter-molecular energy, forces, and strain derivative tensor.
@@ -137,10 +139,9 @@ RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const 
  * \param moleculeAtoms A span of atoms for which to compute energies, forces, and strain derivatives.
  * \return A pair containing the energy status and the strain derivative tensor.
  */
-std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(const ForceField &forceField,
-                                                                               const std::vector<Component> &components,
-                                                                               const SimulationBox &simulationBox,
-                                                                               std::span<Atom> moleculeAtoms) noexcept;
+std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
+    const ForceField &forceField, const std::vector<Component> &components, const SimulationBox &simulationBox,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric potential for each atom.

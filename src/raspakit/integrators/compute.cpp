@@ -6,6 +6,7 @@ import std;
 
 import molecule;
 import atom;
+import atom_dynamics;
 import double3;
 import component;
 import simd_quatd;
@@ -18,6 +19,7 @@ import integrators_cputime;
 
 double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
                                                       std::span<const Atom> moleculeAtomPositions,
+                                                      std::span<const AtomDynamics> moleculeDynamics,
                                                       const std::vector<Component>& components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -33,7 +35,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
     else
     {
       // Flexible molecule: all kinetic energy is carried by the atoms
-      std::span<const Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
         double mass = components[molecule.componentId].definedAtoms[i].second;

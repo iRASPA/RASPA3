@@ -7,6 +7,7 @@ import std;
 import archive;
 import double3;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import component;
@@ -22,7 +23,8 @@ WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
 }
 
 void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component> components,
-                             std::span<const Atom> atomData, std::span<const Molecule> moleculeData,
+                             std::span<const Atom> atomData, std::span<const AtomDynamics> atomDynamics,
+                             std::span<const Molecule> moleculeData,
                              const SimulationBox simulationBox, const ForceField forceField,
                              std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                              std::optional<Framework> framework)
@@ -30,7 +32,7 @@ void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component
   if (currentCycle % sampleEvery != 0) return;
   ;
   std::ofstream stream(std::format("lammps/s{}.data", systemId), std::ios_base::out);
-  stream << IO::WriteLAMMPSDataFile(components, atomData, moleculeData, simulationBox, forceField,
+  stream << IO::WriteLAMMPSDataFile(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
                                     numberOfIntegerMoleculesPerComponent, framework)
          << std::endl;
 }

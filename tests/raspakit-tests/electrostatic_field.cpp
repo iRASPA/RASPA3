@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -50,6 +51,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 2.0 + 5.93355 - 1.149);
@@ -69,19 +71,19 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
       system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomData);
 
   RunningEnergy energy2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, frameworkAtoms, atomData, system.interpolationGrids);
+      system.forceField, system.simulationBox, frameworkAtoms, atomData, dynamicsData, system.interpolationGrids);
 
   EXPECT_NEAR(energy1.frameworkMoleculeVDW, energy2.frameworkMoleculeVDW, tolerance);
   EXPECT_NEAR(energy1.frameworkMoleculeCharge, energy2.frameworkMoleculeCharge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].x, -atomData[0].gradient.x / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].y, -atomData[0].gradient.y / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].z, -atomData[0].gradient.z / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].x, -atomData[1].gradient.x / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].y, -atomData[1].gradient.y / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].z, -atomData[1].gradient.z / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].x, -atomData[2].gradient.x / atomData[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].y, -atomData[2].gradient.y / atomData[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].z, -atomData[2].gradient.z / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].x, -dynamicsData[0].gradient.x / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].y, -dynamicsData[0].gradient.y / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].z, -dynamicsData[0].gradient.z / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].x, -dynamicsData[1].gradient.x / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].y, -dynamicsData[1].gradient.y / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].z, -dynamicsData[1].gradient.z / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].x, -dynamicsData[2].gradient.x / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].y, -dynamicsData[2].gradient.y / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].z, -dynamicsData[2].gradient.z / atomData[2].charge, tolerance);
 }
 
 // Test if E = F / q for Ewald interactions
@@ -115,6 +117,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {CO2}, {}, {1}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.83355, 7.83355, 1.8 + 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
   atomData[2].position = double3(6.03355, 8.03355, 2.2 + 5.93355 - 1.149);
@@ -132,20 +135,20 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   RunningEnergy energy2 = Interactions::computeEwaldFourierGradient(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms());
+      system.spanOfMoleculeAtoms(), dynamicsData);
 
   EXPECT_NEAR(energy1.ewald_fourier, energy2.ewald_fourier, tolerance);
   EXPECT_NEAR(energy1.ewald_self, energy2.ewald_self, tolerance);
   EXPECT_NEAR(energy1.ewald_exclusion, energy2.ewald_exclusion, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].x, -atomData[0].gradient.x / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].y, -atomData[0].gradient.y / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[0].z, -atomData[0].gradient.z / atomData[0].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].x, -atomData[1].gradient.x / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].y, -atomData[1].gradient.y / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[1].z, -atomData[1].gradient.z / atomData[1].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].x, -atomData[2].gradient.x / atomData[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].y, -atomData[2].gradient.y / atomData[2].charge, tolerance);
-  EXPECT_NEAR(moleculeElectricField[2].z, -atomData[2].gradient.z / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].x, -dynamicsData[0].gradient.x / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].y, -dynamicsData[0].gradient.y / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[0].z, -dynamicsData[0].gradient.z / atomData[0].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].x, -dynamicsData[1].gradient.x / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].y, -dynamicsData[1].gradient.y / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[1].z, -dynamicsData[1].gradient.z / atomData[1].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].x, -dynamicsData[2].gradient.x / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].y, -dynamicsData[2].gradient.y / atomData[2].charge, tolerance);
+  EXPECT_NEAR(moleculeElectricField[2].z, -dynamicsData[2].gradient.z / atomData[2].charge, tolerance);
 }
 
 /*

@@ -6,6 +6,7 @@ import std;
 
 import molecule;
 import atom;
+import atom_dynamics;
 import component;
 import running_energy;
 import thermostat;
@@ -44,8 +45,9 @@ export namespace Integrators
  * \return The updated running energies after the integration step.
  */
 RunningEnergy velocityVerlet(
-    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
-    double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+    const std::vector<Component> &components, double dt, std::optional<Thermostat>& thermostat,
+    std::span<Atom> frameworkAtomPositions,
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,

@@ -7,6 +7,7 @@ import std;
 import double3;
 import double3x3;
 import atom;
+import atom_dynamics;
 import molecule;
 import running_energy;
 import energy_status;
@@ -34,27 +35,31 @@ RunningEnergy computeIntraMolecularBendEnergy(const Potentials::IntraMolecularPo
 
 std::pair<double, double3x3> computeIntraMolecularBondStrainDerivative(
     const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
-    const std::span<Atom> atoms);
+    std::span<const Atom> atoms, std::span<AtomDynamics> dynamics);
 
 std::pair<double, double3x3> computeIntraMolecularBondStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics);
 
 std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
     const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
-    const std::span<Atom> atoms);
+    std::span<const Atom> atoms, std::span<AtomDynamics> dynamics);
 
 std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics);
 
 RunningEnergy computeIntraMolecularGradient(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
                                               std::span<const Molecule> moleculeData,
-                                              std::span<Atom> moleculeAtoms) noexcept;
+                                              std::span<const Atom> moleculeAtoms,
+                                              std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
     const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
-    const std::span<Atom> atoms);
+    std::span<const Atom> atoms, std::span<AtomDynamics> dynamics);
 
 std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics);
 
 };  // namespace Interactions

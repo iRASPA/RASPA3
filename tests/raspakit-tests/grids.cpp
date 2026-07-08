@@ -8,6 +8,7 @@ import double3x3;
 
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -107,15 +108,16 @@ TEST(grids, Test_CHA_grid)
              cartesian_hessian.az, cartesian_hessian.by, cartesian_hessian.bz, cartesian_hessian.cz);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = pos;
   atomData[0].charge = 1.0;
-  RunningEnergy energy =
-      Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, frameworkAtoms, atomData);
+  RunningEnergy energy = Interactions::computeFrameworkMoleculeGradient(
+      system.forceField, system.simulationBox, frameworkAtoms, atomData, dynamicsData, system.interpolationGrids);
   auto [l1, l2, hessian] = Interactions::calculateHessianAtPositionCoulomb(system.forceField, system.simulationBox, pos,
                                                                            1.0, frameworkAtoms);
 
-  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, atomData[0].gradient.x,
-             atomData[0].gradient.y, atomData[0].gradient.z);
+  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, dynamicsData[0].gradient.x,
+             dynamicsData[0].gradient.y, dynamicsData[0].gradient.z);
   std::print("CORRECT analytical hessian: {} {} {} {} {} {}\n", hessian.ax, hessian.ay, hessian.az, hessian.by,
              hessian.bz, hessian.cz);
 

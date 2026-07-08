@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -39,7 +40,7 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
   RunningEnergy energy = system.computeTotalEnergies();
 
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, system.atomData);
+      system.forceField, system.components, system.simulationBox, system.atomData, system.atomDynamics);
   strainDerivative.first.sumTotal();
 
   EXPECT_NEAR(energy.moleculeMoleculeVDW + energy.moleculeMoleculeCharge, strainDerivative.first.totalEnergy.energy,
@@ -70,8 +71,8 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework,
-      system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+      system.netChargeFramework, system.netChargePerComponent);
 
   strainDerivative.first.sumTotal();
 
@@ -99,7 +100,8 @@ TEST(energy_decomposition, CO2_Methane_in_Framework)
   RunningEnergy energy = system.computeTotalEnergies();
 
   RunningEnergy energyForces = Integrators::updateGradients(
-      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
+      system.forceField, system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 

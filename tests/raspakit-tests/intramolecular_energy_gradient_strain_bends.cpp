@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -60,14 +61,15 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<double, double3x3> pressureInfo = Interactions::computeIntraMolecularBendStrainDerivative(
-      system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+      system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions, moleculeDynamics);
 
   double3 gradient{};
   for (size_t i = 0; i < moleculeAtomPositions.size(); ++i)
@@ -110,9 +112,9 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
     gradient.y = (y2.bend - y1.bend) / delta;
     gradient.z = (z2.bend - z1.bend) / delta;
 
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 
   std::vector<std::pair<double3x3, double>> strains{

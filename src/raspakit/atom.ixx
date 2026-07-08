@@ -18,13 +18,16 @@ import scaling;
  * scaling factors for van der Waals and Coulomb interactions, and identifiers for
  * molecule, type, component, and group associations. The struct provides constructors
  * for initializing atoms and methods to adjust scaling parameters dynamically.
- * Atom class type should have exactly a size of 128 bytes (4 times double4).
+ *
+ * The struct holds only the "hot" per-atom fields that are read in the energy
+ * inner loops. The "cold" per-atom molecular-dynamics fields (velocity and
+ * gradient) live in the parallel AtomDynamics array; see atom_dynamics.ixx.
+ * Atom is exactly 64 bytes (2 times double4) so an atom fits in a single cache
+ * line and the energy loops touch only the bytes they need.
  */
 export struct Atom
 {
   double3 position;               ///< The position of the atom in 3D space.
-  double3 velocity{};             ///< The velocity of the atom.
-  double3 gradient{};             ///< The gradient acting on the atom.
   double charge;                  ///< The electric charge of the atom.
   double scalingVDW{1.0};         ///< Scaling factor for van der Waals interactions.
   double scalingCoulomb{1.0};     ///< Scaling factor for Coulomb interactions.
@@ -232,6 +235,9 @@ export struct Atom
   }
 };
 
+// position (double4) + charge/scalingVDW/scalingCoulomb + packed ids = 2 times double4 = 2x32 = 64 bytes
+static_assert(sizeof(Atom) == 64, "struct Atom size is not 64");
+
 export struct AtomTypeEqual
 {
   constexpr bool operator()(const Atom& a, const Atom& b) const
@@ -263,8 +269,6 @@ std::formatter<string_view>::format(temp, ctx);
 export void to_json(nlohmann::json &j, const Atom &a)
 {
   j = nlohmann::json{{"position", a.position},
-                     {"velocity", a.velocity},
-                     {"gradient", a.gradient},
                      {"charge", a.charge},
                      {"scalingVDW", a.scalingVDW},
                      {"scalingCoulomb", a.scalingCoulomb},
@@ -280,8 +284,6 @@ export void from_json(const nlohmann::json &j, Atom &a)
   std::uint8_t groupIdBitField;
   std::uint8_t isFractionalBitField;
   j.at("position").get_to(a.position);
-  j.at("velocity").get_to(a.velocity);
-  j.at("gradient").get_to(a.gradient);
   j.at("charge").get_to(a.charge);
   j.at("scalingVDW").get_to(a.scalingVDW);
   j.at("scalingCoulomb").get_to(a.scalingCoulomb);

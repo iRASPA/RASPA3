@@ -9,6 +9,7 @@ import double3x3;
 import simd_quatd;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -39,6 +40,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -49,37 +51,37 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
   system.moleculeData[0].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
   system.moleculeData[1].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
+  Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField,
                                system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
                                system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
                                system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.components);
+                                                        system.spanOfMoleculeDynamics(), system.components);
 
-  EXPECT_NEAR(atomData[0].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, 103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, -574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, 103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, 103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, -574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 18.706660418865, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, -103.939706389550, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, -18.706660418853, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, 574.210506496196, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 0.000000000000, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, -103.939706389549, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 18.706660418865, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, -103.939706389550, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, -18.706660418853, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 574.210506496196, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 0.000000000000, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, -103.939706389549, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 18.706660418865, 1e-4);
 
   EXPECT_NEAR(system.moleculeData[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(system.moleculeData[0].gradient.y, -366.33109372, 1e-4);
@@ -112,6 +114,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(7.200346017629, 5.547320950450, 2.554032891860);
   atomData[1].position = double3(6.206010115191, 5.030510168430, 2.807811789148);
   atomData[2].position = double3(5.211674212752, 4.513699386409, 3.061590686436);
@@ -122,37 +125,37 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
   system.moleculeData[0].orientation = simd_quatd(0.44301474, 0.64356245, 0.55112425, 0.29296310);
   system.moleculeData[1].orientation = simd_quatd(0.04909940, 0.26171955, 0.01333290, 0.96380203);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
+  Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField,
                                system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
                                system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
                                system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.components);
+                                                        system.spanOfMoleculeDynamics(), system.components);
 
-  EXPECT_NEAR(atomData[0].gradient.x, -401.918996903652, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, -250.086986676442, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, 76.393683260493, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, -112.917384315368, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, 135.881091839024, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 191.752321499793, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, 649.466150035879, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, 183.761020135682, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, 542.179200465678, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, -401.918996903652, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -250.086986676442, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, 76.393683260493, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, -112.917384315368, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 135.881091839024, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 191.752321499793, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, 649.466150035879, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 183.761020135682, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, 542.179200465678, 1e-4);
 
-  EXPECT_NEAR(atomData[3].gradient.x, -30.785378731879, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, 80.096820989863, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, 113.734455039940, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, -40.135560076449, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, 19.413856681000, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, -302.257466181579, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, -310.276701548065, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, 181.549370345199, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, -33.308103959230, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, -30.785378731879, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 80.096820989863, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 113.734455039940, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, -40.135560076449, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, 19.413856681000, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, -302.257466181579, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, -310.276701548065, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 181.549370345199, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, -33.308103959230, 1e-4);
 
   EXPECT_NEAR(system.moleculeData[0].gradient.x, 134.62976882, 1e-4);
   EXPECT_NEAR(system.moleculeData[0].gradient.y, 69.55512530, 1e-4);
@@ -185,6 +188,7 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = double3(2.672476355982, 4.866114600102, 3.294027041381);
   atomData[1].position = double3(2.884778590882, 3.937807845649, 3.197041626529);
   atomData[2].position = double3(3.522761084928, 5.304109388792, 3.331554162278);
@@ -205,23 +209,23 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   system.moleculeData[0].centerOfMassPosition = com0 / system.moleculeData[0].invMass;
   system.moleculeData[1].centerOfMassPosition = com1 / system.moleculeData[0].invMass;
 
-  atomData[0].velocity = double3(-2.56934959, 3.49026313, 2.46235469);
-  atomData[1].velocity = double3(14.83854769, 8.31306952, -5.59358085);
-  atomData[2].velocity = double3(-10.83853213, 19.76930089, -0.17504625);
-  atomData[3].velocity = double3(-0.73607131, -7.74519202, 5.70179557);
-  atomData[4].velocity = double3(-10.70666431, 0.16931747, 6.59935402);
-  atomData[5].velocity = double3(0.95342220, -5.47957843, -2.32188856);
-  atomData[6].velocity = double3(11.57668989, -11.62828553, 5.38545620);
-  atomData[7].velocity = double3(10.25681953, 15.34872196, -1.86243447);
-  atomData[8].velocity = double3(1.52395494, -16.52600113, 0.66358941);
-  atomData[9].velocity = double3(-13.36285337, -4.55938179, -10.94095934);
+  dynamicsData[0].velocity = double3(-2.56934959, 3.49026313, 2.46235469);
+  dynamicsData[1].velocity = double3(14.83854769, 8.31306952, -5.59358085);
+  dynamicsData[2].velocity = double3(-10.83853213, 19.76930089, -0.17504625);
+  dynamicsData[3].velocity = double3(-0.73607131, -7.74519202, 5.70179557);
+  dynamicsData[4].velocity = double3(-10.70666431, 0.16931747, 6.59935402);
+  dynamicsData[5].velocity = double3(0.95342220, -5.47957843, -2.32188856);
+  dynamicsData[6].velocity = double3(11.57668989, -11.62828553, 5.38545620);
+  dynamicsData[7].velocity = double3(10.25681953, 15.34872196, -1.86243447);
+  dynamicsData[8].velocity = double3(1.52395494, -16.52600113, 0.66358941);
+  dynamicsData[9].velocity = double3(-13.36285337, -4.55938179, -10.94095934);
 
   system.moleculeData[0].orientation = simd_quatd(-0.34788397, 0.57840378, 0.41201608, 0.61210176);
   system.moleculeData[1].orientation = simd_quatd(-0.07669892, 0.19685049, 0.29872787, 0.93066042);
 
-  for (Atom& atom : atomData)
+  for (AtomDynamics& dynamics : dynamicsData)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
 
   RunningEnergy energy = system.computeTotalEnergies();
@@ -234,13 +238,13 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   EXPECT_NEAR(energy.potentialEnergy() * Units::EnergyToKelvin, 15068.729964973694, 1e-4);
 
   RunningEnergy force = Integrators::updateGradients(
-      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.components);
+                                                        system.spanOfMoleculeDynamics(), system.components);
   Integrators::updateCenterOfMassAndQuaternionVelocities(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                         system.components);
+                                                         system.spanOfMoleculeDynamics(), system.components);
 
   EXPECT_NEAR(force.frameworkMoleculeVDW * Units::EnergyToKelvin, 13286.65000939, 1e-4);
   EXPECT_NEAR(force.frameworkMoleculeCharge * Units::EnergyToKelvin, 2340.77151436, 1e-4);
@@ -250,36 +254,36 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
               -578.26684244 + 18.14933840, 1e-4);
   EXPECT_NEAR(energy.potentialEnergy() * Units::EnergyToKelvin, 15068.729964973694, 1e-4);
 
-  EXPECT_NEAR(atomData[0].gradient.x, -10324.973732049806, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.y, -4507.328164443007, 1e-4);
-  EXPECT_NEAR(atomData[0].gradient.z, -11740.007010211551, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.x, 63.952520769129, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.y, 357.934385984066, 1e-4);
-  EXPECT_NEAR(atomData[1].gradient.z, 229.902658234023, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.x, -177.459324021042, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.y, 13.702574609408, 1e-4);
-  EXPECT_NEAR(atomData[2].gradient.z, -149.823840142605, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.x, 40.721496369440, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.y, 102.350781724646, 1e-4);
-  EXPECT_NEAR(atomData[3].gradient.z, 544.715356017259, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.x, 893.786993301498, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.y, -462.571049611041, 1e-4);
-  EXPECT_NEAR(atomData[4].gradient.z, 264.954428493690, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.x, 21048.440564961642, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.y, 7292.526006699147, 1e-4);
-  EXPECT_NEAR(atomData[5].gradient.z, 38006.857957389766, 1e-4);
-  EXPECT_NEAR(atomData[6].gradient.x, 144.018623861521, 1e-4);
-  EXPECT_NEAR(atomData[6].gradient.y, -164.047506662763, 1e-4);
-  EXPECT_NEAR(atomData[6].gradient.z, 122.652248106359, 1e-4);
-  EXPECT_NEAR(atomData[7].gradient.x, 886.295335930291, 1e-4);
-  EXPECT_NEAR(atomData[7].gradient.y, -1795.979021143564, 1e-4);
-  EXPECT_NEAR(atomData[7].gradient.z, 5898.365905521006, 1e-4);
-  EXPECT_NEAR(atomData[8].gradient.x, -65.898172944280, 1e-4);
-  EXPECT_NEAR(atomData[8].gradient.y, -252.228439919443, 1e-4);
-  EXPECT_NEAR(atomData[8].gradient.z, 73.787635477924, 1e-4);
-  EXPECT_NEAR(atomData[9].gradient.x, 435.784773865589, 1e-4);
-  EXPECT_NEAR(atomData[9].gradient.y, 424.010966892300, 1e-4);
-  EXPECT_NEAR(atomData[9].gradient.z, 26.760057063541, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.x, -10324.973732049806, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.y, -4507.328164443007, 1e-4);
+  EXPECT_NEAR(dynamicsData[0].gradient.z, -11740.007010211551, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.x, 63.952520769129, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.y, 357.934385984066, 1e-4);
+  EXPECT_NEAR(dynamicsData[1].gradient.z, 229.902658234023, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.x, -177.459324021042, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.y, 13.702574609408, 1e-4);
+  EXPECT_NEAR(dynamicsData[2].gradient.z, -149.823840142605, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.x, 40.721496369440, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.y, 102.350781724646, 1e-4);
+  EXPECT_NEAR(dynamicsData[3].gradient.z, 544.715356017259, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.x, 893.786993301498, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.y, -462.571049611041, 1e-4);
+  EXPECT_NEAR(dynamicsData[4].gradient.z, 264.954428493690, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.x, 21048.440564961642, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.y, 7292.526006699147, 1e-4);
+  EXPECT_NEAR(dynamicsData[5].gradient.z, 38006.857957389766, 1e-4);
+  EXPECT_NEAR(dynamicsData[6].gradient.x, 144.018623861521, 1e-4);
+  EXPECT_NEAR(dynamicsData[6].gradient.y, -164.047506662763, 1e-4);
+  EXPECT_NEAR(dynamicsData[6].gradient.z, 122.652248106359, 1e-4);
+  EXPECT_NEAR(dynamicsData[7].gradient.x, 886.295335930291, 1e-4);
+  EXPECT_NEAR(dynamicsData[7].gradient.y, -1795.979021143564, 1e-4);
+  EXPECT_NEAR(dynamicsData[7].gradient.z, 5898.365905521006, 1e-4);
+  EXPECT_NEAR(dynamicsData[8].gradient.x, -65.898172944280, 1e-4);
+  EXPECT_NEAR(dynamicsData[8].gradient.y, -252.228439919443, 1e-4);
+  EXPECT_NEAR(dynamicsData[8].gradient.z, 73.787635477924, 1e-4);
+  EXPECT_NEAR(dynamicsData[9].gradient.x, 435.784773865589, 1e-4);
+  EXPECT_NEAR(dynamicsData[9].gradient.y, 424.010966892300, 1e-4);
+  EXPECT_NEAR(dynamicsData[9].gradient.z, 26.760057063541, 1e-4);
 
   EXPECT_NEAR(system.moleculeData[0].gradient.x, -9503.97204563, 1e-4);
   EXPECT_NEAR(system.moleculeData[0].gradient.y, -4495.91147174, 1e-4);

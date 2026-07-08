@@ -11,6 +11,7 @@ import randomnumbers;
 import threadpool;
 
 import atom;
+import atom_dynamics;
 import molecule;
 import framework;
 import component;
@@ -189,6 +190,10 @@ export struct System
   // The atoms-order is defined as increasing per component and molecule.
   // Because the number of atoms is fixed per component it is easy to access the n-th molecule
   std::vector<Atom> atomData;
+  // Cold per-atom molecular-dynamics fields (velocity, gradient), stored parallel to atomData with
+  // identical length and indexing. Split out of Atom to keep Atom a single 64-byte cache line so the
+  // energy inner loops touch only the bytes they need.
+  std::vector<AtomDynamics> atomDynamics;
   std::vector<Molecule> moleculeData;
   std::vector<double> electricPotential;
   std::vector<double3> electricField;
@@ -338,6 +343,10 @@ export struct System
   std::span<const Atom> spanOfFlexibleAtoms() const;
   std::span<const Atom> spanOfMoleculeAtoms() const;
   std::span<Atom> spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> spanOfFrameworkDynamics() const;
+  std::span<AtomDynamics> spanOfFrameworkDynamics();
+  std::span<const AtomDynamics> spanOfMoleculeDynamics() const;
+  std::span<AtomDynamics> spanOfMoleculeDynamics();
   std::span<double> spanOfMoleculeElectrostaticPotential();
   std::span<double3> spanOfMoleculeElectricField();
   std::span<double3> spanOfMoleculeElectricFieldNew();

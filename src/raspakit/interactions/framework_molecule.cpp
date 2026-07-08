@@ -488,8 +488,8 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 }
 
 RunningEnergy Interactions::computeFrameworkMoleculeGradient(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept
 {
   RunningEnergy energySum{};
@@ -503,8 +503,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
   if (moleculeAtoms.empty()) return energySum;
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+  // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
+    std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     posA = it1->position;
     std::size_t typeA = static_cast<std::size_t>(it1->type);
     std::uint8_t groupIdA = it1->groupId;
@@ -517,17 +519,17 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
       energySum.frameworkMoleculeVDW += energy_vdw;
-      it1->gradient += gradient_vdw;
+      moleculeDynamics[indexA].gradient += gradient_vdw;
       if (useCharge)
       {
         auto [energy_real_ewald, gradient_real_ewald] = interpolationGrids.back()->interpolateGradient(posA);
         energySum.frameworkMoleculeCharge += chargeA * energy_real_ewald;
-        it1->gradient += chargeA * gradient_real_ewald;
+        moleculeDynamics[indexA].gradient += chargeA * gradient_real_ewald;
       }
     }
     else
     {
-      for (std::span<Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
+      for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
         posB = it2->position;
         std::size_t typeB = static_cast<std::size_t>(it2->type);
@@ -550,8 +552,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
           const double3 f = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          moleculeDynamics[indexA].gradient += f;
         }
         if (useCharge && rr < cutOffChargeSquared)
         {
@@ -564,8 +565,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
           const double3 g = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += g;
-          it2->gradient -= g;
+          moleculeDynamics[indexA].gradient += g;
         }
       }
     }
@@ -576,8 +576,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
     const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms) noexcept
+    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept
 {
   double3 dr, posA, posB;
   double rr;
@@ -592,8 +592,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+  // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
+    std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     posA = it1->position;
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
     std::size_t typeA = static_cast<std::size_t>(it1->type);
@@ -609,7 +611,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       energy.frameworkComponentEnergy(0, compA).VanDerWaals += Potentials::EnergyFactor(energy_vdw, 0.0);
       const double3 f = gradient_vdw;
 
-      it1->gradient += f;
+      moleculeDynamics[indexA].gradient += f;
 
       strainDerivativeTensor.ax += f.x * posA.x;
       strainDerivativeTensor.bx += f.y * posA.x;
@@ -630,7 +632,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
             Potentials::EnergyFactor(chargeA * energy_real_ewald, 0.0);
         const double3 g = chargeA * gradient_real_ewald;
 
-        it1->gradient += g;
+        moleculeDynamics[indexA].gradient += g;
 
         strainDerivativeTensor.ax += g.x * posA.x;
         strainDerivativeTensor.bx += g.y * posA.x;
@@ -647,7 +649,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     }
     else
     {
-      for (std::span<Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
+      for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
         posB = it2->position;
         std::size_t typeB = static_cast<std::size_t>(it2->type);
@@ -673,8 +675,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
           const double3 f = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          moleculeDynamics[indexA].gradient += f;
 
           strainDerivativeTensor.ax += f.x * dr.x;
           strainDerivativeTensor.bx += f.y * dr.x;
@@ -700,8 +701,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
           const double3 g = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += g;
-          it2->gradient -= g;
+          moleculeDynamics[indexA].gradient += g;
 
           strainDerivativeTensor.ax += g.x * dr.x;
           strainDerivativeTensor.bx += g.y * dr.x;

@@ -7,14 +7,18 @@ import std;
 import archive;
 import double3;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox,
+                                                std::span<const Atom> frameworkAtoms,
+                                                std::span<const AtomDynamics> frameworkDynamics,
                                                 [[maybe_unused]] const std::vector<Molecule> &molecules,
-                                                std::span<Atom> moleculeAtoms, std::size_t currentCycle,
-                                                std::size_t block)
+                                                std::span<const Atom> moleculeAtoms,
+                                                std::span<const AtomDynamics> moleculeDynamics,
+                                                std::size_t currentCycle, std::size_t block)
 {
   double3 dr, posA, posB, f;
   double3 gradientA, gradientB;
@@ -24,16 +28,16 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
 
   if (moleculeAtoms.empty()) return;
 
-  for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  for (std::size_t ia = 0; ia < frameworkAtoms.size(); ++ia)
   {
-    posA = it1->position;
-    gradientA = it1->gradient;
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-    for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
+    posA = frameworkAtoms[ia].position;
+    gradientA = frameworkDynamics[ia].gradient;
+    std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
+    for (std::size_t ib = 0; ib < moleculeAtoms.size(); ++ib)
     {
-      posB = it2->position;
-      gradientB = it2->gradient;
-      std::size_t typeB = static_cast<std::size_t>(it2->type);
+      posB = moleculeAtoms[ib].position;
+      gradientB = moleculeDynamics[ib].gradient;
+      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
 
       pairCount[typeB + typeA * numberOfPseudoAtoms]++;
       pairCount[typeA + typeB * numberOfPseudoAtoms]++;
@@ -56,25 +60,25 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
     }
   }
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  for (std::size_t ia = 0; ia + 1 < moleculeAtoms.size(); ++ia)
   {
-    posA = it1->position;
-    gradientA = it1->gradient;
-    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-    std::size_t compA = static_cast<std::size_t>(it1->componentId);
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
+    posA = moleculeAtoms[ia].position;
+    gradientA = moleculeDynamics[ia].gradient;
+    std::size_t molA = static_cast<std::size_t>(moleculeAtoms[ia].moleculeId);
+    std::size_t compA = static_cast<std::size_t>(moleculeAtoms[ia].componentId);
+    std::size_t typeA = static_cast<std::size_t>(moleculeAtoms[ia].type);
 
-    for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
+    for (std::size_t ib = ia + 1; ib < moleculeAtoms.size(); ++ib)
     {
-      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
-      std::size_t compB = static_cast<std::size_t>(it2->componentId);
-      gradientB = it2->gradient;
+      std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
+      std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
+      gradientB = moleculeDynamics[ib].gradient;
 
       // skip interactions within the same molecule
       if (!((compA == compB) && (molA == molB)))
       {
-        posB = it2->position;
-        std::size_t typeB = static_cast<std::size_t>(it2->type);
+        posB = moleculeAtoms[ib].position;
+        std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
 
         pairCount[typeB + typeA * numberOfPseudoAtoms]++;
         pairCount[typeA + typeB * numberOfPseudoAtoms]++;

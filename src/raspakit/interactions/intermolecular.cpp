@@ -425,7 +425,8 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
 
 RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forceField,
                                                           const SimulationBox &simulationBox,
-                                                          std::span<Atom> moleculeAtoms) noexcept
+                                                          std::span<const Atom> moleculeAtoms,
+                                                          std::span<AtomDynamics> moleculeDynamics) noexcept
 {
   double3 dr, posA, posB;
   double rr;
@@ -438,8 +439,9 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
   if (forceField.omitInterInteractions) return energySum;
   if (moleculeAtoms.empty()) return energySum;
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
+    std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     posA = it1->position;
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
     std::size_t typeA = static_cast<std::size_t>(it1->type);
@@ -448,13 +450,14 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
+    for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
       std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
 
       // skip interactions within the same molecule
       if (molA != molB)
       {
+        std::size_t indexB = static_cast<std::size_t>(it2 - moleculeAtoms.begin());
         posB = it2->position;
         std::size_t typeB = static_cast<std::size_t>(it2->type);
         std::uint8_t groupIdB = it2->groupId;
@@ -476,8 +479,8 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 
           const double3 f = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          moleculeDynamics[indexA].gradient += f;
+          moleculeDynamics[indexB].gradient -= f;
         }
         if (useCharge && rr < cutOffChargeSquared)
         {
@@ -490,8 +493,8 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 
           const double3 f = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          moleculeDynamics[indexA].gradient += f;
+          moleculeDynamics[indexB].gradient -= f;
         }
       }
     }
@@ -502,7 +505,7 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 
 std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStrainDerivative(
     const ForceField &forceField, const std::vector<Component> &components, const SimulationBox &simulationBox,
-    std::span<Atom> moleculeAtoms) noexcept
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept
 {
   double3 dr, posA, posB;
   double rr;
@@ -518,8 +521,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
   if (forceField.omitInterInteractions) return {energy, strainDerivativeTensor};
   if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
+    std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     posA = it1->position;
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
@@ -531,8 +535,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
     energy.componentEnergy(compA, compA).VanDerWaalsTailCorrection += Potentials::EnergyFactor(
         preFactor * scalingVDWA * scalingVDWA * forceField(typeA, typeA).tailCorrectionEnergy, 0.0);
 
-    for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
+    for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
+      std::size_t indexB = static_cast<std::size_t>(it2 - moleculeAtoms.begin());
       std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
       std::size_t compB = static_cast<std::size_t>(it2->componentId);
       std::size_t typeB = static_cast<std::size_t>(it2->type);
@@ -566,8 +571,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
 
           const double3 g = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += g;
-          it2->gradient -= g;
+          moleculeDynamics[indexA].gradient += g;
+          moleculeDynamics[indexB].gradient -= g;
 
           strainDerivativeTensor.ax += g.x * dr.x;
           strainDerivativeTensor.bx += g.y * dr.x;
@@ -595,8 +600,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
 
           const double3 g = energyFactor.gradientFactor * dr;
 
-          it1->gradient += g;
-          it2->gradient -= g;
+          moleculeDynamics[indexA].gradient += g;
+          moleculeDynamics[indexB].gradient -= g;
 
           strainDerivativeTensor.ax += g.x * dr.x;
           strainDerivativeTensor.bx += g.y * dr.x;

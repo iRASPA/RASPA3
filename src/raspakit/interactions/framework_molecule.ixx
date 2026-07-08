@@ -8,6 +8,7 @@ import double3;
 import double3x3;
 import double3x3x3;
 import atom;
+import atom_dynamics;
 import running_energy;
 import energy_status;
 import simulationbox;
@@ -158,8 +159,8 @@ void computeFrameworkMoleculeElectricFieldDifference(const ForceField &forceFiel
  * \return A RunningEnergy object containing the total interaction energy.
  */
 RunningEnergy computeFrameworkMoleculeGradient(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept;
 
 /**
@@ -180,8 +181,8 @@ RunningEnergy computeFrameworkMoleculeGradient(
 [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative(
     const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms) noexcept;
+    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 /**
  * \brief Computes the electric potential at molecule atom positions due to the framework atoms.

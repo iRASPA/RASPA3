@@ -7,6 +7,7 @@ import std;
 import molecule;
 import molecule;
 import atom;
+import atom_dynamics;
 import component;
 import running_energy;
 import simulationbox;
@@ -28,7 +29,8 @@ export namespace Integrators
  * \param scaling Pair of scaling factors for velocity and orientation momentum.
  */
 void scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                     const std::vector<Component>& components, std::pair<double, double> scaling);
+                     std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
+                     std::pair<double, double> scaling);
 
 /**
  * \brief Removes total system velocity.
@@ -38,6 +40,7 @@ void scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeA
  * \param components Vector of component definitions.
  */
 void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                     std::span<AtomDynamics> moleculeDynamics,
                                      const std::vector<Component>& components);
 /**
  * \brief Updates the positions of molecules based on their velocities.
@@ -51,7 +54,8 @@ void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span
  * \param dt Time step for the update.
  */
 void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                     const std::vector<Component>& components, double dt);
+                     std::span<const AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
+                     double dt);
 
 /**
  * \brief Updates the velocities and orientation momenta of molecules based on gradients.
@@ -65,7 +69,7 @@ void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeA
  * \param dt Time step for the update.
  */
 void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                      const std::vector<Component>& components, double dt);
+                      std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components, double dt);
 
 /**
  * \brief Initializes the velocities according to the Boltzmann distribution
@@ -81,8 +85,8 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
  * \param temperature Temperature to set velocities to.
  */
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
-                          std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
-                          double temperature);
+                          std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+                          const std::vector<Component> components, double temperature);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.
@@ -115,6 +119,7 @@ void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vect
  * \param components Vector of component definitions.
  */
 void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                               std::span<const AtomDynamics> moleculeDynamics,
                                                std::vector<Component> components);
 
 /**
@@ -125,6 +130,7 @@ void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
  * \param components Vector of component definitions.
  */
 void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                              std::span<const AtomDynamics> moleculeDynamics,
                                               std::vector<Component> components);
 
 /**
@@ -144,8 +150,8 @@ void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, 
  * \return The total running energy computed from interactions.
  */
 RunningEnergy updateGradients(
-    std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-    std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
+    std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
+    std::span<AtomDynamics> moleculeDynamics, std::span<const Atom> frameworkAtomPositions, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
