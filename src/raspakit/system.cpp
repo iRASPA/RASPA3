@@ -4603,16 +4603,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;
-  if (versionNumber >= 2)
-  {
-    archive >> s.pressureTensorDiagonal;
-    archive >> s.input_pressureTensorDiagonal;
-  }
-  else
-  {
-    s.pressureTensorDiagonal = double3(s.pressure, s.pressure, s.pressure);
-    s.input_pressureTensorDiagonal = double3(s.input_pressure, s.input_pressure, s.input_pressure);
-  }
+  archive >> s.pressureTensorDiagonal;
+  archive >> s.input_pressureTensorDiagonal;
   archive >> s.beta;
 
   archive >> s.heliumVoidFraction;
@@ -4639,25 +4631,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
-  if (versionNumber >= 4)
-  {
-    archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
-  }
-  else
-  {
-    s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
-  }
+  archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
-  if (versionNumber >= 3)
-  {
-    archive >> s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
-    archive >> s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
-  }
-  else
-  {
-    s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
-    s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC.assign(s.components.size(), 0);
-  }
+  archive >> s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
 
   archive >> s.idealGasEnergiesPerComponent;

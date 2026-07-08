@@ -46,7 +46,7 @@ export struct Reaction
 
   bool operator==(Reaction const &) const = default;
 
-  std::uint64_t versionNumber{4};  ///< Version number of the Reaction struct.
+  std::uint64_t versionNumber{1};  ///< Version number of the Reaction struct.
 
   std::size_t id;                                  ///< Unique identifier for the reaction.
   /// Stoichiometry of reactants (one entry per adsorbate component; values may exceed 1).

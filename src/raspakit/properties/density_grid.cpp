@@ -377,27 +377,13 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
   archive >> temp.sampleEvery;
   archive >> temp.writeEvery;
 
-  if (versionNumber >= 3)
-  {
-    archive >> temp.densityGridPseudoAtomsList;
-  }
-  else
-  {
-    temp.densityGridPseudoAtomsList.clear();
-  }
+  archive >> temp.densityGridPseudoAtomsList;
 
   temp.numberOfChannels =
       temp.densityGridPseudoAtomsList.empty() ? 1uz : temp.densityGridPseudoAtomsList.size();
 
   archive >> temp.normType;
-  if (versionNumber >= 4)
-  {
-    archive >> temp.binningMode;
-  }
-  else
-  {
-    temp.binningMode = PropertyDensityGrid::Binning::Standard;
-  }
+  archive >> temp.binningMode;
   archive >> temp.numberOfSamples;
 
   #if DEBUG_ARCHIVE

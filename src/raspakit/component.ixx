@@ -147,7 +147,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{4};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.

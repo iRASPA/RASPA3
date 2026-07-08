@@ -100,7 +100,7 @@ export struct System
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{1};
 
   double temperature{300.0};
   double pressure{1e4};

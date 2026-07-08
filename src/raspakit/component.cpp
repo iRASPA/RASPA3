@@ -1711,17 +1711,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.lnPartitionFunction;
 
-  if (c.versionNumber >= 3)
-  {
-    archive << c.pairComponentId;
-    archive << c.maximumPairDistance;
-  }
+  archive << c.pairComponentId;
+  archive << c.maximumPairDistance;
 
-  if (c.versionNumber >= 4)
-  {
-    archive << c.lambdaPairSwap;
-    archive << c.lambdaPairSwapCB;
-  }
+  archive << c.lambdaPairSwap;
+  archive << c.lambdaPairSwapCB;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1784,10 +1778,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.grownAtoms;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
-  if (versionNumber >= 2)
-  {
-    archive >> c.gibbsIdentityChanges;
-  }
+  archive >> c.gibbsIdentityChanges;
 
   archive >> c.initialNumberOfMolecules;
 
@@ -1808,17 +1799,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.lnPartitionFunction;
 
-  if (versionNumber >= 3)
-  {
-    archive >> c.pairComponentId;
-    archive >> c.maximumPairDistance;
-  }
+  archive >> c.pairComponentId;
+  archive >> c.maximumPairDistance;
 
-  if (versionNumber >= 4)
-  {
-    archive >> c.lambdaPairSwap;
-    archive >> c.lambdaPairSwapCB;
-  }
+  archive >> c.lambdaPairSwap;
+  archive >> c.lambdaPairSwapCB;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

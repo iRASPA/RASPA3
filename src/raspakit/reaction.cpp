@@ -74,38 +74,17 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
   archive >> r.reactantStoichiometry;
   archive >> r.productStoichiometry;
   archive >> r.lambda;
-  if (versionNumber >= 3)
-  {
-    archive >> r.lambdaProductSide;
-    archive >> r.currentLambda;
-    archive >> r.maximumLambdaChange;
-    archive >> r.maximumLambdaChangeProducts;
-    archive >> r.lambdaSwitchPoint;
-    if (versionNumber >= 4)
-    {
-      std::uint64_t reactionMove;
-      archive >> reactionMove;
-      r.reactionMove = static_cast<Move::Types>(reactionMove);
-    }
-    else
-    {
-      // version 3 stored a per-reaction serial/parallel flag; map it onto the driving move
-      bool legacySerialRxCFC;
-      archive >> legacySerialRxCFC;
-      r.reactionMove =
-          legacySerialRxCFC ? Move::Types::ReactionCFCMC : Move::Types::ReactionConventionalCFCMC;
-    }
-    archive >> r.fractionalSideIsReactants;
-    archive >> r.reactantFractionalMoleculeIds;
-    archive >> r.productFractionalMoleculeIds;
-  }
-  else if (versionNumber >= 2)
-  {
-    archive >> r.currentLambda;
-    archive >> r.maximumLambdaChange;
-    archive >> r.reactantFractionalMoleculeIds;
-    archive >> r.productFractionalMoleculeIds;
-  }
+  archive >> r.lambdaProductSide;
+  archive >> r.currentLambda;
+  archive >> r.maximumLambdaChange;
+  archive >> r.maximumLambdaChangeProducts;
+  archive >> r.lambdaSwitchPoint;
+  std::uint64_t reactionMove;
+  archive >> reactionMove;
+  r.reactionMove = static_cast<Move::Types>(reactionMove);
+  archive >> r.fractionalSideIsReactants;
+  archive >> r.reactantFractionalMoleculeIds;
+  archive >> r.productFractionalMoleculeIds;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

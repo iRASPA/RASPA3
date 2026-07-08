@@ -18,7 +18,7 @@ export template <typename T>
  */
 struct MoveStatistics
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
   bool operator==(MoveStatistics<T> const &) const = default;
 

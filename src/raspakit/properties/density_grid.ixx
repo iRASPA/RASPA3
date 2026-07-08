@@ -55,7 +55,7 @@ export struct PropertyDensityGrid
   {
   }
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;

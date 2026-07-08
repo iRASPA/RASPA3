@@ -213,9 +213,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, IntegratorsC
   archive >> t.computeCenterOfMassVelocity;
   archive >> t.computeLinearMomentum;
   archive >> t.scaleVelocities;
+  archive >> t.removeCenterOfMassVelocity;
   archive >> t.updatePositions;
   archive >> t.updateVelocities;
-  archive >> t.removeCenterOfMassVelocity;
   archive >> t.createCartesianPositions;
   archive >> t.noSquishFreeRotorOrderTwo;
   archive >> t.noSquishRotate;
