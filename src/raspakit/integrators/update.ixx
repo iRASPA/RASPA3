@@ -19,52 +19,83 @@ export namespace Integrators
 /**
  * \brief Scales the velocities and orientation momenta of molecules.
  *
+ * For rigid molecules the center-of-mass velocity and orientation momentum are scaled;
+ * for flexible molecules the atomic velocities are scaled as well.
+ *
  * \param moleculeData Span of molecules whose velocities are to be scaled.
+ * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
+ * \param components Vector of component definitions.
  * \param scaling Pair of scaling factors for velocity and orientation momentum.
  */
-void scaleVelocities(std::span<Molecule> moleculeData, std::pair<double, double> scaling);
+void scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                     const std::vector<Component>& components, std::pair<double, double> scaling);
 
 /**
  * \brief Removes total system velocity.
  *
  * \param moleculeData Span of molecules whose velocities are to be scaled.
+ * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
+ * \param components Vector of component definitions.
  */
-void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData);
+void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                     const std::vector<Component>& components);
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *
+ * For rigid molecules the center-of-mass position is propagated; for flexible molecules
+ * the atomic positions are the integration variables and are propagated directly.
+ *
  * \param moleculeData Span of molecules whose positions are to be updated.
+ * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
+ * \param components Vector of component definitions.
  * \param dt Time step for the update.
  */
-void updatePositions(std::span<Molecule> moleculeData, double dt);
+void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                     const std::vector<Component>& components, double dt);
 
 /**
  * \brief Updates the velocities and orientation momenta of molecules based on gradients.
  *
+ * For rigid molecules the center-of-mass velocity and orientation momentum are updated;
+ * for flexible molecules the atomic velocities are updated from the atomic gradients.
+ *
  * \param moleculeData Span of molecules whose velocities are to be updated.
+ * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
+ * \param components Vector of component definitions.
  * \param dt Time step for the update.
  */
-void updateVelocities(std::span<Molecule> moleculeData, double dt);
+void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                      const std::vector<Component>& components, double dt);
 
 /**
  * \brief Initializes the velocities according to the Boltzmann distribution
  *
+ * Rigid molecules get a center-of-mass velocity and an orientation momentum; flexible
+ * molecules get per-atom velocities (their molecule record is synchronized to the
+ * center-of-mass velocity).
+ *
  * \param random A random number generator
  * \param moleculeData Span of molecules to initialize velocity for.
+ * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Components to get the inertiaVector
  * \param temperature Temperature to set velocities to.
  */
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
-                          const std::vector<Component> components, double temperature);
+                          std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
+                          double temperature);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.
+ *
+ * For rigid molecules the atom positions are reconstructed from the center of mass and
+ * orientation. For flexible molecules the atomic positions are authoritative and the
+ * molecule center-of-mass record is synchronized from them instead.
  *
  * \param moleculeData Span of molecules.
  * \param moleculeAtomPositions Span to store the resulting atom positions.
  * \param components Vector of component definitions.
  */
-void createCartesianPositions(std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+void createCartesianPositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                               std::vector<Component> components);
 
 /**

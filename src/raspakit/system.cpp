@@ -2311,13 +2311,16 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "\n");
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
+  double translationalKineticEnergy =
+      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotationalTemperature =
-      2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
+      rotationalDegreesOfFreedom > 0
+          ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
+          : 0.0;
   double overallTemperature =
       2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
@@ -2629,13 +2632,16 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
              static_cast<double>(currentCycle) * timeStep / 1000.0);
 
-  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(moleculeData);
+  double translational_kinetic_energy =
+      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
   double translational_temperature =
       2.0 * translational_kinetic_energy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotational_temperature =
-      2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
+      rotationalDegreesOfFreedom > 0
+          ? 2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
+          : 0.0;
   double overall_temperature =
       2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
@@ -2877,7 +2883,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
+  double translationalKineticEnergy =
+      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), components);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -2885,7 +2892,9 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotationalTemperature =
-      2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
+      rotationalDegreesOfFreedom > 0
+          ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
+          : 0.0;
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
 
   double overallTemperature =

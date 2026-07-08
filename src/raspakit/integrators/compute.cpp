@@ -16,14 +16,31 @@ import interactions_ewald;
 import running_energy;
 import integrators_cputime;
 
-double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData)
+double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
+                                                      std::span<const Atom> moleculeAtomPositions,
+                                                      const std::vector<Component>& components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   double energy{};
+  std::size_t index{};
   for (const Molecule& molecule : moleculeData)
   {
-    // Accumulate kinetic energy: 0.5 * mass * velocity squared
-    energy += 0.5 * molecule.mass * double3::dot(molecule.velocity, molecule.velocity);
+    if (components[molecule.componentId].rigid)
+    {
+      // Accumulate kinetic energy: 0.5 * mass * velocity squared
+      energy += 0.5 * molecule.mass * double3::dot(molecule.velocity, molecule.velocity);
+    }
+    else
+    {
+      // Flexible molecule: all kinetic energy is carried by the atoms
+      std::span<const Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[molecule.componentId].definedAtoms[i].second;
+        energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
+      }
+    }
+    index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   // Update CPU time tracking for this function
@@ -40,6 +57,9 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
 
   for (const Molecule& molecule : moleculeData)
   {
+    // Flexible molecules carry no rigid-body orientation momentum
+    if (!components[molecule.componentId].rigid) continue;
+
     // Get inertia and inverse inertia vectors for the molecule's component
     double3 inertiaVector = components[molecule.componentId].inertiaVector;
     double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;

@@ -25,104 +25,195 @@ import randomnumbers;
 import units;
 import interpolation_energy_grid;
 
-void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::pair<double, double> scaling)
+void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                  const std::vector<Component>& components, std::pair<double, double> scaling)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   // Scale velocities and orientation momenta of each molecule
+  std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
     molecule.velocity *= scaling.first;
     molecule.orientationMomentum *= scaling.second;
+
+    // For flexible molecules all degrees of freedom are translational: scale the atomic velocities
+    if (!components[molecule.componentId].rigid)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      for (Atom& atom : span)
+      {
+        atom.velocity *= scaling.first;
+      }
+    }
+    index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.scaleVelocities += end - begin;
 }
 
-void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData)
+void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData,
+                                                  std::span<Atom> moleculeAtomPositions,
+                                                  const std::vector<Component>& components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   double3 totalVelocity = computeCenterOfMassVelocity(moleculeData);
-  // Scale velocities and orientation momenta of each molecule
+  std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
     molecule.velocity -= totalVelocity;
+
+    if (!components[molecule.componentId].rigid)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      for (Atom& atom : span)
+      {
+        atom.velocity -= totalVelocity;
+      }
+    }
+    index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.removeCenterOfMassVelocity += end - begin;
 }
 
-void Integrators::updatePositions(std::span<Molecule> moleculeData, double dt)
+void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                  const std::vector<Component>& components, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   // Update the center of mass positions for each molecule
+  std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
     molecule.centerOfMassPosition += dt * molecule.velocity;
+
+    // For flexible molecules the atomic positions are the integration variables
+    if (!components[molecule.componentId].rigid)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      for (Atom& atom : span)
+      {
+        atom.position += dt * atom.velocity;
+      }
+    }
+    index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updatePositions += end - begin;
 }
 
-void Integrators::updateVelocities(std::span<Molecule> moleculeData, double dt)
+void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                                   const std::vector<Component>& components, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
   // Update velocities and orientation momenta based on gradients
+  std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
     molecule.velocity -= 0.5 * dt * molecule.gradient * molecule.invMass;
     molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
+
+    // For flexible molecules the atomic velocities are the integration variables
+    if (!components[molecule.componentId].rigid)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[molecule.componentId].definedAtoms[i].second;
+        span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
+      }
+    }
+    index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
+                                       std::span<Atom> moleculeAtomPositions,
                                        const std::vector<Component> components, double temperature)
 {
+  std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
-    // Draw random vector with variance kBT / m
-    molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
-                        std::sqrt(Units::KB * temperature / molecule.mass);
+    if (components[molecule.componentId].rigid)
+    {
+      // Draw random vector with variance kBT / m
+      molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                          std::sqrt(Units::KB * temperature / molecule.mass);
 
-    // Draw random quaternion with variance by kBT / I
-    double3 I = components[molecule.componentId].inertiaVector;
-    double3 invI = components[molecule.componentId].inverseInertiaVector;
+      // Draw random quaternion with variance by kBT / I
+      double3 I = components[molecule.componentId].inertiaVector;
+      double3 invI = components[molecule.componentId].inverseInertiaVector;
 
-    // factor sqrt(3/2) added to match correct mean
-    double3 angularVelocity =
-        double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
+      // factor sqrt(3/2) added to match correct mean
+      double3 angularVelocity =
+          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
 
-    // rotate into orientation frame
-    simd_quatd q = molecule.orientation;
-    molecule.orientationMomentum.ix =
-        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iy =
-        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iz =
-        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.r =
-        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+      // rotate into orientation frame
+      simd_quatd q = molecule.orientation;
+      molecule.orientationMomentum.ix =
+          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+      molecule.orientationMomentum.iy =
+          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+      molecule.orientationMomentum.iz =
+          2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+      molecule.orientationMomentum.r =
+          2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+    }
+    else
+    {
+      // Flexible molecule: draw per-atom velocities with variance kBT / m_atom
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+      double3 momentum{};
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[molecule.componentId].definedAtoms[i].second;
+        span[i].velocity =
+            double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+        momentum += mass * span[i].velocity;
+      }
+
+      // Keep the molecule record in sync: the molecule velocity is the center-of-mass velocity
+      molecule.velocity = momentum * molecule.invMass;
+      molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
+    }
+    index += molecule.numberOfAtoms;
   }
 }
 
-void Integrators::createCartesianPositions(std::span<const Molecule> moleculeData,
+void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
                                            std::span<Atom> moleculeAtomPositions, std::vector<Component> components)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   std::size_t index{};
   // Convert molecule positions and orientations to atom positions
-  for (const Molecule& molecule : moleculeData)
+  for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
-    simd_quatd q = molecule.orientation;
 
-    // Calculate positions of each atom in the molecule
-    for (std::size_t i = 0; i != span.size(); i++)
+    if (components[molecule.componentId].rigid)
     {
-      span[i].position = molecule.centerOfMassPosition + q * components[molecule.componentId].atoms[i].position;
+      simd_quatd q = molecule.orientation;
+
+      // Calculate positions of each atom in the molecule
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        span[i].position = molecule.centerOfMassPosition + q * components[molecule.componentId].atoms[i].position;
+      }
+    }
+    else
+    {
+      // Flexible molecule: the atomic positions are authoritative,
+      // synchronize the molecule record by recomputing the center of mass
+      double3 com{};
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[molecule.componentId].definedAtoms[i].second;
+        com += mass * span[i].position;
+      }
+      molecule.centerOfMassPosition = com * molecule.invMass;
     }
     index += molecule.numberOfAtoms;
   }
@@ -136,6 +227,9 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   for (Molecule& molecule : moleculeData)
   {
+    // Flexible molecules carry no rigid-body orientation
+    if (!components[molecule.componentId].rigid) continue;
+
     double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
     std::pair<simd_quatd, simd_quatd> pq = std::make_pair(molecule.orientationMomentum, molecule.orientation);
     pq = Rigid::NoSquishFreeRotorOrderTwo(dt, pq, inverseInertiaVector);
@@ -205,6 +299,14 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
       com_gradient += span[i].gradient;
     }
     molecule.gradient = com_gradient;
+
+    // Flexible molecules carry no rigid-body orientation: no torque on the quaternion
+    if (!components[molecule.componentId].rigid)
+    {
+      molecule.orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+      index += molecule.numberOfAtoms;
+      continue;
+    }
 
     double3 torque{};
     simd_quatd q = molecule.orientation;

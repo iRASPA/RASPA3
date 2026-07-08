@@ -15,11 +15,17 @@ export namespace Integrators
  * \brief Computes the total translational kinetic energy of molecules.
  *
  * Calculates the sum of translational kinetic energies for all molecules in the system.
+ * For rigid molecules this uses the center-of-mass velocity; for flexible molecules the
+ * atomic velocities carry all kinetic energy.
  *
  * \param moleculeData A span of molecules for which to compute the kinetic energy.
+ * \param moleculeAtomPositions A span of atoms corresponding to the molecules.
+ * \param components A vector of components containing rigidity and mass information.
  * \return The total translational kinetic energy.
  */
-double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData);
+double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
+                                         std::span<const Atom> moleculeAtomPositions,
+                                         const std::vector<Component>& components);
 
 /**
  * \brief Computes the total rotational kinetic energy of molecules.

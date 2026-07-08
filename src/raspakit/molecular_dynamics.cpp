@@ -198,8 +198,8 @@ void MolecularDynamics::setup()
     system.precomputeTotalRigidEnergy();
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculeData);
+    system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
 
@@ -340,9 +340,11 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   for (std::size_t system_id{0}; System& system : systems)
   {
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
-    Integrators::initializeVelocities(random, system.moleculeData, system.components, system.temperature);
+    Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
+                                      system.temperature);
 
-    Integrators::removeCenterOfMassVelocityDrift(system.moleculeData);
+    Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                 system.components);
     if (system.thermostat.has_value())
     {
       if (!system.framework.has_value() && system.numberOfMolecules() > 1uz)
@@ -354,8 +356,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     }
 
     system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculeData);
+    system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())
@@ -482,8 +484,8 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculeData);
+    system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())

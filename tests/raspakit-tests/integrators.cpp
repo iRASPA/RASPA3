@@ -46,7 +46,9 @@ void QUATD_EXPECT_NEAR(simd_quatd a, simd_quatd b, double tol)
 void print_system(System& system)
 {
   std::cout << "Energy (tr, rot)\n";
-  std::cout << Integrators::computeTranslationalKineticEnergy(system.moleculeData) << std::endl;
+  std::cout << Integrators::computeTranslationalKineticEnergy(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                              system.components)
+            << std::endl;
   std::cout << Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components) << std::endl;
 
   std::cout << "Center of Mass\n";

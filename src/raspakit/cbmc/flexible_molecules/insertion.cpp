@@ -237,5 +237,16 @@ import bond_potential;
   // Copy this configuration so that it can be used as a starting point
   component.grownAtoms = chain_atoms;
 
-  return ChainGrowData({}, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
+  // Build a valid molecule record (center-of-mass, mass) for the grown flexible chain
+  double3 com{};
+  for (std::size_t i = 0; i != chain_atoms.size(); ++i)
+  {
+    com += component.definedAtoms[i].second * chain_atoms[i].position;
+  }
+  com = com / component.totalMass;
+  Molecule molecule = Molecule(com, simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
+                               static_cast<std::size_t>(chain_atoms.front().componentId), chain_atoms.size());
+
+  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight,
+                       0.0);
 }
