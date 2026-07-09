@@ -651,6 +651,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
       }
 
+      if (system.propertyMoleculeProperties.has_value())
+      {
+        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      }
+
       ++system_id;
     }
 
@@ -704,6 +709,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     if (system.propertyVACF.has_value())
     {
       system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
+    }
+
+    if (system.propertyMoleculeProperties.has_value())
+    {
+      system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
     }
 
     ++system_id;

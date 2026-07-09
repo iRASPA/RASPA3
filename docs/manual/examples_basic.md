@@ -17,6 +17,9 @@
 12. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_12)
 13. [Monte Carlo: radial distribution function of water](#Example_basic_13)
 14. [Molecular Dynamics: radial distribution function of water](#Example_basic_14)
+15. [Molecular Dynamics: butane and isobutane in FAU](#Example_basic_15)
+16. [Monte Carlo: molecule properties of 2-methylbutane in box](#Example_basic_16)
+17. [Molecular Dynamics: molecule properties of 2-methylbutane in box](#Example_basic_17)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -1651,6 +1654,79 @@ H1   H      0.3802     0.228      0.8802      0.156
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 512
+    }
+  ]
+}
+```
+
+#### Monte Carlo: molecule properties of 2-methylbutane in box<a name="Example_basic_16"></a>
+
+This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It computes probability histograms of the intra-molecular geometry (bond lengths, bend angles, and torsion angles) for 32 flexible 2-methylbutane molecules in a \f$25 \times 25 \times 25\f$ &Aring; box at 298 K. The histograms are written to the `molecule_properties` directory.
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 50000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [25.0, 25.0, 25.0],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "2-methylbutane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 32
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: molecule properties of 2-methylbutane in box<a name="Example_basic_17"></a>
+
+This example mirrors RASPA2 `examples/Basic/14_Molecule_Properties_MD`. It computes the same intra-molecular geometry histograms using an NVT molecular dynamics simulation of 32 flexible 2-methylbutane molecules in a \f$25 \times 25 \times 25\f$ &Aring; box at 298 K.
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 5000000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 10000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [25.0, 25.0, 25.0],
+      "ExternalTemperature" : 298.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "2-methylbutane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 32
     }
   ]
 }

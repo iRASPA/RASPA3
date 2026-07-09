@@ -1,0 +1,124 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "CutOffVDW" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.996,
+      "charge" : -1.025,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Al",
+      "print_as" : "Al",
+      "mass" : 28.0855,
+      "charge" :  2.05,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "CH4",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 16.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    },
+    {
+      "name" : "CH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 15.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    },
+    {
+      "name" : "CH2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    },
+    {
+      "name" : "CH",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    },
+    {
+      "name" : "C",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "O",
+      "type" : "lennard-jones",    
+      "parameters" : [53.0, 3.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "type" : "lennard-jones",    
+      "parameters" : [22.0, 2.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",    
+      "parameters" : [158.5, 3.72],
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
+    },
+    {
+      "name" : "CH3",
+      "type" : "lennard-jones",    
+      "parameters" : [108.0, 3.76],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108(33), 12301–12313."
+    },
+    {
+      "name" : "CH2",
+      "type" : "lennard-jones",    
+      "parameters" : [56.0, 3.96],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108(33), 12301–12313."
+    },
+    {
+      "name" : "CH",
+      "type" : "lennard-jones",    
+      "parameters" : [17.0, 4.67],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108(33), 12301–12313."
+    },
+    {
+      "name" : "C",
+      "type" : "lennard-jones",    
+      "parameters" : [0.8, 6.38],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108(33), 12301–12313."
+    }
+  ]
+}

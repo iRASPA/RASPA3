@@ -1,0 +1,29 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 1000000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 50000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [25.0, 25.0, 25.0],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "2-methylbutane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 32
+    }
+  ]
+}

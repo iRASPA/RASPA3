@@ -1,0 +1,36 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 5000,
+  "PrintEvery" : 1000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "FAU_SI",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "Ensemble" : "NVT",
+      "TimeStep" : 0.0005
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "butane",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 12
+    },
+    {
+      "Name" : "isobutane",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 12
+    }
+  ]
+}
