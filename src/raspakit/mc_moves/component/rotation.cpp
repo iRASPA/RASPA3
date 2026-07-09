@@ -29,10 +29,11 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                                    std::size_t selectedMolecule,
-                                                    const std::vector<Component> &components, Molecule &molecule,
-                                                    std::span<Atom> molecule_atoms)
+                                                    std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   double3 angle{};
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Rotation;
@@ -52,7 +53,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   double3 rotationAxis = double3(axes[selectedDirection]);
   simd_quatd q = simd_quatd::fromAxisAngle(rotationAngle, rotationAxis);
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      components[selectedComponent].rotate(molecule, molecule_atoms, q);
+      component.rotate(molecule, molecule_atoms, q);
 
   if (system.insideBlockedPockets(component, trialMolecule.second))
   {

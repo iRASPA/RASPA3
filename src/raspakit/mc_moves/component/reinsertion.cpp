@@ -33,9 +33,11 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system,
-                                                       std::size_t selectedComponent, std::size_t selectedMolecule,
-                                                       Molecule &molecule, std::span<Atom> molecule_atoms)
+                                                       std::size_t selectedComponent, std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   // Variables to record timing for performance measurement.
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ReinsertionCBMC;

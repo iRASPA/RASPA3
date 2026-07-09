@@ -54,10 +54,11 @@ static double3 computeMoleculeForce(
 
 std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &random, System &system,
                                                                std::size_t selectedComponent,
-                                                               std::size_t selectedMolecule,
-                                                               const std::vector<Component> &components,
-                                                               Molecule &molecule, std::span<Atom> molecule_atoms)
+                                                               std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ForceBiasTranslation;
   Component &component = system.components[selectedComponent];
@@ -81,7 +82,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   double3 displacement = b * forceOld + sigma * xi;
 
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      components[selectedComponent].translate(molecule, molecule_atoms, displacement);
+      component.translate(molecule, molecule_atoms, displacement);
 
   // Reject when the trial position lies inside a blocked pocket. The configuration was not modified.
   if (system.insideBlockedPockets(component, trialMolecule.second))

@@ -65,6 +65,7 @@ import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 
+
 void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &selectedSystem,
                                                System &selectedSecondSystem, std::size_t selectedComponent,
                                                [[maybe_unused]] std::size_t &fractionalMoleculeSystem)
@@ -79,20 +80,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
   {
     case Move::Types::Translation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                      selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -106,20 +100,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::RandomTranslation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                            selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -132,20 +119,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::ForceBiasTranslation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                               selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -159,20 +139,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::Rotation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                   selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -186,20 +159,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::RandomRotation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                         selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -235,19 +201,12 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::ReinsertionCBMC:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
-        // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::reinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::reinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -261,19 +220,12 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
     }
     case Move::Types::PartialReinsertionCBMC:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
-        // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::partialReinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -662,20 +614,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
   {
     case Move::Types::Translation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                      selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -689,20 +634,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::RandomTranslation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                            selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -715,20 +653,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::ForceBiasTranslation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                               selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -742,20 +673,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::Rotation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                   selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -769,20 +693,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::RandomRotation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                         selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -818,19 +735,12 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::ReinsertionCBMC:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
-        // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::reinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::reinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -844,19 +754,12 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
     }
     case Move::Types::PartialReinsertionCBMC:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
-        // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::partialReinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -1290,16 +1193,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
   {
     case Move::Types::Translation:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                      selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -1310,16 +1209,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case Move::Types::RandomTranslation:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                            selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -1330,20 +1225,13 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case Move::Types::ForceBiasTranslation:
     {
-      // select molecule and only move if there are actually molecules
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        // load molecule atoms
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                               selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -1357,16 +1245,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case Move::Types::Rotation:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                   selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -1380,12 +1264,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
-                                         selectedSystem.components, molecule, molecule_atoms);
+            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -1414,15 +1294,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case Move::Types::ReinsertionCBMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
-        std::optional<RunningEnergy> energyDifference = MC_Moves::reinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::reinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         if (energyDifference)
         {
@@ -1434,15 +1311,12 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
     }
     case Move::Types::PartialReinsertionCBMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
-        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
-        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
-        std::optional<RunningEnergy> energyDifference = MC_Moves::partialReinsertionMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::partialReinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         if (energyDifference)
         {

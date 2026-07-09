@@ -13,6 +13,7 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
+import molecule;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
@@ -29,10 +30,11 @@ import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &random, System &system,
                                                              std::size_t selectedComponent,
-                                                             std::size_t selectedMolecule,
-                                                             const std::vector<Component> &components,
-                                                             Molecule &molecule, std::span<Atom> molecule_atoms)
+                                                             std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   double3 s, displacement{};
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::RandomTranslation;
@@ -49,7 +51,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
 
   // Construct the trial positions
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      components[selectedComponent].translate(molecule, molecule_atoms, displacement);
+      component.translate(molecule, molecule_atoms, displacement);
 
   // Reject move if trial positions are inside blocked pockets
   if (system.insideBlockedPockets(component, trialMolecule.second))

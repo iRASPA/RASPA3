@@ -95,12 +95,9 @@ TEST(electrostatic_polarization, stored_field_consistency_translation)
   for (std::size_t step = 0; step < 400; ++step)
   {
     std::size_t selectedMolecule = system.randomMoleculeOfComponent(random, 0);
-    std::span<Atom> molecule_atoms = system.spanOfMolecule(0, selectedMolecule);
-    std::size_t molecule_index = system.moleculeIndexOfComponent(0, selectedMolecule);
-    Molecule &molecule = system.moleculeData[molecule_index];
 
     std::optional<RunningEnergy> e =
-        MC_Moves::translationMove(random, system, 0, selectedMolecule, system.components, molecule, molecule_atoms);
+        MC_Moves::translationMove(random, system, 0, selectedMolecule);
     if (e.has_value()) running += e.value();
   }
 

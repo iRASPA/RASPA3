@@ -29,10 +29,11 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system,
-                                                       std::size_t selectedComponent, std::size_t selectedMolecule,
-                                                       const std::vector<Component> &components, Molecule &molecule,
-                                                       std::span<Atom> molecule_atoms)
+                                                       std::size_t selectedComponent, std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   double3 displacement{};
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Translation;
@@ -52,7 +53,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
 
   // Construct the trial molecule with the new displacement
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      components[selectedComponent].translate(molecule, molecule_atoms, displacement);
+      component.translate(molecule, molecule_atoms, displacement);
 
   // Check if the trial molecule is inside blocked pockets
   if (system.insideBlockedPockets(component, trialMolecule.second))

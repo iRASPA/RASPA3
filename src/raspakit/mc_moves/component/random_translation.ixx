@@ -6,9 +6,6 @@ import std;
 
 import randomnumbers;
 import running_energy;
-import atom;
-import molecule;
-import component;
 import system;
 
 export namespace MC_Moves
@@ -23,14 +20,10 @@ export namespace MC_Moves
  * @param random Random number generator instance.
  * @param system The current state of the simulation system.
  * @param selectedComponent Index of the component to be moved.
- * @param components List of all components in the system.
- * @param molecule The molecule to be moved.
- * @param molecule_atoms Span of atoms belonging to the molecule.
+ * @param selectedMolecule Index of the selected molecule within the component.
  * @return An optional `RunningEnergy` containing the energy difference if the move is accepted;
  *         `std::nullopt` if the move is rejected.
  */
 std::optional<RunningEnergy> randomTranslationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                                   std::size_t selectedMolecule,
-                                                   const std::vector<Component> &components, Molecule &molecule,
-                                                   std::span<Atom> molecule_atoms);
+                                                     std::size_t selectedMolecule);
 }  // namespace MC_Moves
