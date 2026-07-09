@@ -841,6 +841,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       {
         system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
       }
+      if (system.propertyMoleculeProperties.has_value())
+      {
+        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      }
 
       ++system_id;
     }
@@ -964,6 +968,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       if (system.averageNumberOfMoleculesHistogram.has_value())
       {
         system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
+      }
+      if (system.propertyMoleculeProperties.has_value())
+      {
+        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
       }
 
       ++system_id;

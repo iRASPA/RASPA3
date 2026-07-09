@@ -2846,6 +2846,10 @@ std::string System::writeSystemStatus() const
   {
     stream << averageEnergyHistogram->printSettings();
   }
+  if (propertyMoleculeProperties.has_value())
+  {
+    stream << propertyMoleculeProperties->printSettings();
+  }
   std::print(stream, "\n\n\n");
 
   return stream.str();
@@ -3022,6 +3026,12 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
                                                moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
                                                currentCycle, currentBlock);
+  }
+
+  if (propertyMoleculeProperties.has_value())
+  {
+    propertyMoleculeProperties->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
+                                       currentBlock);
   }
 
   if (averageEnergyHistogram.has_value())
@@ -4655,6 +4665,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyDensityGrid;
   archive << s.averageEnergyHistogram;
   archive << s.averageNumberOfMoleculesHistogram;
+  archive << s.propertyMoleculeProperties;
   archive << s.propertyMSD;
   archive << s.propertyVACF;
   archive << s.writeLammpsData;
@@ -4809,6 +4820,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyDensityGrid;
   archive >> s.averageEnergyHistogram;
   archive >> s.averageNumberOfMoleculesHistogram;
+  archive >> s.propertyMoleculeProperties;
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
   archive >> s.writeLammpsData;

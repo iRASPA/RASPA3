@@ -38,6 +38,7 @@ import property_density_grid;
 import property_temperature;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
+import property_molecule_properties;
 import property_msd;
 import property_vacf;
 import property_number_of_molecules_evolution;
@@ -247,6 +248,7 @@ export struct System
   std::optional<PropertyDensityGrid> propertyDensityGrid;
   std::optional<PropertyEnergyHistogram> averageEnergyHistogram;
   std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
+  std::optional<PropertyMoleculeProperties> propertyMoleculeProperties;
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
   std::optional<WriteLammpsData> writeLammpsData;

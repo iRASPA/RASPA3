@@ -22,6 +22,7 @@
     * [Output pdb-movies](#output-pdb-movies)
     * [Histogram of the energy](#histogram-of-the-energy)
     * [Histogram of the number of molecules](#histogram-of-the-number-of-molecules)
+    * [Histograms of the intra-molecular geometry](#histograms-of-the-intra-molecular-geometry)
     * [Radial Distribution Function (RDF) force-based](#radial-distribution-function-rdf-force-based)
     * [Radial Distribution Function (RDF) conventional](#radial-distribution-function-rdf-conventional)
     * [Mean-Squared Displacement (MSD) order-N](#mean-squared-displacement-msd-order-n)
@@ -353,6 +354,32 @@ Output is written to the directory `number_of_molecules_histogram`.
 
 -   `"UpperLimitNumberOfMoleculesHistogram" : floating-point-number`
     The upper limit of the histograms. Default: `200`
+
+#### Histograms of the intra-molecular geometry  <a name="histograms-of-the-intra-molecular-geometry"></a>
+
+
+`"ComputeMoleculeProperties" : boolean`
+
+
+Sets whether or not to compute probability histograms of the
+intra-molecular geometry (bond lengths, bend angles, and
+torsion/dihedral angles) for every flexible component. This mirrors the
+"molecule properties" analysis from RASPA2.\
+Output is written to the directory `molecule_properties`.
+
+-   `"SampleMoleculePropertiesEvery" : integer`
+    Sample the histograms every `int` cycles. Default: `10`
+
+-   `"WriteMoleculePropertiesEvery" : integer`
+    Output the histograms every `int` cycles. Default: `5000`
+
+-   `"NumberOfBinsMoleculeProperties" : integer`
+    Sets the number of elements of each histogram. Default: `128`
+
+-   `"BondRangeMoleculeProperties" : floating-point-number`
+    The upper limit of the bond-length histogram \[Angstrom\]. The bend
+    range is fixed to `[0, 180]` degrees and the torsion range to
+    `[-180, 180]` degrees. Default: `4.0`
 
 #### Radial Distribution Function (RDF) force-based  <a name="radial-distribution-function-rdf-force-based"></a>
 

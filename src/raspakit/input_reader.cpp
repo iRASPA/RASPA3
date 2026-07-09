@@ -30,6 +30,7 @@ import property_rdf;
 import property_density_grid;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
+import property_molecule_properties;
 import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
@@ -1544,6 +1545,44 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               jsonNumberOfBlocks, systems[systemId].components.size(),
               {minimumRangeNumberOfMoleculesHistogram, maximumRangeNumberOfMoleculesHistogram},
               sampleNumberOfMoleculesHistogramEvery, writeNumberOfMoleculesHistogramEvery);
+        }
+      }
+
+      if (value.contains("ComputeMoleculeProperties") && value["ComputeMoleculeProperties"].is_boolean())
+      {
+        if (value["ComputeMoleculeProperties"].get<bool>())
+        {
+          std::size_t sampleMoleculePropertiesEvery{10};
+          if (value.contains("SampleMoleculePropertiesEvery") &&
+              value["SampleMoleculePropertiesEvery"].is_number_unsigned())
+          {
+            sampleMoleculePropertiesEvery = value["SampleMoleculePropertiesEvery"].get<std::size_t>();
+          }
+
+          std::size_t writeMoleculePropertiesEvery{5000};
+          if (value.contains("WriteMoleculePropertiesEvery") &&
+              value["WriteMoleculePropertiesEvery"].is_number_unsigned())
+          {
+            writeMoleculePropertiesEvery = value["WriteMoleculePropertiesEvery"].get<std::size_t>();
+          }
+
+          std::size_t numberOfBinsMoleculeProperties{128};
+          if (value.contains("NumberOfBinsMoleculeProperties") &&
+              value["NumberOfBinsMoleculeProperties"].is_number_unsigned())
+          {
+            numberOfBinsMoleculeProperties = value["NumberOfBinsMoleculeProperties"].get<std::size_t>();
+          }
+
+          double bondRangeMoleculeProperties{4.0};
+          if (value.contains("BondRangeMoleculeProperties") &&
+              value["BondRangeMoleculeProperties"].is_number_float())
+          {
+            bondRangeMoleculeProperties = value["BondRangeMoleculeProperties"].get<double>();
+          }
+
+          systems[systemId].propertyMoleculeProperties = PropertyMoleculeProperties(
+              jsonNumberOfBlocks, systems[systemId].components, numberOfBinsMoleculeProperties,
+              bondRangeMoleculeProperties, sampleMoleculePropertiesEvery, writeMoleculePropertiesEvery);
         }
       }
 
