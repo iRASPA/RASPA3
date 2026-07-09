@@ -153,27 +153,12 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
                       std::exp(maxVolumeChange.z * (2.0 * random.uniform() - 1.0)));
 
   SimulationBox newBox = oldBox.scaled(scale);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions{system.moleculeData, system.atomData};
-  for (Molecule& molecule : newPositions.first)
-  {
-    std::span<Atom> moleculeAtoms = {&newPositions.second[molecule.atomIndex], molecule.numberOfAtoms};
 
-    for (Atom& atom : moleculeAtoms)
-    {
-      const double3 fractional = oldBox.inverseCell * atom.position;
-      atom.position = newBox.cell * fractional;
-    }
-
-    double totalMass = 0.0;
-    double3 newCom(0.0, 0.0, 0.0);
-    for (const Atom& atom : moleculeAtoms)
-    {
-      const double mass = system.forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-      newCom += mass * atom.position;
-      totalMass += mass;
-    }
-    molecule.centerOfMassPosition = newCom / totalMass;
-  }
+  // Scale molecules by their center of mass: only the center-of-mass fractional position is kept fixed while
+  // each molecule is translated rigidly. This preserves the internal geometry of both rigid and flexible
+  // molecules, so the intramolecular energies remain unchanged (see below).
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions =
+      system.scaledCenterOfMassPositions(oldBox, newBox);
 
   const double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
   const double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;

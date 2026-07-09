@@ -3119,6 +3119,42 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   return {scaledMolecules, scaledAtoms};
 }
 
+std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(const SimulationBox& oldBox,
+                                                                                        const SimulationBox& newBox) const
+{
+  std::vector<Molecule> scaledMolecules(moleculeData);
+  std::vector<Atom> scaledAtoms(atomData);
+
+  for (Molecule& molecule : scaledMolecules)
+  {
+    const std::span<Atom> span = {&scaledAtoms[molecule.atomIndex], molecule.numberOfAtoms};
+
+    double totalMass = 0.0;
+    double3 com(0.0, 0.0, 0.0);
+    for (const Atom& atom : span)
+    {
+      double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+      com += mass * atom.position;
+      totalMass += mass;
+    }
+    com /= totalMass;
+
+    // Scale only the center of mass through the box transformation, keeping the fractional center-of-mass
+    // position fixed. Both rigid and flexible molecules are translated as a rigid body by the resulting
+    // center-of-mass displacement, so internal geometry (and thus all intramolecular energies) is preserved.
+    double3 newCom = newBox.cell * (oldBox.inverseCell * com);
+    molecule.centerOfMassPosition = newCom;
+
+    double3 d = newCom - com;
+    for (Atom& atom : span)
+    {
+      atom.position += d;
+    }
+  }
+
+  return {scaledMolecules, scaledAtoms};
+}
+
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
                                                    const std::pair<EnergyStatus, double3x3>& rhs)
 {

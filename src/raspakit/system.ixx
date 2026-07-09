@@ -489,6 +489,9 @@ export struct System
 
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 
+  std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(
+      const SimulationBox& oldBox, const SimulationBox& newBox) const;
+
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
   void createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId);
