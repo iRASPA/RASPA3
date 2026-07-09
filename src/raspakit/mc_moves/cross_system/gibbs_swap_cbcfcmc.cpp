@@ -313,10 +313,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::size_t newMoleculeIndex = systemA.numberOfMolecules();
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, componentA, selectedComponent, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-        systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-        systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growType, cutOffFrameworkVDWA,
-        cutOffMoleculeVDWA, cutOffCoulombA, newMoleculeIndex, 1.0, false, false);
+        random,
+        CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
+                          systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
+                          systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
+                          cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
+        componentA, selectedComponent, growType, newMoleculeIndex, 1.0, false, false);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
@@ -327,7 +329,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    if (systemA.insideBlockedPockets(componentA, growData->atom))
+    if (systemA.insideBlockedPockets(componentA, growData->atoms))
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       return std::nullopt;
@@ -336,7 +338,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     time_begin = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifferenceGrowA = Interactions::energyDifferenceEwaldFourier(
         systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.totalEik, systemA.totalEik,
-        systemA.forceField, systemA.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {},
+        systemA.forceField, systemA.simulationBox, std::span(growData->atoms.begin(), growData->atoms.end()), {},
         systemA.netCharge);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeEwald] += (time_end - time_begin);
@@ -346,10 +348,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy tailEnergyDifferenceGrowA =
         Interactions::computeInterMolecularTailEnergyDifference(
             systemA.forceField, systemA.simulationBox, systemA.spanOfMoleculeAtoms(),
-            std::span(growData->atom.begin(), growData->atom.end()), {}) +
+            std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(),
-            std::span(growData->atom.begin(), growData->atom.end()), {});
+            std::span(growData->atoms.begin(), growData->atoms.end()), {});
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
@@ -366,10 +368,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-        random, componentB, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-        systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-        systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta, growType, cutOffFrameworkVDWB,
-        cutOffMoleculeVDWB, cutOffCoulombB, selectedIntegerMoleculeB);
+        random,
+        CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
+                          systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
+                          systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+                          cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+        componentB, growType, selectedIntegerMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
@@ -514,7 +518,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       }
 
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
-      systemA.insertMolecule(selectedComponent, growData->molecule, growData->atom);
+      systemA.insertMolecule(selectedComponent, growData->molecule, growData->atoms);
       systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] =
           systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
 
@@ -614,10 +618,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     const std::size_t globalFractionalMoleculeIndexB =
         systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB);
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, componentB, selectedComponent, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-        systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-        systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta, growType, cutOffFrameworkVDWB,
-        cutOffMoleculeVDWB, cutOffCoulombB, globalFractionalMoleculeIndexB, oldLambda,
+        random,
+        CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
+                          systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
+                          systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+                          cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+        componentB, selectedComponent, growType, globalFractionalMoleculeIndexB, oldLambda,
         componentB.lambdaGC.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
@@ -630,14 +636,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    if (systemB.insideBlockedPockets(componentB, growData->atom))
+    if (systemB.insideBlockedPockets(componentB, growData->atoms))
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
       return std::nullopt;
     }
 
-    std::copy(growData->atom.begin(), growData->atom.end(), fractionalMoleculeB.begin());
+    std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());
     for (Atom& atom : fractionalMoleculeB)
     {
       atom.moleculeId = static_cast<std::uint32_t>(globalFractionalMoleculeIndexB);
@@ -727,7 +733,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)]);
       systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] =
           growData->molecule;
-      std::copy(growData->atom.begin(), growData->atom.end(), fractionalMoleculeB.begin());
+      std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());
 
       syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);

@@ -254,10 +254,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-        random, componentA, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, componentA.growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeA, newLambda,
+        random,
+        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                          system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                          cutOffCoulomb},
+        componentA, selectedComponent, componentA.growType, newMoleculeA, newLambda,
         componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -269,7 +271,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
-    if (system.insideBlockedPockets(componentA, growDataA->atom))
+    if (system.insideBlockedPockets(componentA, growDataA->atoms))
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -279,15 +281,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // trial molecule of A
     std::vector<Atom> moleculeAtomDataWithTrialA(system.spanOfMoleculeAtoms().begin(),
                                                  system.spanOfMoleculeAtoms().end());
-    moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atom.begin(),
-                                      growDataA->atom.end());
+    moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(),
+                                      growDataA->atoms.end());
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growDataB = CBMC::growMoleculeSwapInsertion(
-        random, componentBRef, componentB, system.hasExternalField, system.forceField, system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-        system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA, system.beta, componentBRef.growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMoleculeB, newLambda,
+        random,
+        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                          moleculeAtomDataWithTrialA, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                          cutOffCoulomb},
+        componentBRef, componentB, componentBRef.growType, newMoleculeB, newLambda,
         componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -299,7 +303,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
-    if (system.insideBlockedPockets(componentBRef, growDataB->atom))
+    if (system.insideBlockedPockets(componentBRef, growDataB->atoms))
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -308,8 +312,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
     std::vector<double3> electricFieldNeighborDelta;
-    std::vector<double3> grownElectricFieldA(growDataA->atom.size());
-    std::vector<double3> grownElectricFieldB(growDataB->atom.size());
+    std::vector<double3> grownElectricFieldA(growDataA->atoms.size());
+    std::vector<double3> grownElectricFieldB(growDataB->atoms.size());
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
@@ -323,35 +327,35 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
         Interactions::computeFrameworkMoleculeElectricFieldDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldA, {},
-            growDataA->atom, {});
+            growDataA->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atom, {});
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
 
         Interactions::computeFrameworkMoleculeElectricFieldDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldB, {},
-            growDataB->atom, {});
+            growDataB->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atom, {});
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
-        accumulateInterMolecularFieldDelta(system, growDataA->atom, {}, electricFieldNeighborDelta);
-        accumulateInterMolecularFieldDelta(system, growDataB->atom, {}, electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, growDataA->atoms, {}, electricFieldNeighborDelta);
+        accumulateInterMolecularFieldDelta(system, growDataB->atoms, {}, electricFieldNeighborDelta);
 
-        std::vector<double3> fieldOnAfromB(growDataA->atom.size());
-        std::vector<double3> fieldOnBfromA(growDataB->atom.size());
+        std::vector<double3> fieldOnAfromB(growDataA->atoms.size());
+        std::vector<double3> fieldOnBfromA(growDataB->atoms.size());
         [[maybe_unused]] std::optional<RunningEnergy> mutualEnergy =
             Interactions::computeInterMolecularPolarizationElectricFieldDifference(
                 system.forceField, system.simulationBox, fieldOnAfromB, fieldOnBfromA, std::span<double3>{},
-                growDataA->atom, growDataB->atom, {});
+                growDataA->atoms, growDataB->atoms, {});
         for (std::size_t i = 0; i < grownElectricFieldA.size(); ++i) grownElectricFieldA[i] += fieldOnAfromB[i];
         for (std::size_t i = 0; i < grownElectricFieldB.size(); ++i) grownElectricFieldB[i] += fieldOnBfromA[i];
 
         polarizationDifference =
             Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldA, {},
-                                                              growDataA->atom, {}) +
+                                                              growDataA->atoms, {}) +
             Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldB, {},
-                                                              growDataB->atom, {}) +
+                                                              growDataB->atoms, {}) +
             Interactions::computePolarizationEnergyNeighborDifference(
                 system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
                 system.spanOfMoleculeAtoms());
@@ -360,23 +364,23 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       {
         Interactions::computeFrameworkMoleculeElectricFieldDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldA, {},
-            growDataA->atom, {});
+            growDataA->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atom, {});
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
 
         Interactions::computeFrameworkMoleculeElectricFieldDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), grownElectricFieldB, {},
-            growDataB->atom, {});
+            growDataB->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atom, {});
+            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
         polarizationDifference =
             Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldA, {},
-                                                              growDataA->atom, {}) +
+                                                              growDataA->atoms, {}) +
             Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricFieldB, {},
-                                                              growDataB->atom, {});
+                                                              growDataB->atoms, {});
       }
     }
 
@@ -384,12 +388,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-        system.simulationBox, std::span(growDataA->atom.begin(), growDataA->atom.end()), {}, runningNetCharge);
-    runningNetCharge += scaledChargeDifference(growDataA->atom, {});
+        system.simulationBox, std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, runningNetCharge);
+    runningNetCharge += scaledChargeDifference(growDataA->atoms, {});
     RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-        system.simulationBox, std::span(growDataB->atom.begin(), growDataB->atom.end()), {}, runningNetCharge,
-        groupChargeSum(growDataA->atom));
+        system.simulationBox, std::span(growDataB->atoms.begin(), growDataB->atoms.end()), {}, runningNetCharge,
+        groupChargeSum(growDataA->atoms));
     RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
@@ -397,8 +401,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceGrow =
-        computeTailEnergyDifference(system, growDataA->atom, {}, system.spanOfMoleculeAtoms()) +
-        computeTailEnergyDifference(system, growDataB->atom, {}, moleculeAtomDataWithTrialA);
+        computeTailEnergyDifference(system, growDataA->atoms, {}, system.spanOfMoleculeAtoms()) +
+        computeTailEnergyDifference(system, growDataB->atoms, {}, moleculeAtomDataWithTrialA);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -444,12 +448,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       if (system.forceField.computePolarization)
       {
-        system.insertMoleculePolarization(selectedComponent, growDataA->molecule, growDataA->atom,
+        system.insertMoleculePolarization(selectedComponent, growDataA->molecule, growDataA->atoms,
                                           grownElectricFieldA);
       }
       else
       {
-        system.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atom);
+        system.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atoms);
       }
       std::size_t lastMoleculeIdA = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
       std::span<Atom> lastMoleculeA = system.spanOfMolecule(selectedComponent, lastMoleculeIdA);
@@ -466,11 +470,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       if (system.forceField.computePolarization)
       {
-        system.insertMoleculePolarization(componentB, growDataB->molecule, growDataB->atom, grownElectricFieldB);
+        system.insertMoleculePolarization(componentB, growDataB->molecule, growDataB->atoms, grownElectricFieldB);
       }
       else
       {
-        system.insertMolecule(componentB, growDataB->molecule, growDataB->atom);
+        system.insertMolecule(componentB, growDataB->molecule, growDataB->atoms);
       }
       std::size_t lastMoleculeIdB = system.numberOfMoleculesPerComponent[componentB] - 1;
       std::span<Atom> lastMoleculeB = system.spanOfMolecule(componentB, lastMoleculeIdB);
@@ -550,15 +554,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::system_clock::now();
     ChainRetraceData retraceDataB = CBMC::retraceMoleculeSwapDeletion(
-        random, componentBRef, system.hasExternalField, system.forceField, system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, componentBRef.growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, fractionalMoleculeB);
+        random,
+        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                          system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                          cutOffCoulomb},
+        componentBRef, componentBRef.growType, fractionalMoleculeB);
     ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-        random, componentA, system.hasExternalField, system.forceField, system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-        system.spanOfFrameworkAtoms(), backgroundWithoutFractionalB, system.beta, componentA.growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, fractionalMoleculeA);
+        random,
+        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                          backgroundWithoutFractionalB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                          cutOffCoulomb},
+        componentA, componentA.growType, fractionalMoleculeA);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);

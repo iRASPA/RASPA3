@@ -66,7 +66,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   std::vector<Atom> newAtoms;
   for (const ChainGrowData& data : growData->molecules)
   {
-    newAtoms.insert(newAtoms.end(), data.atom.begin(), data.atom.end());
+    newAtoms.insert(newAtoms.end(), data.atoms.begin(), data.atoms.end());
   }
 
   std::vector<Atom> oldAtoms;

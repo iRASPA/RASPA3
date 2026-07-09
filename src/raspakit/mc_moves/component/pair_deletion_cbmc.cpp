@@ -194,18 +194,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-      random, componentA, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
-      system.beta, componentA.growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeA);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentA, componentA.growType, moleculeA);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      componentBRef, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
-      system.beta, componentBRef.growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeB);
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -418,18 +421,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-      random, componentA, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
-      system.beta, componentA.growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeA);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentA, componentA.growType, moleculeA);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      componentBRef, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
-      system.beta, componentBRef.growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, moleculeB);
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);

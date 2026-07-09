@@ -12,6 +12,7 @@ import forcefield;
 import simulationbox;
 import cbmc_chain_data;
 import cbmc_interactions;
+import cbmc_growth_context;
 import framework;
 import component;
 import interpolation_energy_grid;
@@ -33,13 +34,8 @@ export namespace CBMC
 // The signature matches CBMC::growFlexibleMoleculeChainInsertion so it can be used as a drop-in
 // replacement in the CBMC access routines.
 [[nodiscard]] std::optional<ChainGrowData> growRecoilGrowthMoleculeChainInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
+    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+    const std::vector<std::size_t> beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
 
 // Recoil growth (RG) retrace of the existing flexible molecule chain.
 //
@@ -47,10 +43,6 @@ export namespace CBMC
 // one trial direction per segment (always counted as open), and 'k-1' additional trial directions are
 // generated to count m_i. The signature matches CBMC::retraceFlexibleMoleculeChainDeletion.
 [[nodiscard]] ChainRetraceData retraceRecoilGrowthMoleculeChainDeletion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced) noexcept;
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+    const std::vector<std::size_t> beadsAlreadyPlaced) noexcept;
 }  // namespace CBMC

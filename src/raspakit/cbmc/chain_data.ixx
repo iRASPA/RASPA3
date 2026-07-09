@@ -14,16 +14,19 @@ import running_energy;
 export struct ChainGrowData
 {
   Molecule molecule;
-  std::vector<Atom> atom;
+  std::vector<Atom> atoms;  ///< All atoms of the grown molecule.
   RunningEnergy energies;
   double RosenbluthWeight;
+  /// Retained partial Rosenbluth weight for the multiple-first-bead reinsertion scheme (Esselink et
+  /// al., 'r' in Eq. 16-18): the Rosenbluth weight minus the Boltzmann factor of the selected trial,
+  /// carried from grow to retrace. Zero for the moves that do not use it.
   double storedR;
 
-  ChainGrowData() : molecule(), atom(), energies(), RosenbluthWeight(), storedR() {}
+  ChainGrowData() : molecule(), atoms(), energies(), RosenbluthWeight(), storedR() {}
 
-  ChainGrowData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
+  ChainGrowData(const Molecule &molecule, std::vector<Atom> atoms, RunningEnergy energies, double RosenbluthWeight,
                 double storedR) noexcept
-      : molecule(molecule), atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
+      : molecule(molecule), atoms(atoms), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };

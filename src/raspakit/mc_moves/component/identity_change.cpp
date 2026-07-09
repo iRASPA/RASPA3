@@ -95,10 +95,12 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random, newComponentData, newComponent, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, newGrowType, cutOffFrameworkVDW,
-      cutOffMoleculeVDW, cutOffCoulomb, trialMoleculeId, oldStartingBead, 1.0, false, false,
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false, false,
       skipBackgroundMolecule);
   time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -109,7 +111,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<Atom> old_molecule(oldMoleculeAtoms.begin(), oldMoleculeAtoms.end());
   std::vector<double3> old_electric_field(old_molecule.size());
   std::vector<double3> new_electric_field(newMolecule.size());
@@ -123,10 +125,12 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
-      random, oldComponentData, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, oldGrowType, cutOffFrameworkVDW,
-      cutOffMoleculeVDW, cutOffCoulomb, oldMoleculeAtoms);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      oldComponentData, oldGrowType, oldMoleculeAtoms);
   time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -157,12 +161,12 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), new_electric_field,
-                                                                  old_electric_field, growData->atom, old_molecule);
+                                                                  old_electric_field, growData->atoms, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
         system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
-        growData->atom, old_molecule);
+        growData->atoms, old_molecule);
 
     // Molecule-molecule polarization: the old and new molecule occupy the same "slot", so the grown atoms are given
     // the old molecule's id for the field-difference so that the transformed molecule's own atoms are skipped (only
@@ -170,7 +174,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     // through CBMC, so the returned energy is discarded.
     if (!system.forceField.omitInterPolarization)
     {
-      std::vector<Atom> newAtomsForField(growData->atom.begin(), growData->atom.end());
+      std::vector<Atom> newAtomsForField(growData->atoms.begin(), growData->atoms.end());
       if (!old_molecule.empty())
       {
         for (Atom &atom : newAtomsForField) atom.moleculeId = old_molecule.front().moleculeId;
@@ -184,7 +188,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     }
 
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
+        system.forceField, new_electric_field, old_electric_field, growData->atoms, old_molecule);
 
     if (!system.forceField.omitInterPolarization)
     {
@@ -233,7 +237,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       }
     }
 
-    std::vector<Atom> acceptedAtoms(growData->atom.begin(), growData->atom.end());
+    std::vector<Atom> acceptedAtoms(growData->atoms.begin(), growData->atoms.end());
     for (Atom &atom : acceptedAtoms)
     {
       atom.componentId = static_cast<std::uint8_t>(newComponent);

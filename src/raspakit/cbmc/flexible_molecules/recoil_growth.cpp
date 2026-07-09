@@ -26,6 +26,7 @@ import bend_potential;
 import cbmc_chain_data;
 import cbmc_util;
 import cbmc_interactions;
+import cbmc_growth_context;
 import cbmc_generate_trialorientations_mc;
 
 // A single growth step ('segment') of the chain: a set of 'nextBeads' grown from 'currentBead',
@@ -47,22 +48,13 @@ struct Trial
   double torsionWeight{1.0};
 };
 
-// Bundles the (mostly constant) data needed to evaluate energies and grow feelers.
+// Bundles the (mostly constant) data needed to evaluate energies and grow feelers. The shared
+// simulation environment (force field, box, grids, cut-offs, beta, ...) lives in 'env'; the recoil
+// context adds the recoil-specific parameters and the precomputed growth sequence.
 struct RecoilContext
 {
+  const CBMC::GrowContext &env;
   const Component &component;
-  bool hasExternalField;
-  const ForceField &forceField;
-  const SimulationBox &simulationBox;
-  const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids;
-  const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid;
-  const std::optional<Framework> &framework;
-  std::span<const Atom> frameworkAtomData;
-  std::span<const Atom> moleculeAtomData;
-  double beta;
-  double cutOffFrameworkVDW;
-  double cutOffMoleculeVDW;
-  double cutOffCoulomb;
   std::make_signed_t<std::size_t> skipBackgroundMolecule;
   std::size_t numberOfTrialDirections;  // k
   std::size_t recoilLength;             // l
@@ -112,11 +104,8 @@ std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Se
 {
   std::vector<std::vector<Atom>> trialPositionSets{trialPositions};
 
-  std::vector<std::pair<std::vector<Atom>, RunningEnergy>> external = CBMC::computeExternalNonOverlappingEnergies(
-      ctx.component, ctx.hasExternalField, ctx.forceField, ctx.simulationBox, ctx.interpolationGrids,
-      ctx.externalFieldInterpolationGrid, ctx.framework, ctx.frameworkAtomData, ctx.moleculeAtomData,
-      ctx.cutOffFrameworkVDW, ctx.cutOffMoleculeVDW, ctx.cutOffCoulomb, trialPositionSets, -1,
-      ctx.skipBackgroundMolecule);
+  std::vector<CBMC::ChainTrial> external = CBMC::computeExternalNonOverlappingEnergies(
+      ctx.env, ctx.component, trialPositionSets, -1, ctx.skipBackgroundMolecule);
 
   if (external.empty()) return std::nullopt;
 
@@ -125,10 +114,9 @@ std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Se
   {
     candidate[segment.nextBeads[k]] = trialPositions[k];
   }
-  RunningEnergy intra = segment.intra.computeInternalIntraVanDerWaalsEnergies(candidate) +
-                        segment.intra.computeInternalIntraCoulombEnergies(candidate);
+  RunningEnergy intra = segment.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(candidate);
 
-  return TrialEnergy{external.front().second, intra};
+  return TrialEnergy{external.front().energy, intra};
 }
 
 // Generate 'numberOfTrials' trial directions for a segment, sampling bond lengths and bend angles from
@@ -142,10 +130,13 @@ std::vector<Trial> generateSegmentTrials(RandomNumber &random, const RecoilConte
   if (!segment.previousBead.has_value())
   {
     // Growing a single bond with no previous bead (e.g. dimer, or starting in the middle of a chain).
+    // Fallback C-C bond length (Angstrom) used only when the segment has no bond potential defined.
+    constexpr double defaultBondLength = 1.54;
     for (std::size_t i = 0; i != numberOfTrials; ++i)
     {
-      double bond_length =
-          segment.intra.bonds.empty() ? 1.54 : segment.intra.bonds.front().generateBondLength(random, ctx.beta);
+      double bond_length = segment.intra.bonds.empty()
+                               ? defaultBondLength
+                               : segment.intra.bonds.front().generateBondLength(random, ctx.env.beta);
       double3 unit_vector = random.randomVectorOnUnitSphere();
 
       Atom trial_atom = contextAtoms[segment.nextBeads[0]];
@@ -162,60 +153,22 @@ std::vector<Trial> generateSegmentTrials(RandomNumber &random, const RecoilConte
   double3 last_bond_vector =
       (contextAtoms[previous_bead].position - contextAtoms[current_bead].position).normalized();
 
-  std::size_t numberOfTorsionTrials = ctx.forceField.numberOfTorsionTrialDirections;
-
   for (std::size_t i = 0; i != numberOfTrials; ++i)
   {
     // Generate the base orientation (bond lengths, bend angles and, at branch points, the coupled
     // branch-branch arrangement) with exactly the same internal Monte-Carlo scheme as CBMC, so that
     // the intramolecular Boltzmann distribution of the trial directions - and hence the ideal-gas
-    // Rosenbluth weight - is identical to CBMC for linear and branched molecules alike. The
-    // const_cast is safe: the routine only updates internal CBMC move statistics (counters) and
-    // reads 'grownAtoms'; it does not otherwise modify the component.
-    Component &mutableComponent = const_cast<Component &>(ctx.component);
+    // Rosenbluth weight - is identical to CBMC for linear and branched molecules alike.
     std::vector<Atom> base_orientation = CBMC::generateTrialOrientationsMonteCarloScheme(
-        random, ctx.forceField.numberOfTrialMovesPerOpenBead, ctx.beta, mutableComponent, contextAtoms, previous_bead,
-        current_bead, segment.nextBeads, segment.intra);
+        random, ctx.env.forceField.numberOfTrialMovesPerOpenBead, ctx.env.beta, ctx.component, contextAtoms,
+        previous_bead, current_bead, segment.nextBeads, segment.intra);
 
-    std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrials);
+    // Select a torsion rotation with the coupled-decoupled scheme (shared with CBMC insertion).
+    CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+        random, ctx.env.forceField.numberOfTorsionTrialDirections, ctx.env.beta, contextAtoms, base_orientation,
+        previous_bead, current_bead, segment.nextBeads, last_bond_vector, segment.intra, false);
 
-    for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
-    {
-      double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
-
-      std::vector<Atom> rotated_atoms = base_orientation;
-      for (std::size_t k = 0; k != rotated_atoms.size(); ++k)
-      {
-        rotated_atoms[k].position =
-            contextAtoms[current_bead].position +
-            last_bond_vector.rotateAroundAxis(base_orientation[k].position - contextAtoms[current_bead].position,
-                                              random_angle);
-      }
-
-      std::vector<Atom> chain_atoms(contextAtoms.begin(), contextAtoms.end());
-      for (std::size_t k = 0; k != segment.nextBeads.size(); ++k)
-      {
-        chain_atoms[segment.nextBeads[k]] = rotated_atoms[k];
-      }
-
-      double torsion_energy = segment.intra.calculateTorsionEnergies(chain_atoms);
-      torsion_orientations[j] = {rotated_atoms, torsion_energy};
-    }
-
-    std::vector<double> logTorsionBoltzmannFactors{};
-    logTorsionBoltzmannFactors.reserve(numberOfTorsionTrials);
-    std::transform(torsion_orientations.begin(), torsion_orientations.end(),
-                   std::back_inserter(logTorsionBoltzmannFactors),
-                   [&](const std::pair<std::vector<Atom>, double> &v) { return -ctx.beta * std::get<1>(v); });
-
-    double rosenbluth_weight_torsion =
-        std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
-                        [](const double &acc, const double &logFactor) { return acc + std::exp(logFactor); });
-
-    std::size_t selected_torsion = CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
-
-    trials.push_back({torsion_orientations[selected_torsion].first,
-                      rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)});
+    trials.push_back({torsion.positions, torsion.rosenbluthWeight});
   }
 
   return trials;
@@ -242,7 +195,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
     std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, contextAtoms, trial.positions);
     if (!energy.has_value()) continue;  // hard overlap: closed
 
-    double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
+    double open_probability = std::min(1.0, std::exp(-ctx.env.beta * energy->potentialEnergy()));
     if (random.uniform() < open_probability)
     {
       std::vector<Atom> next_atoms(contextAtoms.begin(), contextAtoms.end());
@@ -294,7 +247,7 @@ GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, std::si
     std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, atoms, trial.positions);
     if (!energy.has_value()) continue;  // hard overlap: closed
 
-    double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
+    double open_probability = std::min(1.0, std::exp(-ctx.env.beta * energy->potentialEnergy()));
     if (random.uniform() >= open_probability) continue;  // stochastically closed
 
     std::vector<Atom> saved(segment.nextBeads.size());
@@ -346,51 +299,23 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     old_orientation[k] = oldAtoms[segment.nextBeads[k]];
   }
 
-  std::size_t numberOfTorsionTrials = ctx.forceField.numberOfTorsionTrialDirections;
+  // Mirror the CBMC deletion torsion scheme: the real orientation is trial 0 (angle 0) and the
+  // remaining torsion trials are random rotations. Only the Rosenbluth weight is needed here.
+  CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+      random, ctx.env.forceField.numberOfTorsionTrialDirections, ctx.env.beta, oldAtoms, old_orientation,
+      previous_bead, current_bead, segment.nextBeads, last_bond_vector, segment.intra, true);
 
-  double rosenbluth_weight_torsion = 0.0;
-  for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
-  {
-    double random_angle = (j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
-
-    std::vector<Atom> chain_atoms(oldAtoms.begin(), oldAtoms.end());
-    for (std::size_t k = 0; k != segment.nextBeads.size(); ++k)
-    {
-      chain_atoms[segment.nextBeads[k]].position =
-          oldAtoms[current_bead].position +
-          last_bond_vector.rotateAroundAxis(old_orientation[k].position - oldAtoms[current_bead].position,
-                                            random_angle);
-    }
-
-    double torsion_energy = segment.intra.calculateTorsionEnergies(chain_atoms);
-    rosenbluth_weight_torsion += std::exp(-ctx.beta * torsion_energy);
-  }
-
-  return rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials);
+  return torsion.rosenbluthWeight;
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRecoilGrowthMoleculeChainInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+    const std::vector<std::size_t> beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
 {
-  RecoilContext ctx{component,
-                    hasExternalField,
-                    forceField,
-                    simulationBox,
-                    interpolationGrids,
-                    externalFieldInterpolationGrid,
-                    framework,
-                    frameworkAtomData,
-                    moleculeAtomData,
-                    beta,
-                    cutOffFrameworkVDW,
-                    cutOffMoleculeVDW,
-                    cutOffCoulomb,
+  const ForceField &forceField = context.forceField;
+
+  RecoilContext ctx{context,
+                    component,
                     skipBackgroundMolecule,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
@@ -426,7 +351,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
       std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, chain_atoms, alternative.positions);
       if (!energy.has_value()) continue;  // hard overlap: closed
 
-      double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
+      double open_probability = std::min(1.0, std::exp(-ctx.env.beta * energy->potentialEnergy()));
       if (random.uniform() >= open_probability) continue;  // stochastically closed
 
       std::vector<Atom> feeler_atoms(chain_atoms.begin(), chain_atoms.end());
@@ -441,7 +366,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
     chain_rosenbluth_weight *= static_cast<double>(numberOfFeelers) /
                                 static_cast<double>(ctx.numberOfTrialDirections) *
-                                std::exp(-ctx.beta * record.energy.potentialEnergy()) / record.openProbability *
+                                std::exp(-ctx.env.beta * record.energy.potentialEnergy()) / record.openProbability *
                                 record.selected.torsionWeight;
 
     // Only the external part is accumulated here; the intramolecular van der Waals and Coulomb
@@ -460,7 +385,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   // contain these terms through 'computeInternalEnergies'.
   RunningEnergy unsampled_internal_energies =
       component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-  chain_rosenbluth_weight *= std::exp(-ctx.beta * unsampled_internal_energies.potentialEnergy());
+  chain_rosenbluth_weight *= std::exp(-ctx.env.beta * unsampled_internal_energies.potentialEnergy());
 
   // Copy this configuration so that it can be used as a starting point (parity with CBMC insertion).
   component.grownAtoms = chain_atoms;
@@ -480,26 +405,13 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 }
 
 [[nodiscard]] ChainRetraceData CBMC::retraceRecoilGrowthMoleculeChainDeletion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, const std::vector<std::size_t> beadsAlreadyPlaced) noexcept
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+    const std::vector<std::size_t> beadsAlreadyPlaced) noexcept
 {
-  RecoilContext ctx{component,
-                    hasExternalField,
-                    forceField,
-                    simulationBox,
-                    interpolationGrids,
-                    externalFieldInterpolationGrid,
-                    framework,
-                    frameworkAtomData,
-                    moleculeAtomData,
-                    beta,
-                    cutOffFrameworkVDW,
-                    cutOffMoleculeVDW,
-                    cutOffCoulomb,
+  const ForceField &forceField = context.forceField;
+
+  RecoilContext ctx{context,
+                    component,
                     -1,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
@@ -524,7 +436,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     std::optional<TrialEnergy> old_energy = computeTrialEnergy(ctx, segment, old_atoms, old_positions);
     TrialEnergy selected_energy = old_energy.value_or(TrialEnergy{});
     double selected_potential = selected_energy.potentialEnergy();
-    double open_probability = std::min(1.0, std::exp(-ctx.beta * selected_potential));
+    double open_probability = std::min(1.0, std::exp(-ctx.env.beta * selected_potential));
 
     double torsion_weight = computeOldTorsionWeight(random, ctx, segment, old_atoms);
 
@@ -543,7 +455,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
         std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, old_atoms, trial.positions);
         if (!energy.has_value()) continue;
 
-        double alternative_open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
+        double alternative_open_probability = std::min(1.0, std::exp(-ctx.env.beta * energy->potentialEnergy()));
         if (random.uniform() >= alternative_open_probability) continue;
 
         std::vector<Atom> next_atoms(old_atoms.begin(), old_atoms.end());
@@ -560,7 +472,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     // are directly comparable (and comparable to the CBMC ideal-gas reference).
     chain_rosenbluth_weight *= static_cast<double>(numberOfFeelers) /
                                 static_cast<double>(ctx.numberOfTrialDirections) *
-                                std::exp(-ctx.beta * selected_potential) / open_probability * torsion_weight;
+                                std::exp(-ctx.env.beta * selected_potential) / open_probability * torsion_weight;
 
     // Only the external part is accumulated here; the intramolecular van der Waals and Coulomb
     // terms are added once at the end through 'computeInternalEnergies'.
@@ -573,7 +485,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   // Boltzmann factor of the internal interactions that are not sampled during the retracing.
   RunningEnergy unsampled_internal_energies =
       component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(old_atoms);
-  chain_rosenbluth_weight *= std::exp(-ctx.beta * unsampled_internal_energies.potentialEnergy());
+  chain_rosenbluth_weight *= std::exp(-ctx.env.beta * unsampled_internal_energies.potentialEnergy());
 
   return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0);
 }

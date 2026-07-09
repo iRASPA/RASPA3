@@ -49,10 +49,12 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
-      system.interpolationGrids, system.externalFieldInterpolationGrid,
-      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
   t2 = std::chrono::system_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
@@ -61,7 +63,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // If molecule growth failed, terminate the move.
   if (!growData) return 0.0;
 
-  [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   // Check if the new molecule is inside blocked pockets; if so, abort the move.
   if (system.insideBlockedPockets(component, newMolecule))
@@ -100,11 +102,11 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     std::vector<double3> newElectricField(newMolecule.size());
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), newElectricField, {},
-                                                                  growData->atom, {});
+                                                                  growData->atoms, {});
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, newElectricField, {}, growData->atom, {});
+        system.totalEik, system.forceField, system.simulationBox, newElectricField, {}, growData->atoms, {});
 
     if (!system.forceField.omitInterPolarization)
     {
@@ -113,10 +115,10 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
           Interactions::computeInterMolecularPolarizationElectricFieldDifference(
               system.forceField, system.simulationBox, electricFieldNeighborDelta, newElectricField,
-              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atom, {});
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atoms, {});
 
       polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, newElectricField,
-                                                                               {}, growData->atom, {});
+                                                                               {}, growData->atoms, {});
       polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
           system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
           system.spanOfMoleculeAtoms());
@@ -124,7 +126,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     else
     {
       polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, newElectricField,
-                                                                               {}, growData->atom, {});
+                                                                               {}, growData->atoms, {});
     }
   }
 

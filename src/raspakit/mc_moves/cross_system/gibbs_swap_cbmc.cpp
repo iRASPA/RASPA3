@@ -54,11 +54,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, componentA, selectedComponent, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-      systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, 
-      systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
-      systemA.beta, growType, cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA, newMoleculeIndex, 1.0, false,
-      false);
+      random,
+      CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
+                        systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
+                        systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
+                        cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
+      componentA, selectedComponent, growType, newMoleculeIndex, 1.0, false, false);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)
@@ -68,7 +69,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   if (!growData) return std::nullopt;  // Insertion failed, return
 
   // Get new molecule atoms
-  std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   // Update statistics for successfully constructed molecules in system A
   componentA.mc_moves_statistics.addConstructed(move);
@@ -113,10 +114,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-      random, componentB, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-      systemB.interpolationGrids, systemB.externalFieldInterpolationGrid,
-      systemB.framework, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(),
-      systemB.beta, growType, cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB, molecule);
+      random,
+      CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
+                        systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
+                        systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+                        cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+      componentB, growType, molecule);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC deletion (non-Ewald part)
@@ -168,7 +171,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     // Accept Ewald updates and insert the new molecule into system A
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
-    systemA.insertMolecule(selectedComponent, growData->molecule, growData->atom);
+    systemA.insertMolecule(selectedComponent, growData->molecule, growData->atoms);
 
     // Update accepted move statistics for system B
     componentB.mc_moves_statistics.addAccepted(move);

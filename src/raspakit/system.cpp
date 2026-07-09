@@ -556,10 +556,12 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           const Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
-              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-              spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW,
-              forceField.cutOffCoulomb, numberOfMolecules(), 0.0, groupId, true);
+              random,
+              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              components[componentId], componentId, growType, numberOfMolecules(), 0.0, groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
         return growData;
       };
@@ -569,7 +571,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const std::size_t slot = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
       if (numberOfPairGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
@@ -577,7 +579,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const std::size_t slot = indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
       if (numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
@@ -585,7 +587,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const std::size_t slot = indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
       if (numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
@@ -593,7 +595,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const std::size_t slot = indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
       if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
@@ -601,14 +603,14 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         const std::size_t slot = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
         const std::optional<ChainGrowData> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, slot);
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
       if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
         const std::optional<ChainGrowData> growData = growFractionalMolecule(groupId);
-        std::vector<Atom> atoms = growData->atom;
+        std::vector<Atom> atoms = growData->atoms;
         for (Atom& atom : atoms)
         {
           atom.setScalingToFractional(0.5, groupId);
@@ -681,19 +683,21 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid,
-              framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 1.0,
-              false, false);
+              random,
+              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              components[componentId], componentId, growType, numberOfMolecules(), 1.0, false, false);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
-        std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+        std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
         inside_blocked_pocket = insideBlockedPockets(components[componentId], newMolecule);
 
       } while (inside_blocked_pocket);
 
-      insertMolecule(componentId, growData->molecule, growData->atom);
+      insertMolecule(componentId, growData->molecule, growData->atoms);
     }
 
     componentId++;
@@ -1932,16 +1936,18 @@ void System::createParallelReactionFractionalMolecules()
         do
         {
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
-              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), reactantScaling,
-              reaction.dUdlambdaGroup(true), true);
+              random,
+              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
+              reactantScaling, reaction.dUdlambdaGroup(true), true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex =
             parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k);
-        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, true,
+        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, true,
                                          reaction.currentLambda, reaction.dUdlambdaGroup(true));
       }
 
@@ -1952,15 +1958,17 @@ void System::createParallelReactionFractionalMolecules()
         do
         {
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
-              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), productScaling,
-              reaction.dUdlambdaGroup(false), true);
+              random,
+              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
+              productScaling, reaction.dUdlambdaGroup(false), true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
-        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, false,
+        insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, false,
                                          reaction.currentLambda, reaction.dUdlambdaGroup(false));
       }
     }
@@ -2002,15 +2010,17 @@ void System::createSerialReactionFractionalMolecules()
         do
         {
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], componentId, hasExternalField, forceField, simulationBox,
-              interpolationGrids, externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-              spanOfMoleculeAtoms(), beta, components[componentId].growType, forceField.cutOffFrameworkVDW,
-              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, numberOfMolecules(), 0.0,
+              random,
+              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 0.0,
               reaction.lambda.dUdlambdaGroupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
         const std::size_t moleculeIndex = serialReactionFractionalMoleculeIndex(reactionId, componentId, k);
-        insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atom, 0.0,
+        insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, 0.0,
                                                reaction.lambda.dUdlambdaGroupId);
       }
     }

@@ -577,6 +577,12 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraCoulombE
   return energies;
 }
 
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraVanDerWaalsAndCoulombEnergies(
+    const std::span<const Atom> atoms) const
+{
+  return computeInternalIntraVanDerWaalsEnergies(atoms) + computeInternalIntraCoulombEnergies(atoms);
+}
+
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(std::span<const Atom> atoms,
                                                                             std::span<AtomDynamics> dynamics) const
 {

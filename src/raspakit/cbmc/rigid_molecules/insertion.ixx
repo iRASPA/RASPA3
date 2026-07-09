@@ -13,6 +13,7 @@ import simulationbox;
 import cbmc_chain_data;
 import cbmc_multiple_first_bead;
 import cbmc_interactions;
+import cbmc_growth_context;
 import framework;
 import component;
 import interpolation_energy_grid;
@@ -20,11 +21,6 @@ import interpolation_energy_grid;
 export namespace CBMC
 {
 [[nodiscard]] std::optional<ChainGrowData> growRigidMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+    RandomNumber &random, const GrowContext &context, const Component &component, std::size_t selectedComponent,
+    std::span<Atom> molecule_atoms, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 }

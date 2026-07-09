@@ -54,10 +54,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
-      system.interpolationGrids, system.externalFieldInterpolationGrid,
-      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
@@ -67,7 +69,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<double3> new_electric_field = std::vector<double3>(newMolecule.size());
 
   // Check if the new molecule is inside blocked pockets
@@ -109,11 +111,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), new_electric_field, {},
-                                                                  growData->atom, {});
+                                                                  growData->atoms, {});
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, new_electric_field, {}, growData->atom, {});
+        system.totalEik, system.forceField, system.simulationBox, new_electric_field, {}, growData->atoms, {});
 
     // Molecule-molecule polarization: field on the inserted molecule plus the change of the field on every
     // existing molecule (inter-molecular energy is already accounted for through CBMC, discard returned energy).
@@ -123,12 +125,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
       [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
           Interactions::computeInterMolecularPolarizationElectricFieldDifference(
               system.forceField, system.simulationBox, electricFieldNeighborDelta, new_electric_field,
-              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atom, {});
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atoms, {});
     }
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, new_electric_field,
-                                                                               {}, growData->atom, {});
+                                                                               {}, growData->atoms, {});
 
     if (!system.forceField.omitInterPolarization)
     {
@@ -183,7 +185,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
       }
     }
 
-    system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atom, new_electric_field);
+    system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atoms, new_electric_field);
 
     return {growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference,
             double3(0.0, 1.0 - Pacc, Pacc)};

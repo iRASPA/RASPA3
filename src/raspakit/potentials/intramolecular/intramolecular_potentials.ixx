@@ -84,6 +84,14 @@ struct IntraMolecularPotentials
   RunningEnergy computeInternalIntraVanDerWaalsEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalIntraCoulombEnergies(const std::span<const Atom> atoms) const;
 
+  /**
+   * \brief Intramolecular van der Waals and Coulomb energy of the beads.
+   *
+   * Convenience sum of computeInternalIntraVanDerWaalsEnergies and computeInternalIntraCoulombEnergies.
+   * These are the intramolecular non-bonded terms that enter the CBMC / recoil-growth bead selection.
+   */
+  RunningEnergy computeInternalIntraVanDerWaalsAndCoulombEnergies(const std::span<const Atom> atoms) const;
+
   RunningEnergy computeInternalGradient(std::span<const Atom> atoms, std::span<AtomDynamics> dynamics) const;
 
   std::pair<RunningEnergy, double3x3> computeInternalStrainDerivative(std::span<const Atom> atoms,

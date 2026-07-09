@@ -18,6 +18,7 @@ import cbmc_chain_data;
 import cbmc_util;
 import cbmc_multiple_first_bead;
 import cbmc_interactions;
+import cbmc_growth_context;
 import forcefield;
 import energy_factor;
 import running_energy;
@@ -26,19 +27,15 @@ import component;
 import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::span<Atom> molecule_atoms, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    RandomNumber &random, const GrowContext &context, const Component &component, std::size_t selectedComponent,
+    std::span<Atom> molecule_atoms, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
-  std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(forceField.numberOfTrialDirections);
+  std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions(context.forceField.numberOfTrialDirections);
 
   std::size_t starting_bead = component.startingBead;
 
   // randomly rotated configurations around the starting bead
-  for (std::size_t i = 0; i < forceField.numberOfTrialDirections; ++i)
+  for (std::size_t i = 0; i < context.forceField.numberOfTrialDirections; ++i)
   {
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = CBMC::rotateRandomlyAround(orientation, molecule_atoms, starting_bead);
@@ -50,30 +47,25 @@ import interpolation_energy_grid;
         randomlyRotatedAtoms};
   };
 
-  const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
-      CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
-                                                  interpolationGrids, externalFieldInterpolationGrid,
-                                                  framework, frameworkAtomData, moleculeAtomData,
-                                                  cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
-                                                  std::make_signed_t<std::size_t>(component.startingBead),
-                                                  skipBackgroundMolecule);
+  const std::vector<MoleculeTrial> externalEnergies = CBMC::computeExternalNonOverlappingEnergies(
+      context, component, trialPositions, std::make_signed_t<std::size_t>(component.startingBead),
+      skipBackgroundMolecule);
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltzmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                 [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy> &v)
-                 { return -beta * std::get<2>(v).potentialEnergy(); });
+                 [&](const MoleculeTrial &v) { return -context.beta * v.energy.potentialEnergy(); });
 
   std::size_t selected = CBMC::selectTrialPosition(random, logBoltzmannFactors);
 
-  auto [selected_molecule, selected_atoms, selected_running_energy] = externalEnergies[selected];
+  const MoleculeTrial &selectedTrial = externalEnergies[selected];
 
   double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
                                             [](const double &acc, const double &logBoltzmannFactor)
                                             { return acc + std::exp(logBoltzmannFactor); });
 
-  if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+  if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainGrowData(selected_molecule, selected_atoms, selected_running_energy,
-                       RosenbluthWeight / double(forceField.numberOfTrialDirections), 0.0);
+  return ChainGrowData(selectedTrial.molecule, selectedTrial.positions, selectedTrial.energy,
+                       RosenbluthWeight / double(context.forceField.numberOfTrialDirections), 0.0);
 }

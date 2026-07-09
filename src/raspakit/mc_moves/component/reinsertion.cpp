@@ -14,6 +14,7 @@ import simulationbox;
 import cbmc;
 import cbmc_chain_data;
 import cbmc_interactions;
+import cbmc_growth_context;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -61,10 +62,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-      random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
-      system.interpolationGrids, system.externalFieldInterpolationGrid,
-      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, selectedComponent, growType, molecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -74,7 +77,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   if (!growData) return std::nullopt;
 
   // Get the new molecule configuration.
-  std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   std::vector<Atom> old_molecule = std::vector(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
@@ -92,10 +95,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   const std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, 
-      system.interpolationGrids, system.externalFieldInterpolationGrid, 
-      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms, growData->storedR);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, growType, molecule, molecule_atoms, growData->storedR);
   time_end = std::chrono::system_clock::now();
 
   if (!retraceData)
@@ -123,18 +128,21 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   if (system.forceField.useDualCutOff)
   {
     // If dual cutoff is used, compute correction factor due to non-overlapping energies.
-    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, 
-        system.interpolationGrids, system.externalFieldInterpolationGrid, 
-        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-        system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
-        growData->atom);
-    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, 
-        system.interpolationGrids, system.externalFieldInterpolationGrid,
-        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-        system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
-        old_molecule);
+    const CBMC::GrowContext context{system.hasExternalField,
+                                    system.forceField,
+                                    system.simulationBox,
+                                    system.interpolationGrids,
+                                    system.externalFieldInterpolationGrid,
+                                    system.framework,
+                                    system.spanOfFrameworkAtoms(),
+                                    system.spanOfMoleculeAtoms(),
+                                    system.beta,
+                                    system.forceField.cutOffFrameworkVDW,
+                                    system.forceField.cutOffMoleculeVDW,
+                                    system.forceField.cutOffCoulomb};
+
+    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(context, component, growData->atoms);
+    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(context, component, old_molecule);
     correctionFactorDualCutOff =
         std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
                                  (energyOld->potentialEnergy() - retraceData->energies.potentialEnergy())));
@@ -146,12 +154,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), new_electric_field,
-                                                                  old_electric_field, growData->atom, old_molecule);
+                                                                  old_electric_field, growData->atoms, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
         system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
-        growData->atom, old_molecule);
+        growData->atoms, old_molecule);
 
     // Molecule-molecule polarization: add the inter-molecular field on the reinserted molecule and the change of
     // the field on every other molecule (the inter-molecular energy is already accounted for through CBMC, so the
@@ -162,12 +170,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
           Interactions::computeInterMolecularPolarizationElectricFieldDifference(
               system.forceField, system.simulationBox, electricFieldNeighborDelta, new_electric_field,
-              old_electric_field, system.spanOfMoleculeAtoms(), growData->atom, old_molecule);
+              old_electric_field, system.spanOfMoleculeAtoms(), growData->atoms, old_molecule);
     }
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
+        system.forceField, new_electric_field, old_electric_field, growData->atoms, old_molecule);
 
     if (!system.forceField.omitInterPolarization)
     {

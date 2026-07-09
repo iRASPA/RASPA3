@@ -343,18 +343,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     if (useCBMC)
     {
       growDataA = CBMC::growMoleculeSwapInsertion(
-          random, componentA, selectedComponent, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-          systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-          systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growTypeA, cutOffFrameworkVDWA,
-          cutOffMoleculeVDWA, cutOffCoulombA, systemA.numberOfMolecules(), lambdaNewA,
+          random,
+          CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
+                            systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
+                            systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
+                            cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
+          componentA, selectedComponent, growTypeA, systemA.numberOfMolecules(), lambdaNewA,
           componentA.lambdaGibbs.dUdlambdaGroupId, true);
-      if (!growDataA.has_value() || systemA.insideBlockedPockets(componentA, growDataA->atom))
+      if (!growDataA.has_value() || systemA.insideBlockedPockets(componentA, growDataA->atoms))
       {
         restoreFractionals();
         return std::nullopt;
       }
 
-      RunningEnergy growEwaldTailA = growEwaldTailDifference(systemA, growDataA->atom);
+      RunningEnergy growEwaldTailA = growEwaldTailDifference(systemA, growDataA->atoms);
       energySecondStepA += growDataA->energies + growEwaldTailA;
 
       const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
@@ -395,10 +397,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       std::vector<Atom> oldSelectedMoleculeB(selectedMoleculeB.begin(), selectedMoleculeB.end());
       ChainRetraceData retraceDataB = CBMC::retraceMoleculeSwapDeletion(
-          random, componentB, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-          systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-          systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta, growTypeB, cutOffFrameworkVDWB,
-          cutOffMoleculeVDWB, cutOffCoulombB, selectedMoleculeB);
+          random,
+          CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
+                            systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
+                            systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+                            cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+          componentB, growTypeB, selectedMoleculeB);
       RunningEnergy retraceEwaldTailB = retraceEwaldTailDifference(systemB, selectedMoleculeB);
       const double correctionRetraceB = std::exp(systemB.beta * retraceEwaldTailB.potentialEnergy());
       rosenbluthOldB = retraceDataB.RosenbluthWeight * correctionRetraceB;
@@ -452,10 +456,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       std::vector<Atom> oldSelectedMoleculeA(selectedMoleculeA.begin(), selectedMoleculeA.end());
       ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-          random, componentA, systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-          systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-          systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growTypeA, cutOffFrameworkVDWA,
-          cutOffMoleculeVDWA, cutOffCoulombA, selectedMoleculeA);
+          random,
+          CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
+                            systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
+                            systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
+                            cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
+          componentA, growTypeA, selectedMoleculeA);
       RunningEnergy retraceEwaldTailA = retraceEwaldTailDifference(systemA, selectedMoleculeA);
       const double correctionRetraceA = std::exp(systemA.beta * retraceEwaldTailA.potentialEnergy());
       rosenbluthOldA = retraceDataA.RosenbluthWeight * correctionRetraceA;
@@ -496,18 +502,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     if (useCBMC)
     {
       growDataB = CBMC::growMoleculeSwapInsertion(
-          random, componentB, selectedComponent, systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-          systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-          systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta, growTypeB, cutOffFrameworkVDWB,
-          cutOffMoleculeVDWB, cutOffCoulombB, systemB.numberOfMolecules(), lambdaNewB,
+          random,
+          CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
+                            systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
+                            systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+                            cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+          componentB, selectedComponent, growTypeB, systemB.numberOfMolecules(), lambdaNewB,
           componentB.lambdaGibbs.dUdlambdaGroupId, true);
-      if (!growDataB.has_value() || systemB.insideBlockedPockets(componentB, growDataB->atom))
+      if (!growDataB.has_value() || systemB.insideBlockedPockets(componentB, growDataB->atoms))
       {
         restoreFractionals();
         return std::nullopt;
       }
 
-      RunningEnergy growEwaldTailB = growEwaldTailDifference(systemB, growDataB->atom);
+      RunningEnergy growEwaldTailB = growEwaldTailDifference(systemB, growDataB->atoms);
       energySecondStepB += growDataB->energies + growEwaldTailB;
 
       const double idealGasB = componentB.idealGasRosenbluthWeight.value_or(1.0);
@@ -598,7 +606,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     if (useCBMC)
     {
-      acceptInsertStep(systemA, selectedComponent, indexFractionalA, growDataA->molecule, growDataA->atom, lambdaNewA);
+      acceptInsertStep(systemA, selectedComponent, indexFractionalA, growDataA->molecule, growDataA->atoms, lambdaNewA);
     }
     else
     {
@@ -612,7 +620,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     acceptDeleteStep(systemA, selectedComponent, indexFractionalA, selectedIntegerA, lambdaNewA);
     if (useCBMC)
     {
-      acceptInsertStep(systemB, selectedComponent, indexFractionalB, growDataB->molecule, growDataB->atom, lambdaNewB);
+      acceptInsertStep(systemB, selectedComponent, indexFractionalB, growDataB->molecule, growDataB->atoms, lambdaNewB);
     }
     else
     {

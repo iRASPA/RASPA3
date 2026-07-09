@@ -68,10 +68,13 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random, newComponentData, newComponent, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, newGrowType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      trialMoleculeId, oldStartingBead, 1.0, false, false, skipBackgroundMolecule);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false, false,
+      skipBackgroundMolecule);
   std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -82,7 +85,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   }
 
   data.growData = std::move(*growData);
-  const std::span<const Atom> newMolecule(data.growData.atom.begin(), data.growData.atom.end());
+  const std::span<const Atom> newMolecule(data.growData.atoms.begin(), data.growData.atoms.end());
 
   data.oldMoleculeCopy.assign(data.oldMoleculeAtoms.begin(), data.oldMoleculeAtoms.end());
   data.oldElectricField.resize(data.oldMoleculeCopy.size());
@@ -97,10 +100,12 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   time_begin = std::chrono::system_clock::now();
   data.retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
-      random, oldComponentData, system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, oldGrowType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      data.oldMoleculeAtoms);
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      oldComponentData, oldGrowType, data.oldMoleculeAtoms);
   time_end = std::chrono::system_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -129,16 +134,16 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), data.newElectricField,
-                                                                  data.oldElectricField, data.growData.atom,
+                                                                  data.oldElectricField, data.growData.atoms,
                                                                   data.oldMoleculeCopy);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
         system.totalEik, system.forceField, system.simulationBox, data.newElectricField, data.oldElectricField,
-        data.growData.atom, data.oldMoleculeCopy);
+        data.growData.atoms, data.oldMoleculeCopy);
 
     data.polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, data.newElectricField, data.oldElectricField, data.growData.atom, data.oldMoleculeCopy);
+        system.forceField, data.newElectricField, data.oldElectricField, data.growData.atoms, data.oldMoleculeCopy);
   }
 
   data.correctionFactorEwald = std::exp(
@@ -154,7 +159,7 @@ void acceptBoxIdentityChange(System& system, BoxIdentityChangeData& data)
 {
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
-  std::vector<Atom> acceptedAtoms(data.growData.atom.begin(), data.growData.atom.end());
+  std::vector<Atom> acceptedAtoms(data.growData.atoms.begin(), data.growData.atoms.end());
   for (Atom& atom : acceptedAtoms)
   {
     atom.componentId = static_cast<std::uint8_t>(data.newComponent);

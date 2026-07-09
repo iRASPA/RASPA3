@@ -31,7 +31,7 @@ import cbmc_move_statistics;
 
 std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
     RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta, 
-    Component &component, const std::vector<Atom> molecule_atoms,
+    const Component &component, const std::vector<Atom> molecule_atoms,
     std::size_t previousBead, std::size_t currentBead, std::vector<std::size_t> nextBeads,
     const Potentials::IntraMolecularPotentials &intraMolecularInteractions)
 {
@@ -330,8 +330,9 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
 
   if (bond_drift > 1e-4 || bend_drift > 1e-4)
   {
-    std::print("CBMC: internal drifts (bond {}, bend {})\n", bond_drift, bend_drift);
-    std::exit(0);
+    throw std::runtime_error(std::format(
+        "CBMC: internal drift in the trial-orientation Monte-Carlo scheme (bond {}, bend {})\n", bond_drift,
+        bend_drift));
   }
 
   std::vector<Atom> next_bead_atoms(nextBeads.size());
@@ -341,4 +342,75 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
   }
 
   return next_bead_atoms;
+}
+
+CBMC::TorsionOrientation CBMC::selectTorsionOrientation(
+    RandomNumber &random, std::size_t numberOfTorsionTrials, double beta, const std::vector<Atom> &chainAtoms,
+    const std::vector<Atom> &baseOrientation, [[maybe_unused]] std::size_t previousBead, std::size_t currentBead,
+    const std::vector<std::size_t> &nextBeads, double3 lastBondVector,
+    const Potentials::IntraMolecularPotentials &intra, bool pinFirstToBase)
+{
+  std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrials);
+  std::vector<Atom> chain_atoms(chainAtoms.begin(), chainAtoms.end());
+
+  for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
+  {
+    double random_angle = (pinFirstToBase && j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+
+    std::vector<Atom> rotated_atoms = baseOrientation;
+    for (std::size_t k = 0; k != rotated_atoms.size(); ++k)
+    {
+      rotated_atoms[k].position =
+          chainAtoms[currentBead].position +
+          lastBondVector.rotateAroundAxis(baseOrientation[k].position - chainAtoms[currentBead].position, random_angle);
+    }
+
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      chain_atoms[nextBeads[k]] = rotated_atoms[k];
+    }
+
+    double torsion_energy = intra.calculateTorsionEnergies(chain_atoms);
+    torsion_orientations[j] = {rotated_atoms, torsion_energy};
+
+#if defined(DEBUG)
+    // the torsion-rotation must leave the bend angles and bond lengths unchanged
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      double old_angle = double3::angle(chainAtoms[previousBead].position, chainAtoms[currentBead].position,
+                                        baseOrientation[k].position);
+      double new_angle = double3::angle(chainAtoms[previousBead].position, chainAtoms[currentBead].position,
+                                        rotated_atoms[k].position);
+      if (std::fabs(new_angle - old_angle) > 1e-5)
+      {
+        throw std::runtime_error(std::format("CBMC: bend-angle change in torsion-rotation ({} vs {})\n",
+                                             new_angle * Units::RadiansToDegrees,
+                                             old_angle * Units::RadiansToDegrees));
+      }
+
+      double old_bond_length = (chainAtoms[currentBead].position - baseOrientation[k].position).length();
+      double new_bond_length = (chainAtoms[currentBead].position - rotated_atoms[k].position).length();
+      if (std::fabs(new_bond_length - old_bond_length) > 1e-5)
+      {
+        throw std::runtime_error(std::format("CBMC: bond-distance change in torsion-rotation ({} vs {})\n",
+                                             new_bond_length, old_bond_length));
+      }
+    }
+#endif
+  }
+
+  std::vector<double> logTorsionBoltzmannFactors{};
+  logTorsionBoltzmannFactors.reserve(numberOfTorsionTrials);
+  std::transform(torsion_orientations.begin(), torsion_orientations.end(),
+                 std::back_inserter(logTorsionBoltzmannFactors),
+                 [&](const std::pair<std::vector<Atom>, double> &v) { return -beta * std::get<1>(v); });
+
+  double rosenbluth_weight_torsion =
+      std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
+                      [](const double &acc, const double &logFactor) { return acc + std::exp(logFactor); });
+
+  std::size_t selected_torsion = pinFirstToBase ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
+
+  return {torsion_orientations[selected_torsion].first,
+          rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)};
 }

@@ -189,10 +189,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
-        system.interpolationGrids, system.externalFieldInterpolationGrid,
-        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule, newLambda,
+        random,
+        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                          system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                          cutOffCoulomb},
+        component, selectedComponent, growType, newMolecule, newLambda,
         system.components[selectedComponent].lambdaGC.dUdlambdaGroupId, true);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -207,7 +209,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Check if the new molecule is inside blocked pockets
-    if ((system.insideBlockedPockets(component, growData->atom)))
+    if ((system.insideBlockedPockets(component, growData->atoms)))
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
@@ -221,7 +223,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
-        system.simulationBox, std::span(growData->atom.begin(), growData->atom.end()), {}, system.netCharge);
+        system.simulationBox, std::span(growData->atoms.begin(), growData->atoms.end()), {}, system.netCharge);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
@@ -230,10 +232,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceGrow = Interactions::computeInterMolecularTailEnergyDifference(
                                                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
-                                                 std::span(growData->atom.begin(), growData->atom.end()), {}) +
+                                                 std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
                                              Interactions::computeFrameworkMoleculeTailEnergyDifference(
                                                  system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-                                                 std::span(growData->atom.begin(), growData->atom.end()), {});
+                                                 std::span(growData->atoms.begin(), growData->atoms.end()), {});
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -242,7 +244,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // molecules; (step 2) growing the new fractional molecule adds its own polarization energy and again changes the
     // field on the other molecules (its inter-molecular energy is already accounted for through CBMC).
     std::vector<double3> electricFieldNeighborDelta;
-    std::vector<double3> grownElectricField(growData->atom.size());
+    std::vector<double3> grownElectricField(growData->atoms.size());
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {
@@ -257,18 +259,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                     system.spanOfFrameworkAtoms(), grownElectricField,
-                                                                    {}, growData->atom, {});
+                                                                    {}, growData->atoms, {});
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, grownElectricField, {}, growData->atom, {});
+          system.totalEik, system.forceField, system.simulationBox, grownElectricField, {}, growData->atoms, {});
       [[maybe_unused]] std::optional<RunningEnergy> e2 =
           Interactions::computeInterMolecularPolarizationElectricFieldDifference(
               system.forceField, system.simulationBox, electricFieldNeighborDelta, grownElectricField,
-              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atom, {});
+              std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atoms, {});
 
       polarizationDifference =
           Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField, {},
-                                                            growData->atom, {}) +
+                                                            growData->atoms, {}) +
           Interactions::computePolarizationEnergyNeighborDifference(system.forceField,
                                                                     system.spanOfMoleculeElectricField(),
                                                                     electricFieldNeighborDelta,
@@ -278,12 +280,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                     system.spanOfFrameworkAtoms(), grownElectricField,
-                                                                    {}, growData->atom, {});
+                                                                    {}, growData->atoms, {});
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, grownElectricField, {}, growData->atom, {});
+          system.totalEik, system.forceField, system.simulationBox, grownElectricField, {}, growData->atoms, {});
       polarizationDifference =
-          Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField, {}, growData->atom, {});
+          Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField, {}, growData->atoms, {});
     }
 
     // Calculate correction factor for Ewald summation
@@ -333,11 +335,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Insert the new molecule into the system
       if (system.forceField.computePolarization)
       {
-        system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atom, grownElectricField);
+        system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atoms, grownElectricField);
       }
       else
       {
-        system.insertMolecule(selectedComponent, growData->molecule, growData->atom);
+        system.insertMolecule(selectedComponent, growData->molecule, growData->atoms);
       }
 
       // Swap molecules to keep the fractional molecule at a fixed index
@@ -404,9 +406,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Retrace the existing fractional molecule
       time_begin = std::chrono::system_clock::now();
       ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-          random, component, system.hasExternalField, system.forceField, system.simulationBox,
-          system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-          system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, fractionalMolecule);
+          random,
+          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
+                            system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                            system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                            cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+          component, growType, fractionalMolecule);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);

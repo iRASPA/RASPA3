@@ -193,7 +193,10 @@ export struct Component
 
   ConnectivityTable connectivityTable{};                            ///< Connectivity table for the component.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
-  std::vector<Atom> grownAtoms{};
+  // Scratch buffer holding the atoms of the most recently grown chain; used as a reference geometry
+  // by the internal-Monte-Carlo trial-orientation scheme. Marked 'mutable' so the scheme can run on
+  // a 'const Component&'.
+  mutable std::vector<Atom> grownAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
@@ -210,7 +213,9 @@ export struct Component
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
 
-  std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
+  // CBMC internal-move statistics counters. Marked 'mutable' so that the trial-orientation
+  // Monte-Carlo scheme, which only updates these counters, can run on a 'const Component&'.
+  mutable std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
   PropertyWidom averageRosenbluthWeights;            ///< Average Rosenbluth weights for Widom insertion.
   PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
