@@ -18,12 +18,12 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
                                   std::optional<double> maximumRange)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
@@ -69,7 +69,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

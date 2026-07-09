@@ -1285,7 +1285,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   switch (moveType)
   {
     case Move::Types::Translation:
@@ -1480,7 +1480,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
-        std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
       }
@@ -1497,7 +1497,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
-        std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
       }
@@ -1516,7 +1516,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
-        std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::InsertionTotal] += (t3 - t1);
       }
@@ -1534,7 +1534,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
-        std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::DeletionTotal] += (t3 - t1);
       }
@@ -1668,7 +1668,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1683,7 +1683,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSecondSystem.runningEnergies += energy.value().first;
           selectedSystem.runningEnergies += energy.value().second;
         }
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1708,7 +1708,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1727,7 +1727,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1752,7 +1752,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1772,7 +1772,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
@@ -1793,7 +1793,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
 
-        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
@@ -1934,7 +1934,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       break;
     }
   }
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system
   if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapCFCMC &&

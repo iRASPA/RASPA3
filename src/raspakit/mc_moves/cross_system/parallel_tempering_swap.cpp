@@ -30,7 +30,7 @@ import mc_moves_move_types;
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwap(RandomNumber &random,
                                                                                        System &systemA, System &systemB)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ParallelTempering;
 
   // Update swap move counts for both systems
@@ -41,12 +41,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   if (systemA.forceField != systemB.forceField)
   {
     // Compute energy of system A using system B's force field
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy systemAHamiltonianB =
         Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomData);
     RunningEnergy systemBHamiltonianA =
         Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomData);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     systemA.mc_moves_cputime[move][Move::Timing::Energy] += (time_end - time_begin);
 
@@ -67,10 +67,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
 
     // Adjust acceptance probability for pressure differences
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     acc *= std::pow(systemB.pressure / systemA.pressure,
                     systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
   }

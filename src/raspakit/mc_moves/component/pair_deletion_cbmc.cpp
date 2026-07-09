@@ -97,7 +97,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
                                                                                  std::size_t selectedComponent,
                                                                                  std::size_t selectedMolecule)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
 
   if (!componentA.pairComponentId.has_value() || !componentA.maximumPairDistance.has_value())
@@ -192,24 +192,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentA, componentA.growType, moleculeA);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentBRef, componentBRef.growType, moleculeB);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -219,7 +219,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const auto savedStoredEik = system.storedEik;
   const auto savedTotalEik = system.totalEik;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, {}, oldMoleculeB, system.netCharge);
@@ -231,11 +231,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
@@ -245,7 +245,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
                                                                  system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
 
@@ -324,7 +324,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
                                                                              std::size_t selectedComponent,
                                                                              std::size_t selectedMolecule)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
 
   if (!componentA.pairComponentId.has_value() || !componentA.maximumPairDistance.has_value())
@@ -419,24 +419,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentA, componentA.growType, moleculeA);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentBRef, componentBRef.growType, moleculeB);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -446,7 +446,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const auto savedStoredEik = system.storedEik;
   const auto savedTotalEik = system.totalEik;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, {}, oldMoleculeB, system.netCharge);
@@ -458,11 +458,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
@@ -472,7 +472,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
                                                                  system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
 

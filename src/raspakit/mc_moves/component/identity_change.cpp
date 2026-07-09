@@ -33,7 +33,7 @@ import mc_moves_move_types;
 std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, System &system,
                                                           std::size_t selectedComponent)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::IdentityChangeCBMC;
   Component &startComponent = system.components[selectedComponent];
 
@@ -93,7 +93,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -102,7 +102,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
                         cutOffCoulomb},
       newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false, false,
       skipBackgroundMolecule);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -123,7 +123,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -131,19 +131,19 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
       oldComponentData, oldGrowType, oldMoleculeAtoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, oldMoleculeAtoms, system.netCharge);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
           system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, newComponentData,
@@ -151,7 +151,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule,
                                                                  oldMoleculeAtoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 

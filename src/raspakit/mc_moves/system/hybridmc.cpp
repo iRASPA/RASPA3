@@ -22,7 +22,7 @@ import interpolation_energy_grid;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::HybridMC;
 
   system.mc_moves_statistics.addTrial(move);
@@ -71,7 +71,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   RunningEnergy currentEnergy = referenceEnergy;
 
   // integrate for N steps
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   for (std::size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
   {
     currentEnergy = Integrators::velocityVerlet(moleculeData, moleculeAtomPositions, moleculeDynamics,
@@ -81,7 +81,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
                                                 system.totalEik, system.fixedFrameworkStoredEik,
                                                 system.interpolationGrids, system.numberOfMoleculesPerComponent);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_statistics.addConstructed(move);

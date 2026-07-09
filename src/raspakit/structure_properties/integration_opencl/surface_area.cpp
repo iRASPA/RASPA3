@@ -73,7 +73,7 @@ void Integration_OpenCL_SurfaceArea::run(const ForceField &forceField,
                                 std::optional<std::size_t> numberOfSlices) const
 {
   cl_int err;
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
   if (!probeType.has_value())
@@ -95,7 +95,7 @@ void Integration_OpenCL_SurfaceArea::run(const ForceField &forceField,
 
   std::vector<cl_float> output(numberOfAtoms);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < numberOfAtoms; i++)
   {
@@ -200,7 +200,7 @@ void Integration_OpenCL_SurfaceArea::run(const ForceField &forceField,
 
   double accumulated_surface_area = std::accumulate(output.begin(), output.end(), 0.0);
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

@@ -209,7 +209,7 @@ void MonteCarloTransitionMatrix::performCycle()
 
 void MonteCarloTransitionMatrix::initialize()
 {
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
@@ -281,7 +281,7 @@ void MonteCarloTransitionMatrix::initialize()
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     performCycle();
 
@@ -321,7 +321,7 @@ void MonteCarloTransitionMatrix::initialize()
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
 
     totalInitializationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
@@ -332,7 +332,7 @@ void MonteCarloTransitionMatrix::initialize()
 
 void MonteCarloTransitionMatrix::equilibrate()
 {
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
@@ -363,7 +363,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     performCycle();
 
@@ -422,7 +422,7 @@ void MonteCarloTransitionMatrix::equilibrate()
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
 
     totalEquilibrationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
@@ -434,7 +434,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 void MonteCarloTransitionMatrix::production()
 {
   double minBias{0uz};
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
@@ -507,7 +507,7 @@ void MonteCarloTransitionMatrix::production()
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     estimation.setCurrentSample(currentCycle);
 
@@ -519,11 +519,11 @@ void MonteCarloTransitionMatrix::production()
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
-        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
         std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
         system.currentEnergyStatus = molecularPressure.first;
         system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
@@ -569,7 +569,7 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
 
     totalProductionSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);

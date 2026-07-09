@@ -332,7 +332,7 @@ void System::computeNumberOfPseudoAtoms()
 
 void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle)
 {
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   double w = weight();
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
@@ -474,7 +474,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     propertyDensityGrid->sample(framework, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   mc_moves_cputime.propertySampling += (t2 - t1);
 }

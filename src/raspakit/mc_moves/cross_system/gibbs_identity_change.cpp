@@ -66,7 +66,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
 
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -75,7 +75,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                         cutOffCoulomb},
       newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false, false,
       skipBackgroundMolecule);
-  std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -98,7 +98,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   data.retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -106,19 +106,19 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
       oldComponentData, oldGrowType, data.oldMoleculeAtoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   data.tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
           system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms,
@@ -126,7 +126,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule,
                                                                  data.oldMoleculeAtoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 

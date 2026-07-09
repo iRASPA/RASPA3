@@ -30,9 +30,9 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::size_t numberOfAtoms = positions.size();
   int temp = grid_size.x * grid_size.y * grid_size.z;
@@ -186,7 +186,7 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

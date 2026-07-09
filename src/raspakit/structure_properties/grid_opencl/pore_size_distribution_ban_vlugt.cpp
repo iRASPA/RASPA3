@@ -79,12 +79,12 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   cl_int err;
 
   if(!OpenCL::clContext.has_value()) return;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::vector<cl_float4> pos(positions.size());
   std::vector<cl_float> sigma(positions.size());
@@ -167,7 +167,7 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
     clReleaseMemObject(pore_sizes);
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

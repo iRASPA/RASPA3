@@ -38,7 +38,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                                                                                bool deletionDisabled)
 {
   // Initialize time points for performance measurement
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::SwapCBCFCMC;
   Component& component = system.components[selectedComponent];
 
@@ -114,11 +114,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute external field energy contribution
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
         system.hasExternalField, system.forceField, system.simulationBox, 
         system.externalFieldInterpolationGrid, fractionalMolecule, oldFractionalMolecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionExternalField] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionExternalField] += (time_end - time_begin);
     if (!externalFieldDifference.has_value())
@@ -129,11 +129,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute framework-molecule energy contribution
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), fractionalMolecule, oldFractionalMolecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionFramework] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionFramework] += (time_end - time_begin);
     if (!frameworkDifference.has_value())
@@ -144,11 +144,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute molecule-molecule energy contribution
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> moleculeDifference = Interactions::computeInterMolecularEnergyDifference(
         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), fractionalMolecule,
         oldFractionalMolecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionMolecule] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionMolecule] += (time_end - time_begin);
     if (!moleculeDifference.has_value())
@@ -160,23 +160,23 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute Ewald energy contribution
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldEnergyDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
 
     // Compute tail-correction energy contribution
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifference(
                                              system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
                                              fractionalMolecule, oldFractionalMolecule) +
                                          Interactions::computeFrameworkMoleculeTailEnergyDifference(
                                              system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
                                              fractionalMolecule, oldFractionalMolecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
@@ -187,7 +187,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Grow molecule with newLambda (trial global molecule id, not a storage index)
     std::size_t newMolecule = system.numberOfMolecules();
 
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
         random,
         CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -196,7 +196,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                           cutOffCoulomb},
         component, selectedComponent, growType, newMolecule, newLambda,
         system.components[selectedComponent].lambdaGC.dUdlambdaGroupId, true);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
@@ -220,23 +220,23 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     component.mc_moves_statistics.addConstructed(move, 0);
 
     // Compute Ewald energy contribution for the new molecule
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
         system.simulationBox, std::span(growData->atoms.begin(), growData->atoms.end()), {}, system.netCharge);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
 
     // Compute tail-correction energy contribution for the new molecule
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy tailEnergyDifferenceGrow = Interactions::computeInterMolecularTailEnergyDifference(
                                                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
                                                  std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
                                              Interactions::computeFrameworkMoleculeTailEnergyDifference(
                                                  system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
                                                  std::span(growData->atoms.begin(), growData->atoms.end()), {});
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
@@ -404,7 +404,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       std::vector<Atom> oldNewFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
 
       // Retrace the existing fractional molecule
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random,
           CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
@@ -412,27 +412,27 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                             system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                             cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
           component, growType, fractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
 
       // Compute Ewald energy difference for the retraced molecule
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
           system.simulationBox, {}, fractionalMolecule, system.netCharge);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
 
       // Compute tail-correction energy difference for the retraced molecule
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       RunningEnergy tailEnergyDifferenceRetrace =
           Interactions::computeInterMolecularTailEnergyDifference(
               system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, fractionalMolecule) +
           Interactions::computeFrameworkMoleculeTailEnergyDifference(
               system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, fractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
@@ -474,12 +474,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Compute external field energy contribution
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
           system.hasExternalField, system.forceField, system.simulationBox, 
           system.externalFieldInterpolationGrid, newFractionalMolecule,
           savedFractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionExternalField] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionExternalField] += (time_end - time_begin);
       if (!externalFieldDifference.has_value())
@@ -492,11 +492,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Compute framework-molecule energy contribution
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
           system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
           system.spanOfFrameworkAtoms(), newFractionalMolecule, savedFractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionFramework] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionFramework] += (time_end - time_begin);
       if (!frameworkDifference.has_value())
@@ -509,11 +509,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Compute molecule-molecule energy contribution
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       std::optional<RunningEnergy> moleculeDifference = Interactions::computeInterMolecularEnergyDifference(
           system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newFractionalMolecule,
           savedFractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionMolecule] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionMolecule] += (time_end - time_begin);
       if (!moleculeDifference.has_value())
@@ -526,23 +526,23 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Compute Ewald energy contribution for the new fractional molecule
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       RunningEnergy EwaldEnergyDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
           system.simulationBox, newFractionalMolecule, savedFractionalMolecule, system.netCharge);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
 
       // Compute tail-correction energy contribution for the new fractional molecule
-      time_begin = std::chrono::system_clock::now();
+      time_begin = std::chrono::steady_clock::now();
       RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifference(
                                                system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
                                                newFractionalMolecule, savedFractionalMolecule) +
                                            Interactions::computeFrameworkMoleculeTailEnergyDifference(
                                                system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
                                                newFractionalMolecule, savedFractionalMolecule);
-      time_end = std::chrono::system_clock::now();
+      time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
@@ -697,11 +697,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute external field energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> externalFieldEnergyDifference = Interactions::computeExternalFieldEnergyDifference(
         system.hasExternalField, system.forceField, system.simulationBox, 
         system.externalFieldInterpolationGrid, trialPositions, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
       component.mc_moves_cputime[Move::Types::WidomCBCFCMC][Move::Timing::ExternalField] += (time_end - time_begin);
@@ -715,11 +715,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     if (!externalFieldEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute framework-molecule energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> frameworkEnergyDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), trialPositions, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
       component.mc_moves_cputime[Move::Types::WidomCBCFCMC][Move::Timing::Framework] += (time_end - time_begin);
@@ -736,10 +736,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute molecule-molecule energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> interEnergyDifference = Interactions::computeInterMolecularEnergyDifference(
         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialPositions, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
       component.mc_moves_cputime[Move::Types::WidomCBCFCMC][Move::Timing::Molecule] += (time_end - time_begin);
@@ -756,11 +756,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute Ewald energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, trialPositions, molecule, system.netCharge);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
       component.mc_moves_cputime[Move::Types::WidomCBCFCMC][Move::Timing::Ewald] += (time_end - time_begin);
@@ -773,13 +773,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute tail-correction energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
         Interactions::computeInterMolecularTailEnergyDifference(
             system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialPositions, molecule) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialPositions, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
 

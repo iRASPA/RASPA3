@@ -22,7 +22,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
                                                       std::span<const AtomDynamics> moleculeDynamics,
                                                       const std::vector<Component>& components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double energy{};
   std::size_t index{};
   for (const Molecule& molecule : moleculeData)
@@ -44,7 +44,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeTranslationalKineticEnergy += end - begin;
   return energy;
@@ -53,7 +53,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
 double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculeData,
                                                    const std::vector<Component> components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double3 ang_vel;
   double energy{};
 
@@ -77,7 +77,7 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
     // Accumulate rotational kinetic energy: 0.5 * inertia * angular velocity squared
     energy += 0.5 * double3::dot(inertiaVector, ang_vel * ang_vel);
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeRotationalKineticEnergy += end - begin;
   return energy;
@@ -85,7 +85,7 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
 
 double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculeData)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double3 com{};
   double totalMass{};
 
@@ -95,7 +95,7 @@ double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculeData)
     totalMass += molecule.mass;
     com += molecule.mass * molecule.centerOfMassPosition;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeCenterOfMass += end - begin;
 
@@ -106,7 +106,7 @@ double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculeData)
 // The velocity of the center of mass is the average velocity of all objects in the system weighted by their masses
 double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> moleculeData)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double3 com_velocity{};
   double totalMass{};
 
@@ -116,7 +116,7 @@ double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> molec
     totalMass += molecule.mass;
     com_velocity += molecule.mass * molecule.velocity;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeCenterOfMassVelocity += end - begin;
   // Return the center of mass velocity
@@ -125,7 +125,7 @@ double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> molec
 
 double3 Integrators::computeLinearMomentum(std::span<const Molecule> moleculeData)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   double3 com_momentum{};
   for (const Molecule& molecule : moleculeData)
@@ -133,7 +133,7 @@ double3 Integrators::computeLinearMomentum(std::span<const Molecule> moleculeDat
     // Accumulate linear momentum: mass * velocity
     com_momentum += molecule.mass * molecule.velocity;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeLinearMomentum += end - begin;
   return com_momentum;

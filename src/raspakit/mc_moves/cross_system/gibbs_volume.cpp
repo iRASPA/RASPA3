@@ -32,7 +32,7 @@ import mc_moves_move_types;
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA,
                                                                                  System &systemB)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::GibbsVolume;
 
   systemA.mc_moves_statistics.addTrial(move);
@@ -64,26 +64,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemA.forceField.initializeAutomaticCutOff(newBoxA);
 
   // Compute new intermolecular energy for systemA
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalInterEnergyA =
       Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // Compute new tail corrections for systemA
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalTailEnergyA =
       Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Compute new Ewald Fourier energy for systemA
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
       systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
       systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second,
       systemA.netChargeFramework);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Update energy and statistics for systemA
@@ -127,26 +127,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemB.forceField.initializeAutomaticCutOff(newBoxB);
 
   // Compute new intermolecular energy for systemB
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalInterEnergyB =
       Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // Compute new tail corrections for systemB
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalTailEnergyB =
       Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Compute new Ewald Fourier energy for systemB
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
       systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
       systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second,
       systemB.netChargeFramework);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Update energy and statistics for systemB

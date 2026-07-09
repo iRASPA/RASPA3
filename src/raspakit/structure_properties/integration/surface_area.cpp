@@ -17,9 +17,9 @@ void Integration_SurfaceArea::run(const ForceField &forceField, const Framework 
                          std::string probePseudoAtom, std::optional<std::size_t> numberOfSlices) const
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
@@ -70,7 +70,7 @@ void Integration_SurfaceArea::run(const ForceField &forceField, const Framework 
     ++atom_index;
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

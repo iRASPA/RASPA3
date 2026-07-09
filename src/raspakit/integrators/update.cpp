@@ -30,7 +30,7 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                                   std::pair<double, double> scaling)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Scale velocities and orientation momenta of each molecule
   std::size_t index{};
   for (Molecule& molecule : moleculeData)
@@ -49,7 +49,7 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.scaleVelocities += end - begin;
 }
 
@@ -58,7 +58,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
                                                   std::span<AtomDynamics> moleculeDynamics,
                                                   const std::vector<Component>& components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   double3 totalVelocity = computeCenterOfMassVelocity(moleculeData);
   std::size_t index{};
@@ -76,7 +76,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.removeCenterOfMassVelocity += end - begin;
 }
 
@@ -84,7 +84,7 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
                                   std::span<const AtomDynamics> moleculeDynamics,
                                   const std::vector<Component>& components, double dt)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Update the center of mass positions for each molecule
   std::size_t index{};
   for (Molecule& molecule : moleculeData)
@@ -103,7 +103,7 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updatePositions += end - begin;
 }
 
@@ -111,7 +111,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
                                    std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                                    double dt)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   // Update velocities and orientation momenta based on gradients
   std::size_t index{};
@@ -132,7 +132,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
@@ -193,7 +193,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
                                            std::span<Atom> moleculeAtomPositions, std::vector<Component> components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
   // Convert molecule positions and orientations to atom positions
   for (Molecule& molecule : moleculeData)
@@ -224,14 +224,14 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
     }
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.createCartesianPositions += end - begin;
 }
 
 void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components,
                                             double dt)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   for (Molecule& molecule : moleculeData)
   {
     // Flexible molecules carry no rigid-body orientation
@@ -243,7 +243,7 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
     molecule.orientationMomentum = pq.first;
     molecule.orientation = pq.second;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.noSquishFreeRotorOrderTwo += end - begin;
 }
 
@@ -252,7 +252,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
                                                             std::span<const AtomDynamics> moleculeDynamics,
                                                             std::vector<Component> components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
   // Update center of mass velocities and orientation momenta for each molecule
   for (Molecule& molecule : moleculeData)
@@ -287,7 +287,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
 
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateCenterOfMassAndQuaternionVelocities += end - begin;
 }
 
@@ -296,7 +296,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
                                                            std::span<const AtomDynamics> moleculeDynamics,
                                                            std::vector<Component> components)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
 
   // Update gradients of center of mass and orientation for each molecule
@@ -334,7 +334,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 
     index += molecule.numberOfAtoms;
   }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateCenterOfMassAndQuaternionGradients += end - begin;
 }
 
@@ -349,7 +349,7 @@ RunningEnergy Integrators::updateGradients(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> numberOfMoleculesPerComponent)
 {
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   // Initialize gradients to zero
   for (AtomDynamics& dynamics : moleculeDynamics)
@@ -384,7 +384,7 @@ RunningEnergy Integrators::updateGradients(
     molecule_index += numberOfMoleculesPerComponent[i];
   }
 
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateGradients += end - begin;
   return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy + internal_energies;
 }

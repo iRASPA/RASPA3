@@ -34,7 +34,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                                                                             std::size_t selectedComponent,
                                                                             std::size_t selectedMolecule)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
@@ -56,7 +56,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     Component::GrowType growType = component.growType;
 
     // Retrace the molecule for the swap deletion using CBMC algorithm
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
         random,
         CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -64,30 +64,30 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                           system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                           cutOffCoulomb},
         system.components[selectedComponent], growType, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     // Update the CPU time statistics for the non-Ewald part of the move
     component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
     // Compute the energy difference in Fourier space due to the deletion
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, {}, molecule, system.netCharge);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     // Update the CPU time statistics for the Ewald part of the move
     component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
     // Compute the tail energy difference due to the deletion
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
         Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                                 system.spanOfMoleculeAtoms(), {}, molecule) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
     // Update the CPU time statistics for the tail corrections
     component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);

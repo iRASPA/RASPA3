@@ -58,7 +58,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
                                                                const std::vector<Component> &components,
                                                                Molecule &molecule, std::span<Atom> molecule_atoms)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ForceBiasTranslation;
   Component &component = system.components[selectedComponent];
 
@@ -70,9 +70,9 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   double b = 0.5 * system.beta * sigma * sigma;
 
   // Force on the selected molecule in the current configuration (uses the maintained structure factor S_old).
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   double3 forceOld = computeMoleculeForce(system, molecule_atoms, system.storedEik);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
@@ -93,16 +93,16 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
   // Exact energy difference of the move, using the same incremental machinery as the regular translation move.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
       system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
       trialMolecule.second, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<RunningEnergy> frameworkMolecule;
   if (system.forceField.computePolarization)
   {
@@ -117,12 +117,12 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::vector<double3> electricFieldNeighborDelta;
   std::optional<RunningEnergy> interMolecule;
   if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
@@ -137,14 +137,14 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Ewald energy difference. This also fills 'system.totalEik' with the updated total structure factor S_new
   // (S_new = S_old - S_molecule_old + S_molecule_new); most terms cancel, so only the moved molecule contributes.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy ewaldFourierEnergy;
   if (system.forceField.computePolarization)
   {
@@ -159,7 +159,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
@@ -183,9 +183,9 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   // Force on the selected molecule in the trial configuration (uses the updated structure factor S_new). The
   // other molecules are unchanged, so the current 'spanOfMoleculeAtoms()' (still holding the old positions of
   // the moved molecule) is used; the self-interaction is excluded by molecule id.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   double3 forceNew = computeMoleculeForce(system, trialMolecule.second, system.totalEik);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 

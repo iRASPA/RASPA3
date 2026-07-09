@@ -116,9 +116,9 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
   std::print("check: {}\n", positions.size());
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   // Energy-grid computation step
   // ==================================================================================================================================================================
@@ -366,7 +366,7 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
     double fraction = 0.0;
     for (size_t i = 0; i < nWorkGroups; i++) fraction += double(sumReduction[i]);
 
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     std::chrono::duration<double> timing = time_end - time_begin;
 

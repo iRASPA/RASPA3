@@ -27,7 +27,7 @@ import mc_moves_move_types;
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC(RandomNumber& random, System& system,
                                                                                   std::size_t selectedComponent)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
 
   if (!componentA.pairComponentId.has_value() || !componentA.maximumPairDistance.has_value())
@@ -63,7 +63,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -71,7 +71,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
       componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -90,7 +90,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   std::vector<Atom> moleculeAtomDataWithTrialA(system.spanOfMoleculeAtoms().begin(), system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -98,7 +98,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                         moleculeAtomDataWithTrialA, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentBRef, componentB, componentBRef.growType, selectedMoleculeB, fixedFirstBeadPositionB, 1.0, false,
       false);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -119,7 +119,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const auto savedStoredEik = system.storedEik;
   const auto savedTotalEik = system.totalEik;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMoleculeA, {}, system.netCharge);
@@ -131,11 +131,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMoleculeA, {}) +
@@ -145,7 +145,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                                                                  system.spanOfFrameworkAtoms(), newMoleculeA, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMoleculeB, {});
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
 
@@ -275,7 +275,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(RandomNumber& random, System& system,
                                                                               std::size_t selectedComponent)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
 
   if (!componentA.pairComponentId.has_value() || !componentA.maximumPairDistance.has_value())
@@ -311,7 +311,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -319,7 +319,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
       componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -338,7 +338,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   std::vector<Atom> moleculeAtomDataWithTrialA(system.spanOfMoleculeAtoms().begin(), system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -346,7 +346,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                         moleculeAtomDataWithTrialA, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentBRef, componentB, componentBRef.growType, selectedMoleculeB, fixedFirstBeadPositionB, 1.0, false,
       false);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
@@ -367,7 +367,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const auto savedStoredEik = system.storedEik;
   const auto savedTotalEik = system.totalEik;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMoleculeA, {}, system.netCharge);
@@ -379,11 +379,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMoleculeA, {}) +
@@ -393,7 +393,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                                                                  system.spanOfFrameworkAtoms(), newMoleculeA, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMoleculeB, {});
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
 

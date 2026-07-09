@@ -340,7 +340,7 @@ void MonteCarlo::performCycle()
 
 void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
@@ -369,7 +369,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     performCycle();
 
@@ -456,7 +456,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
 
     totalInitializationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
@@ -467,7 +467,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
 void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
@@ -498,7 +498,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     performCycle();
 
@@ -632,7 +632,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
 
     totalEquilibrationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
@@ -644,7 +644,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 void MonteCarlo::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   double minBias{0uz};
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
@@ -752,7 +752,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
-    t1 = std::chrono::system_clock::now();
+    t1 = std::chrono::steady_clock::now();
 
     estimation.setCurrentSample(currentCycle);
 
@@ -765,11 +765,11 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
-        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
         std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
         system.currentEnergyStatus = molecularPressure.first;
         system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
 
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
@@ -894,7 +894,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       }
     }
 
-    t2 = std::chrono::system_clock::now();
+    t2 = std::chrono::steady_clock::now();
     switch (simulationStage)
     {
       case SimulationStage::Initialization:

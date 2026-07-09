@@ -101,7 +101,7 @@ PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
 
 void VoronoiPoreDiameters::run(const ForceField& forceField, const Framework& framework)
 {
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
@@ -117,7 +117,7 @@ void VoronoiPoreDiameters::run(const ForceField& forceField, const Framework& fr
   VoronoiNetwork network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
   result = PoreDiameters::compute(network);
 
-  std::chrono::duration<double> timing = std::chrono::system_clock::now() - time_begin;
+  std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;
 
   std::ofstream myfile;
   myfile.open(framework.name + ".voronoi.res.txt");

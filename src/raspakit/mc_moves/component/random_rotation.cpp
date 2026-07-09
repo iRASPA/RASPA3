@@ -34,7 +34,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
                                                           std::span<Atom> molecule_atoms)
 {
   double3 angle{};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::RandomRotation;
   Component &component = system.components[selectedComponent];
 
@@ -62,18 +62,18 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
   // Compute external field energy contribution
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
       system.hasExternalField, system.forceField, system.simulationBox, 
       system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   // Compute framework-molecule energy contribution
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::optional<RunningEnergy> frameworkMolecule;
   if (system.forceField.computePolarization)
   {
@@ -88,7 +88,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
@@ -97,7 +97,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   // Compute molecule-molecule energy contribution. When molecule-molecule polarization is enabled the same
   // neighbor loop also produces the inter-molecular electric field on the moved molecule (new and old) and the
   // change of the electric field on every other atom, for an incremental neighbor polarization update.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   std::vector<double3> electricFieldNeighborDelta;
   std::optional<RunningEnergy> interMolecule;
   if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
@@ -112,14 +112,14 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Compute Ewald energy contribution
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy ewaldFourierEnergy;
   if (system.forceField.computePolarization)
   {
@@ -134,7 +134,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, trialMolecule.second, molecule_atoms);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);

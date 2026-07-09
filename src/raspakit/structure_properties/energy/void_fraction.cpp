@@ -25,7 +25,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
                              std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::optional<std::size_t> probe_type = forceField.findPseudoAtom(probePseudoAtom);
   if (!probe_type.has_value())
@@ -36,7 +36,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
   std::size_t number_of_iterations = numberOfIterations.value_or(1000);
   std::size_t number_of_inner_steps = numberOfInnersteps.value_or(1000);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   double cutoff = forceField.cutOffFrameworkVDW;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
@@ -88,7 +88,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

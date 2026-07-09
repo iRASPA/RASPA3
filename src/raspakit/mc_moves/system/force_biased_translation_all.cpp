@@ -17,7 +17,7 @@ import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMoveAll(RandomNumber &random, System &system)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ForceBiasTranslationAll;
 
   system.mc_moves_statistics.addTrial(move);
@@ -38,7 +38,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMoveAll(RandomNumber 
   RunningEnergy savedRunningEnergy = system.runningEnergies;
 
   // Forces on every molecule in the current configuration.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   system.precomputeTotalGradients();
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components);
@@ -77,7 +77,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMoveAll(RandomNumber 
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components);
   RunningEnergy newEnergy = system.runningEnergies;
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
   system.mc_moves_statistics.addConstructed(move);

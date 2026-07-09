@@ -3635,7 +3635,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
     double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
 
     double counter{};
-    std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+    std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
     for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
     {
       for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
@@ -3786,7 +3786,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
         }
       }
     }
-    std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+    std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
     std::chrono::duration<double> time_duration = time_end - time_begin;
     std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());
@@ -3818,7 +3818,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
              number_of_unit_cells.z);
 
   double counter{};
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
   {
     for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
@@ -3970,7 +3970,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
       }
     }
   }
-  std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> time_duration = time_end - time_begin;
   std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());

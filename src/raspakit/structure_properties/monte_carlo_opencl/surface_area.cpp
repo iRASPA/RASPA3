@@ -71,7 +71,7 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
 {
   RandomNumber random{std::nullopt};
   cl_int err;
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
   if (!probeType.has_value())
@@ -94,7 +94,7 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
 
   std::vector<cl_float> output(numberOfAtoms);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < numberOfAtoms; i++)
   {
@@ -234,7 +234,7 @@ void MC_OpenCL_SurfaceArea::run(const ForceField &forceField, const Framework &f
   clReleaseMemObject(random_unit_vectors_mem);
 
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

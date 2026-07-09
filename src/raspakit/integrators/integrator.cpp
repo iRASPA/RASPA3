@@ -40,7 +40,7 @@ RunningEnergy Integrators::velocityVerlet(
 
   // Start timing the integration step
   // NOTE: moved from first statement to here as workaround for parsing error in llvm 21.1.1
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   // evolve the positions a half timestep
   updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt);
@@ -87,7 +87,7 @@ RunningEnergy Integrators::velocityVerlet(
   }
 
   // Update the CPU time spent in the integrator
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.velocityVerlet += end - begin;
   return runningEnergies;
 }

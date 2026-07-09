@@ -89,7 +89,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
 {
   RandomNumber random{std::nullopt};
   cl_int err;
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
@@ -108,7 +108,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   std::vector<cl_float> sigma(numberOfAtoms);
 
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < numberOfAtoms; i++)
   {
@@ -267,7 +267,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   clReleaseMemObject(inputSigma);
   clReleaseMemObject(framework_positions_mem);
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

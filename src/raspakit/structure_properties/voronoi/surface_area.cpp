@@ -18,7 +18,7 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
                              std::optional<std::size_t> samplesPerAtom)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
   if (!probeType.has_value())
@@ -76,7 +76,7 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
   accessibleSurfaceArea = accessibleArea;
   inaccessibleSurfaceArea = inaccessibleArea;
 
-  std::chrono::duration<double> timing = std::chrono::system_clock::now() - time_begin;
+  std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;
 
   double volume = framework.simulationBox.volume;
   double toGravimetric = Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.unitCellMass;

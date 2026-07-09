@@ -34,7 +34,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
                                                                         std::size_t selectedComponent,
                                                                         std::size_t selectedMolecule)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Swap;
   Component& component = system.components[selectedComponent];
 
@@ -89,7 +89,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute Ewald Fourier energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifference;
     if (system.forceField.computePolarization)
     {
@@ -104,20 +104,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
           system.simulationBox, {}, molecule, system.netCharge);
     }
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     // Update CPU time statistics for Ewald calculations
     component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
     // Compute tail correction energy difference
-    time_begin = std::chrono::system_clock::now();
+    time_begin = std::chrono::steady_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
         Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                                 system.spanOfMoleculeAtoms(), {}, molecule) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     // Update CPU time statistics for tail corrections
     component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);

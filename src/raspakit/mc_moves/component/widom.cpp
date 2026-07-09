@@ -36,7 +36,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
   Move::Types move = Move::Types::Widom;
   Component& component = system.components[selectedComponent];
-  std::chrono::system_clock::time_point t1, t2;
+  std::chrono::steady_clock::time_point t1, t2;
 
   // Update move statistics for Widom insertion move.
   component.mc_moves_statistics.addTrial(move);
@@ -47,7 +47,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   Component::GrowType growType = component.growType;
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
-  t1 = std::chrono::system_clock::now();
+  t1 = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
@@ -55,7 +55,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
       component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
-  t2 = std::chrono::system_clock::now();
+  t2 = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
@@ -75,23 +75,23 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   component.mc_moves_statistics.addConstructed(move);
 
   // Compute the energy difference in Ewald Fourier space due to the new molecule.
-  t1 = std::chrono::system_clock::now();
+  t1 = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, {}, system.netCharge);
-  t2 = std::chrono::system_clock::now();
+  t2 = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
 
   // Compute the tail corrections for the energy due to the new molecule.
-  t1 = std::chrono::system_clock::now();
+  t1 = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMolecule, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
-  t2 = std::chrono::system_clock::now();
+  t2 = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);

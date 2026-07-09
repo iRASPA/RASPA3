@@ -17,7 +17,7 @@ void VoronoiAccessibleVolume::run(const ForceField& forceField, const Framework&
                                   std::string probePseudoAtom, std::optional<std::size_t> numberOfSamples)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
   if (!probeType.has_value())
@@ -62,7 +62,7 @@ void VoronoiAccessibleVolume::run(const ForceField& forceField, const Framework&
   accessibleVolume = accessibleVolumeFraction * volume;
   inaccessibleVolume = inaccessibleVolumeFraction * volume;
 
-  std::chrono::duration<double> timing = std::chrono::system_clock::now() - time_begin;
+  std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;
 
   double densityCrystal =
       framework.unitCellMass / (volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);

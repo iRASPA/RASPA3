@@ -34,7 +34,7 @@ import mc_moves_move_types;
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber& random, System& system,
                                                                          std::size_t selectedComponent)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Swap;
   Component& component = system.components[selectedComponent];
 
@@ -111,7 +111,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // Compute Ewald Fourier energy difference and update CPU time statistics.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference;
   if (system.forceField.computePolarization)
   {
@@ -126,19 +126,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, trialMolecule.second, {}, system.netCharge);
   }
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference and update CPU time statistics.
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(
           system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
