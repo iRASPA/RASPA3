@@ -92,12 +92,23 @@ std::vector<Segment> buildSegments(const Component &component, const std::vector
   return segments;
 }
 
-// Compute the external (non-bonded) energy of placing 'trialPositions' for the segment's next-beads,
-// including the intramolecular van-der-Waals contribution with the already-placed beads.
+// Energy of a trial placement, split into the external (non-bonded) part and the intramolecular
+// van-der-Waals and Coulomb contributions with the already-placed beads. The sum of the two is
+// used for opening a direction; only the external part is accumulated into the returned energies
+// (the intramolecular terms are added once at the end via 'computeInternalEnergies').
+struct TrialEnergy
+{
+  RunningEnergy external{};
+  RunningEnergy intra{};
+
+  double potentialEnergy() const { return external.potentialEnergy() + intra.potentialEnergy(); }
+};
+
+// Compute the energy of placing 'trialPositions' for the segment's next-beads.
 // Returns std::nullopt when the placement has a hard overlap (a 'closed' direction).
-std::optional<RunningEnergy> computeTrialEnergy(const RecoilContext &ctx, const Segment &segment,
-                                                const std::vector<Atom> &contextAtoms,
-                                                const std::vector<Atom> &trialPositions)
+std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Segment &segment,
+                                              const std::vector<Atom> &contextAtoms,
+                                              const std::vector<Atom> &trialPositions)
 {
   std::vector<std::vector<Atom>> trialPositionSets{trialPositions};
 
@@ -109,16 +120,15 @@ std::optional<RunningEnergy> computeTrialEnergy(const RecoilContext &ctx, const 
 
   if (external.empty()) return std::nullopt;
 
-  RunningEnergy energy = external.front().second;
-
   std::vector<Atom> candidate(contextAtoms.begin(), contextAtoms.end());
   for (std::size_t k = 0; k != segment.nextBeads.size(); ++k)
   {
     candidate[segment.nextBeads[k]] = trialPositions[k];
   }
-  energy += segment.intra.computeInternalIntraVanDerWaalsEnergies(candidate);
+  RunningEnergy intra = segment.intra.computeInternalIntraVanDerWaalsEnergies(candidate) +
+                        segment.intra.computeInternalIntraCoulombEnergies(candidate);
 
-  return energy;
+  return TrialEnergy{external.front().second, intra};
 }
 
 // Generate 'numberOfTrials' trial directions for a segment, sampling bond lengths and bend angles from
@@ -229,7 +239,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
   {
     Trial trial = generateSegmentTrials(random, ctx, segment, contextAtoms, 1).front();
 
-    std::optional<RunningEnergy> energy = computeTrialEnergy(ctx, segment, contextAtoms, trial.positions);
+    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, contextAtoms, trial.positions);
     if (!energy.has_value()) continue;  // hard overlap: closed
 
     double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
@@ -255,7 +265,7 @@ enum class GrowResult { Complete, DeadEnd, Discard };
 struct GrowRecord
 {
   Trial selected{};
-  RunningEnergy energy{};
+  TrialEnergy energy{};
   double openProbability{1.0};
   std::size_t triedCount{0};  ///< Directions explored at this segment, including the selected one.
 };
@@ -281,7 +291,7 @@ GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, std::si
   {
     Trial trial = generateSegmentTrials(random, ctx, segment, atoms, 1).front();
 
-    std::optional<RunningEnergy> energy = computeTrialEnergy(ctx, segment, atoms, trial.positions);
+    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, atoms, trial.positions);
     if (!energy.has_value()) continue;  // hard overlap: closed
 
     double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
@@ -413,7 +423,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     {
       Trial alternative = generateSegmentTrials(random, ctx, segment, chain_atoms, 1).front();
 
-      std::optional<RunningEnergy> energy = computeTrialEnergy(ctx, segment, chain_atoms, alternative.positions);
+      std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, chain_atoms, alternative.positions);
       if (!energy.has_value()) continue;  // hard overlap: closed
 
       double open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
@@ -434,12 +444,23 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
                                 std::exp(-ctx.beta * record.energy.potentialEnergy()) / record.openProbability *
                                 record.selected.torsionWeight;
 
-    chain_external_energies += record.energy;
+    // Only the external part is accumulated here; the intramolecular van der Waals and Coulomb
+    // terms are added once at the end through 'computeInternalEnergies'.
+    chain_external_energies += record.energy.external;
 
     if (chain_rosenbluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
+
+  // Only bond, bend, and torsion are taken into account during the growth (intra van der Waals
+  // and Coulomb enter through the selection of the beads). Correct the Rosenbluth weight with
+  // the Boltzmann factor of the remaining internal interactions (Urey-Bradley, inversion-bend,
+  // out-of-plane-bend, improper torsion, and the cross-terms); the returned energies already
+  // contain these terms through 'computeInternalEnergies'.
+  RunningEnergy unsampled_internal_energies =
+      component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
+  chain_rosenbluth_weight *= std::exp(-ctx.beta * unsampled_internal_energies.potentialEnergy());
 
   // Copy this configuration so that it can be used as a starting point (parity with CBMC insertion).
   component.grownAtoms = chain_atoms;
@@ -500,8 +521,8 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
       old_positions[k] = old_atoms[segment.nextBeads[k]];
     }
 
-    std::optional<RunningEnergy> old_energy = computeTrialEnergy(ctx, segment, old_atoms, old_positions);
-    RunningEnergy selected_energy = old_energy.value_or(RunningEnergy{});
+    std::optional<TrialEnergy> old_energy = computeTrialEnergy(ctx, segment, old_atoms, old_positions);
+    TrialEnergy selected_energy = old_energy.value_or(TrialEnergy{});
     double selected_potential = selected_energy.potentialEnergy();
     double open_probability = std::min(1.0, std::exp(-ctx.beta * selected_potential));
 
@@ -519,7 +540,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
 
       for (const Trial &trial : alternatives)
       {
-        std::optional<RunningEnergy> energy = computeTrialEnergy(ctx, segment, old_atoms, trial.positions);
+        std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, segment, old_atoms, trial.positions);
         if (!energy.has_value()) continue;
 
         double alternative_open_probability = std::min(1.0, std::exp(-ctx.beta * energy->potentialEnergy()));
@@ -541,10 +562,18 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
                                 static_cast<double>(ctx.numberOfTrialDirections) *
                                 std::exp(-ctx.beta * selected_potential) / open_probability * torsion_weight;
 
-    chain_external_energies += selected_energy;
+    // Only the external part is accumulated here; the intramolecular van der Waals and Coulomb
+    // terms are added once at the end through 'computeInternalEnergies'.
+    chain_external_energies += selected_energy.external;
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(old_atoms);
+
+  // Same correction as the growth routine: the Rosenbluth weight of the old chain picks up the
+  // Boltzmann factor of the internal interactions that are not sampled during the retracing.
+  RunningEnergy unsampled_internal_energies =
+      component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(old_atoms);
+  chain_rosenbluth_weight *= std::exp(-ctx.beta * unsampled_internal_energies.potentialEnergy());
 
   return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0);
 }

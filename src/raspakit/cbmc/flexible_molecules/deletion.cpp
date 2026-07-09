@@ -148,12 +148,21 @@ import bond_potential;
                                                     cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
                                                     trialPositions, RosenBluthWeightTorsion, -1);
 
-    // add van der Waals
+    // add intramolecular van der Waals and Coulomb
+    std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
     std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> totalExternalEnergies = externalEnergies;
     for (auto &[external_positions, external_energies, external_torsion] : totalExternalEnergies)
     {
+      for (std::size_t k = 0; k != external_positions.size(); ++k)
+      {
+        std::size_t index = nextBeads[k];
+        chain_atoms[index] = external_positions[k];
+      }
+
       RunningEnergy recomputed_internal_energies =
-          intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(molecule_atoms);
+          intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(chain_atoms) +
+          intraMolecularPotentials.computeInternalIntraCoulombEnergies(chain_atoms);
+
       external_energies += recomputed_internal_energies;
     }
 
@@ -181,8 +190,17 @@ import bond_potential;
 
   } while (beads_already_placed.size() < component.connectivityTable.numberOfBeads);
 
-  // Recompute all the internal interactions
+  // Recompute all the internal interactions (including the terms not sampled during growth,
+  // so that the returned energies contain the cross-terms)
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+
+  // Only bond, bend, and torsion are taken into account during the retracing (intra van der Waals
+  // and Coulomb enter through the selection of the beads). Correct the Rosenbluth weight with
+  // the Boltzmann factor of the remaining internal interactions (Urey-Bradley, inversion-bend,
+  // out-of-plane-bend, improper torsion, and the cross-terms).
+  RunningEnergy unsampled_internal_energies =
+      component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(molecule_atoms);
+  chain_rosenbluth_weight *= std::exp(-beta * unsampled_internal_energies.potentialEnergy());
 
   return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0);
 }

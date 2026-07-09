@@ -57,6 +57,18 @@ struct IntraMolecularPotentials
 
   RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
+  /**
+   * \brief Computes the internal interactions that are not sampled during CBMC / recoil-growth.
+   *
+   * During growing/retracing only the bond, bend, and torsion potentials are sampled, and the
+   * intramolecular van der Waals and Coulomb interactions enter through the selection of the
+   * beads. This routine computes all remaining internal interactions: Urey-Bradley,
+   * inversion-bend, out-of-plane-bend, improper torsion, and the cross-terms (bond-bond,
+   * bond-bend, bond-torsion, bend-bend, bend-torsion). The Boltzmann factor of this energy is
+   * used to correct the Rosenbluth weight of the grown/retraced chain.
+   */
+  RunningEnergy computeInternalEnergiesNotSampledDuringGrowth(const std::span<const Atom> atoms) const;
+
   RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalUreyBradleyEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalBendEnergies(const std::span<const Atom> atoms) const;

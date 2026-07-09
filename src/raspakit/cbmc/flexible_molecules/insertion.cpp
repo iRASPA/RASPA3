@@ -180,7 +180,7 @@ import bond_potential;
 
     if (externalEnergies.empty()) return std::nullopt;
 
-    // add van der Waals
+    // add intramolecular van der Waals and Coulomb
     std::vector<std::tuple<std::vector<Atom>, RunningEnergy, double>> totalExternalEnergies = externalEnergies;
     for (auto &[external_positions, external_energy, external_torsion] : totalExternalEnergies)
     {
@@ -191,7 +191,8 @@ import bond_potential;
       }
 
       RunningEnergy recomputed_internal_energies =
-          intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(chain_atoms);
+          intraMolecularPotentials.computeInternalIntraVanDerWaalsEnergies(chain_atoms) +
+          intraMolecularPotentials.computeInternalIntraCoulombEnergies(chain_atoms);
 
       external_energy += recomputed_internal_energies;
     }
@@ -231,8 +232,17 @@ import bond_potential;
 
   } while (beads_already_placed.size() < component.connectivityTable.numberOfBeads);
 
-  // Recompute all the internal interactions
+  // Recompute all the internal interactions (including the terms not sampled during growth,
+  // so that the returned energies contain the cross-terms)
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
+
+  // Only bond, bend, and torsion are taken into account during the growth (intra van der Waals
+  // and Coulomb enter through the selection of the beads). Correct the Rosenbluth weight with
+  // the Boltzmann factor of the remaining internal interactions (Urey-Bradley, inversion-bend,
+  // out-of-plane-bend, improper torsion, and the cross-terms).
+  RunningEnergy unsampled_internal_energies =
+      component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
+  chain_rosenbluth_weight *= std::exp(-beta * unsampled_internal_energies.potentialEnergy());
 
   // Copy this configuration so that it can be used as a starting point
   component.grownAtoms = chain_atoms;
