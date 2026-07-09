@@ -42,7 +42,9 @@ export struct Move
     PairSwapCBMC = 31,
     PairSwapCFCMC = 32,
     PairSwapCBCFCMC = 33,
-    Count = 34
+    ForceBiasTranslation = 34,     // smart-MC force-biased translation of a single molecule
+    ForceBiasTranslationAll = 35,  // smart-MC force-biased translation of all molecules simultaneously
+    Count = 36
   };
 
   /**
@@ -111,6 +113,7 @@ export struct Move
 
 export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Translation,        Move::Types::RandomTranslation,
                                                                 Move::Types::Rotation,           Move::Types::RandomRotation,
+                                                                Move::Types::ForceBiasTranslation,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
                                                                 Move::Types::IdentityChangeCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,
@@ -121,7 +124,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::WidomCFCMC,         Move::Types::WidomCBCFCMC};
 
 export inline std::unordered_set<Move::Types> systemMoves = {Move::Types::VolumeChange, Move::Types::AnisotropicVolumeChange,
-                                                           Move::Types::HybridMC};
+                                                           Move::Types::HybridMC, Move::Types::ForceBiasTranslationAll};
 
 export inline std::unordered_set<Move::Types> crossSystemMoves = {Move::Types::GibbsVolume, Move::Types::GibbsSwapCBMC,
                                                                   Move::Types::GibbsSwapCFCMC,

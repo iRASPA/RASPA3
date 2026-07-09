@@ -28,6 +28,8 @@ import mc_moves_cputime;
 import transition_matrix;
 import mc_moves_translation;
 import mc_moves_random_translation;
+import mc_moves_force_biased_translation;
+import mc_moves_force_biased_translation_all;
 import mc_moves_rotation;
 import mc_moves_random_rotation;
 import mc_moves_reinsertion;
@@ -126,6 +128,33 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
         }
         selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      break;
+    }
+    case Move::Types::ForceBiasTranslation:
+    {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                               selectedSystem.components, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
       break;
     }
     case Move::Types::Rotation:
@@ -528,6 +557,15 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
+    case Move::Types::ForceBiasTranslationAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
     case Move::Types::HybridMC:
     {
       std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
@@ -673,6 +711,33 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
         }
         selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      break;
+    }
+    case Move::Types::ForceBiasTranslation:
+    {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                               selectedSystem.components, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
       break;
     }
     case Move::Types::Rotation:
@@ -1119,6 +1184,15 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
+    case Move::Types::ForceBiasTranslationAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
     case Move::Types::HybridMC:
     {
       std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
@@ -1252,6 +1326,33 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         }
         selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      break;
+    }
+    case Move::Types::ForceBiasTranslation:
+    {
+      // select molecule and only move if there are actually molecules
+      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        // load molecule atoms
+        std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+        std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                               selectedSystem.components, molecule, molecule_atoms);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
       break;
     }
     case Move::Types::Rotation:
@@ -1741,6 +1842,15 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         selectedSystem.runningEnergies = energy.value().first;
         selectedSecondSystem.runningEnergies = energy.value().second;
+      }
+      break;
+    }
+    case Move::Types::ForceBiasTranslationAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
       }
       break;
     }

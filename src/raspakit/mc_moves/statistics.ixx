@@ -71,6 +71,12 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::ParallelTempering)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::HybridMC)] =
         MoveStatistics<double>{.maxChange = 0.0005, .lowerLimit = 0.000001, .upperLimit = 0.01};
+    // Force-biased (smart-MC) translation: 'maxChange' is the standard deviation (in Angstrom) of the
+    // Gaussian part of the trial displacement; the drift is derived from this via beta * sigma^2 / 2.
+    stats[std::to_underlying(Move::Types::ForceBiasTranslation)] =
+        MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.001, .upperLimit = 1.5};
+    stats[std::to_underlying(Move::Types::ForceBiasTranslationAll)] =
+        MoveStatistics<double>{.maxChange = 0.05, .lowerLimit = 0.001, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::ReactionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::ReactionConventionalCFCMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::ReactionConventionalCBCFCMC)] = MoveStatistics<double>{};

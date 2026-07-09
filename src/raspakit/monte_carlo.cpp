@@ -141,8 +141,17 @@ void MonteCarlo::setup()
       system.runningEnergies = system.computeTotalEnergies();
     }
 
-    // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
-    if (system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 &&
+    // if a gradient-based move is on (MC/MD hybrid or force-biased translation), make sure that the
+    // interpolation method includes gradients
+    bool usesGradientMove = system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 ||
+                            system.mc_moves_probabilities.getProbability(Move::Types::ForceBiasTranslationAll) > 0.0;
+    for (const Component& component : system.components)
+    {
+      usesGradientMove |=
+          component.mc_moves_probabilities.getProbability(Move::Types::ForceBiasTranslation) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::ForceBiasTranslationAll) > 0.0;
+    }
+    if (usesGradientMove &&
         system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
     {
       system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;

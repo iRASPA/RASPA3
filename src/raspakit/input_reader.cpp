@@ -399,6 +399,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("ForceBiasTranslationProbability") &&
+          item["ForceBiasTranslationProbability"].is_number_float())
+      {
+        double forceBiasTranslationProbability = item["ForceBiasTranslationProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::ForceBiasTranslation, forceBiasTranslationProbability);
+        }
+      }
+
       if (item.contains("RotationProbability") && item["RotationProbability"].is_number_float())
       {
         double rotationProbability = item["RotationProbability"].get<double>();
@@ -1055,6 +1065,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
+      }
+
+      if (value.contains("ForceBiasTranslationAllProbability") &&
+          value["ForceBiasTranslationAllProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::ForceBiasTranslationAll,
+                                              value["ForceBiasTranslationAllProbability"].get<double>());
       }
 
       if (value.contains("ReactionProbability") && value["ReactionProbability"].is_number_float())
@@ -2059,6 +2076,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
     "HybridMCMoveNumberOfSteps",
+    "ForceBiasTranslationAllProbability",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
@@ -2140,6 +2158,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "MoleculeDefinition",
     "TranslationProbability",
     "RandomTranslationProbability",
+    "ForceBiasTranslationProbability",
     "RotationProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",

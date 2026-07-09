@@ -110,6 +110,8 @@ std::string MCMoveProbabilities::repr()
 
   std::print(stream, "translationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Translation)]);
   std::print(stream, "randomTranslationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RandomTranslation)]);
+  std::print(stream, "forceBiasTranslationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ForceBiasTranslation)]);
+  std::print(stream, "forceBiasTranslationAllProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ForceBiasTranslationAll)]);
   std::print(stream, "rotationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Rotation)]);
   std::print(stream, "randomRotationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RandomRotation)]);
   std::print(stream, "volumeChangeProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::VolumeChange)]);
