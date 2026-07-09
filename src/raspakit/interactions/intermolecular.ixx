@@ -127,6 +127,28 @@ RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const 
                                             std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 /**
+ * \brief Computes the inter-molecular gradient (force) acting on a single, selected molecule.
+ *
+ * Unlike \ref computeInterMolecularGradient, which evaluates the force on every molecule (an O(N^2) loop
+ * over all pairs), this variant only accumulates the gradient on the atoms of one selected molecule due to
+ * the atoms of all other molecules. The cost is O(n_selected * N), matching the cost of a single-molecule
+ * energy-difference evaluation. It is intended for force-biased single-molecule moves.
+ *
+ * Interactions between the selected molecule and itself are skipped through the molecule-id comparison, so
+ * \p selectedAtoms may be a trial configuration of a molecule that is still present (at other positions) in
+ * \p moleculeAtoms.
+ *
+ * \param forceField The force field parameters used for the calculations.
+ * \param simulationBox The simulation box containing the atoms.
+ * \param moleculeAtoms A span of all molecule atoms currently in the system.
+ * \param selectedAtoms A span of the atoms of the selected molecule (current or trial positions).
+ * \param selectedDynamics A span (size = selectedAtoms.size()) into which the per-atom gradient is accumulated.
+ */
+void computeInterMolecularGradientMolecule(const ForceField &forceField, const SimulationBox &simulationBox,
+                                           std::span<const Atom> moleculeAtoms, std::span<const Atom> selectedAtoms,
+                                           std::span<AtomDynamics> selectedDynamics) noexcept;
+
+/**
  * \brief Computes inter-molecular energy, forces, and strain derivative tensor.
  *
  * Calculates the van der Waals and Coulombic energies and forces between all pairs of atoms

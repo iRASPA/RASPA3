@@ -208,6 +208,39 @@ RunningEnergy computeEwaldFourierGradient(
     std::span<AtomDynamics> atomDynamics, double netChargeFramework = 0.0);
 
 /**
+ * \brief Computes the reciprocal-space (Fourier) Ewald force acting on the atoms of a single molecule.
+ *
+ * The reciprocal Ewald energy is a functional of the total structure factor S(k) = sum_j q_j s_j exp(i k.r_j)
+ * of the whole system (rigid framework plus all molecules). The force on atom a of the selected molecule is
+ *   F_a = -dU/dr_a = -prefactor sum_k A(k) 2 q_a s_a Im[ conj(S(k)) exp(i k.r_a) ] k,
+ * which depends on the *complete* structure factor but only on the positions of the selected molecule's atoms.
+ * This lets the force on one molecule be evaluated in O(N_k * n_selected) time by reusing a precomputed total
+ * structure factor, instead of the O(N_k * N_atoms) full-system gradient.
+ *
+ * For a single-molecule move the caller supplies:
+ *   - \p storedEik = S_old (the maintained structure factor) together with the current atom positions to obtain
+ *     the force at the old configuration, or
+ *   - \p storedEik = S_new (as produced by \ref energyDifferenceEwaldFourier in \c totalEik) together with the
+ *     trial atom positions to obtain the force at the new configuration.
+ *
+ * Only the accumulated gradient stored in \p atomDynamics is updated; intramolecular self/exclusion corrections
+ * are deliberately omitted because they cancel in the net (center-of-mass) force of a rigid translation.
+ *
+ * \param eik_x,eik_y,eik_z,eik_xy Scratch buffers for the exp(i k.r) recurrences (resized as needed).
+ * \param storedEik The total structure factor S(k) of the whole system (framework + molecules).
+ * \param forceField The force field parameters.
+ * \param simulationBox The simulation box.
+ * \param atoms The atoms of the selected molecule at the configuration whose force is requested.
+ * \param atomDynamics Per-atom gradient accumulator (size = atoms.size()).
+ */
+void computeEwaldFourierGradientSingleMolecule(
+    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
+    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
+    const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> atoms,
+    std::span<AtomDynamics> atomDynamics);
+
+/**
  * \brief Computes the Ewald Fourier energy and its strain derivative.
  *
  * Calculates the Fourier-space part of the Ewald summation, including the strain derivative, which is necessary

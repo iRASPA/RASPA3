@@ -2,6 +2,7 @@ add_executable(unit_tests_raspakit
   cbmc_interactions.cpp
   energy_decomposition.cpp
   gradients.cpp
+  force_biased_translation.cpp
   integrators.cpp
   pbc.cpp
   spacegroup.cpp

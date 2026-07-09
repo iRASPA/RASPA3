@@ -503,6 +503,64 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
   return energySum;
 }
 
+// Used in smart-MC
+void Interactions::computeInterMolecularGradientMolecule(const ForceField &forceField,
+                                                         const SimulationBox &simulationBox,
+                                                         std::span<const Atom> moleculeAtoms,
+                                                         std::span<const Atom> selectedAtoms,
+                                                         std::span<AtomDynamics> selectedDynamics) noexcept
+{
+  const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  bool useCharge = forceField.useCharge;
+
+  if (forceField.omitInterInteractions) return;
+  if (selectedAtoms.empty() || moleculeAtoms.empty()) return;
+
+  for (std::size_t indexA = 0; indexA != selectedAtoms.size(); ++indexA)
+  {
+    double3 posA = selectedAtoms[indexA].position;
+    std::size_t molA = static_cast<std::size_t>(selectedAtoms[indexA].moleculeId);
+    std::size_t typeA = static_cast<std::size_t>(selectedAtoms[indexA].type);
+    double scalingVDWA = selectedAtoms[indexA].scalingVDW;
+    double scalingCoulombA = selectedAtoms[indexA].scalingCoulomb;
+    double chargeA = selectedAtoms[indexA].charge;
+
+    for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
+    {
+      // Skip interactions with atoms of the selected molecule itself. Consistent with the energy-difference
+      // kernel, molecules are distinguished by their (globally unique) molecule id; a trial configuration keeps
+      // the same molecule id as the stored copy present in 'moleculeAtoms', so it does not interact with itself.
+      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
+      if (molA == molB) continue;
+
+      double3 posB = it2->position;
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
+      double scalingVDWB = it2->scalingVDW;
+      double scalingCoulombB = it2->scalingCoulomb;
+      double chargeB = it2->charge;
+
+      double3 dr = posA - posB;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+
+      if (rr < cutOffMoleculeVDWSquared)
+      {
+        Potentials::GradientFactor gradientFactor =
+            Potentials::potentialVDWGradient(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+        selectedDynamics[indexA].gradient += gradientFactor.gradientFactor * dr;
+      }
+      if (useCharge && rr < cutOffChargeSquared)
+      {
+        double r = std::sqrt(rr);
+        Potentials::GradientFactor gradientFactor =
+            Potentials::potentialCoulombGradient(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        selectedDynamics[indexA].gradient += gradientFactor.gradientFactor * dr;
+      }
+    }
+  }
+}
+
 std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStrainDerivative(
     const ForceField &forceField, const std::vector<Component> &components, const SimulationBox &simulationBox,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept

@@ -7,17 +7,54 @@ import std;
 import component;
 import molecule;
 import atom;
+import atom_dynamics;
 import double3;
 import randomnumbers;
 import system;
 import running_energy;
-import integrators_update;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 import interactions_ewald;
+import interactions_external_field;
+import interactions_polarization;
 import mc_moves_move_types;
+
+// Computes the total (center-of-mass) force on the selected molecule at the configuration given by
+// 'selectedAtoms'. Contributions: framework (real space + interpolation grid), inter-molecular real space, and
+// the reciprocal-space Ewald force evaluated from the supplied total structure factor 'structureFactor'
+// (S_old = system.storedEik for the current configuration, S_new = system.totalEik for the trial configuration).
+//
+// Intramolecular self/exclusion Ewald corrections are omitted on purpose: they generate internal forces that
+// cancel in the net force of a rigid translation. Polarization forces are not included in the drift; the bias
+// only needs to be a deterministic function of the configuration for the Metropolis-Hastings correction to keep
+// the move exact, and the exact polarization contribution is still part of the accepted energy difference.
+static double3 computeMoleculeForce(
+    System &system, std::span<const Atom> selectedAtoms,
+    const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &structureFactor)
+{
+  std::vector<AtomDynamics> dynamics(selectedAtoms.size());
+
+  Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox,
+                                                 system.spanOfFrameworkAtoms(), selectedAtoms, dynamics,
+                                                 system.interpolationGrids);
+
+  Interactions::computeInterMolecularGradientMolecule(system.forceField, system.simulationBox,
+                                                      system.spanOfMoleculeAtoms(), selectedAtoms, dynamics);
+
+  Interactions::computeEwaldFourierGradientSingleMolecule(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                          structureFactor, system.forceField, system.simulationBox,
+                                                          selectedAtoms, dynamics);
+
+  double3 gradient{};
+  for (const AtomDynamics &d : dynamics) gradient += d.gradient;
+
+  // The force is the negative gradient.
+  return -gradient;
+}
 
 std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &random, System &system,
                                                                std::size_t selectedComponent,
-                                                               [[maybe_unused]] std::size_t selectedMolecule,
+                                                               std::size_t selectedMolecule,
                                                                const std::vector<Component> &components,
                                                                Molecule &molecule, std::span<Atom> molecule_atoms)
 {
@@ -25,61 +62,138 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   Move::Types move = Move::Types::ForceBiasTranslation;
   Component &component = system.components[selectedComponent];
 
-  // Register the trial. The step size 'sigma' is the standard deviation of the Gaussian part of the
-  // trial displacement; the drift coefficient follows the smart-MC relation b = beta * sigma^2 / 2.
   component.mc_moves_statistics.addTrial(move);
 
+  // 'sigma' is the standard deviation of the Gaussian part of the trial displacement; the drift coefficient
+  // follows the smart-MC relation b = beta * sigma^2 / 2.
   double sigma = component.mc_moves_statistics.getMaxChange(move);
   double b = 0.5 * system.beta * sigma * sigma;
 
-  // Keep the true (maintained) running energy so that tail/polarization baselines are preserved: only the
-  // gradient-based potential difference is added to it on acceptance.
-  RunningEnergy savedRunningEnergy = system.runningEnergies;
-
-  // Force on the selected molecule in the current configuration.
+  // Force on the selected molecule in the current configuration (uses the maintained structure factor S_old).
   time_begin = std::chrono::system_clock::now();
-  system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy oldEnergy = system.runningEnergies;
-  double3 forceOld = -molecule.gradient;
+  double3 forceOld = computeMoleculeForce(system, molecule_atoms, system.storedEik);
+  time_end = std::chrono::system_clock::now();
+  component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
-  // Biased trial displacement of the center of mass.
+  // Biased trial displacement of the center of mass: Delta r = b * F_old + sigma * xi.
   double3 xi(random.Gaussian(), random.Gaussian(), random.Gaussian());
   double3 displacement = b * forceOld + sigma * xi;
 
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
       components[selectedComponent].translate(molecule, molecule_atoms, displacement);
 
-  // Reject when the trial position lies inside a blocked pocket. The configuration was not modified yet.
+  // Reject when the trial position lies inside a blocked pocket. The configuration was not modified.
   if (system.insideBlockedPockets(component, trialMolecule.second))
   {
-    system.runningEnergies = savedRunningEnergy;
     return std::nullopt;
   }
 
-  // Apply the trial configuration to the live system so the force at the new position can be evaluated.
-  std::vector<Atom> savedAtoms(molecule_atoms.begin(), molecule_atoms.end());
-  Molecule savedMolecule = molecule;
-  std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
-  molecule = trialMolecule.first;
+  std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
+  std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
-  // Force on the selected molecule in the trial configuration.
-  system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy newEnergy = system.runningEnergies;
-  double3 forceNew = -molecule.gradient;
+  // Exact energy difference of the move, using the same incremental machinery as the regular translation move.
+  time_begin = std::chrono::system_clock::now();
+  std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
+      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+      trialMolecule.second, molecule_atoms);
+  time_end = std::chrono::system_clock::now();
+  component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
+  if (!externalFieldMolecule.has_value()) return std::nullopt;
+
+  time_begin = std::chrono::system_clock::now();
+  std::optional<RunningEnergy> frameworkMolecule;
+  if (system.forceField.computePolarization)
+  {
+    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+        molecule_atoms);
+  }
+  else
+  {
+    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+  }
+  time_end = std::chrono::system_clock::now();
+  component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
+  if (!frameworkMolecule.has_value()) return std::nullopt;
+
+  time_begin = std::chrono::system_clock::now();
+  std::vector<double3> electricFieldNeighborDelta;
+  std::optional<RunningEnergy> interMolecule;
+  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  {
+    electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+    interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+        system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
+        electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+  }
+  else
+  {
+    interMolecule = Interactions::computeInterMolecularEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+  }
+  time_end = std::chrono::system_clock::now();
+  component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
+  if (!interMolecule.has_value()) return std::nullopt;
+
+  // Ewald energy difference. This also fills 'system.totalEik' with the updated total structure factor S_new
+  // (S_new = S_old - S_molecule_old + S_molecule_new); most terms cancel, so only the moved molecule contributes.
+  time_begin = std::chrono::system_clock::now();
+  RunningEnergy ewaldFourierEnergy;
+  if (system.forceField.computePolarization)
+  {
+    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        trialMolecule.second, molecule_atoms);
+  }
+  else
+  {
+    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, trialMolecule.second, molecule_atoms);
+  }
+  time_end = std::chrono::system_clock::now();
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+
+  RunningEnergy polarizationDifference;
+  if (system.forceField.computePolarization)
+  {
+    polarizationDifference = Interactions::computePolarizationEnergyDifference(
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
+  }
+
+  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+                                   ewaldFourierEnergy + polarizationDifference;
+
+  // Force on the selected molecule in the trial configuration (uses the updated structure factor S_new). The
+  // other molecules are unchanged, so the current 'spanOfMoleculeAtoms()' (still holding the old positions of
+  // the moved molecule) is used; the self-interaction is excluded by molecule id.
+  time_begin = std::chrono::system_clock::now();
+  double3 forceNew = computeMoleculeForce(system, trialMolecule.second, system.totalEik);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
-  RunningEnergy energyDifference = newEnergy - oldEnergy;
-
   component.mc_moves_statistics.addConstructed(move);
 
-  // Metropolis-Hastings acceptance with the asymmetric-proposal correction. The forward proposal draws
-  // Delta r ~ N(b * F_old, sigma^2); the reverse proposal (n -> o) draws -Delta r ~ N(b * F_new, sigma^2).
+  // Metropolis-Hastings acceptance with the asymmetric-proposal (Hastings) correction. The forward proposal
+  // (o -> n) draws Delta r ~ N(b * F_old, sigma^2); the reverse proposal (n -> o) draws -Delta r ~ N(b * F_new,
+  // sigma^2). log[q(n->o)/q(o->n)] = (|Delta r - b F_old|^2 - |Delta r + b F_new|^2) / (2 sigma^2).
   double3 forwardDeviation = displacement - b * forceOld;
   double3 reverseDeviation = displacement + b * forceNew;
   double logBias = (forwardDeviation.length_squared() - reverseDeviation.length_squared()) / (2.0 * sigma * sigma);
@@ -90,14 +204,25 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
-    // Restore the maintained running energy; the caller adds the gradient-based potential difference.
-    system.runningEnergies = savedRunningEnergy;
+    std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
+    molecule = trialMolecule.first;
+
+    if (system.forceField.computePolarization)
+    {
+      if (!system.forceField.omitInterPolarization)
+      {
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
+      }
+      std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
+      std::copy(electricFieldMoleculeNew.begin(), electricFieldMoleculeNew.end(), electricFieldMolecule.begin());
+    }
+
     return energyDifference;
   }
 
-  // Reject: restore the original configuration and running energy.
-  std::copy(savedAtoms.cbegin(), savedAtoms.cend(), molecule_atoms.begin());
-  molecule = savedMolecule;
-  system.runningEnergies = savedRunningEnergy;
   return std::nullopt;
 }

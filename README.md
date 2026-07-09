@@ -93,6 +93,7 @@ cd examples/basic/1_mc_methane_in_box
 - Reaction MC conventional CFCMC/CBMC
 - Reaction MC CFCMC
 - Reaction MC CFCMC/CBMC
+- Smart MC
 
 # Todo-list
 - ASE interface
