@@ -25,6 +25,8 @@
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "PartialReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [1, 2, 3, 4],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
@@ -38,6 +40,8 @@
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "PartialReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 2, 3, 4],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
@@ -51,6 +55,8 @@
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "PartialReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 1, 3, 4],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
@@ -64,6 +70,8 @@
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "PartialReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 1, 2, 4],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
@@ -77,6 +85,8 @@
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "PartialReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 1, 2, 3],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : 0
