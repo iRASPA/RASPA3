@@ -441,6 +441,7 @@ export struct System
 
   std::string writeOutputHeader() const;
   std::string writeNumberOfPseudoAtoms() const;
+  std::string writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;

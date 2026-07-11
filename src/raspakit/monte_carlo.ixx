@@ -14,6 +14,7 @@ import input_reader;
 import energy_status;
 import archive;
 import json;
+import simulation_schedule;
 
 /**
  * \brief Performs Monte Carlo simulations for molecular systems.
@@ -38,10 +39,11 @@ export struct MonteCarlo
    */
   enum class SimulationStage : std::size_t
   {
-    Uninitialized = 0,   ///< Simulation not initialized.
-    Initialization = 1,  ///< Initialization stage.
-    Equilibration = 2,   ///< Equilibration stage.
-    Production = 3       ///< Production stage.
+    Uninitialized = 0,      ///< Simulation not initialized.
+    PreInitialization = 1,  ///< Pre-initialization stage.
+    Initialization = 2,     ///< Initialization stage.
+    Equilibration = 3,      ///< Equilibration stage.
+    Production = 4          ///< Production stage.
   };
 
   /**
@@ -66,20 +68,13 @@ export struct MonteCarlo
   /**
    * \brief Constructs a MonteCarlo object with specified simulation parameters.
    *
-   * \param numberOfCycles Number of production cycles.
-   * \param numberOfInitializationCycles Number of initialization cycles.
-   * \param numberOfEquilibrationCycles Number of equilibration cycles.
-   * \param printEvery Frequency of printing status reports.
-   * \param writeBinaryRestartEvery Frequency of writing binary restart files.
-   * \param rescaleWangLandauEvery Frequency of rescaling Wang-Landau factors.
-   * \param optimizeMCMovesEvery Frequency of optimizing MC moves.
+   * \param schedule Run-control settings (cycle counts and periodic action intervals).
    * \param systems Vector of System objects to simulate.
    * \param randomSeed Random number generator seed.
    * \param numberOfBlocks Number of blocks for error estimation.
+   * \param outputToFiles Whether output should be written to files.
    */
-  MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
-             std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
-             std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, const std::vector<System> &systems,
+  MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
              std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
@@ -87,10 +82,11 @@ export struct MonteCarlo
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.
 
-  std::size_t numberOfCycles;                ///< Number of production cycles.
-  std::size_t numberOfSteps;                 ///< Total number of steps performed.
-  std::size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
-  std::size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  std::size_t numberOfCycles;                   ///< Number of production cycles.
+  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+  std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
+  std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
+  std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
 
   std::size_t printEvery;               ///< Frequency of printing status reports.
   std::size_t writeRestartEvery;        ///< Frequency of writing restart files.
@@ -112,6 +108,7 @@ export struct MonteCarlo
   BlockErrorEstimation estimation{};  ///< Block error estimation object.
 
   std::chrono::duration<double> totalGridCreationTime{0};  ///< Total time for calculating the interpolation grid.
+  std::chrono::duration<double> totalPreInitializationSimulationTime{0};  ///< Total time for pre-initialization stage.
   std::chrono::duration<double> totalInitializationSimulationTime{0};  ///< Total time for initialization stage.
   std::chrono::duration<double> totalEquilibrationSimulationTime{0};   ///< Total time for equilibration stage.
   std::chrono::duration<double> totalProductionSimulationTime{0};      ///< Total time for production stage.
@@ -147,6 +144,16 @@ export struct MonteCarlo
    * and handles output generation and restart file writing.
    */
   void performCycle();
+
+  /**
+   * \brief Performs the pre-initialization stage of the simulation.
+   *
+   * Runs the specified number of pre-initialization cycles using only a
+   * restricted set of moves (translation, rotation, reinsertion and
+   * partial-reinsertion) to relax the initial configuration before the
+   * regular initialization stage.
+   */
+  void preInitialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Performs the initialization stage of the simulation.

@@ -13,6 +13,7 @@ class MonteCarlo():
     def __init__(
         self,
         number_of_cycles: int = 0,
+        number_of_pre_initialization_cycles: int = 0,
         number_of_initialization_cycles: int = 0,
         number_of_equilibration_cycles: int = 0,
         printEvery: int = 5000,
@@ -49,12 +50,22 @@ class MonteCarlo():
                 Defaults to ``5``.
             output_to_files: Whether output should be written to files.
                 Defaults to ``False``.
+            number_of_pre_initialization_cycles: Number of pre-initialization
+                cycles, run with only translation, rotation, reinsertion and
+                partial-reinsertion moves. Defaults to ``0``.
         """
     def setup(self) -> None:
         """Allocate and prepare simulation resources before running."""
         ...
     def tear_down(self) -> None:
         """Release simulation resources after completion."""
+        ...
+    def pre_initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
+        """Run the pre-initialization stage.
+
+        Args:
+            call_back_function: Optional callback invoked during execution.
+        """
         ...
     def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the equilibration stage.

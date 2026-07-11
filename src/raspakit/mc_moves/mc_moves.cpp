@@ -66,6 +66,103 @@ import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 
 
+void MC_Moves::performRandomMovePreInitialization(RandomNumber &random, System &selectedSystem,
+                                                  [[maybe_unused]] System &selectedSecondSystem,
+                                                  std::size_t selectedComponent,
+                                                  [[maybe_unused]] std::size_t &fractionalMoleculeSystem)
+{
+  // pick move type from probabilities object
+  Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+
+  // save old number of molecules for reference
+  std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+
+  // during pre-initialization only translation, rotation, reinsertion and partial-reinsertion moves are performed;
+  // any other sampled move type is skipped
+  switch (moveType)
+  {
+    case Move::Types::Translation:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    case Move::Types::Rotation:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    case Move::Types::ReinsertionCBMC:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::reinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    case Move::Types::PartialReinsertionCBMC:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::partialReinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    default:
+    {
+      // all other move types are skipped during pre-initialization
+      break;
+    }
+  }
+}
+
 void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &selectedSystem,
                                                System &selectedSecondSystem, std::size_t selectedComponent,
                                                [[maybe_unused]] std::size_t &fractionalMoleculeSystem)

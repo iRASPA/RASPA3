@@ -111,6 +111,43 @@ std::string System::writeNumberOfPseudoAtoms() const
   return stream.str();
 }
 
+std::string System::writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "Pre-initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
+
+  std::print(stream, "{}\n", simulationBox.printStatus());
+  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "{}", forceField.printCutOffAutoStatus());
+  std::print(stream, "\n");
+
+  for (std::size_t componentId{0}; const Component& c : components)
+  {
+    std::print(stream, "component {:3d} ({})\n", componentId, c.name);
+    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
+    ++componentId;
+  }
+
+  std::print(stream, "Amount of molecules per component:\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (std::size_t componentId{0}; const Component& c : components)
+  {
+    std::print(stream, "{}",
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    ++componentId;
+  }
+  std::print(stream, "\n");
+
+  stream << runningEnergies.printMC();
+
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
 std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const
 {
   std::ostringstream stream;

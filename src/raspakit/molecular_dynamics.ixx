@@ -14,6 +14,7 @@ import input_reader;
 import energy_status;
 import archive;
 import json;
+import simulation_schedule;
 
 /**
  * \brief Represents a molecular dynamics simulation.
@@ -38,10 +39,11 @@ export struct MolecularDynamics
    */
   enum class SimulationStage : std::size_t
   {
-    Uninitialized = 0,   ///< The simulation has not been initialized.
-    Initialization = 1,  ///< The simulation is in the initialization stage.
-    Equilibration = 2,   ///< The simulation is in the equilibration stage.
-    Production = 3       ///< The simulation is in the production stage.
+    Uninitialized = 0,      ///< The simulation has not been initialized.
+    PreInitialization = 1,  ///< The simulation is in the pre-initialization stage.
+    Initialization = 2,     ///< The simulation is in the initialization stage.
+    Equilibration = 3,      ///< The simulation is in the equilibration stage.
+    Production = 4          ///< The simulation is in the production stage.
   };
 
   /**
@@ -64,22 +66,15 @@ export struct MolecularDynamics
   MolecularDynamics(InputReader &reader) noexcept;
 
   /**
-   * \brief Constructs a MolecularDynamicso object with specified simulation parameters.
+   * \brief Constructs a MolecularDynamics object with specified simulation parameters.
    *
-   * \param numberOfCycles Number of production cycles.
-   * \param numberOfInitializationCycles Number of initialization cycles.
-   * \param numberOfEquilibrationCycles Number of equilibration cycles.
-   * \param printEvery Frequency of printing status reports.
-   * \param writeBinaryRestartEvery Frequency of writing binary restart files.
-   * \param rescaleWangLandauEvery Frequency of rescaling Wang-Landau factors.
-   * \param optimizeMCMovesEvery Frequency of optimizing MC moves.
+   * \param schedule Run-control settings (cycle counts and periodic action intervals).
    * \param systems Vector of System objects to simulate.
    * \param randomSeed Random number generator seed.
    * \param numberOfBlocks Number of blocks for error estimation.
+   * \param outputToFiles Whether output should be written to files.
    */
-  MolecularDynamics(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
-                    std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
-                    std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, const std::vector<System> &systems,
+  MolecularDynamics(const SimulationSchedule &schedule, const std::vector<System> &systems,
                     std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles = false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
@@ -87,10 +82,11 @@ export struct MolecularDynamics
   bool outputToFiles{true};
   RandomNumber random;             ///< Random number generator.
 
-  std::size_t numberOfCycles;                ///< Total number of production cycles.
-  std::size_t numberOfSteps;                 ///< Total number of steps performed.
-  std::size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
-  std::size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  std::size_t numberOfCycles;                   ///< Total number of production cycles.
+  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+  std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
+  std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
+  std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
   
   std::size_t printEvery;                    ///< Frequency of printing output.
   std::size_t writeRestartEvery;             ///< Frequency of writing restart files. 
@@ -132,6 +128,16 @@ export struct MolecularDynamics
   void setup();
 
   void tearDown();
+
+  /**
+   * \brief Performs the pre-initialization stage of the simulation.
+   *
+   * Runs the specified number of pre-initialization cycles using only a
+   * restricted set of Monte Carlo moves (translation, rotation, reinsertion
+   * and partial-reinsertion) to relax the initial configuration before the
+   * regular initialization stage.
+   */
+  void preInitialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Initializes the simulation.

@@ -48,12 +48,14 @@ import integrators_compute;
 import integrators_update;
 import integrators_cputime;
 import interpolation_energy_grid;
+import simulation_schedule;
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
 MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
     : random(reader.randomSeed),
       numberOfCycles(reader.numberOfCycles),
+      numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
@@ -65,24 +67,22 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
 {
 }
 
-MolecularDynamics::MolecularDynamics(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
-                       std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
-                       std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
-                       std::size_t optimizeMCMovesEvery, const std::vector<System>& systems,
+MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const std::vector<System>& systems,
                        std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(RandomNumber(randomSeed)),
-      numberOfCycles(numberOfCycles),
-      numberOfInitializationCycles(numberOfInitializationCycles),
-      numberOfEquilibrationCycles(numberOfEquilibrationCycles),
-      printEvery(printEvery),
+      numberOfCycles(schedule.numberOfCycles),
+      numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(schedule.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
+      printEvery(schedule.printEvery),
       writeRestartEvery(5000),
-      writeBinaryRestartEvery(writeBinaryRestartEvery),
-      rescaleWangLandauEvery(rescaleWangLandauEvery),
-      optimizeMCMovesEvery(optimizeMCMovesEvery),
+      writeBinaryRestartEvery(schedule.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(schedule.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
       systems(systems),
       outputJsons(systems.size()),
-      estimation(numberOfBlocks, numberOfCycles)
+      estimation(numberOfBlocks, schedule.numberOfCycles)
 {
 }
 
@@ -98,6 +98,8 @@ void MolecularDynamics::run()
     case SimulationStage::Uninitialized:
       setup();
       break;
+    case SimulationStage::PreInitialization:
+      goto continuePreInitializationStage;
     case SimulationStage::Initialization:
       goto continueInitializationStage;
     case SimulationStage::Equilibration:
@@ -108,6 +110,8 @@ void MolecularDynamics::run()
       break;
   }
 
+continuePreInitializationStage:
+  preInitialize();
 continueInitializationStage:
   initialize();
 continueEquilibrationStage:
@@ -223,6 +227,111 @@ void MolecularDynamics::tearDown()
   }
 }
 
+
+void MolecularDynamics::preInitialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
+
+  if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
+  simulationStage = SimulationStage::PreInitialization;
+
+  for (System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    totalNumberOfMolecules = std::transform_reduce(
+        systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
+        [](const System& system) { return system.numberOfMolecules(); });
+    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+
+    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+
+    for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    {
+      std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
+
+      std::size_t selectedComponent = selectedSystem.randomComponent(random);
+      MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectSecondSystem, selectedComponent,
+                                                   fractionalMoleculeSystem);
+
+      for (System& system : systems)
+      {
+        for (Component& component : system.components)
+        {
+          component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+        }
+      }
+    }
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+
+          std::print(stream, "{}",
+                     system.writePreInitializationStatusReport(currentCycle, numberOfPreInitializationCycles));
+          std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if (call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+        Archive<std::ofstream> archive(ofile);
+        archive << *this;
+        ofile.close();
+        if (ofile)
+        {
+          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
+      }
+    }
+
+  continuePreInitializationStage:;
+  }
+}
 
 void MolecularDynamics::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
@@ -795,6 +904,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
 
   archive << mc.numberOfCycles;
   archive << mc.numberOfSteps;
+  archive << mc.numberOfPreInitializationCycles;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
 
@@ -834,6 +944,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
 
   archive >> mc.numberOfCycles;
   archive >> mc.numberOfSteps;
+  archive >> mc.numberOfPreInitializationCycles;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
 

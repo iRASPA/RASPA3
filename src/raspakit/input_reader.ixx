@@ -108,8 +108,9 @@ export struct InputReader
 
   std::size_t numberOfBlocks{5};  ///< Number of simulation blocks.
 
-  std::size_t numberOfCycles{0};                ///< Total number of simulation cycles.
-  std::size_t numberOfInitializationCycles{0};  ///< Number of initialization cycles.
+  std::size_t numberOfCycles{0};                   ///< Total number of simulation cycles.
+  std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.
+  std::size_t numberOfInitializationCycles{0};     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles{0};   ///< Number of equilibration cycles.
   std::size_t printEvery{5000};                 ///< Interval for printing simulation progress.
   std::size_t writeBinaryRestartEvery{5000};    ///< Interval for writing binary restart files.

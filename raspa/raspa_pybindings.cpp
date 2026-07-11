@@ -38,6 +38,7 @@ import system;
 import randomnumbers;
 import monte_carlo;
 import molecular_dynamics;
+import simulation_schedule;
 import input_reader;
 import property_loading;
 import loading_data;
@@ -909,10 +910,22 @@ EXPAND_MODULE(MODULE_NAME)
       .def("__repr__", &System::repr);
 
     nanobind::class_<MonteCarlo>(m, "MonteCarlo")
-      .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        const std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+      .def("__init__",
+         [](MonteCarlo *mc, std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+            std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+            std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+            std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
+            std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+         {
+           new (mc) MonteCarlo(
+               SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                                  number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                  write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+               systems, random_seed, number_of_blocks, output_to_files);
+         },
          nanobind::arg("number_of_cycles"),
-         nanobind::arg("number_of_initialization_cycles"),
+         nanobind::arg("number_of_pre_initialization_cycles") = 0,
+         nanobind::arg("number_of_initialization_cycles") = 0,
          nanobind::arg("number_of_equilibration_cycles") = 0,
          nanobind::arg("print_every") = 5000,
          nanobind::arg("write_binary_restart_every") = 5000,
@@ -925,6 +938,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def("run", &MonteCarlo::run)
       .def("setup", &MonteCarlo::setup)
       .def("tear_down", &MonteCarlo::tearDown)
+      .def("pre_initialize", &MonteCarlo::preInitialize, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
       .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
       .def("equilibrate", &MonteCarlo::equilibrate, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
       .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
@@ -933,10 +947,22 @@ EXPAND_MODULE(MODULE_NAME)
 
 
   nanobind::class_<MolecularDynamics>(m, "MolecularDynamics")
-    .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+    .def("__init__",
+         [](MolecularDynamics *md, std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+            std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+            std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+            std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
+            std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+         {
+           new (md) MolecularDynamics(
+               SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                                  number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                  write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+               systems, random_seed, number_of_blocks, output_to_files);
+         },
          nanobind::arg("number_of_cycles"), 
-         nanobind::arg("number_of_initialization_cycles"),
+         nanobind::arg("number_of_pre_initialization_cycles") = 0,
+         nanobind::arg("number_of_initialization_cycles") = 0,
          nanobind::arg("number_of_equilibration_cycles") = 0, 
          nanobind::arg("print_every") = 5000,
          nanobind::arg("write_binary_restart_every") = 5000, 
@@ -949,6 +975,8 @@ EXPAND_MODULE(MODULE_NAME)
       .def("run", &MolecularDynamics::run)
       .def("setup", &MolecularDynamics::setup)
       .def("tear_down", &MolecularDynamics::tearDown)
+      .def("pre_initialize", &MolecularDynamics::preInitialize, nanobind::arg("call_back_function") = 
+                      nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
       .def("initialize", &MolecularDynamics::initialize, nanobind::arg("call_back_function") = 
                       nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
       .def("equilibrate", &MolecularDynamics::equilibrate, nanobind::arg("call_back_function") = 

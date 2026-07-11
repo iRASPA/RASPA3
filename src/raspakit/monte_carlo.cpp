@@ -44,6 +44,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 import interpolation_energy_grid;
+import simulation_schedule;
 
 MonteCarlo::MonteCarlo() : outputToFiles(false), random(std::nullopt) {};
 
@@ -51,6 +52,7 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : outputToFiles(true),
       random(reader.randomSeed),
       numberOfCycles(reader.numberOfCycles),
+      numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
@@ -64,24 +66,22 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 {
 }
 
-MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
-                       std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
-                       std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
-                       std::size_t optimizeMCMovesEvery, const std::vector<System> &systems, 
+MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
                        std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(RandomNumber(randomSeed)),
-      numberOfCycles(numberOfCycles),
-      numberOfInitializationCycles(numberOfInitializationCycles),
-      numberOfEquilibrationCycles(numberOfEquilibrationCycles),
-      printEvery(printEvery),
+      numberOfCycles(schedule.numberOfCycles),
+      numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(schedule.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
+      printEvery(schedule.printEvery),
       writeRestartEvery(5000),
-      writeBinaryRestartEvery(writeBinaryRestartEvery),
-      rescaleWangLandauEvery(rescaleWangLandauEvery),
-      optimizeMCMovesEvery(optimizeMCMovesEvery),
+      writeBinaryRestartEvery(schedule.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(schedule.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
       systems(systems),
       outputJsons(systems.size()),
-      estimation(numberOfBlocks, numberOfCycles)
+      estimation(numberOfBlocks, schedule.numberOfCycles)
 {
 }
 
@@ -97,6 +97,8 @@ void MonteCarlo::run()
     case SimulationStage::Uninitialized:
       setup();
       break;
+    case SimulationStage::PreInitialization:
+      goto continuePreInitializationStage;
     case SimulationStage::Initialization:
       goto continueInitializationStage;
     case SimulationStage::Equilibration:
@@ -107,6 +109,8 @@ void MonteCarlo::run()
       break;
   }
 
+continuePreInitializationStage:
+  preInitialize();
 continueInitializationStage:
   initialize();
 continueEquilibrationStage:
@@ -285,6 +289,10 @@ void MonteCarlo::performCycle()
     {
       case SimulationStage::Uninitialized:
         break;
+      case SimulationStage::PreInitialization:
+        MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                     fractionalMoleculeSystem);
+        break;
       case SimulationStage::Initialization:
         MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                   fractionalMoleculeSystem);
@@ -335,6 +343,134 @@ void MonteCarlo::performCycle()
     selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
     selectedSecondSystem.reactionLambdaSampleOccupancy();
+  }
+}
+
+void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::chrono::steady_clock::time_point t1, t2;
+
+  if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
+  simulationStage = SimulationStage::PreInitialization;
+
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+
+    if (outputToFiles)
+    {
+      if (system_id >= streams.size())
+      {
+        throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
+      }
+
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMC("Recomputed from scratch");
+      std::print(stream, "\n\n\n\n");
+
+      system.writeRestartFile(system_id);
+    }
+
+    ++system_id;
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    t1 = std::chrono::steady_clock::now();
+
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::print(stream, "{}",
+                     system.writePreInitializationStatusReport(currentCycle, numberOfPreInitializationCycles));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if (call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+        Archive<std::ofstream> archive(ofile);
+        archive << *this;
+        ofile.close();
+        if (ofile)
+        {
+          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
+      }
+    }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if (system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if (system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (std::size_t system_id{0}; System& system : systems)
+        {
+          system.writeRestartFile(system_id);
+
+          ++system_id;
+        }
+      }
+    }
+
+    t2 = std::chrono::steady_clock::now();
+
+    totalPreInitializationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
+
+  continuePreInitializationStage:;
   }
 }
 
@@ -1027,6 +1163,8 @@ void MonteCarlo::output()
     {
       std::print(stream, "Grid creation time:             {:14f} [s]\n", totalGridCreationTime.count());
     }
+    std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n",
+               totalPreInitializationSimulationTime.count());
     std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
     std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
     std::print(stream, "Production simulation time:     {:14f} [s]\n", totalProductionSimulationTime.count());
@@ -1064,6 +1202,8 @@ void MonteCarlo::output()
     outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
     outputJsons[system_id]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] =
+        totalPreInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
@@ -1101,6 +1241,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.numberOfCycles;
   archive << mc.numberOfSteps;
+  archive << mc.numberOfPreInitializationCycles;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
 
@@ -1119,6 +1260,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   // not written: totalGridCreationTime
 
+  archive << mc.totalPreInitializationSimulationTime;
   archive << mc.totalInitializationSimulationTime;
   archive << mc.totalEquilibrationSimulationTime;
   archive << mc.totalProductionSimulationTime;
@@ -1144,6 +1286,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
 
   archive >> mc.numberOfCycles;
   archive >> mc.numberOfSteps;
+  archive >> mc.numberOfPreInitializationCycles;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
 
@@ -1162,6 +1305,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
 
   // not written: totalGridCreationTime
 
+  archive >> mc.totalPreInitializationSimulationTime;
   archive >> mc.totalInitializationSimulationTime;
   archive >> mc.totalEquilibrationSimulationTime;
   archive >> mc.totalProductionSimulationTime;

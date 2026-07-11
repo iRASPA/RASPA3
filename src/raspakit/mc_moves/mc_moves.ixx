@@ -31,6 +31,23 @@ export namespace MC_Moves
  * \param selectedComponent The index of the component on which the move is to be performed.
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
+/**
+ * \brief Performs a restricted random Monte Carlo move during the pre-initialization stage.
+ *
+ * This function selects and executes a random Monte Carlo move for the specified component in the selected system,
+ * but is restricted to only translation, rotation, reinsertion and partial-reinsertion moves. Any other move type
+ * that is sampled from the move probabilities is skipped. This is used to relax the initial configuration before the
+ * regular initialization stage.
+ *
+ * \param random Reference to the random number generator.
+ * \param selectedSystem The system on which to perform the move.
+ * \param selectedSecondSystem A secondary system, used in moves involving two systems (e.g., Gibbs ensemble moves).
+ * \param selectedComponent The index of the component on which the move is to be performed.
+ * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
+ */
+void performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                        std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+
 void performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
                                      std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 

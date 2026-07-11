@@ -263,6 +263,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     numberOfCycles = parsed_data["NumberOfCycles"].get<std::size_t>();
   }
 
+  if (parsed_data.contains("NumberOfPreInitializationCycles") &&
+      parsed_data["NumberOfPreInitializationCycles"].is_number_unsigned())
+  {
+    numberOfPreInitializationCycles = parsed_data["NumberOfPreInitializationCycles"].get<std::size_t>();
+  }
+
   if (parsed_data.contains("NumberOfInitializationCycles") &&
       parsed_data["NumberOfInitializationCycles"].is_number_unsigned())
   {
@@ -2114,6 +2120,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "RestartFromBinaryFile",
     "RandomSeed",
     "NumberOfCycles",
+    "NumberOfPreInitializationCycles",
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",
     "PrintEvery",

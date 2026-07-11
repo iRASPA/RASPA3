@@ -39,6 +39,7 @@ import system;
 import randomnumbers;
 import monte_carlo;
 import molecular_dynamics;
+import simulation_schedule;
 import input_reader;
 import property_loading;
 import loading_data;
@@ -727,10 +728,22 @@ EXPAND_MODULE(MODULE_NAME)
 
 
   pybind11::class_<MonteCarlo>(m, "MonteCarlo")
-      .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        const std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+      .def(pybind11::init(
+               [](std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+                  std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+                  std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+                  std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
+                  std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+               {
+                 return std::make_unique<MonteCarlo>(
+                     SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                                        number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                        write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+                     systems, random_seed, number_of_blocks, output_to_files);
+               }),
          pybind11::arg("number_of_cycles"),
-         pybind11::arg("number_of_initialization_cycles"),
+         pybind11::arg("number_of_pre_initialization_cycles") = 0,
+         pybind11::arg("number_of_initialization_cycles") = 0,
          pybind11::arg("number_of_equilibration_cycles") = 0, 
          pybind11::arg("print_every") = 5000,
          pybind11::arg("write_binary_restart_every") = 5000, 
@@ -743,6 +756,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def("run", &MonteCarlo::run)
       .def("setup", &MonteCarlo::setup)
       .def("tear_down", &MonteCarlo::tearDown) 	
+      .def("pre_initialize", &MonteCarlo::preInitialize, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
       .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
       .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
       .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
@@ -753,10 +767,22 @@ EXPAND_MODULE(MODULE_NAME)
 
 
   pybind11::class_<MolecularDynamics>(m, "MolecularDynamics")
-    .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                        const std::vector<System> &, std::optional<std::size_t>, std::size_t, bool>(),
+    .def(pybind11::init(
+             [](std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+                std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+                std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+                std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
+                std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+             {
+               return std::make_unique<MolecularDynamics>(
+                   SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                                      number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                      write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+                   systems, random_seed, number_of_blocks, output_to_files);
+             }),
          pybind11::arg("number_of_cycles"), 
-         pybind11::arg("number_of_initialization_cycles"),
+         pybind11::arg("number_of_pre_initialization_cycles") = 0,
+         pybind11::arg("number_of_initialization_cycles") = 0,
          pybind11::arg("number_of_equilibration_cycles") = 0, 
          pybind11::arg("print_every") = 5000,
          pybind11::arg("write_binary_restart_every") = 5000, 
@@ -769,6 +795,8 @@ EXPAND_MODULE(MODULE_NAME)
       .def("run", &MolecularDynamics::run)
       .def("setup", &MolecularDynamics::setup)
       .def("tear_down", &MolecularDynamics::tearDown)
+      .def("pre_initialize", &MolecularDynamics::preInitialize, pybind11::arg("call_back_function") = 
+                      std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
       .def("initialize", &MolecularDynamics::initialize, pybind11::arg("call_back_function") = 
                       std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
       .def("equilibrate", &MolecularDynamics::equilibrate, pybind11::arg("call_back_function") = 

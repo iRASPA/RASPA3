@@ -1094,22 +1094,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyVolumeEvolution;
   archive << s.propertyConservedEnergyEvolution;
 
-  //archive << s.columnNumberOfGridPoints;
-  //archive << s.columnTotalPressure;
-  //archive << s.columnPressureGradient;
-  //archive << s.columnVoidFraction;
-  //archive << s.columnParticleDensity;
-  //archive << s.columnEntranceVelocity;
-  //archive << s.columnLength;
-  //archive << s.columnTimeStep;
-  //archive << s.columnNumberOfTimeSteps;
-  //archive << s.columnAutoNumberOfTimeSteps;
-  //archive << s.mixturePredictionMethod;
-  //archive << s.pressure_range;
-  //archive << s.numberOfCarrierGases;
-  //archive << s.carrierGasComponent;
-  //archive << s.maxIsothermTerms;
-
   archive << s.interpolationGrids;
   archive << s.externalFieldInterpolationGrid;
 
