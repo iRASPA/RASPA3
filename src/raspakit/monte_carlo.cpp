@@ -42,6 +42,7 @@ import molecule;
 import property_pressure;
 import transition_matrix;
 import interactions_ewald;
+import interactions_intermolecular;
 import equation_of_states;
 import interpolation_energy_grid;
 import simulation_schedule;
@@ -909,6 +910,34 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+
+        if (std::getenv("RASPA_PRESSURE_FD") != nullptr && currentCycle % printEvery == 0uz)
+        {
+          double vol = system.simulationBox.volume;
+          double analyticExcess = molecularPressure.second.trace() / (3.0 * vol);
+          double deltaFD = 1e-5;
+          SimulationBox boxP = system.simulationBox.scaled(std::cbrt(1.0 + deltaFD));
+          SimulationBox boxM = system.simulationBox.scaled(std::cbrt(1.0 - deltaFD));
+          auto posP = system.scaledCenterOfMassPositions(system.simulationBox, boxP);
+          auto posM = system.scaledCenterOfMassPositions(system.simulationBox, boxM);
+          double eP = (Interactions::computeInterMolecularEnergy(system.forceField, boxP, posP.second) +
+                       Interactions::computeInterMolecularTailEnergy(system.forceField, boxP, posP.second))
+                          .potentialEnergy();
+          double eM = (Interactions::computeInterMolecularEnergy(system.forceField, boxM, posM.second) +
+                       Interactions::computeInterMolecularTailEnergy(system.forceField, boxM, posM.second))
+                          .potentialEnergy();
+          double fdExcess = -(eP - eM) / (boxP.volume - boxM.volume);
+          double maxComComponent = 0.0;
+          double boxEdge = system.simulationBox.cell.ax;
+          for (const Molecule& m : system.moleculeData)
+          {
+            maxComComponent = std::max({maxComComponent, std::abs(m.centerOfMassPosition.x),
+                                        std::abs(m.centerOfMassPosition.y), std::abs(m.centerOfMassPosition.z)});
+          }
+          std::print(
+              "[PRESSURE_FD] cycle {} analyticExcess {:.6e} fdExcess {:.6e} ratio {:.4f} maxCom {:.2f} box {:.2f}\n",
+              currentCycle, analyticExcess, fdExcess, analyticExcess / fdExcess, maxComComponent, boxEdge);
+        }
       }
 
       ++system_id;

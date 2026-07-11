@@ -757,17 +757,17 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   du_dc = DF * dtC;
   du_dd = DF * dtD;
 
-  strain_derivative.ax += Dab.x * du_da.x + Dcb.x * rbc * (du_dc.x + du_dd.x) + Ddc.x * du_dd.x;
-  strain_derivative.bx += Dab.y * du_da.x + Dcb.y * rbc * (du_dc.x + du_dd.x) + Ddc.y * du_dd.x;
-  strain_derivative.cx += Dab.z * du_da.x + Dcb.z * rbc * (du_dc.x + du_dd.x) + Ddc.z * du_dd.x;
+  strain_derivative.ax += Dab.x * du_da.x + Dcb.x * (du_dc.x + du_dd.x) + Ddc.x * du_dd.x;
+  strain_derivative.bx += Dab.y * du_da.x + Dcb.y * (du_dc.x + du_dd.x) + Ddc.y * du_dd.x;
+  strain_derivative.cx += Dab.z * du_da.x + Dcb.z * (du_dc.x + du_dd.x) + Ddc.z * du_dd.x;
 
-  strain_derivative.ay += Dab.x * du_da.y + Dcb.x * rbc * (du_dc.y + du_dd.y) + Ddc.x * du_dd.y;
-  strain_derivative.by += Dab.y * du_da.y + Dcb.y * rbc * (du_dc.y + du_dd.y) + Ddc.y * du_dd.y;
-  strain_derivative.cy += Dab.z * du_da.y + Dcb.z * rbc * (du_dc.y + du_dd.y) + Ddc.z * du_dd.y;
+  strain_derivative.ay += Dab.x * du_da.y + Dcb.x * (du_dc.y + du_dd.y) + Ddc.x * du_dd.y;
+  strain_derivative.by += Dab.y * du_da.y + Dcb.y * (du_dc.y + du_dd.y) + Ddc.y * du_dd.y;
+  strain_derivative.cy += Dab.z * du_da.y + Dcb.z * (du_dc.y + du_dd.y) + Ddc.z * du_dd.y;
 
-  strain_derivative.az += Dab.x * du_da.z + Dcb.x * rbc * (du_dc.z + du_dd.z) + Ddc.x * du_dd.z;
-  strain_derivative.bz += Dab.y * du_da.z + Dcb.y * rbc * (du_dc.z + du_dd.z) + Ddc.y * du_dd.z;
-  strain_derivative.cz += Dab.z * du_da.z + Dcb.z * rbc * (du_dc.z + du_dd.z) + Ddc.z * du_dd.z;
+  strain_derivative.az += Dab.x * du_da.z + Dcb.x * (du_dc.z + du_dd.z) + Ddc.x * du_dd.z;
+  strain_derivative.bz += Dab.y * du_da.z + Dcb.y * (du_dc.z + du_dd.z) + Ddc.y * du_dd.z;
+  strain_derivative.cz += Dab.z * du_da.z + Dcb.z * (du_dc.z + du_dd.z) + Ddc.z * du_dd.z;
 
   return {U, {du_da, du_db, du_dc, du_dd}, strain_derivative};
 }

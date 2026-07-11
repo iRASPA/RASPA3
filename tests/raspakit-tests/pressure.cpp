@@ -21,6 +21,165 @@ import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
+import torsion_potential;
+import bond_potential;
+import bend_potential;
+import connectivity_table;
+import intra_molecular_potentials;
+import molecule;
+
+// Helper: build a periodic box of extended (flexible) heptane molecules on a grid and return the system.
+// The molecules are placed WHOLE (never split across the boundary), each as a short zig-zag chain, so the
+// analytic center-of-mass based molecular pressure must agree with the center-of-mass-scaling -dU/dV used
+// by the volume move.
+static System makeHeptaneBox(double boxLength, std::size_t nPerDim, bool tailCorrections)
+{
+  ForceField forceField = ForceField({{"CH3", false, 15.03452, 0.0, 0.0, 8, false},
+                                       {"CH2", false, 14.02658, 0.0, 0.0, 8, false}},
+                                      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 14.0,
+                                      14.0, 14.0, false, tailCorrections, false);
+  forceField.useCharge = false;
+  forceField.omitEwaldFourier = true;
+
+  ConnectivityTable connectivityTable(7);
+  for (std::size_t i = 0; i < 6; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+
+  std::vector<Atom> atoms;
+  for (std::size_t a = 0; a < 7; ++a)
+  {
+    std::uint16_t type = (a == 0 || a == 6) ? 0 : 1;  // CH3 ends, CH2 middle
+    atoms.push_back(Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false));
+  }
+
+  Component c(forceField, "heptane", 540.13, 2736000.0, 0.349, atoms, connectivityTable, intraMolecularPotentials, 5,
+              21);
+
+  std::size_t nMolecules = nPerDim * nPerDim * nPerDim;
+  System system = System(forceField, SimulationBox(boxLength, boxLength, boxLength), false, 433.0, 6.895e6, 1.0, {},
+                         {c}, {}, {nMolecules}, 5);
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  double spacing = boxLength / static_cast<double>(nPerDim);
+  std::size_t idx = 0;
+  for (std::size_t ix = 0; ix < nPerDim; ++ix)
+    for (std::size_t iy = 0; iy < nPerDim; ++iy)
+      for (std::size_t iz = 0; iz < nPerDim; ++iz)
+      {
+        double3 origin((static_cast<double>(ix) + 0.5) * spacing, (static_cast<double>(iy) + 0.5) * spacing,
+                       (static_cast<double>(iz) + 0.5) * spacing);
+        for (std::size_t a = 0; a < 7; ++a)
+        {
+          double zz = (static_cast<double>(a) - 3.0) * 1.0;  // compact chain along z
+          double xx = ((a % 2 == 0) ? 0.0 : 0.7);            // zig-zag in x
+          atomData[idx * 7 + a].position = origin + double3(xx, 0.0, zz);
+        }
+        ++idx;
+      }
+
+  return system;
+}
+
+static double heptaneFdExcessPressure(System& system)
+{
+  double delta = 1e-5;
+  SimulationBox boxPlus = system.simulationBox.scaled(std::cbrt(1.0 + delta));
+  SimulationBox boxMinus = system.simulationBox.scaled(std::cbrt(1.0 - delta));
+  auto posPlus = system.scaledCenterOfMassPositions(system.simulationBox, boxPlus);
+  auto posMinus = system.scaledCenterOfMassPositions(system.simulationBox, boxMinus);
+  double energyPlus = (Interactions::computeInterMolecularEnergy(system.forceField, boxPlus, posPlus.second) +
+                       Interactions::computeInterMolecularTailEnergy(system.forceField, boxPlus, posPlus.second))
+                          .potentialEnergy();
+  double energyMinus = (Interactions::computeInterMolecularEnergy(system.forceField, boxMinus, posMinus.second) +
+                        Interactions::computeInterMolecularTailEnergy(system.forceField, boxMinus, posMinus.second))
+                           .potentialEnergy();
+  return -(energyPlus - energyMinus) / (boxPlus.volume - boxMinus.volume);
+}
+
+// The analytic molecular (center-of-mass based) excess pressure of a flexible-molecule fluid must equal the
+// center-of-mass-scaling finite-difference -dU/dV that the volume move uses. A large box (half-box comfortably
+// larger than cutoff + molecular extent) is used so the atom/COM minimum-image is unambiguous, isolating the
+// correctness of the atomic-to-molecular virial correction for extended, flexible molecules.
+TEST(MC_strain_tensor, Test_flexible_heptane_molecular_pressure_FD_com_scaling)
+{
+  System system = makeHeptaneBox(50.0, 3, /*tailCorrections=*/false);
+
+  std::pair<EnergyStatus, double3x3> pressureInfo = system.computeMolecularPressure();
+  double analyticExcessPressure = pressureInfo.second.trace() / (3.0 * system.simulationBox.volume);
+  double fdExcessPressure = heptaneFdExcessPressure(system);
+
+  EXPECT_NEAR(analyticExcessPressure, fdExcessPressure, 1e-2)
+      << "Flexible heptane molecular excess pressure disagrees with -dU/dV";
+}
+
+// Regression test for the van der Waals tail correction to the pressure. The tail is attractive, so switching
+// tail corrections ON must LOWER the excess pressure (make it more negative). Historically the tail pressure
+// correction was applied as -3x the correct value (wrong sign and a missing factor 1/3), which raised the
+// reported pressure by hundreds of bar for dense liquids; that regression would flip the sign of this test.
+TEST(MC_strain_tensor, Test_flexible_heptane_tail_correction_lowers_pressure)
+{
+  System systemNoTail = makeHeptaneBox(30.0, 3, /*tailCorrections=*/false);
+  System systemTail = makeHeptaneBox(30.0, 3, /*tailCorrections=*/true);
+
+  double excessNoTail =
+      systemNoTail.computeMolecularPressure().second.trace() / (3.0 * systemNoTail.simulationBox.volume);
+  double excessTail = systemTail.computeMolecularPressure().second.trace() / (3.0 * systemTail.simulationBox.volume);
+
+  EXPECT_LT(excessTail, excessNoTail) << "van der Waals tail correction must lower the (excess) pressure";
+}
+
+TEST(MC_intramolecular_strain_tensor, Test_torsion_strain_derivative_vs_finite_difference)
+{
+  double delta = 1e-6;
+  double tolerance = 1e-4;
+
+  // A single TraPPE-style torsion on 4 atoms in a gauche-like geometry.
+  TorsionPotential torsion({0, 1, 2, 3}, TorsionType::ThreeCosine, {355.03, -68.19, 791.32});
+
+  std::array<double3, 4> pos{double3(0.10, 0.20, -0.30), double3(1.54, 0.05, 0.10),
+                             double3(2.10, 1.35, -0.20), double3(3.55, 1.20, 0.55)};
+
+  auto [energy, gradient, strain] = torsion.potentialEnergyGradientStrain(pos[0], pos[1], pos[2], pos[3]);
+
+  // numeric strain derivative dU/d(strain) via affine scaling of ALL atom positions
+  auto energyAtStrain = [&](const double3x3& s)
+  {
+    double3x3 identity{double3{1.0, 0.0, 0.0}, double3{0.0, 1.0, 0.0}, double3{0.0, 0.0, 1.0}};
+    double3x3 m = identity + s;
+    return torsion.calculateEnergy(m * pos[0], m * pos[1], m * pos[2], m * pos[3]);
+  };
+
+  auto centralDiff = [&](const double3x3& dir)
+  {
+    return (-energyAtStrain(2.0 * dir) + 8.0 * energyAtStrain(dir) - 8.0 * energyAtStrain(-1.0 * dir) +
+            energyAtStrain(-2.0 * dir)) /
+           (12.0 * delta);
+  };
+
+  EXPECT_NEAR(centralDiff(double3x3{double3{delta, 0, 0}, double3{0, 0, 0}, double3{0, 0, 0}}), strain.ax, tolerance)
+      << "ax";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, delta, 0}, double3{0, 0, 0}, double3{0, 0, 0}}), strain.bx, tolerance)
+      << "bx";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, delta}, double3{0, 0, 0}, double3{0, 0, 0}}), strain.cx, tolerance)
+      << "cx";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{delta, 0, 0}, double3{0, 0, 0}}), strain.ay, tolerance)
+      << "ay";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{0, delta, 0}, double3{0, 0, 0}}), strain.by, tolerance)
+      << "by";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{0, 0, delta}, double3{0, 0, 0}}), strain.cy, tolerance)
+      << "cy";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{0, 0, 0}, double3{delta, 0, 0}}), strain.az, tolerance)
+      << "az";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{0, 0, 0}, double3{0, delta, 0}}), strain.bz, tolerance)
+      << "bz";
+  EXPECT_NEAR(centralDiff(double3x3{double3{0, 0, 0}, double3{0, 0, 0}, double3{0, 0, delta}}), strain.cz, tolerance)
+      << "cz";
+}
 
 TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
 {
@@ -82,6 +241,78 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
   EXPECT_NEAR(pressureInfo.second.cx, -151.475714, tolerance);
   EXPECT_NEAR(pressureInfo.second.cy, 228.464316, tolerance);
   EXPECT_NEAR(pressureInfo.second.cz, -684.541460, tolerance);
+}
+
+TEST(MC_strain_tensor, Test_fixed_10_CO2_molecular_pressure_FD_com_scaling)
+{
+  double tolerance = 1e-3;
+
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.useCharge = false;
+  forceField.omitEwaldFourier = true;
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, SimulationBox(24.0, 24.0, 24.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+
+  atomData[0].position = double3(7.988074407572, 14.899584879375, 4.399987406643);
+  atomData[1].position = double3(7.274874754254, 15.647465005356, 4.902205060325);
+  atomData[2].position = double3(6.561675100936, 16.395345131337, 5.404422714007);
+  atomData[3].position = double3(4.827191364635, 11.116729437613, 2.228559049200);
+  atomData[4].position = double3(4.225319791126, 12.059757497190, 2.490569903656);
+  atomData[5].position = double3(3.623448217617, 13.002785556767, 2.752580758111);
+  atomData[6].position = double3(11.213207717903, 1.543908604534, 14.879720523734);
+  atomData[7].position = double3(10.838296611500, 0.670996368314, 14.233448993994);
+  atomData[8].position = double3(10.463385505097, -0.201915867907, 13.587177464255);
+  atomData[9].position = double3(20.136034629402, 13.425705563836, 20.357126733679);
+  atomData[10].position = double3(19.268912632143, 14.174691153792, 20.271563728193);
+  atomData[11].position = double3(18.401790634884, 14.923676743748, 20.186000722707);
+  atomData[12].position = double3(10.293429944185, 2.604978509902, 19.845212277981);
+  atomData[13].position = double3(9.506941080551, 3.298537002688, 19.375517819354);
+  atomData[14].position = double3(8.720452216918, 3.992095495474, 18.905823360727);
+  atomData[15].position = double3(22.681356636431, 22.578271833871, 1.171765550468);
+  atomData[16].position = double3(23.123101563696, 23.590426461847, 1.488949138160);
+  atomData[17].position = double3(23.564846490961, 24.602581089824, 1.806132725853);
+  atomData[18].position = double3(0.923319514763, 2.518001235362, 8.869299391713);
+  atomData[19].position = double3(1.548565874314, 3.016318526023, 8.044103737521);
+  atomData[20].position = double3(2.173812233865, 3.514635816685, 7.218908083330);
+  atomData[21].position = double3(1.269009184104, 22.131774756102, 3.695331679629);
+  atomData[22].position = double3(0.304888752117, 21.565726817790, 3.960402470471);
+  atomData[23].position = double3(-0.659231679870, 20.999678879477, 4.225473261313);
+  atomData[24].position = double3(13.843961437995, 22.253075838217, 21.744383226096);
+  atomData[25].position = double3(12.854393374997, 21.899980534703, 22.209442099068);
+  atomData[26].position = double3(11.864825311999, 21.546885231188, 22.674500972040);
+  atomData[27].position = double3(1.635112578995, 18.974875387109, 5.600705491777);
+  atomData[28].position = double3(1.273978603709, 19.816503820444, 6.294567749071);
+  atomData[29].position = double3(0.912844628423, 20.658132253779, 6.988430006364);
+
+  // analytic molecular excess pressure = trace(strain-derivative) / (3 V)
+  std::pair<EnergyStatus, double3x3> pressureInfo = system.computeMolecularPressure();
+  double volume = system.simulationBox.volume;
+  double analyticExcessPressure = pressureInfo.second.trace() / (3.0 * volume);
+
+  // finite-difference of the intermolecular (+tail) energy under an isotropic center-of-mass volume scaling,
+  // at a FIXED cutoff (matching the analytic virial). P_excess = -dU/dV.
+  double delta = 1e-5;
+  SimulationBox boxPlus = system.simulationBox.scaled(std::cbrt(1.0 + delta));
+  SimulationBox boxMinus = system.simulationBox.scaled(std::cbrt(1.0 - delta));
+
+  auto posPlus = system.scaledCenterOfMassPositions(system.simulationBox, boxPlus);
+  auto posMinus = system.scaledCenterOfMassPositions(system.simulationBox, boxMinus);
+
+  double energyPlus =
+      (Interactions::computeInterMolecularEnergy(system.forceField, boxPlus, posPlus.second) +
+       Interactions::computeInterMolecularTailEnergy(system.forceField, boxPlus, posPlus.second))
+          .potentialEnergy();
+  double energyMinus =
+      (Interactions::computeInterMolecularEnergy(system.forceField, boxMinus, posMinus.second) +
+       Interactions::computeInterMolecularTailEnergy(system.forceField, boxMinus, posMinus.second))
+          .potentialEnergy();
+
+  double dUdV = (energyPlus - energyMinus) / (boxPlus.volume - boxMinus.volume);
+  double fdExcessPressure = -dUdV;
+
+  EXPECT_NEAR(analyticExcessPressure, fdExcessPressure, tolerance) << "Molecular excess pressure disagrees with -dU/dV";
 }
 
 TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_no_fourier)

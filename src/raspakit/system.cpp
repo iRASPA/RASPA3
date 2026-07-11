@@ -723,9 +723,11 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
 
-      pressureInfo.second += Interactions::computeIntraMolecularStrainDerivative(
-          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms(), spanOfMoleculeDynamics())
-                                         .second;
+      // Intramolecular potentials (bonds, bends, torsions, ...) must NOT contribute to the molecular
+      // (center-of-mass based) pressure: internal forces sum to zero over each molecule and cancel in the
+      // molecular virial. Their strain derivative is therefore intentionally not accumulated here, and their
+      // gradients are deliberately kept out of 'spanOfMoleculeDynamics()' so they cannot pollute the
+      // atomic-to-molecular correction term computed below. Only the energy is recorded (above) for reporting.
     }
 
     molecule_index += numberOfMoleculesPerComponent[i];
@@ -740,7 +742,12 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.first.sumTotal();
 
   double pressureTailCorrection = 0.0;
-  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  // Tail correction to the (excess) pressure virial. The per-pair integral 'tailCorrectionPressure' equals
+  // Integrate[U'(r) r^3, {r, rc, Inf}]; the isotropic virial tail correction is -(2 pi / 3 V) Sum_ij n_i n_j <integral>
+  // (see RASPA2 CalculateTailCorrection). The overall minus sign and the 1/3 are essential: the van der Waals tail is
+  // attractive and must LOWER the pressure. The extra global negation of 'pressureInfo.second' below turns the
+  // '-= pressureTailCorrection' into the correct negative diagonal contribution.
+  double preFactor = -2.0 * std::numbers::pi / (3.0 * simulationBox.volume);
   for (std::vector<Atom>::iterator it1 = atomData.begin(); it1 != atomData.end(); ++it1)
   {
     std::size_t typeA = static_cast<std::size_t>(it1->type);
