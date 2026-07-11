@@ -19,102 +19,35 @@ void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t curr
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
-    bookKeepingEnergyHistogram[blockIndex][bin].totalEnergy += weight;
+    histogram(blockIndex, 0, bin).totalEnergy += weight;
   }
   bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
-    bookKeepingEnergyHistogram[blockIndex][bin].VanDerWaalsEnergy += weight;
+    histogram(blockIndex, 0, bin).VanDerWaalsEnergy += weight;
   }
   bin = static_cast<std::size_t>((energy.CoulombEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
-    bookKeepingEnergyHistogram[blockIndex][bin].CoulombEnergy += weight;
+    histogram(blockIndex, 0, bin).CoulombEnergy += weight;
   }
   bin = static_cast<std::size_t>((energy.polarizationEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
                                  std::fabs(valueRange.second - valueRange.first));
   if (bin < numberOfBins)
   {
-    bookKeepingEnergyHistogram[blockIndex][bin].polarizationEnergy += weight;
+    histogram(blockIndex, 0, bin).polarizationEnergy += weight;
   }
 
-  numberOfCounts[blockIndex] += weight;
-  totalNumberOfCounts += weight;
+  histogram.addCount(blockIndex, weight);
 }
 
-std::vector<AverageEnergyType> PropertyEnergyHistogram::averagedProbabilityHistogram(std::size_t blockIndex) const
+std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
+PropertyEnergyHistogram::result() const
 {
-  std::vector<AverageEnergyType> averagedData(numberOfBins);
-  std::transform(bookKeepingEnergyHistogram[blockIndex].begin(), bookKeepingEnergyHistogram[blockIndex].end(),
-                 averagedData.begin(), [&](const AverageEnergyType &sample) { return sample / numberOfCounts[blockIndex]; });
-  return averagedData;
-}
-
-std::vector<AverageEnergyType> PropertyEnergyHistogram::averagedProbabilityHistogram() const
-{
-  std::vector<AverageEnergyType> summedBlocks(numberOfBins);
-  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-  {
-    std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex].begin(),
-                   summedBlocks.begin(), [](const AverageEnergyType &a, const AverageEnergyType &b) { return a + b; });
-  }
-  std::vector<AverageEnergyType> average(numberOfBins);
-  std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                 [&](const AverageEnergyType &sample) { return sample / totalNumberOfCounts; });
-
-  return average;
-}
-
-std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>> PropertyEnergyHistogram::result() const
-{
-  std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-
-  std::vector<double> bins(numberOfBins);
-  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
-  {
-    bins[bin] = static_cast<double>(bin) * std::fabs(valueRange.second - valueRange.first) / static_cast<double>(numberOfBins) +
-        valueRange.first;
-  }
-
-
-  std::vector<AverageEnergyType> average = averagedProbabilityHistogram();
-
-  std::vector<AverageEnergyType> sumOfSquares(numberOfBins);
-  std::size_t numberOfSamples = 0;
-  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-  {
-    std::vector<AverageEnergyType> blockAverage = averagedProbabilityHistogram(blockIndex);
-
-    if (numberOfCounts[blockIndex] > 0.0)
-    {
-      for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
-      {
-        AverageEnergyType value = blockAverage[binIndex] - average[binIndex];
-        sumOfSquares[binIndex] += value * value;
-      }
-      ++numberOfSamples;
-    }
-  }
-  std::vector<AverageEnergyType> confidenceIntervalError(numberOfBins);
-  if (numberOfSamples >= 3)
-  {
-    std::vector<AverageEnergyType> standardDeviation(numberOfBins);
-    std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const AverageEnergyType &sumofsquares)
-                   { return sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
-
-    std::vector<AverageEnergyType> standardError(numberOfBins);
-    std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const AverageEnergyType &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-    std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const AverageEnergyType &error) { return intermediateStandardNormalDeviate * error; });
-  }
-
-  return {bins, average, confidenceIntervalError};
+  auto [average, confidenceIntervalError] = histogram.average(0);
+  return {bins(), average, confidenceIntervalError};
 }
 
 void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t currentCycle)
@@ -126,7 +59,7 @@ void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t curr
 
   std::ofstream stream_output(std::format("energy_histogram/energy_histogram.s{}.txt", systemId));
 
-  stream_output << std::format("# energy_histogram, number of counts: {}\n", totalNumberOfCounts);
+  stream_output << std::format("# energy_histogram, number of counts: {}\n", histogram.totalNumberOfCounts);
   stream_output << "# column 1: energy [K]\n";
   stream_output << "# column 2: total energy histogram [-]\n";
   stream_output << "# column 3: total energy histogram error [-]\n";
@@ -183,14 +116,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 {
   archive << hist.versionNumber;
 
-  archive << hist.numberOfBlocks;
   archive << hist.numberOfBins;
   archive << hist.valueRange;
   archive << hist.sampleEvery;
   archive << hist.writeEvery;
-  archive << hist.bookKeepingEnergyHistogram;
-  archive << hist.numberOfCounts;
-  archive << hist.totalNumberOfCounts;
+  archive << hist.histogram;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -210,14 +140,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
                                          location.line(), location.file_name()));
   }
 
-  archive >> hist.numberOfBlocks;
   archive >> hist.numberOfBins;
   archive >> hist.valueRange;
   archive >> hist.sampleEvery;
   archive >> hist.writeEvery;
-  archive >> hist.bookKeepingEnergyHistogram;
-  archive >> hist.numberOfCounts;
-  archive >> hist.totalNumberOfCounts;
+  archive >> hist.histogram;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

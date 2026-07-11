@@ -9,41 +9,37 @@ import averages;
 import simulationbox;
 import average_energy_type;
 import units;
-
+export import property_block_average;
 
 export struct PropertyEnergyHistogram
 {
-
   PropertyEnergyHistogram() {};
 
   PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> valueRange,
                           std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
-      : numberOfBlocks(numberOfBlocks),
-        numberOfBins(numberOfBins),
+      : numberOfBins(numberOfBins),
         valueRange(Units::KelvinToEnergy * valueRange.first, Units::KelvinToEnergy * valueRange.second),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        bookKeepingEnergyHistogram(
-            std::vector<std::vector<AverageEnergyType>>(numberOfBlocks, std::vector<AverageEnergyType>(numberOfBins))),
-        numberOfCounts(numberOfBlocks)
+        histogram(numberOfBlocks, 1, numberOfBins)
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
-  std::size_t numberOfBlocks;
   std::size_t numberOfBins;
   std::pair<double, double> valueRange;
   std::size_t sampleEvery;
   std::optional<std::size_t> writeEvery;
-  std::vector<std::vector<AverageEnergyType>> bookKeepingEnergyHistogram;
-  std::vector<double> numberOfCounts;
-  double totalNumberOfCounts{0.0};
+  BlockHistogram<AverageEnergyType> histogram;
 
   void addSample(std::size_t blockIndex, std::size_t currentCycle, AverageEnergyType energy, const double &weight);
 
-  std::vector<AverageEnergyType> averagedProbabilityHistogram(std::size_t blockIndex) const;
-  std::vector<AverageEnergyType> averagedProbabilityHistogram() const;
+  std::vector<AverageEnergyType> averagedProbabilityHistogram(std::size_t blockIndex) const
+  {
+    return histogram.averaged(blockIndex, 0);
+  }
+  std::vector<AverageEnergyType> averagedProbabilityHistogram() const { return histogram.averaged(0); }
 
   std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>> result() const;
   std::vector<double> bins() const;

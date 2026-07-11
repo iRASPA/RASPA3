@@ -8,7 +8,6 @@ import archive;
 import stringutils;
 import component;
 import units;
-import partial_molar_properties_data;
 import averages;
 import json;
 
@@ -29,7 +28,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
   }
   else
   {
-    std::pair<PartialMolarPropertiesData, PartialMolarPropertiesData> properties = averageProperties();
+    std::pair<PartialMolarPropertiesData, PartialMolarPropertiesData> properties = average();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
@@ -39,7 +38,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
       std::print(stream, "  Partial molar internal energy:\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        PartialMolarPropertiesData average = averagedProperties(i);
+        PartialMolarPropertiesData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, Units::EnergyToKelvin * average.partialMolarEnergy[k]);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -53,7 +52,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
       std::print(stream, "  Partial molar volume:\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        PartialMolarPropertiesData average = averagedProperties(i);
+        PartialMolarPropertiesData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, average.partialMolarVolume[k]);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -80,7 +79,7 @@ nlohmann::json PropertyPartialMolarProperties::jsonAveragesStatistics(std::vecto
 
   if (!swappableComponents.empty())
   {
-    std::pair<PartialMolarPropertiesData, PartialMolarPropertiesData> properties = averageProperties();
+    std::pair<PartialMolarPropertiesData, PartialMolarPropertiesData> properties = average();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
@@ -89,7 +88,7 @@ nlohmann::json PropertyPartialMolarProperties::jsonAveragesStatistics(std::vecto
       std::vector<double> blockVolume(numberOfBlocks);
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        PartialMolarPropertiesData average = averagedProperties(i);
+        PartialMolarPropertiesData average = averaged(i);
         blockEnergy[i] = Units::EnergyToKelvin * average.partialMolarEnergy[k];
         blockVolume[i] = average.partialMolarVolume[k];
       }
@@ -118,13 +117,11 @@ nlohmann::json PropertyPartialMolarProperties::jsonAveragesStatistics(std::vecto
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPartialMolarProperties &p)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PartialMolarPropertiesData &p)
 {
-  archive << p.versionNumber;
-
-  archive << p.numberOfBlocks;
-  archive << p.numberOfComponents;
-  archive << p.bookKeepingPartialMolarPropertiesTerms;
+  archive << p.size;
+  archive << p.partialMolarEnergy;
+  archive << p.partialMolarVolume;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -133,27 +130,59 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPartialMolarProperties &p)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PartialMolarPropertiesData &p)
 {
-  std::uint64_t versionNumber;
-  archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
-  {
-    const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyPartialMolarProperties' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
-  }
-
-  archive >> p.numberOfBlocks;
-  archive >> p.numberOfComponents;
-  archive >> p.bookKeepingPartialMolarPropertiesTerms;
+  archive >> p.size;
+  archive >> p.partialMolarEnergy;
+  archive >> p.partialMolarVolume;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("PropertyPartialMolarProperties: Error in binary restart\n"));
+    throw std::runtime_error(std::format("PartialMolarPropertiesData: Error in binary restart\n"));
+  }
+#endif
+
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PartialMolarPropertiesTerms &p)
+{
+  archive << p.size;
+  archive << p.swappableComponents;
+  archive << p.totalEnergyTimesNumberOfMolecules;
+  archive << p.volumeTimesNumberOfMolecules;
+  archive << p.numberOfMoleculesSquared;
+  archive << p.numberOfMolecules;
+  archive << p.totalEnergy;
+  archive << p.volume;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PartialMolarPropertiesTerms &p)
+{
+  archive >> p.size;
+  archive >> p.swappableComponents;
+  archive >> p.totalEnergyTimesNumberOfMolecules;
+  archive >> p.volumeTimesNumberOfMolecules;
+  archive >> p.numberOfMoleculesSquared;
+  archive >> p.numberOfMolecules;
+  archive >> p.totalEnergy;
+  archive >> p.volume;
+
+#if DEBUG_ARCHIVE
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("PartialMolarPropertiesTerms: Error in binary restart\n"));
   }
 #endif
 

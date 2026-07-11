@@ -12,18 +12,15 @@ import component;
 import simulationbox;
 import forcefield;
 import units;
-import loading_data;
+import property_loading;
 import averages;
-import enthalpy_of_adsorption_data;
-import pressure_data;
+import property_enthalpy;
+import property_pressure;
 import energy_status;
 import energy_status_inter;
 import property_simulationbox;
 import average_energy_type;
 import property_energy;
-import property_pressure;
-import property_loading;
-import property_enthalpy;
 import property_lambda_probability_histogram;
 import property_widom;
 import property_temperature;
@@ -422,7 +419,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   std::print(stream, "{}", statusLine);
   std::print(stream, "===============================================================================\n\n");
 
-  auto [simulation_box, average_simulation_box] = averageSimulationBox.averageSimulationBox();
+  auto [simulation_box, average_simulation_box] = averageSimulationBox.average();
   std::print(stream, "{}\n", simulationBox.printStatus(simulation_box, average_simulation_box));
 
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
@@ -476,7 +473,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   std::print(stream, "Amount of molecules per component:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.result();
+  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.average();
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -490,7 +487,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   if (!(framework.has_value() && framework->rigid))
   {
-    std::pair<PressureData, PressureData> average_pressure = averagePressure.result();
+    std::pair<PressureData, PressureData> average_pressure = averagePressure.average();
 
     switch (Units::unitSystem)
     {
@@ -547,7 +544,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     }
   }
 
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.result();
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.average();
   std::print(stream, "Total potential energy{}  {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.totalEnergy.energy,
              conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy,
@@ -625,7 +622,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
+  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.average();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
@@ -655,9 +652,9 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
       2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
                                        rotationalDegreesOfFreedom));
-  std::pair<double, double> average_temperature = averageTemperature.averageTemperature();
-  std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.averageTemperature();
-  std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.averageTemperature();
+  std::pair<double, double> average_temperature = averageTemperature.average();
+  std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.average();
+  std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.average();
 
   std::print(stream, "Temperature: {: .6e} ({: .6e} +/- {:.6e})\n", overall_temperature, average_temperature.first,
              average_temperature.second);
@@ -682,7 +679,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.result();
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.average();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
              conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
              conv * energyData.second.totalEnergy.energy);
@@ -754,7 +751,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.result();
+  std::pair<LoadingData, LoadingData> loadingData = averageLoadings.average();
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -765,7 +762,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   }
   std::print(stream, "\n");
 
-  std::pair<PressureData, PressureData> average_pressure = averagePressure.result();
+  std::pair<PressureData, PressureData> average_pressure = averagePressure.average();
 
   double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;

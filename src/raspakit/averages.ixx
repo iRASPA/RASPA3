@@ -51,6 +51,25 @@ export const int chosenConfidenceLevel = int(confidenceLevel::percent_95);
 constexpr double standardNormalDeviate = standardNormalDeviates[numberOfBins - 1][chosenConfidenceLevel];
 
 /**
+ * \brief Component-wise sum of two pairs.
+ *
+ * Adds the corresponding members of two \c std::pair values. Serves as the reduction operator for
+ * per-block book-keeping, where a pair typically holds an accumulated quantity together with its
+ * accumulated weight.
+ *
+ * \tparam A Type of the first pair member.
+ * \tparam B Type of the second pair member.
+ * \param lhs Left-hand pair.
+ * \param rhs Right-hand pair.
+ * \return A pair whose members are the component-wise sums of \p lhs and \p rhs.
+ */
+export template <typename A, typename B>
+std::pair<A, B> pairSum(const std::pair<A, B> &lhs, const std::pair<A, B> &rhs)
+{
+  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
+}
+
+/**
  * \brief Calculates the mean and confidence interval of a dataset.
  *
  * Computes the mean and the confidence interval based on the standard error and the standard normal deviate.
@@ -68,6 +87,159 @@ export inline std::pair<double, double> meanConfidence(std::vector<double> &data
   double standardError = std::sqrt(sumOfSquaresDiff / (size * (size - 1.0)));
 
   return {mean, standardError * standardNormalDeviate};
+}
+
+/**
+ * \brief Requirements for a value type that supports block-average error estimation.
+ *
+ * A block-averageable value is anything for which the block-error kernel can be evaluated:
+ * the per-block deviations from the mean, their element-wise squares, scaling by a scalar and
+ * in-place accumulation. In addition an element-wise \c sqrt() must be callable (resolved through
+ * ADL for the property data structs and through \c std::sqrt for \c double via the std-swap idiom).
+ * A correctly shaped zero is obtained as \c 0.0*value, so vector-backed types keep their size.
+ */
+export template <typename T>
+concept BlockAverageable = requires(T value, double scalar) {
+  { value - value } -> std::convertible_to<T>;
+  { value * value } -> std::convertible_to<T>;
+  { scalar * value } -> std::convertible_to<T>;
+  { value += value };
+};
+
+/**
+ * \brief Requirements for a raw-fluctuation-term type that yields a composite property.
+ *
+ * Some properties (e.g. the enthalpy of adsorption or partial molar properties) cannot be
+ * block-averaged directly because they are non-linear functions of ensemble averages. Instead, the
+ * linear fluctuation contributions are accumulated per block (they must support \c += for
+ * accumulation, \c scalar*terms for weighting, and \c terms/scalar for normalisation), and a
+ * non-linear reduction \c compositeProperty() then produces the derived quantity. That derived
+ * quantity must itself be \ref BlockAverageable so its error can be estimated across blocks.
+ * \c zeroCompositeProperty() supplies a correctly-shaped zero of the derived type (the composite
+ * of zero-valued terms is not a valid zero, since the reduction is non-linear).
+ */
+export template <typename Terms>
+concept CompositePropertyTerms = requires(Terms terms, double scalar) {
+  { terms += terms };
+  { scalar * terms } -> std::convertible_to<Terms>;
+  { terms / scalar } -> std::convertible_to<Terms>;
+  { terms.compositeProperty() } -> BlockAverageable;
+  { terms.zeroCompositeProperty() } -> BlockAverageable;
+};
+
+/**
+ * \brief Estimates the confidence-interval error from a set of block averages.
+ *
+ * Given the already-selected per-block averages and the overall average, computes the
+ * standard deviation of the block estimates and scales it by the Student-t deviate for the
+ * chosen confidence level. Returns a zero-valued error (shaped like \p average) when fewer
+ * than three blocks are available.
+ *
+ * \tparam T A BlockAverageable value type (e.g. double, LoadingData, EnergyStatus, ...).
+ * \param blockAverages The accepted per-block averages.
+ * \param average The overall average.
+ * \return The confidence-interval error, shaped like \p average.
+ */
+export template <BlockAverageable T>
+T blockErrorEstimate(const std::vector<T> &blockAverages, const T &average)
+{
+  // The concept resolves sqrt via the std-swap idiom (using std::sqrt;) so both double and the data structs work through ADL.
+  using std::sqrt;
+
+  // A correctly-sized zero is derived as 0.0 * average, so vector-backed types keep their dimensions
+  T sumOfSquares = 0.0 * average;
+  for (const T &blockAverage : blockAverages)
+  {
+    T deviation = blockAverage - average;
+    sumOfSquares += deviation * deviation;
+  }
+
+  T confidenceIntervalError = 0.0 * average;
+  std::size_t numberOfSamples = blockAverages.size();
+  if (numberOfSamples >= 3)
+  {
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
+    T standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    T standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+    confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+  }
+
+  return confidenceIntervalError;
+}
+
+/**
+ * \brief Estimates the confidence-interval error directly from a block book-keeping container.
+ *
+ * Convenience overload that also performs the standard "at least half filled" block selection:
+ * a block is used only when its accumulated weight exceeds half of the weight of the first block.
+ * The per-block average is obtained through \p perBlockAverage.
+ *
+ * \tparam T A BlockAverageable value type.
+ * \tparam BookKeeping A container of std::pair<value, weight>.
+ * \tparam PerBlockAverage Callable taking a block index and returning the block average of type T.
+ * \param bookKeeping The per-block accumulators paired with their weights.
+ * \param average The overall average.
+ * \param perBlockAverage Callable returning the average of a single block.
+ * \return The confidence-interval error, shaped like \p average.
+ */
+export template <BlockAverageable T, typename BookKeeping, typename PerBlockAverage>
+T blockErrorEstimate(const BookKeeping &bookKeeping, const T &average, PerBlockAverage perBlockAverage)
+{
+  std::vector<T> blockAverages;
+  double reference = std::max(1.0, bookKeeping.empty() ? 1.0 : bookKeeping.front().second);
+  for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
+  {
+    if (bookKeeping[blockIndex].second / reference > 0.5)
+    {
+      blockAverages.push_back(perBlockAverage(blockIndex));
+    }
+  }
+  return blockErrorEstimate<T>(blockAverages, average);
+}
+
+/**
+ * \brief Estimates the per-element confidence-interval error for histogram-valued properties.
+ *
+ * Element-wise counterpart of \ref blockErrorEstimate for properties whose value is a
+ * \c std::vector<T> (radial distribution functions, energy/number histograms,
+ * lambda probability histograms, ...). Every supplied block is used, so callers apply any
+ * block selection before calling.
+ *
+ * \tparam T A BlockAverageable value type that additionally supports \c T/double and \c sqrt(T).
+ * \param blockAverages The per-block histograms (each sized like \p average).
+ * \param average The overall per-element average.
+ * \return The per-element confidence-interval error, sized like \p average.
+ */
+export template <BlockAverageable T>
+std::vector<T> blockErrorEstimate(const std::vector<std::vector<T>> &blockAverages, const std::vector<T> &average)
+{
+  using std::sqrt;
+
+  std::vector<T> confidenceIntervalError;
+  confidenceIntervalError.reserve(average.size());
+  for (const T &value : average) confidenceIntervalError.push_back(0.0 * value);
+
+  std::size_t numberOfSamples = blockAverages.size();
+  if (numberOfSamples >= 3)
+  {
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
+    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+    for (std::size_t binIndex = 0; binIndex != average.size(); ++binIndex)
+    {
+      T sumOfSquares = 0.0 * average[binIndex];
+      for (const std::vector<T> &blockAverage : blockAverages)
+      {
+        T deviation = blockAverage[binIndex] - average[binIndex];
+        sumOfSquares += deviation * deviation;
+      }
+      T standardDeviation = sqrt(sumOfSquares / static_cast<double>(degreesOfFreedom));
+      T standardError = standardDeviation / std::sqrt(static_cast<double>(numberOfSamples));
+      confidenceIntervalError[binIndex] = intermediateStandardNormalDeviate * standardError;
+    }
+  }
+
+  return confidenceIntervalError;
 }
 
 /**

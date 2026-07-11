@@ -19,9 +19,8 @@ import framework;
 import component;
 import simulationbox;
 import forcefield;
-import double3x3;
 import units;
-import loading_data;
+import property_loading;
 import averages;
 import skparser;
 import skposcarparser;
@@ -29,8 +28,8 @@ import skstructure;
 import skatom;
 import skcell;
 import sample_movies;
-import enthalpy_of_adsorption_data;
-import pressure_data;
+import property_enthalpy;
+import property_pressure;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
@@ -38,16 +37,11 @@ import energy_status_intra;
 import property_simulationbox;
 import average_energy_type;
 import property_energy;
-import property_pressure;
-import property_loading;
-import property_enthalpy;
-import partial_molar_properties_data;
 import property_partial_molar_properties;
 import property_lambda_probability_histogram;
 import property_widom;
 import property_temperature;
 import property_msd;
-import energy_factor;
 import running_energy;
 import threadpool;
 //import isotherm;
@@ -507,12 +501,6 @@ void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
 
 
 
-inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
-                                                   const std::pair<EnergyStatus, double3x3>& rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
 void System::precomputeTotalRigidEnergy() noexcept
 {
   Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField,
@@ -699,10 +687,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
   pressureInfo =
-      pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
-                                 forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
+      pairSum(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
+                                forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
 
-  pressureInfo = pair_acc(
+  pressureInfo = pairSum(
       pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),

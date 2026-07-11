@@ -7,7 +7,6 @@ import std;
 import archive;
 import double3;
 import double3x3;
-import pressure_data;
 import stringutils;
 import units;
 import json;
@@ -21,7 +20,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
   std::print(stream, "Pressure averages and statistics:\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::pair<PressureData, PressureData> average_pressure = result();
+  std::pair<PressureData, PressureData> average_pressure = average();
 
   switch (Units::unitSystem)
   {
@@ -41,9 +40,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
                  pressureTensorError.cz);
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).idealGasPressure;
+        double blockAverage = averaged(i).idealGasPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -53,9 +52,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  1e-5 * conv * average_pressure.first.idealGasPressure, 1e-5 * conv * average_pressure.second.idealGasPressure);
       std::print(stream, "\n\n");
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).excessPressure;
+        double blockAverage = averaged(i).excessPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -65,9 +64,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  1e-5 * conv * average_pressure.second.excessPressure);
       std::print(stream, "\n\n");
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).totalPressure;
+        double blockAverage = averaged(i).totalPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -94,9 +93,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
                  pressureTensorError.cz, Units::unitOfPressureString);
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).idealGasPressure;
+        double blockAverage = averaged(i).idealGasPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -104,9 +103,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  average_pressure.second.idealGasPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).excessPressure;
+        double blockAverage = averaged(i).excessPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -114,9 +113,9 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  conv * average_pressure.second.excessPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");
 
-      for (std::size_t i = 0; i < bookKeepingPressure.size(); ++i)
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double blockAverage = averagedPressures(i).totalPressure;
+        double blockAverage = averaged(i).totalPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -135,7 +134,7 @@ nlohmann::json PropertyPressure::jsonAveragesStatistics() const
   nlohmann::json status;
   double conv = Units::PressureConversionFactor;
 
-  std::pair<PressureData, PressureData> average_pressure = result();
+  std::pair<PressureData, PressureData> average_pressure = average();
 
   status["averagePressureTensor"]["mean"] = conv * average_pressure.first.totalPressureTensor;
   status["averagePressureTensor"]["confidence"] = conv * average_pressure.second.totalPressureTensor;
@@ -172,40 +171,48 @@ nlohmann::json PropertyPressure::jsonAveragesStatistics() const
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PressureData &l)
 {
-  archive << e.versionNumber;
+  archive << l.versionNumber;
 
-  archive << e.numberOfBlocks;
-  archive << e.bookKeepingPressure;
+  archive << l.totalPressureTensor;
+  archive << l.excessPressureTensor;
+  archive << l.idealGasPressureTensor;
+  archive << l.totalPressure;
+  archive << l.excessPressure;
+  archive << l.idealGasPressure;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_caststd::<int64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PressureData &l)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > e.versionNumber)
+  if (versionNumber > l.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyPressure' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(std::format("Invalid version reading 'PressureData' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
   }
 
-  archive >> e.numberOfBlocks;
-  archive >> e.bookKeepingPressure;
+  archive >> l.totalPressureTensor;
+  archive >> l.excessPressureTensor;
+  archive >> l.idealGasPressureTensor;
+  archive >> l.totalPressure;
+  archive >> l.excessPressure;
+  archive >> l.idealGasPressure;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("PropertyPressure: Error in binary restart\n"));
+    throw std::runtime_error(std::format("PressureData: Error in binary restart\n"));
   }
 #endif
 

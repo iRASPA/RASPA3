@@ -7,80 +7,13 @@ import std;
 import archive;
 import averages;
 import simulationbox;
+export import property_block_average;
 
-
-export struct PropertySimulationBox
+export struct PropertySimulationBox : BlockAverage<SimulationBox>
 {
-  PropertySimulationBox() {};
+  PropertySimulationBox() = default;
 
-  PropertySimulationBox(std::size_t numberOfBlocks)
-      : numberOfBlocks(numberOfBlocks), bookKeepingSimulationBox(numberOfBlocks, std::make_pair(SimulationBox(), 0.0))
-  {
-  }
+  PropertySimulationBox(std::size_t numberOfBlocks) : BlockAverage<SimulationBox>(numberOfBlocks) {}
 
   bool operator==(PropertySimulationBox const &) const = default;
-
-  std::uint64_t versionNumber{1};
-
-  std::size_t numberOfBlocks;
-  std::vector<std::pair<SimulationBox, double>> bookKeepingSimulationBox;
-
-  inline void addSample(std::size_t blockIndex, const SimulationBox &box, const double &weight)
-  {
-    bookKeepingSimulationBox[blockIndex].first += weight * box;
-    bookKeepingSimulationBox[blockIndex].second += weight;
-  }
-
-  //====================================================================================================================
-
-  SimulationBox averagedSimulationBox(std::size_t blockIndex) const
-  {
-    return bookKeepingSimulationBox[blockIndex].first / std::max(1.0, bookKeepingSimulationBox[blockIndex].second);
-  }
-
-  SimulationBox averagedSimulationBox() const
-  {
-    std::pair<SimulationBox, double> summedBlocks = std::accumulate(
-        bookKeepingSimulationBox.begin(),
-        bookKeepingSimulationBox.end(),
-        std::make_pair(SimulationBox(), 0.0),
-        [](const auto& lhs, const auto& rhs) {
-            return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-        }
-    );
-
-    return summedBlocks.first / std::max(1.0, summedBlocks.second);
-  }
-
-  std::pair<SimulationBox, SimulationBox> averageSimulationBox() const
-  {
-    SimulationBox average = averagedSimulationBox();
-
-    SimulationBox sumOfSquares{};
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingSimulationBox[blockIndex].second / std::max(1.0, bookKeepingSimulationBox[0].second) > 0.5)
-      {
-        SimulationBox value = averagedSimulationBox(blockIndex) - average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-
-    SimulationBox confidenceIntervalError{};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      SimulationBox standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      SimulationBox standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertySimulationBox &box);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertySimulationBox &box);
 };

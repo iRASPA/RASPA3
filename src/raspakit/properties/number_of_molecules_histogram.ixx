@@ -10,6 +10,7 @@ import archive;
 import averages;
 import simulationbox;
 import component;
+export import property_block_average;
 
 export struct PropertyNumberOfMoleculesHistogram
 {
@@ -31,33 +32,33 @@ export struct PropertyNumberOfMoleculesHistogram
                                      std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(range.second - range.first),
-        numberOfComponents(numberOfComponents),
         range(range),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        bookKeepingMoleculeCountHistogram(std::vector<std::vector<std::vector<double>>>(
-            numberOfBlocks, std::vector<std::vector<double>>(numberOfComponents, std::vector<double>(numberOfBins)))),
-        numberOfCounts(numberOfBlocks)
+        histogram(numberOfBlocks, numberOfComponents, range.second - range.first)
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t numberOfBlocks;
   std::size_t numberOfBins;
-  std::size_t numberOfComponents;
   std::pair<std::size_t, std::size_t> range;
   std::size_t sampleEvery;
   std::optional<std::size_t> writeEvery;
-  std::vector<std::vector<std::vector<double>>> bookKeepingMoleculeCountHistogram;
-  std::vector<double> numberOfCounts;
-  double totalNumberOfCounts{0.0};
+  BlockHistogram<double> histogram;
 
   void addSample(std::size_t blockIndex, std::size_t currentCycle,
                  std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, const double &weight);
 
-  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t component_id) const;
-  std::vector<double> averagedProbabilityHistogram(std::size_t component_id) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t component_id) const
+  {
+    return histogram.averaged(blockIndex, component_id);
+  }
+  std::vector<double> averagedProbabilityHistogram(std::size_t component_id) const
+  {
+    return histogram.averaged(component_id);
+  }
 
   std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>> result() const;
 

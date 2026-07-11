@@ -518,7 +518,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.numberOfBlocks;
 
   archive << p.numberOfSamplePoints;
-  archive << p.jump_bins;
   archive << p.currentBin;
   archive << p.delta;
 
@@ -529,7 +528,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << p.bookKeepingLambda;
 
-  archive << p.bookKeepingDensity;
+  archive << p.density;
 
   archive << p.computeDUdlambda;
   archive << p.dUdlambdaGroupId;
@@ -551,7 +550,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLamb
   archive >> p.numberOfBlocks;
 
   archive >> p.numberOfSamplePoints;
-  archive >> p.jump_bins;
   archive >> p.currentBin;
   archive >> p.delta;
 
@@ -562,7 +560,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLamb
 
   archive >> p.bookKeepingLambda;
 
-  archive >> p.bookKeepingDensity;
+  archive >> p.density;
 
   archive >> p.computeDUdlambda;
   archive >> p.dUdlambdaGroupId;

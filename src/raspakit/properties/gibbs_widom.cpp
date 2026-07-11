@@ -6,10 +6,8 @@ import archive;
 import int3;
 import units;
 import averages;
-import widom_data;
+import property_widom;
 import stringutils;
-
-PropertyGibbsWidom::PropertyGibbsWidom() {}
 
 std::string PropertyGibbsWidom::writeAveragesRosenbluthWeightStatistics(double temperature, double volume,
                                                                    std::optional<double> frameworkMass,
@@ -211,8 +209,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << w.versionNumber;
 
   archive << w.numberOfBlocks;
-  archive << w.bookKeepingRosenbluthWeight;
-  archive << w.bookKeepingChemicalPotentialTerms;
+  archive << w.rosenbluthWeight;
+  archive << w.chemicalPotentialTerms;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -233,8 +231,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyGibb
   }
 
   archive >> w.numberOfBlocks;
-  archive >> w.bookKeepingRosenbluthWeight;
-  archive >> w.bookKeepingChemicalPotentialTerms;
+  archive >> w.rosenbluthWeight;
+  archive >> w.chemicalPotentialTerms;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

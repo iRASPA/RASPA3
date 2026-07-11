@@ -8,18 +8,21 @@ import randomnumbers;
 import archive;
 import averages;
 import json;
+import property_block_average;
 
-inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
-inline std::pair<double, double> pair_sum_double(const std::pair<double, double> &lhs,
-                                                   const std::pair<double, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
+/**
+ * \brief CFCMC lambda statistics: probability histogram, dU/dlambda and fluid density.
+ *
+ * Three statistical channels are sampled per block:
+ * - the lambda visit counts (per-bin histogram), from which the Landau free-energy profile and
+ *   the excess chemical potential (-ln(P(1)/P(0))/beta) follow;
+ * - the thermodynamic-integration terms dU/dlambda (per-bin weighted averages), integrated with
+ *   Simpson's rule to an alternative excess chemical potential;
+ * - the weighted fluid density, a scalar BlockAverage whose non-linear transform
+ *   ln(rho)/beta yields the ideal-gas chemical potential.
+ *
+ * The Wang-Landau biasing state (bias factors, scaling factor, visit histogram) is kept alongside.
+ */
 export struct PropertyLambdaProbabilityHistogram
 {
   enum class WangLandauPhase : std::size_t
@@ -35,13 +38,12 @@ export struct PropertyLambdaProbabilityHistogram
   PropertyLambdaProbabilityHistogram(std::size_t numberOfBlocks, std::size_t numberOfSamplePoints)
       : numberOfBlocks(numberOfBlocks),
         numberOfSamplePoints(numberOfSamplePoints),
-        jump_bins(numberOfSamplePoints / 2),
         currentBin(0),
         delta(1.0 / static_cast<double>(numberOfSamplePoints - 1)),
         histogram(numberOfSamplePoints),
         biasFactor(numberOfSamplePoints),
         bookKeepingLambda(std::vector<std::vector<double>>(numberOfBlocks, std::vector<double>(numberOfSamplePoints))),
-        bookKeepingDensity(std::vector<std::pair<double, double>>(numberOfBlocks)),
+        density(numberOfBlocks),
         computeDUdlambda(false),
         bookKeepingDUdlambda(std::vector<std::vector<std::pair<double, double>>>(
             numberOfBlocks, std::vector<std::pair<double, double>>(numberOfSamplePoints)))
@@ -50,11 +52,10 @@ export struct PropertyLambdaProbabilityHistogram
 
   bool operator==(PropertyLambdaProbabilityHistogram const &) const = default;
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
   std::size_t numberOfBlocks;
 
   std::size_t numberOfSamplePoints;
-  std::size_t jump_bins;
   std::size_t currentBin;
   double delta;
 
@@ -63,11 +64,11 @@ export struct PropertyLambdaProbabilityHistogram
   std::vector<double> histogram;
   std::vector<double> biasFactor;
 
-  // lambda-histogram
+  // lambda-histogram: per-block visit counts per bin
   std::vector<std::vector<double>> bookKeepingLambda;
 
-  // first: sm of weight * density, second: sum of weights
-  std::vector<std::pair<double, double>> bookKeepingDensity;
+  // weighted fluid density
+  BlockAverage<double> density;
 
   // dU/dlambda-histogram
   bool computeDUdlambda;
@@ -75,6 +76,7 @@ export struct PropertyLambdaProbabilityHistogram
   // 0 when this lambda coordinate is not tracked. Atoms of the corresponding fractional molecule
   // carry this id in Atom::groupId, and RunningEnergy accumulates dU/dlambda per group.
   std::uint8_t dUdlambdaGroupId{0};
+  // per-block, per-bin (sum of dU/dlambda, number of samples)
   std::vector<std::vector<std::pair<double, double>>> bookKeepingDUdlambda;
 
   // fractional molecule occupancy
@@ -85,9 +87,9 @@ export struct PropertyLambdaProbabilityHistogram
   {
     std::fill(histogram.begin(), histogram.end(), 0.0);
 
+    density = BlockAverage<double>(numberOfBlocks);
     for (std::size_t i = 0; i < numberOfBlocks; ++i)
     {
-      bookKeepingDensity[i] = std::make_pair<double, double>(0.0, 0.0);
       std::fill(bookKeepingLambda[i].begin(), bookKeepingLambda[i].end(), 0.0);
       std::fill(bookKeepingDUdlambda[i].begin(), bookKeepingDUdlambda[i].end(),
                 std::make_pair<double, double>(0.0, 0.0));
@@ -98,12 +100,6 @@ export struct PropertyLambdaProbabilityHistogram
   }
 
   inline double lambdaValue() const { return static_cast<double>(currentBin) * delta; }
-
-  // inline int selectNewBin(RandomNumber &random) const
-  //{
-  //   return static_cast<int>(currentBin) +
-  //          static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (random.uniform() - 0.5));
-  // }
 
   inline int selectNewBin(RandomNumber &random, double scale) const
   {
@@ -137,8 +133,8 @@ export struct PropertyLambdaProbabilityHistogram
     }
   }
 
-  void sampleHistogram(std::size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule,
-                       double w)
+  void sampleHistogram(std::size_t blockIndex, double fluidDensity, double dUdlambda,
+                       bool containsTheFractionalMolecule, double w)
   {
     if (containsTheFractionalMolecule)
     {
@@ -148,8 +144,7 @@ export struct PropertyLambdaProbabilityHistogram
       bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
     }
 
-    bookKeepingDensity[blockIndex].first += w * density;
-    bookKeepingDensity[blockIndex].second += w;
+    density.addSample(blockIndex, fluidDensity, w);
   }
 
   inline double weight() const { return std::exp(-biasFactor[currentBin]); }
@@ -172,240 +167,138 @@ export struct PropertyLambdaProbabilityHistogram
                                          std::optional<double> imposedFugacity) const;
 
   //====================================================================================================================
+  // density and ideal-gas chemical potential (scalar BlockAverage channel)
 
-  double averagedDensity(std::size_t blockIndex) const
+  double averagedDensity(std::size_t blockIndex) const { return density.averaged(blockIndex); }
+  double averagedDensity() const { return density.averaged(); }
+  std::pair<double, double> averageDensity() const { return density.average(); }
+
+  static double idealGasChemicalPotentialTransform(double fluidDensity, double beta)
   {
-    return bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second;
+    return std::log(fluidDensity) / beta;
   }
-
-  double averagedDensity() const
-  {
-    std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      summedBlocks.first += bookKeepingDensity[blockIndex].first;
-      summedBlocks.second += bookKeepingDensity[blockIndex].second;
-    }
-
-    return summedBlocks.first / summedBlocks.second;
-  }
-
-  std::pair<double, double> averageDensity() const
-  {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = averagedDensity();
-
-    double sumOfSquares = 0.0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = averagedDensity(blockIndex) - average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
 
   double averagedIdealGasChemicalPotential(std::size_t blockIndex, double beta) const
   {
-    return -std::log(1.0 / (bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second)) / beta;
+    return idealGasChemicalPotentialTransform(density.averaged(blockIndex), beta);
   }
 
   double averagedIdealGasChemicalPotential(double beta) const
   {
-    std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      summedBlocks.first += bookKeepingDensity[blockIndex].first;
-      summedBlocks.second += bookKeepingDensity[blockIndex].second;
-    }
-
-    return -std::log(1.0 / (summedBlocks.first / summedBlocks.second)) / beta;
+    return idealGasChemicalPotentialTransform(density.averaged(), beta);
   }
 
   std::pair<double, double> averageIdealGasChemicalPotential(double beta) const
   {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = averagedIdealGasChemicalPotential(beta);
-
-    double sumOfSquares = 0.0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = averagedIdealGasChemicalPotential(blockIndex, beta) - average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-
-    return std::make_pair(average, confidenceIntervalError);
+    return density.statistics([beta](double d) { return idealGasChemicalPotentialTransform(d, beta); });
   }
 
   //====================================================================================================================
+  // lambda probability histogram (per-bin visit counts)
 
-  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex) const
-  {
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(bookKeepingLambda[blockIndex].begin(), bookKeepingLambda[blockIndex].end(), averagedData.begin(),
-                   [&](const double &sample) { return sample; });
-    return averagedData;
-  }
-
-  std::vector<double> averagedProbabilityHistogram() const
+  /// Visit counts pooled over all blocks.
+  std::vector<double> summedLambdaBins() const
   {
     std::vector<double> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
-                     summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
+                     summedBlocks.begin(), std::plus<double>());
     }
+    return summedBlocks;
+  }
 
-    std::vector<double> average(numberOfSamplePoints);
-    std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                   [&](const double &sample) { return sample / static_cast<double>(numberOfBlocks); });
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex) const
+  {
+    return bookKeepingLambda[blockIndex];
+  }
 
+  std::vector<double> averagedProbabilityHistogram() const
+  {
+    std::vector<double> average = summedLambdaBins();
+    for (double &value : average)
+    {
+      value /= static_cast<double>(numberOfBlocks);
+    }
     return average;
   }
 
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
   {
-    std::size_t degreesOfFreedom = numberOfBlocks - 1;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double> average = averagedProbabilityHistogram();
 
-    std::vector<double> sumOfSquares(numberOfSamplePoints);
+    std::vector<std::vector<double>> blockAverages;
+    blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex);
-      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
-      {
-        double value = blockAverage[binIndex] - average[binIndex];
-        sumOfSquares[binIndex] += value * value;
-      }
-    }
-    std::vector<double> standardDeviation(numberOfSamplePoints);
-    std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const double &sumofsquares)
-                   { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
+      blockAverages.push_back(averagedProbabilityHistogram(blockIndex));
 
-    std::vector<double> standardError(numberOfSamplePoints);
-    std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-    std::vector<double> confidenceIntervalError(numberOfSamplePoints);
-    std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const double &error) { return intermediateStandardNormalDeviate * error; });
+    std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   //====================================================================================================================
+  // Landau free-energy profile: -ln(P(lambda))/beta per bin
+
+  static std::vector<double> landauFreeEnergyTransform(const std::vector<double> &bins, double beta)
+  {
+    std::vector<double> freeEnergy(bins.size());
+    std::transform(bins.cbegin(), bins.cend(), freeEnergy.begin(),
+                   [beta](double count) { return -std::log(count) / beta; });
+    return freeEnergy;
+  }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(std::size_t blockIndex, double beta) const
   {
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(bookKeepingLambda[blockIndex].cbegin(), bookKeepingLambda[blockIndex].cend(), averagedData.begin(),
-                   [&](const double &sample) { return -std::log(sample) / beta; });
-    return averagedData;
+    return landauFreeEnergyTransform(bookKeepingLambda[blockIndex], beta);
   }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(double beta) const
   {
-    // sum all blocks into one
-    std::vector<double> summedBlocks(numberOfSamplePoints);
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
-                     summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
-    }
-
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(summedBlocks.cbegin(), summedBlocks.cend(), averagedData.begin(), [&](const double &sample)
-                   { return -std::log(sample / static_cast<double>(numberOfBlocks)) / beta; });
-    return averagedData;
+    return landauFreeEnergyTransform(averagedProbabilityHistogram(), beta);
   }
 
   std::pair<std::vector<double>, std::vector<double>> averageLandauFreeEnergyHistogram(double beta) const
   {
-    std::size_t degreesOfFreedom = numberOfBlocks - 1;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double> average = averagedLandauFreeEnergyHistogram(beta);
 
-    std::vector<double> sumOfSquares(numberOfSamplePoints);
+    std::vector<std::vector<double>> blockAverages;
+    blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::vector<double> blockAverage = averagedLandauFreeEnergyHistogram(blockIndex, beta);
-      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
-      {
-        double value = blockAverage[binIndex] - average[binIndex];
-        sumOfSquares[binIndex] += value * value;
-      }
-    }
-    std::vector<double> standardDeviation(numberOfSamplePoints);
-    std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const double &sumofsquares)
-                   { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
+      blockAverages.push_back(averagedLandauFreeEnergyHistogram(blockIndex, beta));
 
-    std::vector<double> standardError(numberOfSamplePoints);
-    std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-    std::vector<double> confidenceIntervalError(numberOfSamplePoints);
-    std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const double &error) { return intermediateStandardNormalDeviate * error; });
+    std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   //====================================================================================================================
+  // excess chemical potential from the histogram: -ln(P(lambda=1)/P(lambda=0))/beta
+
+  static double excessChemicalPotentialTransform(const std::vector<double> &bins, double beta)
+  {
+    return -std::log(bins.back() / bins.front()) / beta;
+  }
 
   double averagedExcessChemicalPotential(std::size_t blockIndex, double beta) const
   {
-    std::size_t lastBin = numberOfSamplePoints - 1;
-    double averagedProbabilityFirstValue = bookKeepingLambda[blockIndex][0];
-    double averagedProbabilityLastValue = bookKeepingLambda[blockIndex][lastBin];
-    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
+    return excessChemicalPotentialTransform(bookKeepingLambda[blockIndex], beta);
   }
 
   double averagedExcessChemicalPotential(double beta) const
   {
-    std::vector<double> summedBlocks(numberOfSamplePoints);
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
-                     summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
-    }
-
-    std::size_t lastBin = numberOfSamplePoints - 1;
-    double averagedProbabilityFirstValue = summedBlocks[0];
-    double averagedProbabilityLastValue = summedBlocks[lastBin];
-    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
+    return excessChemicalPotentialTransform(summedLambdaBins(), beta);
   }
 
   std::pair<double, double> averageExcessChemicalPotential(double beta) const
   {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(beta);
 
-    double sumOfSquares = 0.0;
+    std::vector<double> blockAverages(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = averagedExcessChemicalPotential(blockIndex, beta) - average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+      blockAverages[blockIndex] = averagedExcessChemicalPotential(blockIndex, beta);
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -414,205 +307,115 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageTotalChemicalPotential(double beta, double bias) const
   {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias;
 
-    double sumOfSquares = 0.0;
+    std::vector<double> blockAverages(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = (averagedExcessChemicalPotential(blockIndex, beta) +
-                      averagedIdealGasChemicalPotential(blockIndex, beta) + bias) -
-                     average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+      blockAverages[blockIndex] = averagedExcessChemicalPotential(blockIndex, beta) +
+                                  averagedIdealGasChemicalPotential(blockIndex, beta) + bias;
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   std::pair<double, double> averageFugacity(double beta, double bias) const
   {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average =
         std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias)) /
         beta;
 
-    double sumOfSquares = 0.0;
+    std::vector<double> blockAverages(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
-                                      averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
-                         beta -
-                     average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+      blockAverages[blockIndex] = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
+                                                   averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
+                                  beta;
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   //====================================================================================================================
+  // dU/dlambda (thermodynamic integration; per-bin weighted averages)
 
-  std::vector<double> averagedDUdlambda(std::size_t blockIndex) const
+  /// Per-bin average of (sum, count) accumulators.
+  static std::vector<double> binAverages(const std::vector<std::pair<double, double>> &bins)
   {
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(bookKeepingDUdlambda[blockIndex].cbegin(), bookKeepingDUdlambda[blockIndex].cend(),
-                   averagedData.begin(), [&](const std::pair<double, double> &sample)
+    std::vector<double> averagedData(bins.size());
+    std::transform(bins.cbegin(), bins.cend(), averagedData.begin(), [](const std::pair<double, double> &sample)
                    { return sample.first / std::max(1.0, sample.second); });
     return averagedData;
   }
 
-  std::vector<double> averagedDUdlambda() const
+  /// dU/dlambda accumulators pooled over all blocks.
+  std::vector<std::pair<double, double>> summedDUdlambdaBins() const
   {
     std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      std::transform(
-          summedBlocks.begin(),
-          summedBlocks.end(),
-          bookKeepingDUdlambda[blockIndex].begin(),
-          summedBlocks.begin(),
-          [](const auto& lhs, const auto& rhs) {
-              return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-          }
-      );
+      std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
+                     summedBlocks.begin(), pairSum<double, double>);
     }
-
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(summedBlocks.begin(), summedBlocks.end(), averagedData.begin(),
-                   [&](std::pair<double, double> &sample) { return sample.first / std::max(1.0, sample.second); });
-    return averagedData;
+    return summedBlocks;
   }
+
+  std::vector<double> averagedDUdlambda(std::size_t blockIndex) const
+  {
+    return binAverages(bookKeepingDUdlambda[blockIndex]);
+  }
+
+  std::vector<double> averagedDUdlambda() const { return binAverages(summedDUdlambdaBins()); }
 
   std::pair<std::vector<double>, std::vector<double>> averageDuDlambda() const
   {
-    std::size_t degreesOfFreedom = numberOfBlocks - 1;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double> average = averagedDUdlambda();
 
-    std::vector<double> sumOfSquares(numberOfSamplePoints);
+    std::vector<std::vector<double>> blockAverages;
+    blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::vector<double> blockAverage = averagedDUdlambda(blockIndex);
-      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
-      {
-        double value = blockAverage[binIndex] - average[binIndex];
-        sumOfSquares[binIndex] += value * value;
-      }
-    }
-    std::vector<double> standardDeviation(numberOfSamplePoints);
-    std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                   [&](const double &sumofsquares)
-                   { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
+      blockAverages.push_back(averagedDUdlambda(blockIndex));
 
-    std::vector<double> standardError(numberOfSamplePoints);
-    std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-    std::vector<double> confidenceIntervalError(numberOfSamplePoints);
-    std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                   [&](const double &error) { return intermediateStandardNormalDeviate * error; });
+    std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   //====================================================================================================================
+  // excess chemical potential from thermodynamic integration: Simpson's rule over <dU/dlambda>
+
+  /// Composite Simpson's rule over the lambda grid (spacing delta).
+  double simpsonIntegral(const std::vector<double> &data) const
+  {
+    double sum = 0.0;
+    for (std::size_t i = 0; i < data.size(); ++i)
+    {
+      if (i == 0 || i == data.size() - 1)
+        sum += data[i];
+      else if (i % 2 != 0)
+        sum += 4.0 * data[i];
+      else
+        sum += 2.0 * data[i];
+    }
+    return sum * (delta / 3.0);
+  }
 
   double averagedExcessChemicalPotentialDUdlambda(std::size_t blockIndex) const
   {
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(bookKeepingDUdlambda[blockIndex].begin(), bookKeepingDUdlambda[blockIndex].end(),
-                   averagedData.begin(), [&](const std::pair<double, double> &sample)
-                   { return (sample.first) / std::max(1.0, sample.second); });
-
-    // trapezoidal rule: https://en.wikipedia.org/wiki/Trapezoidal_rule
-    // Calculating result
-    double res = 0;
-    for (std::size_t i = 0; i < averagedData.size(); i++)
-    {
-      if (i == 0 || i == averagedData.size() - 1)
-        res += averagedData[i];
-      else if (i % 2 != 0)
-        res += 4 * averagedData[i];
-      else
-        res += 2 * averagedData[i];
-    }
-    res = res * (delta / 3.0);
-    return res;
-
-    // double sum = 0.0;
-    // for(std::size_t i = 1; i != averagedData.size(); ++i)
-    //{
-    //     sum += 0.5 * (averagedData[i] + averagedData[i-1]);
-    // }
-    // return sum / static_cast<double>(numberOfSamplePoints - 1);
+    return simpsonIntegral(averagedDUdlambda(blockIndex));
   }
 
-  double averagedExcessChemicalPotentialDUdlambda() const
-  {
-    std::vector<std::pair<double, double>> summedBlocks(numberOfSamplePoints);
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      std::transform(
-          summedBlocks.begin(),
-          summedBlocks.end(),
-          bookKeepingDUdlambda[blockIndex].begin(),
-          summedBlocks.begin(),
-          [](const auto& lhs, const auto& rhs) {
-              return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-          }
-      );
-    }
-
-    std::vector<double> averagedData(numberOfSamplePoints);
-    std::transform(summedBlocks.begin(), summedBlocks.end(), averagedData.begin(),
-                   [&](std::pair<double, double> &sample)
-                   { return (sample.first) / std::max(1.0, sample.second); });
-
-    double res = 0;
-    for (std::size_t i = 0; i < averagedData.size(); i++)
-    {
-      if (i == 0 || i == averagedData.size() - 1)
-        res += averagedData[i];
-      else if (i % 2 != 0)
-        res += 4 * averagedData[i];
-      else
-        res += 2 * averagedData[i];
-    }
-    res = res * (delta / 3.0);
-    return res;
-    // double sum = 0.0;
-    // for(std::size_t i = 1; i != averagedData.size(); ++i)
-    //{
-    //     sum += 0.5 * (averagedData[i] + averagedData[i-1]);
-    // }
-    // return sum / static_cast<double>(numberOfSamplePoints - 1);
-  }
+  double averagedExcessChemicalPotentialDUdlambda() const { return simpsonIntegral(averagedDUdlambda()); }
 
   std::pair<double, double> averageExcessChemicalPotentialDUdlambda() const
   {
-    std::size_t numberOfSamples = numberOfBlocks;
-    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotentialDUdlambda();
 
-    double sumOfSquares = 0.0;
+    std::vector<double> blockAverages(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      double value = averagedExcessChemicalPotentialDUdlambda(blockIndex) - average;
-      sumOfSquares += value * value;
-    }
-    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+      blockAverages[blockIndex] = averagedExcessChemicalPotentialDUdlambda(blockIndex);
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -623,29 +426,9 @@ export struct PropertyLambdaProbabilityHistogram
   {
     double average = averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta);
 
-    double sumOfSquares = 0.0;
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
-      {
-        double value = (averagedExcessChemicalPotentialDUdlambda(blockIndex) +
-                        averagedIdealGasChemicalPotential(blockIndex, beta)) -
-                       average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-    double confidenceIntervalError = 0.0;
-
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
+    double confidenceIntervalError = blockErrorEstimate(
+        density.bookKeeping, average, [&](std::size_t i)
+        { return averagedExcessChemicalPotentialDUdlambda(i) + averagedIdealGasChemicalPotential(i, beta); });
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -655,29 +438,13 @@ export struct PropertyLambdaProbabilityHistogram
     double average =
         std::exp(beta * (averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta))) / beta;
 
-    double sumOfSquares = 0.0;
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
-      {
-        double value = std::exp(beta * (averagedExcessChemicalPotentialDUdlambda(blockIndex) +
-                                        averagedIdealGasChemicalPotential(blockIndex, beta))) /
-                           beta -
-                       average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-    double confidenceIntervalError = 0.0;
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
+    double confidenceIntervalError =
+        blockErrorEstimate(density.bookKeeping, average, [&](std::size_t i)
+                           {
+                             return std::exp(beta * (averagedExcessChemicalPotentialDUdlambda(i) +
+                                                     averagedIdealGasChemicalPotential(i, beta))) /
+                                    beta;
+                           });
 
     return std::make_pair(average, confidenceIntervalError);
   }

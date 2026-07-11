@@ -31,7 +31,6 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 import move_statistics;
 import mc_moves_statistics;
-import cif_reader;
 import framework;
 import component;
 import system;
@@ -41,7 +40,6 @@ import molecular_dynamics;
 import simulation_schedule;
 import input_reader;
 import property_loading;
-import loading_data;
 import energy_factor;
 import energy_status;
 import sample_movies;
@@ -57,15 +55,11 @@ import property_widom;
 import property_gibbs_widom;
 import connectivity_table;
 import intra_molecular_potentials;
-import pressure_data;
 import property_pressure;
-import widom_data;
 import equation_of_states;
 import property_conserved_energy_evolution;
 import thermostat;
-import enthalpy_of_adsorption_data;
 import property_enthalpy;
-import partial_molar_properties_data;
 import property_partial_molar_properties;
 import property_conventional_rdf;
 import property_rdf;
@@ -678,7 +672,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyLoading>(m, "PropertyLoading")
       .def(nanobind::init<std::size_t, std::size_t>())
-      .def("result", &PropertyLoading::result)
+      .def("result", &PropertyLoading::average)
       .def("average_loading_number_of_molecules", &PropertyLoading::averageLoadingNumberOfMolecules)
       .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
@@ -693,7 +687,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyEnergy>(m, "PropertyEnergy")
        // convert result to units of Kelvin
-      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.result();})
+      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.average();})
       .def("__repr__", &PropertyEnergy::repr);
 
   nanobind::class_<PressureData>(m, "PressureData")
@@ -703,7 +697,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("ideal_gas_pressure", &PressureData::idealGasPressure);
 
   nanobind::class_<PropertyPressure>(m, "PropertyPressure")
-      .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.result();});
+      .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.average();});
       //.def("__repr__", &Pressures::repr);
 
   nanobind::class_<AverageEnergyType>(m, "AverageEnergyType")
@@ -1025,5 +1019,5 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t, std::size_t>(),
             nanobind::arg("number_of_blocks"),
             nanobind::arg("number_of_components"))
-      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.averageProperties(); });
+      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.average(); });
 }

@@ -8,6 +8,7 @@ import archive;
 import atom;
 import simulationbox;
 import forcefield;
+export import property_block_average;
 
 // Computes Radial Distribution Function
 // Also works correctly for a small number of molecules (RDF still goes to unity)
@@ -28,44 +29,49 @@ export struct PropertyConventionalRadialDistributionFunction
   PropertyConventionalRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms,
                                                  std::size_t numberOfBins, double range, std::size_t sampleEvery,
                                                  std::optional<std::size_t> writeEvery)
-      : numberOfBlocks(numberOfBlocks),
-        numberOfPseudoAtoms(numberOfPseudoAtoms),
+      : numberOfPseudoAtoms(numberOfPseudoAtoms),
         numberOfBins(numberOfBins),
         range(range),
         deltaR(range / static_cast<double>(numberOfBins)),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        sumProperty(
-            std::vector(numberOfBlocks * numberOfPseudoAtoms * numberOfPseudoAtoms, std::vector<double>(numberOfBins))),
-        totalNumberOfCounts(0uz),
-        numberOfCounts(numberOfBlocks),
+        histogram(numberOfBlocks, numberOfPseudoAtoms * numberOfPseudoAtoms, numberOfBins),
         pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms)
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
+
+  /// Channel index of an ordered pseudo-atom pair.
+  std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const
+  {
+    return atomTypeB + atomTypeA * numberOfPseudoAtoms;
+  }
 
   std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
-                                                   std::size_t atomTypeB) const;
-  std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
+                                                   std::size_t atomTypeB) const
+  {
+    return histogram.averaged(blockIndex, channel(atomTypeA, atomTypeB));
+  }
+  std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const
+  {
+    return histogram.averaged(channel(atomTypeA, atomTypeB));
+  }
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
-                                                                                  std::size_t atomTypeB) const;
+                                                                                  std::size_t atomTypeB) const
+  {
+    return histogram.average(channel(atomTypeA, atomTypeB));
+  }
 
   std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>> result() const;
-  //std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
-  //                                                                                 std::size_t atomTypeB) const;
 
-  std::size_t numberOfBlocks;
-  std::size_t numberOfPseudoAtoms;
-  std::size_t numberOfPseudoAtomsSymmetricMatrix;
-  std::size_t numberOfBins;
-  double range;
-  double deltaR;
-  std::size_t sampleEvery;
+  std::size_t numberOfPseudoAtoms{};
+  std::size_t numberOfBins{};
+  double range{};
+  double deltaR{};
+  std::size_t sampleEvery{};
   std::optional<std::size_t> writeEvery;
-  std::vector<std::vector<double>> sumProperty;
-  std::size_t totalNumberOfCounts;
-  std::vector<std::size_t> numberOfCounts;
+  BlockHistogram<double> histogram;
   std::vector<std::size_t> pairCount;
   double volumeCumulative{};
   double volumeSampleCount{};
