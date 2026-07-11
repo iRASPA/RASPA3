@@ -62,11 +62,21 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
         std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[componentId]);
         std::print(stream, "    density:          {: .6e} kg/m^3\n",
                    densityConversionFactor * componentTotalMass * numberDensities[componentId]);
+        if (totalNumberOfMolecules > 0.0)
+        {
+          std::print(stream, "    mol-fraction:     {: .6e} [-]\n",
+                     numberOfMolecules[componentId] / totalNumberOfMolecules);
+        }
         break;
       case Units::System::ReducedUnits:
         std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[componentId]);
         std::print(stream, "    number density:   {: .6e} molec./{}^3\n", numberDensities[componentId],
                    Units::displayedUnitOfLengthString);
+        if (totalNumberOfMolecules > 0.0)
+        {
+          std::print(stream, "    mol-fraction:     {: .6e} [-]\n",
+                     numberOfMolecules[componentId] / totalNumberOfMolecules);
+        }
         break;
     }
   }
@@ -149,6 +159,14 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
                    densityConversionFactor * componentTotalMass * numberDensities[componentId],
                    densityConversionFactor * componentTotalMass * average.numberDensities[componentId],
                    densityConversionFactor * componentTotalMass * error.numberDensities[componentId]);
+        if (totalNumberOfMolecules > 0.0 && average.totalNumberOfMolecules > 0.0)
+        {
+          const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
+          const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          std::print(stream, "    mol-fraction:   {:.6e} ({:.6e} +/- {:.6e})\n", molFraction, averageMolFraction,
+                     errorMolFraction);
+        }
         break;
       case Units::System::ReducedUnits:
         std::print(stream, "    molecules:      {:.6e} molecules  ({:.6e} +/- {:.6e})\n",
@@ -157,6 +175,14 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
         std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n",
                    numberDensities[componentId], Units::displayedUnitOfLengthString,
                    average.numberDensities[componentId], error.numberDensities[componentId]);
+        if (totalNumberOfMolecules > 0.0 && average.totalNumberOfMolecules > 0.0)
+        {
+          const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
+          const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          std::print(stream, "    mol-fraction:   {:.6e} ({:.6e} +/- {:.6e})\n", molFraction, averageMolFraction,
+                     errorMolFraction);
+        }
         break;
     }
   }

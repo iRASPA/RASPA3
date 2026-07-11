@@ -133,12 +133,24 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
                      densityConversionFactor * components[i].totalMass * loadingAverage.first.numberDensities[i],
                      densityConversionFactor * components[i].totalMass * loadingAverage.second.numberDensities[i],
                      Units::unitOfDensityString);
+          if (loadingAverage.first.totalNumberOfMolecules > 0.0)
+          {
+            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n",
+                       loadingAverage.first.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules,
+                       loadingAverage.second.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules);
+          }
           break;
         case Units::System::ReducedUnits:
           std::print(stream, "    Density average  {: .6e} +/- {: .6e} [molecules]\n",
                      loadingAverage.first.numberOfMolecules[i], loadingAverage.second.numberOfMolecules[i]);
           std::print(stream, "    Density average  {: .6e} +/- {: .6e} [{}]\n", loadingAverage.first.numberDensities[i],
                      loadingAverage.second.numberDensities[i], Units::unitOfDensityString);
+          if (loadingAverage.first.totalNumberOfMolecules > 0.0)
+          {
+            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n",
+                       loadingAverage.first.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules,
+                       loadingAverage.second.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules);
+          }
           break;
       }
     }
