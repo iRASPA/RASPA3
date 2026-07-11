@@ -548,14 +548,6 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
-    }
-
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart

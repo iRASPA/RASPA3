@@ -805,14 +805,6 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       }
     }
 
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
-    }
-
     for (std::size_t system_id{0}; System& system : systems)
     {
       if (system.propertyConventionalRadialDistributionFunction.has_value())
