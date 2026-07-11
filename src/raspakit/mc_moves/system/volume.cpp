@@ -50,7 +50,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   double scale = std::pow(newVolume / oldVolume, 1.0 / 3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions = system.scaledCenterOfMassPositions(scale);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions =
+      system.scaledCenterOfMassPositions(system.simulationBox, newBox);
 
   double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
@@ -99,6 +100,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
   newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
   newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
+  newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
 
   // Update constructed move counts
   system.mc_moves_statistics.addConstructed(move);
@@ -202,6 +205,8 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
   newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
   newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
+  newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
 
   system.mc_moves_statistics.addConstructed(move);
 

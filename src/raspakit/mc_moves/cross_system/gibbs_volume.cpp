@@ -53,7 +53,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
       systemA.numberOfIntegerMoleculesPerComponent.begin(), systemA.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA =
+      systemA.scaledCenterOfMassPositions(systemA.simulationBox, newBoxA);
 
   double cutOffFrameworkVDW_stored_A = systemA.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW_stored_A = systemA.forceField.cutOffMoleculeVDW;
@@ -102,6 +103,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   newTotalEnergyA.bondTorsion = oldTotalEnergyA.bondTorsion;
   newTotalEnergyA.bendBend = oldTotalEnergyA.bendBend;
   newTotalEnergyA.bendTorsion = oldTotalEnergyA.bendTorsion;
+  newTotalEnergyA.intraVDW = oldTotalEnergyA.intraVDW;
+  newTotalEnergyA.intraCoul = oldTotalEnergyA.intraCoul;
 
   if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
   {
@@ -116,7 +119,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
       systemB.numberOfIntegerMoleculesPerComponent.begin(), systemB.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB =
+      systemB.scaledCenterOfMassPositions(systemB.simulationBox, newBoxB);
 
   double cutOffFrameworkVDW_stored_B = systemB.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW_stored_B = systemB.forceField.cutOffMoleculeVDW;
@@ -165,6 +169,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   newTotalEnergyB.bondTorsion = oldTotalEnergyB.bondTorsion;
   newTotalEnergyB.bendBend = oldTotalEnergyB.bendBend;
   newTotalEnergyB.bendTorsion = oldTotalEnergyB.bendTorsion;
+  newTotalEnergyB.intraVDW = oldTotalEnergyB.intraVDW;
+  newTotalEnergyB.intraCoul = oldTotalEnergyB.intraCoul;
 
   if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
   {
