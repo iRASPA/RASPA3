@@ -66,6 +66,8 @@ import property_conserved_energy_evolution;
 import thermostat;
 import enthalpy_of_adsorption_data;
 import property_enthalpy;
+import partial_molar_properties_data;
+import property_partial_molar_properties;
 import property_conventional_rdf;
 import property_rdf;
 import mean_squared_displacement_data;
@@ -719,6 +721,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
          pybind11::arg("property") = std::nullopt)
       .def_readwrite("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
+      .def_readwrite("average_partial_molar_properties", &System::averagePartialMolarProperties)
       .def_readwrite("atom_data", &System::atomData)
       .def_readwrite("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_readwrite("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
@@ -843,6 +846,18 @@ EXPAND_MODULE(MODULE_NAME)
             pybind11::arg("number_of_blocks"), 
             pybind11::arg("number_of_components"))
       .def("result", [](const PropertyEnthalpy& p) { return Units::EnergyToKelvin * p.result();});
+
+  pybind11::class_<PartialMolarPropertiesData>(m, "PartialMolarPropertiesData")
+      .def(pybind11::init<std::size_t>(),
+            pybind11::arg("number_of_components"))
+      .def_readonly("partial_molar_energy", &PartialMolarPropertiesData::partialMolarEnergy)
+      .def_readonly("partial_molar_volume", &PartialMolarPropertiesData::partialMolarVolume);
+
+  pybind11::class_<PropertyPartialMolarProperties>(m, "PropertyPartialMolarProperties")
+      .def(pybind11::init<std::size_t, std::size_t>(),
+            pybind11::arg("number_of_blocks"),
+            pybind11::arg("number_of_components"))
+      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.averageProperties(); });
 
 }
 

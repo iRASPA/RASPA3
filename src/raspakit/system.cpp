@@ -41,6 +41,8 @@ import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import partial_molar_properties_data;
+import property_partial_molar_properties;
 import property_lambda_probability_histogram;
 import property_widom;
 import property_temperature;
@@ -131,6 +133,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       averageEnergies(numberOfBlocks, 1, f.has_value() ? 1 : 0, c.size()),
       averageLoadings(numberOfBlocks, c.size()),
       averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
+      averagePartialMolarProperties(numberOfBlocks, c.size()),
       averageTemperature(numberOfBlocks),
       averageTranslationalTemperature(numberOfBlocks),
       averageRotationalTemperature(numberOfBlocks),
@@ -189,6 +192,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
                       P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
+  averagePartialMolarProperties.resize(swappableComponents.size());
 }
 
 
@@ -364,6 +368,11 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(
       swappableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.potentialEnergy(), temperature);
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
+
+  PartialMolarPropertiesTerms partialMolarTerms =
+      PartialMolarPropertiesTerms(swappableComponents, numberOfIntegerMoleculesPerComponent,
+                                  runningEnergies.potentialEnergy(), simulationBox.volume);
+  averagePartialMolarProperties.addSample(currentBlock, partialMolarTerms, w);
 
   std::size_t numberOfMolecules =
       std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), 0uz);
@@ -1079,6 +1088,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.averageEnergies;
   archive << s.averageLoadings;
   archive << s.averageEnthalpiesOfAdsorption;
+  archive << s.averagePartialMolarProperties;
   archive << s.averageTemperature;
   archive << s.averageTranslationalTemperature;
   archive << s.averageRotationalTemperature;
@@ -1218,6 +1228,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.averageEnergies;
   archive >> s.averageLoadings;
   archive >> s.averageEnthalpiesOfAdsorption;
+  archive >> s.averagePartialMolarProperties;
   archive >> s.averageTemperature;
   archive >> s.averageTranslationalTemperature;
   archive >> s.averageRotationalTemperature;

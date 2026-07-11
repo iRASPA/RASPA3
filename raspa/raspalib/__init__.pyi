@@ -24,6 +24,8 @@ from raspalib.property_loading import *
 from raspalib.property_number_of_molecules_histogram import *
 from raspalib.enthalpy_of_adsorption_data import *
 from raspalib.property_enthalpy import *
+from raspalib.partial_molar_properties_data import *
+from raspalib.property_partial_molar_properties import *
 from raspalib.property_pressure import *
 from raspalib.property_number_of_molecules_evolution import *
 from raspalib.property_volume_evolution import *

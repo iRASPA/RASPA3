@@ -26,12 +26,14 @@ import gradient_factor;
 import loading_data;
 import sample_movies;
 import enthalpy_of_adsorption_data;
+import partial_molar_properties_data;
 import property_lambda_probability_histogram;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import property_partial_molar_properties;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
@@ -102,7 +104,7 @@ export struct System
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -231,6 +233,7 @@ export struct System
   PropertyEnergy averageEnergies;
   PropertyLoading averageLoadings;
   PropertyEnthalpy averageEnthalpiesOfAdsorption;
+  PropertyPartialMolarProperties averagePartialMolarProperties;
   PropertyTemperature averageTemperature;
   PropertyTemperature averageTranslationalTemperature;
   PropertyTemperature averageRotationalTemperature;

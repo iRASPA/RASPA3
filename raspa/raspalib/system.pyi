@@ -10,6 +10,7 @@ from raspalib.simulation_box import *
 from raspalib.loading_data import *
 from raspalib.property_loading import *
 from raspalib.property_enthalpy import *
+from raspalib.property_partial_molar_properties import *
 from raspalib.sample_movie import *
 from raspalib.property_energy import *
 from raspalib.property_pressure import *
@@ -107,6 +108,11 @@ class System():
     @property
     def average_enthalpies_of_adsorption(self) -> PropertyEnthalpy:
         """Return the average enthalpy-of-adsorption property accessor."""
+        ...
+
+    @property
+    def average_partial_molar_properties(self) -> PropertyPartialMolarProperties:
+        """Return the average partial-molar-properties accessor."""
         ...
 
     @property

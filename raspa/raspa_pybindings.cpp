@@ -65,6 +65,8 @@ import property_conserved_energy_evolution;
 import thermostat;
 import enthalpy_of_adsorption_data;
 import property_enthalpy;
+import partial_molar_properties_data;
+import property_partial_molar_properties;
 import property_conventional_rdf;
 import property_rdf;
 import mean_squared_displacement_data;
@@ -902,6 +904,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
          nanobind::arg("property") = nanobind::none())
       .def_rw("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
+      .def_rw("average_partial_molar_properties", &System::averagePartialMolarProperties)
       .def_rw("atom_data", &System::atomData)
       .def_rw("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_rw("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
@@ -1011,4 +1014,16 @@ EXPAND_MODULE(MODULE_NAME)
             nanobind::arg("number_of_blocks"), 
             nanobind::arg("number_of_components"))
       .def("result", [](const PropertyEnthalpy& p) { return Units::EnergyToKelvin * p.result();});
+
+  nanobind::class_<PartialMolarPropertiesData>(m, "PartialMolarPropertiesData")
+      .def(nanobind::init<std::size_t>(),
+            nanobind::arg("number_of_components"))
+      .def_ro("partial_molar_energy", &PartialMolarPropertiesData::partialMolarEnergy)
+      .def_ro("partial_molar_volume", &PartialMolarPropertiesData::partialMolarVolume);
+
+  nanobind::class_<PropertyPartialMolarProperties>(m, "PropertyPartialMolarProperties")
+      .def(nanobind::init<std::size_t, std::size_t>(),
+            nanobind::arg("number_of_blocks"),
+            nanobind::arg("number_of_components"))
+      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.averageProperties(); });
 }

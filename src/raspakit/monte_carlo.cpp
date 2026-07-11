@@ -1212,6 +1212,9 @@ void MonteCarlo::output()
     std::print(
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
+    std::print(
+        stream, "{}",
+        system.averagePartialMolarProperties.writeAveragesStatistics(system.swappableComponents, system.components));
     std::print(stream, "{}",
                system.averageLoadings.writeAveragesStatistics(
                    system.components, system.frameworkMass(),
@@ -1245,6 +1248,8 @@ void MonteCarlo::output()
     outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
     outputJsons[system_id]["properties"]["averageEnthalpy"] =
         system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
+    outputJsons[system_id]["properties"]["averagePartialMolarProperties"] =
+        system.averagePartialMolarProperties.jsonAveragesStatistics(system.swappableComponents, system.components);
 
     for (const Component& component : system.components)
     {
