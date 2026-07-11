@@ -946,6 +946,11 @@ std::pair<Molecule, std::vector<Atom>> Component::rotate(const Molecule &molecul
       trialAtoms[i].position = rotationMatrix * (molecule_atoms[i].position - molecule_atoms[startingBead].position) +
                                molecule_atoms[startingBead].position;
     }
+
+    // A flexible molecule is rotated rigidly about its starting bead, not its center of mass, so the
+    // center-of-mass moves. Recompute it from the rotated atoms to keep the stored center-of-mass consistent
+    // with the atom positions (it is otherwise stale after an accepted rotation).
+    trialMolecule.centerOfMassPosition = computeCenterOfMass(trialAtoms);
   }
 
   return {trialMolecule, trialAtoms};
