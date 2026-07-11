@@ -73,7 +73,7 @@ TEST(MC_MUVT_DRIFT, insertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -83,8 +83,8 @@ TEST(MC_MUVT_DRIFT, insertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -159,7 +159,7 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -169,8 +169,8 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -245,7 +245,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -255,8 +255,8 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -331,7 +331,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -341,8 +341,8 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -407,7 +407,7 @@ TEST(MC_MUVT_DRIFT, identity_change)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane}, {}, {10, 10}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -417,8 +417,8 @@ TEST(MC_MUVT_DRIFT, identity_change)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -487,7 +487,7 @@ TEST(MC_MUVT_DRIFT, identity_change_cfcmc)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane}, {}, {10, 10}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -497,8 +497,8 @@ TEST(MC_MUVT_DRIFT, identity_change_cfcmc)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -636,7 +636,7 @@ TEST(MC_MUVT_DRIFT, identity_change_co2_propane_butane)
       System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, propane, butane}, {}, {5, 5, 5}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -646,8 +646,8 @@ TEST(MC_MUVT_DRIFT, identity_change_co2_propane_butane)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, 42uz,
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -705,7 +705,7 @@ TEST(MC_MUVT_DRIFT, identity_change_propane_butane_tail_corrections)
   System system = System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {50, 50}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -715,8 +715,8 @@ TEST(MC_MUVT_DRIFT, identity_change_propane_butane_tail_corrections)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -785,7 +785,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_conventional_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -847,7 +847,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cbmc_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -909,7 +909,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cfcmc_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -972,7 +972,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cfcmc_thermodynamic_integration_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -1033,7 +1033,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cbcfcmc_thermodynamic_integration_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -1096,7 +1096,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cfcmc_and_cbcfcmc_simultaneous_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -1158,7 +1158,7 @@ TEST(MC_MUVT_DRIFT, pair_swap_cbcfcmc_na_cl)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {na, cl}, {}, {4, 4}, 5);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)

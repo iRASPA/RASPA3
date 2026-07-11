@@ -812,7 +812,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyNumberOfMoleculesEvolution>(m, "PropertyNumberOfMoleculesEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_cycles"), 
+            nanobind::arg("number_of_production_cycles"), 
             nanobind::arg("number_of_components"),
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every") = nanobind::none())
@@ -820,7 +820,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
     .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_cycles"), 
+            nanobind::arg("number_of_production_cycles"), 
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every") = nanobind::none())
       .def_ro("result", &PropertyVolumeEvolution::result);
@@ -911,19 +911,19 @@ EXPAND_MODULE(MODULE_NAME)
 
     nanobind::class_<MonteCarlo>(m, "MonteCarlo")
       .def("__init__",
-         [](MonteCarlo *mc, std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+         [](MonteCarlo *mc, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
             std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
             std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
             std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
          {
            new (mc) MonteCarlo(
-               SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+               SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
                systems, random_seed, number_of_blocks, output_to_files);
          },
-         nanobind::arg("number_of_cycles"),
+         nanobind::arg("number_of_production_cycles"),
          nanobind::arg("number_of_pre_initialization_cycles") = 0,
          nanobind::arg("number_of_initialization_cycles") = 0,
          nanobind::arg("number_of_equilibration_cycles") = 0,
@@ -948,19 +948,19 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<MolecularDynamics>(m, "MolecularDynamics")
     .def("__init__",
-         [](MolecularDynamics *md, std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+         [](MolecularDynamics *md, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
             std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
             std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
             std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
          {
            new (md) MolecularDynamics(
-               SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+               SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
                systems, random_seed, number_of_blocks, output_to_files);
          },
-         nanobind::arg("number_of_cycles"), 
+         nanobind::arg("number_of_production_cycles"), 
          nanobind::arg("number_of_pre_initialization_cycles") = 0,
          nanobind::arg("number_of_initialization_cycles") = 0,
          nanobind::arg("number_of_equilibration_cycles") = 0, 
@@ -988,7 +988,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_cycles"), 
+            nanobind::arg("number_of_production_cycles"), 
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every") = nanobind::none())
        // convert result to units of Kelvin

@@ -54,7 +54,7 @@ MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
 MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
     : random(reader.randomSeed),
-      numberOfCycles(reader.numberOfCycles),
+      numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
@@ -63,7 +63,7 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
-      estimation(reader.numberOfBlocks, reader.numberOfCycles)
+      estimation(reader.numberOfBlocks, reader.numberOfProductionCycles)
 {
 }
 
@@ -71,7 +71,7 @@ MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const s
                        std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(RandomNumber(randomSeed)),
-      numberOfCycles(schedule.numberOfCycles),
+      numberOfProductionCycles(schedule.numberOfProductionCycles),
       numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
       numberOfInitializationCycles(schedule.numberOfInitializationCycles),
       numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
@@ -82,7 +82,7 @@ MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const s
       optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
       systems(systems),
       outputJsons(systems.size()),
-      estimation(numberOfBlocks, schedule.numberOfCycles)
+      estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
 }
 
@@ -649,7 +649,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -704,7 +704,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         if (outputToFiles)
         {
           std::ostream stream(streams[system_id].rdbuf());
-          std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
+          std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfProductionCycles));
           std::flush(stream);
         }
 
@@ -853,7 +853,7 @@ void MolecularDynamics::output()
     std::print(stream, "===============================================================================\n");
     std::print(stream, "\n");
 
-    std::string status_line{std::format("Final state after {} cycles\n\n", numberOfCycles)};
+    std::string status_line{std::format("Final state after {} cycles\n\n", numberOfProductionCycles)};
 
     std::print(stream, "Production run CPU timings of the MD simulation\n");
     std::print(stream, "===============================================================================\n\n");
@@ -902,7 +902,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << mc.outputToFiles;
   archive << mc.random;
 
-  archive << mc.numberOfCycles;
+  archive << mc.numberOfProductionCycles;
   archive << mc.numberOfSteps;
   archive << mc.numberOfPreInitializationCycles;
   archive << mc.numberOfInitializationCycles;
@@ -942,7 +942,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> mc.outputToFiles;
   archive >> mc.random;
 
-  archive >> mc.numberOfCycles;
+  archive >> mc.numberOfProductionCycles;
   archive >> mc.numberOfSteps;
   archive >> mc.numberOfPreInitializationCycles;
   archive >> mc.numberOfInitializationCycles;

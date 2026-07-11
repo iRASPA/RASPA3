@@ -48,7 +48,7 @@ static void runAndCheckDrift(MCMoveProbabilities probabilities, double pressure 
   System system = makePolarizableCO2System(probabilities, pressure, numberOfMolecules);
 
   std::vector<System> systems{system};
-  std::size_t numberOfCycles{20};
+  std::size_t numberOfProductionCycles{20};
   std::size_t numberOfInitializationCycles{5};
   std::size_t numberOfEquilibrationCycles{5};
   std::size_t printEvery{1000};
@@ -58,8 +58,8 @@ static void runAndCheckDrift(MCMoveProbabilities probabilities, double pressure 
   std::size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {}, numberOfBlocks,
+  MonteCarlo mc({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                 writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {}, numberOfBlocks,
                 outputToFiles);
 
   mc.run();

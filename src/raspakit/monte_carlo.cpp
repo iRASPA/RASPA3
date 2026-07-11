@@ -51,7 +51,7 @@ MonteCarlo::MonteCarlo() : outputToFiles(false), random(std::nullopt) {};
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : outputToFiles(true),
       random(reader.randomSeed),
-      numberOfCycles(reader.numberOfCycles),
+      numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
@@ -62,7 +62,7 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
       outputJsons(systems.size()),
-      estimation(reader.numberOfBlocks, reader.numberOfCycles)
+      estimation(reader.numberOfBlocks, reader.numberOfProductionCycles)
 {
 }
 
@@ -70,7 +70,7 @@ MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<Sys
                        std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(RandomNumber(randomSeed)),
-      numberOfCycles(schedule.numberOfCycles),
+      numberOfProductionCycles(schedule.numberOfProductionCycles),
       numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
       numberOfInitializationCycles(schedule.numberOfInitializationCycles),
       numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
@@ -81,7 +81,7 @@ MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<Sys
       optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
       systems(systems),
       outputJsons(systems.size()),
-      estimation(numberOfBlocks, schedule.numberOfCycles)
+      estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
 }
 
@@ -886,7 +886,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -924,7 +924,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
         if (outputToFiles)
         {
           std::ostream stream(streams[system_id].rdbuf());
-          std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
+          std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
           std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
           std::flush(stream);
         }
@@ -1067,7 +1067,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       std::print(stream, "===============================================================================\n");
       std::print(stream, "\n");
 
-      std::string status_line{std::format("Final state after {} cycles\n", numberOfCycles)};
+      std::string status_line{std::format("Final state after {} cycles\n", numberOfProductionCycles)};
       std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
       std::flush(stream);
 
@@ -1239,11 +1239,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.outputToFiles;
   archive << mc.random;
 
-  archive << mc.numberOfCycles;
-  archive << mc.numberOfSteps;
+  archive << mc.numberOfProductionCycles;
   archive << mc.numberOfPreInitializationCycles;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
+  archive << mc.numberOfSteps;
 
   archive << mc.printEvery;
   archive << mc.writeBinaryRestartEvery;
@@ -1284,11 +1284,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.outputToFiles;
   archive >> mc.random;
 
-  archive >> mc.numberOfCycles;
-  archive >> mc.numberOfSteps;
+  archive >> mc.numberOfProductionCycles;
   archive >> mc.numberOfPreInitializationCycles;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
+  archive >> mc.numberOfSteps;
 
   archive >> mc.printEvery;
   archive >> mc.writeBinaryRestartEvery;

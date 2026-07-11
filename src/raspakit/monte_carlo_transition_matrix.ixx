@@ -73,11 +73,12 @@ export struct MonteCarloTransitionMatrix
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::size_t numberOfCycles;                   ///< Number of production cycles.
-  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+  std::size_t numberOfProductionCycles;                   ///< Number of production cycles.
   std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
   std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
+  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+
   std::size_t printEvery;                    ///< Frequency of printing status reports.
   std::size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.

@@ -441,12 +441,12 @@ export struct System
 
   std::string writeOutputHeader() const;
   std::string writeNumberOfPseudoAtoms() const;
-  std::string writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
-  std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
+  std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
+  std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
+  std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeProductionStatusReportMC(const std::string &statusLine) const;
-  std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
   std::string writeMCMoveStatistics() const;

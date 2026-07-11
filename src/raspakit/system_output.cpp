@@ -111,11 +111,11 @@ std::string System::writeNumberOfPseudoAtoms() const
   return stream.str();
 }
 
-std::string System::writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Pre-initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Pre-initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -148,11 +148,11 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
   return stream.str();
 }
 
-std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -223,11 +223,11 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -298,13 +298,13 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -616,13 +616,13 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   return stream.str();
 }
 
-std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const
+std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();

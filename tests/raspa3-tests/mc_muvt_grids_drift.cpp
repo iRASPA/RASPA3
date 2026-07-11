@@ -74,7 +74,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -84,8 +84,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -161,7 +161,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -171,8 +171,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -248,7 +248,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -258,8 +258,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -335,7 +335,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -345,8 +345,8 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();

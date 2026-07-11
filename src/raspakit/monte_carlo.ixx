@@ -82,11 +82,11 @@ export struct MonteCarlo
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.
 
-  std::size_t numberOfCycles;                   ///< Number of production cycles.
-  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+  std::size_t numberOfProductionCycles;         ///< Number of production cycles.
   std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
   std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
+  std::size_t numberOfSteps;                    ///< Total number of steps performed.
 
   std::size_t printEvery;               ///< Frequency of printing status reports.
   std::size_t writeRestartEvery;        ///< Frequency of writing restart files.

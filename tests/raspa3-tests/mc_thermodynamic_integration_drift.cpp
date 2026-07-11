@@ -53,7 +53,7 @@ void expectNoThermodynamicIntegrationDrift(System& system)
   EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
 }
 
-void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfCycles = 20)
+void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfProductionCycles = 20)
 {
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
@@ -64,8 +64,8 @@ void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfCycles = 20
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
   mc.run();
 
@@ -77,7 +77,7 @@ void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfCycles = 20
 
 void runGibbsMonteCarlo(std::vector<System>& systems)
 {
-  size_t numberOfCycles{20};
+  size_t numberOfProductionCycles{20};
   size_t numberOfInitializationCycles{5};
   size_t numberOfEquilibrationCycles{5};
   size_t printEvery{1000};
@@ -87,8 +87,8 @@ void runGibbsMonteCarlo(std::vector<System>& systems)
   size_t numberOfBlocks{5};
   bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
   mc.run();
 

@@ -12,7 +12,7 @@ class MonteCarlo():
 
     def __init__(
         self,
-        number_of_cycles: int = 0,
+        number_of_production_cycles: int = 0,
         number_of_pre_initialization_cycles: int = 0,
         number_of_initialization_cycles: int = 0,
         number_of_equilibration_cycles: int = 0,
@@ -30,7 +30,7 @@ class MonteCarlo():
         Initialize a :class:`MonteCarlo` simulation controller.
 
         Args:
-            number_of_cycles: Number of production cycles. Defaults to ``0``.
+            number_of_production_cycles: Number of production cycles. Defaults to ``0``.
             number_of_initialization_cycles: Number of initialization cycles.
                 Defaults to ``0``.
             number_of_equilibration_cycles: Number of equilibration cycles.

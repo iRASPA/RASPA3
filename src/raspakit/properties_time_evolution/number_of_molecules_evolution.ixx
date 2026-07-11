@@ -15,12 +15,12 @@ export struct PropertyNumberOfMoleculesEvolution
 {
   PropertyNumberOfMoleculesEvolution() {};
 
-  PropertyNumberOfMoleculesEvolution(std::size_t numberOfCycles, std::size_t numberOfComponents, 
+  PropertyNumberOfMoleculesEvolution(std::size_t numberOfProductionCycles, std::size_t numberOfComponents, 
                                      std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfComponents(numberOfComponents),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        totalSamples(numberOfCycles / sampleEvery),
+        totalSamples(numberOfProductionCycles / sampleEvery),
         result(numberOfComponents, std::vector<std::size_t>(totalSamples))
   {
   }

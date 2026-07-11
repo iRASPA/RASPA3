@@ -44,7 +44,7 @@ import simulation_schedule;
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt) {};
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept
-    : numberOfCycles(reader.numberOfCycles),
+    : numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
@@ -55,13 +55,13 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noex
       systems(std::move(reader.systems)),
       random(reader.randomSeed),
       outputJsons(systems.size()),
-      estimation(reader.numberOfBlocks, reader.numberOfCycles)
+      estimation(reader.numberOfBlocks, reader.numberOfProductionCycles)
 {
 }
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(const SimulationSchedule& schedule, std::vector<System>& systems,
                                                        RandomNumber& randomSeed, std::size_t numberOfBlocks)
-    : numberOfCycles(schedule.numberOfCycles),
+    : numberOfProductionCycles(schedule.numberOfProductionCycles),
       numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
       numberOfInitializationCycles(schedule.numberOfInitializationCycles),
       numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
@@ -72,7 +72,7 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(const SimulationSchedule&
       systems(systems),
       random(randomSeed),
       outputJsons(systems.size()),
-      estimation(numberOfBlocks, schedule.numberOfCycles)
+      estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
 }
 
@@ -639,7 +639,7 @@ void MonteCarloTransitionMatrix::production()
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -674,7 +674,7 @@ void MonteCarloTransitionMatrix::production()
         system.loadings =
             LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
+        std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
         std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
         std::flush(stream);
 
@@ -808,11 +808,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 {
   archive << mc.versionNumber;
 
-  archive << mc.numberOfCycles;
-  archive << mc.numberOfSteps;
+  archive << mc.numberOfProductionCycles;
   archive << mc.numberOfPreInitializationCycles;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
+  archive << mc.numberOfSteps;
 
   archive << mc.printEvery;
   archive << mc.writeBinaryRestartEvery;
@@ -851,11 +851,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
                                          location.line(), location.file_name()));
   }
 
-  archive >> mc.numberOfCycles;
-  archive >> mc.numberOfSteps;
+  archive >> mc.numberOfProductionCycles;
   archive >> mc.numberOfPreInitializationCycles;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
+  archive >> mc.numberOfSteps;
 
   archive >> mc.printEvery;
   archive >> mc.writeBinaryRestartEvery;

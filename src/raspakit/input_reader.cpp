@@ -258,9 +258,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     randomSeed = parsed_data["RandomSeed"].get<unsigned long long>();
   }
 
-  if (parsed_data.contains("NumberOfCycles") && parsed_data["NumberOfCycles"].is_number_unsigned())
+  if (parsed_data.contains("NumberOfProductionCycles") && parsed_data["NumberOfProductionCycles"].is_number_unsigned())
   {
-    numberOfCycles = parsed_data["NumberOfCycles"].get<std::size_t>();
+    numberOfProductionCycles = parsed_data["NumberOfProductionCycles"].get<std::size_t>();
   }
 
   if (parsed_data.contains("NumberOfPreInitializationCycles") &&
@@ -1636,7 +1636,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyNumberOfMoleculesEvolution = 
-              PropertyNumberOfMoleculesEvolution(numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
+              PropertyNumberOfMoleculesEvolution(numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
                                       systems[systemId].components.size(), sample_number_of_molecules_every, write_number_of_molecules_evolution_every);
         }
       }
@@ -1661,7 +1661,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyVolumeEvolution = 
-              PropertyVolumeEvolution(numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
+              PropertyVolumeEvolution(numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
                                       sample_volume_evolution_every, write_volume_evolution_every);
         }
       }
@@ -2119,7 +2119,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "NumberOfLambdaBins",
     "RestartFromBinaryFile",
     "RandomSeed",
-    "NumberOfCycles",
+    "NumberOfProductionCycles",
     "NumberOfPreInitializationCycles",
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",

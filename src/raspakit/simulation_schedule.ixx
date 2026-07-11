@@ -13,7 +13,7 @@ import std;
  */
 export struct SimulationSchedule
 {
-  std::size_t numberOfCycles{0};                   ///< Number of production cycles.
+  std::size_t numberOfProductionCycles{0};                   ///< Number of production cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.
   std::size_t numberOfInitializationCycles{0};     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles{0};      ///< Number of equilibration cycles.

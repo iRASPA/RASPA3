@@ -11,7 +11,7 @@ class PropertyConservedEnergyEvolution():
 
     def __init__(
         self,
-        number_of_cycles: int,
+        number_of_production_cycles: int,
         sample_every: int,
         write_every: int | None = None
     ) -> None:
@@ -20,7 +20,7 @@ class PropertyConservedEnergyEvolution():
         Initialize a :class:`PropertyConservedEnergyEvolution`.
 
         Args:
-            number_of_cycles: Number of simulation cycles to monitor.
+            number_of_production_cycles: Number of simulation cycles to monitor.
             sample_every: Sampling interval in cycles.
             write_every: Optional output-write interval in cycles.
         """

@@ -280,7 +280,7 @@ System makeZeolitePropaneButaneReactionSystem(const MCMoveProbabilities& systemP
 
 void runReactionDriftTest(std::vector<System> systems)
 {
-  const size_t numberOfCycles{kReactionDriftCycles};
+  const size_t numberOfProductionCycles{kReactionDriftCycles};
   const size_t numberOfInitializationCycles{kReactionDriftInitializationCycles};
   const size_t numberOfEquilibrationCycles{kReactionDriftEquilibrationCycles};
   const size_t printEvery{1000};
@@ -290,8 +290,8 @@ void runReactionDriftTest(std::vector<System> systems)
   const size_t numberOfBlocks{5};
   const bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -304,7 +304,7 @@ void runReactionDriftTest(std::vector<System> systems)
 
 void runReactionBoundaryDriftTest(std::vector<System> systems)
 {
-  const size_t numberOfCycles{kReactionDriftCycles};
+  const size_t numberOfProductionCycles{kReactionDriftCycles};
   const size_t numberOfInitializationCycles{kReactionDriftInitializationCycles};
   const size_t numberOfEquilibrationCycles{kReactionDriftEquilibrationCycles};
   const size_t printEvery{1000};
@@ -314,8 +314,8 @@ void runReactionBoundaryDriftTest(std::vector<System> systems)
   const size_t numberOfBlocks{5};
   const bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -472,7 +472,7 @@ void setupSerialBoundaryCrossingReaction(System& system, bool fromAboveSwitchPoi
 
 void runSerialReactionBoundaryDriftTest(std::vector<System> systems)
 {
-  const size_t numberOfCycles{kReactionDriftCycles};
+  const size_t numberOfProductionCycles{kReactionDriftCycles};
   const size_t numberOfInitializationCycles{kReactionDriftInitializationCycles};
   const size_t numberOfEquilibrationCycles{kReactionDriftEquilibrationCycles};
   const size_t printEvery{1000};
@@ -482,8 +482,8 @@ void runSerialReactionBoundaryDriftTest(std::vector<System> systems)
   const size_t numberOfBlocks{5};
   const bool outputToFiles{false};
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, {},
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
                              numberOfBlocks, outputToFiles);
 
   mc.run();

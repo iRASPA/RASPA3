@@ -641,7 +641,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<PropertyNumberOfMoleculesEvolution>(m, "PropertyNumberOfMoleculesEvolution")
       .def(pybind11::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
-            pybind11::arg("number_of_cycles"), 
+            pybind11::arg("number_of_production_cycles"), 
             pybind11::arg("number_of_components"),
             pybind11::arg("sample_every"), 
             pybind11::arg("write_every") = std::nullopt)
@@ -649,7 +649,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
     .def(pybind11::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            pybind11::arg("number_of_cycles"), 
+            pybind11::arg("number_of_production_cycles"), 
             pybind11::arg("sample_every"), 
             pybind11::arg("write_every") = std::nullopt)
       .def_readonly("result", &PropertyVolumeEvolution::result);
@@ -729,19 +729,19 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<MonteCarlo>(m, "MonteCarlo")
       .def(pybind11::init(
-               [](std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+               [](std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
                   std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
                   std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
                   std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
                   std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
                {
                  return std::make_unique<MonteCarlo>(
-                     SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                     SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
                                         number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
                                         write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
                      systems, random_seed, number_of_blocks, output_to_files);
                }),
-         pybind11::arg("number_of_cycles"),
+         pybind11::arg("number_of_production_cycles"),
          pybind11::arg("number_of_pre_initialization_cycles") = 0,
          pybind11::arg("number_of_initialization_cycles") = 0,
          pybind11::arg("number_of_equilibration_cycles") = 0, 
@@ -768,19 +768,19 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<MolecularDynamics>(m, "MolecularDynamics")
     .def(pybind11::init(
-             [](std::size_t number_of_cycles, std::size_t number_of_pre_initialization_cycles,
+             [](std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
                 std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
                 std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
                 std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
                 std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
              {
                return std::make_unique<MolecularDynamics>(
-                   SimulationSchedule{number_of_cycles, number_of_pre_initialization_cycles,
+                   SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
                                       number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
                                       write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
                    systems, random_seed, number_of_blocks, output_to_files);
              }),
-         pybind11::arg("number_of_cycles"), 
+         pybind11::arg("number_of_production_cycles"), 
          pybind11::arg("number_of_pre_initialization_cycles") = 0,
          pybind11::arg("number_of_initialization_cycles") = 0,
          pybind11::arg("number_of_equilibration_cycles") = 0, 
@@ -820,7 +820,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(pybind11::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            pybind11::arg("number_of_cycles"), 
+            pybind11::arg("number_of_production_cycles"), 
             pybind11::arg("sample_every"), 
             pybind11::arg("write_every") = std::nullopt)
        // convert result to units of Kelvin

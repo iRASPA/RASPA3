@@ -20,10 +20,10 @@ export struct PropertyConservedEnergyEvolution
   }
 
 
-  PropertyConservedEnergyEvolution(std::size_t numberOfCycles, std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
+  PropertyConservedEnergyEvolution(std::size_t numberOfProductionCycles, std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        totalSamples(numberOfCycles / sampleEvery),
+        totalSamples(numberOfProductionCycles / sampleEvery),
         data(totalSamples)
   {
   }

@@ -170,11 +170,11 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, combined_moves_short_drift)
   system.runningEnergies = system.computeTotalEnergies();
   ASSERT_TRUE(std::isfinite(system.runningEnergies.potentialEnergy()));
 
-  const size_t numberOfCycles = 20;
+  const size_t numberOfProductionCycles = 20;
   const size_t numberOfInitializationCycles = 5;
   const size_t numberOfEquilibrationCycles = 5;
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, 100, 10000,
-                             5000, 5000, {std::move(system)}, {}, 5, false);
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, 100, 10000,
+                              5000, 5000}, {std::move(system)}, {}, 5, false);
   mc.run();
 
   for (System& s : mc.systems)

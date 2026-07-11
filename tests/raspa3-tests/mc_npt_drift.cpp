@@ -40,7 +40,7 @@ TEST(MC_NPT_DRIFT, anisotropic_volume_change)
   system.pressureTensorDiagonal = double3(1e4, 1.2e4, 0.8e4) / Units::PressureConversionFactor;
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -85,7 +85,7 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change)
                          systemProbabilities);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -134,7 +134,7 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change_flexible)
   System system = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {ethane}, {}, {20}, 5, systemProbabilities);
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -185,7 +185,7 @@ TEST(MC_NPT_DRIFT, anisotropic_volume_change_flexible)
   system.pressureTensorDiagonal = double3(1e4, 1.2e4, 0.8e4) / Units::PressureConversionFactor;
 
   std::vector<System> systems{system};
-  MonteCarlo mc = MonteCarlo(20, 5, 5, 1000, 10000, 5000, 5000, systems, 42uz, 5, false);
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
