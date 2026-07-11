@@ -784,9 +784,10 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("number_of_samples", &MeanSquaredDisplacementData::numberOfSamples);
 
   nanobind::class_<PropertyMeanSquaredDisplacement>(m, "PropertyMeanSquaredDisplacement")
-       .def(nanobind::init<std::size_t, std::optional<std::size_t>>(),
+       .def(nanobind::init<std::size_t, std::optional<std::size_t>, std::size_t>(),
             nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
+            nanobind::arg("write_every") = nanobind::none(),
+            nanobind::arg("number_of_block_elements_msd") = 25)
        .def("result", &PropertyMeanSquaredDisplacement::result);
 
   nanobind::class_<VelocityAutoCorrelationFunctionData>(m, "VelocityAutoCorrelationFunctionData")

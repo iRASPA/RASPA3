@@ -953,7 +953,7 @@ void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>
            numberOfMoleculesPerComponent,
            moleculeData.size(),
            timeStep,
-           25uz,
+           msd->numberOfBlockElementsMSD,
            msd->sampleEvery,
            msd->writeEvery
         );

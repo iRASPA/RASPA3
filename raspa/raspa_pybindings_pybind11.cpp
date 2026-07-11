@@ -613,9 +613,10 @@ EXPAND_MODULE(MODULE_NAME)
       .def_readonly("number_of_samples", &MeanSquaredDisplacementData::numberOfSamples);
 
   pybind11::class_<PropertyMeanSquaredDisplacement>(m, "PropertyMeanSquaredDisplacement")
-       .def(pybind11::init<std::size_t, std::optional<std::size_t>>(),
+       .def(pybind11::init<std::size_t, std::optional<std::size_t>, std::size_t>(),
             pybind11::arg("sample_every"), 
-            pybind11::arg("write_every") = std::nullopt)
+            pybind11::arg("write_every") = std::nullopt,
+            pybind11::arg("number_of_block_elements_msd") = 25)
        .def("result", &PropertyMeanSquaredDisplacement::result);
 
   pybind11::class_<VelocityAutoCorrelationFunctionData>(m, "VelocityAutoCorrelationFunctionData")

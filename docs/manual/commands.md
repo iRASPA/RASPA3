@@ -535,7 +535,12 @@ function. Output is written to the directory `conventional_rdf`.
 
 Whether to compute the mean-squared displacement (MSD) using the order-N
 algorithm, from which self-diffusion coefficients can be obtained. Output is
-written to the directory `msd`.
+written to the directory `msd`. Besides the self-MSD per component, the
+collective (Onsager) MSDs are written per component pair, normalized by the
+total number of molecules \(N\) so that
+\(\text{MSD}_{ij} = \langle \Delta \mathbf{R}_i \cdot \Delta \mathbf{R}_j \rangle / N\)
+is symmetric in the components. Computing the MSD requires a fixed number of
+molecules; do not combine it with insertion/deletion moves.
 
 -   `"SampleMSDEvery" : integer`\
     Sample the MSD every `int` cycles. Default: `10`.
@@ -545,6 +550,34 @@ written to the directory `msd`.
 
 -   `"NumberOfBlockElementsMSD" : integer`\
     The number of elements per block in the order-N scheme. Default: `25`.
+
+#### Velocity Auto-Correlation Function (VACF) <a name="velocity-auto-correlation-function-vacf"></a>
+
+`"ComputeVACF" : boolean`
+
+Whether to compute the velocity auto-correlation function (VACF) using
+multiple staggered buffers, from which self-diffusion coefficients can be
+obtained via the Green-Kubo relation. Output is written to the directory
+`vacf`. Besides the self-VACF per component, the collective (Onsager) VACFs
+are written per component pair, normalized by the total number of molecules
+\(N\) so that
+\(\text{VACF}_{ij} = \langle \mathbf{V}_i(t) \cdot \mathbf{V}_j(0) \rangle / N\)
+is symmetric in the components. Computing the VACF requires a fixed number of
+molecules; do not combine it with insertion/deletion moves.
+
+-   `"SampleVACFEvery" : integer`\
+    Sample the VACF every `int` cycles. Default: `10`.
+
+-   `"WriteVACFEvery" : integer`\
+    Write the VACF every `int` cycles. Default: `5000`.
+
+-   `"NumberOfBuffersVACF" : integer`\
+    The number of staggered buffers (time origins in use at any moment).
+    Default: `20`.
+
+-   `"BufferLengthVACF" : integer`\
+    The length of each buffer, i.e. the number of correlation times.
+    Default: `1000`.
 
 #### Density grids <a name="density-grids"></a>
 

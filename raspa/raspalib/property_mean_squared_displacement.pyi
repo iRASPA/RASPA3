@@ -10,7 +10,8 @@ class PropertyMeanSquaredDisplacement:
 
     def __init__(self,
                  sample_every: int,
-                 write_every: int | None) -> None:
+                 write_every: int | None,
+                 number_of_block_elements_msd: int = 25) -> None:
         ...
         """
         Initialize a :class:`PropertyMeanSquaredDisplacement`.
@@ -18,6 +19,7 @@ class PropertyMeanSquaredDisplacement:
         Args:
             sample_every: Sampling interval in cycles.
             write_every: Optional output-write interval in cycles.
+            number_of_block_elements_msd: Number of elements per block of the order-N algorithm.
         """
 
     @property

@@ -21,7 +21,9 @@ export struct PropertyMeanSquaredDisplacement
 {
   PropertyMeanSquaredDisplacement() {};
 
-  PropertyMeanSquaredDisplacement(std::size_t sampleEvery, std::optional<std::size_t> writeEvery):
+  PropertyMeanSquaredDisplacement(std::size_t sampleEvery, std::optional<std::size_t> writeEvery,
+                                  std::size_t numberOfBlockElementsMSD = 25):
+        numberOfBlockElementsMSD(numberOfBlockElementsMSD),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery)
   {
@@ -62,17 +64,16 @@ export struct PropertyMeanSquaredDisplacement
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
-  std::size_t numberOfBlocks;
   std::vector<std::size_t> numberOfMoleculesPerComponent;
-  std::size_t numberOfComponents;
-  std::size_t numberOfParticles;
-  double timeStep;
-  std::size_t numberOfBlockElementsMSD;
-  std::size_t sampleEvery;
+  std::size_t numberOfComponents{0uz};
+  std::size_t numberOfParticles{0uz};
+  double timeStep{0.0};
+  std::size_t numberOfBlockElementsMSD{25uz};
+  std::size_t sampleEvery{1uz};
   std::optional<std::size_t> writeEvery;
-  std::size_t maxNumberOfBlocksMSD;
+  std::size_t maxNumberOfBlocksMSD{1uz};
   std::size_t countMSD{0uz};
   std::size_t numberOfBlocksMSD{0uz};
   std::vector<std::size_t> blockLengthMSD;

@@ -60,7 +60,7 @@ export struct PropertyVelocityAutoCorrelationFunction
                     numberOfComponents, std::vector<double4>(bufferLengthVACF, double4(0.0, 0.0, 0.0, 0.0))))),
         accumulatedAcfVACF(numberOfComponents, std::vector<double4>(bufferLengthVACF, double4(0.0, 0.0, 0.0, 0.0))),
         accumulatedAcfOnsagerVACF(
-            numberOfBuffersVACF,
+            numberOfComponents,
             std::vector<std::vector<double4>>(numberOfComponents,
                                               std::vector<double4>(bufferLengthVACF, double4(0.0, 0.0, 0.0, 0.0)))),
         countVACF(numberOfBuffersVACF),
@@ -77,14 +77,14 @@ export struct PropertyVelocityAutoCorrelationFunction
   std::uint64_t versionNumber{1};
 
   std::vector<std::size_t> numberOfMoleculesPerComponent;
-  std::size_t numberOfComponents;
-  std::size_t numberOfParticles;
-  double timeStep;
+  std::size_t numberOfComponents{0uz};
+  std::size_t numberOfParticles{0uz};
+  double timeStep{0.0};
 
-  std::size_t numberOfBuffersVACF;
-  std::size_t bufferLengthVACF;
+  std::size_t numberOfBuffersVACF{20uz};
+  std::size_t bufferLengthVACF{1000uz};
 
-  std::size_t sampleEvery;
+  std::size_t sampleEvery{1uz};
   std::optional<std::size_t> writeEvery;
 
   std::vector<std::vector<double3>> originVACF;
@@ -96,7 +96,7 @@ export struct PropertyVelocityAutoCorrelationFunction
   std::vector<std::vector<std::vector<double4>>> accumulatedAcfOnsagerVACF;
 
   std::vector<std::int64_t> countVACF;
-  std::size_t countAccumulatedVACF;
+  std::size_t countAccumulatedVACF{0uz};
   std::vector<double3> sumVel;
 
   void addSample(std::size_t currentCycle, std::vector<Molecule> &molecules);

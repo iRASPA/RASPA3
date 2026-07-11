@@ -1736,6 +1736,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // parse the time step before it is captured by the MSD/VACF properties and the thermostat below
+      if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
+      {
+        systems[systemId].timeStep = value["TimeStep"].get<double>();
+      }
+
       if (value.contains("ComputeMSD") && value["ComputeMSD"].is_boolean())
       {
         if (value["ComputeMSD"].get<bool>())
@@ -1923,16 +1929,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
-      {
-        systems[systemId].timeStep = value["TimeStep"].get<double>();
-      }
       if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
       {
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
         if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
         {
-          systems[systemId].mc_moves_statistics.setMaxChange(Move::Types::HybridMC, value["Timestep"].get<double>());
+          systems[systemId].mc_moves_statistics.setMaxChange(Move::Types::HybridMC, value["TimeStep"].get<double>());
         }
       }
 
