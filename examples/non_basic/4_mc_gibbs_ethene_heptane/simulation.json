@@ -1,0 +1,53 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 25000,
+  "NumberOfInitializationCycles" : 25000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [40.0, 40.0, 40.0],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 27.58e5,
+      "ChargeMethod" : "None",
+      "VolumeMoveProbability" : 0.01
+    },
+    {
+      "Type" : "Box",
+      "BoxLengths" : [60.0, 60.0, 70.0],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 27.58e5,
+      "ChargeMethod" : "None",
+      "VolumeMoveProbability" : 0.01
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "ethene",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
+      "GibbsIdentityChangeProbability" : 1.0,
+      "GibbsIdentityChanges" : [1],
+      "CreateNumberOfMolecules" : [100, 100]
+    },
+    {
+      "Name" : "heptane",
+      "IdealGasRosenbluthWeight" : 1.590031e-03,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
+      "GibbsIdentityChangeProbability" : 1.0,
+      "GibbsIdentityChanges" : [0],
+      "CreateNumberOfMolecules" : [100, 100]
+    }
+  ]
+}

@@ -36,6 +36,6 @@ system = raspalib.System(
     frameworkComponents=[mfi],
 )
 
-mc = raspalib.MonteCarlo(numberOfCycles=10000, numberOfInitializationCycles=2000, systems=[system], outputToFiles=True)
+mc = raspalib.MonteCarlo(numberOfProductionCycles=10000, numberOfInitializationCycles=2000, systems=[system], outputToFiles=True)
 
 mc.run()

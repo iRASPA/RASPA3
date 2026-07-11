@@ -36,7 +36,7 @@ system = raspalib.System(
 )
 
 mc = raspalib.MonteCarlo(
-    numberOfCycles=100000,
+    numberOfProductionCycles=100000,
     numberOfInitializationCycles=50000,
     numberOfEquilibrationCycles=50000,
     printEvery=1000,

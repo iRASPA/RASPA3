@@ -50,7 +50,7 @@ system = raspalib.System(
 )
 
 mc = raspalib.MonteCarlo(
-    numberOfCycles=20000,
+    numberOfProductionCycles=20000,
     numberOfInitializationCycles=0,
     systems=[system],
     outputToFiles=True,

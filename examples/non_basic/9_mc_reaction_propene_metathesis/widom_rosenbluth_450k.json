@@ -1,0 +1,30 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 50000,
+  "NumberOfInitializationCycles" : 0,
+  "PrintEvery" : 50000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 450.0,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cis-2-butene",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "trans-2-butene",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

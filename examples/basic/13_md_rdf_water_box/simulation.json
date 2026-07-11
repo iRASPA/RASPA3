@@ -1,6 +1,6 @@
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 20000,
   "PrintEvery" : 5000,

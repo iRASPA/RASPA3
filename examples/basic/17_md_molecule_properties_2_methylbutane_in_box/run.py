@@ -23,7 +23,7 @@ system = raspalib.System(
 )
 
 md = raspalib.MolecularDynamics(
-    numberOfCycles=5000000,
+    numberOfProductionCycles=5000000,
     numberOfInitializationCycles=5000,
     numberOfEquilibrationCycles=10000,
     printEvery=10000,

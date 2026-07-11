@@ -1,6 +1,6 @@
 {
   "SimulationType" : "MonteCarloTransitionMatrix",
-  "NumberOfCycles" : 200000,
+  "NumberOfProductionCycles" : 200000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 5000,
 

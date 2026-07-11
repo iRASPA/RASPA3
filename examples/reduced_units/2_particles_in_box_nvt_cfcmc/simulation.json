@@ -1,6 +1,6 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 1000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 100000,
   "NumberOfEquilibrationCycles" : 200000,
   "PrintEvery" : 5000,

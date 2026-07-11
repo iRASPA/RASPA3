@@ -1,0 +1,55 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 12.0,
+  "CutOffCoulomb" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH3_sp3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 15.03452,
+      "charge" : 0.0
+    },
+    {
+      "name" : "CH2_sp2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.0
+    },
+    {
+      "name" : "CH_sp2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.0
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH3_sp3",
+      "type" : "lennard-jones",
+      "parameters" : [98.0, 3.75]
+    },
+    {
+      "name" : "CH2_sp2",
+      "type" : "lennard-jones",
+      "parameters" : [85.0, 3.675]
+    },
+    {
+      "name" : "CH_sp2",
+      "type" : "lennard-jones",
+      "parameters" : [47.0, 3.73]
+    }
+  ]
+}

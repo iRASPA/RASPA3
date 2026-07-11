@@ -1,0 +1,76 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 12.0,
+  "CutOffCoulomb" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "N_n2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.00674,
+      "charge" : -0.40505
+    },
+    {
+      "name" : "N_com",
+      "framework" : false,
+      "print_to_output" : false,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 0.0,
+      "charge" : 0.8101
+    },
+    {
+      "name" : "H_h2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" : 0.0
+    },
+    {
+      "name" : "N_NH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.0,
+      "charge" : -1.026
+    },
+    {
+      "name" : "H_NH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" : 0.342
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "N_n2",
+      "type" : "lennard-jones",
+      "parameters" : [36.4, 3.32],
+      "source" : "J. J. Potoff and J. I. Siepmann, AIChE J. 2001, 47, 1676"
+    },
+    {
+      "name" : "H_h2",
+      "type" : "lennard-jones",
+      "parameters" : [38.0, 2.915],
+      "source" : "C. H. Turner, J. K. Johnson, and K. E. Gubbins, J. Chem. Phys. 2001, 114, 1851"
+    },
+    {
+      "name" : "N_NH3",
+      "type" : "lennard-jones",
+      "parameters" : [105.75, 3.36],
+      "source" : "L. Zhang and J. I. Siepmann, Collect. Czech. Chem. Commun. 2010, 75, 577"
+    }
+  ]
+}

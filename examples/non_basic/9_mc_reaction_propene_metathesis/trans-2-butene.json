@@ -1,0 +1,30 @@
+{
+  "CriticalTemperature" : 428.63,
+  "CriticalPressure" : 4102000.0,
+  "AcentricFactor" : 0.218,
+  "Type" : "flexible",
+  "pseudoAtoms" :
+    [
+      ["CH3_sp3", [0.0, 0.0, 0.0]],
+      ["CH_sp2", [0.0, 0.0, 0.0]],
+      ["CH_sp2", [0.0, 0.0, 0.0]],
+      ["CH3_sp3", [0.0, 0.0, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3]
+  ],
+  "Bonds" : [
+    [[0, 1], "HARMONIC", [96500.0, 1.54]],
+    [[1, 2], "HARMONIC", [96500.0, 1.33]],
+    [[2, 3], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [[0, 1, 2], "HARMONIC", [70420.0, 119.7]],
+    [[1, 2, 3], "HARMONIC", [70420.0, 119.7]]
+  ],
+  "Torsions" : [
+    [[0, 1, 2, 3], "HARMONIC", [13400.0, 0.0]]
+  ]
+}

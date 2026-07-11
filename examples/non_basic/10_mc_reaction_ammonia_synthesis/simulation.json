@@ -1,0 +1,62 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 25000,
+  "NumberOfInitializationCycles" : 25000,
+  "NumberOfEquilibrationCycles" : 0,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [34.0, 34.0, 34.0],
+      "ExternalTemperature" : 573.0,
+      "ExternalPressure" : 2.0e7,
+      "CutOff" : 12.0,
+      "ChargeMethod" : "Ewald",
+      "ThermochemicalDatabase" : "JANAF",
+      "ReactionCBMCProbability" : 1.0,
+      "VolumeMoveProbability" : 0.1,
+      "ComputeNumberOfMoleculesHistogram" : true,
+      "WriteNumberOfMoleculesHistogramEvery" : 5000,
+      "Reactions" :
+      [
+        {
+          "Reactants" : [1, 3, 0],
+          "Products" : [0, 0, 2]
+        }
+      ]
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 7
+    },
+    {
+      "Name" : "H2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 21
+    },
+    {
+      "Name" : "NH3",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 146
+    }
+  ]
+}
