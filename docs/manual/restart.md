@@ -7,7 +7,7 @@ Restart-files are automatically written (and updated every 5000 cycles). Conside
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 25000,
+  "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
 
@@ -112,7 +112,7 @@ positions and energies.
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 25000,
+  "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 

@@ -30,7 +30,7 @@ The inputs for the simulation are specified in a json-file called `simulation.js
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -155,7 +155,7 @@ RASPA has a build-in structure of being able to simulate several systems at the 
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -355,7 +355,7 @@ At every MC-step, each move will be randomly selected with 1/3 probability.
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -404,7 +404,7 @@ A Monte Carlo run of 50 propane and 50 butane molecules in a \f$30\times30\times
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -723,7 +723,7 @@ A molecular dynamics run of a methane fluid at 300K and a density of 98.7 kg / m
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 1000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 1000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 10000,
@@ -905,7 +905,7 @@ plt.savefig('example_basic_5_msd.png')
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 5000,
+  "NumberOfProductionCycles" : 5000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1014,7 +1014,7 @@ Total energy/kʙ
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 1000,
 
@@ -1071,7 +1071,7 @@ Total energy/kʙ
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1201,7 +1201,7 @@ Component 0 [methane]
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1276,7 +1276,7 @@ Component 0 (butane)
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 50000,
   "NumberOfEquilibrationCycles" : 50000,
   "PrintEvery" : 5000,
@@ -1341,7 +1341,7 @@ Component 0 (CO2)
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 20000,
   "PrintEvery" : 5000,
 
@@ -1544,7 +1544,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 1000,
 
@@ -1586,7 +1586,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 20000,
   "PrintEvery" : 5000,
@@ -1626,7 +1626,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 100,
 
@@ -1666,7 +1666,7 @@ This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It compu
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 1000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 50000,
 
@@ -1702,7 +1702,7 @@ This example mirrors RASPA2 `examples/Basic/14_Molecule_Properties_MD`. It compu
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 5000000,
+  "NumberOfProductionCycles" : 5000000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 10000,

@@ -1,16 +1,23 @@
 # Simulation input options
 \page commands Commands
 
+`RASPA` is driven by a single JSON input file, `simulation.json`. This file
+selects the type of simulation, sets the global run length, and describes one
+or more *systems* and the *components* (molecules) that live in them. This page
+documents the available keywords. Keyword names are matched case-insensitively.
+
 ## Table of Contents
 
 <!-- TOC -->
 * [Input sections](#input-sections)
+* [RASPA stages](#raspa-stages)
 * [General options](#general-options)
   * [Simulation types](#simulation-types)
   * [Simulation duration](#simulation-duration)
   * [Restart and crash-recovery](#restart-and-crash-recovery)
   * [Printing options](#printing-options)
   * [Parameter tuning](#parameter-tuning)
+  * [Threading and reproducibility](#threading-and-reproducibility)
   * [Systems & Components](#systems-components)
 * [System options](#system-options)
   * [Operating conditions and thermostat/barostat-parameters](#operating-conditions-and-thermostatbarostat-parameters)
@@ -37,15 +44,19 @@
 
 ## Input sections <a name="input-sections"></a>
 
+A minimal input file has three parts: a set of top-level (general) options, a
+`"Systems"` list, and a `"Components"` list. The example below runs a molecular
+dynamics simulation of CO<sub>2</sub> in the framework Cu-BTC.
+
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 1000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 1000,
 
-  "Systems" : [      
+  "Systems" : [
     {
       "Type" : "Framework",
       "Name" : "Cu-BTC",
@@ -58,7 +69,7 @@
     }
   ],
 
-  "Components" : [  
+  "Components" : [
     {
       "Name" : "CO2",
       "FugacityCoefficient" : 1.0,
@@ -69,9 +80,65 @@
       "WidomProbability" : 0.0,
       "CreateNumberOfMolecules" : 20
     }
-  ]    
+  ]
 }
 ```
+
+Unknown keywords are rejected: if a general, system, component, or reaction key
+is not recognized, `RASPA` stops with an error naming the offending key. This
+helps catch typos early.
+
+----------------------------------------------------------------------------------
+
+## RASPA stages <a name="raspa-stages"></a>
+
+A Monte Carlo simulation in `RASPA` is executed as a sequence of four
+consecutive stages. Each stage runs a number of cycles (set through the
+corresponding `NumberOf...Cycles` command) and writes its own status report to
+the output file. The stages always run in the order below, and a stage is simply
+skipped when its number of cycles is `0`.
+
+1.  **Pre-initialization**
+    (`"NumberOfPreInitializationCycles"`)\
+    An optional relaxation stage that runs *before* the regular initialization.
+    It uses a restricted set of moves only: translation, rotation, reinsertion,
+    and partial-reinsertion. Because none of these moves changes the number of
+    molecules, this stage keeps the composition of the system fixed while
+    relaxing the initial configuration. It is mainly used to remove close
+    contacts and overlaps that can appear right after molecules are created or
+    read from a restart file, so that the subsequent stages start from a
+    reasonable configuration. Statistics gathered here are not used for the
+    final averages.
+
+2.  **Initialization**
+    (`"NumberOfInitializationCycles"`)\
+    The first stage in which the full set of configured Monte Carlo moves is
+    used, including moves that insert and delete molecules (e.g. swap moves in
+    the grand-canonical ensemble). This stage brings the system towards its
+    equilibrium state, for example towards the equilibrium loading in an
+    adsorption simulation. Statistics gathered here are not used for the final
+    averages.
+
+3.  **Equilibration**
+    (`"NumberOfEquilibrationCycles"`)\
+    Continues to equilibrate the system with the full set of moves. For
+    Continuous Fractional Component Monte Carlo (`CFCMC`) this stage is also used
+    to measure the λ biasing factors using Wang-Landau estimation, so that the
+    fractional molecule samples all λ values uniformly during production.
+    Statistics gathered here are not used for the final averages.
+
+4.  **Production**
+    (`"NumberOfProductionCycles"`)\
+    The main stage during which the thermodynamic properties of interest
+    (loadings, energies, pressures, enthalpies of adsorption, radial distribution
+    functions, etc.) are sampled and averaged. Block averages are computed over
+    this stage to provide error estimates. Any biasing factors determined during
+    equilibration are kept fixed.
+
+In all cases a Monte Carlo *cycle* consists of $N$ steps, where $N$ is the
+number of molecules (with a minimum of 20). During each cycle, on average, one
+Monte Carlo move is attempted per molecule. The CPU time spent in each stage is
+reported separately at the end of the simulation.
 
 ----------------------------------------------------------------------------------
 
@@ -79,406 +146,459 @@
 
 ### Simulation types <a name="simulation-types"></a>
 
--   `"SimulationType" : "MonteCarlo"`
-    Starts the Monte Carlo part of `RASPA`. The particular ensemble is
-    not specified but implicitly deduced from the specified Monte Carlo
-    moves. Note that a `MD`-move can be used for hybrid `MC`/`MD`.
+-   `"SimulationType" : "MonteCarlo"`\
+    Runs the Monte Carlo engine. The ensemble is not stated explicitly but is
+    deduced from the Monte Carlo moves that are switched on. A hybrid MC/MD
+    scheme can be obtained by enabling the hybrid `MD`-move.
 
--   `"SimulationType" : "MolecularDynamics"`
-    Starts the Molecular Dynamics part of `RASPA`. The ensemble must be
-    explicitly specified.
+-   `"SimulationType" : "MolecularDynamics"`\
+    Runs the Molecular Dynamics engine. The ensemble must be specified
+    explicitly through the `"Ensemble"` key.
+
+-   `"SimulationType" : "MonteCarloTransitionMatrix"`\
+    Runs Monte Carlo with transition-matrix (TMMC) biasing enabled for every
+    system. See the macro-state keywords in the system options.
+
+-   `"SimulationType" : "ParallelTempering"`\
+    Runs a parallel-tempering (replica-exchange) simulation, which swaps
+    configurations between two systems held at different conditions.
+
+-   `"SimulationType" : "Minimization"`\
+    Performs an energy minimization of the initial configuration.
 
 ### Simulation duration <a name="simulation-duration"></a>
 
--   `"NumberOfCycles" : integer`
-    The number of cycles for the production run. For Monte Carlo a cycle
-    consists of $N$ steps, where $N$ is the amount of molecules with a
-    minimum of 20 steps. This means that on average during each cycle on
-    each molecule a Monte Carlo move has been attempted (either
-    successful or unsuccessful). For MD the number of cycles is simply
-    the amount of integration steps.
+-   `"NumberOfProductionCycles" : integer`\
+    The number of cycles in the production run. For Monte Carlo a cycle consists
+    of $N$ steps, where $N$ is the number of molecules with a minimum of 20. On
+    average, one Monte Carlo move is therefore attempted per molecule per cycle
+    (whether accepted or rejected). For Molecular Dynamics the number of cycles
+    is simply the number of integration steps.
 
--   `"NumberOfInitializationCycles": integer`
-    The number of cycles used to initialize the system using Monte
-    Carlo. This can be used for both Monte Carlo as well as Molecular
-    Dynamics to quickly minimize the positions of the atoms in the
-    system.
+-   `"NumberOfInitializationCycles" : integer`\
+    The number of Monte Carlo cycles used to bring the system towards
+    equilibrium. This applies to both Monte Carlo and Molecular Dynamics runs and
+    is useful to relax the initial atomic positions before production.
 
--   `"NumberOfEquilibrationCycles" : integer`
-    For Molecular Dynamics it is the number of MD steps to equilibrate
-    the velocities in the systems. After this equilibration the
-    production run is started. For Monte Carlo, in particular `CFCMC`,
-    the equilibration-phase is used to measure the biasing factors, using
+-   `"NumberOfEquilibrationCycles" : integer`\
+    For Molecular Dynamics, the number of steps used to equilibrate the system
+    velocities before production starts. For Monte Carlo, and in particular
+    `CFCMC`, the equilibration phase is used to measure the biasing factors using
     Wang-Landau estimation.
+
+-   `"NumberOfPreInitializationCycles" : integer`\
+    The number of cycles for the optional pre-initialization stage described in
+    [RASPA stages](#raspa-stages), which relaxes the configuration using only
+    moves that keep the number of molecules fixed. Default: `0` (stage skipped).
 
 ### Restart and crash-recovery <a name="restart-and-crash-recovery"></a>
 
--   `"RestartFile" : boolean`
-    Reads the positions, velocities, and force from the directory
-    'RestartInitial'. Any creation of molecules in the
-    'simulation.input' file will be in addition and after this first
-    read from file. This is useful to load initial positions of cations
-    for example, and after that create adsorbates. The restart file is
-    written at 'PrintEvery' intervals.
+-   `"RestartFromBinaryFile" : boolean`\
+    When `true`, `RASPA` resumes from a binary restart file that contains the
+    complete state of the program, continuing from the point at which that file
+    was written. The file can be large (up to several hundred megabytes) and is
+    written every `"WriteBinaryRestartEvery"` cycles during a run. Default:
+    `false`.
 
--   `"ContinueAfterCrash" : boolean`
-    Write a binary file containing the complete status of the program.
-    The file name is 'restart_data.bin'. With this option to `true` the 
-    presence of this file will result in continuation from the point where
-    the program was at the moment of outputting this file. The file can be
-    quite big (several hundreds of megabytes) and will be outputted
-    every 'WriteBinaryRestartEvery' cycles.
+-   `"BinaryRestartFileName" : string`\
+    The name of the binary restart file used by `"RestartFromBinaryFile"`.
+    Default: `restart_data.bin`.
 
--   `"WriteBinaryRestartEvery" : integer`
-    The output frequency (i.e. every `int` cycles) of writing the
-    crash-recovery file.
+-   `"WriteBinaryRestartEvery" : integer`\
+    How often (in cycles) the binary crash-recovery file is written. Default:
+    `5000`.
 
-### Printing options  <a name="printing-options"></a>
+-   `"RestartFileName" : string` *(per system)*\
+    Reads the atomic positions of each component, and the simulation box, from a
+    JSON restart file for that system. Any molecules requested with
+    `"CreateNumberOfMolecules"` are created *in addition* to, and after, the
+    positions read from this file. This is convenient for loading a fixed set of
+    positions (for example cations) and then creating adsorbates on top of them.
 
--   `"PrintEvery" : integer`
-    Prints the loadings (when a framework is present) and energies every
-    `int` cycles. For MD information like energy conservation and
-    stress are printed.
+### Printing options <a name="printing-options"></a>
 
-### Parameter tuning  <a name="parameter-tuning"></a>
+-   `"PrintEvery" : integer`\
+    Prints the loadings (when a framework is present) and energies every `int`
+    cycles. For Molecular Dynamics, quantities such as energy conservation and
+    the stress are also reported. Default: `5000`.
 
--   `"RescaleWangLandauEvery" : integer`
-    Determines the frequency of updates for optimizing the λ parameter in
-    for example Continuous Fractional Component Monte Carlo during the
-    equilibration phase of the simulation.
+### Parameter tuning <a name="parameter-tuning"></a>
 
--   `"OptimizeMCMovesEvery" : integer`
-    Determines the frequency of updating the maximum change in the Monte
-    Carlo moves towards an optimal acceptance ratio (default: 0.5). For
-    Translation, the maximum displacement is optimized, for rotation the
-    maximum angle, for hybrid MC the maximum timestep etc.
+-   `"RescaleWangLandauEvery" : integer`\
+    How often (in cycles) the λ biasing factor is rescaled during the
+    equilibration phase, for example in Continuous Fractional Component Monte
+    Carlo. Default: `5000`.
+
+-   `"OptimizeMCMovesEvery" : integer`\
+    How often (in cycles) the maximum change of each Monte Carlo move is adjusted
+    towards an optimal acceptance ratio (target: 0.5). The translation move tunes
+    its maximum displacement, the rotation move its maximum angle, the hybrid MC
+    move its time step, and so on. Default: `5000`.
+
+### Threading and reproducibility <a name="threading-and-reproducibility"></a>
+
+-   `"NumberOfThreads" : integer`\
+    The number of worker threads. A value greater than 1 selects the thread-pool
+    backend; otherwise the simulation runs serially. Default: `1`.
+
+-   `"ThreadingType" : string`\
+    Selects the threading backend explicitly. One of `"Serial"`, `"ThreadPool"`,
+    `"OpenMP"`, or `"GPU-Offload"`.
+
+-   `"RandomSeed" : integer`\
+    Seeds the random-number generator for reproducible runs. When omitted a
+    non-deterministic seed is used.
+
+-   `"Units" : string`\
+    Set to `"Reduced"` to run in reduced (dimensionless) Lennard-Jones units
+    instead of the default physical units.
 
 ### Systems & Components <a name="systems-components"></a>
 
--   `"Systems" : list`
-    List of system settings, each containing a dictionary with possible
-    key-value pairs described below. Multiple systems can be owned by one
-    process and Monte Carlo moves starting with Gibbs and parallel tempering
-    act on two systems.
+-   `"Systems" : list`\
+    A list of system definitions, each a dictionary of the key-value pairs
+    described in [System options](#system-options). A single process can own
+    multiple systems; Gibbs-ensemble and parallel-tempering moves act on a pair
+    of systems.
 
--   `"Components" : list`
-    List of component settings, each containing a dictionary with possible
-    key-value pairs described below.
+-   `"Components" : list`\
+    A list of component (molecule) definitions, each a dictionary of the
+    key-value pairs described in [Component options](#component-options).
 
 ----------------------------------------------------------------------------------
 
 ## System options <a name="system-options"></a>
 
-### Operating conditions and thermostat/barostat-parameters  <a name="operating-conditions-and-thermostatbarostat-parameters"></a>
+### Operating conditions and thermostat/barostat-parameters <a name="operating-conditions-and-thermostatbarostat-parameters"></a>
 
--   `"ExternalTemperature" : floating-point-number`
-    The external temperature in Kelvin for the system. From this, the system
-    beta is calculated, which is central in all statistics. Default: `298`
+-   `"ExternalTemperature" : floating-point-number`\
+    The external temperature of the system in Kelvin. The inverse temperature
+    β is derived from it and enters all Boltzmann statistics. This key is
+    required for every system. Default: `300`.
 
--   `"ExternalPressure" : floating-point-number`
-    The external pressure in Pascal for the system. Default: `0`
+-   `"ExternalPressure" : floating-point-number`\
+    The external pressure of the system in Pascal.
 
--   `"ThermostatChainLength" : integer`
-    The length of the chain to thermostat the system. Default: `5`
+-   `"ExternalPressureX" / "ExternalPressureY" / "ExternalPressureZ" : floating-point-number`\
+    Override individual diagonal components of the pressure tensor, for
+    anisotropic (directional) pressure control. Each defaults to
+    `"ExternalPressure"` when not given.
 
--   `"NumberOfYoshidaSuzukiSteps" : integer`
-    The number of Yoshida/Suzuki multiple timesteps. Default: `5`
+-   `"ChemicalPotential" : floating-point-number`\
+    Sets the imposed chemical potential (in internal units); the corresponding
+    fugacity is derived from it and the temperature.
 
--   `"TimeScaleParameterThermostat" : floating-point-number`
-    The time scale on which the system thermostat evolves. Default:
-    `0.15`
+-   `"ThermostatChainLength" : integer`\
+    The length of the Nosé-Hoover chain used to thermostat the system. Default:
+    `5`.
 
-### Box/Framework options  <a name="boxframework-options"></a>
+-   `"NumberOfYoshidaSuzukiSteps" : integer`\
+    The number of Yoshida/Suzuki multiple-timestep integration steps. Default:
+    `5`.
 
--   `"Type" : string`
-    Sets the system type. The type string can be:
+-   `"TimeScaleParameterThermostat" : floating-point-number`\
+    The time scale on which the thermostat evolves. Default: `0.15`.
+
+### Box/Framework options <a name="boxframework-options"></a>
+
+-   `"Type" : string`\
+    Sets the system type:
 
     -   `"Box"`
-        Sets the system to a simulation cell where the lengths and
-        angles of the cell can be explicitely be specified.
+        A simulation cell whose lengths and angles are specified directly.
 
     -   `"Framework"`
-        Set the system to type 'Framework'. The cell lengths and cell
-        angles follows from the specified framework file.
+        A framework read from a `CIF`-file; the cell lengths and angles follow
+        from that file.
 
--   `"BoxLengths" : [floating-point-number, floating-point-number, floating-point-number]`
-    The cell dimensions of rectangular box of system in Angstroms.
+-   `"BoxLengths" : [floating-point-number, floating-point-number, floating-point-number]`\
+    The cell edge lengths of a `"Box"` system, in Ångström. Default:
+    `[25, 25, 25]`.
 
--   `"BoxAngles" : [floating-point-number, floating-point-number, floating-point-number]`
-    The cell angles of rectangular box of system in Degrees.
+-   `"BoxAngles" : [floating-point-number, floating-point-number, floating-point-number]`\
+    The cell angles of a `"Box"` system, in degrees. Default: `[90, 90, 90]`.
 
--   `"Name" : string`
-    For `"Type" : "Framework"`, loads the framework with filename
-    `string.cif`.
+-   `"Name" : string`\
+    For `"Type" : "Framework"`, loads the framework from the file `string.cif`.
 
--   `"NumberOfUnitCells" : [integer, integer, integer]`
-    The number of unit cells in `x`, `y`, and `z` direction for the
-    system. The super-cell will contain the unit cells, and periodic
-    boundary conditions will be applied on the super-cell level (*not*
-    on a unit cell level).
+-   `"NumberOfUnitCells" : [integer, integer, integer]`\
+    The number of unit cells in the `x`, `y`, and `z` directions. The super-cell
+    contains these unit cells, and periodic boundary conditions are applied at
+    the super-cell level (*not* at the unit-cell level). Default: `[1, 1, 1]`.
 
--   `"HeliumVoidFraction" : floating-point-number`
-    Sets the void fraction as measured by probing the structure with
-    helium a room temperature. This quantity has to be obtained from a
-    separate simulation and is essential to compute the
-    *excess*-adsorption during the simulation.
+-   `"HeliumVoidFraction" : floating-point-number`\
+    The void fraction obtained by probing the structure with helium at room
+    temperature. This value comes from a separate simulation and is required to
+    compute the *excess* adsorption.
 
--   `"UseChargesFrom" : string`
-    Specifies the way to define the framework charges. The string can
-    be:
+-   `"UseChargesFrom" : string`\
+    Selects where framework charges are taken from:
 
     -   `"PseudoAtoms"`
-        Takes the charges from the force-field definition file.
+        Uses the charges from the force-field definition file.
 
     -   `"CIF_File"`
-        Takes the charges from the definitions in the `CIF`-file. The
-        charges for the atoms list in the file needs to be given using
-        the `_atom_site_charge` tag. Using this option allows for
-        individual charges for each framework atom, even when having the
-        same atom-type.
+        Uses the charges listed in the `CIF`-file via the `_atom_site_charge`
+        tag. This allows an individual charge per framework atom, even for atoms
+        of the same type.
 
     -   `"ChargeEquilibration"`
-        Computes the framework charges uses the charge equilibration
-        scheme of Wilmer and Snurr. The charges are symmetrized over the
-        asymmetric atoms.
+        Computes the framework charges with the charge-equilibration scheme of
+        Wilmer and Snurr. The charges are symmetrized over symmetry-equivalent
+        atoms.
 
-### Force field definition  <a name="force-field-definition"></a>
+### Force field definition <a name="force-field-definition"></a>
 
--   `"ForceField" : string`
-    Reads in the force field file `string.json`, Note that if this file
-    is in the working directory then this will be read and used instead
-    of:
+-   `"ForceField" : string`\
+    Reads the force field from `string/force_field.json`. If a local
+    `force_field.json` is present in the working directory it is used instead;
+    otherwise the file is looked up under:
 
         ${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
 
+### System `MC`-moves <a name="system-mc-moves"></a>
 
-### System `MC`-moves  <a name="system-mc-moves"></a>
+-   `"VolumeMoveProbability" : floating-point-number`\
+    The probability per cycle of attempting a volume change. Rigid molecules are
+    scaled by their center of mass, while flexible molecules and the framework
+    are scaled atom by atom.
 
--   `"VolumeChangeProbability" : floating-point-number`
-    The probability per cycle to attempt a volume-change. Rigid
-    molecules are scaled by center-of-mass, while flexible molecules and
-    the framework is atomically scaled.
+-   `"AnisotropicVolumeMoveProbability" : floating-point-number`\
+    The probability per cycle of attempting an anisotropic volume change, in
+    which the box edges are scaled independently.
 
--   `"GibbVolumeChangeProbability" : floating-point-number`
-    The probability per cycle to attempt a Gibbs volume-change `MC` move
-    during a Gibbs ensemble simulation. The total volume of the two
-    boxes (usually one for the gas phase, one for the liquid phase)
-    remains constant, but the individual volume of the boxes are
-    changed. The volumes are changed by a random change in
-    $\ln(V_I/V_{II})$.
+-   `"GibbsVolumeMoveProbability" : floating-point-number`\
+    The probability per cycle of attempting a Gibbs volume-change move in a Gibbs
+    ensemble simulation. The total volume of the two boxes (typically a gas and a
+    liquid phase) is kept constant while the individual box volumes change; the
+    change is drawn randomly in $\ln(V_\mathrm{I}/V_\mathrm{II})$.
 
--   `"GibbVolumeChangeProbability" : floating-point-number`
-    The probability per cycle to attempt a Hybrid MC move. A hybrid MC
-    move propagates the Hamiltonian via a short Molecular Dynamics
-    simulation and accepts the new state based on the drift.
+-   `"HybridMCProbability" : floating-point-number`\
+    The probability per cycle of attempting a hybrid MC move. This move
+    propagates the Hamiltonian through a short Molecular Dynamics trajectory and
+    accepts or rejects the new state based on the energy drift. Use
+    `"HybridMCMoveNumberOfSteps"` to set the number of MD steps.
 
-### Molecular dynamics parameters  <a name="molecular-dynamics-parameters"></a>
+-   `"ParallelTemperingSwapProbability" : floating-point-number`\
+    The probability per cycle of attempting a parallel-tempering swap between two
+    systems.
 
--   `"TimeStep" : floating-point-number`
-    The time step in picoseconds for `MD` integration. Default value:
-    `0.0005`
+-   `"ForceBiasTranslationAllProbability" : floating-point-number`\
+    The probability per cycle of attempting a force-bias move that displaces all
+    molecules simultaneously along the forces acting on them.
 
--   `"Ensemble" : string`
-    Sets the ensemble. The ensemble string can be:
+### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
+
+-   `"TimeStep" : floating-point-number`\
+    The integration time step in picoseconds for `MD`. Default: `0.0005`.
+
+-   `"HybridMCMoveNumberOfSteps" : integer`\
+    The number of Molecular Dynamics steps used per hybrid MC move.
+
+-   `"Ensemble" : string`\
+    Sets the Molecular Dynamics ensemble:
 
     -   `"NVE"`\
-        The micro canonical ensemble, the number of particle $N$, the
-        volume $V$, and the energy $E$ are constant.
+        The micro-canonical ensemble: the number of particles $N$, the volume
+        $V$, and the energy $E$ are constant.
 
     -   `"NVT"`\
-        The canonical ensemble, the number of particle $N$, the volume
-        $V$, and the average temperature $\left\langle T\right\rangle$
-        are constant. Instantaneous values for the temperature are
-        fluctuating.
+        The canonical ensemble: the number of particles $N$, the volume $V$, and
+        the average temperature $\left\langle T\right\rangle$ are constant, while
+        the instantaneous temperature fluctuates. A Nosé-Hoover thermostat is
+        attached.
 
-### Options to measure properties  <a name="options-to-measure-properties"></a>
+### Options to measure properties <a name="options-to-measure-properties"></a>
 
-#### Output pdb-movies  <a name="output-pdb-movies"></a>
+#### Output pdb-movies <a name="output-pdb-movies"></a>
 
 `"OutputPDBMovie" : boolean`
 
-Sets whether or not to output simulation snapshots to pdb movies.
-Output is written to the directory `movies`.
+Whether to write simulation snapshots as PDB movies. Output is written to the
+directory `movies`.
 
--   `"SampleMovieEvery" : integer`
-    Sample the movie every `int` cycles. Default: `1`
+-   `"SampleMovieEvery" : integer`\
+    Write a snapshot every `int` cycles. Default: `1`.
 
-#### Histogram of the energy  <a name="histogram-of-the-energy"></a>
+-   `"RestrictMoviePositionsToBox" : boolean`\
+    Whether to wrap the written positions back into the simulation box. Default:
+    `true`.
 
+#### Histogram of the energy <a name="histogram-of-the-energy"></a>
 
 `"ComputeEnergyHistogram" : boolean`
 
+Whether to accumulate a histogram of the energy for the system. During
+adsorption, for example, it tracks the total energy together with the Van der
+Waals, Coulombic, and polarization contributions. Output is written to the
+directory `energy_histogram`.
 
-Sets whether or not to compute a histogram of the energy for the current
-system. For example, during adsorption it keeps track of the total
-energy, the VDW energy, the Coulombic energy, and the polarization
-energy.\
-Output is written to the directory `energy_histogram`.
+-   `"SampleEnergyHistogramEvery" : integer`\
+    Sample the energy histogram every `int` cycles. Default: `1`.
 
--   `"SampleEnergyHistogramEvery" : integer`
-    Sample the energy histogram of the system every `int` cycles.
-    Default: `1`
+-   `"WriteEnergyHistogramEvery" : integer`\
+    Write the energy histogram every `int` cycles. Default: `5000`.
 
--   `"WriteEnergyHistogramEvery" : integer`
-    Writes the energy histogram of the system every `int` cycles.
-    Default: `5000`
+-   `"NumberOfBinsEnergyHistogram" : integer`\
+    The number of bins in the histogram. Default: `128`.
 
--   `"NumberOfBinsEnergyHistogram" : integer`
-    Sets the number of elements of the histogram. Default: `128`
+-   `"LowerLimitEnergyHistogram" : floating-point-number`\
+    The lower bound of the histogram. Default: `-5000`.
 
--   `"LowerLimitEnergyHistogram" : floating-point-number`
-    The lower limit of the histogram. Default: `-5000`
+-   `"UpperLimitEnergyHistogram" : floating-point-number`\
+    The upper bound of the histogram. Default: `1000`.
 
--   `"UpperLimitEnergyHistogram" : floating-point-number`
-    The upper limit of the histogram. Default: `1000`
-
-#### Histogram of the number of molecules  <a name="histogram-of-the-number-of-molecules"></a>
-
+#### Histogram of the number of molecules <a name="histogram-of-the-number-of-molecules"></a>
 
 `"ComputeNumberOfMoleculesHistogram" : boolean`
 
+Whether to accumulate histograms of the number of molecules for the system. In
+open ensembles the number of molecules fluctuates. Output is written to the
+directory `number_of_molecules_histogram`.
 
-Sets whether or not to compute the histograms of the number of molecules
-for the current system. In open ensembles the number of molecules
-fluctuates.\
-Output is written to the directory `number_of_molecules_histogram`.
+-   `"SampleNumberOfMoleculesHistogramEvery" : integer`\
+    Sample the histogram every `int` cycles. Default: `1`.
 
--   `"SampleNumberOfMoleculesHistogramEvery" : integer`
-    Sample the histogram every `int` cycles. Default: `1`
+-   `"WriteNumberOfMoleculesHistogramEvery" : integer`\
+    Write the histogram every `int` cycles. Default: `5000`.
 
--   `"WriteNumberOfMoleculesHistogramEvery" : integer`
-    Output the histogram every `int` cycles. Default: `5000`
+-   `"LowerLimitNumberOfMoleculesHistogram" : integer`\
+    The lower bound of the histograms. Default: `0`.
 
--   `"LowerLimitNumberOfMoleculesHistogram" : floating-point-number`
-    The lower limit of the histograms. Default: `0`
+-   `"UpperLimitNumberOfMoleculesHistogram" : integer`\
+    The upper bound of the histograms. Default: `200`.
 
--   `"UpperLimitNumberOfMoleculesHistogram" : floating-point-number`
-    The upper limit of the histograms. Default: `200`
-
-#### Histograms of the intra-molecular geometry  <a name="histograms-of-the-intra-molecular-geometry"></a>
-
+#### Histograms of the intra-molecular geometry <a name="histograms-of-the-intra-molecular-geometry"></a>
 
 `"ComputeMoleculeProperties" : boolean`
 
+Whether to accumulate probability histograms of the intra-molecular geometry
+(bond lengths, bend angles, and torsion/dihedral angles) for every flexible
+component. This mirrors the "molecule properties" analysis from RASPA2. Output
+is written to the directory `molecule_properties`.
 
-Sets whether or not to compute probability histograms of the
-intra-molecular geometry (bond lengths, bend angles, and
-torsion/dihedral angles) for every flexible component. This mirrors the
-"molecule properties" analysis from RASPA2.\
-Output is written to the directory `molecule_properties`.
+-   `"SampleMoleculePropertiesEvery" : integer`\
+    Sample the histograms every `int` cycles. Default: `10`.
 
--   `"SampleMoleculePropertiesEvery" : integer`
-    Sample the histograms every `int` cycles. Default: `10`
+-   `"WriteMoleculePropertiesEvery" : integer`\
+    Write the histograms every `int` cycles. Default: `5000`.
 
--   `"WriteMoleculePropertiesEvery" : integer`
-    Output the histograms every `int` cycles. Default: `5000`
+-   `"NumberOfBinsMoleculeProperties" : integer`\
+    The number of bins in each histogram. Default: `128`.
 
--   `"NumberOfBinsMoleculeProperties" : integer`
-    Sets the number of elements of each histogram. Default: `128`
+-   `"BondRangeMoleculeProperties" : floating-point-number`\
+    The upper bound of the bond-length histogram, in Ångström. The bend range is
+    fixed to `[0, 180]` degrees and the torsion range to `[-180, 180]` degrees.
+    Default: `4.0`.
 
--   `"BondRangeMoleculeProperties" : floating-point-number`
-    The upper limit of the bond-length histogram \[Angstrom\]. The bend
-    range is fixed to `[0, 180]` degrees and the torsion range to
-    `[-180, 180]` degrees. Default: `4.0`
-
-#### Radial Distribution Function (RDF) force-based  <a name="radial-distribution-function-rdf-force-based"></a>
-
+#### Radial Distribution Function (RDF) force-based <a name="radial-distribution-function-rdf-force-based"></a>
 
 `"ComputeRDF" : boolean`
 
+Whether to compute the force-based radial distribution function (RDF). Output is
+written to the directory `rdf`.
 
-Sets whether or not to compute the radial distribution function (RDF).\
-Output is written to the directory `rdf`.
+-   `"SampleRDFEvery" : integer`\
+    Sample the RDF every `int` cycles. Default: `10`.
 
--   `"SampleRDFEvery" : integer`
-    Sample the rdf every `int` cycles. Default: `10`
+-   `"WriteRDFEvery" : integer`\
+    Write the RDF every `int` cycles. Default: `5000`.
 
--   `"WriteRDFEvery" : integer`
-    Output the rdf every `int` cycles. Default: `5000`
+-   `"NumberOfBinsRDF" : integer`\
+    The number of bins in the RDF. Default: `128`.
 
--   `"NumberOfBinsRDF" : integer`
-    Sets the number of elements of the rdf. Default: `128`
+-   `"UpperLimitRDF" : floating-point-number`\
+    The upper distance limit of the RDF, in Ångström. Default: `15.0`.
 
--   `"UpperLimitRDF" : floating-point-number`
-    The upper limit of the rdf. Default: `15.0`
-
-#### Radial Distribution Function (RDF) conventional  <a name="radial-distribution-function-rdf-conventional"></a>
-
+#### Radial Distribution Function (RDF) conventional <a name="radial-distribution-function-rdf-conventional"></a>
 
 `"ComputeConventionalRDF" : boolean`
 
+Whether to compute the conventional (histogram-based) radial distribution
+function. Output is written to the directory `conventional_rdf`.
 
-Sets whether or not to compute the radial distribution function (RDF).
-Output is written to the directory `conventional_rdf`.
+-   `"SampleConventionalRDFEvery" : integer`\
+    Sample the RDF every `int` cycles. Default: `10`.
 
--   `"SampleConventionalRDFEvery" : integer`
-    Sample the rdf every `int` cycles. Default: `10`
+-   `"WriteConventionalRDFEvery" : integer`\
+    Write the RDF every `int` cycles. Default: `5000`.
 
--   `"WriteConventionalRDFEvery" : integer`
-    Output the rdf every `int` cycles. Default: `5000`
+-   `"NumberOfBinsConventionalRDF" : integer`\
+    The number of bins in the RDF. Default: `128`.
 
--   `"NumberOfBinsConventionalRDF" : integer`
-    Sets the number of elements of the rdf. Default: `128`
+-   `"RangeConventionalRDF" : floating-point-number`\
+    The upper distance limit of the RDF, in Ångström. Default: `15.0`.
 
--   `"UpperLimitConventionalRDF" : floating-point-number`
-    The upper limit of the rdf. Default: `15.0`
-
-#### Mean-Squared Displacement (MSD) order-N  <a name="mean-squared-displacement-msd-order-n"></a>
-
+#### Mean-Squared Displacement (MSD) order-N <a name="mean-squared-displacement-msd-order-n"></a>
 
 `"ComputeMSD" : boolean`
 
+Whether to compute the mean-squared displacement (MSD) using the order-N
+algorithm, from which self-diffusion coefficients can be obtained. Output is
+written to the directory `msd`.
 
-Sets whether or not to compute the mean-squared displacement (MSD).
-Output is written to the directory `msd`.
+-   `"SampleMSDEvery" : integer`\
+    Sample the MSD every `int` cycles. Default: `10`.
 
--   `"SampleMSDEvery" : integer`
-    Sample the msd every `int` cycles. Default: `10`
+-   `"WriteMSDEvery" : integer`\
+    Write the MSD every `int` cycles. Default: `5000`.
 
--   `"WriteMSDEvery" : integer`
-    Output the msd every `int` cycles. Default: `5000`
+-   `"NumberOfBlockElementsMSD" : integer`\
+    The number of elements per block in the order-N scheme. Default: `25`.
 
--   `"NumberOfBlockElementsMSD" : integer`
-    The number of elements per block of the msd. Default: `25.0`
-
-#### Density grids  <a name="density-grids"></a>
-
+#### Density grids <a name="density-grids"></a>
 
 `"ComputeDensityGrid" : boolean`
 
+Whether to compute three-dimensional density grids. Output is written to the
+directory `density_grids`.
 
-Sets whether or not to compute the density grids.
-Output is written to the directory `density_grids`.
+-   `"SampleDensityGridEvery" : integer`\
+    Sample the density grids every `int` cycles. Default: `10`.
 
--   `"SampleDensityGridEvery" : integer`
-    Sample the density grids every `int` cycles. Default: `10`
+-   `"WriteDensityGridEvery" : integer`\
+    Write the density grids every `int` cycles. Default: `5000`.
 
--   `"WriteDensityGridEvery" : integer`
-    Output the density grids every `int` cycles. Default: `5000`
+-   `"DensityGridSize" : [integer, integer, integer]`\
+    The number of voxels along each axis. Default: `[128, 128, 128]`.
 
--   `"DensityGridSize" : [integer, integer, integer]`
-    Sets the size of the density grids. Default: `[128, 128, 128]`
+-   `"DensityGridNormalization" : string`\
+    How the grid values are normalized: `"Max"` (default, scaled to the maximum)
+    or `"NumberDensity"`.
 
--   `"DensityGridBinning" : string`
-    Sets the binning strategy used to accumulate the density grids: 
+-   `"DensityGridBinning" : string`\
+    The strategy used to accumulate the density grids:
 
-    -   `"Standard"`\ 
-        Uses conventional histogram binning, where each particle contributes fully to the voxel in which it resides. Default: `"Standard"`
+    -   `"Standard"`\
+        Conventional histogram binning: each particle contributes fully to the
+        voxel it resides in. Default: `"Standard"`.
 
-    -   `"Equitable"`\ 
-        Uses equitable binning, where each particle contributes fractionally to neighboring voxels based on its position. This produces smoother density grids and reduces discretization artifacts, especially for fine grids.
+    -   `"Equitable"`\
+        Each particle contributes fractionally to neighboring voxels based on its
+        position. This produces smoother grids and reduces discretization
+        artifacts, especially for fine grids.
 
--   `"DensityGridPseudoAtomsList" : [string, string, ...]`
-Restricts the density grid calculation to a subset of pseudo atoms belonging to a given component. When specified, separate density grids are generated for each listed pseudo atom type instead of a single combined grid for the component.
-If not specified, all pseudo atoms of the component are accumulated into a single density grid. This option is useful for resolving atom specific adsorption behaviour within a molecule, for example separating carbon and oxygen sites in CO<sub>2.
+-   `"DensityGridPseudoAtomsList" : [string, string, ...]`\
+    Restricts the density grid to a subset of pseudo-atoms of a component. When
+    given, a separate grid is produced for each listed pseudo-atom type instead
+    of a single combined grid. When omitted, all pseudo-atoms of the component
+    are accumulated into one grid. This is useful for resolving atom-specific
+    adsorption within a molecule, for example separating the carbon and oxygen
+    sites of CO<sub>2</sub>.
 
 ----------------------------------------------------------------------------------
 
-## Force field options  <a name="force-field-options"></a>
+## Force field options <a name="force-field-options"></a>
+
+The following keywords control the force field. `"MixingRule"`,
+`"TruncationMethod"`, `"TailCorrections"`, `"PseudoAtoms"`, `"SelfInteractions"`,
+and `"BinaryInteractions"` are read from the force field file
+(`force_field.json`), while the cutoffs and `"ChargeMethod"` are set per system.
 
 -   `"MixingRule" : string`
     -   `"Lorentz-Berthelot"`
-        A combination rule using geometric mean for the strength-parameter and mean for the size-parameter. For Lennard-Jones:
+        The geometric mean for the strength parameter and the arithmetic mean for
+        the size parameter. For Lennard-Jones:
         \begin{equation}
         \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j}
         \end{equation}
@@ -487,7 +607,7 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
         \end{equation}
 
     -   `"Jorgensen"`
-        A combination rule using geometric means. For Lennard-Jones:
+        The geometric mean for both parameters. For Lennard-Jones:
         \begin{equation}
         \varepsilon_{ij}=\sqrt{\varepsilon_i \varepsilon_j}
         \end{equation}
@@ -496,136 +616,132 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
         \end{equation}
 
 -   `"TruncationMethod" : string`
-    -   `"truncated"` 
+    -   `"truncated"`
         Truncates the potential at the cutoff.
-    -   `"shifted"` 
-        Truncates the potential at the cutoff and shifts the potential so that the potential energy become zero at the cutoff radius.
+    -   `"shifted"`
+        Truncates the potential at the cutoff and shifts it so that the potential
+        energy is zero at the cutoff radius.
 
--   `"TailCorrections" : boolean`
-    Whether or not to apply tailcorrections.
+-   `"TailCorrections" : boolean`\
+    Whether to apply analytic tail corrections for the truncated Van der Waals
+    potential.
 
--   `"CutOffFrameworkVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials for framework-molecule
-    interactions. Interactions longer then this distance are omitted
-    from the energy and force computations.
+-   `"CutOffVDW" : floating-point-number`\
+    The cutoff of the Van der Waals potential (both framework-molecule and
+    molecule-molecule interactions). Interactions beyond this distance are
+    omitted from the energy and force evaluation.
 
--   `"CutOffMoleculeVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials for molecule-molecule
-    interactions. Interactions longer then this distance are omitted
-    from the energy and force computations.
+-   `"CutOffCoulomb" : floating-point-number`\
+    The cutoff of the charge-charge potential, which is truncated at the cutoff.
+    Tail corrections are not applied; the long-range part is instead recovered
+    with the Ewald summation (`"ChargeMethod" : "Ewald"`). Together with the
+    Ewald precision, this cutoff also determines the number of wave vectors and
+    the Ewald parameter α. For large unit cells a Coulomb cutoff of about half
+    the shortest box length avoids an excessive number of wave vectors. For
+    non-Ewald calculations the cutoff should be as large as possible (greater
+    than about 30 Å).
 
--   `"CutOffVDW" : floating-point-number`
-    The cutoff of the Van der Waals potentials. Interactions longer then
-    this distance are omitted from the energy and force computations.
-    The option `CutOffVDW` implies setting both `CutOffFrameworkVDW` and
-    `CutOffMoleculeVDW`.
+-   `"CutOff" : floating-point-number`\
+    A convenience key that sets both `"CutOffVDW"` cutoffs (framework-molecule
+    and molecule-molecule) at once.
 
--   `"CutOffCoulombic" : floating-point-number`
-    The cutoff of the charge-charge potential. The potential is
-    truncated at the cutoff. No tail-corrections are (or can be)
-    applied. The only way to include the long-range part is to use
-    'ChargeMethod Ewald'. The parameter is also used in combination with
-    the Ewald precision to compute the number of wave vectors and Ewald
-    parameter $\alpha$. For the Ewald summation using rather large unit
-    cells, a charge-charge cutoff of about half the smallest box-length
-    would be advisable in order to avoid the use of an excessive amount
-    of wave-vectors in Fourier space. For non-Ewald methods the cutoff
-    should be as large as possible (greater than about 30 Å).
+-   `"OmitEwaldFourier" : boolean`\
+    Skips the Fourier (reciprocal-space) part of the Ewald summation. Intended
+    for testing only.
 
--   `"CutOff" : floating-point-number`
-    Implies setting `CutOffFrameworkVDW`, `CutOffMoleculeVDW`, and
-    `CutOffCoulomb`
+-   `"ComputePolarization" : boolean`\
+    Whether to include polarization (induced-dipole) energy in the interactions.
 
--   `"ChargeMethod" : string` Sets the method to compute charges. The
-    string can be:
+-   `"ChargeMethod" : string`\
+    Sets the method used for the electrostatics:
 
     -   `"None"`
-        Skips the entire charge calculation and should only be used when
-        all adsorbates do not contain any charges.
+        Skips the entire charge calculation. Use only when none of the species
+        carry a charge.
 
     -   `"Ewald"`
-        Switches on the Ewald summation for the charge calculation.
+        Uses the Ewald summation for the charge calculation.
 
 -   `"PseudoAtoms" : list` <br>
-    List of pseudo-atoms with
+    A list of pseudo-atoms, each with
     - `"name" : string`
     - `"framework" : boolean`
     - `"print_to_output" : boolean`
     - `"element" : string`
     - `"print_as" : string`
     - `"mass" : floating-point-number`
-    - `"charge" :  floating-point-number`
+    - `"charge" : floating-point-number`
     - `"source" : string`
 
-
 -   `"SelfInteractions" : list` <br>
-    List of self-interactions with
+    A list of self-interactions, each with
     - `"name" : string`
     - `"type" : string`
     - `"parameters" : [floating-point-number]`
     - `"source" : string`
 
 -   `"BinaryInteractions" : []` <br>
-    List of binary-interactions with
-    - `"names": [string, string]`
-    - `"type": string`
-    - `"parameters": [floating-point-number]`
-    - `"source": string`
+    A list of binary interactions, each with
+    - `"names" : [string, string]`
+    - `"type" : string`
+    - `"parameters" : [floating-point-number]`
+    - `"source" : string`
 
 ----------------------------------------------------------------------------------
 
-## Component options  <a name="component-options"></a>
+## Component options <a name="component-options"></a>
 
-### Component properties  <a name="component-properties"></a>
+### Component properties <a name="component-properties"></a>
 
--   `"Name" : string`
-    The descriptive name of the component.
+-   `"Name" : string`\
+    The name of the component. For a rigid or flexible molecule this is also the
+    base name of its definition file.
 
--   `"MolFraction" : floating-point-number`
-    The mol fraction of this component in the mixture. The values can be
-    specified relative to other components, as the fractions are
-    normalized afterwards. The partial pressures for each component are
-    computed from the total pressure and the mol fraction per component.
+-   `"Type" : string`\
+    The component type: `"Adsorbate"` (default) or `"Cation"`.
 
--   `"FugacityCoefficient" : floating-point-number`
-    The fugacity coefficient for the current component. For values 0 (or
-    by not specifying this line), the fugacity coefficients are
-    automatically computed using the Peng-Robinson equation of state.
-    Note the critical pressure, critical temperature, and acentric
-    factor need to be specified in the molecule file.
+-   `"MolFraction" : floating-point-number`\
+    The mole fraction of this component in the mixture. Values may be given
+    relative to the other components, as the fractions are normalized afterwards.
+    Per-component partial pressures follow from the total pressure and the mole
+    fractions.
 
--   `"IdealGasRosenbluthWeight" : floating-point-number`
-    The ideal Rosenbluth weight is the growth factor of the `CBMC`
-    algorithm for a single chain in an empty box. The value only depends
-    on temperature and therefore needs to be computed only once. For
-    adsorption, specifying the value in advance is convenient because
-    the applied pressure does not need to be corrected afterwards (the
-    Rosenbluth weight corresponds to a shift in the chemical potential
-    reference value, and the chemical potential is directly obtained
-    from the fugacity). For equimolar mixtures this is essential.
+-   `"FugacityCoefficient" : floating-point-number`\
+    The fugacity coefficient of the component. When set to 0 (or omitted), the
+    fugacity coefficient is computed automatically from the Peng-Robinson
+    equation of state; this requires the critical pressure, critical temperature,
+    and acentric factor to be present in the molecule file.
 
--   `"CreateNumberOfMolecules" : integer`
-    The number of molecule to create for the current component. Note
-    these molecules are *in addition* to anything read in by using a
-    restart-file. Usually, when the restart-file is used the amount here
-    should be put back to zero. A warning, putting this value
-    unreasonably high results in an infinite loop. The routine accepts
-    molecules that are grown causing no overlap (energy smaller than
-    'EnergyOverlapCriteria'). Also the initial starting configurations
-    are far from optimal and substantial equilibration is needed to
-    reduce the energy. However, the `CBMC` growth is able to reach very
-    high densities.
+-   `"IdealGasRosenbluthWeight" : floating-point-number`\
+    The ideal-gas Rosenbluth weight, i.e. the `CBMC` growth factor of a single
+    chain in an empty box. It depends only on temperature and therefore needs to
+    be computed once. Supplying it in advance is convenient for adsorption,
+    because the applied pressure then needs no correction afterwards (the
+    Rosenbluth weight shifts the chemical-potential reference, and the chemical
+    potential follows directly from the fugacity). For equimolar mixtures this is
+    essential.
 
--   `"BlockingPockets" : [[3 x floating-point-number, floating-point-number]]`
-    Block certain pockets in the simulation volume. The growth of a
-    molecule is not allowed in a blocked pocket. A typical example is
-    the sodalite cages in FAU and LTA-type zeolites, these are not
-    accessible to molecules like methane and bigger. The pockets are
-    specified as a list of 4 floating points numbers: the $s_x$, $s_y$,
-    $s_z$ fractional positions and a radius in Angstrom.
+-   `"CreateNumberOfMolecules" : integer`\
+    The number of molecules to create for this component at start-up. These
+    molecules are created *in addition* to anything read from a restart file, so
+    when restarting this value is usually set back to zero. Setting it
+    unreasonably high can cause an infinite loop: the routine only accepts
+    molecules whose growth causes no overlap (energy below the overlap
+    criterion). The starting configurations are far from optimal, so substantial
+    equilibration is needed to relax the energy; the `CBMC` growth can, however,
+    reach very high densities.
 
-    For example, blocking pockets for ITQ-29 for small molecules are
-    specified as:
+-   `"StartingBead" : integer`\
+    The index of the bead from which `CBMC` growth starts. Must be smaller than
+    the number of atoms in the molecule.
+
+-   `"BlockingPockets" : [[3 x floating-point-number, floating-point-number]]`\
+    Blocks certain pockets of the simulation volume so molecules cannot grow
+    into them. A typical example is the sodalite cages in FAU- and LTA-type
+    zeolites, which are inaccessible to methane and larger molecules. Each pocket
+    is a list of four numbers: the fractional positions $s_x$, $s_y$, $s_z$ and a
+    radius in Ångström. For example, the blocking pockets of ITQ-29 for small
+    molecules are:
 
         "BlockingPockets" : [
                    [0.0,       0.0,        0.0,       4.0],
@@ -634,81 +750,81 @@ If not specified, all pseudo atoms of the component are accumulated into a singl
                    [0.0,       0.0,        0.5,       0.5]
                  ]
 
--   `"LambdaBiasFileName" : string`
-    Pointing this parameter to a json file containing preset λ values
-    allows optimized CFCMC simulations to be run without Wang-Landau
-    estimation of the biasing weights.
+-   `"LambdaBiasFileName" : string`\
+    Points to a JSON file of preset λ values, allowing optimized CFCMC
+    simulations to run without re-estimating the biasing weights with
+    Wang-Landau.
 
--   `"ThermodynamicIntegration" : boolean`
-    Boolean switch to determine whether to do a thermodynamic integration
-    over dU/dλ for the fractional component.
+-   `"ThermodynamicIntegration" : boolean or string`\
+    Enables thermodynamic integration of dU/dλ for the fractional molecule. As a
+    boolean, `true` integrates the default (grand-canonical) λ. As a string it
+    selects which λ coordinate to follow: `"CFCMC"` (default), `"CFCMC_PairSwap"`,
+    or `"CFCMC_CBMC_PairSwap"`.
 
-### Component `MC`-moves  <a name="component-mc-moves"></a>
+-   `"LnPartitionFunction" : number or string`\
+    The natural logarithm of the (reduced) partition function used for reactions.
+    Give a number to set it directly, or a species name (or `"auto"`, which uses
+    the component name) to look it up in the embedded thermochemical database.
+    The lookup is evaluated at each system's `"ExternalTemperature"` and uses the
+    database selected by `"ThermochemicalDatabase"`.
 
--   `"TranslationProbability" : floating-point-number`
-    The relative probability to attempt a translation move for the
-    current component. A random displacement is chosen in the allowed
-    directions (see 'TranslationDirection'). Note that the internal
-    configuration of the molecule is unchanged by this move. The maximum
-    displacement is scaled during the simulation to achieve an
-    acceptance ratio of 50%.
+### Component `MC`-moves <a name="component-mc-moves"></a>
 
--   `"RandomTranslationProbability" : floating-point-number`
-    The relative probability to attempt a random translation move for
-    the current component. The displacement is chosen such that any
-    position in the box can reached. It is therefore similar as
-    reinsertion, but 'reinsertion' changes the internal conformation of
-    a molecule and uses biasing.
+-   `"TranslationProbability" : floating-point-number`\
+    The relative probability of a translation move. A random displacement is
+    drawn along the allowed directions; the internal configuration of the
+    molecule is unchanged. The maximum displacement is tuned during the run
+    towards a 50% acceptance ratio.
 
--   `"RotationProbability" : floating-point-number`
-    The relative probability to attempt a random rotation move for the
-    current component. The rotation is around the starting bead. A
-    random vector on a sphere is generated, and the rotation is random
-    around this vector.
+-   `"RandomTranslationProbability" : floating-point-number`\
+    The relative probability of a random translation move, in which the
+    displacement can reach any position in the box. It is therefore similar to
+    reinsertion, except that reinsertion also changes the internal conformation
+    and uses biasing.
 
--   `"ReinsertionProbability" : floating-point-number`
-    The relative probability to attempt a full reinsertion move for the
-    current component. Multiple first beads are chosen, and one of these
-    is selected according to its Boltzmann weight. The remaining part of
-    the molecule is grown using biasing. This move is very useful, and
-    often necessary, to change the internal configuration of flexible
-    molecules.
+-   `"RotationProbability" : floating-point-number`\
+    The relative probability of a rotation move about the starting bead. A random
+    vector on the unit sphere is generated and the molecule is rotated by a
+    random angle around it.
 
--   `"SwapConventionalProbability" : floating-point-number`
-    The relative probability to attempt a insertion or deletion move.
-    Whether to insert or delete is decided randomly with a probability
-    of 50% for each. The swap move imposes a chemical equilibrium
-    between the system and an imaginary particle reservoir for the
-    current component.
+-   `"ReinsertionProbability" : floating-point-number`\
+    The relative probability of a full `CBMC` reinsertion move. Several first
+    beads are trial-placed and one is chosen from its Boltzmann weight; the rest
+    of the molecule is then grown with biasing. This move is very useful, and
+    often necessary, to change the internal configuration of flexible molecules.
 
--   `"SwapProbability" : floating-point-number`
-    The relative probability to attempt a insertion or deletion move using
-    CBMC. Whether to insert or delete is decided randomly with a probability
-    of 50% for each. The swap move imposes a chemical equilibrium
-    between the system and an imaginary particle reservoir for the
-    current component. The move starts with multiple first bead, and
-    grows the remainder of the molecule using biasing.
+-   `"PartialReinsertionProbability" : floating-point-number`\
+    The relative probability of a partial `CBMC` reinsertion move, which regrows
+    only part of the molecule.
 
--   `"CFCMC_SwapProbability" : floating-point-number`
-    The relative probability to attempt a insertion or deletion move via
-    `CFCMC` scheme.
+-   `"SwapConventionalProbability" : floating-point-number`\
+    The relative probability of a conventional (non-CBMC) insertion or deletion
+    move, each chosen with 50% probability. The swap move imposes chemical
+    equilibrium between the system and an imaginary particle reservoir.
 
--   `"CFCMC_CBMC_SwapProbability" : floating-point-number`
-    The relative probability to attempt a insertion or deletion move via
+-   `"SwapProbability" : floating-point-number`\
+    The relative probability of a `CBMC` insertion or deletion move (insertion or
+    deletion chosen with 50% probability each). Like the conventional swap it
+    imposes chemical equilibrium with a reservoir, but it grows the molecule from
+    multiple first beads using biasing.
+
+-   `"CFCMC_SwapProbability" : floating-point-number`\
+    The relative probability of an insertion or deletion move via the `CFCMC`
+    scheme.
+
+-   `"CFCMC_CBMC_SwapProbability" : floating-point-number`\
+    The relative probability of an insertion or deletion move via the combined
     `CB/CFCMC` scheme.
 
--   `GibbsSwapCBMCProbability" : floating-point-number`
-    The relative probability to attempt a Gibbs swap MC move for the
-    current component. The 'GibbsSwapMove' transfers a randomly selected
-    particle from one box to the other (50% probability to transfer a
-    particle from box `I` to `II`, an 50% visa versa).
+-   `"GibbsSwapCBMCProbability" : floating-point-number`\
+    The relative probability of a Gibbs swap move, which transfers a randomly
+    selected molecule from one box to the other (50% from box `I` to `II`, 50%
+    the other way).
 
--   `GibbsSwapCFCMCProbability" : floating-point-number`
-    The relative probability to attempt a Gibbs swap MC move for the
-    current component using the `CFCMC` scheme.
+-   `"GibbsSwapCFCMCProbability" : floating-point-number`\
+    The relative probability of a Gibbs swap move using the `CFCMC` scheme.
 
--   `"WidomProbability" : floating-point-number`
-    The relative probability to attempt a Widom particle insertion move
-    for the current component. The Widom particle insertion moves
-    measure the chemical potential and can be directly related to Henry
-    coefficients and heats of adsorption.
+-   `"WidomProbability" : floating-point-number`\
+    The relative probability of a Widom particle-insertion move, which measures
+    the chemical potential and relates directly to the Henry coefficient and the
+    heat of adsorption.

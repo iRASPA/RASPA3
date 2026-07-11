@@ -15,7 +15,7 @@
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 50000,
   "NumberOfEquilibrationCycles" : 100000,
   "PrintEvery" : 5000,
@@ -111,7 +111,7 @@ Vapor
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 25000,
   "NumberOfEquilibrationCycles" : 25000,
   "PrintEvery" : 5000,
@@ -434,7 +434,7 @@ Component 0 [CO2]
 ```json
 {
   "SimulationType": "MonteCarlo",
-  "NumberOfCycles": 10000,
+  "NumberOfProductionCycles": 10000,
   "NumberOfInitializationCycles": 5000,
   "NumberOfEquilibrationCycles": 5000,
   "PrintEvery": 1000,
@@ -477,7 +477,7 @@ Component 0 [CO2]
 ```json
 {
   "SimulationType" : "MonteCarloTransitionMatrix",
-  "NumberOfCycles" : 200000,
+  "NumberOfProductionCycles" : 200000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 5000,
 

@@ -20,7 +20,7 @@ Adsorption of a binary mixture is specified at a total pressure and individual m
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 500000,
+  "NumberOfProductionCycles" : 500000,
   "NumberOfInitializationCycles" : 50000,
   "PrintEvery" : 1000,
 
@@ -183,7 +183,7 @@ Component 1 [methane]
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
 
@@ -301,7 +301,7 @@ Component 0 [CO2]
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
 
@@ -435,7 +435,7 @@ We can compute Vapor-Liquid Equilibrium (VLE) using the Gibbs-ensemble.
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 200000,
+  "NumberOfProductionCycles" : 200000,
   "NumberOfInitializationCycles" : 50000,
   "PrintEvery" : 1000,
 
@@ -504,7 +504,7 @@ Uisng the NIST chemical database, we can compare to the experimental values of 3
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 500000,
+  "NumberOfProductionCycles" : 500000,
   "NumberOfInitializationCycles" : 1000,
   "NumberOfEquilibrationCycles" : 100000,
   "PrintEvery" : 5000,
@@ -541,7 +541,7 @@ Uisng the NIST chemical database, we can compare to the experimental values of 3
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 25000,
+  "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
 
@@ -616,7 +616,7 @@ Uisng the NIST chemical database, we can compare to the experimental values of 3
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 250000,
+  "NumberOfProductionCycles" : 250000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 5000,
@@ -695,7 +695,7 @@ Uisng the NIST chemical database, we can compare to the experimental values of 3
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 500000,
+  "NumberOfProductionCycles" : 500000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 5000,
 

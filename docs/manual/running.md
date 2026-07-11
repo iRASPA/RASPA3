@@ -7,7 +7,7 @@ An input-file describing the type of simulation and the parameters. In the same 
 ```json
 {
     "SimulationType" : "MonteCarlo",
-    "NumberOfCycles" : 100000,
+    "NumberOfProductionCycles" : 100000,
     "NumberOfInitializationCycles" : 1000,
     "NumberOfEquilibrationCycles" : 10000,
     "PrintEvery" : 1000,

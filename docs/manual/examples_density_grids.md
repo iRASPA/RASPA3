@@ -27,7 +27,7 @@ This example demonstrates the generation of site-resolved density grids for a bi
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 1000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 10000,
   
