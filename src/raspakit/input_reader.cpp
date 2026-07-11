@@ -867,23 +867,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           jsonComponents[i][componentId].lnPartitionFunction = lnPartitionFunction;
         }
       }
-      // "auto" computes ln(q/V) from the embedded thermochemical databases (NASA polynomials
-      // as the primary source, JANAF tables as fallback) using the component name; any other
-      // string is used as the species name for the lookup. The value is evaluated at the
-      // 'ExternalTemperature' of each system.
+      // "auto" computes ln(q/V) from the embedded thermochemical databases using the component
+      // name; any other string is used as the species name for the lookup. The value is evaluated
+      // at the 'ExternalTemperature' of each system. The database is selected per system with
+      // 'ThermochemicalDatabase' (default: "NASA", NASA polynomials with JANAF fallback).
       else if (item.contains("LnPartitionFunction") && item["LnPartitionFunction"].is_string())
       {
         std::string speciesName = item["LnPartitionFunction"].get<std::string>();
         if (caseInSensStringCompare(speciesName, "auto"))
         {
           speciesName = jsonComponentName;
-        }
-        if (!PartitionFunction::contains(speciesName))
-        {
-          throw std::runtime_error(
-              std::format("[Input reader]: component '{}' (id {}): no thermochemical data found for species "
-                          "'{}'; use a different species name or specify 'LnPartitionFunction' as a number\n",
-                          jsonComponentName, componentId, speciesName));
         }
         jsonLnPartitionFunctionSpecies[componentId] = speciesName;
       }
@@ -1075,10 +1068,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                               value["ForceBiasTranslationAllProbability"].get<double>());
       }
 
-      if (value.contains("ReactionProbability") && value["ReactionProbability"].is_number_float())
+      if (value.contains("ReactionCBMCProbability") && value["ReactionCBMCProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::ReactionCBMC,
-                                              value["ReactionProbability"].get<double>());
+                                              value["ReactionCBMCProbability"].get<double>());
       }
 
       if (value.contains("ReactionConventionalCFCMCProbability") &&
@@ -1273,12 +1266,43 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       // resolve 'LnPartitionFunction' entries given as species names at this system's temperature
+      PartitionFunction::Source thermochemicalDatabase = PartitionFunction::Source::NASA;
+      if (value.contains("ThermochemicalDatabase") && value["ThermochemicalDatabase"].is_string())
+      {
+        const std::string databaseString = value["ThermochemicalDatabase"].get<std::string>();
+        if (caseInSensStringCompare(databaseString, "NASA"))
+        {
+          thermochemicalDatabase = PartitionFunction::Source::NASA;
+        }
+        else if (caseInSensStringCompare(databaseString, "JANAF"))
+        {
+          thermochemicalDatabase = PartitionFunction::Source::JANAF;
+        }
+        else
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: system {}: unknown 'ThermochemicalDatabase' '{}'; use \"NASA\" or "
+                          "\"JANAF\"\n",
+                          systemId, databaseString));
+        }
+      }
+
       for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
       {
         if (jsonLnPartitionFunctionSpecies[i].has_value())
         {
+          const std::string& speciesName = jsonLnPartitionFunctionSpecies[i].value();
+          if (!PartitionFunction::contains(speciesName, thermochemicalDatabase))
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system {} component {}: no thermochemical data found for species "
+                            "'{}' in the {} database; use a different species name, database, or specify "
+                            "'LnPartitionFunction' as a number\n",
+                            systemId, i, speciesName,
+                            thermochemicalDatabase == PartitionFunction::Source::NASA ? "NASA/JANAF" : "JANAF"));
+          }
           jsonComponents[systemId][i].lnPartitionFunction =
-              PartitionFunction::logPartitionFunction(jsonLnPartitionFunctionSpecies[i].value(), T);
+              PartitionFunction::logPartitionFunction(speciesName, T, thermochemicalDatabase);
         }
       }
 
@@ -2186,7 +2210,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MacroStateMinimumNumberOfMolecules",
     "MacroStateMaximumNumberOfMolecules",
     "RestartFileName",
-    "ReactionProbability",
+    "ReactionCBMCProbability",
     "ReactionConventionalCFCMCProbability",
     "ReactionConventionalCBCFCMCProbability",
     "ReactionCFCMCProbability",
@@ -2194,7 +2218,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MaximumReactionLambdaChange",
     "MaximumReactionLambdaChangeProducts",
     "LambdaSwitchPoint",
-    "Reactions"};
+    "Reactions",
+    "ThermochemicalDatabase"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

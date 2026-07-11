@@ -172,10 +172,6 @@ export struct System
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
 
-  // vector of pair of lambda and pseudoatom-type
-  //std::vector<std::pair<double, std::size_t>> numberOfIntegerPseudoAtoms;
-  //std::vector<std::pair<double, std::size_t>> numberOfFractionalPseudoAtoms;
-
   std::size_t translationalCenterOfMassConstraint{};
   std::size_t translationalDegreesOfFreedom{};
   std::size_t rotationalDegreesOfFreedom{};

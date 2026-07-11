@@ -10,13 +10,28 @@ import nasa_polynomials;
 namespace PartitionFunction
 {
 
-bool contains(std::string_view speciesName)
+bool contains(std::string_view speciesName, Source source)
 {
-  return NASAPolynomials::contains(speciesName) || JANAF::contains(speciesName);
+  switch (source)
+  {
+    case Source::NASA:
+      return NASAPolynomials::contains(speciesName) || JANAF::contains(speciesName);
+    case Source::JANAF:
+      return JANAF::contains(speciesName);
+  }
+  std::unreachable();
 }
 
-double logPartitionFunction(std::string_view speciesName, double temperature)
+double logPartitionFunction(std::string_view speciesName, double temperature, Source source)
 {
+  switch (source)
+  {
+    case Source::JANAF:
+      return JANAF::logPartitionFunction(speciesName, temperature);
+    case Source::NASA:
+      break;
+  }
+
   if (NASAPolynomials::contains(speciesName))
   {
     try

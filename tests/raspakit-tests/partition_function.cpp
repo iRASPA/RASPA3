@@ -31,6 +31,16 @@ TEST(partition_function, janaf_fallback_below_nasa_temperature_range)
   EXPECT_EQ(PartitionFunction::logPartitionFunction("N2", 150.0), JANAF::logPartitionFunction("N2", 150.0));
 }
 
+TEST(partition_function, janaf_only_source)
+{
+  EXPECT_TRUE(PartitionFunction::contains("N2", PartitionFunction::Source::JANAF));
+  EXPECT_FALSE(PartitionFunction::contains("propene", PartitionFunction::Source::JANAF));
+  EXPECT_NEAR(PartitionFunction::logPartitionFunction("N2", 600.0, PartitionFunction::Source::JANAF),
+              JANAF::logPartitionFunction("N2", 600.0), 1e-10);
+  EXPECT_THROW(std::ignore = PartitionFunction::logPartitionFunction("propene", 450.0, PartitionFunction::Source::JANAF),
+               std::runtime_error);
+}
+
 TEST(partition_function, unknown_species)
 {
   EXPECT_FALSE(PartitionFunction::contains("unobtainium"));
