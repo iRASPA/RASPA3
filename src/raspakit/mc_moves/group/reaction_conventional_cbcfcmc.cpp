@@ -16,5 +16,5 @@ import mc_moves_reaction_common;
 // coupling schedule of scaling.ixx.
 std::optional<RunningEnergy> MC_Moves::reactionMove_ConventionalCBCFCMC(RandomNumber& random, System& system)
 {
-  return ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCBCFCMC);
+  return ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCBCFCMC, true);
 }

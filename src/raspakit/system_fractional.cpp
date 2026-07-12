@@ -19,8 +19,50 @@ import framework;
 import cbmc;
 import cbmc_chain_data;
 import interpolation_energy_grid;
+import interactions_external_field;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 // System fractional molecules: CFCMC slots, lambda histograms, and reaction bookkeeping.
+
+[[nodiscard]] std::optional<RunningEnergy> conventionalReactionInitializationEnergy(
+    System& system, std::size_t componentId, std::span<const Atom> atoms) noexcept
+{
+  std::optional<RunningEnergy> external = Interactions::computeExternalFieldEnergyDifference(
+      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid, atoms,
+      {});
+  std::optional<RunningEnergy> framework = Interactions::computeFrameworkMoleculeEnergyDifference(
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.spanOfFrameworkAtoms(), atoms, {});
+  std::optional<RunningEnergy> intermolecular = Interactions::computeInterMolecularEnergyDifference(
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), atoms, {});
+  if (!external || !framework || !intermolecular)
+  {
+    return std::nullopt;
+  }
+  return external.value() + framework.value() + intermolecular.value() +
+         system.components[componentId].intraMolecularPotentials.computeInternalEnergies(atoms);
+}
+
+[[nodiscard]] bool systemReactionUsesOnlyRigidComponents(const System& system,
+                                                         const Reaction& reaction) noexcept
+{
+  const std::size_t componentCount =
+      std::min({system.components.size(), reaction.reactantStoichiometry.size(),
+                reaction.productStoichiometry.size()});
+  for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
+  {
+    const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
+                              reaction.productStoichiometry[componentId] > 0;
+    if (participates && system.components[componentId].growType != Component::GrowType::Rigid)
+    {
+      return false;
+    }
+  }
+  return componentCount == system.components.size() &&
+         reaction.reactantStoichiometry.size() == system.components.size() &&
+         reaction.productStoichiometry.size() == system.components.size();
+}
 
 void System::determineFractionalComponents()
 {
@@ -859,6 +901,16 @@ void System::createReactionFractionalMolecules()
     return;
   }
 
+  for (const Reaction& reaction : reactions.list)
+  {
+    const bool conventional = reaction.reactionMove == Move::Types::ReactionConventionalCFCMC ||
+                              reaction.reactionMove == Move::Types::ReactionCFCMC;
+    if (conventional && !systemReactionUsesOnlyRigidComponents(*this, reaction))
+    {
+      return;
+    }
+  }
+
   if (!components.empty())
   {
     initializeReactionLambdaHistograms(components.front().lambdaGC.numberOfBlocks,
@@ -930,6 +982,7 @@ void System::createParallelReactionFractionalMolecules()
 
     reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
     reaction.productFractionalMoleculeIds.assign(components.size(), {});
+    const bool useCBMC = reaction.reactionMove == Move::Types::ReactionConventionalCBCFCMC;
 
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
@@ -941,15 +994,35 @@ void System::createParallelReactionFractionalMolecules()
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          growData = CBMC::growMoleculeSwapInsertion(
-              random,
-              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-              components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
-              reactantScaling, reaction.dUdlambdaGroup(true), true);
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+          if (useCBMC)
+          {
+            growData = CBMC::growMoleculeSwapInsertion(
+                random,
+                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
+                reactantScaling, reaction.dUdlambdaGroup(true), true);
+          }
+          else
+          {
+            auto [molecule, atoms] =
+                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            for (Atom& atom : atoms)
+            {
+              atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
+              atom.componentId = static_cast<std::uint8_t>(componentId);
+              atom.setScalingToFractional(reactantScaling, reaction.dUdlambdaGroup(true));
+            }
+            if (std::optional<RunningEnergy> energy =
+                    conventionalReactionInitializationEnergy(*this, componentId, atoms))
+            {
+              growData.emplace(molecule, std::move(atoms), energy.value(), 1.0, 0.0);
+            }
+          }
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
+                 insideBlockedPockets(components[componentId], growData->atoms));
 
         const std::size_t moleculeIndex =
             parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k);
@@ -963,15 +1036,35 @@ void System::createParallelReactionFractionalMolecules()
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          growData = CBMC::growMoleculeSwapInsertion(
-              random,
-              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-              components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
-              productScaling, reaction.dUdlambdaGroup(false), true);
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+          if (useCBMC)
+          {
+            growData = CBMC::growMoleculeSwapInsertion(
+                random,
+                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
+                productScaling, reaction.dUdlambdaGroup(false), true);
+          }
+          else
+          {
+            auto [molecule, atoms] =
+                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            for (Atom& atom : atoms)
+            {
+              atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
+              atom.componentId = static_cast<std::uint8_t>(componentId);
+              atom.setScalingToFractional(productScaling, reaction.dUdlambdaGroup(false));
+            }
+            if (std::optional<RunningEnergy> energy =
+                    conventionalReactionInitializationEnergy(*this, componentId, atoms))
+            {
+              growData.emplace(molecule, std::move(atoms), energy.value(), 1.0, 0.0);
+            }
+          }
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
+                 insideBlockedPockets(components[componentId], growData->atoms));
 
         const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
         insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, false,
@@ -1007,6 +1100,7 @@ void System::createSerialReactionFractionalMolecules()
     reaction.currentLambda = 0.0;
     reaction.reactantFractionalMoleculeIds.assign(components.size(), {});
     reaction.productFractionalMoleculeIds.assign(components.size(), {});
+    const bool useCBMC = reaction.reactionMove == Move::Types::ReactionCBCFCMC;
 
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
@@ -1015,15 +1109,35 @@ void System::createSerialReactionFractionalMolecules()
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          growData = CBMC::growMoleculeSwapInsertion(
-              random,
-              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-              components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 0.0,
-              reaction.lambda.dUdlambdaGroupId, true);
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+          if (useCBMC)
+          {
+            growData = CBMC::growMoleculeSwapInsertion(
+                random,
+                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
+                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
+                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
+                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 0.0,
+                reaction.lambda.dUdlambdaGroupId, true);
+          }
+          else
+          {
+            auto [molecule, atoms] =
+                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            for (Atom& atom : atoms)
+            {
+              atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
+              atom.componentId = static_cast<std::uint8_t>(componentId);
+              atom.setScalingToFractional(0.0, reaction.lambda.dUdlambdaGroupId);
+            }
+            if (std::optional<RunningEnergy> energy =
+                    conventionalReactionInitializationEnergy(*this, componentId, atoms))
+            {
+              growData.emplace(molecule, std::move(atoms), energy.value(), 1.0, 0.0);
+            }
+          }
+        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
+                 insideBlockedPockets(components[componentId], growData->atoms));
 
         const std::size_t moleculeIndex = serialReactionFractionalMoleculeIndex(reactionId, componentId, k);
         insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, 0.0,

@@ -47,14 +47,23 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling = 1.0,
-    bool isFractional = false, std::uint8_t dUdlambdaGroupId = 0) noexcept;
+    bool isFractional = false, std::uint8_t dUdlambdaGroupId = 0, bool useCBMC = true) noexcept;
 
+// Retraces a group of molecules for deletion. To satisfy detailed balance the retrace mirrors the
+// nested environments of the reverse move's sequential growth: molecule k is retraced with the group
+// members k+1..m-1 excluded from the background (equivalent to retracing in the opposite order of
+// growth with progressive removal). 'excludeMolecules' lists additional molecules (e.g. fractional
+// molecules) that must be excluded from the background of every retrace, matching the exclusions used
+// by the corresponding growMoleculeGroupInsertion call of the reverse move.
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
-    RandomNumber& random, System& system,
-    std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules) noexcept;
+    RandomNumber& random, System& system, std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules = {}, bool useCBMC = true) noexcept;
 
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
+
+[[nodiscard]] bool conventionalReactionUsesOnlyRigidComponents(const System& system,
+                                                               const Reaction& reaction) noexcept;
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
 
@@ -68,7 +77,7 @@ void insertGrownMolecules(System& system, std::span<const ChainGrowData> growDat
                           std::span<const std::size_t> productStoichiometry) noexcept;
 
 [[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,
-                                                                Move::Types move) noexcept;
+                                                                Move::Types move, bool useCBMC) noexcept;
 
 enum class SerialMoveKind : std::uint8_t
 {

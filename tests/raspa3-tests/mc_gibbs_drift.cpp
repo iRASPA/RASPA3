@@ -7,11 +7,13 @@ import double3;
 import double3x3;
 import units;
 import atom;
+import molecule;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
 import framework;
 import component;
+import reaction;
 import system;
 import monte_carlo;
 import simulationbox;
@@ -23,6 +25,8 @@ import mc_moves_move_types;
 
 import randomnumbers;
 import mc_moves_gibbs_swap_cbcfcmc;
+import mc_moves_gibbs_conventional_common;
+import mc_moves_parallel_tempering_swap;
 
 namespace
 {
@@ -161,6 +165,35 @@ void setupSerialGibbsCFCMC(std::vector<System> &systems)
   {
     system.runningEnergies = system.computeTotalEnergies();
   }
+}
+
+void setGibbsLambda(System &system, std::size_t componentId, std::size_t bin)
+{
+  Component &component = system.components[componentId];
+  component.lambdaGibbs.setCurrentBin(bin);
+  const double lambda = component.lambdaGibbs.lambdaValue();
+  const std::size_t fractionalIndex =
+      system.indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, componentId);
+  for (Atom &atom : system.spanOfMolecule(componentId, fractionalIndex))
+  {
+    atom.setScalingToFractional(lambda, component.lambdaGibbs.dUdlambdaGroupId);
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+  system.totalEik = system.storedEik;
+}
+
+void favorAllBinsExceptCurrent(Component &component)
+{
+  const std::size_t oldBin = component.lambdaGibbs.currentBin;
+  std::fill(component.lambdaGibbs.biasFactor.begin(), component.lambdaGibbs.biasFactor.end(), 100.0);
+  component.lambdaGibbs.biasFactor[oldBin] = 0.0;
+}
+
+void rejectAllBinsExceptCurrent(Component &component)
+{
+  const std::size_t oldBin = component.lambdaGibbs.currentBin;
+  std::fill(component.lambdaGibbs.biasFactor.begin(), component.lambdaGibbs.biasFactor.end(), -100.0);
+  component.lambdaGibbs.biasFactor[oldBin] = 0.0;
 }
 
 }  // namespace
@@ -677,4 +710,370 @@ TEST(MC_GIBBS_DRIFT, methane_gibbs_conventional_cfcbmc)
   {
     expectNoEnergyDrift(s);
   }
+}
+
+TEST(MC_GIBBS_DRIFT, conventional_mixed_insert_and_lambda_boundary)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = makeGibbsConventionalCFCMCProbabilities();
+  methane.lambdaGibbs.computeDUdlambda = true;
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5),
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5)};
+  setupSerialGibbsCFCMC(systems);
+
+  setGibbsLambda(systems[0], 0, 19);
+  setGibbsLambda(systems[1], 0, 10);
+  favorAllBinsExceptCurrent(systems[0].components[0]);
+  favorAllBinsExceptCurrent(systems[1].components[0]);
+
+  const std::size_t integersA = systems[0].numberOfIntegerMoleculesPerComponent[0];
+  const std::size_t integersB = systems[1].numberOfIntegerMoleculesPerComponent[0];
+  const RunningEnergy beforeA = systems[0].computeTotalEnergies();
+  const RunningEnergy beforeB = systems[1].computeTotalEnergies();
+
+  RandomNumber random(42);
+  const auto delta =
+      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+  ASSERT_TRUE(delta.has_value());
+  systems[0].runningEnergies += delta->first;
+  systems[1].runningEnergies += delta->second;
+
+  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], integersA + 1);
+  EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], integersB);
+  EXPECT_NEAR(delta->first.potentialEnergy(),
+              (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
+  EXPECT_NEAR(delta->second.potentialEnergy(),
+              (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+
+TEST(MC_GIBBS_DRIFT, cbmc_mixed_lambda_and_delete_boundary)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = makeGibbsConventionalCBCFCMCProbabilities();
+  methane.lambdaGibbs.computeDUdlambda = true;
+  methane.idealGasRosenbluthWeight = 1.0;
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5),
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5)};
+  setupSerialGibbsCFCMC(systems);
+
+  setGibbsLambda(systems[0], 0, 10);
+  setGibbsLambda(systems[1], 0, 2);
+  favorAllBinsExceptCurrent(systems[0].components[0]);
+  favorAllBinsExceptCurrent(systems[1].components[0]);
+
+  const std::size_t integersA = systems[0].numberOfIntegerMoleculesPerComponent[0];
+  const std::size_t integersB = systems[1].numberOfIntegerMoleculesPerComponent[0];
+  const RunningEnergy beforeA = systems[0].computeTotalEnergies();
+  const RunningEnergy beforeB = systems[1].computeTotalEnergies();
+
+  RandomNumber random(42);
+  const auto delta =
+      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, true);
+  ASSERT_TRUE(delta.has_value());
+  systems[0].runningEnergies += delta->first;
+  systems[1].runningEnergies += delta->second;
+
+  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], integersA);
+  EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], integersB - 1);
+  EXPECT_NEAR(delta->first.potentialEnergy(),
+              (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
+  EXPECT_NEAR(delta->second.potentialEnergy(),
+              (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_swaps_complete_configuration_only)
+{
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component particle(forceField, "particle", 1.0, 1.0, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                           {}, {}, 5, 21);
+  const SimulationBox boxA(20.0, 20.0, 20.0);
+  const SimulationBox boxB(25.0, 25.0, 25.0);
+  System systemA(forceField, boxA, false, 250.0, 1e4, 1.0, {}, {particle}, {}, {2}, 5);
+  System systemB(forceField, boxB, false, 450.0, 1e4, 1.0, {}, {particle}, {}, {4}, 7);
+  systemA.mc_moves_statistics.setMaxChange(Move::Types::ParallelTempering, 0.123);
+  systemB.mc_moves_statistics.setMaxChange(Move::Types::ParallelTempering, 0.456);
+  systemA.runningEnergies = systemA.computeTotalEnergies();
+  systemA.totalEik = systemA.storedEik;
+  systemB.runningEnergies = systemB.computeTotalEnergies();
+  systemB.totalEik = systemB.storedEik;
+
+  const double temperatureA = systemA.temperature;
+  const double betaA = systemA.beta;
+  const double temperatureB = systemB.temperature;
+  const double betaB = systemB.beta;
+  const MCMoveProbabilities probabilitiesA = systemA.mc_moves_probabilities;
+  const MCMoveProbabilities probabilitiesB = systemB.mc_moves_probabilities;
+  const std::size_t energyBlocksA = systemA.averageEnergies.numberOfBlocks;
+  const std::size_t energyBlocksB = systemB.averageEnergies.numberOfBlocks;
+  const std::vector<Atom> atomsA = systemA.atomData;
+  const std::vector<Atom> atomsB = systemB.atomData;
+  const std::vector<Molecule> moleculesA = systemA.moleculeData;
+  const std::vector<Molecule> moleculesB = systemB.moleculeData;
+
+  RandomNumber random(7);
+  const auto energies = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  ASSERT_TRUE(energies.has_value());
+
+  EXPECT_EQ(systemA.temperature, temperatureA);
+  EXPECT_EQ(systemA.beta, betaA);
+  EXPECT_EQ(systemB.temperature, temperatureB);
+  EXPECT_EQ(systemB.beta, betaB);
+  EXPECT_EQ(systemA.mc_moves_probabilities, probabilitiesA);
+  EXPECT_EQ(systemB.mc_moves_probabilities, probabilitiesB);
+  EXPECT_DOUBLE_EQ(systemA.mc_moves_statistics.getMaxChange(Move::Types::ParallelTempering), 0.123);
+  EXPECT_DOUBLE_EQ(systemB.mc_moves_statistics.getMaxChange(Move::Types::ParallelTempering), 0.456);
+  EXPECT_EQ(systemA.averageEnergies.numberOfBlocks, energyBlocksA);
+  EXPECT_EQ(systemB.averageEnergies.numberOfBlocks, energyBlocksB);
+  ASSERT_EQ(systemA.atomData.size(), atomsB.size());
+  ASSERT_EQ(systemB.atomData.size(), atomsA.size());
+  EXPECT_EQ(systemA.atomData.front().position, atomsB.front().position);
+  EXPECT_EQ(systemB.atomData.front().position, atomsA.front().position);
+  ASSERT_EQ(systemA.moleculeData.size(), moleculesB.size());
+  ASSERT_EQ(systemB.moleculeData.size(), moleculesA.size());
+  EXPECT_EQ(systemA.moleculeData.front().centerOfMassPosition, moleculesB.front().centerOfMassPosition);
+  EXPECT_EQ(systemB.moleculeData.front().centerOfMassPosition, moleculesA.front().centerOfMassPosition);
+  EXPECT_EQ(systemA.moleculeData.front().numberOfAtoms, moleculesB.front().numberOfAtoms);
+  EXPECT_EQ(systemB.moleculeData.front().numberOfAtoms, moleculesA.front().numberOfAtoms);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 4u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_EQ(systemA.simulationBox, boxB);
+  EXPECT_EQ(systemB.simulationBox, boxA);
+  EXPECT_EQ(systemA.electricField.size(), systemA.atomData.size());
+  EXPECT_EQ(systemB.electricField.size(), systemB.atomData.size());
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+
+  const auto reverseEnergies = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  ASSERT_TRUE(reverseEnergies.has_value());
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 4u);
+  EXPECT_EQ(systemA.simulationBox, boxA);
+  EXPECT_EQ(systemB.simulationBox, boxB);
+  EXPECT_EQ(systemA.temperature, temperatureA);
+  EXPECT_EQ(systemB.temperature, temperatureB);
+  EXPECT_DOUBLE_EQ(systemA.mc_moves_statistics.getMaxChange(Move::Types::ParallelTempering), 0.123);
+  EXPECT_DOUBLE_EQ(systemB.mc_moves_statistics.getMaxChange(Move::Types::ParallelTempering), 0.456);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+}
+
+TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  co2.mc_moves_probabilities = makeGibbsConventionalCFCMCProbabilities();
+  co2.lambdaGibbs.computeDUdlambda = true;
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {co2}, {}, {8}, 5),
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {co2}, {}, {8}, 5)};
+  setupSerialGibbsCFCMC(systems);
+  setGibbsLambda(systems[0], 0, 19);
+  setGibbsLambda(systems[1], 0, 10);
+  favorAllBinsExceptCurrent(systems[0].components[0]);
+  favorAllBinsExceptCurrent(systems[1].components[0]);
+
+  const RunningEnergy beforeA = systems[0].computeTotalEnergies();
+  systems[0].totalEik = systems[0].storedEik;
+  const RunningEnergy beforeB = systems[1].computeTotalEnergies();
+  systems[1].totalEik = systems[1].storedEik;
+  RandomNumber acceptedRandom(42);
+  const auto delta =
+      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(acceptedRandom, systems[0], systems[1], 0, false);
+  ASSERT_TRUE(delta.has_value());
+  systems[0].runningEnergies += delta->first;
+  systems[1].runningEnergies += delta->second;
+
+  const RunningEnergy afterA = systems[0].computeTotalEnergies();
+  const RunningEnergy afterB = systems[1].computeTotalEnergies();
+  EXPECT_NEAR(delta->first.ewald_fourier, (afterA - beforeA).ewald_fourier, 1e-6);
+  EXPECT_NEAR(delta->first.ewald_self, (afterA - beforeA).ewald_self, 1e-6);
+  EXPECT_NEAR(delta->first.ewald_exclusion, (afterA - beforeA).ewald_exclusion, 1e-6);
+  EXPECT_NEAR(delta->second.ewald_fourier, (afterB - beforeB).ewald_fourier, 1e-6);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+
+  setGibbsLambda(systems[0], 0, 19);
+  setGibbsLambda(systems[1], 0, 10);
+  rejectAllBinsExceptCurrent(systems[0].components[0]);
+  rejectAllBinsExceptCurrent(systems[1].components[0]);
+  const auto storedA = systems[0].storedEik;
+  const auto totalA = systems[0].totalEik;
+  const auto storedB = systems[1].storedEik;
+  const auto totalB = systems[1].totalEik;
+  const std::size_t countA = systems[0].numberOfIntegerMoleculesPerComponent[0];
+  const std::size_t countB = systems[1].numberOfIntegerMoleculesPerComponent[0];
+  const double scalingA = systems[0].spanOfMolecule(
+      0, systems[0].indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0))[0].scalingCoulomb;
+  const double scalingB = systems[1].spanOfMolecule(
+      0, systems[1].indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0))[0].scalingCoulomb;
+
+  RandomNumber rejectedRandom(42);
+  EXPECT_FALSE(MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(
+                   rejectedRandom, systems[0], systems[1], 0, false)
+                   .has_value());
+  EXPECT_EQ(systems[0].storedEik, storedA);
+  EXPECT_EQ(systems[0].totalEik, totalA);
+  EXPECT_EQ(systems[1].storedEik, storedB);
+  EXPECT_EQ(systems[1].totalEik, totalB);
+  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], countA);
+  EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], countB);
+  EXPECT_EQ(systems[0].spanOfMolecule(
+                0, systems[0].indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0))[0]
+                .scalingCoulomb,
+            scalingA);
+  EXPECT_EQ(systems[1].spanOfMolecule(
+                0, systems[1].indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0))[0]
+                .scalingCoulomb,
+            scalingB);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejection_preserves_configuration)
+{
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component particle(forceField, "particle", 1.0, 1.0, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System systemA(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e9, 1.0, {}, {particle}, {}, {2}, 5);
+  System systemB(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0, 1.0, {}, {particle}, {}, {4}, 5);
+  systemA.runningEnergies = systemA.computeTotalEnergies();
+  systemA.totalEik = systemA.storedEik;
+  systemB.runningEnergies = systemB.computeTotalEnergies();
+  systemB.totalEik = systemB.storedEik;
+  const auto atomsA = systemA.atomData;
+  const auto atomsB = systemB.atomData;
+  const SimulationBox boxA = systemA.simulationBox;
+  const SimulationBox boxB = systemB.simulationBox;
+
+  RandomNumber random(7);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  ASSERT_EQ(systemA.atomData.size(), atomsA.size());
+  ASSERT_EQ(systemB.atomData.size(), atomsB.size());
+  EXPECT_EQ(systemA.atomData.front().position, atomsA.front().position);
+  EXPECT_EQ(systemB.atomData.front().position, atomsB.front().position);
+  EXPECT_EQ(systemA.simulationBox, boxA);
+  EXPECT_EQ(systemB.simulationBox, boxB);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 4u);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_different_hamiltonians_before_random_draw)
+{
+  const ForceField forceFieldA({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const ForceField forceFieldB({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{10.0, 1.0}},
+                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component particleA(forceFieldA, "particle", 1.0, 1.0, 0.0,
+                            {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  const Component particleB(forceFieldB, "particle", 1.0, 1.0, 0.0,
+                            {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System systemA(forceFieldA, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {particleA}, {}, {2}, 5);
+  System systemB(forceFieldB, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {particleB}, {}, {2}, 5);
+  const std::size_t countA = systemA.numberOfIntegerMoleculesPerComponent[0];
+  const std::size_t countB = systemB.numberOfIntegerMoleculesPerComponent[0];
+
+  RandomNumber random(9);
+  const std::size_t drawsBefore = random.count;
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(random.count, drawsBefore);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], countA);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], countB);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_keeps_framework_bundle_fixed)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  const Framework framework = Framework::makeFAU(forceField);
+  Component methane = Component::makeMethane(forceField, 0);
+  System systemA(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {methane}, {}, {2}, 5);
+  System systemB(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {methane}, {}, {4}, 5);
+  systemA.runningEnergies = systemA.computeTotalEnergies();
+  systemA.totalEik = systemA.storedEik;
+  systemB.runningEnergies = systemB.computeTotalEnergies();
+  systemB.totalEik = systemB.storedEik;
+  const std::vector<Atom> frameworkAtomsA(systemA.spanOfFrameworkAtoms().begin(), systemA.spanOfFrameworkAtoms().end());
+  const std::vector<Atom> frameworkAtomsB(systemB.spanOfFrameworkAtoms().begin(), systemB.spanOfFrameworkAtoms().end());
+  const double3 mobilePositionA = systemA.spanOfMolecule(0, 0)[0].position;
+  const double3 mobilePositionB = systemB.spanOfMolecule(0, 0)[0].position;
+
+  RandomNumber random(11);
+  ASSERT_TRUE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  ASSERT_EQ(systemA.spanOfFrameworkAtoms().size(), frameworkAtomsA.size());
+  ASSERT_EQ(systemB.spanOfFrameworkAtoms().size(), frameworkAtomsB.size());
+  EXPECT_EQ(systemA.spanOfFrameworkAtoms()[0].position, frameworkAtomsA[0].position);
+  EXPECT_EQ(systemB.spanOfFrameworkAtoms()[0].position, frameworkAtomsB[0].position);
+  EXPECT_EQ(systemA.spanOfMolecule(0, 0)[0].position, mobilePositionB);
+  EXPECT_EQ(systemB.spanOfMolecule(0, 0)[0].position, mobilePositionA);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 4u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_flexible_components_before_random_draw)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  const Component propane = makeAlkaneFromExample(forceField, 0, "propane", MCMoveProbabilities{});
+  ASSERT_FALSE(propane.rigid);
+  System systemA(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {propane}, {}, {2}, 5);
+  System systemB(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {propane}, {}, {2}, 5);
+
+  RandomNumber random(15);
+  const std::size_t drawsBefore = random.count;
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(random.count, drawsBefore);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_fractional_state_before_random_draw)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = makeGibbsConventionalCFCMCProbabilities();
+  System systemA(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {4}, 5);
+  System systemB(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {4}, 5);
+  ASSERT_GT(systemA.numberOfFractionalMoleculesPerComponent[0], 0u);
+  ASSERT_GT(systemB.numberOfFractionalMoleculesPerComponent[0], 0u);
+
+  RandomNumber random(16);
+  const std::size_t drawsBefore = random.count;
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(random.count, drawsBefore);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_reaction_definitions_before_random_draw)
+{
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component particle(forceField, "particle", 1.0, 1.0, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System systemA(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {particle}, {}, {2}, 5);
+  System systemB(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {particle}, {}, {2}, 5);
+  systemA.reactions.list.emplace_back(0, std::vector<std::size_t>{1}, std::vector<std::size_t>{1});
+  systemB.reactions.list.emplace_back(0, std::vector<std::size_t>{1}, std::vector<std::size_t>{1});
+
+  RandomNumber random(17);
+  const std::size_t drawsBefore = random.count;
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(random.count, drawsBefore);
 }

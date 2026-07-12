@@ -24,6 +24,31 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
+static std::size_t reversePairDeletionPartnerCount(const System& system, std::size_t componentB,
+                                                   const double3& positionA, std::span<const Atom> trialMoleculeB,
+                                                   double maximumPairDistance)
+{
+  const std::size_t startingBeadB = system.components[componentB].startingBead;
+  const double maximumPairDistanceSquared = maximumPairDistance * maximumPairDistance;
+  std::size_t count = 0;
+
+  const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
+  for (std::size_t moleculeB = firstIntegerMoleculeB;
+       moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
+  {
+    const std::span<const Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
+    const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+        positionA - moleculeBAtoms[startingBeadB].position);
+    if (dr.length_squared() <= maximumPairDistanceSquared) ++count;
+  }
+
+  const double3 trialDr =
+      system.simulationBox.applyPeriodicBoundaryConditions(positionA - trialMoleculeB[startingBeadB].position);
+  if (trialDr.length_squared() <= maximumPairDistanceSquared) ++count;
+
+  return count;
+}
+
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC(RandomNumber& random, System& system,
                                                                                   std::size_t selectedComponent)
 {
@@ -219,10 +244,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  const double N_B = double(system.numberOfIntegerMoleculesPerComponent[componentB]);
+  const double k_new = double(reversePairDeletionPartnerCount(
+      system, componentB, growDataA->atoms[componentA.startingBead].position, growDataB->atoms, R_max));
 
   const double preFactor = correctionFactorEwald * system.beta * fugacityA * fugacityB * system.simulationBox.volume /
-                           ((N_A + 1.0) * (N_B + 1.0)) * distanceBias;
+                           ((N_A + 1.0) * k_new) * distanceBias;
 
   const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
 
@@ -467,10 +493,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  const double N_B = double(system.numberOfIntegerMoleculesPerComponent[componentB]);
+  const double k_new = double(reversePairDeletionPartnerCount(
+      system, componentB, growDataA->atoms[componentA.startingBead].position, growDataB->atoms, R_max));
 
   const double preFactor = correctionFactorEwald * system.beta * fugacityA * fugacityB * system.simulationBox.volume /
-                           ((N_A + 1.0) * (N_B + 1.0)) * distanceBias;
+                           ((N_A + 1.0) * k_new) * distanceBias;
 
   const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
 

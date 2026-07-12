@@ -1,4 +1,5 @@
 add_executable(unit_tests_raspa3
+  mc_component_moves.cpp
   mc_fractional_molecule_order.cpp
   mc_gibbs_drift.cpp
   mc_thermodynamic_integration_drift.cpp

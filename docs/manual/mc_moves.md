@@ -62,11 +62,16 @@ the [Commands](\ref commands) page for the full input documentation.
 
 ## Move selection <a name="move-selection"></a>
 
-A Monte Carlo cycle in `RASPA3` consists of a number of Monte Carlo steps (at
-minimum the number of molecules present). Each step proceeds as:
+A Monte Carlo cycle has
+\f$\max(N_\mathrm{slots},20)N_\mathrm{components}\f$ steps, where
+\f$N_\mathrm{slots}\f$ is the sum of `numberOfMolecules()` over all boxes and
+therefore includes reserved fractional molecule slots. At every step `RASPA3`
+chooses one neighboring index pair \f$(i,i+1)\f$ with
+\f$i\in[0,N_\mathrm{systems}-2]\f$, randomizes its order with probability
+one half, uses the first as the selected system and the second as the partner,
+then:
 
-- select a random system (box),
-- select a random component of that system,
+- selects a component uniformly from the selected system,
 - sample a move type from the (normalized) move-probability table of that
   component; the probabilities are set in the input file with the keywords
   listed below,
@@ -75,17 +80,30 @@ minimum the number of molecules present). Each step proceeds as:
 - perform the move and accept or reject the trial configuration according to
   the acceptance rule of the move.
 
-System moves (volume changes, hybrid MC, parallel tempering, reactions) are
-also sampled through this mechanism but ignore the selected molecule and act on
-the box(es) as a whole. The maximum displacement/rotation angle/volume change
-of the adaptive moves is optimized during initialization and equilibration to
-reach an acceptance ratio of approximately 50%.
+Component moves use that component; system moves ignore it; cross-system moves
+use the ordered adjacent pair; reaction moves use the selected system and then
+filter the reaction list as stated below. A guard failure is a rejected/no-op
+attempt: no coordinates, counts, Ewald sums, fields, histogram bin, or running
+energy are committed. Trial arrays and temporary scaling changes may be made
+while evaluating a proposal, but are restored on rejection. Accepted moves
+commit coordinates/counts first only where required by the algorithm, accept or
+rebuild the Ewald state, update polarization fields, and finally update the
+running-energy bookkeeping.
+
+For clarity, every section retains the explicit “select a box” and “select a
+component” steps. Those steps describe the values supplied by this common
+dispatcher; the individual move implementation does **not** draw a second box
+or component unless the section explicitly says that it randomizes the order
+of the supplied boxes.
 
 ## Notation <a name="notation"></a>
 
 - \f$\beta = 1/(k_B T)\f$: inverse temperature,
-- \f$\Delta U = U(\mathbf{n}) - U(\mathbf{o})\f$: potential-energy difference between the new
-  (trial) configuration \f$\mathbf{n}\f$ and the old configuration \f$\mathbf{o}\f$,
+- \f$\Delta U_\mathrm{full}=U(\mathbf{n})-U(\mathbf{o})\f$: complete implemented
+  potential-energy change. Unless a section defines a correction separately,
+  this includes external-field, framework-molecule, intermolecular real-space,
+  reciprocal Ewald (including net-charge/exclusion terms), long-range tail,
+  and polarization changes that are enabled for that force field,
 - \f$N\f$: number of (integer) molecules of the selected component in the box,
 - \f$V\f$: volume of the box,
 - \f$f = \gamma\, x\, p\f$: fugacity of the component (fugacity coefficient
@@ -95,11 +113,35 @@ reach an acceptance ratio of approximately 50%.
 - \f$\lambda \in [0,1]\f$: coupling parameter of the fractional molecule in CFCMC
   moves; \f$\eta(\lambda)\f$ the corresponding bias factor (obtained by Wang-Landau
   weighting during equilibration),
+- a CFCMC “random lambda change” is discrete: for current bin \f$j\f$, bin
+  spacing \f$\delta=1/(M-1)\f$, tuned scale \f$s\f$, and \f$u\sim U[0,1)\f$, the
+  implementation proposes
+  \f$j'=j+\mathrm{int}[2sM(u-1/2)]\f$ and
+  \f$\lambda'=j'\delta\f$. Each move states whether an out-of-range bin wraps
+  into a boundary operation or rejects,
+- \f$\Delta U_\mathrm{corr}\f$: contributions evaluated outside a CBMC
+  Rosenbluth weight. A section specifies its contents; it must not be read as a
+  second copy of the real-space growth energy,
+- \f$B_{n,o}\f$: the TMMC macrostate bias returned for \f$N_o\to N_n\f$.
+  Grand-canonical whole-molecule branches accept with
+  \f$B_{n,o}P_\mathrm{phys}\f$, reject outside the configured macrostate range,
+  and update the transition matrix with the *unbiased* \f$P_\mathrm{phys}\f$,
 - all acceptance rules are of the Metropolis form
   \f$\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min(1, \text{expression})\f$.
 
-Trial configurations that place a molecule inside a blocked pocket are rejected
-immediately.
+Trial construction/energy overlap failures and blocked-pocket placements reject
+immediately. “Integer molecule” always excludes reserved fractional slots.
+Translation, random translation, rotation, random rotation, force-biased
+single-molecule translation, reinsertion, and partial reinsertion first guard
+that the selected component has at least one molecule and then sample uniformly
+from **all** its molecule slots, including fractional slots. Deletion,
+identity-change, pair-deletion, transfer-donor, and reaction selections that
+explicitly say “integer” use only whole molecules.
+CBMC group growth is in ascending component index and stoichiometric occurrence,
+adding every grown molecule to the next background. Group retracing uses the
+matching nested reverse background: member \f$k\f$ sees earlier members but not
+later members. Ewald, tail, polarization, and (for reinsertion) dual-cutoff
+terms that are outside growth are explicit multiplicative corrections.
 
 ----------------------------------------------------------------------------------
 
@@ -214,9 +256,9 @@ calculation*, Chem. Phys. Lett. **3**, 144-145 (1969).
 
 Keyword: `"RandomRotationProbability"` (component move)
 
-Gives a single molecule a completely new random orientation, drawn uniformly on
-the rotation group (random vector on the unit sphere plus random angle),
-independent of the current orientation.
+Left-multiplies a selected molecule by an independent Haar-uniform quaternion,
+i.e. a genuinely uniform proposal on \f$SO(3)\f$, not a uniform axis plus a
+uniform angle.
 
 Steps:
 
@@ -269,6 +311,12 @@ Steps:
 - accept or reject including the Hastings correction for the asymmetric
   proposal.
 
+The drift force contains external-field, framework, intermolecular real-space,
+and reciprocal-Ewald force contributions. Polarization force is intentionally
+excluded from \f$\mathbf F_\mathbf{o}\f$ and \f$\mathbf F_\mathbf{n}\f$; the exact
+polarization **energy** change remains in \f$\Delta U\f$, so the
+Metropolis-Hastings rule remains valid.
+
 Acceptance rule:
 
 \f[
@@ -318,19 +366,26 @@ Steps:
 - retrace the old configuration with the same procedure (using the actual old
   positions as one of the trial sets) to obtain the old Rosenbluth weight
   \f$W(\mathbf{o})\f$,
-- compute the remaining (Ewald Fourier, tail-correction) energy differences not
-  included in the CBMC growth,
+- compute reciprocal-Ewald and enabled polarization changes, plus the
+  non-overlapping real-space correction when dual-cutoff growth is enabled,
 - accept or reject based on the ratio of Rosenbluth weights.
 
 Acceptance rule:
 
 \f[
-\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1, \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
-     e^{-\beta \Delta U_\text{non-CBMC}}\right)
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+\frac{W(\mathbf{n})}{W(\mathbf{o})}
+e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol}
+                 +\Delta U_\mathrm{dual})}\right)
 \f]
 
-where \f$\Delta U_\text{non-CBMC}\f$ contains the energy contributions (Ewald Fourier and
-tail corrections) not accounted for during the biased growth.
+Here \f$\Delta U_\mathrm{dual}=[U_\mathrm{full}(\mathbf n)-
+U_\mathrm{growth}(\mathbf n)]-[U_\mathrm{full}(\mathbf o)-
+U_\mathrm{growth}(\mathbf o)]\f$ when dual cutoff is enabled, and zero
+otherwise. There is no separate tail factor on this move. The old molecule is
+excluded from the new-growth background; the new molecule is excluded while
+retracing the old. Coordinates, Ewald sums, and polarization fields commit
+only after acceptance.
 
 Useful for: flexible molecules (alkanes, alcohols, etc.), where it is often the
 only efficient way to change the internal conformation; also useful for rigid
@@ -362,14 +417,21 @@ Steps:
 - regrow all non-fixed atoms with CBMC starting from the fixed atoms,
   accumulating the new Rosenbluth weight \f$W(\mathbf{n})\f$,
 - retrace the old positions of the regrown atoms to obtain \f$W(\mathbf{o})\f$,
-- accept or reject based on the ratio of Rosenbluth weights.
+- apply the same reciprocal-Ewald, polarization, and optional dual-cutoff
+  corrections as full reinsertion and accept or reject.
 
 Acceptance rule:
 
 \f[
-\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1, \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
-     e^{-\beta \Delta U_\text{non-CBMC}}\right)
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+\frac{W(\mathbf{n})}{W(\mathbf{o})}
+e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol}
+                 +\Delta U_\mathrm{dual})}\right)
 \f]
+
+The definitions and commit timing of these correction terms are identical to
+full reinsertion. Reject if the selected molecule or fixed-atom configuration
+does not exist, or if growth/retrace fails.
 
 Useful for: large or strongly adsorbed flexible molecules where a full
 reinsertion has a very low acceptance; e.g. regrowing side chains or tail
@@ -395,7 +457,10 @@ Steps:
 - select a random box,
 - select a random component,
 - select at random a partner component from the identity-change list,
-- select a random molecule of the old component in the chosen box,
+- validate that the partner exists, differs from the selected component, and
+  has the same component type; choose either listed direction with probability
+  1/2, reject if the resulting old component has no integer molecule, and then
+  select one of its integer molecules uniformly,
 - grow a molecule of the new component with CBMC, placing its first bead at the
   position of the first bead of the old molecule; accumulate \f$W(\mathbf{n})\f$,
 - retrace the old molecule to obtain \f$W(\mathbf{o})\f$,
@@ -405,10 +470,17 @@ Acceptance rule (change of a molecule of component \f$A\f$ into component \f$B\f
 
 \f[
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
-   \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
+\frac{W_B(\mathbf{n})/W_B^\mathrm{IG}}
+     {W_A(\mathbf{o})/W_A^\mathrm{IG}}\,
    \frac{f_B\, N_A}{f_A\, (N_B + 1)}\,
-   e^{-\beta \Delta U_\text{non-CBMC}} \right)
+   e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{tail}+
+                    \Delta U_\mathrm{pol})} \right)
 \f]
+
+The old molecule is excluded while the new one is grown at the old starting
+bead. The old molecule is retraced in the original background. The tail factor
+is folded into the new Rosenbluth numerator in the code; the displayed form is
+algebraically identical. Nothing is deleted or inserted until acceptance.
 
 Useful for: adsorption of mixtures (e.g. binary/multicomponent isotherms in
 zeolites and MOFs), where direct swaps of the minority component are rare; the
@@ -449,9 +521,11 @@ Steps:
 Acceptance rules:
 
 \f[
-\text{acc}_\text{ins} = \min\left(1, \frac{\beta f V}{N+1}\, e^{-\beta \Delta U} \right),
+\text{acc}_\text{ins} = \min\left(1, B_{N+1,N}\frac{\beta f V}{N+1}\,
+ e^{-\beta \Delta U_\mathrm{full}} \right),
 \qquad
-\text{acc}_\text{del} = \min\left(1, \frac{N}{\beta f V}\, e^{-\beta \Delta U} \right)
+\text{acc}_\text{del} = \min\left(1, B_{N-1,N}\frac{N}{\beta f V}\,
+ e^{-\beta \Delta U_\mathrm{full}} \right)
 \f]
 
 Useful for: grand-canonical adsorption of small rigid molecules (CH<sub>4</sub>,
@@ -481,19 +555,25 @@ Steps:
   weight \f$W(\mathbf{n})\f$,
 - deletion: select a random (integer) molecule of the component in the chosen
   box and retrace it with CBMC to obtain \f$W(\mathbf{o})\f$,
-- add the non-CBMC energy contributions (Ewald Fourier, tail corrections),
+- add \f$\Delta U_\mathrm{corr}\f$ (reciprocal Ewald, tail, and enabled
+  polarization terms outside growth),
 - accept or reject.
 
 Acceptance rules (with the ideal-gas Rosenbluth weight \f$W^\text{IG}\f$ of the
 isolated molecule as normalization):
 
 \f[
-\text{acc}_\text{ins} = \min\left(1, \frac{\beta f V}{N+1}\,
-      \frac{W(\mathbf{n})}{W^\text{IG}}\, e^{-\beta \Delta U_\text{non-CBMC}} \right),
+\text{acc}_\text{ins} = \min\left(1, B_{N+1,N}\frac{\beta f V}{N+1}\,
+      \frac{W(\mathbf{n})}{W^\text{IG}}\, e^{-\beta \Delta U_\mathrm{corr}} \right),
 \qquad
-\text{acc}_\text{del} = \min\left(1, \frac{N}{\beta f V}\,
-      \frac{W^\text{IG}}{W(\mathbf{o})}\, e^{-\beta \Delta U_\text{non-CBMC}} \right)
+\text{acc}_\text{del} = \min\left(1, B_{N-1,N}\frac{N}{\beta f V}\,
+      \frac{W^\text{IG}}{W(\mathbf{o})}\, e^{-\beta \Delta U_\mathrm{corr}} \right)
 \f]
+
+Here \f$\Delta U_\mathrm{corr}=\Delta U_\mathrm{Ewald}+
+\Delta U_\mathrm{tail}+\Delta U_\mathrm{pol}\f$; real-space external,
+framework, and molecule energies are in \f$W\f$. Growth/retrace or overlap
+failure rejects before any insertion/deletion is committed.
 
 Useful for: adsorption isotherms of flexible/chain molecules (alkanes,
 alcohols) in nanoporous materials; the standard workhorse for GCMC of anything
@@ -538,13 +618,13 @@ Steps:
 Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right),
+\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right),
 \qquad
-\text{acc}_\text{ins} = \min\left(1, \frac{\beta f V}{N+1}\,
-   e^{-\beta \Delta U + \Delta\eta}\right),
+\text{acc}_\text{ins} = \min\left(1, B_{N+1,N}\frac{\beta f V}{N+1}\,
+   e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right),
 \qquad
-\text{acc}_\text{del} = \min\left(1, \frac{N}{\beta f V}\,
-   e^{-\beta \Delta U + \Delta\eta}\right)
+\text{acc}_\text{del} = \min\left(1, B_{N-1,N}\frac{N}{\beta f V}\,
+   e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right)
 \f]
 
 Useful for: open-ensemble simulations of dense phases where direct insertions
@@ -588,18 +668,26 @@ Steps:
 Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right)
 \f]
 
 \f[
-\text{acc}_\text{ins} = \min\left(1, \frac{\beta f V}{N+1}\,
+\text{acc}_\text{ins} = \min\left(1, B_{N+1,N}\frac{\beta f V}{N+1}\,
    \frac{W(\mathbf{n})}{W^\text{IG}}\,
    e^{-\beta \Delta U + \Delta\eta}\right),
 \qquad
-\text{acc}_\text{del} = \min\left(1, \frac{N}{\beta f V}\,
+\text{acc}_\text{del} = \min\left(1, B_{N-1,N}\frac{N}{\beta f V}\,
    \frac{W^\text{IG}}{W(\mathbf{o})}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
+
+For this CB/CFCMC move the correction exponent includes polarization
+explicitly when enabled. Insertion includes the grown fractional molecule's
+self polarization and, unless intermolecular polarization is omitted, the
+field/energy change on all existing molecules. Deletion includes the removed
+fractional's stored-field self term and the neighbor-field change; lambda
+changes include the corresponding neighbor polarization change. These field
+updates are committed only on acceptance.
 
 Useful for: open-ensemble simulations of *flexible* molecules in dense phases
 (long alkanes at high loading, chain molecules in liquids), where both the
@@ -628,32 +716,57 @@ Steps:
 - select a random box,
 - select a random component \f$A\f$ (the pair partner \f$B\f$ is defined in the
   input),
+- reject unless the partner is valid, \f$A\f$ is the lower-index member of the
+  pair, and \f$R_\text{max}>0\f$,
 - with 50% probability attempt a pair insertion, otherwise a pair deletion,
 - insertion: grow molecule \f$A\f$ at a random position; draw a distance
   \f$r = R_\text{max}\sqrt[3]{u}\f$ and a random direction on the unit sphere, and grow
   molecule \f$B\f$ with its first bead at that position,
-- deletion: select a random integer molecule of component \f$A\f$ and its paired
-  molecule of component \f$B\f$, and retrace both,
+- deletion: select an integer \f$A\f$ uniformly; form the list of all integer
+  \f$B\f$ molecules whose starting bead is within \f$R_\text{max}\f$, reject if the
+  list is empty, and choose \f$B\f$ uniformly from that list; first retrace
+  molecule \f$B\f$ with \f$A\f$ present, then exclude \f$B\f$ and retrace
+  molecule \f$A\f$ without \f$B\f$ in its background,
 - compute the energy differences and accept or reject.
+
+Order of growth and retracing: the two molecules are grown one after the other
+in a *fixed* order — always molecule \f$A\f$ first (against the existing system),
+then molecule \f$B\f$ in the presence of the trial configuration of \f$A\f$. The
+retrace at deletion uses the reverse order and matching *nested*
+environments: first molecule \f$B\f$ is retraced with molecule \f$A\f$ present
+in the background, then \f$B\f$ is excluded and molecule \f$A\f$ is retraced
+without \f$B\f$. Each molecule thus sees exactly the same environment in the
+forward growth and reverse retrace, as required by detailed balance.
 
 Acceptance rules:
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   \frac{\beta f_A f_B V}{(N_A+1)(N_B+1)}\,
+   B_{N_A+1,N_A}\frac{\beta f_A f_B V}{(N_A+1)k_\mathbf{n}}\,
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   \frac{N_A N_B}{\beta f_A f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A k_\mathbf{o}}{\beta f_A f_B V}\,
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
-A single volume factor \f$V\f$ appears because molecule \f$B\f$ is confined to the
-pair sphere around molecule \f$A\f$ rather than inserted anywhere in the box.
+A single volume factor \f$V\f$ appears because molecule \f$B\f$ is confined to
+the pair sphere. \f$k_\mathbf{o}\f$ is the number of integer \f$B\f$ molecules
+within \f$R_\text{max}\f$ of the selected old \f$A\f$ before deletion.
+\f$k_\mathbf{n}\f$ is the corresponding count in the proposed state after
+insertion, including the inserted \f$B\f$ and any pre-existing integer \f$B\f$
+neighbors of the inserted \f$A\f$. Both counts use starting-bead distances
+after applying the simulation box's minimum-image convention. Deletion chooses
+uniformly among the \f$k_\mathbf{o}\f$ eligible partners. Conventional insertion
+is uniform in the sphere volume, so its radial Jacobian correction is one. The
+implementation nevertheless uses sequential configured
+growth/retrace and the displayed Rosenbluth ratios; its
+\f$\Delta U_\mathrm{corr}\f$ is the Ewald/tail/polarization correction outside
+those weights.
 
 Useful for: systems where single-molecule swaps would break a constraint that
 must hold at all times, most notably charge neutrality when inserting ionic
@@ -679,31 +792,53 @@ Steps:
 - select a random box,
 - select a random component \f$A\f$ (the pair partner \f$B\f$ is defined in the
   input),
+- reject unless the partner is valid, \f$A\f$ is the lower-index member of the
+  pair, and \f$R_\text{max}>0\f$,
 - with 50% probability attempt a pair insertion, otherwise a pair deletion,
 - insertion: grow molecule \f$A\f$ with CBMC at a random position; draw
   \f$r = R_\text{max}\, u\f$ and a random direction, and grow molecule \f$B\f$ with CBMC
   with its first bead fixed at that position,
-- deletion: select a random integer molecule of \f$A\f$ and its paired molecule of
-  \f$B\f$ and retrace both with CBMC,
+- deletion: select an integer \f$A\f$ uniformly; choose uniformly among all
+  \f$k\f$ integer \f$B\f$ molecules whose starting bead lies within
+  \f$R_\text{max}\f$ — reject if \f$k=0\f$;
+  first retrace molecule \f$B\f$, keeping its first bead fixed at its old
+  position and including molecule \f$A\f$ in the CBMC background; then exclude
+  molecule \f$B\f$ and retrace molecule \f$A\f$ without \f$B\f$ in its background,
 - accept or reject.
+
+The retrace order is the reverse of the growth order:
+\f[
+  \text{growth: } A \longrightarrow B\text{ with }A,
+  \qquad
+  \text{retrace: } B\text{ with }A \longrightarrow A\text{ without }B.
+\f]
+These nested backgrounds ensure that each Rosenbluth weight is evaluated in
+the same environment in the forward and reverse moves, as required by
+detailed balance. The interaction between \f$A\f$ and \f$B\f$ enters exactly once,
+through the growth or retrace weight of molecule \f$B\f$.
 
 Acceptance rules:
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   \frac{\beta f_A f_B V}{(N_A+1)(N_B+1)}\;
+   B_{N_A+1,N_A}\frac{\beta f_A f_B V}{(N_A+1)k_\mathbf{n}}\;
    \frac{3 r^2}{R_\text{max}^2}\;
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   \frac{N_A N_B}{\beta f_A f_B V}\;
+   B_{N_A-1,N_A}\frac{N_A k_\mathbf{o}}{\beta f_A f_B V}\;
    \frac{R_\text{max}^2}{3 r^2}\;
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
+
+The definitions of \f$k_\mathbf{o}\f$ and \f$k_\mathbf{n}\f$, minimum-image
+distance, and uniform reverse partner choice are identical to the conventional
+pair move. Both direct pair variants retrace \f$B\f$ first with \f$A\f$ present,
+then retrace \f$A\f$ with the pair excluded.
 
 Useful for: pair insertions of *flexible* charged species (e.g. molecular ions
 with several beads) where the conventional pair placement has too low an
@@ -720,12 +855,16 @@ The CFCMC variant of the pair swap: the pair of fractional molecules (one of
 component \f$A\f$, one of component \f$B\f$) is coupled through a *single, common*
 coupling parameter \f$\lambda\f$, so both molecules appear and disappear together and
 the system stays charge neutral at every value of \f$\lambda\f$.
+Unlike the two direct pair moves above, these CFCMC pair variants do **not**
+use \f$R_\text{max}\f$, a radial proposal, or an in-range-neighbor factor.
 
 Steps:
 
 - select a random box,
 - select a random component \f$A\f$ (the pair partner \f$B\f$ is defined in the
   input),
+- reject unless the partner exists and has a strictly higher component index
+  than \f$A\f$,
 - draw a random change \f$\Delta\lambda\f$ of the common coupling parameter; three cases
   arise:
 - if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale both
@@ -734,7 +873,7 @@ Steps:
   integer molecules and a new fractional pair is inserted at random positions
   with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
 - if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: the fractional pair is removed and
-  a randomly selected integer molecule of each component becomes the new
+  independently and uniformly selected integer molecule of each component becomes the new
   fractional pair with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
 - accept or reject.
 
@@ -746,13 +885,16 @@ Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathb
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   \frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
    e^{-\beta \Delta U + \Delta\eta}\right),
 \qquad
 \text{acc}_\text{del} = \min\left(1,
-   \frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
+
+For all three branches, \f$\Delta U\f$ includes the enabled polarization
+change as well as the real-space, reciprocal-Ewald, and tail contributions.
 
 Useful for: open-ensemble simulations of ionic species in dense phases (salts
 in liquids, ionic adsorbates at high loading) where both charge neutrality and
@@ -771,8 +913,48 @@ The CFCMC pair swap with configurational-bias growth: in the pair-insertion
 and pair-deletion branches the fractional molecules are grown/retraced with
 CBMC, adding the Rosenbluth-weight ratios of both molecules to the acceptance
 rules.
+It likewise has no \f$R_\text{max}\f$ constraint. Boundary deletion selects
+the replacement integer \f$A\f$ and \f$B\f$ independently; it does not search
+for a geometrically paired neighbor.
 
-Acceptance rules:
+Steps:
+
+- select a random box,
+- select a random component \f$A\f$ (the pair partner \f$B\f$ is defined in the
+  input),
+- reject unless the partner exists and has a strictly higher component index
+  than \f$A\f$,
+- draw a random change \f$\Delta\lambda\f$ of the common coupling parameter of the
+  fractional pair; three cases arise:
+- if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale both
+  fractional molecules simultaneously and compute \f$\Delta U\f$,
+- if \f$\lambda + \Delta\lambda > 1\f$ — **pair insertion**: both fractional molecules become
+  fully coupled integer molecules (\f$\lambda \rightarrow 1\f$); grow the new
+  fractional molecule \f$A\f$ first, then grow fractional molecule \f$B\f$ with
+  \f$A\f$ present in its CBMC background (Rosenbluth weights
+  \f$W_A(\mathbf{n})\f$ and \f$W_B(\mathbf{n})\f$), with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
+- if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: first retrace fractional
+  molecule \f$B\f$ with \f$A\f$ present in its CBMC background, then exclude
+  \f$B\f$ and retrace fractional molecule \f$A\f$ without \f$B\f$ in its
+  background (Rosenbluth weights \f$W_B(\mathbf{o})\f$ and
+  \f$W_A(\mathbf{o})\f$); remove the old fractional pair, and make a randomly
+  selected integer molecule of each component the new fractional pair with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
+- accept or reject.
+
+The retrace order is therefore the reverse of the growth order:
+\f[
+  \text{growth: } A \longrightarrow B\text{ with }A,
+  \qquad
+  \text{retrace: } B\text{ with }A \longrightarrow A\text{ without }B.
+\f]
+These nested backgrounds ensure that each Rosenbluth weight is computed in
+the same environment in the forward and reverse moves, as required by
+detailed balance. The intra-pair interaction enters exactly once, through the
+growth or retrace weight of molecule \f$B\f$.
+
+Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
 \text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
@@ -780,17 +962,23 @@ Acceptance rules:
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   \frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   \frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
+
+The pair CB/CFCMC correction includes enabled polarization: both grown/removed
+fractional molecules' self terms, their mutual field contribution, and (when
+intermolecular polarization is active) the field-energy change on every
+remaining molecule. Lambda changes update the neighbor polarization
+contribution of both fractionals; stored fields change only after acceptance.
 
 Useful for: flexible ionic species in dense phases, combining charge-neutral
 pair transfer, gradual coupling, and conformational biasing.
@@ -809,17 +997,18 @@ Comput. **3**, 1451-1463 (2007). <https://doi.org/10.1021/ct7000039>
 Keyword: `"VolumeMoveProbability"` (system move)
 
 Isotropic change of the box volume at constant external pressure — the basic
-move of the \f$NpT\f$ ensemble. The volume change is sampled in \f$\ln V\f$. Rigid
-molecules are scaled by their center of mass (internal geometry preserved);
-framework and flexible molecules are scaled atom-by-atom.
+move of the \f$NpT\f$ ensemble. The volume change is sampled in \f$\ln V\f$. All
+adsorbate molecules, rigid or flexible, are translated rigidly by scaling
+their center-of-mass position; every intramolecular displacement is preserved.
+Framework coordinates are fixed and are not scaled by this move.
 
 Steps:
 
 - select a random box,
 - draw a new volume from
   \f$\ln V_\mathbf{n} = \ln V_\mathbf{o} + \Delta_\text{max}\,(2u - 1)\f$ with \f$u\f$ uniform in \f$[0,1)\f$,
-- scale the box vectors isotropically by \f$(V_\mathbf{n}/V_\mathbf{o})^{1/3}\f$ and scale all
-  molecule positions (center-of-mass scaling for rigid molecules),
+- scale the box vectors isotropically by \f$(V_\mathbf{n}/V_\mathbf{o})^{1/3}\f$ and
+  rigidly translate each adsorbate so its center of mass follows that scaling,
 - recompute the total energy of the scaled configuration,
 - accept or reject.
 
@@ -831,8 +1020,12 @@ Acceptance rule (for sampling in \f$\ln V\f$):
   e^{-\beta\left[\Delta U + p\,(V_\mathbf{n} - V_\mathbf{o})\right]}\right)
 \f]
 
+For this section \f$N=\sum_i N_i^\mathrm{integer}\f$: the total number of
+integer adsorbate molecules in the box. Reserved fractional slots do not enter
+the Jacobian exponent.
+
 Useful for: \f$NpT\f$ simulations of bulk fluids (densities, equations of state)
-and for equilibrating framework densities of flexible frameworks. Expensive:
+and for equilibrating mobile-fluid densities around a fixed framework. Expensive:
 requires a full energy recalculation.
 
 References: I.R. McDonald, *NpT-ensemble Monte Carlo calculations for binary
@@ -850,6 +1043,7 @@ Changes the three box lengths independently (the box shape can change while
 the pressure tensor is imposed per diagonal component). Molecules are
 translated rigidly with their center-of-mass fractional position kept fixed,
 so intramolecular energies are unchanged.
+Framework coordinates remain fixed.
 
 Steps:
 
@@ -870,9 +1064,10 @@ Acceptance rule:
   e^{-\beta\left[\Delta U + \Delta W\right]}\right)
 \f]
 
-Useful for: solids and frameworks where the cell shape must relax (structural
-transitions, breathing MOFs), and for fluids in anisotropic confinement where
-the box aspect ratio matters.
+Here too \f$N=\sum_i N_i^\mathrm{integer}\f$ and fractional slots are excluded.
+
+Useful for: fluid boxes whose aspect ratio must relax and anisotropic
+confinement where box shape matters. This move does not deform a framework.
 
 Reference: S. Yashonath and C.N.R. Rao, *A Monte Carlo study of crystal
 structure transformations*, Mol. Phys. **54**, 245-251 (1985).
@@ -890,6 +1085,8 @@ relaxation while the Metropolis step removes integration errors.
 Steps:
 
 - select a random box,
+- reject immediately when `moleculeData.size() <= 1`; this count includes
+  reserved fractional molecule records,
 - draw fresh velocities for all molecules from the Maxwell-Boltzmann
   distribution at the system temperature,
 - integrate Newton's equations of motion (velocity Verlet, NVE) for the chosen
@@ -898,15 +1095,16 @@ Steps:
   \f$\Delta E = E_\text{end} - E_\text{start}\f$ over the trajectory,
 - accept the final configuration or restore the initial one.
 
-Acceptance rule (as implemented, using the absolute conserved-energy drift):
+Acceptance rule (the implementation deliberately uses the absolute
+conserved-energy drift
+\f$d=|E_\text{end}-E_\text{start}|\f$):
 
 \f[
-\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1, e^{-\beta\, \left|\Delta E\right|}\right)
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1, e^{-\beta d}\right)
 \f]
 
-Useful for: dense fluids and flexible frameworks where single-molecule moves
-relax the structure slowly; also the standard way to include framework
-flexibility and collective motions in an MC simulation.
+Useful for: dense fluids where single-molecule moves relax the structure
+slowly, and for collective molecular motion.
 
 References: S. Duane, A.D. Kennedy, B.J. Pendleton, and D. Roweth, *Hybrid
 Monte Carlo*, Phys. Lett. B **195**, 216-222 (1987).
@@ -934,6 +1132,11 @@ Steps:
 - accept or reject all displacements together with the Hastings-corrected
   Metropolis rule (the product over molecules of the single-molecule bias
   factors).
+
+As for the single-molecule smart move, polarization forces are not included in
+the drift vectors. Polarization baselines remain in the maintained energy
+bookkeeping; the proposal asymmetry is corrected using the deterministic
+non-polarization forces actually used to generate it.
 
 Acceptance rule:
 
@@ -968,10 +1171,13 @@ Exchanges volume between the two boxes at constant total volume
 
 Steps:
 
+- use the dispatcher-supplied selected box as \f$A\f$ and its adjacent partner
+  as \f$B\f$; the supplied component is ignored,
 - draw \f$\ln(V_{A,\mathbf{n}}/V_{B,\mathbf{n}}) = \ln(V_{A,\mathbf{o}}/V_{B,\mathbf{o}}) + \Delta_\text{max}(2u-1)\f$,
 - compute the two new volumes with \f$V_{A,\mathbf{n}} + V_{B,\mathbf{n}} = V\f$,
 - scale both boxes isotropically and scale the molecule positions by their
-  centers of mass,
+  centers of mass, preserving every molecule's internal geometry and leaving
+  framework coordinates fixed,
 - recompute the total energies of both boxes,
 - accept or reject both scalings together.
 
@@ -983,6 +1189,11 @@ Acceptance rule:
   \left(\frac{V_{B,\mathbf{n}}}{V_{B,\mathbf{o}}}\right)^{N_B+1}
   e^{-\beta\left[\Delta U_A + \Delta U_B\right]}\right)
 \f]
+
+Here \f$N_A=\sum_iN_{i,A}^\mathrm{integer}\f$ and
+\f$N_B=\sum_iN_{i,B}^\mathrm{integer}\f$. Reserved fractional slots are excluded.
+The ordered adjacent system pair is supplied by the dispatcher; the proposal
+itself is symmetric under exchanging its two members.
 
 Useful for: vapor-liquid equilibrium (VLE) calculations of pure components and
 mixtures; mandatory in any Gibbs ensemble simulation (together with a Gibbs
@@ -1003,7 +1214,8 @@ chemical potential of the component between the two phases.
 Steps:
 
 - choose the transfer direction (box \f$A \rightarrow B\f$ or \f$B \rightarrow A\f$, 50% each),
-- select a random molecule of the selected component in the donating box,
+- reject unless the component exists in both boxes and the donor has an
+  integer molecule; select one donor integer uniformly,
 - grow a trial molecule with CBMC at a random position in the receiving box and
   accumulate \f$W(\mathbf{n})\f$,
 - retrace the molecule in the donating box to obtain \f$W(\mathbf{o})\f$,
@@ -1014,8 +1226,14 @@ Acceptance rule (transfer from box \f$B\f$ to box \f$A\f$):
 \f[
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
   \frac{W(\mathbf{n})\, N_B\, V_A}{W(\mathbf{o})\, (N_A+1)\, V_B}\,
-  e^{-\beta \Delta U_\text{non-CBMC}}\right)
+  e^{-\beta_A\Delta U_{\mathrm{corr},A}
+     -\beta_B\Delta U_{\mathrm{corr},B}}\right)
 \f]
+
+\f$\Delta U_{\mathrm{corr},A}\f$ is the receiving-box reciprocal-Ewald plus
+tail insertion change and \f$\Delta U_{\mathrm{corr},B}\f$ is the signed
+donor-box reciprocal-Ewald plus tail deletion change. Real-space growth and
+retrace energies remain in the two Rosenbluth weights.
 
 Useful for: VLE and liquid-liquid equilibria of molecular fluids and mixtures;
 the CBMC growth keeps acceptance workable for chain molecules.
@@ -1032,29 +1250,34 @@ equilibria of chain molecules*, J. Phys.: Condens. Matter **4**, L255-L259
 
 Keyword: `"GibbsSwapCFCMCProbability"` (component move)
 
-Serial CFCMC version of the Gibbs swap: there is a *single* fractional molecule
-in the whole two-box system, and the coupling parameter \f$\lambda\f$ interpolates the
-molecule between the two boxes. Increasing \f$\lambda\f$ couples the fractional
-molecule in one box while decoupling it in the other, so molecule transfer
-proceeds gradually instead of in one step.
+Serial CFCMC version of the Gibbs swap: each box has a reserved fractional
+slot, but exactly one box has `containsTheFractionalMolecule=true`. Only that
+slot is active and coupled at \f$\lambda\f$; the partner box's slot is parked
+inactive and contributes neither interactions nor \f$dU/d\lambda\f$.
 
 Steps (box \f$A\f$ is the box currently holding the fractional molecule; each
 box keeps its own bias function \f$\eta_A(\lambda)\f$, \f$\eta_B(\lambda)\f$):
 
-- identify the box \f$A\f$ holding the fractional molecule,
+- use the dispatcher-supplied adjacent pair and component, identify the
+  uniquely flagged active box as \f$A\f$ and the inactive box as \f$B\f$, and
+  reject an inconsistent flag state,
 - select one of three sub-moves at random: with 25% probability a **swap**
   sub-move, with 25% probability a **transfer** sub-move, and with 50%
   probability a **\f$\lambda\f$-change** sub-move,
-- **swap** sub-move: the fractional molecule in box \f$A\f$ becomes a whole
-  (integer) molecule at its current position, and a randomly selected integer
-  molecule in box \f$B\f$ becomes the new fractional molecule at the *same*
-  \f$\lambda\f$; compute the energy differences in both boxes,
-- **transfer** sub-move: the fractional molecule is moved (at the same \f$\lambda\f$)
-  from box \f$A\f$ to a random position in box \f$B\f$; compute the energy
-  differences in both boxes,
+- **swap/interchange** sub-move: reject if \f$B\f$ has no integer molecule;
+  promote the active fractional configuration in \f$A\f$ to an integer,
+  choose an integer in \f$B\f$ uniformly and copy it into \f$B\f$'s reserved
+  slot at the same \f$\lambda\f$, delete its old integer slot, and park the
+  previous inactive-slot configuration in \f$A\f$,
+- **transfer/shuffle** sub-move: exchange the active and inactive reserved-slot
+  configurations, then regenerate the now-active slot in \f$B\f$ from an
+  equilibrated molecule at a uniform random box position while preserving the
+  same \f$\lambda\f$,
 - **\f$\lambda\f$-change** sub-move: draw a new \f$\lambda\f$ bin and rescale the fractional
   molecule inside box \f$A\f$,
-- accept or reject with the corresponding rule below.
+- accept or reject with the corresponding rule below. Only on acceptance are
+  the active-box flags and the two lambda-bin owners swapped; the inactive slot
+  remains interaction-free.
 
 Acceptance rules (integer-molecule counts \f$N_A\f$, \f$N_B\f$; box volumes \f$V_A\f$,
 \f$V_B\f$):
@@ -1091,18 +1314,35 @@ Gibbs Ensemble*, J. Chem. Theory Comput. **12**, 1481-1490 (2016).
 
 Keyword: `"GibbsSwapCBCFCMCProbability"` (component move)
 
-The serial CFCMC Gibbs swap combined with CBMC: when the fractional molecule
-hops between boxes it is grown/retraced with configurational-bias sampling, so
-the Rosenbluth-weight ratio enters the acceptance rule in addition to the
-CFCMC bias terms.
+The serial CFCMC Gibbs swap combined with CBMC. It uses the same one-active,
+one-inactive reserved-slot and flag invariant as the conventional variant, but
+uses CBMC when configurations are created or removed.
 
-Steps: as for [Gibbs swap (CFCMC)](#gibbs-swap-cfcmc) — the same three
-sub-moves (25% swap, 25% transfer, 50% \f$\lambda\f$-change) — but in the swap and
-transfer sub-moves the new fractional molecule is grown with CBMC in the
-receiving box (Rosenbluth weight \f$W(\mathbf{n})\f$) and the old fractional molecule
-is retraced with CBMC in the donating box (Rosenbluth weight \f$W(\mathbf{o})\f$).
+Steps (box \f$A\f$ is the box currently holding the fractional molecule; each
+box keeps its own bias function \f$\eta_A(\lambda)\f$, \f$\eta_B(\lambda)\f$):
 
-Acceptance rules:
+- use the dispatcher-supplied pair and component, require \f$A\f$ to be the
+  uniquely flagged active box and \f$B\f$ to be inactive,
+- select one of three sub-moves at random: with 25% probability a **swap**
+  sub-move, with 25% probability a **transfer** sub-move, and with 50%
+  probability a **\f$\lambda\f$-change** sub-move,
+- **swap/interchange** sub-move: reject if \f$B\f$ has no integer; grow the new
+  integer in \f$A\f$ with CBMC (\f$W(\mathbf n)\f$), retrace a uniformly chosen
+  integer in \f$B\f$ (\f$W(\mathbf o)\f$), make that configuration the active
+  fractional in \f$B\f$, and park \f$B\f$'s old inactive-slot configuration in
+  \f$A\f$,
+- **transfer/shuffle** sub-move: exchange the reserved-slot configurations and
+  regrow the now-active fractional in \f$B\f$ with CBMC at a random position;
+  \f$A\f$'s slot is explicitly reset to inactive scaling,
+- **\f$\lambda\f$-change** sub-move: draw a new \f$\lambda\f$ bin and rescale the fractional
+  molecule inside box \f$A\f$,
+- accept or reject with the corresponding rule below. Acceptance swaps the
+  active flags and lambda bins and synchronizes the inactive/active scaling and
+  lambda bins of the other CFCMC components; rejection restores all slot
+  snapshots and flags.
+
+Acceptance rules (integer-molecule counts \f$N_A\f$, \f$N_B\f$; box volumes \f$V_A\f$,
+\f$V_B\f$):
 
 \f[
 \text{acc}_\text{swap} = \min\left(1,
@@ -1146,39 +1386,51 @@ move becomes a molecule transfer between the boxes.
 
 Steps:
 
+- use the dispatcher-supplied adjacent pair and component, then choose its
+  \f$(A,B)\f$ order with probability 1/2; this makes the sign convention for
+  \f$\nu\f$ symmetric,
 - draw a random coupled change \f$\nu\f$ and compute
   \f$\lambda_{A,\mathbf{n}} = \lambda_A + \nu\f$, \f$\lambda_{B,\mathbf{n}} = \lambda_B - \nu\f$,
-- if both stay within \f$[0,1]\f$ — **coupled \f$\lambda\f$-change**: rescale both
-  fractional molecules simultaneously,
-- if \f$\lambda_{A,\mathbf{n}} > 1\f$ — **transfer \f$B \rightarrow A\f$**: the fractional molecule of
-  box \f$A\f$ becomes a whole molecule at its position; a new fractional molecule
-  is inserted at a random position in box \f$A\f$ with the wrapped
-  \f$\lambda_{A,\mathbf{n}} - 1\f$; the fractional molecule of box \f$B\f$ is removed, and a
-  randomly selected whole molecule of box \f$B\f$ becomes the new fractional
-  molecule with the wrapped \f$\lambda_{B,\mathbf{n}} + 1\f$,
-- if \f$\lambda_{A,\mathbf{n}} < 0\f$ — **transfer \f$A \rightarrow B\f$**: the mirror image,
+- classify **each box independently**: an in-range target is a lambda change,
+  a target above one is insertion with wrapped target \f$\lambda-1\f$, and a
+  target below zero is deletion with wrapped target \f$\lambda+1\f$. Thus mixed
+  lambda/insertion or lambda/deletion cases are valid when the old lambdas
+  differ; this is not a single branch classification based only on box \f$A\f$,
+- first change each old fractional molecule to its target scaling. For a
+  per-box insertion, make it integer and propose a new fractional molecule at
+  a uniform box position; for deletion, make it inactive and select an integer
+  replacement uniformly (reject if none); for a lambda case, only rescale it,
 - accept or reject.
 
-Acceptance rules (\f$\Delta\eta_A = \eta_A(\lambda_{A,\mathbf{n}}) - \eta_A(\lambda_{A,\mathbf{o}})\f$ and
-likewise for \f$B\f$; \f$N_A\f$, \f$N_B\f$ are the total molecule counts of the component
-including the fractional molecules):
+For a boundary operation, reciprocal-space bookkeeping is deliberately
+chained within each box: the old fractional's target-scaling Ewald update is
+first made the baseline structure factor, and the proposed insertion/deletion
+Ewald update starts from that baseline. This retains the reciprocal cross term
+between the two substeps. The original stored and trial Ewald states and any
+temporary fractional scaling are restored on every rejection.
 
+Define \f$\Delta U_{\mathrm{scale},X}\f$ as the energy change of the old
+fractional in box \f$X\f$ taking its target scaling, and define the conventional
+boundary factor
 \f[
-\text{acc}_{\lambda} = \min\left(1,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right)
+g_X=\begin{cases}
+1,&\lambda\text{ change},\\
+\dfrac{V_X}{N_X+1}e^{-\beta_X\Delta U_{\mathrm{new},X}},
+   &\text{insertion},\\
+\dfrac{N_X}{V_X}e^{-\beta_X\Delta U_{\mathrm{removed},X}},
+   &\text{deletion}.
+\end{cases}
 \f]
+\f$N_X\f$ is the integer count before the boundary operation and every
+\f$\Delta U\f$ here is the signed new-minus-old change produced by that
+operation. The exact acceptance rule, valid for all nine pairs of independently
+classified branches, is
 
 \f[
-\text{acc}_{B \rightarrow A} = \min\left(1,
-  \frac{(N_B - 1)\, V_A}{N_A\, V_B}\,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right),
-\qquad
-\text{acc}_{A \rightarrow B} = \min\left(1,
-  \frac{(N_A - 1)\, V_B}{N_B\, V_A}\,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right)
+\text{acc}=\min\left(1,g_Ag_B
+e^{-\beta_A\Delta U_{\mathrm{scale},A}
+   -\beta_B\Delta U_{\mathrm{scale},B}
+   +\Delta\eta_A+\Delta\eta_B}\right).
 \f]
 
 Useful for: Gibbs-ensemble VLE of dense systems while keeping the two boxes
@@ -1198,29 +1450,47 @@ The parallel CFCMC Gibbs move with CBMC growth/retracing of the fractional
 molecules during the transfer sub-moves: the new fractional molecule of the
 receiving box is grown with configurational bias (Rosenbluth weight
 \f$W(\mathbf{n})\f$) and the removed fractional molecule of the donating box is
-retraced (Rosenbluth weight \f$W(\mathbf{o})\f$). The steps are identical to
-[Gibbs conventional CFCMC](#gibbs-conventional-cfcmc).
+retraced (Rosenbluth weight \f$W(\mathbf{o})\f$).
 
-Acceptance rules:
+Steps:
 
+- use the dispatcher-supplied adjacent pair and component and choose its
+  \f$(A,B)\f$ order with probability 1/2,
+- draw a random coupled change \f$\nu\f$ and compute
+  \f$\lambda_{A,\mathbf{n}} = \lambda_A + \nu\f$, \f$\lambda_{B,\mathbf{n}} = \lambda_B - \nu\f$,
+- classify box \f$A\f$ and box \f$B\f$ independently as lambda change,
+  insertion, or deletion exactly as in the conventional section. Mixed
+  classifications are allowed,
+- first apply the target scaling of each old fractional. In every insertion
+  box grow the replacement fractional with CBMC at a uniform box position; in
+  every deletion box select one integer uniformly and retrace it with CBMC;
+  reject if selection or CBMC construction fails,
+- accept or reject.
+
+The same per-box chained Ewald baseline is used before CBMC growth/retrace, so
+the first scaling operation and boundary operation are one reciprocal-space
+proposal. Rejection restores the original Ewald state and fractional atoms.
+
+Using the same \f$\Delta U_{\mathrm{scale},X}\f$, the CBMC boundary factor used
+by the implementation is
 \f[
-\text{acc}_{\lambda} = \min\left(1,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right)
+g_X^\mathrm{CB}=\begin{cases}
+1,&\lambda\text{ change},\\
+\dfrac{V_X}{N_X+1}\dfrac{W_X(\mathbf n)}{W_X^\mathrm{IG}}
+ e^{-\beta_X\Delta U_{\mathrm{corr},X}},&\text{insertion},\\
+\dfrac{N_X}{V_XW_X(\mathbf o)}
+ e^{-\beta_X\Delta U_{\mathrm{corr},X}},&\text{deletion}.
+\end{cases}
 \f]
+The last line is intentionally the low-level implemented factor: the retrace
+weight stored on this path is used directly. The correction is Ewald plus tail
+outside CBMC. The rule for every mixed branch is
 
 \f[
-\text{acc}_{B \rightarrow A} = \min\left(1,
-  \frac{(N_B - 1)\, V_A}{N_A\, V_B}\,
-  \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right),
-\qquad
-\text{acc}_{A \rightarrow B} = \min\left(1,
-  \frac{(N_A - 1)\, V_B}{N_B\, V_A}\,
-  \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
-  e^{-\beta\left[\Delta U_A + \Delta U_B\right]
-     + \Delta\eta_A + \Delta\eta_B}\right)
+\text{acc}=\min\left(1,g_A^\mathrm{CB}g_B^\mathrm{CB}
+e^{-\beta_A\Delta U_{\mathrm{scale},A}
+   -\beta_B\Delta U_{\mathrm{scale},B}
+   +\Delta\eta_A+\Delta\eta_B}\right).
 \f]
 
 Useful for: parallel-scheme Gibbs VLE of flexible molecules.
@@ -1232,7 +1502,7 @@ Comput. **10**, 942-952 (2014). <https://doi.org/10.1021/ct4009766>
 ### Gibbs identity change (CBMC) <a name="gibbs-identity-change-cbmc"></a>
 
 Keyword: `"GibbsIdentityChangeProbability"` (component move), together with
-`"GibbsIdentityChangesList"`
+the component key `"GibbsIdentityChanges"`
 
 Simultaneously changes the identity of a molecule in one box and performs the
 inverse change in the other box: a molecule of component \f$A\f$ in box I becomes
@@ -1243,15 +1513,25 @@ simulations.
 
 Steps:
 
-- select the pair of components from the identity-change list and the direction
-  of the exchange,
-- select a random molecule of component \f$A\f$ in box I and of component \f$B\f$
-  in box II,
+- use the dispatcher-supplied adjacent systems and component \f$A\f$; reject if
+  \f$A\f$'s `"GibbsIdentityChanges"` list is empty,
+- choose \f$B\f$ uniformly from that list; reject an out-of-range or self
+  partner, or a partner whose component type differs from \f$A\f$,
+- with probability 1/2 designate either supplied system as box I and the other
+  as box II,
+- require at least one integer \f$A\f$ in box I and one integer \f$B\f$ in box
+  II, then select each uniformly,
 - regrow (CBMC) a molecule of component \f$B\f$ at the position of the first bead
-  of the selected molecule in box I, and a molecule of component \f$A\f$ in
+  of the selected \f$A\f$ in box I while excluding that old molecule from the
+  growth background; analogously regrow \f$A\f$ over the selected \f$B\f$ in
   box II,
 - retrace both old molecules for their Rosenbluth weights,
-- accept or reject the double transformation as a single move.
+- accept or reject the double transformation as a single move. Neither old
+  molecule is deleted nor either new identity inserted until acceptance.
+
+Order of growth and retracing: the two growths (and the two retraces) take
+place in *different* boxes and therefore do not interact; the order is
+irrelevant here.
 
 Acceptance rule:
 
@@ -1259,8 +1539,13 @@ Acceptance rule:
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
    \frac{W_\text{I}(\mathbf{n})\,W_\text{II}(\mathbf{n})}{W_\text{I}(\mathbf{o})\,W_\text{II}(\mathbf{o})}\,
    \frac{N_{A,\text{I}}\; N_{B,\text{II}}}{(N_{B,\text{I}}+1)(N_{A,\text{II}}+1)}\,
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta\Delta U_\mathrm{corr}}\right)
 \f]
+
+Here \f$\Delta U_\mathrm{corr}\f$ is the sum over both boxes of reciprocal
+Ewald, enabled polarization, and tail changes; each tail factor is folded into
+the corresponding new Rosenbluth weight by the implementation. Both old
+molecules are integer selections, and missing counts reject before growth.
 
 Useful for: multicomponent VLE where compositions of the phases equilibrate
 slowly; particularly effective for molecules of similar size (e.g. isomer
@@ -1290,16 +1575,27 @@ Steps:
 
 - select a random box,
 - select a random component,
-- grow a ghost molecule at a random position with CBMC and record
-  \f$W/W^\text{IG}\f$,
+- grow a ghost molecule at a random position with CBMC. Reject a failed growth
+  or blocked pocket and otherwise record
+  \f[
+  X=\frac{W}{W^\mathrm{IG}}
+  e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{tail}
+                    +\Delta U_\mathrm{pol})},
+  \f]
 - remove the ghost molecule (the system is unchanged),
 - accumulate the average.
 
 There is no acceptance rule; the measured quantity is
 
 \f[
-\mu_\text{ex} = -k_B T \ln \left\langle \frac{W}{W^\text{IG}} \right\rangle
+\mu_\text{ex} = -k_B T \ln \left\langle X \right\rangle .
 \f]
+
+Real-space external, framework, and intermolecular energies are already in
+\f$W\f$; the explicitly displayed reciprocal-Ewald, framework and
+intermolecular tail, and enabled polarization correction is what the
+implementation calls its Widom correction factor. The ideal term is computed
+separately from the sampled \f$N/V\f$.
 
 Useful for: chemical potentials of dilute species, Henry coefficients in
 frameworks, consistency checks of open-ensemble simulations. Becomes
@@ -1313,13 +1609,18 @@ Reference: B. Widom, *Some Topics in the Theory of Fluids*, J. Chem. Phys.
 Keyword: `"CFCMC_WidomProbability"` (component move)
 
 Measures the chemical potential with the CFCMC machinery while keeping the
-number of integer molecules fixed: the fractional molecule performs
-\f$\lambda\f$-changes and reinsertions restricted so that no net molecule creation
-occurs. The chemical potential follows from the ratio of the probabilities of
+number of integer molecules fixed: the reserved fractional molecule performs
+only in-range \f$\lambda\f$-bin changes. A proposal that crosses either endpoint
+is rejected because insertion and deletion are disabled. The chemical
+potential follows from the ratio of the probabilities of
 the \f$\lambda \rightarrow 1\f$ and \f$\lambda \rightarrow 0\f$ ends of the sampled \f$\lambda\f$ histogram,
 
 \f[
-\mu_\text{ex} = -k_B T \ln \frac{p(\lambda \rightarrow 1)}{p(\lambda \rightarrow 0)}
+\mu_\text{ex}^{\,\mathrm{biased}}
+= -k_B T \ln \frac{H(1)}{H(0)},\qquad
+\mu_\text{ex}
+=\mu_\text{ex}^{\,\mathrm{biased}}+
+\frac{\eta(1)-\eta(0)}{\beta}.
 \f]
 
 Steps:
@@ -1330,17 +1631,15 @@ Steps:
   molecule,
 - if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale the
   fractional molecule,
-- if \f$\lambda + \Delta\lambda\f$ crosses a boundary — **reinsertion**: the fractional
-  molecule is moved to a random position with the wrapped \f$\lambda\f$ value; no
-  integer molecule is created or destroyed,
+- if the selected bin crosses a boundary, reject without wrapping or moving
+  the molecule,
 - accept or reject and record the \f$\lambda\f$ histogram.
 
 Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right),
-\qquad
-\text{acc}_\text{reins} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\text{acc}_{\lambda} = \min\left(1,
+ e^{-\beta\Delta U_\mathrm{full}+\Delta\eta}\right).
 \f]
 
 Useful for: chemical potentials in dense phases (liquids, high loadings) where
@@ -1354,19 +1653,35 @@ Reference: W. Shi and E.J. Maginn, J. Chem. Theory Comput. **3**, 1451-1463
 Keyword: `"CFCMC_CBMC_WidomProbability"` (component move)
 
 The CFCMC Widom measurement with configurational-bias growth of the fractional
-molecule, for flexible molecules in dense phases. The steps are identical to
-[Widom CFCMC](#widom-cfcmc), but in the reinsertion sub-move the fractional
-molecule is grown with CBMC at the new position (Rosenbluth weight \f$W(\mathbf{n})\f$)
-and retraced at the old position (Rosenbluth weight \f$W(\mathbf{o})\f$).
-
-Acceptance rules:
+molecule, for flexible molecules in dense phases. The chemical potential
+follows from the ratio of the probabilities of the two ends of the sampled
+\f$\lambda\f$ histogram,
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right),
-\qquad
-\text{acc}_\text{reins} = \min\left(1,
-   \frac{W(\mathbf{n})}{W(\mathbf{o})}\,
-   e^{-\beta \Delta U_\text{non-CBMC} + \Delta\eta}\right)
+\mu_\text{ex}^{\,\mathrm{biased}}
+= -k_B T \ln \frac{H(1)}{H(0)},\qquad
+\mu_\text{ex}
+=\mu_\text{ex}^{\,\mathrm{biased}}+
+\frac{\eta(1)-\eta(0)}{\beta}.
+\f]
+
+Steps:
+
+- select a random box,
+- select a random component,
+- draw a random change \f$\Delta\lambda\f$ of the coupling parameter of the fractional
+  molecule,
+- if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale the
+  fractional molecule and compute \f$\Delta U\f$,
+- if the selected bin crosses a boundary, reject; no CBMC retrace/regrowth is
+  attempted on the Widom-only path,
+- accept or reject and record the \f$\lambda\f$ histogram.
+
+Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
+
+\f[
+\text{acc}_{\lambda} = \min\left(1,
+ e^{-\beta\Delta U_\mathrm{full}+\Delta\eta}\right).
 \f]
 
 Reference: A. Torres-Knoop, S.P. Balaji, T.J.H. Vlugt, and D. Dubbeldam,
@@ -1379,20 +1694,32 @@ J. Chem. Theory Comput. **10**, 942-952 (2014).
 
 Keyword: `"ParallelTemperingSwapProbability"` (system move)
 
-Attempts to exchange the complete configurations (all positions, box shapes,
-and molecule counts) of two systems that are simulated in parallel at
-different state points (temperature, pressure, or even force field). Replicas
+Attempts to exchange compatible **mobile configuration state** between two
+adjacent systems at different state points. Replicas
 trapped in low-temperature/high-density local minima are released by passing
 through the more mobile replicas, dramatically improving ergodicity.
 
 Steps:
 
-- select a pair of systems (replicas),
-- if the force fields of the two systems differ, recompute the energy of each
-  configuration in the other system's Hamiltonian,
+- use the ordered adjacent pair supplied by the MC driver,
+- ignore the dispatcher-supplied component,
+- reject before drawing the acceptance variate unless the Hamiltonians and
+  mobile topologies are compatible. The implementation deliberately supports
+  only rigid, whole-molecule, reaction-free replicas: force fields,
+  component/atom definitions, fractional-slot layouts, and framework topology
+  must match; flexible components, any fractional slots, any reaction
+  definitions, either external field, or incompatible framework boxes reject,
 - evaluate the exchange acceptance factor (below),
-- upon acceptance, swap the configurations, simulation boxes, molecule counts,
-  and running energies of the two systems.
+- upon acceptance, swap adsorbate atoms/dynamics, molecules, integer counts,
+  adsorbate charge, and mobile constraints/degrees of freedom. For
+  framework-free boxes the simulation boxes also swap; framework boxes and
+  framework atom prefixes remain fixed. Rebuild Ewald, energies, loading,
+  charges, and indexing from the accepted mobile configuration.
+
+Temperature, pressure, fugacity, move settings, force field/Hamiltonian, and
+all other thermodynamic **state-point parameters stay attached to their system
+index**; frameworks also stay attached to their replicas. The compatible mobile
+configurations, not state points or frameworks, move between replicas.
 
 Acceptance rule (equal Hamiltonians, different temperatures):
 
@@ -1403,9 +1730,10 @@ Acceptance rule (equal Hamiltonians, different temperatures):
 
 For systems at different pressures the factor
 \f$(p_B/p_A)^{\,N_B - N_A}\f$ multiplies the ratio (hyper-parallel tempering for
-open systems), and for different Hamiltonians the full cross-energy form
-\f$\exp\left[-\beta_A (U_A(\mathbf{x}_B) - U_A(\mathbf{x}_A)) - \beta_B (U_B(\mathbf{x}_A) - U_B(\mathbf{x}_B))\right]\f$
-is used.
+open systems), where \f$N_A\f$ and \f$N_B\f$ are total **integer** molecule
+counts; reserved fractional slots are excluded. Different or otherwise
+incompatible Hamiltonians are rejected because this move has no complete
+cross-Hamiltonian evaluator.
 
 Useful for: systems with rugged free-energy landscapes: low-temperature
 adsorption, strongly binding sites, phase transitions, and whenever a series of
@@ -1429,23 +1757,63 @@ molecules and inserts the product molecules according to the stoichiometry,
 with the ideal-gas partition functions of the species entering the acceptance
 rule. Reactions are defined in the input via `"Reactions"` with stoichiometric
 coefficients \f$\nu_i\f$ (negative for reactants, positive for products).
+Every reaction is assigned to exactly one move through its `"Move"` value.
+Each dispatcher samples uniformly only from reactions whose assignment equals
+that move; an empty filtered list rejects. If more than one reaction move
+probability is enabled, `"Move"` is mandatory. An explicit assignment must name
+one of the five reaction moves and its matching probability must be enabled.
+Serial assignments require a serial probability; parallel assignments require
+a conventional/parallel probability. Thus a reaction is never accidentally
+sampled by two algorithms.
+
+The two non-CBMC implementations,
+`ReactionConventionalCFCMC` and `ReactionCFCMC`, support only reactions whose
+participating components all have `Component::GrowType::Rigid`; a selected
+non-rigid reaction is ineligible/rejected. `ReactionCBMC`,
+`ReactionConventionalCBCFCMC`, and `ReactionCBCFCMC` use CBMC growth/retrace and
+support flexible participating components.
 
 ### Reaction (CBMC) <a name="reaction-cbmc"></a>
 
 Keyword: `"ReactionCBMCProbability"` (system move)
 
 Performs one reaction step in the forward or backward direction using CBMC to
-insert the products and retrace the reactants.
+insert the products and retrace the reactants, including flexible components.
 
 Steps:
 
 - select a random box,
-- select a random reaction from the reaction list and a random direction
-  (forward/backward),
-- select random reactant molecules according to the stoichiometry and retrace
-  them with CBMC,
-- grow the product molecules at random positions with CBMC,
+- select uniformly among reactions assigned to `ReactionCBMC` and choose
+  forward/backward with probability 1/2,
+- reject unless every consumed component has enough integer molecules; select
+  the required distinct integer molecules uniformly,
+- first grow the molecules on the produced side at random positions with CBMC,
+  excluding all selected consumed molecules and all reaction-fractional slots
+  from the growth background,
+- then retrace the selected molecules on the consumed side with CBMC, using
+  the nested backgrounds described below,
 - accept or reject the combined deletion/insertion.
+
+Order of growth and retracing: the inserted molecules are grown one
+after the other in a *fixed* order — ascending component index, and within a
+component in the order of the stoichiometric count — where each newly grown
+molecule is added to the background, so molecule \f$k\f$ is grown in the presence
+of the trial configurations of molecules \f$1 \ldots k-1\f$ (and with the
+consumed molecules excluded).
+
+For detailed balance the retrace of the removed (reactant) group must
+reproduce the environments of the reverse move's growth: retraced molecule
+\f$k\f$ must see exactly the group members \f$1 \ldots k-1\f$ and not the members
+\f$k+1 \ldots m\f$. Operationally this corresponds to retracing in the *opposite*
+order of growth, removing each molecule from the system after its weight has
+been computed (equivalently: same order, with nested partial environments).
+The implementation uses these nested environments: molecule \f$k\f$ of the removed
+group is retraced with the members \f$k+1 \ldots m\f$ excluded from the background
+while the members \f$1 \ldots k-1\f$ remain present, so each intra-group
+interaction enters the Rosenbluth weights and the energy bookkeeping exactly
+once, mirroring the sequential growth of the reverse move. The CB/CFCMC
+reaction variants use the same nesting; the explicitly named conventional
+variants do not use Rosenbluth sampling.
 
 Acceptance rule (forward direction, ideal-gas partition functions per unit
 volume \f$q_i\f$):
@@ -1455,8 +1823,12 @@ volume \f$q_i\f$):
    \prod_i \left(q_i V\right)^{\nu_i}\,
    \prod_i \frac{N_i!}{(N_i + \nu_i)!}\;
    \frac{\prod_\text{products} W(\mathbf{n})/W^\text{IG}}{\prod_\text{reactants} W(\mathbf{o})/W^\text{IG}}\;
-   e^{-\beta \Delta U_\text{non-CBMC}}\right)
+   e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{tail})}\right)
 \f]
+
+The displayed correction contains the charged-group reciprocal-Ewald and group
+tail differences outside the nested CBMC weights. No polarization correction
+is evaluated on this reaction path.
 
 Useful for: chemical equilibria (e.g. ammonia synthesis, esterification,
 propene metathesis) in bulk phases and inside nanoporous catalysts, including
@@ -1484,35 +1856,43 @@ with the wrapped \f$\lambda\f$.
 Steps:
 
 - select a random box,
-- select a random reaction from the reaction list,
+- select uniformly among reactions assigned to
+  `ReactionConventionalCFCMC` and having initialized parallel fractional-slot
+  vectors **and only rigid participating components**; reject if none,
 - draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$,
 - if \f$\lambda_\mathbf{n}\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale all fractional
   molecules of the reaction (reactants to \f$1-\lambda_\mathbf{n}\f$, products to \f$\lambda_\mathbf{n}\f$)
   and compute \f$\Delta U\f$,
 - if \f$\lambda_\mathbf{n} > 1\f$ — **forward reaction** at the wrapped
   \f$\lambda' = \lambda_\mathbf{n} - 1\f$: the (nearly fully coupled) product fractional molecules
-  become whole molecules in place; randomly selected whole reactant molecules
+  become whole molecules in place; independently and uniformly selected whole reactant molecules
   become the new reactant fractional molecules at \f$\lambda'\f$; the nearly decoupled
-  reactant fractional molecules are deleted (retraced, Rosenbluth weight
-  \f$W(\mathbf{o})\f$); new nearly decoupled product fractional molecules are grown
-  (Rosenbluth weight \f$W(\mathbf{n})\f$),
+  reactant fractional molecules are deleted; new nearly decoupled product
+  fractional molecules are placed with conventional uniform position and
+  orientation proposals,
 - if \f$\lambda_\mathbf{n} < 0\f$ — **backward reaction**: the mirror image,
 - accept or reject.
+
+This path has `useCBMC=false`: it does not compute Rosenbluth growth/retrace
+weights. The complete group energy difference is evaluated explicitly. Old
+scalings are restored on any construction or Metropolis rejection; molecule
+promotion, demotion, deletion, insertion, lambda-bin update, and Ewald
+acceptance occur only after acceptance.
 
 Acceptance rules (\f$q_i\f$ the ideal-gas partition function of component \f$i\f$,
 \f$\nu_i\f$ signed stoichiometric coefficients of the attempted direction, \f$N_i\f$
 whole-molecule counts, \f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\text{acc}_{\lambda} = \min\left(1,
+ e^{-\beta\Delta U_\mathrm{full}+\Delta\eta}\right)
 \f]
 
 \f[
 \text{acc}_\text{rxn} = \min\left(1,
-   \frac{W(\mathbf{n})/W^\text{IG}(\mathbf{n})}{W(\mathbf{o})/W^\text{IG}(\mathbf{o})}\,
    \prod_i \left(q_i V\right)^{\nu_i}
    \prod_i \frac{N_i!}{(N_i + \nu_i)!}\;
-   e^{-\beta \Delta U + \Delta\eta}\right)
+   e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right)
 \f]
 
 Useful for: reaction equilibria in dense phases (liquid-phase reactions,
@@ -1532,14 +1912,47 @@ Carlo in the Reaction Ensemble*, J. Chem. Theory Comput. **13**, 4452-4466
 Keyword: `"ReactionConventionalCBCFCMCProbability"` (system move)
 
 The parallel Rx/CFC reaction move with configurational-bias growth of the
-fractional molecules: in the boundary-crossing (reaction) branch the new
+fractional molecules: in the boundary-crossing (reaction) branches the new
 nearly decoupled fractional molecules are grown with CBMC using multiple trial
 positions and orientations, and the deleted fractional molecules are retraced
-with CBMC. The steps and acceptance rules are those of
-[Reaction conventional CFCMC](#reaction-conventional-cfcmc):
+with CBMC. Flexible participating components are supported.
+
+Steps:
+
+- select a random box,
+- select uniformly among reactions assigned to this move and having initialized
+  parallel fractional-slot vectors; reject if none,
+- draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$,
+- if \f$\lambda_\mathbf{n}\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale all fractional
+  molecules of the reaction (reactants to \f$1-\lambda_\mathbf{n}\f$, products to \f$\lambda_\mathbf{n}\f$)
+  and compute \f$\Delta U\f$,
+- if \f$\lambda_\mathbf{n} > 1\f$ — **forward reaction** at the wrapped
+  \f$\lambda' = \lambda_\mathbf{n} - 1\f$: the (nearly fully coupled) product fractional molecules
+  become whole molecules in place; randomly selected whole reactant molecules
+  become the new reactant fractional molecules at \f$\lambda'\f$; the nearly decoupled
+  reactant fractional molecules are retraced with CBMC (Rosenbluth weight
+  \f$W(\mathbf{o})\f$) and deleted; new nearly decoupled product fractional molecules
+  are grown with CBMC (Rosenbluth weight \f$W(\mathbf{n})\f$),
+- if \f$\lambda_\mathbf{n} < 0\f$ — **backward reaction**: the mirror image,
+- accept or reject.
+
+Order of growth and retracing (reaction branches): identical to the
+conventional parallel move, but with CBMC weights. The new fractional
+molecules are grown with CBMC one after the other in a fixed order (ascending
+component index, within a component in the order of the stoichiometric
+count), each grown molecule being added to the background of the next. The
+deleted fractional molecules are retraced with CBMC using the matching
+*nested* environments: molecule \f$k\f$ of the group sees the members
+\f$1 \ldots k-1\f$ but not \f$k+1 \ldots m\f$ (equivalent to retracing in the
+opposite order of growth with progressive removal), so each retrace weight
+reproduces the corresponding growth weight of the reverse move, as required
+by detailed balance.
+
+Acceptance rules:
 
 \f[
-\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\text{acc}_{\lambda} = \min\left(1,
+ e^{-\beta\Delta U_\mathrm{full}+\Delta\eta}\right)
 \f]
 
 \f[
@@ -1573,21 +1986,30 @@ the reaction on whole molecules.
 Steps:
 
 - select a random box,
-- select a random reaction from the reaction list,
+- select uniformly among reactions assigned to `ReactionCFCMC`; reject if
+  there is none, if any participating component is non-rigid, or if the active
+  fractional side has no slots,
 - select a sub-move: with 50% probability a **\f$\lambda\f$-change**; otherwise, below
   the \f$\lambda\f$ switch point a **fractional reaction**, above it a
   **whole-molecule reaction**,
 - **\f$\lambda\f$-change**: draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$ (rejected if outside
   \f$[0,1]\f$) and rescale the fractional molecules of the active side,
 - **fractional reaction**: delete the fractional molecules of the active side
-  (retraced, Rosenbluth weight \f$W(\mathbf{o})\f$) and grow fractional molecules of the
-  other side at the *same* \f$\lambda\f$ (Rosenbluth weight \f$W(\mathbf{n})\f$); \f$\delta\f$ flips,
-  the whole-molecule counts do not change,
+  and place the other side with conventional uniform position/orientation
+  proposals at the *same* \f$\lambda\f$; \f$\delta\f$ flips and whole-molecule counts
+  do not change,
 - **whole-molecule reaction**: the fractional molecules of the active side
-  become whole molecules in place, and randomly selected whole molecules of
+  become whole molecules in place, and independently and uniformly selected
+  distinct whole molecules of
   the other side become the new fractional molecules at the same \f$\lambda\f$;
   \f$\delta\f$ flips, all positions and \f$\lambda\f$ stay the same,
 - accept or reject.
+
+This is also a non-CBMC path. Fractional replacement uses explicit full group
+energies and therefore has no Rosenbluth ratio. A whole-reaction branch first
+guards all required integer counts and chooses distinct integer molecules
+uniformly. All transformations and the side-indicator flip commit only on
+acceptance.
 
 Acceptance rules (\f$\nu_i^\text{lost}\f$/\f$\nu_i^\text{gained}\f$ the stoichiometric
 coefficients of the disappearing/appearing fractional side, \f$\bar\nu_i\f$ the
@@ -1597,20 +2019,20 @@ signed change in the whole-molecule count of component \f$i\f$, and
 
 \f[
 \text{acc}_{\lambda} = \min\left(1,
-   e^{-\beta \Delta U + \eta_\delta(\lambda_\mathbf{n}) - \eta_\delta(\lambda_\mathbf{o})}\right)
+   e^{-\beta\Delta U_\mathrm{full}
+      +\eta_\delta(\lambda_\mathbf{n})-\eta_\delta(\lambda_\mathbf{o})}\right)
 \f]
 
 \f[
 \text{acc}_\text{frac} = \min\left(1,
-   \frac{W(\mathbf{n})/W^\text{IG}(\mathbf{n})}{W(\mathbf{o})/W^\text{IG}(\mathbf{o})}\,
    \prod_i \left(q_i V\right)^{\nu_i^\text{gained} - \nu_i^\text{lost}}\,
-   e^{-\beta \Delta U + \Delta\eta}\right)
+   e^{-\beta \Delta U_\mathrm{full} + \Delta\eta}\right)
 \f]
 
 \f[
 \text{acc}_\text{whole} = \min\left(1,
    \prod_i \frac{N_i!}{(N_i + \bar\nu_i)!}\;
-   e^{-\beta \Delta U + \Delta\eta}\right)
+   e^{-\beta\Delta U_\mathrm{full}+\Delta\eta}\right)
 \f]
 
 Note that the fractional reaction carries the \f$(q_i V)^{\nu_i}\f$ factors but no
@@ -1635,8 +2057,42 @@ Keyword: `"ReactionCBCFCMCProbability"` (system move)
 The serial Rx/CFC reaction move with configurational-bias growth: in the
 fractional-reaction sub-move the new fractional molecules are grown with CBMC
 (multiple trial positions and orientations) and the removed ones are retraced
-with CBMC. The steps and acceptance rules are those of
-[Reaction CFCMC (serial)](#reaction-cfcmc):
+with CBMC. Flexible participating components are supported.
+
+Steps:
+
+- select a random box,
+- select uniformly among reactions assigned to `ReactionCBCFCMC`; reject if
+  there is none or if the active fractional side has no slots,
+- select a sub-move: with 50% probability a **\f$\lambda\f$-change**; otherwise, below
+  the \f$\lambda\f$ switch point a **fractional reaction**, above it a
+  **whole-molecule reaction**,
+- **\f$\lambda\f$-change**: draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$ (rejected if outside
+  \f$[0,1]\f$) and rescale the fractional molecules of the active side,
+- **fractional reaction**: retrace the fractional molecules of the active side
+  with CBMC (Rosenbluth weight \f$W(\mathbf{o})\f$) and delete them; grow fractional
+  molecules of the other side with CBMC at the *same* \f$\lambda\f$ (Rosenbluth
+  weight \f$W(\mathbf{n})\f$); \f$\delta\f$ flips, the whole-molecule counts do not change,
+- **whole-molecule reaction**: the fractional molecules of the active side
+  become whole molecules in place, and independently and uniformly selected
+  distinct whole molecules of
+  the other side become the new fractional molecules at the same \f$\lambda\f$;
+  \f$\delta\f$ flips, all positions and \f$\lambda\f$ stay the same,
+- accept or reject.
+
+Order of growth and retracing (fractional reaction): as in the serial CFCMC
+move, but with CBMC weights. The new fractional molecules are grown with CBMC
+in a fixed order (ascending component index, within a component in the order
+of the stoichiometric count), each grown molecule being added to the
+background of the next; the removed fractional molecules are excluded from
+the growth background. The removed fractional molecules are retraced with
+CBMC using the matching *nested* environments — retraced molecule \f$k\f$ sees
+the group members \f$1 \ldots k-1\f$ but not \f$k+1 \ldots m\f$, equivalent to
+retracing in the opposite order of growth with progressive removal — so each
+retrace weight reproduces the corresponding growth weight of the reverse
+move, as required by detailed balance.
+
+Acceptance rules (notation as in [Reaction CFCMC (serial)](#reaction-cfcmc)):
 
 \f[
 \text{acc}_{\lambda} = \min\left(1,

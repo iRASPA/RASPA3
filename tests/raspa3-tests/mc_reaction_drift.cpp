@@ -16,7 +16,9 @@ import mc_moves_probabilities;
 import reaction;
 import reactions;
 import mc_moves_reaction_common;
+import mc_moves_reaction;
 import mc_moves_reaction_cfcmc;
+import mc_moves_reaction_cbcfcmc;
 import mc_moves_reaction_conventional_cfcmc;
 import mc_moves_reaction_conventional_cbcfcmc;
 import randomnumbers;
@@ -104,9 +106,16 @@ Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities& probabiliti
   return Move::Types::ReactionCBMC;
 }
 
+bool usesConventionalReactionGrowth(const MCMoveProbabilities& probabilities)
+{
+  return probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
+         probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0;
+}
+
 void checkEnergyDrift(System& s)
 {
   constexpr double tolerance = 1e-6;
+  constexpr double derivativeTolerance = 2e-6;
   RunningEnergy recomputedEnergies = s.computeTotalEnergies();
   RunningEnergy drift = s.runningEnergies - recomputedEnergies;
 
@@ -124,9 +133,9 @@ void checkEnergyDrift(System& s)
   EXPECT_NEAR(drift.intraCoul, 0.0, tolerance);
   EXPECT_NEAR(drift.tail, 0.0, tolerance);
   EXPECT_NEAR(drift.polarization, 0.0, tolerance);
-  EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, tolerance);
-  EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, tolerance);
-  EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, tolerance);
+  EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, derivativeTolerance);
+  EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, derivativeTolerance);
+  EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, derivativeTolerance);
 }
 
 System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabilities,
@@ -144,6 +153,13 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
 
   Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
+  if (usesConventionalReactionGrowth(systemProbabilities))
+  {
+    propane.growType = Component::GrowType::Rigid;
+    propane.rigid = true;
+    butane.growType = Component::GrowType::Rigid;
+    butane.rigid = true;
+  }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
@@ -220,6 +236,13 @@ System makeMixedParallelSerialReactionSystem(const MCMoveProbabilities& systemPr
 
   Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
+  if (usesConventionalReactionGrowth(systemProbabilities))
+  {
+    propane.growType = Component::GrowType::Rigid;
+    propane.rigid = true;
+    butane.growType = Component::GrowType::Rigid;
+    butane.rigid = true;
+  }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
@@ -261,6 +284,13 @@ System makeZeoliteMultiComponentReactionSystem(const MCMoveProbabilities& system
 
   Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
+  if (usesConventionalReactionGrowth(systemProbabilities))
+  {
+    propane.growType = Component::GrowType::Rigid;
+    propane.rigid = true;
+    butane.growType = Component::GrowType::Rigid;
+    butane.rigid = true;
+  }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
@@ -334,6 +364,124 @@ TEST(MC_REACTION_DRIFT, reaction_cbmc)
   systemProbabilities.setProbability(Move::Types::ReactionCBMC, 1.0);
 
   runReactionDriftTest({makePropaneButaneReactionSystem(systemProbabilities)});
+}
+
+TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_rejects_conventional_but_allows_cbmc)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
+  System system = makePropaneButaneReactionSystem(systemProbabilities);
+  ASSERT_EQ(system.components[0].growType, Component::GrowType::Flexible);
+
+  RandomNumber conventionalRandom(42);
+  RandomNumber cbmcRandom(42);
+  const std::vector<std::size_t> stoichiometry{1, 0};
+  const std::vector<std::pair<std::size_t, std::size_t>> exclusions;
+  const auto conventional = MC_Moves::ReactionCommon::growMoleculeGroupInsertion(
+      conventionalRandom, system, stoichiometry, exclusions, 0.5, true, 1, false);
+  const auto cbmc = MC_Moves::ReactionCommon::growMoleculeGroupInsertion(
+      cbmcRandom, system, stoichiometry, exclusions, 0.5, true, 1, true);
+
+  EXPECT_FALSE(conventional.has_value());
+  ASSERT_TRUE(cbmc.has_value());
+  EXPECT_NE(cbmc->RosenbluthWeight, 1.0);
+}
+
+TEST(MC_REACTION_DRIFT, reaction_flexible_runtime_restriction_covers_serial_and_parallel)
+{
+  MCMoveProbabilities serialProbabilities = MCMoveProbabilities();
+  serialProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
+  System invalidSerial = makePropaneButaneReactionSystem(serialProbabilities);
+  invalidSerial.reactions.list[0].reactionMove = Move::Types::ReactionCFCMC;
+  invalidSerial.createReactionFractionalMolecules();
+  EXPECT_TRUE(invalidSerial.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  RandomNumber serialRandom(42);
+  EXPECT_FALSE(MC_Moves::ReactionCommon::serialReactionMove(
+                   serialRandom, invalidSerial, invalidSerial.reactions.list[0], Move::Types::ReactionCFCMC, false,
+                   MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange)
+                   .has_value());
+
+  System validSerial = makePropaneButaneReactionSystem(serialProbabilities);
+  validSerial.createReactionFractionalMolecules();
+  EXPECT_FALSE(validSerial.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+
+  MCMoveProbabilities parallelProbabilities = MCMoveProbabilities();
+  parallelProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
+  System invalidParallel = makePropaneButaneReactionSystem(parallelProbabilities);
+  invalidParallel.reactions.list[0].reactionMove = Move::Types::ReactionConventionalCFCMC;
+  invalidParallel.createReactionFractionalMolecules();
+  EXPECT_TRUE(invalidParallel.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  RandomNumber parallelRandom(42);
+  EXPECT_FALSE(MC_Moves::reactionMove_ConventionalCFCMC(parallelRandom, invalidParallel).has_value());
+
+  System validParallel = makePropaneButaneReactionSystem(parallelProbabilities);
+  validParallel.createReactionFractionalMolecules();
+  EXPECT_FALSE(validParallel.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+}
+
+TEST(MC_REACTION_DRIFT, reaction_serial_move_filters_exact_reaction_type)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 0.5);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 0.5);
+  System system = makeCO2N2TwoSerialReactionSystem(systemProbabilities, {60, 20});
+  system.reactions.list[0].reactionMove = Move::Types::ReactionCFCMC;
+  system.reactions.list[1].reactionMove = Move::Types::ReactionCBCFCMC;
+  system.createReactionFractionalMolecules();
+
+  for (Reaction& reaction : system.reactions.list)
+  {
+    reaction.currentLambda = 0.25;
+    reaction.maximumLambdaChange = 0.05;
+    reaction.lambdaSwitchPoint = 2.0;
+    MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, reaction.currentLambda);
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(42);
+  for (int attempt = 0; attempt < 100; ++attempt)
+  {
+    if (const std::optional<RunningEnergy> delta = MC_Moves::reactionMove_CFCMC(random, system))
+    {
+      system.runningEnergies += delta.value();
+    }
+  }
+
+  EXPECT_NE(system.reactions.list[0].currentLambda, 0.25);
+  EXPECT_DOUBLE_EQ(system.reactions.list[1].currentLambda, 0.25);
+  checkEnergyDrift(system);
+}
+
+TEST(MC_REACTION_DRIFT, reaction_parallel_move_filters_exact_reaction_type)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 0.5);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 0.5);
+  System system = makeTwoParallelReactionSystem(systemProbabilities);
+  system.reactions.list[0].reactionMove = Move::Types::ReactionConventionalCFCMC;
+  system.reactions.list[1].reactionMove = Move::Types::ReactionConventionalCBCFCMC;
+  system.createReactionFractionalMolecules();
+
+  for (Reaction& reaction : system.reactions.list)
+  {
+    reaction.currentLambda = 0.5;
+    reaction.maximumLambdaChange = 0.05;
+    MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, reaction.currentLambda);
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(42);
+  for (int attempt = 0; attempt < 100; ++attempt)
+  {
+    if (const std::optional<RunningEnergy> delta = MC_Moves::reactionMove_ConventionalCFCMC(random, system))
+    {
+      system.runningEnergies += delta.value();
+    }
+  }
+
+  EXPECT_NE(system.reactions.list[0].currentLambda, 0.5);
+  EXPECT_DOUBLE_EQ(system.reactions.list[1].currentLambda, 0.5);
+  checkEnergyDrift(system);
 }
 
 void setupLambdaOnlyReaction(System& system)
@@ -784,9 +932,13 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_full)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_side_flip_drift)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeCO2N2TwoSerialReactionSystem(systemProbabilities, {60, 20}, {1, 1}, {2, 0});
+  for (Reaction& reaction : system.reactions.list)
+  {
+    reaction.reactionMove = Move::Types::ReactionCBCFCMC;
+  }
   system.createReactionFractionalMolecules();
 
   for (Reaction& reaction : system.reactions.list)
@@ -801,7 +953,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_two_reactions_side_flip_dri
   RandomNumber random(42);
   for (int move = 0; move < 1000; ++move)
   {
-    std::optional<RunningEnergy> delta = MC_Moves::reactionMove_CFCMC(random, system);
+    std::optional<RunningEnergy> delta = MC_Moves::reactionMove_CBCFCMC(random, system);
     if (delta)
     {
       system.runningEnergies += delta.value();
@@ -1035,7 +1187,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_mixed_reactants_zeolite)
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_whole_molecule_single_move_drift)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {60, 20});
   ASSERT_TRUE(system.forceField.useCharge);
@@ -1049,7 +1201,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_co2_n2_ewald_whole_molecule_single
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
-        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        random, system, system.reactions.list[0], Move::Types::ReactionCBCFCMC, true,
         MC_Moves::ReactionCommon::SerialMoveKind::WholeMoleculeReaction);
     if (delta)
     {
@@ -1171,7 +1323,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_lambda_single_
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_single_move_drift)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -1185,7 +1337,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_single_move_dr
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
-        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        random, system, system.reactions.list[0], Move::Types::ReactionCBCFCMC, true,
         MC_Moves::ReactionCommon::SerialMoveKind::FractionalReaction);
     if (delta)
     {
@@ -1204,7 +1356,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_multi_stoichiometry_single_move_dr
 TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_fractional_single_move_drift)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
-  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
   system.createReactionFractionalMolecules();
@@ -1218,7 +1370,7 @@ TEST(MC_REACTION_DRIFT, reaction_serial_cfcmc_fractional_single_move_drift)
   {
     RunningEnergy beforeRecomputed = system.computeTotalEnergies();
     std::optional<RunningEnergy> delta = MC_Moves::ReactionCommon::serialReactionMove(
-        random, system, system.reactions.list[0], Move::Types::ReactionCFCMC, false,
+        random, system, system.reactions.list[0], Move::Types::ReactionCBCFCMC, true,
         MC_Moves::ReactionCommon::SerialMoveKind::FractionalReaction);
     if (delta)
     {

@@ -26,7 +26,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBCFCMC(RandomNumber& random
   serialReactions.reserve(system.reactions.list.size());
   for (Reaction& candidate : system.reactions.list)
   {
-    if (candidate.isSerialRxCFC())
+    if (candidate.reactionMove == move)
     {
       serialReactions.push_back(&candidate);
     }

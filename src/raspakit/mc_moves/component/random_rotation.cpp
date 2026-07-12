@@ -28,30 +28,23 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, System &system,
+std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber& random, System& system,
                                                           std::size_t selectedComponent, std::size_t selectedMolecule)
 {
   std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
-  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+  Molecule& molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
-  double3 angle{};
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::RandomRotation;
-  Component &component = system.components[selectedComponent];
+  Component& component = system.components[selectedComponent];
 
-  std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
-  std::size_t selectedDirection = std::size_t(3.0 * random.uniform());
-  angle[selectedDirection] = std::numbers::pi * 2.0 * (random.uniform() - 0.5);
-
-  // Update move statistics for the selected direction
-  component.mc_moves_statistics.addTrial(move, selectedDirection);
+  // A random orientation is a single isotropic SO(3) proposal, recorded in the first statistics channel.
+  constexpr std::size_t statisticsChannel = 0;
+  component.mc_moves_statistics.addTrial(move, statisticsChannel);
 
   // Construct the trial positions by rotating the molecule
-  double rotationAngle = angle[selectedDirection];
-  double3 rotationAxis = double3(axes[selectedDirection]);
-  simd_quatd q = simd_quatd::fromAxisAngle(rotationAngle, rotationAxis);
-  std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      component.rotate(molecule, molecule_atoms, q);
+  const simd_quatd q = random.randomRotationMatrix().quaternion();
+  std::pair<Molecule, std::vector<Atom>> trialMolecule = component.rotate(molecule, molecule_atoms, q);
 
   // Check if the trial molecule is inside any blocked pockets
   if (system.insideBlockedPockets(component, trialMolecule.second))
@@ -65,8 +58,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   // Compute external field energy contribution
   time_begin = std::chrono::steady_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, 
-      system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
+      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+      trialMolecule.second, molecule_atoms);
   time_end = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
@@ -161,13 +154,13 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
                                    ewaldFourierEnergy + polarizationDifference;
 
   // Update constructed move statistics
-  component.mc_moves_statistics.addConstructed(move, selectedDirection);
+  component.mc_moves_statistics.addConstructed(move, statisticsChannel);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Move accepted; update statistics
-    component.mc_moves_statistics.addAccepted(move, selectedDirection);
+    component.mc_moves_statistics.addAccepted(move, statisticsChannel);
 
     // Accept Ewald move and update molecule atoms
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

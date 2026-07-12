@@ -214,7 +214,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling, bool isFractional,
-    std::uint8_t dUdlambdaGroupId) noexcept
+    std::uint8_t dUdlambdaGroupId, bool useCBMC) noexcept
 {
   MoleculeGroupGrowData result;
 
@@ -244,15 +244,42 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     for (std::size_t n = 0; n < stoichiometry[componentId]; ++n)
     {
       Component& component = system.components[componentId];
+      if (!useCBMC && component.growType != Component::GrowType::Rigid)
+      {
+        return std::nullopt;
+      }
       const std::size_t selectedMolecule = system.numberOfMolecules() + result.molecules.size();
 
-      std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-          random,
-          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                            system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                            system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
-                            cutOffMoleculeVDW, cutOffCoulomb},
-          component, componentId, component.growType, selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
+      std::optional<ChainGrowData> growData;
+      if (useCBMC)
+      {
+        growData = CBMC::growMoleculeSwapInsertion(
+            random,
+            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
+                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                              system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
+                              cutOffMoleculeVDW, cutOffCoulomb},
+            component, componentId, component.growType, selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
+      }
+      else
+      {
+        auto [molecule, atoms] =
+            component.equilibratedMoleculeRandomInBox(random, componentId, system.simulationBox);
+        for (Atom& atom : atoms)
+        {
+          atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
+          atom.componentId = static_cast<std::uint8_t>(componentId);
+          if (isFractional)
+          {
+            atom.setScalingToFractional(scaling, dUdlambdaGroupId);
+          }
+          else
+          {
+            atom.setScalingToInteger();
+          }
+        }
+        growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 1.0, 0.0);
+      }
 
       if (!growData)
       {
@@ -274,72 +301,78 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 }
 
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
-    RandomNumber& random, System& system,
-    std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules) noexcept
+    RandomNumber& random, System& system, std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, bool useCBMC) noexcept
 {
   MoleculeGroupRetraceData result;
 
-  std::unordered_set<std::size_t> selectedGlobalMoleculeIds;
-  selectedGlobalMoleculeIds.reserve(selectedMolecules.size());
+  std::vector<std::size_t> groupGlobalMoleculeIds;
+  groupGlobalMoleculeIds.reserve(selectedMolecules.size());
   for (const auto& [componentId, moleculeId] : selectedMolecules)
   {
-    selectedGlobalMoleculeIds.insert(system.moleculeIndexOfComponent(componentId, moleculeId));
+    groupGlobalMoleculeIds.push_back(system.moleculeIndexOfComponent(componentId, moleculeId));
+  }
+
+  std::unordered_set<std::size_t> extraExcludedGlobalMoleculeIds;
+  extraExcludedGlobalMoleculeIds.reserve(excludeMolecules.size());
+  for (const auto& [componentId, moleculeId] : excludeMolecules)
+  {
+    extraExcludedGlobalMoleculeIds.insert(system.moleculeIndexOfComponent(componentId, moleculeId));
   }
 
   const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
   const double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
-  for (const auto& [componentId, moleculeId] : selectedMolecules)
+  // Detailed balance: the reverse move grows the group sequentially in the order of 'selectedMolecules'
+  // (growMoleculeGroupInsertion), where molecule k only sees the group members 0..k-1. The retrace must
+  // reproduce these nested environments: molecule k is retraced with the members k+1..m-1 excluded from
+  // the background. This is equivalent to retracing in the opposite order of growth and removing each
+  // molecule from the background after its weight has been computed. The intra-group interactions are
+  // thereby contained once in the Rosenbluth weights and retrace energies.
+  for (std::size_t k = 0; k < selectedMolecules.size(); ++k)
   {
-    const std::size_t currentGlobalMoleculeId = system.moleculeIndexOfComponent(componentId, moleculeId);
+    const auto& [componentId, moleculeId] = selectedMolecules[k];
+
+    std::unordered_set<std::size_t> excludedGlobalMoleculeIds = extraExcludedGlobalMoleculeIds;
+    excludedGlobalMoleculeIds.insert(groupGlobalMoleculeIds.begin() + static_cast<std::ptrdiff_t>(k) + 1,
+                                     groupGlobalMoleculeIds.end());
 
     std::vector<Atom> background;
     background.reserve(system.spanOfMoleculeAtoms().size());
     for (const Atom& atom : system.spanOfMoleculeAtoms())
     {
-      const std::size_t globalMoleculeId = static_cast<std::size_t>(atom.moleculeId);
-      if (selectedGlobalMoleculeIds.contains(globalMoleculeId) && globalMoleculeId != currentGlobalMoleculeId)
+      if (!excludedGlobalMoleculeIds.contains(static_cast<std::size_t>(atom.moleculeId)))
       {
-        continue;
+        background.push_back(atom);
       }
-      background.push_back(atom);
     }
 
     const Component& component = system.components[componentId];
     std::span<Atom> moleculeAtoms = system.spanOfMolecule(componentId, moleculeId);
 
-    ChainRetraceData retraceData;
-    try
+    ChainRetraceData retraceData{RunningEnergy{}, 1.0, 0.0};
+    if (useCBMC)
     {
-      retraceData = CBMC::retraceMoleculeSwapDeletion(
-          random,
-          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                            system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                            system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
-                            cutOffMoleculeVDW, cutOffCoulomb},
-          component, component.growType, moleculeAtoms);
-    }
-    catch (const std::runtime_error&)
-    {
-      return std::nullopt;
+      try
+      {
+        retraceData = CBMC::retraceMoleculeSwapDeletion(
+            random,
+            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
+                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                              system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
+                              cutOffMoleculeVDW, cutOffCoulomb},
+            component, component.growType, moleculeAtoms);
+      }
+      catch (const std::runtime_error&)
+      {
+        return std::nullopt;
+      }
     }
 
     result.RosenbluthWeight *= retraceData.RosenbluthWeight;
     result.energies += retraceData.energies;
     result.molecules.push_back(std::move(retraceData));
-  }
-
-  if (selectedMolecules.size() > 1)
-  {
-    std::vector<Atom> selectedAtoms;
-    for (const auto& [componentId, moleculeId] : selectedMolecules)
-    {
-      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-      selectedAtoms.insert(selectedAtoms.end(), molecule.begin(), molecule.end());
-    }
-    result.energies +=
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, selectedAtoms);
   }
 
   return result;
@@ -359,6 +392,26 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     }
   }
   return weight;
+}
+
+[[nodiscard]] bool conventionalReactionUsesOnlyRigidComponents(const System& system,
+                                                               const Reaction& reaction) noexcept
+{
+  const std::size_t componentCount =
+      std::min({system.components.size(), reaction.reactantStoichiometry.size(),
+                reaction.productStoichiometry.size()});
+  for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
+  {
+    const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
+                              reaction.productStoichiometry[componentId] > 0;
+    if (participates && system.components[componentId].growType != Component::GrowType::Rigid)
+    {
+      return false;
+    }
+  }
+  return componentCount == system.components.size() &&
+         reaction.reactantStoichiometry.size() == system.components.size() &&
+         reaction.productStoichiometry.size() == system.components.size();
 }
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept
@@ -744,7 +797,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
                                                               Move::Types move, bool useCBMC,
                                                               std::optional<SerialMoveKind> forcedKind) noexcept
 {
-  (void)useCBMC;
+  if (!useCBMC && !conventionalReactionUsesOnlyRigidComponents(system, reaction))
+  {
+    return std::nullopt;
+  }
 
   // the active fractional side must have molecules to operate on
   const std::vector<std::size_t>& activeStoichiometry =
@@ -872,7 +928,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     // grow the new fractional molecules at coupling lambda (staged scaling applied via Atom::setScaling)
     std::optional<MoleculeGroupGrowData> growData =
         growMoleculeGroupInsertion(random, system, newStoichiometry, removedMolecules, reaction.currentLambda, true,
-                                   reaction.lambda.dUdlambdaGroupId);
+                                   reaction.lambda.dUdlambdaGroupId, useCBMC);
     if (!growData)
     {
       return std::nullopt;
@@ -880,7 +936,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
     // retrace the removed fractional molecules at their current coupling
     std::optional<MoleculeGroupRetraceData> retraceData =
-        retraceMoleculeGroupDeletion(random, system, removedMolecules);
+        retraceMoleculeGroupDeletion(random, system, removedMolecules, {}, useCBMC);
     if (!retraceData)
     {
       return std::nullopt;
@@ -892,13 +948,35 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       newAtoms.insert(newAtoms.end(), data.atoms.begin(), data.atoms.end());
     }
 
-    const RunningEnergy tailDifference = computeGroupSwapTailEnergyDifference(system, newAtoms, oldAtoms);
-
     const bool useChargedEwald = system.forceField.useCharge;
+    RunningEnergy tailDifference{};
     RunningEnergy fourierDifference{};
-    if (useChargedEwald)
+    RunningEnergy energyDifference{};
+    if (useCBMC)
     {
-      fourierDifference = computeChargedGroupEwaldDifference(system, newAtoms, oldAtoms);
+      tailDifference = computeGroupSwapTailEnergyDifference(system, newAtoms, oldAtoms);
+      if (useChargedEwald)
+      {
+        fourierDifference = computeChargedGroupEwaldDifference(system, newAtoms, oldAtoms);
+      }
+      energyDifference =
+          (growData->energies - retraceData->energies) + fourierDifference + tailDifference;
+    }
+    else
+    {
+      std::optional<RunningEnergy> completeDifference =
+          computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms, true, !useChargedEwald);
+      if (!completeDifference)
+      {
+        return std::nullopt;
+      }
+      energyDifference = completeDifference.value() +
+                         (internalEnergyFromAtomGroups(system, newAtoms) -
+                          internalEnergyFromAtomGroups(system, oldAtoms));
+      if (useChargedEwald)
+      {
+        energyDifference += computeChargedGroupEwaldDifference(system, newAtoms, oldAtoms);
+      }
     }
 
     // V^(+/-nu) q^(+/-nu) equilibrium factors: the disappearing side loses, the appearing side gains
@@ -923,17 +1001,26 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     const double biasOld = serialBiasFactor(activeSerialLambdaHistogram(reaction), reaction.currentLambda);
     const double biasNew = serialBiasFactor(inactiveSerialLambdaHistogram(reaction), reaction.currentLambda);
 
-    const double correctionFactor =
-        std::exp(-system.beta * (fourierDifference.potentialEnergy() + tailDifference.potentialEnergy()));
-    // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
-    // partition functions q_i can be used in the equilibrium term
-    const std::vector<std::size_t>& oldStoichiometry =
-        reactantsToProducts ? reaction.reactantStoichiometry : reaction.productStoichiometry;
-    const double idealGasNew = idealGasRosenbluthWeightProduct(system, newStoichiometry);
-    const double idealGasOld = idealGasRosenbluthWeightProduct(system, oldStoichiometry);
-    const double acceptanceProbability =
-        ((growData->RosenbluthWeight / idealGasNew) / (retraceData->RosenbluthWeight / idealGasOld)) *
-        correctionFactor * std::exp(equilibriumTerm + biasNew - biasOld);
+    double acceptanceProbability;
+    if (useCBMC)
+    {
+      const double correctionFactor =
+          std::exp(-system.beta * (fourierDifference.potentialEnergy() + tailDifference.potentialEnergy()));
+      // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
+      // partition functions q_i can be used in the equilibrium term
+      const std::vector<std::size_t>& oldStoichiometry =
+          reactantsToProducts ? reaction.reactantStoichiometry : reaction.productStoichiometry;
+      const double idealGasNew = idealGasRosenbluthWeightProduct(system, newStoichiometry);
+      const double idealGasOld = idealGasRosenbluthWeightProduct(system, oldStoichiometry);
+      acceptanceProbability =
+          ((growData->RosenbluthWeight / idealGasNew) / (retraceData->RosenbluthWeight / idealGasOld)) *
+          correctionFactor * std::exp(equilibriumTerm + biasNew - biasOld);
+    }
+    else
+    {
+      acceptanceProbability =
+          std::exp(-system.beta * energyDifference.potentialEnergy() + equilibriumTerm + biasNew - biasOld);
+    }
     if (random.uniform() >= acceptanceProbability)
     {
       return std::nullopt;
@@ -941,9 +1028,6 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
     system.mc_moves_statistics.addConstructed(move);
     system.mc_moves_statistics.addAccepted(move);
-
-    const RunningEnergy energyDifference =
-        (growData->energies - retraceData->energies) + fourierDifference + tailDifference;
 
     deleteReactionSideFractionalMolecules(system, reaction, reaction.fractionalSideIsReactants);
     // flip delta before inserting so that syncReactionFractionalMoleculeIndices assigns the ids of the new side
@@ -1116,7 +1200,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 // Atom::setScaling: products are coupled with lambda, reactants with (1 - lambda).
 [[nodiscard]] static std::optional<RunningEnergy> parallelReactionBoundaryMove(RandomNumber& random, System& system,
                                                                                Reaction& reaction, Move::Types move,
-                                                                               double lambdaNew, bool forward) noexcept
+                                                                               double lambdaNew, bool forward,
+                                                                               bool useCBMC) noexcept
 {
   const std::vector<std::size_t>& demoteStoichiometry =
       forward ? reaction.reactantStoichiometry : reaction.productStoichiometry;
@@ -1169,7 +1254,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   // retrace of the deleted ghost fractional molecules against the unmodified old configuration; this
   // provides the Rosenbluth weight of the reverse move
-  std::optional<MoleculeGroupRetraceData> retraceData = retraceMoleculeGroupDeletion(random, system, ghostMolecules);
+  std::optional<MoleculeGroupRetraceData> retraceData =
+      retraceMoleculeGroupDeletion(random, system, ghostMolecules, {}, useCBMC);
   if (!retraceData)
   {
     return std::nullopt;
@@ -1226,7 +1312,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   // forward grows product-side ghost fractionals, backward grows reactant-side ones
   std::optional<MoleculeGroupGrowData> growData =
       growMoleculeGroupInsertion(random, system, growStoichiometry, ghostMolecules, growScaling, true,
-                                 reaction.dUdlambdaGroup(!forward));
+                                 reaction.dUdlambdaGroup(!forward), useCBMC);
   if (!growData)
   {
     restoreOldScalings();
@@ -1244,11 +1330,35 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   std::vector<Atom> fullOldAtoms = rescaleOldAtoms;
   fullOldAtoms.insert(fullOldAtoms.end(), ghostOldAtoms.begin(), ghostOldAtoms.end());
 
-  const RunningEnergy tailDifference = computeGroupSwapTailEnergyDifference(system, fullNewAtoms, fullOldAtoms);
+  RunningEnergy tailDifference{};
   RunningEnergy fourierDifference{};
-  if (system.forceField.useCharge)
+  RunningEnergy energyDifference{};
+  if (useCBMC)
   {
-    fourierDifference = computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
+    tailDifference = computeGroupSwapTailEnergyDifference(system, fullNewAtoms, fullOldAtoms);
+    if (system.forceField.useCharge)
+    {
+      fourierDifference = computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
+    }
+    energyDifference =
+        rescaleDifference.value() + (growData->energies - retraceData->energies) + tailDifference + fourierDifference;
+  }
+  else
+  {
+    std::optional<RunningEnergy> completeDifference = computeGroupSwapEnergyDifference(
+        system, fullNewAtoms, fullOldAtoms, true, !system.forceField.useCharge);
+    if (!completeDifference)
+    {
+      restoreOldScalings();
+      return std::nullopt;
+    }
+    energyDifference = completeDifference.value() +
+                       (internalEnergyFromAtomGroups(system, fullNewAtoms) -
+                        internalEnergyFromAtomGroups(system, fullOldAtoms));
+    if (system.forceField.useCharge)
+    {
+      energyDifference += computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
+    }
   }
 
   const ReactionMoveKind moveKind = forward ? ReactionMoveKind::ForwardInsert : ReactionMoveKind::BackwardDelete;
@@ -1258,17 +1368,25 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   const double biasOld = serialBiasFactor(reaction.lambda, reaction.currentLambda);
   const double biasNew = serialBiasFactor(reaction.lambda, lambdaNew);
 
-  // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
-  // partition functions q_i can be used in the acceptance rule
-  const double idealGasGrow = idealGasRosenbluthWeightProduct(system, growStoichiometry);
-  const double idealGasGhost = idealGasRosenbluthWeightProduct(system, demoteStoichiometry);
-  const double rosenbluthRatio =
-      (growData->RosenbluthWeight / idealGasGrow) / (retraceData->RosenbluthWeight / idealGasGhost);
-
-  const double acceptanceProbability =
-      rosenbluthRatio * std::exp(equilibriumTerm + biasNew - biasOld) *
-      std::exp(-system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
-                               fourierDifference.potentialEnergy()));
+  double acceptanceProbability;
+  if (useCBMC)
+  {
+    // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
+    // partition functions q_i can be used in the acceptance rule
+    const double idealGasGrow = idealGasRosenbluthWeightProduct(system, growStoichiometry);
+    const double idealGasGhost = idealGasRosenbluthWeightProduct(system, demoteStoichiometry);
+    const double rosenbluthRatio =
+        (growData->RosenbluthWeight / idealGasGrow) / (retraceData->RosenbluthWeight / idealGasGhost);
+    acceptanceProbability =
+        rosenbluthRatio * std::exp(equilibriumTerm + biasNew - biasOld) *
+        std::exp(-system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
+                                 fourierDifference.potentialEnergy()));
+  }
+  else
+  {
+    acceptanceProbability =
+        std::exp(equilibriumTerm + biasNew - biasOld - system.beta * energyDifference.potentialEnergy());
+  }
 
   if (random.uniform() >= acceptanceProbability)
   {
@@ -1278,9 +1396,6 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
-
-  const RunningEnergy energyDifference =
-      rescaleDifference.value() + (growData->energies - retraceData->energies) + tailDifference + fourierDifference;
 
   // capture the promoted (fractional -> whole) molecules before any bookkeeping changes the indices
   struct TransformedMolecule
@@ -1401,7 +1516,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 }
 
 [[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,
-                                                                Move::Types move) noexcept
+                                                                Move::Types move, bool useCBMC) noexcept
 {
   if (system.reactions.list.empty())
   {
@@ -1414,7 +1529,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   parallelReactions.reserve(system.reactions.list.size());
   for (Reaction& candidate : system.reactions.list)
   {
-    if (candidate.isParallelRxCFC() && candidate.reactantFractionalMoleculeIds.size() == system.components.size())
+    if (candidate.reactionMove == move &&
+        candidate.reactantFractionalMoleculeIds.size() == system.components.size() &&
+        (useCBMC || conventionalReactionUsesOnlyRigidComponents(system, candidate)))
     {
       parallelReactions.push_back(&candidate);
     }
@@ -1432,11 +1549,11 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   // boundary crossing: attempt a chemical reaction with the wrapped lambda (Rosch and Maginn)
   if (lambdaNew > 1.0)
   {
-    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew - 1.0, true);
+    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew - 1.0, true, useCBMC);
   }
   if (lambdaNew < 0.0)
   {
-    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew + 1.0, false);
+    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew + 1.0, false, useCBMC);
   }
 
   // lambda change within [0, 1] (Rosch and Maginn, eq. 26)

@@ -94,8 +94,8 @@ static RunningEnergy pairDeletionPolarizationDifference(System& system, std::siz
 }
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(RandomNumber& random, System& system,
-                                                                                 std::size_t selectedComponent,
-                                                                                 std::size_t selectedMolecule)
+                                                                                std::size_t selectedComponent,
+                                                                                std::size_t selectedMolecule)
 {
   std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
@@ -136,32 +136,33 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   // integer molecules are stored after the fractional molecules of a component
   const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
 
-  // the partner is the closest integer molecule of the paired component within R_max
-  std::optional<std::size_t> selectedPartner;
-  double closestDistance = R_max;
-  for (std::size_t moleculeB = firstIntegerMoleculeB;
-       moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
+  // Select uniformly from all integer partners within R_max, using minimum-image distances.
+  std::vector<std::size_t> partnerMolecules;
+  for (std::size_t moleculeB = firstIntegerMoleculeB; moleculeB < system.numberOfMoleculesPerComponent[componentB];
+       ++moleculeB)
   {
     std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-    const double distance =
-        (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
-    if (distance <= closestDistance)
+    const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+        positionA - moleculeBAtoms[system.components[componentB].startingBead].position);
+    if (dr.length() <= R_max)
     {
-      closestDistance = distance;
-      selectedPartner = moleculeB;
+      partnerMolecules.push_back(moleculeB);
     }
   }
 
-  if (!selectedPartner.has_value())
+  if (partnerMolecules.empty())
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  const std::size_t selectedMoleculeB = selectedPartner.value();
+  const std::size_t numberOfPartners = partnerMolecules.size();
+  const std::size_t selectedMoleculeB = partnerMolecules[random.uniform_integer(0, numberOfPartners - 1)];
   std::span<Atom> moleculeA = system.spanOfMolecule(selectedComponent, selectedMolecule);
   std::span<Atom> moleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 
-  const double r = (moleculeA[componentA.startingBead].position - moleculeB[componentBRef.startingBead].position).length();
+  const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+      moleculeA[componentA.startingBead].position - moleculeB[componentBRef.startingBead].position);
+  const double r = dr.length();
   if (r <= 0.0 || r > R_max)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -193,22 +194,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
   time_begin = std::chrono::steady_clock::now();
+  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentBRef, componentBRef.growType, moleculeB);
+  time_end = std::chrono::steady_clock::now();
+  system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
+  componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentA, componentA.growType, moleculeA);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
-
-  time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -226,8 +227,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, {}, oldMoleculeA,
-      system.netCharge - system.components[componentB].netCharge);
+      system.simulationBox, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -261,15 +261,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double distanceBias = (R_max * R_max) / (3.0 * r * r);
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double fugacityB = componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
+  const double fugacityB =
+      componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
   const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  const double N_B = double(system.numberOfIntegerMoleculesPerComponent[componentB]);
+  const double k = double(numberOfPartners);
   const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
 
-  const double preFactor = correctionFactorEwald * (N_A * N_B) /
+  const double preFactor = correctionFactorEwald * (N_A * k) /
                            (system.beta * fugacityA * fugacityB * system.simulationBox.volume * distanceBias);
 
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
@@ -302,13 +303,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
       }
     }
 
-    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
-                                               system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeB);
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.simulationBox, {}, oldMoleculeB);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.deleteMolecule(componentB, selectedMoleculeB, moleculeB);
 
-    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
-                                               system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeA);
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.simulationBox, {}, oldMoleculeA);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.deleteMolecule(selectedComponent, selectedMolecule, moleculeA);
 
@@ -321,8 +324,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 }
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(RandomNumber& random, System& system,
-                                                                             std::size_t selectedComponent,
-                                                                             std::size_t selectedMolecule)
+                                                                            std::size_t selectedComponent,
+                                                                            std::size_t selectedMolecule)
 {
   std::chrono::steady_clock::time_point time_begin, time_end;
   Component& componentA = system.components[selectedComponent];
@@ -363,32 +366,33 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   // integer molecules are stored after the fractional molecules of a component
   const std::size_t firstIntegerMoleculeB = system.numberOfFractionalMoleculesPerComponent[componentB];
 
-  // the partner is the closest integer molecule of the paired component within R_max
-  std::optional<std::size_t> selectedPartner;
-  double closestDistance = R_max;
-  for (std::size_t moleculeB = firstIntegerMoleculeB;
-       moleculeB < system.numberOfMoleculesPerComponent[componentB]; ++moleculeB)
+  // Select uniformly from all integer partners within R_max, using minimum-image distances.
+  std::vector<std::size_t> partnerMolecules;
+  for (std::size_t moleculeB = firstIntegerMoleculeB; moleculeB < system.numberOfMoleculesPerComponent[componentB];
+       ++moleculeB)
   {
     std::span<Atom> moleculeBAtoms = system.spanOfMolecule(componentB, moleculeB);
-    const double distance =
-        (positionA - moleculeBAtoms[system.components[componentB].startingBead].position).length();
-    if (distance <= closestDistance)
+    const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+        positionA - moleculeBAtoms[system.components[componentB].startingBead].position);
+    if (dr.length() <= R_max)
     {
-      closestDistance = distance;
-      selectedPartner = moleculeB;
+      partnerMolecules.push_back(moleculeB);
     }
   }
 
-  if (!selectedPartner.has_value())
+  if (partnerMolecules.empty())
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  const std::size_t selectedMoleculeB = selectedPartner.value();
+  const std::size_t numberOfPartners = partnerMolecules.size();
+  const std::size_t selectedMoleculeB = partnerMolecules[random.uniform_integer(0, numberOfPartners - 1)];
   std::span<Atom> moleculeA = system.spanOfMolecule(selectedComponent, selectedMolecule);
   std::span<Atom> moleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 
-  const double r = (moleculeA[componentA.startingBead].position - moleculeB[componentBRef.startingBead].position).length();
+  const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+      moleculeA[componentA.startingBead].position - moleculeB[componentBRef.startingBead].position);
+  const double r = dr.length();
   if (r <= 0.0 || r > R_max)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -420,22 +424,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
   time_begin = std::chrono::steady_clock::now();
+  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+      componentBRef, componentBRef.growType, moleculeB);
+  time_end = std::chrono::steady_clock::now();
+  system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
+  componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
       random,
       CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
       componentA, componentA.growType, moleculeA);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
-
-  time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -453,8 +457,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, {}, oldMoleculeA,
-      system.netCharge - system.components[componentB].netCharge);
+      system.simulationBox, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
   system.storedEik = savedStoredEik;
   system.totalEik = savedTotalEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -488,15 +491,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double distanceBias = 1.0;
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double fugacityB = componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
+  const double fugacityB =
+      componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
   const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  const double N_B = double(system.numberOfIntegerMoleculesPerComponent[componentB]);
+  const double k = double(numberOfPartners);
   const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
 
-  const double preFactor = correctionFactorEwald * (N_A * N_B) /
+  const double preFactor = correctionFactorEwald * (N_A * k) /
                            (system.beta * fugacityA * fugacityB * system.simulationBox.volume * distanceBias);
 
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
@@ -529,13 +533,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
       }
     }
 
-    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
-                                               system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeB);
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.simulationBox, {}, oldMoleculeB);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.deleteMolecule(componentB, selectedMoleculeB, moleculeB);
 
-    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik,
-                                               system.totalEik, system.forceField, system.simulationBox, {}, oldMoleculeA);
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.simulationBox, {}, oldMoleculeA);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.deleteMolecule(selectedComponent, selectedMolecule, moleculeA);
 

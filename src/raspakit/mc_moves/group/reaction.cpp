@@ -26,8 +26,20 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
 
   system.mc_moves_statistics.addTrial(move);
 
-  const std::size_t reactionIndex = random.uniform_integer(0uz, system.reactions.list.size() - 1uz);
-  Reaction& reaction = system.reactions.list[reactionIndex];
+  std::vector<Reaction*> matchingReactions;
+  matchingReactions.reserve(system.reactions.list.size());
+  for (Reaction& candidate : system.reactions.list)
+  {
+    if (candidate.reactionMove == move)
+    {
+      matchingReactions.push_back(&candidate);
+    }
+  }
+  if (matchingReactions.empty())
+  {
+    return std::nullopt;
+  }
+  Reaction& reaction = *matchingReactions[random.uniform_integer(0uz, matchingReactions.size() - 1uz)];
 
   const bool forward = random.uniform() < 0.5;
   const std::vector<std::size_t>& removeStoichiometry =
@@ -47,8 +59,12 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
     return std::nullopt;
   }
 
+  std::vector<std::pair<std::size_t, std::size_t>> fractionalMoleculeExclusions;
+  ReactionCommon::appendAllReactionFractionalMoleculeExclusions(system, fractionalMoleculeExclusions);
+
   std::vector<std::pair<std::size_t, std::size_t>> excludeMolecules = selectedMolecules;
-  ReactionCommon::appendAllReactionFractionalMoleculeExclusions(system, excludeMolecules);
+  excludeMolecules.insert(excludeMolecules.end(), fractionalMoleculeExclusions.begin(),
+                          fractionalMoleculeExclusions.end());
   std::optional<ReactionCommon::MoleculeGroupGrowData> growData =
       ReactionCommon::growMoleculeGroupInsertion(random, system, insertStoichiometry, excludeMolecules);
   if (!growData)
@@ -56,8 +72,10 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
     return std::nullopt;
   }
 
+  // the fractional molecules are also excluded from the retrace backgrounds so that the retrace
+  // matches the growth environment of the reverse move (which excludes them as well)
   std::optional<ReactionCommon::MoleculeGroupRetraceData> retraceData =
-      ReactionCommon::retraceMoleculeGroupDeletion(random, system, selectedMolecules);
+      ReactionCommon::retraceMoleculeGroupDeletion(random, system, selectedMolecules, fractionalMoleculeExclusions);
   if (!retraceData)
   {
     return std::nullopt;

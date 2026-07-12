@@ -1135,6 +1135,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         const bool parallelRxCFCEnabled =
             mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
             mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
+        const std::array reactionMoves{
+            Move::Types::ReactionCBMC, Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
+            Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC};
+        std::vector<Move::Types> enabledReactionMoves;
+        for (const Move::Types reactionMove : reactionMoves)
+        {
+          if (mc_moves_probabilities.getProbability(reactionMove) > 0.0)
+          {
+            enabledReactionMoves.push_back(reactionMove);
+          }
+        }
 
         const auto parseReactionMove = [](const std::string& moveName) -> std::optional<Move::Types>
         {
@@ -1195,26 +1206,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             reaction.reactionMove = parsedMove.value();
           }
-          else if (serialRxCFCEnabled && parallelRxCFCEnabled)
+          else if (enabledReactionMoves.size() > 1)
           {
             throw std::runtime_error(
-                std::format("[Input reader]: both serial (ReactionCFCMC/ReactionCBCFCMC) and parallel "
-                            "(ReactionConventionalCFCMC/ReactionConventionalCBCFCMC) reaction moves are enabled; "
-                            "reaction {} must declare which move drives it with the 'Move' key\n",
+                std::format("[Input reader]: multiple reaction moves are enabled; reaction {} must declare "
+                            "which exact move drives it with the 'Move' key\n",
                             reactionId));
           }
-          else if (serialRxCFCEnabled)
+          else if (enabledReactionMoves.size() == 1)
           {
-            reaction.reactionMove = mc_moves_probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0
-                                        ? Move::Types::ReactionCFCMC
-                                        : Move::Types::ReactionCBCFCMC;
-          }
-          else if (parallelRxCFCEnabled)
-          {
-            reaction.reactionMove =
-                mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0
-                    ? Move::Types::ReactionConventionalCFCMC
-                    : Move::Types::ReactionConventionalCBCFCMC;
+            reaction.reactionMove = enabledReactionMoves.front();
           }
           else
           {
@@ -1234,6 +1235,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 std::format("[Input reader]: reaction {} declares parallel move '{}' but neither "
                             "'ReactionConventionalCFCMCProbability' nor 'ReactionConventionalCBCFCMCProbability' "
                             "is set\n",
+                            reactionId, Move::moveNames[std::to_underlying(reaction.reactionMove)]));
+          }
+          if (mc_moves_probabilities.getProbability(reaction.reactionMove) <= 0.0 &&
+              !enabledReactionMoves.empty())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: reaction {} declares move '{}' but its probability is not enabled\n",
                             reactionId, Move::moveNames[std::to_underlying(reaction.reactionMove)]));
           }
 
@@ -1491,6 +1499,38 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       systems[systemId].reactions.list = std::move(jsonReactions[systemId]);
+      for (const Reaction& reaction : systems[systemId].reactions.list)
+      {
+        const bool conventional = reaction.reactionMove == Move::Types::ReactionConventionalCFCMC ||
+                                  reaction.reactionMove == Move::Types::ReactionCFCMC;
+        if (!conventional)
+        {
+          continue;
+        }
+
+        const std::size_t componentCount =
+            std::min({systems[systemId].components.size(), reaction.reactantStoichiometry.size(),
+                      reaction.productStoichiometry.size()});
+        for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
+        {
+          const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
+                                    reaction.productStoichiometry[componentId] > 0;
+          if (participates &&
+              systems[systemId].components[componentId].growType != Component::GrowType::Rigid)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: reaction {} uses conventional move '{}' with flexible component "
+                            "'{}'; conventional reaction moves require every participating component to have "
+                            "fixed internal conformation (component Type 'Rigid'). Use '{}' for flexible "
+                            "components\n",
+                            reaction.id, Move::moveNames[std::to_underlying(reaction.reactionMove)],
+                            systems[systemId].components[componentId].name,
+                            reaction.reactionMove == Move::Types::ReactionCFCMC
+                                ? "ReactionCBCFCMC"
+                                : "ReactionConventionalCBCFCMC"));
+          }
+        }
+      }
       if (!systems[systemId].reactions.list.empty() && systems[systemId].usesReactionConventionalCFCMC())
       {
         systems[systemId].createReactionFractionalMolecules();

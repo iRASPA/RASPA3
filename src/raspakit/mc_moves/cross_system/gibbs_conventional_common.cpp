@@ -171,7 +171,7 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
 RunningEnergy growEwaldTailDifference(System& system, std::span<const Atom> growAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, growAtoms, {}, system.netCharge);
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
@@ -269,6 +269,18 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalA);
   std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalB);
 
+  const auto originalStoredEikA = systemA.storedEik;
+  const auto originalTotalEikA = systemA.totalEik;
+  const auto originalStoredEikB = systemB.storedEik;
+  const auto originalTotalEikB = systemB.totalEik;
+  auto restoreEwaldState = [&]()
+  {
+    systemA.storedEik = originalStoredEikA;
+    systemA.totalEik = originalTotalEikA;
+    systemB.storedEik = originalStoredEikB;
+    systemB.totalEik = originalTotalEikB;
+  };
+
   // First step: the fractional molecule of each box takes its target scaling
   std::vector<Atom> trialFractionalA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
   applyTargetScaling(trialFractionalA, moveKindA, lambdaNewA);
@@ -276,6 +288,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       computeMoleculeEnergyDifference(systemA, trialFractionalA, fractionalMoleculeA);
   if (!energyFirstStepA.has_value())
   {
+    restoreEwaldState();
     return std::nullopt;
   }
 
@@ -285,6 +298,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       computeMoleculeEnergyDifference(systemB, trialFractionalB, fractionalMoleculeB);
   if (!energyFirstStepB.has_value())
   {
+    restoreEwaldState();
     return std::nullopt;
   }
 
@@ -294,11 +308,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     savedFractionalA = std::vector<Atom>(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
     applyTargetScaling(fractionalMoleculeA, moveKindA, lambdaNewA);
+    // The second boundary operation starts from the structure factor produced by
+    // the first fractional-scaling operation, so reciprocal-space cross terms are retained.
+    systemA.storedEik = systemA.totalEik;
   }
   if (moveKindB != GibbsMoveKind::LambdaChange)
   {
     savedFractionalB = std::vector<Atom>(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
     applyTargetScaling(fractionalMoleculeB, moveKindB, lambdaNewB);
+    systemB.storedEik = systemB.totalEik;
   }
 
   auto restoreFractionals = [&]()
@@ -311,271 +329,128 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       std::copy(savedFractionalB->begin(), savedFractionalB->end(), fractionalMoleculeB.begin());
     }
+    restoreEwaldState();
   };
 
-  RunningEnergy energySecondStepA{};
-  RunningEnergy energySecondStepB{};
-  double rosenbluthNew = 1.0;
-  double rosenbluthOld = 1.0;
-  double rosenbluthNewA = 1.0;
-  double rosenbluthOldA = 1.0;
-  double rosenbluthNewB = 1.0;
-  double rosenbluthOldB = 1.0;
-
-  std::pair<Molecule, std::vector<Atom>> trialInsertA{};
-  std::pair<Molecule, std::vector<Atom>> trialInsertB{};
-  std::optional<ChainGrowData> growDataA{};
-  std::optional<ChainGrowData> growDataB{};
-  std::size_t selectedIntegerA = 0;
-  std::size_t selectedIntegerB = 0;
-
-  const double cutOffFrameworkVDWA = systemA.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDWA = systemA.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulombA = systemA.forceField.cutOffCoulomb;
-  const double cutOffFrameworkVDWB = systemB.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDWB = systemB.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulombB = systemB.forceField.cutOffCoulomb;
-  const Component::GrowType growTypeA = componentA.growType;
-  const Component::GrowType growTypeB = componentB.growType;
-
-  if (moveKindA == GibbsMoveKind::Insert)
+  struct BoundaryTrial
   {
-    if (useCBMC)
-    {
-      growDataA = CBMC::growMoleculeSwapInsertion(
-          random,
-          CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-                            systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-                            systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
-                            cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
-          componentA, selectedComponent, growTypeA, systemA.numberOfMolecules(), lambdaNewA,
-          componentA.lambdaGibbs.dUdlambdaGroupId, true);
-      if (!growDataA.has_value() || systemA.insideBlockedPockets(componentA, growDataA->atoms))
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
+    RunningEnergy energy{};
+    double acceptanceFactor{1.0};
+    std::pair<Molecule, std::vector<Atom>> conventionalInsert{};
+    std::optional<ChainGrowData> cbmcInsert{};
+    std::size_t selectedInteger{0};
+  };
 
-      RunningEnergy growEwaldTailA = growEwaldTailDifference(systemA, growDataA->atoms);
-      energySecondStepA += growDataA->energies + growEwaldTailA;
-
-      const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
-      const double correctionGrowA = std::exp(-systemA.beta * growEwaldTailA.potentialEnergy());
-      rosenbluthNewA =
-          (growDataA->RosenbluthWeight / idealGasA) * correctionGrowA *
-          (static_cast<double>(systemB.numberOfMoleculesPerComponent[selectedComponent] - 1) *
-           systemA.simulationBox.volume) /
-          (static_cast<double>(systemA.numberOfMoleculesPerComponent[selectedComponent]) * systemB.simulationBox.volume);
-    }
-    else
-    {
-      trialInsertA = componentA.equilibratedMoleculeRandomInBox(random, selectedComponent, systemA.simulationBox);
-
-      std::vector<Atom> trialAtomsA = trialInsertA.second;
-      const std::uint8_t groupIdA = componentA.lambdaGibbs.dUdlambdaGroupId;
-      const std::size_t upcomingMoleculeIdA = systemA.numberOfMolecules();
-      for (Atom& atom : trialAtomsA)
-      {
-        atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdA);
-        atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-        atom.setScalingToFractional(lambdaNewA, groupIdA);
-      }
-
-      std::optional<RunningEnergy> insertEnergyA =
-          computeMoleculeEnergyDifference(systemA, trialAtomsA, std::span<const Atom>{});
-      if (!insertEnergyA.has_value())
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
-      energySecondStepA += insertEnergyA.value();
-    }
-
-    selectedIntegerB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
-    std::span<Atom> selectedMoleculeB = systemB.spanOfMolecule(selectedComponent, selectedIntegerB);
-    if (useCBMC)
-    {
-      std::vector<Atom> oldSelectedMoleculeB(selectedMoleculeB.begin(), selectedMoleculeB.end());
-      ChainRetraceData retraceDataB = CBMC::retraceMoleculeSwapDeletion(
-          random,
-          CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                            systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-                            systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
-                            cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
-          componentB, growTypeB, selectedMoleculeB);
-      RunningEnergy retraceEwaldTailB = retraceEwaldTailDifference(systemB, selectedMoleculeB);
-      const double correctionRetraceB = std::exp(systemB.beta * retraceEwaldTailB.potentialEnergy());
-      rosenbluthOldB = retraceDataB.RosenbluthWeight * correctionRetraceB;
-      std::copy(oldSelectedMoleculeB.begin(), oldSelectedMoleculeB.end(), selectedMoleculeB.begin());
-
-      std::vector<Atom> trialSelectedB(selectedMoleculeB.begin(), selectedMoleculeB.end());
-      for (Atom& atom : trialSelectedB)
-      {
-        atom.setScalingToFractional(lambdaNewB, componentB.lambdaGibbs.dUdlambdaGroupId);
-      }
-      std::optional<RunningEnergy> promoteEnergyB =
-          computeMoleculeEnergyDifference(systemB, trialSelectedB, selectedMoleculeB);
-      if (!promoteEnergyB.has_value())
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
-      energySecondStepB += promoteEnergyB.value();
-    }
-    else
-    {
-      std::vector<Atom> trialSelectedB(selectedMoleculeB.begin(), selectedMoleculeB.end());
-      for (Atom& atom : trialSelectedB)
-      {
-        atom.setScalingToFractional(lambdaNewB, componentB.lambdaGibbs.dUdlambdaGroupId);
-      }
-
-      std::optional<RunningEnergy> retraceEnergyB =
-          computeMoleculeEnergyDifference(systemB, trialSelectedB, selectedMoleculeB);
-      if (!retraceEnergyB.has_value())
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
-      energySecondStepB += retraceEnergyB.value();
-
-      const double totalSecondStep = (energySecondStepA + energySecondStepB).potentialEnergy();
-      rosenbluthNew =
-          std::exp(-systemA.beta * totalSecondStep) *
-          (static_cast<double>(systemB.numberOfMoleculesPerComponent[selectedComponent] - 1) *
-           systemA.simulationBox.volume) /
-          (static_cast<double>(systemA.numberOfMoleculesPerComponent[selectedComponent]) *
-           systemB.simulationBox.volume);
-    }
-  }
-  else if (moveKindA == GibbsMoveKind::Delete)
+  auto constructBoundaryTrial = [&](System& system, Component& component, GibbsMoveKind moveKind, double lambdaNew,
+                                    BoundaryTrial& trial) -> bool
   {
-    selectedIntegerA = systemA.randomIntegerMoleculeOfComponent(random, selectedComponent);
-    std::span<Atom> selectedMoleculeA = systemA.spanOfMolecule(selectedComponent, selectedIntegerA);
-    if (useCBMC)
-    {
-      std::vector<Atom> oldSelectedMoleculeA(selectedMoleculeA.begin(), selectedMoleculeA.end());
-      ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-          random,
-          CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-                            systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-                            systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
-                            cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
-          componentA, growTypeA, selectedMoleculeA);
-      RunningEnergy retraceEwaldTailA = retraceEwaldTailDifference(systemA, selectedMoleculeA);
-      const double correctionRetraceA = std::exp(systemA.beta * retraceEwaldTailA.potentialEnergy());
-      rosenbluthOldA = retraceDataA.RosenbluthWeight * correctionRetraceA;
-      std::copy(oldSelectedMoleculeA.begin(), oldSelectedMoleculeA.end(), selectedMoleculeA.begin());
+    const double integerCount =
+        static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
+    const double volume = system.simulationBox.volume;
+    const CBMC::GrowContext context{
+        system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+        system.spanOfMoleculeAtoms(), system.beta, system.forceField.cutOffFrameworkVDW,
+        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb};
 
-      std::vector<Atom> trialSelectedA(selectedMoleculeA.begin(), selectedMoleculeA.end());
-      for (Atom& atom : trialSelectedA)
-      {
-        atom.setScalingToFractional(lambdaNewA, componentA.lambdaGibbs.dUdlambdaGroupId);
-      }
-      std::optional<RunningEnergy> promoteEnergyA =
-          computeMoleculeEnergyDifference(systemA, trialSelectedA, selectedMoleculeA);
-      if (!promoteEnergyA.has_value())
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
-      energySecondStepA += promoteEnergyA.value();
-    }
-    else
+    if (moveKind == GibbsMoveKind::LambdaChange)
     {
-      std::vector<Atom> trialSelectedA(selectedMoleculeA.begin(), selectedMoleculeA.end());
-      for (Atom& atom : trialSelectedA)
-      {
-        atom.setScalingToFractional(lambdaNewA, componentA.lambdaGibbs.dUdlambdaGroupId);
-      }
-
-      std::optional<RunningEnergy> retraceEnergyA =
-          computeMoleculeEnergyDifference(systemA, trialSelectedA, selectedMoleculeA);
-      if (!retraceEnergyA.has_value())
-      {
-        restoreFractionals();
-        return std::nullopt;
-      }
-      energySecondStepA += retraceEnergyA.value();
+      return true;
     }
 
-    if (useCBMC)
+    if (moveKind == GibbsMoveKind::Insert)
     {
-      growDataB = CBMC::growMoleculeSwapInsertion(
-          random,
-          CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                            systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-                            systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
-                            cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
-          componentB, selectedComponent, growTypeB, systemB.numberOfMolecules(), lambdaNewB,
-          componentB.lambdaGibbs.dUdlambdaGroupId, true);
-      if (!growDataB.has_value() || systemB.insideBlockedPockets(componentB, growDataB->atoms))
+      if (useCBMC)
       {
-        restoreFractionals();
-        return std::nullopt;
+        trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(
+            random, context, component, selectedComponent, component.growType, system.numberOfMolecules(), lambdaNew,
+            component.lambdaGibbs.dUdlambdaGroupId, true);
+        if (!trial.cbmcInsert.has_value() || system.insideBlockedPockets(component, trial.cbmcInsert->atoms))
+        {
+          return false;
+        }
+
+        RunningEnergy ewaldTail = growEwaldTailDifference(system, trial.cbmcInsert->atoms);
+        trial.energy = trial.cbmcInsert->energies + ewaldTail;
+        const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
+        trial.acceptanceFactor = (trial.cbmcInsert->RosenbluthWeight / idealGas) *
+                                 std::exp(-system.beta * ewaldTail.potentialEnergy()) *
+                                 volume / (integerCount + 1.0);
+        return true;
       }
 
-      RunningEnergy growEwaldTailB = growEwaldTailDifference(systemB, growDataB->atoms);
-      energySecondStepB += growDataB->energies + growEwaldTailB;
-
-      const double idealGasB = componentB.idealGasRosenbluthWeight.value_or(1.0);
-      const double correctionGrowB = std::exp(-systemB.beta * growEwaldTailB.potentialEnergy());
-      rosenbluthNewB =
-          (growDataB->RosenbluthWeight / idealGasB) * correctionGrowB *
-          (static_cast<double>(systemA.numberOfMoleculesPerComponent[selectedComponent] - 1) *
-           systemB.simulationBox.volume) /
-          (static_cast<double>(systemB.numberOfMoleculesPerComponent[selectedComponent]) *
-           systemA.simulationBox.volume);
-    }
-    else
-    {
-      trialInsertB = componentB.equilibratedMoleculeRandomInBox(random, selectedComponent, systemB.simulationBox);
-
-      std::vector<Atom> trialAtomsB = trialInsertB.second;
-      const std::uint8_t groupIdB = componentB.lambdaGibbs.dUdlambdaGroupId;
-      const std::size_t upcomingMoleculeIdB = systemB.numberOfMolecules();
-      for (Atom& atom : trialAtomsB)
+      trial.conventionalInsert =
+          component.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
+      std::vector<Atom> trialAtoms = trial.conventionalInsert.second;
+      const std::size_t upcomingMoleculeId = system.numberOfMolecules();
+      for (Atom& atom : trialAtoms)
       {
-        atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeIdB);
+        atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeId);
         atom.componentId = static_cast<std::uint8_t>(selectedComponent);
-        atom.setScalingToFractional(lambdaNewB, groupIdB);
+        atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
-
-      std::optional<RunningEnergy> insertEnergyB =
-          computeMoleculeEnergyDifference(systemB, trialAtomsB, std::span<const Atom>{});
-      if (!insertEnergyB.has_value())
+      std::optional<RunningEnergy> insertionEnergy =
+          computeMoleculeEnergyDifference(system, trialAtoms, std::span<const Atom>{});
+      if (!insertionEnergy.has_value())
       {
-        restoreFractionals();
-        return std::nullopt;
+        return false;
       }
-      energySecondStepB += insertEnergyB.value();
-
-      const double totalSecondStep = (energySecondStepA + energySecondStepB).potentialEnergy();
-      rosenbluthOld =
-          std::exp(-systemA.beta * totalSecondStep) *
-          (static_cast<double>(systemA.numberOfMoleculesPerComponent[selectedComponent] - 1) *
-           systemB.simulationBox.volume) /
-          (static_cast<double>(systemB.numberOfMoleculesPerComponent[selectedComponent]) *
-           systemA.simulationBox.volume);
+      trial.energy = insertionEnergy.value();
+      trial.acceptanceFactor =
+          std::exp(-system.beta * trial.energy.potentialEnergy()) * volume / (integerCount + 1.0);
+      return true;
     }
+
+    trial.selectedInteger = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    std::span<Atom> selectedMolecule = system.spanOfMolecule(selectedComponent, trial.selectedInteger);
+    if (useCBMC)
+    {
+      std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
+      ChainRetraceData retraceData =
+          CBMC::retraceMoleculeSwapDeletion(random, context, component, component.growType, selectedMolecule);
+      RunningEnergy ewaldTail = retraceEwaldTailDifference(system, selectedMolecule);
+      trial.acceptanceFactor = (integerCount / volume) /
+                               (retraceData.RosenbluthWeight *
+                                std::exp(system.beta * ewaldTail.potentialEnergy()));
+      std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
+    }
+
+    std::vector<Atom> trialSelected(selectedMolecule.begin(), selectedMolecule.end());
+    for (Atom& atom : trialSelected)
+    {
+      atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
+    }
+    std::optional<RunningEnergy> deletionEnergy =
+        computeMoleculeEnergyDifference(system, trialSelected, selectedMolecule);
+    if (!deletionEnergy.has_value())
+    {
+      return false;
+    }
+    trial.energy = deletionEnergy.value();
+    if (!useCBMC)
+    {
+      trial.acceptanceFactor =
+          std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
+    }
+    return true;
+  };
+
+  BoundaryTrial boundaryA{};
+  BoundaryTrial boundaryB{};
+  if (!constructBoundaryTrial(systemA, componentA, moveKindA, lambdaNewA, boundaryA) ||
+      !constructBoundaryTrial(systemB, componentB, moveKindB, lambdaNewB, boundaryB))
+  {
+    restoreFractionals();
+    return std::nullopt;
   }
 
   componentA.mc_moves_statistics.addConstructed(move);
 
-  double acceptanceProbability = 0.0;
-  if (useCBMC)
-  {
-    acceptanceProbability =
-        std::exp(-systemA.beta * (energyFirstStepA->potentialEnergy() + energyFirstStepB->potentialEnergy())) *
-        (rosenbluthNewA / rosenbluthOldB) * (rosenbluthNewB / rosenbluthOldA) *
-        std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
-  }
-  else
-  {
-    acceptanceProbability =
-        std::exp(-systemA.beta * (energyFirstStepA->potentialEnergy() + energyFirstStepB->potentialEnergy())) *
-        rosenbluthNew * rosenbluthOld * std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
-  }
+  const double acceptanceProbability =
+      std::exp(-systemA.beta * energyFirstStepA->potentialEnergy() -
+               systemB.beta * energyFirstStepB->potentialEnergy()) *
+      boundaryA.acceptanceFactor * boundaryB.acceptanceFactor *
+      std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
 
   if (random.uniform() >= acceptanceProbability)
   {
@@ -587,49 +462,40 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
   Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
-  if (moveKindA == GibbsMoveKind::LambdaChange)
+  auto acceptBox = [&](System& system, Component& component, GibbsMoveKind moveKind, double lambdaNew,
+                       std::size_t indexFractional, BoundaryTrial& boundary)
   {
-    // coupled lambda change: both fractional molecules take their new lambda
-    for (Atom& atom : fractionalMoleculeA)
+    if (moveKind == GibbsMoveKind::LambdaChange)
     {
-      atom.setScalingToFractional(lambdaNewA, componentA.lambdaGibbs.dUdlambdaGroupId);
+      for (Atom& atom : system.spanOfMolecule(selectedComponent, indexFractional))
+      {
+        atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
+      }
+      component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, lambdaNew));
+      return;
     }
-    componentA.lambdaGibbs.setCurrentBin(lambdaBinFromValue(componentA.lambdaGibbs, lambdaNewA));
 
-    for (Atom& atom : fractionalMoleculeB)
+    if (moveKind == GibbsMoveKind::Insert)
     {
-      atom.setScalingToFractional(lambdaNewB, componentB.lambdaGibbs.dUdlambdaGroupId);
+      if (useCBMC)
+      {
+        acceptInsertStep(system, selectedComponent, indexFractional, boundary.cbmcInsert->molecule,
+                         boundary.cbmcInsert->atoms, lambdaNew);
+      }
+      else
+      {
+        acceptInsertStep(system, selectedComponent, indexFractional, boundary.conventionalInsert.first,
+                         boundary.conventionalInsert.second, lambdaNew);
+      }
+      return;
     }
-    componentB.lambdaGibbs.setCurrentBin(lambdaBinFromValue(componentB.lambdaGibbs, lambdaNewB));
-  }
-  else if (moveKindA == GibbsMoveKind::Insert)
-  {
-    if (useCBMC)
-    {
-      acceptInsertStep(systemA, selectedComponent, indexFractionalA, growDataA->molecule, growDataA->atoms, lambdaNewA);
-    }
-    else
-    {
-      acceptInsertStep(systemA, selectedComponent, indexFractionalA, trialInsertA.first, trialInsertA.second,
-                       lambdaNewA);
-    }
-    acceptDeleteStep(systemB, selectedComponent, indexFractionalB, selectedIntegerB, lambdaNewB);
-  }
-  else
-  {
-    acceptDeleteStep(systemA, selectedComponent, indexFractionalA, selectedIntegerA, lambdaNewA);
-    if (useCBMC)
-    {
-      acceptInsertStep(systemB, selectedComponent, indexFractionalB, growDataB->molecule, growDataB->atoms, lambdaNewB);
-    }
-    else
-    {
-      acceptInsertStep(systemB, selectedComponent, indexFractionalB, trialInsertB.first, trialInsertB.second,
-                       lambdaNewB);
-    }
-  }
+    acceptDeleteStep(system, selectedComponent, indexFractional, boundary.selectedInteger, lambdaNew);
+  };
 
-  RunningEnergy energyDifferenceA = energyFirstStepA.value() + energySecondStepA;
-  RunningEnergy energyDifferenceB = energyFirstStepB.value() + energySecondStepB;
+  acceptBox(systemA, componentA, moveKindA, lambdaNewA, indexFractionalA, boundaryA);
+  acceptBox(systemB, componentB, moveKindB, lambdaNewB, indexFractionalB, boundaryB);
+
+  RunningEnergy energyDifferenceA = energyFirstStepA.value() + boundaryA.energy;
+  RunningEnergy energyDifferenceB = energyFirstStepB.value() + boundaryB.energy;
   return std::make_pair(energyDifferenceA, energyDifferenceB);
 }
