@@ -126,7 +126,7 @@ InputReader::InputReader(const std::string inputFile)
     throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", inputFile));
   }
 
-  std::ifstream input("simulation.json");
+  std::ifstream input(inputFile);
 
   nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
@@ -200,10 +200,7 @@ void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_
 {
 }
 
-
-void InputReader::parseBreakthrough([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
-{
-}
+void InputReader::parseBreakthrough([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -406,8 +403,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("ForceBiasTranslationProbability") &&
-          item["ForceBiasTranslationProbability"].is_number_float())
+      if (item.contains("ForceBiasTranslationProbability") && item["ForceBiasTranslationProbability"].is_number_float())
       {
         double forceBiasTranslationProbability = item["ForceBiasTranslationProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
@@ -448,7 +444,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double partial_reinsertion_CBMC_probability = item["PartialReinsertionProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(Move::Types::PartialReinsertionCBMC, partial_reinsertion_CBMC_probability);
+          move_probabilities[i].setProbability(Move::Types::PartialReinsertionCBMC,
+                                               partial_reinsertion_CBMC_probability);
         }
       }
 
@@ -479,8 +476,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("PairSwapConventionalProbability") &&
-          item["PairSwapConventionalProbability"].is_number_float())
+      if (item.contains("PairSwapConventionalProbability") && item["PairSwapConventionalProbability"].is_number_float())
       {
         double pairSwapProbability = item["PairSwapConventionalProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
@@ -587,7 +583,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double gibbsIdentityChangeCBMCProbability = item["GibbsIdentityChangeProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(Move::Types::GibbsIdentityChangeCBMC, gibbsIdentityChangeCBMCProbability);
+          move_probabilities[i].setProbability(Move::Types::GibbsIdentityChangeCBMC,
+                                               gibbsIdentityChangeCBMCProbability);
         }
       }
 
@@ -704,9 +701,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         std::vector<std::size_t> identity_changes = item["IdentityChanges"].get<std::vector<std::size_t>>();
         if (std::ranges::contains(identity_changes, componentId))
         {
-          throw std::runtime_error(std::format(
-              "[Input reader]: component '{}' (id {}) cannot list itself in 'IdentityChanges'\n", jsonComponentName,
-              componentId));
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}' (id {}) cannot list itself in 'IdentityChanges'\n",
+                          jsonComponentName, componentId));
         }
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
@@ -719,9 +716,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         std::vector<std::size_t> gibbs_identity_changes = item["GibbsIdentityChanges"].get<std::vector<std::size_t>>();
         if (std::ranges::contains(gibbs_identity_changes, componentId))
         {
-          throw std::runtime_error(std::format(
-              "[Input reader]: component '{}' (id {}) cannot list itself in 'GibbsIdentityChanges'\n",
-              jsonComponentName, componentId));
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}' (id {}) cannot list itself in 'GibbsIdentityChanges'\n",
+                          jsonComponentName, componentId));
         }
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
@@ -1135,9 +1132,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         const bool parallelRxCFCEnabled =
             mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0 ||
             mc_moves_probabilities.getProbability(Move::Types::ReactionConventionalCBCFCMC) > 0.0;
-        const std::array reactionMoves{
-            Move::Types::ReactionCBMC, Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
-            Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC};
+        const std::array reactionMoves{Move::Types::ReactionCBMC, Move::Types::ReactionCFCMC,
+                                       Move::Types::ReactionCBCFCMC, Move::Types::ReactionConventionalCFCMC,
+                                       Move::Types::ReactionConventionalCBCFCMC};
         std::vector<Move::Types> enabledReactionMoves;
         for (const Move::Types reactionMove : reactionMoves)
         {
@@ -1179,8 +1176,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (reactionItem.contains("MaximumReactionLambdaChangeProducts") &&
               reactionItem["MaximumReactionLambdaChangeProducts"].is_number())
           {
-            reaction.maximumLambdaChangeProducts =
-                reactionItem["MaximumReactionLambdaChangeProducts"].get<double>();
+            reaction.maximumLambdaChangeProducts = reactionItem["MaximumReactionLambdaChangeProducts"].get<double>();
           }
           if (reactionItem.contains("LambdaSwitchPoint") && reactionItem["LambdaSwitchPoint"].is_number())
           {
@@ -1237,8 +1233,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                             "is set\n",
                             reactionId, Move::moveNames[std::to_underlying(reaction.reactionMove)]));
           }
-          if (mc_moves_probabilities.getProbability(reaction.reactionMove) <= 0.0 &&
-              !enabledReactionMoves.empty())
+          if (mc_moves_probabilities.getProbability(reaction.reactionMove) <= 0.0 && !enabledReactionMoves.empty())
           {
             throw std::runtime_error(
                 std::format("[Input reader]: reaction {} declares move '{}' but its probability is not enabled\n",
@@ -1370,7 +1365,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-
       if (caseInSensStringCompare(typeString, "Framework"))
       {
         // Parse framework options
@@ -1400,11 +1394,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         const std::string file_content = readFileContent(frameworkNameString, ".cif");
 
-        if(const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom); cif.has_value())
+        if (const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom);
+            cif.has_value())
         {
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
-          Framework framework = Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
-                                          defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
+          Framework framework =
+              Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
+                        defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
 
           std::optional<Framework> jsonFrameworkComponents{framework};
 
@@ -1464,7 +1460,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       {
         double3 inputPressureDiagonal(systems[systemId].input_pressure, systems[systemId].input_pressure,
-                                        systems[systemId].input_pressure);
+                                      systems[systemId].input_pressure);
         if (value.contains("ExternalPressureX") && value["ExternalPressureX"].is_number())
         {
           inputPressureDiagonal.x = value["ExternalPressureX"].get<double>();
@@ -1513,10 +1509,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       reaction.productStoichiometry.size()});
         for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
         {
-          const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
-                                    reaction.productStoichiometry[componentId] > 0;
-          if (participates &&
-              systems[systemId].components[componentId].growType != Component::GrowType::Rigid)
+          const bool participates =
+              reaction.reactantStoichiometry[componentId] > 0 || reaction.productStoichiometry[componentId] > 0;
+          if (participates && systems[systemId].components[componentId].growType != Component::GrowType::Rigid)
           {
             throw std::runtime_error(
                 std::format("[Input reader]: reaction {} uses conventional move '{}' with flexible component "
@@ -1525,9 +1520,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                             "components\n",
                             reaction.id, Move::moveNames[std::to_underlying(reaction.reactionMove)],
                             systems[systemId].components[componentId].name,
-                            reaction.reactionMove == Move::Types::ReactionCFCMC
-                                ? "ReactionCBCFCMC"
-                                : "ReactionConventionalCBCFCMC"));
+                            reaction.reactionMove == Move::Types::ReactionCFCMC ? "ReactionCBCFCMC"
+                                                                                : "ReactionConventionalCBCFCMC"));
           }
         }
       }
@@ -1535,7 +1529,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         systems[systemId].createReactionFractionalMolecules();
       }
-
 
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
       {
@@ -1644,8 +1637,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           double bondRangeMoleculeProperties{4.0};
-          if (value.contains("BondRangeMoleculeProperties") &&
-              value["BondRangeMoleculeProperties"].is_number_float())
+          if (value.contains("BondRangeMoleculeProperties") && value["BondRangeMoleculeProperties"].is_number_float())
           {
             bondRangeMoleculeProperties = value["BondRangeMoleculeProperties"].get<double>();
           }
@@ -1672,37 +1664,36 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (value.contains("WriteNumberOfMoleculesEvolutionEvery") &&
               value["WriteNumberOfMoleculesEvolutionEvery"].is_number_unsigned())
           {
-            write_number_of_molecules_evolution_every = value["WriteNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
+            write_number_of_molecules_evolution_every =
+                value["WriteNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
           }
 
-          systems[systemId].propertyNumberOfMoleculesEvolution = 
-              PropertyNumberOfMoleculesEvolution(numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
-                                      systems[systemId].components.size(), sample_number_of_molecules_every, write_number_of_molecules_evolution_every);
+          systems[systemId].propertyNumberOfMoleculesEvolution = PropertyNumberOfMoleculesEvolution(
+              numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
+              systems[systemId].components.size(), sample_number_of_molecules_every,
+              write_number_of_molecules_evolution_every);
         }
       }
 
-      if (value.contains("ComputeVolumeEvolution") &&
-          value["ComputeVolumeEvolution"].is_boolean())
+      if (value.contains("ComputeVolumeEvolution") && value["ComputeVolumeEvolution"].is_boolean())
       {
         if (value["ComputeVolumeEvolution"].get<bool>())
         {
           std::size_t sample_volume_evolution_every{1};
-          if (value.contains("SampleVolumeEvolutionEvery") &&
-              value["SampleVolumeEvolutionEvery"].is_number_unsigned())
+          if (value.contains("SampleVolumeEvolutionEvery") && value["SampleVolumeEvolutionEvery"].is_number_unsigned())
           {
             sample_volume_evolution_every = value["SampleVolumeEvolutionEvery"].get<std::size_t>();
           }
 
           std::size_t write_volume_evolution_every{5000};
-          if (value.contains("writeVolumeEvolutionEvery") &&
-              value["writeVolumeEvolutionEvery"].is_number_unsigned())
+          if (value.contains("writeVolumeEvolutionEvery") && value["writeVolumeEvolutionEvery"].is_number_unsigned())
           {
             write_volume_evolution_every = value["writeVolumeEvolutionEvery"].get<std::size_t>();
           }
 
-          systems[systemId].propertyVolumeEvolution = 
-              PropertyVolumeEvolution(numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles, 
-                                      sample_volume_evolution_every, write_volume_evolution_every);
+          systems[systemId].propertyVolumeEvolution = PropertyVolumeEvolution(
+              numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
+              sample_volume_evolution_every, write_volume_evolution_every);
         }
       }
 
@@ -1805,9 +1796,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyMSD = PropertyMeanSquaredDisplacement(
-              systems[systemId].numberOfMoleculesPerComponent, systems[systemId].moleculeData.size(), 
-              systems[systemId].timeStep, numberOfBlockElementsMSD,
-              sampleMSDEvery, writeMSDEvery);
+              systems[systemId].numberOfMoleculesPerComponent, systems[systemId].moleculeData.size(),
+              systems[systemId].timeStep, numberOfBlockElementsMSD, sampleMSDEvery, writeMSDEvery);
         }
       }
 
@@ -1841,8 +1831,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
           systems[systemId].propertyVACF = PropertyVelocityAutoCorrelationFunction(
               systems[systemId].numberOfMoleculesPerComponent, systems[systemId].moleculeData.size(),
-              systems[systemId].timeStep, numberOfBuffersVACF,
-              bufferLengthVACF, sampleVACFEvery, writeVACFEvery);
+              systems[systemId].timeStep, numberOfBuffersVACF, bufferLengthVACF, sampleVACFEvery, writeVACFEvery);
         }
       }
 
@@ -1892,7 +1881,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
           }
 
-          
           PropertyDensityGrid::Binning binning = PropertyDensityGrid::Binning::Standard;
           if (value.contains("DensityGridBinning") && value["DensityGridBinning"].is_string())
           {
@@ -1907,8 +1895,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             else
             {
-              throw std::runtime_error(std::format("Error: DensityGridBinning must be 'Standard' or 'Equitable', got '{}'",
-                                                   binningString));
+              throw std::runtime_error(
+                  std::format("Error: DensityGridBinning must be 'Standard' or 'Equitable', got '{}'", binningString));
             }
           }
 
@@ -1962,10 +1950,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           systems[systemId].thermostat =
               Thermostat(systems[systemId].temperature, systems[systemId].timeStep,
-                         systems[systemId].translationalDegreesOfFreedom,
-                         systems[systemId].rotationalDegreesOfFreedom,
-                         thermostatChainLength, numberOfYoshidaSuzukiSteps,
-                         timeScaleParameterThermostat);
+                         systems[systemId].translationalDegreesOfFreedom, systems[systemId].rotationalDegreesOfFreedom,
+                         thermostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterThermostat);
         }
       }
 
@@ -1985,17 +1971,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // Post-compute
   // ========================================================
 
-  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  // for (std::size_t i = 0uz; i < systems.size(); ++i)
   //{
-  //  systems[i].maxIsothermTerms = 0uz;
-  //  if (!systems[i].components.empty())
-  //  {
-  //    std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
-  //        systems[i].components.begin(), systems[i].components.end(),
-  //        [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
-  //    systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
-  //  }
-  //}
+  //   systems[i].maxIsothermTerms = 0uz;
+  //   if (!systems[i].components.empty())
+  //   {
+  //     std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
+  //         systems[i].components.begin(), systems[i].components.end(),
+  //         [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
+  //     systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
+  //   }
+  // }
 
   if (simulationType == SimulationType::MonteCarloTransitionMatrix)
   {
@@ -2072,41 +2058,41 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
-  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  // for (std::size_t i = 0uz; i < systems.size(); ++i)
   //{
-  //  double sum = 0.0;
-  //  for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-  //  {
-  //    if (systems[i].components[j].type != Component::Type::Cation)
-  //    {
-  //      sum += systems[i].components[j].molFraction;
-  //    }
-  //  }
-  //  if (std::abs(sum - 1.0) > 1e-15)
-  //  {
-  //    for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-  //    {
-  //      if (systems[i].components[j].type != Component::Type::Cation)
-  //      {
-  //        systems[i].components[j].molFraction /= sum;
-  //      }
-  //    }
-  //  }
-  //}
+  //   double sum = 0.0;
+  //   for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //   {
+  //     if (systems[i].components[j].type != Component::Type::Cation)
+  //     {
+  //       sum += systems[i].components[j].molFraction;
+  //     }
+  //   }
+  //   if (std::abs(sum - 1.0) > 1e-15)
+  //   {
+  //     for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //     {
+  //       if (systems[i].components[j].type != Component::Type::Cation)
+  //       {
+  //         systems[i].components[j].molFraction /= sum;
+  //       }
+  //     }
+  //   }
+  // }
 
-  //for (std::size_t i = 0uz; i < systems.size(); ++i)
+  // for (std::size_t i = 0uz; i < systems.size(); ++i)
   //{
-  //  systems[i].numberOfCarrierGases = 0uz;
-  //  systems[i].carrierGasComponent = 0uz;
-  //  for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-  //  {
-  //    if (systems[i].components[j].isCarrierGas)
-  //    {
-  //      systems[i].carrierGasComponent = j;
-  //      std::vector<double> values{1.0, 0.0};
-  //      const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
-  //      systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
-  //      systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
+  //   systems[i].numberOfCarrierGases = 0uz;
+  //   systems[i].carrierGasComponent = 0uz;
+  //   for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //   {
+  //     if (systems[i].components[j].isCarrierGas)
+  //     {
+  //       systems[i].carrierGasComponent = j;
+  //       std::vector<double> values{1.0, 0.0};
+  //       const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
+  //       systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
+  //       systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
 
   //      systems[i].numberOfCarrierGases++;
   //    }
@@ -2133,6 +2119,44 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (systems[i].numerOfAdsorbateComponents() > 1)
       {
         throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
+      }
+
+      const std::array unsupportedSystemMoves{
+          std::pair{Move::Types::ReactionCBMC, "ReactionCBMCProbability"},
+          std::pair{Move::Types::ReactionConventionalCFCMC, "ReactionConventionalCFCMCProbability"},
+          std::pair{Move::Types::ReactionConventionalCBCFCMC, "ReactionConventionalCBCFCMCProbability"},
+          std::pair{Move::Types::ReactionCFCMC, "ReactionCFCMCProbability"},
+          std::pair{Move::Types::ReactionCBCFCMC, "ReactionCBCFCMCProbability"},
+          std::pair{Move::Types::ParallelTempering, "ParallelTemperingSwapProbability"}};
+      for (const auto& [move, keyword] : unsupportedSystemMoves)
+      {
+        if (systems[i].mc_moves_probabilities.getProbability(move) != 0.0)
+        {
+          throw std::runtime_error(
+              std::format("Error [TMMC, system {}]: '{}' must be zero; move '{}' is incompatible with the "
+                          "current one-dimensional nearest-neighbor TMMC macrostate (only N -> N and N -> N +/- 1 "
+                          "transitions are supported).\n",
+                          i, keyword, Move::moveNames[std::to_underlying(move)]));
+        }
+      }
+
+      const std::array unsupportedComponentMoves{
+          std::pair{Move::Types::IdentityChangeCBMC, "IdentityChangeProbability"},
+          std::pair{Move::Types::GibbsIdentityChangeCBMC, "GibbsIdentityChangeProbability"}};
+      for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
+      {
+        const Component& component = systems[i].components[componentId];
+        for (const auto& [move, keyword] : unsupportedComponentMoves)
+        {
+          if (component.mc_moves_probabilities.getProbability(move) != 0.0)
+          {
+            throw std::runtime_error(
+                std::format("Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero; move '{}' is "
+                            "incompatible with the current one-dimensional nearest-neighbor TMMC macrostate "
+                            "(only N -> N and N -> N +/- 1 transitions are supported).\n",
+                            i, componentId, component.name, keyword, Move::moveNames[std::to_underlying(move)]));
+          }
+        }
       }
 
       // check initial number of molecules is in the range of the TMMC macrostates
@@ -2314,7 +2338,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "LnPartitionFunction"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::reactionOptions = {
-    "Reactants", "Products", "Move", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
+    "Reactants",        "Products", "Move", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",
     "LambdaSwitchPoint"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)

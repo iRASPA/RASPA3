@@ -29,11 +29,20 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA,
-                                                                                 System &systemB)
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber& random, System& systemA,
+                                                                                 System& systemB,
+                                                                                 std::size_t selectedComponent)
 {
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::GibbsVolume;
+
+  // Volume moves do not change either particle-number macrostate.  Record the
+  // selected cross-system trial here so every exit path (including overlaps)
+  // contributes exactly one neutral TMMC transition for each box.
+  const std::size_t oldNA = systemA.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  const std::size_t oldNB = systemB.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  systemA.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA);
+  systemB.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB);
 
   systemA.mc_moves_statistics.addTrial(move);
   systemB.mc_moves_statistics.addTrial(move);
@@ -184,9 +193,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
                   (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-systemA.beta * deltaU +
-                                  ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
-                                  ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
+  if (random.uniform() <
+      std::exp(-systemA.beta * deltaU + ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
+               ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     // Accept the move: update systems A and B with new configurations and energies
     systemA.mc_moves_statistics.addAccepted(move);

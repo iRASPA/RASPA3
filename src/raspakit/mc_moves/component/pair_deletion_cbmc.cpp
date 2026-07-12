@@ -276,16 +276,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  const double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
-  if (system.tmmc.doTMMC)
+  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
-    const std::size_t newN = oldN - 1;
-    if (newN < system.tmmc.minMacrostate)
-    {
-      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-    }
+    return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
+
+  const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
+  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
@@ -506,16 +504,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  const double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
-  if (system.tmmc.doTMMC)
+  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
-    const std::size_t newN = oldN - 1;
-    if (newN < system.tmmc.minMacrostate)
-    {
-      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-    }
+    return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
+
+  const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
+  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 

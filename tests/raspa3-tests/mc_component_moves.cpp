@@ -18,6 +18,7 @@ import molecule;
 import randomnumbers;
 import simulationbox;
 import system;
+import transition_matrix;
 
 namespace
 {
@@ -72,8 +73,8 @@ System makePairInsertionSystem(const std::vector<double3>& positionsB, double pr
   componentA.maximumPairDistance = 2.0;
   componentB.maximumPairDistance = 2.0;
 
-  return System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, pressure, 1.0, {},
-                {componentA, componentB}, {{}, positionsB}, {0, 0}, 5);
+  return System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, pressure, 1.0, {}, {componentA, componentB},
+                {{}, positionsB}, {0, 0}, 5);
 }
 
 double totalTrials(const System& system, Move::Types move)
@@ -182,12 +183,10 @@ TEST(MC_COMPONENT_MOVES, pair_insertion_uses_reverse_state_neighbor_count)
     ASSERT_TRUE(probeEnergy.has_value());
     const double3 trialPositionA = probe.spanOfMolecule(0, 0).front().position;
 
-    System twoReversePartners =
-        makePairInsertionSystem({trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(5.0, 0.0, 0.0)},
-                                1.0e-12);
-    System threeReversePartners =
-        makePairInsertionSystem({trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(1.0, 0.0, 0.0)},
-                                1.0e-12);
+    System twoReversePartners = makePairInsertionSystem(
+        {trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(5.0, 0.0, 0.0)}, 1.0e-12);
+    System threeReversePartners = makePairInsertionSystem(
+        {trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(1.0, 0.0, 0.0)}, 1.0e-12);
     RandomNumber randomTwo(seed);
     RandomNumber randomThree(seed);
     const auto [energyTwo, acceptanceTwo] = insertionMove(randomTwo, twoReversePartners);
@@ -213,9 +212,8 @@ TEST(MC_COMPONENT_MOVES, pair_insertion_deletion_proposals_are_reciprocal)
   ASSERT_TRUE(MC_Moves::pairInsertionMove(probeRandom, probe, 0).first.has_value());
   const double3 trialPositionA = probe.spanOfMolecule(0, 0).front().position;
 
-  System system =
-      makePairInsertionSystem({trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(1.0, 0.0, 0.0)},
-                              1.0e12);
+  System system = makePairInsertionSystem(
+      {trialPositionA + double3(9.0, 0.0, 0.0), trialPositionA + double3(1.0, 0.0, 0.0)}, 1.0e12);
   RandomNumber insertionRandom(seed);
   const auto [insertionEnergy, insertionAcceptance] = MC_Moves::pairInsertionMove(insertionRandom, system, 0);
   ASSERT_TRUE(insertionEnergy.has_value());
@@ -274,4 +272,27 @@ TEST(MC_COMPONENT_MOVES, initialization_routes_fractional_swap_handlers)
     EXPECT_EQ(totalTrials(system, Move::Types::SwapCBMC), 0.0);
     EXPECT_EQ(totalTrials(system, Move::Types::PairSwapCBMC), 0.0);
   }
+}
+
+TEST(MC_COMPONENT_MOVES, neutral_trial_updates_tmmc_diagonal)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Widom, 1.0);
+  Component component = makeIonComponent(forceField, 0, "A", 0, probabilities);
+  System system(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1.0e5, 1.0, {}, {component}, {}, {1}, 5);
+
+  system.tmmc.doTMMC = true;
+  system.tmmc.minMacrostate = 0;
+  system.tmmc.maxMacrostate = 2;
+  system.tmmc.initialize();
+
+  RandomNumber random(37);
+  std::size_t fractionalMoleculeSystem = 0;
+  EXPECT_EQ(MC_Moves::performRandomMoveInitialization(random, system, system, 0, fractionalMoleculeSystem),
+            Move::Types::Widom);
+
+  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].x, 0.0);
+  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].y, 1.0);
+  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].z, 0.0);
 }

@@ -66,7 +66,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   {
     if (insertionDisabled)
     {
-      return {std::nullopt, double3(0.0, 0.0, 0.0)};
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     // Steps for insertion Lambda_new = 1 + epsilon
@@ -116,8 +116,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy contribution
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, fractionalMolecule, oldFractionalMolecule);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        fractionalMolecule, oldFractionalMolecule);
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionExternalField] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionExternalField] += (time_end - time_begin);
@@ -268,13 +268,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
               system.forceField, system.simulationBox, electricFieldNeighborDelta, grownElectricField,
               std::span<double3>{}, system.spanOfMoleculeAtoms(), growData->atoms, {});
 
-      polarizationDifference =
-          Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField, {},
-                                                            growData->atoms, {}) +
-          Interactions::computePolarizationEnergyNeighborDifference(system.forceField,
-                                                                    system.spanOfMoleculeElectricField(),
-                                                                    electricFieldNeighborDelta,
-                                                                    system.spanOfMoleculeAtoms());
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField,
+                                                                                 {}, growData->atoms, {}) +
+                               Interactions::computePolarizationEnergyNeighborDifference(
+                                   system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+                                   system.spanOfMoleculeAtoms());
     }
     else if (system.forceField.computePolarization)
     {
@@ -284,14 +282,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
           system.totalEik, system.forceField, system.simulationBox, grownElectricField, {}, growData->atoms, {});
-      polarizationDifference =
-          Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField, {}, growData->atoms, {});
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, grownElectricField,
+                                                                                 {}, growData->atoms, {});
     }
 
     // Calculate correction factor for Ewald summation
-    double correctionFactorEwald =
-        std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy() +
-                                 polarizationDifference.potentialEnergy()));
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
+                                                            tailEnergyDifferenceGrow.potentialEnergy() +
+                                                            polarizationDifference.potentialEnergy()));
 
     // Compute acceptance probability
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -299,23 +297,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                  std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
+    double physicalPacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
+                          std::exp(-system.beta * energyDifference.potentialEnergy());
+    double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
-
-    if (system.tmmc.doTMMC)
+    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
     {
-      std::size_t newN = oldN + 1;
-      if (newN > system.tmmc.maxMacrostate)
-      {
-        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-      }
+      return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
+    const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
+    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
@@ -362,19 +358,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow +
                   polarizationDifference,
-              double3(0.0, 1.0 - Pacc, Pacc)};
+              double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     };
 
     // Reject move and restore the fractional molecule
     std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
   }
   else if (selectedNewBin < 0)  // Deletion move
   {
     if (deletionDisabled)
     {
-      return {std::nullopt, double3(0.0, 0.0, 0.0)};
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
     // Steps for deletion Lambda_new = -epsilon
     // ===================================================================
@@ -407,10 +403,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       time_begin = std::chrono::steady_clock::now();
       ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random,
-          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                            system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                            system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                            cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
+          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                            system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                            system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                            cutOffCoulomb},
           component, growType, fractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
@@ -476,9 +472,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Compute external field energy contribution
       time_begin = std::chrono::steady_clock::now();
       std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-          system.hasExternalField, system.forceField, system.simulationBox, 
-          system.externalFieldInterpolationGrid, newFractionalMolecule,
-          savedFractionalMolecule);
+          system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+          newFractionalMolecule, savedFractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionExternalField] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionExternalField] += (time_end - time_begin);
@@ -589,10 +584,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
             electricFieldNeighborDelta[fractionalOffset + k] = double3(0.0, 0.0, 0.0);
           }
 
-          polarizationDifference =
-              removedSelf + Interactions::computePolarizationEnergyNeighborDifference(
-                                system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
-                                system.spanOfMoleculeAtoms());
+          polarizationDifference = removedSelf + Interactions::computePolarizationEnergyNeighborDifference(
+                                                     system.forceField, system.spanOfMoleculeElectricField(),
+                                                     electricFieldNeighborDelta, system.spanOfMoleculeAtoms());
         }
         else
         {
@@ -607,25 +601,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                          double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      double Pacc = preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
-                    std::exp(-system.beta * (energyDifference.potentialEnergy() +
-                                             polarizationDifference.potentialEnergy()) +
-                             biasTerm);
+      double physicalPacc =
+          preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
+          std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+      double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       // Retrieve bias from transition matrix
-      double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
-
-      if (system.tmmc.doTMMC)
+      if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
       {
-        std::size_t newN = oldN - 1;
-        if (newN < system.tmmc.minMacrostate)
-        {
-          return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-        }
+        return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       }
 
+      const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
+      double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+
       // Apply acceptance/rejection rule
-      if (random.uniform() < biasTransitionMatrix * Pacc)
+      if (random.uniform() < biasTransitionMatrix * samplingPacc)
       {
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
@@ -659,14 +650,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
         return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies +
                     polarizationDifference,
-                double3(Pacc, 1.0 - Pacc, 0.0)};
+                double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       };
 
       // Restore the old molecules
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
       std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
 
-      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
+      return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -699,8 +690,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy difference
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> externalFieldEnergyDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, trialPositions, molecule);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

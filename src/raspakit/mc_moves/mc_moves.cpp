@@ -65,10 +65,63 @@ import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 
-void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem,
-                                                  [[maybe_unused]] System& selectedSecondSystem,
-                                                  std::size_t selectedComponent,
-                                                  [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
+namespace
+{
+
+bool isAlwaysTMMCNeutralLocalMove(Move::Types moveType)
+{
+  switch (moveType)
+  {
+    case Move::Types::VolumeChange:
+    case Move::Types::AnisotropicVolumeChange:
+    case Move::Types::Widom:
+    case Move::Types::WidomCFCMC:
+    case Move::Types::WidomCBCFCMC:
+    case Move::Types::ForceBiasTranslationAll:
+    case Move::Types::HybridMC:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool isGuardedTMMCNeutralMove(Move::Types moveType)
+{
+  switch (moveType)
+  {
+    case Move::Types::Translation:
+    case Move::Types::RandomTranslation:
+    case Move::Types::ForceBiasTranslation:
+    case Move::Types::Rotation:
+    case Move::Types::RandomRotation:
+    case Move::Types::ReinsertionCBMC:
+    case Move::Types::PartialReinsertionCBMC:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void recordOtherwiseMissingNeutralTMMCTrial(Move::Types moveType, System& system, std::size_t componentId,
+                                            std::size_t oldN)
+{
+  const bool skippedForEmptyComponent =
+      isGuardedTMMCNeutralMove(moveType) && system.numberOfMoleculesPerComponent[componentId] == 0uz;
+  const bool skippedIdentity =
+      moveType == Move::Types::IdentityChangeCBMC && system.components[componentId].identityChanges.empty();
+
+  if (isAlwaysTMMCNeutralLocalMove(moveType) || skippedForEmptyComponent || skippedIdentity)
+  {
+    system.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+  }
+}
+
+}  // namespace
+
+Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem,
+                                                         [[maybe_unused]] System& selectedSecondSystem,
+                                                         std::size_t selectedComponent,
+                                                         [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -95,8 +148,8 @@ void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Rotation:
@@ -114,8 +167,8 @@ void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ReinsertionCBMC:
@@ -132,8 +185,8 @@ void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -150,8 +203,8 @@ void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     default:
@@ -160,11 +213,12 @@ void MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& 
       break;
     }
   }
+  return moveType;
 }
 
-void MC_Moves::performRandomMoveInitialization(RandomNumber& random, System& selectedSystem,
-                                               System& selectedSecondSystem, std::size_t selectedComponent,
-                                               [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
+Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, System& selectedSystem,
+                                                      System& selectedSecondSystem, std::size_t selectedComponent,
+                                                      [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -506,7 +560,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber& random, System& sel
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
-          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
+          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem, selectedComponent);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value().first;
@@ -734,11 +788,13 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber& random, System& sel
       break;
     }
   }
+  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
+  return moveType;
 }
 
-void MC_Moves::performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem,
-                                              System& selectedSecondSystem, std::size_t selectedComponent,
-                                              std::size_t& fractionalMoleculeSystem)
+Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem,
+                                                     System& selectedSecondSystem, std::size_t selectedComponent,
+                                                     std::size_t& fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -1080,7 +1136,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber& random, System& sele
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
-          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
+          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem, selectedComponent);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value().first;
@@ -1308,11 +1364,13 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber& random, System& sele
       break;
     }
   }
+  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
+  return moveType;
 }
 
-void MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                           std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
-                                           std::size_t currentBlock)
+Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selectedSystem,
+                                                  System& selectedSecondSystem, std::size_t selectedComponent,
+                                                  std::size_t& fractionalMoleculeSystem, std::size_t currentBlock)
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
@@ -1393,9 +1451,9 @@ void MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selecte
     }
     case Move::Types::RandomRotation:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule);
         if (energyDifference)
@@ -1654,7 +1712,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selecte
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
-          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
+          MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem, selectedComponent);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value().first;
@@ -1939,6 +1997,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selecte
       break;
     }
   }
+  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system
@@ -1957,4 +2016,5 @@ void MC_Moves::performRandomMoveProduction(RandomNumber& random, System& selecte
       selectedSystem.mc_moves_statistics.addAllCounts(moveType);
     }
   }
+  return moveType;
 }

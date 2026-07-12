@@ -10,6 +10,8 @@ add_executable(unit_tests_raspa3
   mc_nvt_polarization_drift.cpp
   mc_nvt_grids_drift.cpp
   mc_reaction_drift.cpp
+  transition_matrix.cpp
+  input_reader_tmmc.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

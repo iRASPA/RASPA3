@@ -73,8 +73,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
   // compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, 
-      system.externalFieldInterpolationGrid, trialMolecule.second, {});
+      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+      trialMolecule.second, {});
   if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute framework-molecule energy contribution
@@ -168,18 +168,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
   // Calculate acceptance probability and bias from the transition matrix.
-  if (system.tmmc.doTMMC)
+  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
   {
-    std::size_t newN = oldN + 1;
-    if (newN > system.tmmc.maxMacrostate)
-    {
-      return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-    }
+    return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
-  // Check if the new macrostate exceeds the maximum allowed; reject if true.
+
+  const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
+  double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
 
   // apply acceptance/rejection rule
   if (random.uniform() < biasTransitionMatrix * Pacc)

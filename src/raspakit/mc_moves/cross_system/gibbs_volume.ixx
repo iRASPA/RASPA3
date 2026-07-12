@@ -23,9 +23,10 @@ export namespace MC_Moves
  * \param random A random number generator.
  * \param systemA The first system involved in the volume move.
  * \param systemB The second system involved in the volume move.
+ * \param selectedComponent Component whose integer loading defines the TMMC macrostate.
  * \return An optional pair of RunningEnergy objects containing the new energies of systemA and systemB if the move is
  * accepted; std::nullopt otherwise.
  */
-std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(RandomNumber &random, System &systemA,
-                                                                       System &systemB);
+std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(RandomNumber& random, System& systemA,
+                                                                       System& systemB, std::size_t selectedComponent);
 }  // namespace MC_Moves

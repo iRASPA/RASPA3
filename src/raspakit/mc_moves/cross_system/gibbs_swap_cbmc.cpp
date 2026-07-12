@@ -4,6 +4,7 @@ module mc_moves_gibbs_swap_cbmc;
 
 import std;
 
+import double3;
 import randomnumbers;
 import running_energy;
 import system;
@@ -26,6 +27,56 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 
+namespace
+{
+class DualTMMCTrial
+{
+ public:
+  DualTMMCTrial(System& systemA, System& systemB, std::size_t selectedComponent)
+      : systemA_(systemA),
+        systemB_(systemB),
+        oldNA_(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent])
+  {
+  }
+
+  ~DualTMMCTrial()
+  {
+    if (!recorded_)
+    {
+      systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
+      systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
+    }
+  }
+
+  bool transferIsInBounds() const
+  {
+    return (!systemA_.tmmc.doTMMC || !systemA_.tmmc.rejectOutOfBound || oldNA_ < systemA_.tmmc.maxMacrostate) &&
+           (!systemB_.tmmc.doTMMC || !systemB_.tmmc.rejectOutOfBound ||
+            (oldNB_ > 0 && oldNB_ - 1 >= systemB_.tmmc.minMacrostate));
+  }
+
+  double biasFactor() const
+  {
+    return systemA_.tmmc.biasFactor(oldNA_ + 1, oldNA_) * systemB_.tmmc.biasFactor(oldNB_ - 1, oldNB_);
+  }
+
+  void recordTransfer(double physicalAcceptance)
+  {
+    systemA_.tmmc.updateMatrix(double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance), oldNA_);
+    systemB_.tmmc.updateMatrix(double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0), oldNB_);
+    recorded_ = true;
+  }
+
+ private:
+  System& systemA_;
+  System& systemB_;
+  std::size_t oldNA_;
+  std::size_t oldNB_;
+  bool recorded_{false};
+};
+}  // namespace
+
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(RandomNumber& random,
                                                                                     System& systemA, System& systemB,
                                                                                     std::size_t selectedComponent)
@@ -34,6 +85,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   Move::Types move = Move::Types::GibbsSwapCBMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
+  DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   // Return if there are no molecules of the selected component in system B
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
@@ -55,10 +107,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random,
-      CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-                        systemA.interpolationGrids, systemA.externalFieldInterpolationGrid, systemA.framework,
-                        systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
-                        cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA},
+      CBMC::GrowContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox, systemA.interpolationGrids,
+                        systemA.externalFieldInterpolationGrid, systemA.framework, systemA.spanOfFrameworkAtoms(),
+                        systemA.spanOfMoleculeAtoms(), systemA.beta, cutOffFrameworkVDWA, cutOffMoleculeVDWA,
+                        cutOffCoulombA},
       componentA, selectedComponent, growType, newMoleculeIndex, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
 
@@ -115,10 +167,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
       random,
-      CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                        systemB.interpolationGrids, systemB.externalFieldInterpolationGrid, systemB.framework,
-                        systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
-                        cutOffFrameworkVDWB, cutOffMoleculeVDWB, cutOffCoulombB},
+      CBMC::GrowContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox, systemB.interpolationGrids,
+                        systemB.externalFieldInterpolationGrid, systemB.framework, systemB.spanOfFrameworkAtoms(),
+                        systemB.spanOfMoleculeAtoms(), systemB.beta, cutOffFrameworkVDWB, cutOffMoleculeVDWB,
+                        cutOffCoulombB},
       componentB, growType, molecule);
   time_end = std::chrono::steady_clock::now();
 
@@ -157,14 +209,28 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   double correctionFactorEwaldB =
       std::exp(systemB.beta * (energyFourierDifferenceB.potentialEnergy() + tailEnergyDifferenceB.potentialEnergy()));
 
-  // Apply Metropolis acceptance criterion
-  if (random.uniform() <
+  const double physicalAcceptance =
       (correctionFactorEwaldA * growData->RosenbluthWeight *
        static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
        systemA.simulationBox.volume) /
-          (correctionFactorEwaldB * retraceData.RosenbluthWeight *
-           (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *
-           systemB.simulationBox.volume))
+      (correctionFactorEwaldB * retraceData.RosenbluthWeight *
+       (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *
+       systemB.simulationBox.volume);
+
+  // Bounds must be checked before evaluating a TMMC bias, whose lookup assumes
+  // both macrostates are representable.
+  if (!tmmcTrial.transferIsInBounds())
+  {
+    tmmcTrial.recordTransfer(physicalAcceptance);
+    return std::nullopt;
+  }
+
+  const double tmmcBias = tmmcTrial.biasFactor();
+  tmmcTrial.recordTransfer(physicalAcceptance);
+
+  // Apply Metropolis acceptance criterion.  The collection matrix above sees
+  // only the unbiased physical probability.
+  if (random.uniform() < tmmcBias * physicalAcceptance)
   {
     // Update accepted move statistics for system A
     componentA.mc_moves_statistics.addAccepted(move);

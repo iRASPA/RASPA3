@@ -14,6 +14,7 @@ import randomnumbers;
 import system;
 import energy_status;
 import running_energy;
+import mc_moves_move_types;
 import mc_moves_translation;
 export namespace MC_Moves
 {
@@ -45,11 +46,12 @@ export namespace MC_Moves
  * \param selectedComponent The index of the component on which the move is to be performed.
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
-void performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                        std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+Move::Types performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem,
+                                               System& selectedSecondSystem, std::size_t selectedComponent,
+                                               std::size_t& fractionalMoleculeSystem);
 
-void performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                     std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+Move::Types performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                            std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move on the selected system.
@@ -65,8 +67,8 @@ void performRandomMoveInitialization(RandomNumber& random, System& selectedSyste
  * \param selectedComponent The index of the component on which the move is to be performed.
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
-void performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                    std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+Move::Types performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                           std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move during production runs, with statistics tracking.
@@ -82,7 +84,7 @@ void performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  * \param currentBlock The current block number, used for statistics aggregation.
  */
-void performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                 std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
-                                 std::size_t currentBlock);
+Move::Types performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                        std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
+                                        std::size_t currentBlock);
 };  // namespace MC_Moves

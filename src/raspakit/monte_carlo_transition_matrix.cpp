@@ -30,6 +30,7 @@ import property_widom;
 import property_simulationbox;
 import property_energy;
 import mc_moves;
+import mc_moves_move_types;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import property_pressure;
@@ -38,6 +39,38 @@ import interactions_ewald;
 import equation_of_states;
 import interpolation_energy_grid;
 import simulation_schedule;
+
+namespace
+{
+
+bool isTMMCCrossSystemMove(Move::Types moveType)
+{
+  switch (moveType)
+  {
+    case Move::Types::GibbsVolume:
+    case Move::Types::GibbsSwapCBMC:
+    case Move::Types::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBCFCMC:
+    case Move::Types::GibbsConventionalCFCMC:
+    case Move::Types::GibbsConventionalCBCFCMC:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
+{
+  const std::size_t N = system.numberOfIntegerMoleculesPerComponent[componentId];
+  system.tmmc.updateHistogram(N);
+  system.tmmc.numberOfSteps++;
+  if (adjustBias)
+  {
+    system.tmmc.adjustBias();
+  }
+}
+
+}  // namespace
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt) {};
 
@@ -115,8 +148,7 @@ void MonteCarloTransitionMatrix::createOutputFiles()
     std::string fileNameString =
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, std::ios::out);
-    fileNameString =
-        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
+    fileNameString = std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
 
     ++system_id;
@@ -125,7 +157,6 @@ void MonteCarloTransitionMatrix::createOutputFiles()
 
 void MonteCarloTransitionMatrix::performCycle()
 {
-  std::size_t N{0uz};
   std::size_t totalNumberOfMolecules{0uz};
   std::size_t totalNumberOfComponents{0uz};
   std::size_t numberOfStepsPerCycle{0uz};
@@ -148,31 +179,35 @@ void MonteCarloTransitionMatrix::performCycle()
     System& selectedSecondSystem = systems[selectedSystemPair.second];
 
     std::size_t selectedComponent = selectedSystem.randomComponent(random);
+    Move::Types performedMove = Move::Types::Count;
 
     switch (simulationStage)
     {
       case SimulationStage::Uninitialized:
         break;
       case SimulationStage::PreInitialization:
-        MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                                     fractionalMoleculeSystem);
+        performedMove = MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectedSecondSystem,
+                                                                     selectedComponent, fractionalMoleculeSystem);
         break;
       case SimulationStage::Initialization:
-        MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                                  fractionalMoleculeSystem);
+        performedMove = MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem,
+                                                                  selectedComponent, fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
+        sampleTMMCState(selectedSystem, selectedComponent, false);
+        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        {
+          sampleTMMCState(selectedSecondSystem, selectedComponent, false);
+        }
         break;
       case SimulationStage::Equilibration:
-        MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                                 fractionalMoleculeSystem);
+        performedMove = MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem,
+                                                                 selectedComponent, fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
+        sampleTMMCState(selectedSystem, selectedComponent, true);
+        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        {
+          sampleTMMCState(selectedSecondSystem, selectedComponent, true);
+        }
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
@@ -189,13 +224,15 @@ void MonteCarloTransitionMatrix::performCycle()
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Production:
-        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                              fractionalMoleculeSystem, estimation.currentBin);
+        performedMove =
+            MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                  fractionalMoleculeSystem, estimation.currentBin);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
+        sampleTMMCState(selectedSystem, selectedComponent, true);
+        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        {
+          sampleTMMCState(selectedSecondSystem, selectedComponent, true);
+        }
 
         numberOfSteps++;
         break;
@@ -258,8 +295,7 @@ void MonteCarloTransitionMatrix::preInitialize()
       outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
       outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
       outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
-          system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
       outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
       outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
@@ -383,8 +419,7 @@ void MonteCarloTransitionMatrix::initialize()
       outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
       outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
       outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
-          system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
       outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
       outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
@@ -475,7 +510,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 
     system.runningEnergies = system.computeTotalEnergies();
 
-    system.tmmc.numberOfSteps = 0;
+    system.tmmc.clearCMatrix();
 
     for (Component& component : system.components)
     {
@@ -749,8 +784,7 @@ void MonteCarloTransitionMatrix::output()
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
-      std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
       ++componentId;
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
@@ -778,8 +812,7 @@ void MonteCarloTransitionMatrix::output()
 
     outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
-    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] =
-        totalPreInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] = totalPreInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();

@@ -12,6 +12,7 @@ the [Commands](\ref commands) page for the full input documentation.
 
 <!-- TOC -->
 * [Move selection](#move-selection)
+* [TMMC compatibility](#tmmc-compatibility)
 * [Notation](#notation)
 * [Single-molecule moves](#single-molecule-moves)
   * [Translation](#translation)
@@ -95,6 +96,29 @@ component” steps. Those steps describe the values supplied by this common
 dispatcher; the individual move implementation does **not** draw a second box
 or component unless the section explicitly says that it randomizes the order
 of the supplied boxes.
+
+## TMMC compatibility <a name="tmmc-compatibility"></a>
+
+The current transition-matrix Monte Carlo (TMMC) implementation uses the
+integer molecule count \f$N\f$ of a single adsorbate component as a
+one-dimensional macrostate. Moves are compatible when they leave this
+macrostate unchanged (\f$N\to N\f$) or connect nearest neighbors
+(\f$N\to N\pm1\f$). The initial molecule count must lie within the configured
+TMMC macrostate bounds.
+
+Input validation rejects nonzero probabilities for `IdentityChangeCBMC`,
+`GibbsIdentityChangeCBMC`, all five reaction move types (`ReactionCBMC`,
+`ReactionConventionalCFCMC`, `ReactionConventionalCBCFCMC`, `ReactionCFCMC`,
+and `ReactionCBCFCMC`), and `ParallelTempering`. These moves can change a
+component population or replace a replica configuration in a way that is not
+represented by the current one-dimensional nearest-neighbor collection
+matrix.
+
+For every attempted compatible move, the collection matrix receives the
+unbiased physical transition probability \f$P_\mathrm{phys}\f$. Sampling
+factors from the lambda bias \f$\eta(\lambda)\f$ and from the TMMC macrostate
+bias \f$B_{n,o}\f$ affect trajectory acceptance but are excluded from the
+probability accumulated in the collection matrix.
 
 ## Notation <a name="notation"></a>
 

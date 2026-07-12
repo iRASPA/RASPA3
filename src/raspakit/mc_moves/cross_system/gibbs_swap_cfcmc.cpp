@@ -4,6 +4,7 @@ module mc_moves_gibbs_swap_cfcmc;
 
 import std;
 
+import double3;
 import randomnumbers;
 import running_energy;
 import system;
@@ -29,6 +30,56 @@ import mc_moves_move_types;
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
 // Implementation advantage: the number of fractional molecules per system remains constant.
 
+namespace
+{
+class DualTMMCTrial
+{
+ public:
+  DualTMMCTrial(System& systemA, System& systemB, std::size_t selectedComponent)
+      : systemA_(systemA),
+        systemB_(systemB),
+        oldNA_(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent])
+  {
+  }
+
+  ~DualTMMCTrial()
+  {
+    if (!recorded_)
+    {
+      systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
+      systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
+    }
+  }
+
+  bool transferIsInBounds() const
+  {
+    return (!systemA_.tmmc.doTMMC || !systemA_.tmmc.rejectOutOfBound || oldNA_ < systemA_.tmmc.maxMacrostate) &&
+           (!systemB_.tmmc.doTMMC || !systemB_.tmmc.rejectOutOfBound ||
+            (oldNB_ > 0 && oldNB_ - 1 >= systemB_.tmmc.minMacrostate));
+  }
+
+  double biasFactor() const
+  {
+    return systemA_.tmmc.biasFactor(oldNA_ + 1, oldNA_) * systemB_.tmmc.biasFactor(oldNB_ - 1, oldNB_);
+  }
+
+  void recordTransfer(double physicalAcceptance)
+  {
+    systemA_.tmmc.updateMatrix(double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance), oldNA_);
+    systemB_.tmmc.updateMatrix(double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0), oldNB_);
+    recorded_ = true;
+  }
+
+ private:
+  System& systemA_;
+  System& systemB_;
+  std::size_t oldNA_;
+  std::size_t oldNB_;
+  bool recorded_{false};
+};
+}  // namespace
+
 // systemA contains the fractional molecule
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CFCMC(
     RandomNumber& random, System& systemA, System& systemB, std::size_t selectedComponent,
@@ -38,6 +89,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   Move::Types move = Move::Types::GibbsSwapCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
+  DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGC;
   PropertyLambdaProbabilityHistogram& lambdaB = componentB.lambdaGC;
@@ -82,8 +134,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
     for (Atom& atom : fractionalMoleculeA)
     {
-      atom.moleculeId = static_cast<std::uint32_t>(
-          systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+      atom.moleculeId =
+          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -268,8 +320,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
     for (Atom& atom : fractionalMoleculeB)
     {
-      atom.moleculeId = static_cast<std::uint16_t>(
-          systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
+      atom.moleculeId =
+          static_cast<std::uint16_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
       atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
     }
 
@@ -344,10 +396,23 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
+    const double physicalAcceptance =
+        preFactor *
+        std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()));
+    if (!tmmcTrial.transferIsInBounds())
+    {
+      tmmcTrial.recordTransfer(physicalAcceptance);
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
+                selectedIntegerMoleculeB.begin());
+      return std::nullopt;
+    }
+    const double tmmcBias = tmmcTrial.biasFactor();
+    tmmcTrial.recordTransfer(physicalAcceptance);
+
     // apply acceptance/rejection rule
-    if (random.uniform() < preFactor * std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() +
-                                                                 energyDifferenceB.potentialEnergy()) +
-                                                biasTerm))
+    if (random.uniform() < physicalAcceptance * std::exp(biasTerm) * tmmcBias)
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
@@ -364,8 +429,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
       for (Atom& atom : fractionalMoleculeA)
       {
-        atom.moleculeId = static_cast<std::uint16_t>(
-            systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+        atom.moleculeId =
+            static_cast<std::uint16_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
       }
 
       // make old fractional molecule integer
@@ -391,8 +456,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
       for (Atom& atom : fractionalMoleculeB)
       {
-        atom.moleculeId = static_cast<std::uint16_t>(
-            systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
+        atom.moleculeId =
+            static_cast<std::uint16_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
         atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
       }
 

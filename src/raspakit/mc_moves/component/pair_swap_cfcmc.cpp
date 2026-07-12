@@ -70,8 +70,8 @@ static std::optional<RunningEnergy> computeNonEwaldEnergyDifference(System& syst
                                                                     std::span<const Atom> moleculeAtomData)
 {
   std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
-      newAtoms, oldAtoms);
+      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid, newAtoms,
+      oldAtoms);
   if (!externalFieldDifference.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
@@ -87,8 +87,7 @@ static std::optional<RunningEnergy> computeNonEwaldEnergyDifference(System& syst
 }
 
 static RunningEnergy computeTailEnergyDifference(System& system, std::span<const Atom> newAtoms,
-                                                 std::span<const Atom> oldAtoms,
-                                                 std::span<const Atom> moleculeAtomData)
+                                                 std::span<const Atom> oldAtoms, std::span<const Atom> moleculeAtomData)
 {
   return Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  moleculeAtomData, newAtoms, oldAtoms) +
@@ -130,7 +129,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
   const std::size_t indexFractionalB = system.indexOfFractionalMoleculeForMove(move, componentB);
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double fugacityB = componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
+  const double fugacityB =
+      componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
 
   if (selectedNewBin >= std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints))  // Insertion move
   {
@@ -170,9 +170,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceA =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceA = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -194,8 +193,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -210,9 +209,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceB =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceB = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -234,8 +232,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -382,11 +380,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         for (std::size_t i = 0; i < trialElectricFieldA.size(); ++i) trialElectricFieldA[i] += fieldOnAfromB[i];
         for (std::size_t i = 0; i < trialElectricFieldB.size(); ++i) trialElectricFieldB[i] += fieldOnBfromA[i];
 
-        polarizationDifference =
-            Interactions::computePolarizationEnergyDifference(system.forceField, trialElectricFieldA, {},
-                                                              trialMoleculeA.second, {}) +
-            Interactions::computePolarizationEnergyDifference(system.forceField, trialElectricFieldB, {},
-                                                              trialMoleculeB.second, {});
+        polarizationDifference = Interactions::computePolarizationEnergyDifference(
+                                     system.forceField, trialElectricFieldA, {}, trialMoleculeA.second, {}) +
+                                 Interactions::computePolarizationEnergyDifference(
+                                     system.forceField, trialElectricFieldB, {}, trialMoleculeB.second, {});
         polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
             system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
             system.spanOfMoleculeAtoms());
@@ -412,36 +409,32 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
             system.totalEik, system.forceField, system.simulationBox, trialElectricFieldB, {}, trialMoleculeB.second,
             {});
 
-        polarizationDifference =
-            Interactions::computePolarizationEnergyDifference(system.forceField, trialElectricFieldA, {},
-                                                              trialMoleculeA.second, {}) +
-            Interactions::computePolarizationEnergyDifference(system.forceField, trialElectricFieldB, {},
-                                                              trialMoleculeB.second, {});
+        polarizationDifference = Interactions::computePolarizationEnergyDifference(
+                                     system.forceField, trialElectricFieldA, {}, trialMoleculeA.second, {}) +
+                                 Interactions::computePolarizationEnergyDifference(
+                                     system.forceField, trialElectricFieldB, {}, trialMoleculeB.second, {});
       }
     }
 
     // Calculate acceptance probability
-    const double preFactor =
-        (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
-        (system.beta * fugacityB * system.simulationBox.volume / static_cast<double>(1 + oldN_B));
+    const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
+                             (system.beta * fugacityB * system.simulationBox.volume / static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double Pacc =
-        preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() +
-                                             polarizationDifference.potentialEnergy()) +
-                             biasTerm);
+    const double physicalPacc =
+        preFactor *
+        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+    const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    const double biasTransitionMatrix = system.tmmc.biasFactor(oldN_A + 1, oldN_A);
-
-    if (system.tmmc.doTMMC)
+    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
     {
-      if (oldN_A + 1 > system.tmmc.maxMacrostate)
-      {
-        restoreFractionalPair();
-        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-      }
+      restoreFractionalPair();
+      return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    const std::size_t newN_A = oldN_A == std::numeric_limits<std::size_t>::max() ? oldN_A : oldN_A + 1;
+    const double biasTransitionMatrix = system.tmmc.biasFactor(newN_A, oldN_A);
+
+    if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
@@ -474,8 +467,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
       if (system.forceField.computePolarization)
       {
-        system.insertMoleculePolarization(componentB, trialMoleculeB.first, trialMoleculeB.second,
-                                          trialElectricFieldB);
+        system.insertMoleculePolarization(componentB, trialMoleculeB.first, trialMoleculeB.second, trialElectricFieldB);
       }
       else
       {
@@ -492,11 +484,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
-      return {energyDifference + polarizationDifference, double3(0.0, 1.0 - Pacc, Pacc)};
+      return {energyDifference + polarizationDifference, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
     restoreFractionalPair();
-    return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
+    return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
   }
   else if (selectedNewBin < 0)  // Deletion move
   {
@@ -548,9 +540,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceA =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceA = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
@@ -572,8 +563,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
@@ -585,9 +576,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceB =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceB = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
@@ -608,8 +598,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
@@ -628,9 +618,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceNewA =
-        computeNonEwaldEnergyDifference(system, newFractionalMoleculeA, oldNewFractionalMoleculeA,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceNewA = computeNonEwaldEnergyDifference(
+        system, newFractionalMoleculeA, oldNewFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
@@ -672,9 +661,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceNewB =
-        computeNonEwaldEnergyDifference(system, newFractionalMoleculeB, oldNewFractionalMoleculeB,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceNewB = computeNonEwaldEnergyDifference(
+        system, newFractionalMoleculeB, oldNewFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
@@ -707,14 +695,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
-      std::span<double3> storedFieldFractionalA =
-          system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+      std::span<double3> storedFieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
       std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
-      polarizationDifference =
-          Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldFractionalA, {},
-                                                            fractionalMoleculeA) +
-          Interactions::computePolarizationEnergyDifference(system.forceField, {}, storedFieldFractionalB, {},
-                                                            fractionalMoleculeB);
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(
+                                   system.forceField, {}, storedFieldFractionalA, {}, fractionalMoleculeA) +
+                               Interactions::computePolarizationEnergyDifference(
+                                   system.forceField, {}, storedFieldFractionalB, {}, fractionalMoleculeB);
 
       if (!system.forceField.omitInterPolarization)
       {
@@ -729,14 +715,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                                            electricFieldNeighborDelta);
 
         std::span<Atom> allAtoms = system.spanOfMoleculeAtoms();
-        std::size_t offsetFractionalA =
-            static_cast<std::size_t>(fractionalMoleculeA.data() - allAtoms.data());
+        std::size_t offsetFractionalA = static_cast<std::size_t>(fractionalMoleculeA.data() - allAtoms.data());
         for (std::size_t k = 0; k < fractionalMoleculeA.size(); ++k)
         {
           electricFieldNeighborDelta[offsetFractionalA + k] = double3(0.0, 0.0, 0.0);
         }
-        std::size_t offsetFractionalB =
-            static_cast<std::size_t>(fractionalMoleculeB.data() - allAtoms.data());
+        std::size_t offsetFractionalB = static_cast<std::size_t>(fractionalMoleculeB.data() - allAtoms.data());
         for (std::size_t k = 0; k < fractionalMoleculeB.size(); ++k)
         {
           electricFieldNeighborDelta[offsetFractionalB + k] = double3(0.0, 0.0, 0.0);
@@ -749,27 +733,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     // Calculate acceptance probability
-    const double preFactor =
-        (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
-        (static_cast<double>(oldN_B) / (system.beta * fugacityB * system.simulationBox.volume));
+    const double preFactor = (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
+                             (static_cast<double>(oldN_B) / (system.beta * fugacityB * system.simulationBox.volume));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double Pacc =
-        preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() +
-                                             polarizationDifference.potentialEnergy()) +
-                             biasTerm);
+    const double physicalPacc =
+        preFactor *
+        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+    const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    const double biasTransitionMatrix = system.tmmc.biasFactor(oldN_A - 1, oldN_A);
-
-    if (system.tmmc.doTMMC)
+    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)
     {
-      if (oldN_A - 1 < system.tmmc.minMacrostate)
-      {
-        restoreMolecules();
-        return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-      }
+      restoreMolecules();
+      return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    const std::size_t newN_A = oldN_A == 0 ? 0 : oldN_A - 1;
+    const double biasTransitionMatrix = system.tmmc.biasFactor(newN_A, oldN_A);
+
+    if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       lambda.setCurrentBin(newBin);
@@ -787,12 +768,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       std::swap_ranges(newFractionalMoleculeA.begin(), newFractionalMoleculeA.end(), fractionalMoleculeA.begin());
       if (system.forceField.computePolarization)
       {
-        std::span<double3> storedFieldFractionalA =
-            system.spanElectricFieldOld(selectedComponent, indexFractionalA);
-        std::span<double3> storedFieldSelectedA =
-            system.spanElectricFieldOld(selectedComponent, selectedMoleculeA);
-        std::swap_ranges(storedFieldFractionalA.begin(), storedFieldFractionalA.end(),
-                         storedFieldSelectedA.begin());
+        std::span<double3> storedFieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+        std::span<double3> storedFieldSelectedA = system.spanElectricFieldOld(selectedComponent, selectedMoleculeA);
+        std::swap_ranges(storedFieldFractionalA.begin(), storedFieldFractionalA.end(), storedFieldSelectedA.begin());
       }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMoleculeA)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)]);
@@ -805,10 +783,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       if (system.forceField.computePolarization)
       {
         std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
-        std::span<double3> storedFieldSelectedB =
-            system.spanElectricFieldOld(componentB, selectedMoleculeB);
-        std::swap_ranges(storedFieldFractionalB.begin(), storedFieldFractionalB.end(),
-                         storedFieldSelectedB.begin());
+        std::span<double3> storedFieldSelectedB = system.spanElectricFieldOld(componentB, selectedMoleculeB);
+        std::swap_ranges(storedFieldFractionalB.begin(), storedFieldFractionalB.end(), storedFieldSelectedB.begin());
       }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, selectedMoleculeB)],
                 system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)]);
@@ -816,11 +792,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
-      return {energyDifference + polarizationDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
+      return {energyDifference + polarizationDifference, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
     restoreMolecules();
-    return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
+    return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
   }
   else  // Lambda-change move
   {
@@ -854,9 +830,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceA =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceA = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
@@ -878,8 +853,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeA, oldFractionalMoleculeA, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
@@ -894,9 +869,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<RunningEnergy> nonEwaldDifferenceB =
-        computeNonEwaldEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                        system.spanOfMoleculeAtoms());
+    std::optional<RunningEnergy> nonEwaldDifferenceB = computeNonEwaldEnergyDifference(
+        system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
@@ -917,8 +891,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     system.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::steady_clock::now();
-    energyDifference += computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB,
-                                                    system.spanOfMoleculeAtoms());
+    energyDifference +=
+        computeTailEnergyDifference(system, fractionalMoleculeB, oldFractionalMoleculeB, system.spanOfMoleculeAtoms());
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);

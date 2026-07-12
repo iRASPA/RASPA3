@@ -4,6 +4,7 @@ module mc_moves_gibbs_conventional_common;
 
 import std;
 
+import double3;
 import randomnumbers;
 import running_energy;
 import system;
@@ -28,6 +29,72 @@ enum class GibbsMoveKind : std::uint8_t
   LambdaChange = 0,
   Insert = 1,
   Delete = 2
+};
+
+class DualTMMCTrial
+{
+ public:
+  DualTMMCTrial(System& systemA, System& systemB, std::size_t selectedComponent)
+      : systemA_(systemA),
+        systemB_(systemB),
+        oldNA_(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent])
+  {
+  }
+
+  ~DualTMMCTrial()
+  {
+    if (!recorded_)
+    {
+      systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
+      systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
+    }
+  }
+
+  bool transitionsAreInBounds(int deltaA, int deltaB) const
+  {
+    return transitionIsInBounds(systemA_, oldNA_, deltaA) && transitionIsInBounds(systemB_, oldNB_, deltaB);
+  }
+
+  double biasFactor(int deltaA, int deltaB) const
+  {
+    return transitionBias(systemA_, oldNA_, deltaA) * transitionBias(systemB_, oldNB_, deltaB);
+  }
+
+  void record(double physicalAcceptance, int deltaA, int deltaB)
+  {
+    systemA_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaA), oldNA_);
+    systemB_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaB), oldNB_);
+    recorded_ = true;
+  }
+
+ private:
+  static bool transitionIsInBounds(const System& system, std::size_t oldN, int delta)
+  {
+    if (!system.tmmc.doTMMC || !system.tmmc.rejectOutOfBound || delta == 0) return true;
+    if (delta > 0) return oldN < system.tmmc.maxMacrostate;
+    return oldN > 0 && oldN - 1 >= system.tmmc.minMacrostate;
+  }
+
+  static double transitionBias(System& system, std::size_t oldN, int delta)
+  {
+    if (delta > 0) return system.tmmc.biasFactor(oldN + 1, oldN);
+    if (delta < 0) return system.tmmc.biasFactor(oldN - 1, oldN);
+    return 1.0;
+  }
+
+  static double3 transitionVector(double physicalAcceptance, int delta)
+  {
+    if (delta > 0) return double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance);
+    if (delta < 0) return double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0);
+    return double3(0.0, 1.0, 0.0);
+  }
+
+  System& systemA_;
+  System& systemB_;
+  std::size_t oldNA_;
+  std::size_t oldNB_;
+  bool recorded_{false};
 };
 
 std::size_t lambdaBinFromValue(const PropertyLambdaProbabilityHistogram& lambda, double lambdaValue)
@@ -87,7 +154,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(System& system, std
 
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                            system.spanOfMoleculeAtoms(), trialAtoms, oldAtoms) +
+                                                              system.spanOfMoleculeAtoms(), trialAtoms, oldAtoms) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), trialAtoms, oldAtoms);
 
@@ -127,8 +194,7 @@ void acceptInsertStep(System& system, std::size_t selectedComponent, std::size_t
 
   // Re-fetch spans: insertMolecule may reallocate atom storage.
   const std::size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
-  std::span<Atom> fractionalMoleculeAfterInsert =
-      system.spanOfMolecule(selectedComponent, fractionalMoleculeIndex);
+  std::span<Atom> fractionalMoleculeAfterInsert = system.spanOfMolecule(selectedComponent, fractionalMoleculeIndex);
   std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
   std::swap_ranges(fractionalMoleculeAfterInsert.begin(), fractionalMoleculeAfterInsert.end(), lastMolecule.begin());
   std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, fractionalMoleculeIndex)],
@@ -188,7 +254,7 @@ RunningEnergy retraceEwaldTailDifference(System& system, std::span<const Atom> r
       system.simulationBox, {}, retraceAtoms, system.netCharge);
   RunningEnergy tailDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                            system.spanOfMoleculeAtoms(), {}, retraceAtoms) +
+                                                              system.spanOfMoleculeAtoms(), {}, retraceAtoms) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), {}, retraceAtoms);
   return ewaldDifference + tailDifference;
@@ -199,10 +265,10 @@ RunningEnergy retraceEwaldTailDifference(System& system, std::span<const Atom> r
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(
     RandomNumber& random, System& systemA, System& systemB, std::size_t selectedComponent, bool useCBMC)
 {
-  const Move::Types move =
-      useCBMC ? Move::Types::GibbsConventionalCBCFCMC : Move::Types::GibbsConventionalCFCMC;
+  const Move::Types move = useCBMC ? Move::Types::GibbsConventionalCBCFCMC : Move::Types::GibbsConventionalCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
+  DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   componentA.mc_moves_statistics.addTrial(move);
 
@@ -246,16 +312,23 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     lambdaNewB += 1.0;
   }
 
-  if (moveKindA == GibbsMoveKind::Delete &&
-      systemA.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
+  if (moveKindA == GibbsMoveKind::Delete && systemA.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
   {
     return std::nullopt;
   }
-  if (moveKindB == GibbsMoveKind::Delete &&
-      systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
+  if (moveKindB == GibbsMoveKind::Delete && systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
   {
     return std::nullopt;
   }
+
+  const auto macrostateDelta = [](GibbsMoveKind moveKind)
+  {
+    if (moveKind == GibbsMoveKind::Insert) return 1;
+    if (moveKind == GibbsMoveKind::Delete) return -1;
+    return 0;
+  };
+  const int deltaA = macrostateDelta(moveKindA);
+  const int deltaB = macrostateDelta(moveKindB);
 
   const std::size_t newBinA = lambdaBinFromValue(lambdaA, lambdaNewA);
   const std::size_t newBinB = lambdaBinFromValue(lambdaB, lambdaNewB);
@@ -344,14 +417,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   auto constructBoundaryTrial = [&](System& system, Component& component, GibbsMoveKind moveKind, double lambdaNew,
                                     BoundaryTrial& trial) -> bool
   {
-    const double integerCount =
-        static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
+    const double integerCount = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     const double volume = system.simulationBox.volume;
-    const CBMC::GrowContext context{
-        system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-        system.spanOfMoleculeAtoms(), system.beta, system.forceField.cutOffFrameworkVDW,
-        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb};
+    const CBMC::GrowContext context{system.hasExternalField,
+                                    system.forceField,
+                                    system.simulationBox,
+                                    system.interpolationGrids,
+                                    system.externalFieldInterpolationGrid,
+                                    system.framework,
+                                    system.spanOfFrameworkAtoms(),
+                                    system.spanOfMoleculeAtoms(),
+                                    system.beta,
+                                    system.forceField.cutOffFrameworkVDW,
+                                    system.forceField.cutOffMoleculeVDW,
+                                    system.forceField.cutOffCoulomb};
 
     if (moveKind == GibbsMoveKind::LambdaChange)
     {
@@ -362,9 +441,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       if (useCBMC)
       {
-        trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(
-            random, context, component, selectedComponent, component.growType, system.numberOfMolecules(), lambdaNew,
-            component.lambdaGibbs.dUdlambdaGroupId, true);
+        trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(random, context, component, selectedComponent,
+                                                           component.growType, system.numberOfMolecules(), lambdaNew,
+                                                           component.lambdaGibbs.dUdlambdaGroupId, true);
         if (!trial.cbmcInsert.has_value() || system.insideBlockedPockets(component, trial.cbmcInsert->atoms))
         {
           return false;
@@ -374,8 +453,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
         const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
         trial.acceptanceFactor = (trial.cbmcInsert->RosenbluthWeight / idealGas) *
-                                 std::exp(-system.beta * ewaldTail.potentialEnergy()) *
-                                 volume / (integerCount + 1.0);
+                                 std::exp(-system.beta * ewaldTail.potentialEnergy()) * volume / (integerCount + 1.0);
         return true;
       }
 
@@ -396,8 +474,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         return false;
       }
       trial.energy = insertionEnergy.value();
-      trial.acceptanceFactor =
-          std::exp(-system.beta * trial.energy.potentialEnergy()) * volume / (integerCount + 1.0);
+      trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * volume / (integerCount + 1.0);
       return true;
     }
 
@@ -410,8 +487,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
           CBMC::retraceMoleculeSwapDeletion(random, context, component, component.growType, selectedMolecule);
       RunningEnergy ewaldTail = retraceEwaldTailDifference(system, selectedMolecule);
       trial.acceptanceFactor = (integerCount / volume) /
-                               (retraceData.RosenbluthWeight *
-                                std::exp(system.beta * ewaldTail.potentialEnergy()));
+                               (retraceData.RosenbluthWeight * std::exp(system.beta * ewaldTail.potentialEnergy()));
       std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
     }
 
@@ -429,8 +505,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     trial.energy = deletionEnergy.value();
     if (!useCBMC)
     {
-      trial.acceptanceFactor =
-          std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
+      trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
     }
     return true;
   };
@@ -446,13 +521,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   componentA.mc_moves_statistics.addConstructed(move);
 
-  const double acceptanceProbability =
-      std::exp(-systemA.beta * energyFirstStepA->potentialEnergy() -
-               systemB.beta * energyFirstStepB->potentialEnergy()) *
-      boundaryA.acceptanceFactor * boundaryB.acceptanceFactor *
-      std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
+  const double physicalAcceptance = std::exp(-systemA.beta * energyFirstStepA->potentialEnergy() -
+                                             systemB.beta * energyFirstStepB->potentialEnergy()) *
+                                    boundaryA.acceptanceFactor * boundaryB.acceptanceFactor;
+  const double lambdaBias = std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
+  if (!tmmcTrial.transitionsAreInBounds(deltaA, deltaB))
+  {
+    tmmcTrial.record(physicalAcceptance, deltaA, deltaB);
+    restoreFractionals();
+    return std::nullopt;
+  }
+  const double tmmcBias = tmmcTrial.biasFactor(deltaA, deltaB);
+  tmmcTrial.record(physicalAcceptance, deltaA, deltaB);
 
-  if (random.uniform() >= acceptanceProbability)
+  if (random.uniform() >= physicalAcceptance * lambdaBias * tmmcBias)
   {
     restoreFractionals();
     return std::nullopt;

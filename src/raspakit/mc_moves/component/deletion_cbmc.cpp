@@ -145,17 +145,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                        (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
     // Check if the new macrostate is within the allowed TMMC range
-    if (system.tmmc.doTMMC)
+    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
     {
-      std::size_t newN = oldN - 1;
-      if (newN < system.tmmc.minMacrostate)
-      {
-        return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-      }
+      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
     }
+
+    const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
+    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
 
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)

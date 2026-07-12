@@ -51,8 +51,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     // Compute external field energy contribution
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, {}, molecule);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid, {},
+        molecule);
     if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute framework-molecule energy contribution
@@ -83,8 +83,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     }
     else
     {
-      interMolecule = Interactions::computeInterMolecularEnergyDifference(
-          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, molecule);
+      interMolecule = Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
+                                                                          system.spanOfMoleculeAtoms(), {}, molecule);
     }
     if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
@@ -152,17 +152,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
                        (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
     // Check if TMMC is enabled and if new state is below minimum macrostate
-    if (system.tmmc.doTMMC)
+    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
     {
-      std::size_t newN = oldN - 1;
-      if (newN < system.tmmc.minMacrostate)
-      {
-        return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-      }
+      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
     }
+
+    const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
+    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
 
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)

@@ -11,22 +11,27 @@ void TransitionMatrix::initialize()
 {
   if (!doTMMC) return;
 
-  cmatrix.resize(maxMacrostate - minMacrostate + 1);
-  bias.resize(maxMacrostate - minMacrostate + 1);
-  std::fill(bias.begin(), bias.end(), 1.0);
-  lnpi.resize(maxMacrostate - minMacrostate + 1);
-  forward_lnpi.resize(maxMacrostate - minMacrostate + 1);
-  reverse_lnpi.resize(maxMacrostate - minMacrostate + 1);
-  histogram.resize(maxMacrostate - minMacrostate + 1);
+  if (maxMacrostate < minMacrostate)
+  {
+    throw std::invalid_argument("TMMC maximum macrostate must not be smaller than its minimum macrostate");
+  }
+
+  const std::size_t numberOfMacrostates = maxMacrostate - minMacrostate + 1;
+  cmatrix.assign(numberOfMacrostates, double3(0.0, 0.0, 0.0));
+  bias.assign(numberOfMacrostates, 1.0);
+  lnpi.assign(numberOfMacrostates, 0.0);
+  forward_lnpi.assign(numberOfMacrostates, 0.0);
+  reverse_lnpi.assign(numberOfMacrostates, 0.0);
+  histogram.assign(numberOfMacrostates, 0uz);
 }
 
 // C(No -> Nn) += p(o -> n)
 // C(No -> No) += 1 − p(o -> n)
 //
 // translation: double3(0.0, 1.0, 0.0)
-// insertion: double3(Pacc, 1.0 - Pacc, 0.0)
+// insertion: double3(0.0, 1.0 - Pacc, Pacc)
 // insertion overlap-detected: double3(0.0, 1.0, 0.0)
-// deletion: double3(0.0, 1.0 - Pacc, Pacc)
+// deletion: double3(Pacc, 1.0 - Pacc, 0.0)
 // deletion overlap-detected: double3(0.0, 1.0, 0.0)
 void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN)
 {
@@ -34,7 +39,12 @@ void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN)
 
   Pacc.clamp(0.0, 1.0);
 
-  cmatrix[oldN - minMacrostate] += Pacc;
+  if ((oldN < minMacrostate) || (oldN > maxMacrostate)) return;
+
+  const std::size_t index = oldN - minMacrostate;
+  if (index >= cmatrix.size()) return;
+
+  cmatrix[index] += Pacc;
 };
 
 void TransitionMatrix::updateHistogram(std::size_t N)
@@ -42,15 +52,31 @@ void TransitionMatrix::updateHistogram(std::size_t N)
   if (!doTMMC) return;
 
   if ((N > maxMacrostate) || (N < minMacrostate)) return;
-  histogram[N - minMacrostate]++;
+  const std::size_t index = N - minMacrostate;
+  if (index >= histogram.size()) return;
+  histogram[index]++;
 }
 
 // return the biasing Factor
 double TransitionMatrix::biasFactor(std::size_t newN, std::size_t oldN)
 {
-  if (!doTMMC || !useBias || !useTMBias) return 1.0;
+  if (!doTMMC) return 1.0;
 
-  double TMMCBias = bias[newN - minMacrostate] - bias[oldN - minMacrostate];
+  if ((newN < minMacrostate) || (newN > maxMacrostate) || (oldN < minMacrostate) || (oldN > maxMacrostate))
+  {
+    return rejectOutOfBound ? 0.0 : 1.0;
+  }
+
+  const std::size_t newIndex = newN - minMacrostate;
+  const std::size_t oldIndex = oldN - minMacrostate;
+  if ((newIndex >= bias.size()) || (oldIndex >= bias.size()))
+  {
+    return rejectOutOfBound ? 0.0 : 1.0;
+  }
+
+  if (!useBias || !useTMBias) return 1.0;
+
+  double TMMCBias = bias[newIndex] - bias[oldIndex];
   return std::exp(TMMCBias);
 };
 
@@ -65,10 +91,10 @@ void TransitionMatrix::adjustBias()
 
   // get the lowest and highest visited states in terms of loading
   std::size_t minVisitedN = static_cast<std::size_t>(std::distance(
-      histogram.begin(), std::find_if(histogram.begin(), histogram.end(), [](const std::size_t &i) { return i; })));
+      histogram.begin(), std::find_if(histogram.begin(), histogram.end(), [](const std::size_t& i) { return i; })));
   std::size_t maxVisitedN = static_cast<std::size_t>(
       std::distance(histogram.begin(),
-                    std::find_if(histogram.rbegin(), histogram.rend(), [](const std::size_t &i) { return i; }).base()) -
+                    std::find_if(histogram.rbegin(), histogram.rend(), [](const std::size_t& i) { return i; }).base()) -
       1);
   [[maybe_unused]] std::size_t nonzeroCount = maxVisitedN - minVisitedN + 1;
 
@@ -176,7 +202,7 @@ void TransitionMatrix::writeStatistics()
   }
 };
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TransitionMatrix &m)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const TransitionMatrix& m)
 {
   archive << m.versionNumber;
 
@@ -206,13 +232,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMatrix& m)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > m.versionNumber)
   {
-    const std::source_location &location = std::source_location::current();
+    const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'TransitionMatrix' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
