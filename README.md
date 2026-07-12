@@ -94,15 +94,14 @@ cd examples/basic/1_mc_methane_in_box
 - Reaction MC CFCMC
 - Reaction MC CFCMC/CBMC
 - Smart MC
+- partial molar energies/volumes
+- polarization
 
 # Todo-list
 - ASE interface
-- zeo++-type calculations
 - flexible frameworks
-- polarization
 - cell-lists for rigid frameworks
-- partial molar volumes
-- partial molar enthalpies/volumes
+- zeo++-type calculations
 - optimization
 - elastic constants
 - HDF5 property writing

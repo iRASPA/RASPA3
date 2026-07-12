@@ -161,10 +161,12 @@ const std::string MCMoveStatistics::writeMCMoveStatistics(std::size_t countTotal
       }, stats[i]);
   }
 
+  const std::int64_t difference = static_cast<std::int64_t>(countTotal) - static_cast<std::int64_t>(summed);
+
   std::print(stream, "\n");
   std::print(stream, "Production count MC-steps:   {:14d} [-]\n", countTotal);
   std::print(stream, "               All summed:   {:14d} [-]\n", summed);
-  std::print(stream, "               difference:   {:14d} [-]\n", countTotal - summed);
+  std::print(stream, "               difference:   {:14d} [-]\n", difference);
 
   return stream.str();
 }

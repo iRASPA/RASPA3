@@ -1754,7 +1754,6 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       if (!selectedSystem.components[selectedComponent].gibbsIdentityChanges.empty())
       {
         selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
-        selectedSecondSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
 
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             MC_Moves::GibbsIdentityChangeMove_CBMC(random, selectedSystem, selectedSecondSystem, selectedComponent);
