@@ -1,6 +1,7 @@
 {
   "SimulationType" : "MonteCarlo",
   "NumberOfProductionCycles" : 25000,
+  "NumberOfPreInitializationCycles" : 2000,
   "NumberOfInitializationCycles" : 25000,
   "PrintEvery" : 1000,
 
@@ -8,7 +9,7 @@
   [
     {
       "Type" : "Box",
-      "BoxLengths" : [40.0, 40.0, 40.0],
+      "BoxLengths" : [42.0, 42.0, 42.0],
       "ExternalTemperature" : 433.0,
       "ExternalPressure" : 27.58e5,
       "ChargeMethod" : "None",
@@ -16,7 +17,7 @@
     },
     {
       "Type" : "Box",
-      "BoxLengths" : [60.0, 60.0, 70.0],
+      "BoxLengths" : [72.0, 72.0, 72.0],
       "ExternalTemperature" : 433.0,
       "ExternalPressure" : 27.58e5,
       "ChargeMethod" : "None",
@@ -35,7 +36,7 @@
       "GibbsSwapCBMCProbability" : 1.0,
       "GibbsIdentityChangeProbability" : 1.0,
       "GibbsIdentityChanges" : [1],
-      "CreateNumberOfMolecules" : [100, 100]
+      "CreateNumberOfMolecules" : [40, 210]
     },
     {
       "Name" : "heptane",
@@ -47,7 +48,7 @@
       "GibbsSwapCBMCProbability" : 1.0,
       "GibbsIdentityChangeProbability" : 1.0,
       "GibbsIdentityChanges" : [0],
-      "CreateNumberOfMolecules" : [100, 100]
+      "CreateNumberOfMolecules" : [230, 20]
     }
   ]
 }
