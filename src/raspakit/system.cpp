@@ -412,11 +412,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   reactionLambdaSampleProductionHistograms(currentBlock, w);
 
-  if (samplePDBMovie.has_value())
-  {
-    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(),
-                           components, numberOfMoleculesPerComponent, currentCycle);
-  }
+  updateSamplePDBMovie(systemId, currentCycle);
 
   if (writeLammpsData.has_value())
   {
@@ -868,6 +864,15 @@ void System::setSamplePDBMovie(const std::optional<SampleMovie> &movie)
   if (movie.has_value())
   {
     samplePDBMovie = movie;
+  }
+}
+
+void System::updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle)
+{
+  if (samplePDBMovie.has_value())
+  {
+    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), components,
+                           numberOfMoleculesPerComponent, currentCycle, spanOfFrameworkAtoms());
   }
 }
 

@@ -20,7 +20,7 @@ export struct SampleMovie
   void update(const ForceField& forceField, std::size_t systemId, const SimulationBox simulationBox,
               const std::span<Atom> atomData, const std::vector<Component> &components,
               const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-              std::size_t currentCycle);
+              std::size_t currentCycle, std::span<const Atom> frameworkAtoms = {});
 
   std::size_t sampleEvery{10};
   bool restrictToBox;

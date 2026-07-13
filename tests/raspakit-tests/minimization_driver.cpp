@@ -17,6 +17,7 @@ import minimization_baker;
 import minimization_dof_layout;
 import minimization_generalized_coordinates;
 import minimization;
+import sample_movies;
 
 namespace
 {
@@ -162,6 +163,37 @@ TEST(minimization_driver, rigid_methane_pair_reaches_local_minimum)
   EXPECT_TRUE(minimization.results[0].converged);
   EXPECT_LT(minimization.results[0].finalEnergy, minimization.results[0].initialEnergy);
   EXPECT_EQ(minimization.results[0].negativeModes, 0u);
+}
+
+TEST(minimization_driver, writes_pdb_movie_during_minimization)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {},
+                         {2}, 5);
+  system.moleculeData[0].centerOfMassPosition = double3(10.0, 12.5, 12.5);
+  system.moleculeData[1].centerOfMassPosition = double3(13.0, 12.5, 12.5);
+  setRigidMoleculePositions(system, 0);
+  setRigidMoleculePositions(system, 1);
+  system.forceField.pseudoAtoms[static_cast<std::size_t>(system.components[0].atoms[0].type)].printToPDB = true;
+  system.setSamplePDBMovie(SampleMovie(0, 1, false, std::nullopt));
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 500;
+  options.maximumStepLength = 0.2;
+  options.convergenceFactor = 0.0;
+  options.rmsGradientTolerance = 1e-7;
+  options.maxGradientTolerance = 1e-6;
+  options.printEvery = 500;
+  Minimization minimization(options, {system}, false);
+  ASSERT_NO_THROW(minimization.run());
+
+  std::ifstream movie("movies/movie.s0.pdb");
+  ASSERT_TRUE(movie.is_open());
+  const std::string contents((std::istreambuf_iterator<char>(movie)), std::istreambuf_iterator<char>());
+  EXPECT_TRUE(contents.contains("ATOM"));
+  EXPECT_TRUE(contents.contains("ENDMDL"));
+  EXPECT_GT(std::ranges::count(contents, '\n'), 5u);
 }
 
 TEST(minimization_driver, flexible_methane_pair_reaches_local_minimum)

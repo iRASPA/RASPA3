@@ -24,7 +24,7 @@ SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool res
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
                          std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
                          const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                         std::size_t currentCycle)
+                         std::size_t currentCycle, std::span<const Atom> frameworkAtoms)
 {
   if (currentCycle % sampleEvery == 0)
   {
@@ -36,6 +36,28 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
     std::print(stream, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA,
                simulationBox.lengthB, simulationBox.lengthC, simulationBox.angleAlpha * 180.0 / std::numbers::pi,
                simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
+
+    std::size_t serialNumber{1};
+    for (const Atom &atom : frameworkAtoms)
+    {
+      double3 position = atom.position;
+      if (restrictToBox)
+      {
+        position = simulationBox.mapToBox(position);
+      }
+      std::size_t atomicNumber = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].atomicNumber;
+      std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name);
+      std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
+      bool print_to_output = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].printToPDB;
+      if (print_to_output)
+      {
+        std::print(stream,
+                   "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
+                   serialNumber, name.substr(0, 4), ' ', " ", ' ', 0, ' ', position.x, position.y, position.z, 1.0,
+                   0.0, ' ', chemicalElement);
+        ++serialNumber;
+      }
+    }
 
     std::size_t index{0};
     for (std::size_t l = 0; l != components.size(); ++l)
@@ -67,8 +89,9 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
           {
             std::print(stream,
                        "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
-                       index, name.substr(0, 4), ' ', " ", ' ', 0, ' ', position.x, position.y, position.z,
+                       serialNumber, name.substr(0, 4), ' ', " ", ' ', 0, ' ', position.x, position.y, position.z,
                        1.0, 0.0, ' ', chemicalElement);
+            ++serialNumber;
           }
         }
         index += size;

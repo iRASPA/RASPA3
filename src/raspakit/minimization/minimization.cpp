@@ -104,6 +104,8 @@ void Minimization::run()
         }
       }
 
+      system.updateSamplePDBMovie(systemIndex, iteration);
+
       if (step.converged)
       {
         break;

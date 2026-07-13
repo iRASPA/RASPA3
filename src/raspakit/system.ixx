@@ -498,6 +498,7 @@ export struct System
   void setThermostat(const std::optional<Thermostat> &thermo);
 
   void setSamplePDBMovie(const std::optional<SampleMovie> &movie);
+  void updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle);
 
   void setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram> &hist);
   void setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist);

@@ -1,6 +1,5 @@
 {
   "SimulationType": "Minimization",
-  "RandomSeed": 12345,
   "MaximumNumberOfMinimizationSteps": 1000,
   "MaximumStepLength": 0.2,
   "RMSGradientTolerance": 1.0e-6,
@@ -17,7 +16,9 @@
       "HeliumVoidFraction": 0.81,
       "ChargeMethod": "Ewald",
       "ExternalTemperature": 300.0,
-      "ExternalPressure": 100000.0
+      "ExternalPressure": 0.0,
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 1
     }
   ],
 
