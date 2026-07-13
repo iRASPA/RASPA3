@@ -26,6 +26,96 @@ import integrators;
 import integrators_update;
 import integrators_compute;
 import interpolation_energy_grid;
+import cif_reader;
+import mc_moves_probabilities;
+
+namespace
+{
+std::filesystem::path repositoryRoot()
+{
+  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+}
+
+std::string readLocalFile(const std::filesystem::path &path)
+{
+  std::ifstream stream(path);
+  if (!stream)
+  {
+    throw std::runtime_error(std::format("Could not read '{}'", path.string()));
+  }
+  return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+}
+
+void printEnergyDecomposition(const RunningEnergy &energy, const std::string &label)
+{
+  const double conv = Units::EnergyToKelvin;
+  const auto toKelvin = [&](double internal) { return conv * internal; };
+  const auto toKJmol = [&](double internal) { return conv * internal / 1.2027242847; };
+  std::print("=== {} ===\n", label);
+  std::print("  Total:                 {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.potentialEnergy()),
+             toKelvin(energy.potentialEnergy()));
+  std::print("  Host/ads VDW:          {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.frameworkMoleculeVDW),
+             toKelvin(energy.frameworkMoleculeVDW));
+  std::print("  Host/ads Real:         {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.frameworkMoleculeCharge),
+             toKelvin(energy.frameworkMoleculeCharge));
+  std::print("  Ewald Fourier:         {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.ewald_fourier),
+             toKelvin(energy.ewald_fourier));
+  std::print("  Ewald self:            {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.ewald_self),
+             toKelvin(energy.ewald_self));
+  std::print("  Ewald exclusion:       {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.ewald_exclusion),
+             toKelvin(energy.ewald_exclusion));
+  std::print("  Total VDW:             {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.VanDerWaalsEnergy()),
+             toKelvin(energy.VanDerWaalsEnergy()));
+  std::print("  Total Coulomb:         {: .2f} kJ/mol  ({: .2f} K)\n", toKJmol(energy.CoulombEnergy()),
+             toKelvin(energy.CoulombEnergy()));
+  std::print("\n");
+}
+}  // namespace
+
+TEST(energy_decomposition, CO2_in_IRMOF1_OMS_geometry)
+{
+  const std::filesystem::path exampleDir =
+      repositoryRoot() / "examples/basic/19_minimization_co2_in_irmof_1";
+
+  ForceField forceField = ForceField::readForceField(exampleDir.string(), "force_field.json").value();
+  forceField.chargeMethod = ForceField::ChargeMethod::Ewald;
+  forceField.useCharge = true;
+
+  const std::string cifContent = readLocalFile(exampleDir / "IRMOF-1.cif");
+  const auto cif = CIFReader::readCIFString(cifContent, forceField, CIFReader::UseChargesFrom::PseudoAtoms);
+  ASSERT_TRUE(cif.has_value());
+  auto [simulationBox, spaceGroupHallNumber, definedAtoms, fractionalAtomsUnitCell] = cif.value();
+  Framework framework = Framework(forceField, "IRMOF-1", simulationBox, spaceGroupHallNumber, definedAtoms,
+                                  fractionalAtomsUnitCell, int3(1, 1, 1));
+
+  MCMoveProbabilities probabilities;
+  Component co2(Component::Type::Adsorbate, 0, forceField, "CO2", (exampleDir / "CO2").string(), 5, 21, probabilities,
+                std::nullopt, false);
+
+  auto evaluateAtPositions = [&](const std::string &label, const std::array<double3, 3> &positions)
+  {
+    System system = System(forceField, std::nullopt, false, 300.0, 0.0, 0.81, framework, {co2}, {}, {1}, 5);
+    std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+    for (std::size_t atom = 0; atom < positions.size(); ++atom)
+    {
+      moleculeAtoms[atom].position = positions[atom];
+    }
+    RunningEnergy energy = system.computeTotalEnergies();
+    printEnergyDecomposition(energy, label);
+    return energy;
+  };
+
+  const std::array<double3, 3> raspa2Oms = {double3(10.136569193677, 10.136569193677, 7.419907533962),
+                                            double3(9.417951022032, 9.417951022032, 7.955982945414),
+                                            double3(8.699332850387, 8.699332850387, 8.492058356865)};
+  const std::array<double3, 3> raspa3Pore = {double3(9.4276655408314216, 17.808185239505558, 16.404334459168581),
+                                             double3(9.919740710490089, 18.722474610990751, 15.912259289509912),
+                                             double3(10.411815880148756, 19.636763982475944, 15.420184119851244)};
+
+  const RunningEnergy omsEnergy = evaluateAtPositions("RASPA3 at RASPA2 OMS geometry", raspa2Oms);
+  evaluateAtPositions("RASPA3 at RASPA3 pore geometry (seed 12345)", raspa3Pore);
+  EXPECT_NEAR(omsEnergy.potentialEnergy() * Units::EnergyToKelvin, -2701.54, 5.0);
+}
 
 TEST(energy_decomposition, CO2_Methane_in_Box)
 {

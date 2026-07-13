@@ -17,8 +17,8 @@
       "ChargeMethod": "Ewald",
       "ExternalTemperature": 300.0,
       "ExternalPressure": 0.0,
-      "OutputPDBMovie" : true,
-      "SampleMovieEvery" : 1
+      "OutputPDBMovie": true,
+      "SampleMovieEvery": 1
     }
   ],
 

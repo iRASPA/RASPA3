@@ -63,19 +63,20 @@
       "source": "D. Dubbeldam et al., Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
     },
     {
-      "name": "H1", "type": "lennard-jones", "parameters": [10.9, 2.64],
+      "name": "H1", "type": "lennard-jones", "parameters": [7.65, 2.85],
       "source": "D. Dubbeldam et al., Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
     },
     {
-      "name": "O_co2", "type": "lennard-jones", "parameters": [80.507, 3.033],
+      "name": "O_co2", "type": "lennard-jones", "parameters": [85.671, 3.017],
       "source": "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820."
     },
     {
-      "name": "C_co2", "type": "lennard-jones", "parameters": [28.129, 2.757],
+      "name": "C_co2", "type": "lennard-jones", "parameters": [29.933, 2.745],
       "source": "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820."
     }
   ],
   "MixingRule": "Lorentz-Berthelot",
   "TruncationMethod": "shifted",
-  "TailCorrections": false
+  "TailCorrections": false,
+  "CutOffVDW": 11.8
 }

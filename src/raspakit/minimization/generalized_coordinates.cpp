@@ -10,6 +10,7 @@ import simd_quatd;
 import atom;
 import molecule;
 import component;
+import simulationbox;
 
 namespace
 {
@@ -33,6 +34,30 @@ void regenerateRigidAtoms(System &system, std::size_t moleculeIndex)
   {
     atoms[molecule.atomIndex + localAtom].position =
         molecule.centerOfMassPosition + rotation * component.atoms[localAtom].position;
+  }
+}
+
+void wrapMoleculeToPrimaryCell(System &system, std::size_t moleculeIndex)
+{
+  Molecule &molecule = system.moleculeData[moleculeIndex];
+  const Component &component = system.components[molecule.componentId];
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  const double3 centerOfMass =
+      component.rigid ? molecule.centerOfMassPosition : component.computeCenterOfMass(atoms);
+  const double3 centerOfMassPbc = system.simulationBox.mapToBox(centerOfMass);
+  const double3 shift = centerOfMassPbc - centerOfMass;
+  if (double3::dot(shift, shift) < 1.0e-30)
+  {
+    return;
+  }
+
+  if (component.rigid)
+  {
+    molecule.centerOfMassPosition = centerOfMassPbc;
+  }
+  for (Atom &atom : atoms)
+  {
+    atom.position += shift;
   }
 }
 }  // namespace
@@ -65,6 +90,7 @@ void applyGeneralizedDisplacement(System &system, const MinimizationDofLayout &l
         }
         atoms[molecule.atomIndex + localAtom].position += delta;
       }
+      wrapMoleculeToPrimaryCell(system, moleculeIndex);
       continue;
     }
 
@@ -82,5 +108,6 @@ void applyGeneralizedDisplacement(System &system, const MinimizationDofLayout &l
       molecule.orientation = (quaternionFromRotationVector(omega) * molecule.orientation).normalized();
     }
     regenerateRigidAtoms(system, moleculeIndex);
+    wrapMoleculeToPrimaryCell(system, moleculeIndex);
   }
 }
