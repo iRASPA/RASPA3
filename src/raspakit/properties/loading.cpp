@@ -322,8 +322,8 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
           const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
           const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
           const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
-          std::print(stream, "    mol-fraction:   {:.6e} ({:.6e} +/- {:.6e})\n", molFraction, averageMolFraction,
-                     errorMolFraction);
+          std::print(stream, "    mol-fraction:   {:.6e} [-]        ({:.6e} +/- {:.6e})\n", molFraction,
+                     averageMolFraction, errorMolFraction);
         }
         break;
       case Units::System::ReducedUnits:
@@ -338,8 +338,8 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
           const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
           const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
           const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
-          std::print(stream, "    mol-fraction:   {:.6e} ({:.6e} +/- {:.6e})\n", molFraction, averageMolFraction,
-                     errorMolFraction);
+          std::print(stream, "    mol-fraction:   {:.6e} [-]        ({:.6e} +/- {:.6e})\n", molFraction,
+                     averageMolFraction, errorMolFraction);
         }
         break;
     }
