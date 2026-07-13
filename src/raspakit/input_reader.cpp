@@ -282,6 +282,47 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     printEvery = parsed_data["PrintEvery"].get<std::size_t>();
   }
+  minimizationOptions.printEvery = printEvery;
+
+  if (parsed_data.contains("MaximumNumberOfMinimizationSteps"))
+  {
+    if (!parsed_data["MaximumNumberOfMinimizationSteps"].is_number_unsigned())
+    {
+      throw std::runtime_error(
+          "[Input reader]: MaximumNumberOfMinimizationSteps must be a positive unsigned integer");
+    }
+    minimizationOptions.maximumNumberOfSteps =
+        parsed_data["MaximumNumberOfMinimizationSteps"].get<std::size_t>();
+  }
+  auto parseMinimizationNumber = [&](const char *key, double &value)
+  {
+    if (!parsed_data.contains(key))
+    {
+      return;
+    }
+    if (!parsed_data[key].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: {} must be a finite number", key));
+    }
+    value = parsed_data[key].get<double>();
+    if (!std::isfinite(value))
+    {
+      throw std::runtime_error(std::format("[Input reader]: {} must be finite", key));
+    }
+  };
+  parseMinimizationNumber("MaximumStepLength", minimizationOptions.maximumStepLength);
+  parseMinimizationNumber("RMSGradientTolerance", minimizationOptions.rmsGradientTolerance);
+  parseMinimizationNumber("MaxGradientTolerance", minimizationOptions.maxGradientTolerance);
+  parseMinimizationNumber("MinimizationConvergenceFactor", minimizationOptions.convergenceFactor);
+  parseMinimizationNumber("MinimumEigenvalue", minimizationOptions.minimumEigenvalue);
+
+  if (minimizationOptions.maximumNumberOfSteps == 0 || minimizationOptions.maximumStepLength <= 0.0 ||
+      minimizationOptions.rmsGradientTolerance <= 0.0 || minimizationOptions.maxGradientTolerance <= 0.0 ||
+      minimizationOptions.minimumEigenvalue <= 0.0 || minimizationOptions.convergenceFactor < 0.0)
+  {
+    throw std::runtime_error(
+        "[Input reader]: minimization limits and tolerances must be positive and convergence factor non-negative");
+  }
 
   if (parsed_data.contains("WriteBinaryRestartEvery") && parsed_data["WriteBinaryRestartEvery"].is_number_unsigned())
   {
@@ -2190,6 +2231,12 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",
     "PrintEvery",
+    "MaximumNumberOfMinimizationSteps",
+    "MaximumStepLength",
+    "RMSGradientTolerance",
+    "MaxGradientTolerance",
+    "MinimizationConvergenceFactor",
+    "MinimumEigenvalue",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",

@@ -20,6 +20,7 @@
 15. [Molecular Dynamics: butane and isobutane in FAU](#Example_basic_15)
 16. [Monte Carlo: molecule properties of 2-methylbutane in box](#Example_basic_16)
 17. [Molecular Dynamics: molecule properties of 2-methylbutane in box](#Example_basic_17)
+19. [Minimization: CO₂ in IRMOF-1](#Example_basic_19)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -57,6 +58,7 @@ The inputs for the simulation are specified in a json-file called `simulation.js
   ]
 }
 ```
+
 There are global settings, but also settings for `Systems` and `Components`. The latter are arrays of sections with options. In this example, we specify one system of type `Box` with box-lengths \f$30 \times 30 \times 30\f$ &Aring;. We also set the option to make movies to `true` and sample the movie-snapshots every 10 cycles.
 
 In RASPA, the cycle is define as max(20,\f$N\f$) steps, where \f$N\f$ is the number of molecules in the system. In every cycle, each of the molecules has on average been used for a Monte Carlo move (accepted or rejected). There is a minimum of 20 steps to avoid that low-density systems or not sampled well. The definition of a cycle is less dependent on the system size. The number of Monte Carlo steps is roughly the number of cycles times the average number of molecules.
@@ -1694,6 +1696,22 @@ This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It compu
   ]
 }
 ```
+
+#### Minimization: CO₂ in IRMOF-1 <a name="Example_basic_19"></a>
+
+This fixed-cell example minimizes one rigid CO₂ molecule in IRMOF-1 with Ewald electrostatics and the Baker
+eigenvector-following driver. Molecular positions are initialized deterministically by
+`CreateNumberOfMolecules` and `RandomSeed`; rigid translations and quaternion-tangent rotations are optimized.
+
+Run from `examples/basic/19_minimization_co2_in_irmof_1`:
+
+```bash
+raspa3
+```
+
+Progress is written to `output/minimization.s0.txt`, and the final energy, convergence diagnostics, and atomic
+coordinates are written to `output/minimization.s0.json`. A successful run ends with
+`Final minimization status: converged=true`.
 
 #### Molecular Dynamics: molecule properties of 2-methylbutane in box<a name="Example_basic_17"></a>
 

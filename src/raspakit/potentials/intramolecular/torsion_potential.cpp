@@ -616,7 +616,7 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   {
     double3 Pb = double3::cross(Dab, Dcb_unit);
     double3 Pc = double3::cross(Dcb_unit, Ddc);
-    sign = double3::dot(Dcb_unit, double3::cross(Pc, Pb));
+    sign = double3::dot(Dcb_unit, double3::cross(Pb, Pc));
     return std::copysign(std::acos(cos_phi), sign);
   };
 

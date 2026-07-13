@@ -114,6 +114,9 @@ export struct BondPotential
   std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
                                                                                       const double3 &posB) const;
 
+  std::tuple<double, std::array<double3, 2>, double3x3, double, double> potentialEnergyGradientHessianStrain(
+      const double3 &posA, const double3 &posB) const;
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotential &b);
 };

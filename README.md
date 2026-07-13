@@ -96,12 +96,12 @@ cd examples/basic/1_mc_methane_in_box
 - Smart MC
 - partial molar energies/volumes
 - polarization
+- optimization
 
 # Todo-list
 - ASE interface
 - flexible frameworks
 - cell-lists for rigid frameworks
 - zeo++-type calculations
-- optimization
 - elastic constants
 - HDF5 property writing

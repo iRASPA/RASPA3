@@ -23,6 +23,7 @@ import property_loading;
 import property_enthalpy;
 import energy_status;
 import averages;
+import minimization_options;
 
 /**
  * \struct InputDataSystem
@@ -124,6 +125,7 @@ export struct InputReader
 
   std::size_t numberOfThreads{1};  ///< Number of threads to be used in the simulation.
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
+  MinimizationOptions minimizationOptions{};
 
   ForceField forceField;          ///< Force field used for defining interactions in the simulation.
   std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.

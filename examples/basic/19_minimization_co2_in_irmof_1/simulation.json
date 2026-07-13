@@ -1,0 +1,30 @@
+{
+  "SimulationType": "Minimization",
+  "RandomSeed": 12345,
+  "MaximumNumberOfMinimizationSteps": 1000,
+  "MaximumStepLength": 0.2,
+  "RMSGradientTolerance": 1.0e-6,
+  "MaxGradientTolerance": 1.0e-6,
+  "MinimizationConvergenceFactor": 1.0,
+  "MinimumEigenvalue": 1.0e-3,
+  "PrintEvery": 10,
+
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "IRMOF-1",
+      "NumberOfUnitCells": [1, 1, 1],
+      "HeliumVoidFraction": 0.81,
+      "ChargeMethod": "Ewald",
+      "ExternalTemperature": 300.0,
+      "ExternalPressure": 100000.0
+    }
+  ],
+
+  "Components": [
+    {
+      "Name": "CO2",
+      "CreateNumberOfMolecules": 1
+    }
+  ]
+}

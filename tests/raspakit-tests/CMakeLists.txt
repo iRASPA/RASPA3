@@ -28,6 +28,15 @@ add_executable(unit_tests_raspakit
   triquintic_derivative_inter_real_ewald.cpp
   intramolecular_energy_gradient_strain_bonds.cpp
   intramolecular_energy_gradient_strain_bends.cpp
+  minimization_hessian_bond.cpp
+  minimization_hessian_bend.cpp
+  minimization_hessian_torsion.cpp
+  minimization_hessian_cross.cpp
+  minimization_hessian_intermolecular.cpp
+  minimization_hessian_intermolecular_rigid.cpp
+  minimization_hessian_framework.cpp
+  minimization_hessian_ewald.cpp
+  minimization_driver.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp

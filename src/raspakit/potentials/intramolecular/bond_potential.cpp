@@ -10,6 +10,7 @@ import double3;
 import double3x3;
 import gradient_factor;
 import distance_potential_gradient_strain;
+import distance_potential_gradient_hessian_strain;
 
 BondPotential::BondPotential(std::array<std::size_t, 2> identifiers, BondType type,
                              std::vector<double> vector_parameters)
@@ -364,6 +365,12 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
     const double3 &posA, const double3 &posB) const
 {
   return Potentials::Internal::distancePotentialEnergyGradientStrain(type, parameters, posA, posB, false);
+}
+
+std::tuple<double, std::array<double3, 2>, double3x3, double, double>
+BondPotential::potentialEnergyGradientHessianStrain(const double3 &posA, const double3 &posB) const
+{
+  return Potentials::Internal::distancePotentialEnergyGradientHessianStrain(type, parameters, posA, posB, false);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b)

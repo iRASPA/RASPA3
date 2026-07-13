@@ -7,6 +7,7 @@ import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;
 import molecular_dynamics;
+import minimization;
 //import breakthrough;
 //import breakthrough_simulation;
 //import mixture_prediction_simulation;
@@ -102,6 +103,12 @@ int main(int argc, char* argv[])
         }
 
         md.run();
+        break;
+      }
+      case InputReader::SimulationType::Minimization:
+      {
+        Minimization minimization(inputReader);
+        minimization.run();
         break;
       }
       case InputReader::SimulationType::Breakthrough:

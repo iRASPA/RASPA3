@@ -23,6 +23,7 @@ import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import running_energy;
+import double3;
 
 std::optional<BondPotential> Potentials::IntraMolecularPotentials::findBondPotential(std::size_t A, std::size_t B) const
 {
