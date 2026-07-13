@@ -1,5 +1,6 @@
 {
   "SimulationType": "Minimization",
+  "NumberOfPreInitializationCycles" : 1000,
   "MaximumNumberOfMinimizationSteps": 1000,
   "MaximumStepLength": 0.2,
   "RMSGradientTolerance": 1.0e-6,
@@ -15,7 +16,7 @@
       "NumberOfUnitCells": [1, 1, 1],
       "HeliumVoidFraction": 0.81,
       "ChargeMethod": "Ewald",
-      "ExternalTemperature": 300.0,
+      "ExternalTemperature": 10.0,
       "ExternalPressure": 0.0,
       "OutputPDBMovie": true,
       "SampleMovieEvery": 1
@@ -25,6 +26,9 @@
   "Components": [
     {
       "Name": "CO2",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
       "CreateNumberOfMolecules": 1
     }
   ]

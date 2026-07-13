@@ -7,12 +7,26 @@ import std;
 import input_reader;
 import atom;
 import system;
+import randomnumbers;
+import mc_moves;
+import property_lambda_probability_histogram;
+import component;
 import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 
 Minimization::Minimization(InputReader &inputReader)
-    : options(inputReader.minimizationOptions), systems(std::move(inputReader.systems))
+    : options(inputReader.minimizationOptions),
+      numberOfPreInitializationCycles(inputReader.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(inputReader.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(inputReader.numberOfEquilibrationCycles),
+      printEvery(inputReader.printEvery),
+      writeBinaryRestartEvery(inputReader.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(inputReader.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(inputReader.optimizeMCMovesEvery),
+      randomSeed(inputReader.randomSeed),
+      random(RandomNumber(inputReader.randomSeed)),
+      systems(std::move(inputReader.systems))
 {
 }
 
@@ -51,9 +65,253 @@ void Minimization::setup()
   }
 }
 
-void Minimization::run()
+void Minimization::performCycle()
 {
-  setup();
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
+
+  totalNumberOfMolecules = std::transform_reduce(
+      systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
+      [](const System& system) { return system.numberOfMolecules(); });
+  totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+
+  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+
+  for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  {
+    std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
+    System& selectedSystem = systems[selectedSystemPair.first];
+    System& selectedSecondSystem = systems[selectedSystemPair.second];
+
+    std::size_t selectedComponent = selectedSystem.randomComponent(random);
+
+    switch (simulationStage)
+    {
+      case SimulationStage::Uninitialized:
+        break;
+      case SimulationStage::PreInitialization:
+        MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                     fractionalMoleculeSystem);
+        break;
+      case SimulationStage::Initialization:
+        MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                  fractionalMoleculeSystem);
+        break;
+      case SimulationStage::Equilibration:
+        MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                 fractionalMoleculeSystem);
+
+        selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSecondSystem.containsTheFractionalMolecule);
+
+        if (selectedSystem.usesGibbsConventionalCFCMC())
+        {
+          selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+        }
+
+        selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+
+        selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        break;
+      case SimulationStage::Run:
+        break;
+    }
+
+    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+        selectedSecondSystem.containsTheFractionalMolecule);
+    if (selectedSystem.usesGibbsConventionalCFCMC())
+    {
+      selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+    }
+    selectedSystem.pairSwapLambdaSampleOccupancy();
+    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+    selectedSystem.reactionLambdaSampleOccupancy();
+    selectedSecondSystem.reactionLambdaSampleOccupancy();
+  }
+}
+
+void Minimization::preInitialize()
+{
+  if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
+  simulationStage = SimulationStage::PreInitialization;
+
+  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz && outputToFiles)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        std::print(streams[system_id], "{}",
+                   system.writePreInitializationStatusReport(currentCycle, numberOfPreInitializationCycles));
+        std::flush(streams[system_id]);
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
+    {
+      // minimization driver does not currently write binary restarts
+    }
+
+  continuePreInitializationStage:;
+  }
+}
+
+void Minimization::initialize()
+{
+  if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
+  simulationStage = SimulationStage::Initialization;
+
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz && outputToFiles)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        std::print(streams[system_id], "{}",
+                   system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+        std::flush(streams[system_id]);
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
+    {
+      // minimization driver does not currently write binary restarts
+    }
+
+  continueInitializationStage:;
+  }
+}
+
+void Minimization::equilibrate()
+{
+  if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
+  simulationStage = SimulationStage::Equilibration;
+
+  for (System& system : systems)
+  {
+    system.runningEnergies = system.computeTotalEnergies();
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, true);
+        component.lambdaGibbs.clear();
+      }
+    }
+    system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.pairSwapLambdaClearBookkeeping();
+    system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.reactionLambdaClearBookkeeping();
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz && outputToFiles)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        std::print(streams[system_id], "{}",
+                   system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
+        std::flush(streams[system_id]);
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % rescaleWangLandauEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        for (Component& component : system.components)
+        {
+          component.lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
+              system.containsTheFractionalMolecule);
+          if (system.usesGibbsConventionalCFCMC())
+          {
+            component.lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
+          }
+        }
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+      }
+    }
+
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
+    {
+      // minimization driver does not currently write binary restarts
+    }
+
+  continueEquilibrationStage:;
+  }
+}
+
+void Minimization::runPhase()
+{
+  if (simulationStage == SimulationStage::Run) return;
+  simulationStage = SimulationStage::Run;
+
   bool allConverged = true;
 
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
@@ -121,11 +379,41 @@ void Minimization::run()
     }
   }
 
-  tearDown();
   if (!allConverged)
   {
     throw std::runtime_error("Baker minimization did not converge for all systems");
   }
+}
+
+void Minimization::run()
+{
+  switch (simulationStage)
+  {
+    case SimulationStage::Uninitialized:
+      setup();
+      break;
+    case SimulationStage::PreInitialization:
+      goto continuePreInitializationStage;
+    case SimulationStage::Initialization:
+      goto continueInitializationStage;
+    case SimulationStage::Equilibration:
+      goto continueEquilibrationStage;
+    case SimulationStage::Run:
+      goto continueRunStage;
+    default:
+      break;
+  }
+
+continuePreInitializationStage:
+  preInitialize();
+continueInitializationStage:
+  initialize();
+continueEquilibrationStage:
+  equilibrate();
+continueRunStage:
+  runPhase();
+
+  tearDown();
 }
 
 void Minimization::output()
