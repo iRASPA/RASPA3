@@ -332,7 +332,26 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
-  useCharge = parsed_data.value("ChargeMethod", "Ewald") != "None";
+  const std::string chargeMethodString = parsed_data.value("ChargeMethod", "Ewald");
+  if (caseInSensStringCompare(chargeMethodString, "None"))
+  {
+    chargeMethod = ChargeMethod::Ewald;
+    useCharge = false;
+  }
+  else
+  {
+    chargeMethod = chargeMethodFromString(chargeMethodString);
+    useCharge = true;
+  }
+
+  if (parsed_data.contains("ModifiedShiftedForceBeta"))
+  {
+    modifiedShiftedForceBeta = parsed_data["ModifiedShiftedForceBeta"].get<double>();
+    if (modifiedShiftedForceBeta <= 0.0)
+    {
+      throw std::runtime_error("[ForceField]: ModifiedShiftedForceBeta must be positive\n");
+    }
+  }
 
   if (parsed_data.contains("EwaldPrecision"))
   {
@@ -1425,6 +1444,50 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
   }
 }
 
+ForceField::ChargeMethod ForceField::chargeMethodFromString(const std::string& value)
+{
+  if (caseInSensStringCompare(value, "Ewald")) return ChargeMethod::Ewald;
+  if (caseInSensStringCompare(value, "Coulomb")) return ChargeMethod::Coulomb;
+  if (caseInSensStringCompare(value, "Wolf")) return ChargeMethod::Wolf;
+  if (caseInSensStringCompare(value, "DampedShiftedForce") ||
+      caseInSensStringCompare(value, "Damped-Shifted-Force") || caseInSensStringCompare(value, "DSF"))
+  {
+    return ChargeMethod::DampedShiftedForce;
+  }
+  if (caseInSensStringCompare(value, "ModifiedShiftedForce") ||
+      caseInSensStringCompare(value, "Modified-Shifted-Force") || caseInSensStringCompare(value, "MSF") ||
+      caseInSensStringCompare(value, "mDSF"))
+  {
+    return ChargeMethod::ModifiedShiftedForce;
+  }
+  if (caseInSensStringCompare(value, "ZeroDipole") || caseInSensStringCompare(value, "Zero-Dipole") ||
+      caseInSensStringCompare(value, "ZD"))
+  {
+    return ChargeMethod::ZeroDipole;
+  }
+  throw std::runtime_error(std::format("Unknown charge method '{}'", value));
+}
+
+std::string_view ForceField::chargeMethodName(ChargeMethod method)
+{
+  switch (method)
+  {
+    case ChargeMethod::Ewald:
+      return "Ewald";
+    case ChargeMethod::Coulomb:
+      return "Coulomb";
+    case ChargeMethod::Wolf:
+      return "Wolf";
+    case ChargeMethod::DampedShiftedForce:
+      return "DampedShiftedForce";
+    case ChargeMethod::ModifiedShiftedForce:
+      return "ModifiedShiftedForce";
+    case ChargeMethod::ZeroDipole:
+      return "ZeroDipole";
+  }
+  std::unreachable();
+}
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceField& f)
 {
   archive << f.versionNumber;
@@ -1448,6 +1511,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
 
   archive << f.EwaldPrecision;
   archive << f.EwaldAlpha;
+  archive << f.modifiedShiftedForceBeta;
   archive << f.numberOfWaveVectors;
   archive << f.reciprocalIntegerCutOffSquared;
   archive << f.reciprocalCutOffSquared;
@@ -1528,6 +1592,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.EwaldPrecision;
   archive >> f.EwaldAlpha;
+  if (versionNumber >= 2) archive >> f.modifiedShiftedForceBeta;
   archive >> f.numberOfWaveVectors;
   archive >> f.reciprocalIntegerCutOffSquared;
   archive >> f.reciprocalCutOffSquared;
@@ -1590,6 +1655,7 @@ bool ForceField::operator==(const ForceField& other) const
       cutOffCoulomb != other.cutOffCoulomb || dualCutOff != other.dualCutOff ||
       numberOfPseudoAtoms != other.numberOfPseudoAtoms || energyOverlapCriteria != other.energyOverlapCriteria ||
       EwaldPrecision != other.EwaldPrecision || EwaldAlpha != other.EwaldAlpha ||
+      modifiedShiftedForceBeta != other.modifiedShiftedForceBeta ||
       numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
       useCharge != other.useCharge || omitEwaldFourier != other.omitEwaldFourier ||
       minimumRosenbluthFactor != other.minimumRosenbluthFactor ||
@@ -1630,6 +1696,7 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "CutOffMoleculeVDW",
     "CutOffCoulomb",
     "ChargeMethod",
+    "ModifiedShiftedForceBeta",
     "PseudoAtoms",
     "SelfInteractions",
     "BinaryInteractions",

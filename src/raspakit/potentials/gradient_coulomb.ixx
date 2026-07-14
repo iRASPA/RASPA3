@@ -9,6 +9,7 @@ import double4;
 import units;
 import forcefield;
 import gradient_factor;
+import potential_coulomb_real_space;
 
 export namespace Potentials
 {
@@ -17,7 +18,7 @@ export namespace Potentials
  *
  * This function calculates the gradient of the Coulomb potential based on the specified
  * charge method in the provided force field. It handles different charge calculation
- * methods such as Ewald, Coulomb, Wolf, and ModifiedWolf.
+ * methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
  *
  * The returned GradientFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -52,14 +53,18 @@ export namespace Potentials
                                  (r * r * r)));
     }
     case ForceField::ChargeMethod::Coulomb:
+    case ForceField::ChargeMethod::Wolf:
+    case ForceField::ChargeMethod::DampedShiftedForce:
+    case ForceField::ChargeMethod::ModifiedShiftedForce:
+    case ForceField::ChargeMethod::ZeroDipole:
     {
-      return GradientFactor(scaling * chargeA * chargeB / r, 0.0, 0.0);
+      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
+      const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      return GradientFactor(scaling * prefactor * factors.potential, prefactor * factors.potential,
+                            scaling * prefactor * factors.firstDerivativeFactor);
     }
-    default:
-      break;
   }
 
-  // In case of an unsupported charge method, return a default ForceFactor.
-  return GradientFactor(0.0, 0.0, 0.0);
+  std::unreachable();
 };
 }  // namespace Potentials

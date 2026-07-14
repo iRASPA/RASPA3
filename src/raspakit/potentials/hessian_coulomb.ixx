@@ -9,6 +9,7 @@ import double4;
 import units;
 import forcefield;
 import hessian_factor;
+import potential_coulomb_real_space;
 
 export namespace Potentials
 {
@@ -18,7 +19,7 @@ export namespace Potentials
  * This function calculates the energy, gradient, and hessian of the Coulomb potential based
  * on the specified charge method in the provided force field. It handles different charge
  * method in the provided force field. It handles different charge calculation
- * methods such as Ewald, Coulomb, Wolf, and ModifiedWolf.
+ * methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
  *
  * The returned HessianFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -59,17 +60,19 @@ export namespace Potentials
                6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr)));
     }
     case ForceField::ChargeMethod::Coulomb:
+    case ForceField::ChargeMethod::Wolf:
+    case ForceField::ChargeMethod::DampedShiftedForce:
+    case ForceField::ChargeMethod::ModifiedShiftedForce:
+    case ForceField::ChargeMethod::ZeroDipole:
     {
-      return HessianFactor(Units::CoulombicConversionFactor * scaling * chargeA * chargeB / r,
-                           -Units::CoulombicConversionFactor * scaling * chargeA * chargeB / (rr * r),
-                           Units::CoulombicConversionFactor * 3.0 * scaling * chargeA * chargeB / (rr * rr * r),
-                           -Units::CoulombicConversionFactor * 15.0 * scaling * chargeA * chargeB / (rr * rr * rr * r));
+      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
+      const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      return HessianFactor(scaling * prefactor * factors.potential, prefactor * factors.potential,
+                           scaling * prefactor * factors.firstDerivativeFactor,
+                           scaling * prefactor * factors.secondDerivativeFactor);
     }
-    default:
-      break;
   }
 
-  // In case of an unsupported charge method, return a default ForceFactor.
-  return HessianFactor(0.0, 0.0, 0.0, 0.0);
+  std::unreachable();
 };
 }  // namespace Potentials

@@ -7,6 +7,7 @@ import std;
 import forcefield;
 import energy_factor;
 import units;
+import potential_coulomb_real_space;
 
 import double4;
 
@@ -17,7 +18,8 @@ export namespace Potentials
  *
  * This function computes the Coulombic energy between two atoms based on the specified
  * force field's charge method. It accounts for scaling factors and the distance between
- * atoms. Supported charge methods include Ewald, Coulomb, Wolf, and ModifiedWolf.
+ * atoms. Supported methods include Ewald, Coulomb, Wolf, damped/modified shifted
+ * force, and zero-dipole summation.
  *
  * The returned EnergyFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -48,13 +50,17 @@ export namespace Potentials
       return EnergyFactor(scaling * temp, temp);
     }
     case ForceField::ChargeMethod::Coulomb:
+    case ForceField::ChargeMethod::Wolf:
+    case ForceField::ChargeMethod::DampedShiftedForce:
+    case ForceField::ChargeMethod::ModifiedShiftedForce:
+    case ForceField::ChargeMethod::ZeroDipole:
     {
-      return EnergyFactor(scaling * chargeA * chargeB / r, 0.0);
+      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
+      const double temp = Units::CoulombicConversionFactor * chargeA * chargeB * factors.potential;
+      return EnergyFactor(scaling * temp, temp);
     }
-    default:
-      break;
   }
 
-  return EnergyFactor(0.0, 0.0);
+  std::unreachable();
 };
 }  // namespace Potentials

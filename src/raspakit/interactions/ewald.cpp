@@ -10,6 +10,7 @@ import double3x3;
 import atom;
 import simulationbox;
 import energy_status;
+import potential_coulomb_real_space;
 import energy_status_inter;
 import units;
 import energy_factor;
@@ -19,6 +20,36 @@ import framework;
 import component;
 import coulomb_potential;
 import forcefield;
+
+namespace
+{
+void addRealSpaceSelfEnergy(RunningEnergy& energy, const ForceField& forceField, std::span<const Atom> atoms,
+                            double sign = 1.0)
+{
+  const double prefactor =
+      sign * Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
+  for (const Atom& atom : atoms)
+  {
+    const double scaledCharge = atom.scalingCoulomb * atom.charge;
+    energy.ewald_self += prefactor * scaledCharge * scaledCharge;
+    if (atom.groupId != 0)
+    {
+      energy.dudlambdaEwald[atom.groupId - 1] +=
+          2.0 * prefactor * atom.scalingCoulomb * atom.charge * atom.charge;
+    }
+  }
+}
+
+RunningEnergy realSpaceSelfEnergyDifference(const ForceField& forceField, std::span<const Atom> newAtoms,
+                                            std::span<const Atom> oldAtoms)
+{
+  RunningEnergy energy{};
+  if (forceField.omitInterInteractions) return energy;
+  addRealSpaceSelfEnergy(energy, forceField, newAtoms);
+  addRealSpaceSelfEnergy(energy, forceField, oldAtoms, -1.0);
+  return energy;
+}
+}  // namespace
 
 // Removal of pressure and free energy artifacts in charged periodic systems via net charge corrections
 // to the Ewald potential
@@ -203,7 +234,7 @@ void Interactions::precomputeEwaldFourierRigid(
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
   if (!forceField.useCharge) return;
-  if (forceField.omitEwaldFourier) return;
+  if (!forceField.usesEwaldFourier()) return;
 
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
@@ -331,7 +362,11 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energySum;
-  if (forceField.omitEwaldFourier) return energySum;
+  if (!forceField.usesEwaldFourier())
+  {
+    if (!forceField.omitInterInteractions) addRealSpaceSelfEnergy(energySum, forceField, moleculeAtomPositions);
+    return energySum;
+  }
 
   std::size_t numberOfAtoms = moleculeAtomPositions.size();
 
@@ -569,7 +604,11 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energySum;
-  if (forceField.omitEwaldFourier) return energySum;
+  if (!forceField.usesEwaldFourier())
+  {
+    if (!forceField.omitInterInteractions) addRealSpaceSelfEnergy(energySum, forceField, atomData);
+    return energySum;
+  }
 
   const bool flexibleFramework =
       framework && !framework->rigid && frameworkDynamics.size() == frameworkAtoms.size();
@@ -894,7 +933,7 @@ void Interactions::computeEwaldFourierGradientSingleMolecule(
     std::span<AtomDynamics> atomDynamics)
 {
   if (!forceField.useCharge) return;
-  if (forceField.omitEwaldFourier) return;
+  if (!forceField.usesEwaldFourier()) return;
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1023,7 +1062,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energy;
-  if (forceField.omitEwaldFourier) return energy;
+  if (!forceField.usesEwaldFourier()) return realSpaceSelfEnergyDifference(forceField, newatoms, oldatoms);
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1256,7 +1295,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   double singleIonFourierSum = 0.0;
 
   if (!forceField.useCharge) return energy;
-  if (forceField.omitEwaldFourier) return energy;
+  if (!forceField.usesEwaldFourier()) return realSpaceSelfEnergyDifference(forceField, newatoms, oldatoms);
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1502,7 +1541,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   if (!forceField.useCharge) return;
-  if (forceField.omitEwaldFourier) return;
+  if (!forceField.usesEwaldFourier()) return;
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1647,7 +1686,7 @@ void Interactions::acceptEwaldMove(const ForceField &forceField,
                                    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &totalEik)
 {
   if (!forceField.useCharge) return;
-  if (forceField.omitEwaldFourier) return;
+  if (!forceField.usesEwaldFourier()) return;
 
   storedEik = totalEik;
 }
@@ -1684,7 +1723,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   EnergyStatus energy(1, framework.has_value() ? 1uz : 0uz, components.size());
   double3x3 strainDerivative;
 
-  if (!forceField.useCharge || forceField.omitEwaldFourier) return std::make_pair(energy, strainDerivative);
+  if (!forceField.usesEwaldFourier()) return std::make_pair(energy, strainDerivative);
 
   std::size_t numberOfAtoms = atomData.size();
   std::size_t numberOfComponents = components.size();
@@ -1954,7 +1993,7 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
   RunningEnergy energySum{};
 
   if (!forceField.useCharge) return;
-  if (forceField.omitEwaldFourier) return;
+  if (!forceField.usesEwaldFourier()) return;
 
   std::size_t numberOfAtoms = moleculeAtomPositions.size();
 
@@ -2147,7 +2186,11 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   RunningEnergy energySum{};
 
   if (!forceField.useCharge) return energySum;
-  if (forceField.omitEwaldFourier) return energySum;
+  if (!forceField.usesEwaldFourier())
+  {
+    if (!forceField.omitInterInteractions) addRealSpaceSelfEnergy(energySum, forceField, moleculeAtomPositions);
+    return energySum;
+  }
 
   std::size_t numberOfAtoms = moleculeAtomPositions.size();
 

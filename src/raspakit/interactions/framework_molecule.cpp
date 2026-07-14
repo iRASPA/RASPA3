@@ -65,7 +65,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     double scalingCoulombB = it2->scalingCoulomb;
     double chargeB = it2->charge;
 
-    if (interpolationGrids[typeB].has_value() && !isFractional)
+    if (interpolationGrids[typeB].has_value() && !isFractional &&
+        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       energySum.frameworkMoleculeVDW += interpolationGrids[typeB]->interpolate(posB);
       if (useCharge)
@@ -171,7 +172,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && !isFractional)
+    if (interpolationGrids[typeB].has_value() && !isFractional &&
+        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       double energy = interpolationGrids[typeB]->interpolate(posB);
       if (energy > overlapCriteria)
@@ -231,7 +233,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && !isFractional)
+    if (interpolationGrids[typeB].has_value() && !isFractional &&
+        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       energySum.frameworkMoleculeVDW -= interpolationGrids[typeB]->interpolate(posB);
       if (useCharge)
@@ -513,7 +516,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    if (!flexibleFramework && interpolationGrids[typeA].has_value() && !isFractional)
+    if (!flexibleFramework && interpolationGrids[typeA].has_value() && !isFractional &&
+        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
       energySum.frameworkMoleculeVDW += energy_vdw;
@@ -605,7 +609,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    if (interpolationGrids[typeA].has_value() && !isFractional)
+    if (interpolationGrids[typeA].has_value() && !isFractional &&
+        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
       energy.frameworkComponentEnergy(0, compA).VanDerWaals += Potentials::EnergyFactor(energy_vdw, 0.0);

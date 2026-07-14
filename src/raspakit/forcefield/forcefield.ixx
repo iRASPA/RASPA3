@@ -30,10 +30,12 @@ export struct ForceField
    */
   enum class ChargeMethod : int
   {
-    Ewald = 0,        ///< Ewald summation method.
-    Coulomb = 1,      ///< Direct Coulomb interactions.
-    Wolf = 2,         ///< Wolf summation method.
-    ModifiedWolf = 3  ///< Modified Wolf method.
+    Ewald = 0,                 ///< Ewald summation method.
+    Coulomb = 1,               ///< Direct Coulomb interactions.
+    Wolf = 2,                  ///< Original damped shifted-potential Wolf summation.
+    DampedShiftedForce = 3,    ///< Fennell-Gezelter damped shifted-force method.
+    ModifiedShiftedForce = 4,  ///< Waibel-Feinler-Gross modified shifted-force method.
+    ZeroDipole = 5             ///< Fukuda zero-dipole summation method.
   };
 
   /**
@@ -81,7 +83,7 @@ export struct ForceField
     Triquintic = 27
   };
 
-  std::uint64_t versionNumber{1};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{2};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.
@@ -105,6 +107,7 @@ export struct ForceField
 
   double EwaldPrecision{1e-6};        ///< Desired precision for Ewald summation.
   double EwaldAlpha{0.265058};        ///< Ewald convergence parameter alpha.
+  double modifiedShiftedForceBeta{0.3};  ///< Exponential switching parameter beta (inverse length).
   int3 numberOfWaveVectors{8, 8, 8};  ///< Number of wave vectors in each direction for Ewald summation.
   std::size_t reciprocalIntegerCutOffSquared{
       std::numeric_limits<std::size_t>::max()};  ///< Squared integer cut-off in reciprocal space.
@@ -114,6 +117,11 @@ export struct ForceField
 
   bool useCharge{true};          ///< Indicates if charges are used in calculations.
   bool omitEwaldFourier{false};  ///< If true, omits the Fourier component in Ewald summation.
+
+  [[nodiscard]] bool usesEwaldFourier() const
+  {
+    return useCharge && chargeMethod == ChargeMethod::Ewald && !omitEwaldFourier;
+  }
 
   double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
 
@@ -319,6 +327,9 @@ export struct ForceField
   void initializeEwaldParameters(const SimulationBox &simulationBox);
 
   void initializeAutomaticCutOff(const SimulationBox &simulationBox);
+
+  static ChargeMethod chargeMethodFromString(const std::string &value);
+  static std::string_view chargeMethodName(ChargeMethod method);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f);

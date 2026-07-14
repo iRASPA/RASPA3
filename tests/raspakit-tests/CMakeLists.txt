@@ -7,6 +7,7 @@ add_executable(unit_tests_raspakit
   pbc.cpp
   spacegroup.cpp
   dudlambda.cpp
+  coulomb_real_space_methods.cpp
   ewald.cpp
   insertion_deletion.cpp
   mc.cpp

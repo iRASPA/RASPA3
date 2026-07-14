@@ -1067,15 +1067,28 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         std::string chargeMethodString = value["ChargeMethod"].get<std::string>();
 
-        if (caseInSensStringCompare(chargeMethodString, "Ewald"))
-        {
-          forceFields[systemId]->chargeMethod = ForceField::ChargeMethod::Ewald;
-          forceFields[systemId]->useCharge = true;
-        }
         if (caseInSensStringCompare(chargeMethodString, "None"))
         {
           forceFields[systemId]->chargeMethod = ForceField::ChargeMethod::Ewald;
           forceFields[systemId]->useCharge = false;
+        }
+        else
+        {
+          forceFields[systemId]->chargeMethod = ForceField::chargeMethodFromString(chargeMethodString);
+          forceFields[systemId]->useCharge = true;
+        }
+      }
+
+      if (value.contains("ModifiedShiftedForceBeta") && value["ModifiedShiftedForceBeta"].is_number())
+      {
+        if (!forceFields[systemId].has_value())
+        {
+          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+        }
+        forceFields[systemId]->modifiedShiftedForceBeta = value["ModifiedShiftedForceBeta"].get<double>();
+        if (forceFields[systemId]->modifiedShiftedForceBeta <= 0.0)
+        {
+          throw std::runtime_error("[Input reader]: ModifiedShiftedForceBeta must be positive\n");
         }
       }
 
@@ -2426,6 +2439,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OmitEwaldFourier",
     "ComputePolarization",
     "ChargeMethod",
+    "ModifiedShiftedForceBeta",
     "VolumeMoveProbability",
     "AnisotropicVolumeMoveProbability",
     "GibbsVolumeMoveProbability",

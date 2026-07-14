@@ -18,6 +18,7 @@ import minimization_dof_layout;
 import minimization_hessian_scatter;
 import minimization_rigid_kinematics;
 import minimization_cell_layout;
+import potential_coulomb_real_space;
 
 namespace
 {
@@ -86,7 +87,20 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
 
   const ForceField& forceField = system.forceField;
   if (!forceField.useCharge) return energySum;
-  if (forceField.omitEwaldFourier) return energySum;
+  if (!forceField.usesEwaldFourier())
+  {
+    if (!forceField.omitInterInteractions)
+    {
+      const double prefactor =
+          Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
+      for (const Atom& atom : system.spanOfMoleculeAtoms())
+      {
+        const double scaledCharge = atom.scalingCoulomb * atom.charge;
+        energySum.ewald_self += prefactor * scaledCharge * scaledCharge;
+      }
+    }
+    return energySum;
+  }
 
   const SimulationBox& simulationBox = system.simulationBox;
   const bool flexibleFramework = system.framework && !system.framework->rigid &&

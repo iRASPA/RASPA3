@@ -49,7 +49,7 @@ namespace MC_Moves::ReactionCommon
 
 void acceptChargedEwaldMove(System& system) noexcept
 {
-  if (!system.forceField.useCharge || system.forceField.omitEwaldFourier)
+  if (!system.forceField.usesEwaldFourier())
   {
     return;
   }
