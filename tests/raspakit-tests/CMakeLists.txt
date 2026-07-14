@@ -12,6 +12,7 @@ add_executable(unit_tests_raspakit
   mc.cpp
   pressure.cpp
   static_energy.cpp
+  framework_intramolecular_reader.cpp
   rigid_gradient.cpp
   electrostatic_potential.cpp
   electrostatic_field.cpp

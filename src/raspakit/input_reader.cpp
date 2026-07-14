@@ -1443,6 +1443,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
                         defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
 
+          if (value.contains("FrameworkDefinition"))
+          {
+            if (!value["FrameworkDefinition"].is_string())
+            {
+              throw std::runtime_error("[Input reader]: 'FrameworkDefinition' must have a value of string type\n");
+            }
+            framework.readFrameworkDefinition(forceFields[systemId].value(),
+                                              value["FrameworkDefinition"].get<std::string>());
+          }
+
           std::optional<Framework> jsonFrameworkComponents{framework};
 
           // create system
@@ -2269,6 +2279,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ChemicalPotential",
     "UseChargesFrom",
     "Framework",
+    "FrameworkDefinition",
     "Name",
     "NumberOfUnitCells",
     "HeliumVoidFraction",

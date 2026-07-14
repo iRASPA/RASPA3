@@ -15,7 +15,8 @@ import atom;
 import forcefield;
 import simulationbox;
 import property_widom;
-import bond_potential;
+import connectivity_table;
+import intra_molecular_potentials;
 import json;
 
 /**
@@ -73,7 +74,7 @@ export struct Framework
             SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
             const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
 
   SimulationBox simulationBox;          ///< Simulation box defining the unit cell dimensions.
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
@@ -98,36 +99,15 @@ export struct Framework
   std::vector<Atom> atoms{};                   ///< All Cartesian atoms in the framework after constructing the supercell.
   std::unordered_set<std::size_t> uniqueAtomTypes{};
 
-  std::vector<std::size_t> chiralCenters{};                        ///< Indices of chiral centers in the framework.
-  std::vector<BondPotential> bonds{};                              ///< Bonds within the framework.
-  std::vector<std::pair<std::size_t, std::size_t>> bondDipoles{};  ///< Pairs of atoms forming bond dipoles.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> bends{};  ///< Triplets of atoms forming angle bends.
-  std::vector<std::pair<std::size_t, std::size_t>> UreyBradley{};  ///< Pairs of atoms for Urey-Bradley interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      inversionBends{};  ///< Quartets of atoms for inversion bends.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      Torsion{};  ///< Quartets of atoms forming torsions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      ImproperTorsions{};  ///< Quartets of atoms forming improper torsions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>>
-      bondBonds{};  ///< Triplets of atoms for bond-bond interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>>
-      stretchBends{};  ///< Triplets of atoms for stretch-bend interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      bendBends{};  ///< Quartets of atoms for bend-bend interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      stretchTorsions{};  ///< Quartets of atoms for stretch-torsion interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      bendTorsions{};  ///< Quartets of atoms for bend-torsion interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      intraVDW{};  ///< Pairs of atoms for intramolecular van der Waals interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      intraCoulomb{};  ///< Pairs of atoms for intramolecular Coulomb interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      excludedIntraCoulomb{};  ///< Pairs of atoms excluded from intramolecular Coulomb interactions.
-
+  ConnectivityTable connectivityTable{};                            ///< Periodic framework bond connectivity.
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< Indexed internal framework potentials.
 
   void determineUniqueAtomTypes();
+
+  /**
+   * Reads type-based intramolecular definitions and expands them over the framework supercell.
+   */
+  void readFrameworkDefinition(const ForceField &forceField, const std::string &definitionName);
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.

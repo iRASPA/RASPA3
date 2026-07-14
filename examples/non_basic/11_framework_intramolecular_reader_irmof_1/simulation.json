@@ -1,0 +1,27 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfProductionCycles": 10,
+  "NumberOfInitializationCycles": 10,
+  "PrintEvery": 1,
+
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "IRMOF-1",
+      "FrameworkDefinition": "framework",
+      "NumberOfUnitCells": [1, 1, 1],
+      "HeliumVoidFraction": 0.81,
+      "ChargeMethod": "Ewald",
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 100000.0
+    }
+  ],
+
+  "Components": [
+    {
+      "Name": "methane",
+      "TranslationProbability": 1.0,
+      "CreateNumberOfMolecules": 1
+    }
+  ]
+}
