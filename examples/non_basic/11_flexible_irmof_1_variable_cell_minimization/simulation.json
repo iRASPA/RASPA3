@@ -7,6 +7,8 @@
   "MaxGradientTolerance": 1.0e-6,
   "MinimizationConvergenceFactor": 1.0,
   "MinimumEigenvalue": 1.0e-3,
+  "ComputeElasticConstants": true,
+  "ElasticEigenvalueTolerance": 1.0e-8,
   "PrintEvery": 1,
 
   "Systems": [

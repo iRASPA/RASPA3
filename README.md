@@ -97,11 +97,11 @@ cd examples/basic/1_mc_methane_in_box
 - partial molar energies/volumes
 - polarization
 - optimization
+- flexible frameworks
+- elastic constants
 
 # Todo-list
 - ASE interface
-- flexible frameworks
 - cell-lists for rigid frameworks
 - zeo++-type calculations
-- elastic constants
 - HDF5 property writing

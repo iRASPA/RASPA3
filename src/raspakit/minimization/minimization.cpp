@@ -16,6 +16,8 @@ import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 import minimization_cell_layout;
+import elastic_constants;
+import units;
 
 namespace
 {
@@ -117,9 +119,10 @@ void Minimization::setup()
       std::print(streams[systemIndex], "{}\n", system.writeSystemStatus());
       std::print(streams[systemIndex],
                  "Baker minimization: maxSteps={} maxStep={} maxCellStep={} rmsTolerance={} maxTolerance={} "
-                 "minEigenvalue={}\n\n",
+                 "minEigenvalue={} computeElasticConstants={} elasticEigenvalueTolerance={}\n\n",
                  options.maximumNumberOfSteps, options.maximumStepLength, options.maximumCellStepLength,
-                 options.rmsGradientTolerance, options.maxGradientTolerance, options.minimumEigenvalue);
+                 options.rmsGradientTolerance, options.maxGradientTolerance, options.minimumEigenvalue,
+                 options.computeElasticConstants, options.elasticEigenvalueTolerance);
     }
   }
 }
@@ -458,6 +461,10 @@ void Minimization::runPhase()
     {
       allConverged = false;
     }
+    else if (options.computeElasticConstants)
+    {
+      systemResult.elasticConstants = computeElasticConstants(system, options.elasticEigenvalueTolerance);
+    }
   }
 
   if (!allConverged)
@@ -499,6 +506,16 @@ continueRunStage:
 
 void Minimization::output()
 {
+  const auto writeArray = [](std::ofstream& stream, std::span<const double> values, double conversion)
+  {
+    std::print(stream, "[");
+    for (std::size_t index = 0; index < values.size(); ++index)
+    {
+      std::print(stream, "{:.17g}{}", conversion * values[index], index + 1 == values.size() ? "" : ", ");
+    }
+    std::print(stream, "]");
+  };
+
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
     const System& system = systems[systemIndex];
@@ -517,7 +534,47 @@ void Minimization::output()
                  atoms[atom].position.z, atom + 1 == atoms.size() ? "" : ",");
       std::print(json, "\n");
     }
-    std::print(json, "  ]\n}}\n");
+    std::print(json, "  ]");
+    if (result.elasticConstants)
+    {
+      const ElasticConstantsResult& elastic = *result.elasticConstants;
+      const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+      const double pressureConversion = reduced ? 1.0 : 1.0e-9 * Units::PressureConversionFactor;
+      const double complianceConversion = reduced ? 1.0 : 1.0 / pressureConversion;
+      std::print(json, ",\n  \"elasticConstants\": {{\n");
+      std::print(json, "    \"voigtOrder\": [\"xx\", \"yy\", \"zz\", \"yz\", \"xz\", \"xy\"],\n");
+      std::print(json, "    \"pressureUnit\": \"{}\",\n", reduced ? "reduced" : "GPa");
+      std::print(json, "    \"born\": ");
+      writeArray(json, elastic.born, pressureConversion);
+      std::print(json, ",\n    \"relaxation\": ");
+      writeArray(json, elastic.relaxation, pressureConversion);
+      std::print(json, ",\n    \"pressureCorrection\": ");
+      writeArray(json, elastic.pressureCorrection, pressureConversion);
+      std::print(json, ",\n    \"stiffness\": ");
+      writeArray(json, elastic.stiffness, pressureConversion);
+      std::print(json, ",\n    \"stabilityEigenvalues\": ");
+      writeArray(json, elastic.stabilityEigenvalues, pressureConversion);
+      std::print(json, ",\n    \"discardedInternalModes\": {},\n    \"complianceAvailable\": {}",
+                 elastic.discardedInternalModes, elastic.complianceAvailable);
+      if (elastic.complianceAvailable)
+      {
+        std::print(json, ",\n    \"complianceUnit\": \"{}\",\n    \"compliance\": ",
+                   reduced ? "inverse reduced pressure" : "GPa^-1");
+        writeArray(json, elastic.compliance, complianceConversion);
+        std::print(json, ",\n    \"youngModuli\": ");
+        writeArray(json, elastic.youngModuli, pressureConversion);
+        std::print(json, ",\n    \"poissonRatios\": ");
+        writeArray(json, elastic.poissonRatios, 1.0);
+        std::print(json,
+                   ",\n    \"bulkModulus\": {{\"voigt\": {:.17g}, \"reuss\": {:.17g}, \"hill\": {:.17g}}},"
+                   "\n    \"shearModulus\": {{\"voigt\": {:.17g}, \"reuss\": {:.17g}, \"hill\": {:.17g}}}",
+                   pressureConversion * elastic.bulkModulusVoigt, pressureConversion * elastic.bulkModulusReuss,
+                   pressureConversion * elastic.bulkModulusHill, pressureConversion * elastic.shearModulusVoigt,
+                   pressureConversion * elastic.shearModulusReuss, pressureConversion * elastic.shearModulusHill);
+      }
+      std::print(json, "\n  }}");
+    }
+    std::print(json, "\n}}\n");
   }
 }
 
@@ -534,6 +591,10 @@ void Minimization::tearDown()
                  "finalEnergy={:.12e} rmsGradient={:.5e} maxGradient={:.5e}\n",
                  result.converged, result.iterations, result.initialEnergy, result.finalEnergy, result.rmsGradient,
                  result.maxGradient);
+      if (result.elasticConstants)
+      {
+        std::print(streams[systemIndex], "{}", writeElasticConstants(*result.elasticConstants));
+      }
     }
   }
 }

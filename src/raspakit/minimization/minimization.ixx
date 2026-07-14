@@ -13,6 +13,7 @@ import minimization_evaluate_derivatives;
 import minimization_options;
 import minimization_baker;
 import minimization_generalized_coordinates;
+import elastic_constants;
 
 export struct MinimizationSystemResult
 {
@@ -24,14 +25,15 @@ export struct MinimizationSystemResult
   double maxGradient{};
   std::size_t negativeModes{};
   std::size_t zeroModes{};
+  std::optional<ElasticConstantsResult> elasticConstants{};
 };
 
 /** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */
 export struct Minimization
 {
   Minimization() = default;
-  explicit Minimization(InputReader &inputReader);
-  Minimization(const MinimizationOptions &options, std::vector<System> systems, bool outputToFiles = false);
+  explicit Minimization(InputReader& inputReader);
+  Minimization(const MinimizationOptions& options, std::vector<System> systems, bool outputToFiles = false);
 
   enum class SimulationStage : std::size_t
   {

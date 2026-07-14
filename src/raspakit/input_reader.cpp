@@ -315,11 +315,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   parseMinimizationNumber("MaxGradientTolerance", minimizationOptions.maxGradientTolerance);
   parseMinimizationNumber("MinimizationConvergenceFactor", minimizationOptions.convergenceFactor);
   parseMinimizationNumber("MinimumEigenvalue", minimizationOptions.minimumEigenvalue);
+  parseMinimizationNumber("ElasticEigenvalueTolerance", minimizationOptions.elasticEigenvalueTolerance);
+
+  if (parsed_data.contains("ComputeElasticConstants"))
+  {
+    if (!parsed_data["ComputeElasticConstants"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: ComputeElasticConstants must be a boolean");
+    }
+    minimizationOptions.computeElasticConstants = parsed_data["ComputeElasticConstants"].get<bool>();
+  }
 
   if (minimizationOptions.maximumNumberOfSteps == 0 || minimizationOptions.maximumStepLength <= 0.0 ||
       minimizationOptions.maximumCellStepLength <= 0.0 || minimizationOptions.rmsGradientTolerance <= 0.0 ||
       minimizationOptions.maxGradientTolerance <= 0.0 || minimizationOptions.minimumEigenvalue <= 0.0 ||
-      minimizationOptions.convergenceFactor < 0.0)
+      minimizationOptions.elasticEigenvalueTolerance <= 0.0 || minimizationOptions.convergenceFactor < 0.0)
   {
     throw std::runtime_error(
         "[Input reader]: minimization limits and tolerances must be positive and convergence factor non-negative");
@@ -1543,10 +1553,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           const std::optional<CellMinimizationType> parsedCellType = cellMinimizationTypeFromString(cellType);
           if (!parsedCellType.has_value())
           {
-            throw std::runtime_error(std::format(
-                "[Input reader]: unknown 'CellType' '{}'; expected 'Fixed', 'Isotropic', 'Anisotropic', "
-                "'Monoclinic', 'Regular', 'RegularUpperTriangle', or 'MonoclinicUpperTriangle'\n",
-                cellType));
+            throw std::runtime_error(
+                std::format("[Input reader]: unknown 'CellType' '{}'; expected 'Fixed', 'Isotropic', 'Anisotropic', "
+                            "'Monoclinic', 'Regular', 'RegularUpperTriangle', or 'MonoclinicUpperTriangle'\n",
+                            cellType));
           }
           systems[systemId].cellMinimizationType = parsedCellType.value();
         }
@@ -2312,6 +2322,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "MaxGradientTolerance",
     "MinimizationConvergenceFactor",
     "MinimumEigenvalue",
+    "ComputeElasticConstants",
+    "ElasticEigenvalueTolerance",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",

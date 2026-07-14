@@ -166,6 +166,20 @@ reported separately at the end of the simulation.
 -   `"SimulationType" : "Minimization"`\
     Performs an energy minimization of the initial configuration.
 
+    `"ComputeElasticConstants" : boolean` optionally computes the static,
+    relaxed elastic tensor after convergence. The calculation uses the full
+    six-component symmetric strain basis even when the minimization used a
+    fixed or restricted cell. It reports the Born, internal-relaxation, and
+    hydrostatic-pressure terms, the stiffness and compliance matrices, Born
+    stability eigenvalues, and Voigt/Reuss/Hill moduli. Physical-unit output is
+    in GPa (compliance in GPa^-1); shear entries use engineering-strain Voigt
+    order `xx, yy, zz, yz, xz, xy`.
+
+    `"ElasticEigenvalueTolerance" : real` controls the relative spectral
+    threshold used to remove translational and rotational zero modes from the
+    internal Hessian (default `1.0e-8`). A significant negative internal mode
+    is treated as an unstable minimized structure.
+
 ### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfProductionCycles" : integer`\

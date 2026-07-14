@@ -84,3 +84,16 @@ TEST(INPUT_READER_TMMC, rejects_non_nearest_neighbor_system_moves)
       },
       std::runtime_error);
 }
+
+TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
+{
+  nlohmann::json input = readTMMCExample();
+  input["ComputeElasticConstants"] = true;
+  input["ElasticEigenvalueTolerance"] = 2.5e-9;
+  TemporaryInput temporary(std::move(input), "elastic_constants");
+  ScopedCurrentPath currentPath(tmmcExample.parent_path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.minimizationOptions.computeElasticConstants);
+  EXPECT_DOUBLE_EQ(reader.minimizationOptions.elasticEigenvalueTolerance, 2.5e-9);
+}
