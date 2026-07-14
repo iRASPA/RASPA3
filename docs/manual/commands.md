@@ -189,6 +189,10 @@ reported separately at the end of the simulation.
     (whether accepted or rejected). For Molecular Dynamics the number of cycles
     is simply the number of integration steps.
 
+-   `"NumberOfBlocks" : integer`\
+    Number of contiguous production blocks used for confidence-interval
+    estimates. At least three blocks are required; default: `5`.
+
 -   `"NumberOfInitializationCycles" : integer`\
     The number of Monte Carlo cycles used to bring the system towards
     equilibrium. This applies to both Monte Carlo and Molecular Dynamics runs and
@@ -455,6 +459,26 @@ reported separately at the end of the simulation.
     thermobarostat trajectories are tested for time reversibility and bounded
     extended-enthalpy drift; canonical symplecticity applies only to isolated
     Hamiltonian submaps.
+
+-   `"ComputeElasticConstantsFromFluctuations" : boolean`\
+    Enables an isothermal elastic-tensor calculation during fixed-cell NVT
+    molecular dynamics. Each observation accumulates the instantaneous affine
+    Born tensor and configurational stress covariance. The molecular kinetic
+    contribution is added consistently with the active translational
+    constraints. Output contains the separate Born, kinetic, covariance, and
+    hydrostatic prestress terms, the Helmholtz and tangent stiffness matrices,
+    block confidence intervals, stability eigenvalues, and derived moduli.
+    Voigt order is `xx, yy, zz, yz, xz, xy`, with engineering shear strains.
+    External fields and polarization are not currently supported.
+
+-   `"ElasticConstantsSampleEvery" : integer`\
+    Number of MD steps between elastic observations (default: `100`). Born
+    Hessians are substantially more expensive than ordinary force evaluations.
+    Choose the interval at least as long as the short-time stress correlation,
+    use production blocks much longer than the integrated stress
+    autocorrelation time, and check convergence against trajectory length,
+    block length, sampling interval, and system size. The NVT reference cell
+    should first be equilibrated at the desired temperature and mean pressure.
 
 ### Options to measure properties <a name="options-to-measure-properties"></a>
 

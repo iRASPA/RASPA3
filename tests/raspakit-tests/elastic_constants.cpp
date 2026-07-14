@@ -3,9 +3,11 @@
 import std;
 
 import atom;
+import archive;
 import bond_potential;
 import component;
 import double3;
+import double3x3;
 import elastic_constants;
 import forcefield;
 import framework;
@@ -17,6 +19,7 @@ import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 import minimization_generalized_coordinates;
 import minimization_options;
+import property_elastic_constants_fluctuation;
 import simulationbox;
 import system;
 import units;
@@ -201,4 +204,94 @@ TEST(elastic_constants, all_six_born_strains_match_energy_finite_differences)
       EXPECT_NEAR(analytic, numerical, 2.0e-5 * scale) << "row=" << row << " column=" << column;
     }
   }
+}
+
+TEST(elastic_constants, affine_born_helper_matches_static_born_term)
+{
+  const System system = makeHarmonicTetrahedron();
+  const std::array<double, 36> affine = computeAffineBornTensor(system);
+  const ElasticConstantsResult staticResult = computeElasticConstants(system);
+  for (std::size_t i = 0; i < affine.size(); ++i)
+    EXPECT_NEAR(affine[i], staticResult.born[i], 1.0e-12 * std::max(1.0, std::abs(staticResult.born[i])));
+}
+
+TEST(elastic_constants_fluctuation, synthetic_samples_recover_covariance_and_kinetic_terms)
+{
+  std::array<double, 6> plus{};
+  std::array<double, 6> minus{};
+  plus[0] = 1.0;
+  minus[0] = -1.0;
+  std::array<double, 36> born{};
+  born[0] = 10.0;
+
+  ElasticFluctuationTerms terms(plus, {}, born, 2.0, 3.0, 4.0);
+  terms += ElasticFluctuationTerms(minus, {}, born, 2.0, 3.0, 4.0);
+  const ElasticFluctuationData result = (terms / 2.0).compositeProperty();
+
+  EXPECT_DOUBLE_EQ(result.fluctuation[0], -6.0);
+  EXPECT_NEAR(result.kinetic[0], 4.0 / 3.0, 1.0e-14);
+  EXPECT_NEAR(result.kinetic[3 * 6 + 3], 2.0 / 3.0, 1.0e-14);
+  EXPECT_NEAR(result.stiffness[0], 10.0 - 6.0 + 4.0 / 3.0, 1.0e-14);
+  EXPECT_DOUBLE_EQ(result.stiffness[1], result.stiffness[6]);
+}
+
+TEST(elastic_constants_fluctuation, harmonic_canonical_quadrature_recovers_known_stiffness)
+{
+  constexpr double bornStiffness = 10.0;
+  constexpr double expectedIsothermalStiffness = 5.0;
+  const double stressAmplitude = std::sqrt(bornStiffness - expectedIsothermalStiffness);
+  std::array<double, 6> plus{};
+  std::array<double, 6> minus{};
+  plus[0] = stressAmplitude;
+  minus[0] = -stressAmplitude;
+  std::array<double, 36> born{};
+  born[0] = bornStiffness;
+
+  ElasticFluctuationTerms terms(plus, {}, born, 1.0, 1.0, 0.0);
+  terms += ElasticFluctuationTerms(minus, {}, born, 1.0, 1.0, 0.0);
+  const ElasticFluctuationData result = (terms / 2.0).compositeProperty();
+
+  EXPECT_NEAR(result.stiffness[0], expectedIsothermalStiffness, 1.0e-14);
+}
+
+TEST(elastic_constants_fluctuation, kinetic_virial_uses_flexible_framework_velocities)
+{
+  System system = makeHarmonicDimer();
+  ASSERT_EQ(system.spanOfFrameworkDynamics().size(), 2u);
+  system.forceField.pseudoAtoms[0].mass = 1.0;
+  system.spanOfFrameworkDynamics()[0].velocity = {1.0, 2.0, 3.0};
+  system.spanOfFrameworkDynamics()[1].velocity = {};
+  const double3x3 kinetic = computeMolecularKineticVirial(system);
+  EXPECT_DOUBLE_EQ(kinetic.ax, 1.0);
+  EXPECT_DOUBLE_EQ(kinetic.by, 4.0);
+  EXPECT_DOUBLE_EQ(kinetic.cz, 9.0);
+  EXPECT_DOUBLE_EQ(kinetic.ay, 2.0);
+  EXPECT_DOUBLE_EQ(kinetic.bz, 6.0);
+}
+
+TEST(elastic_constants_fluctuation, archive_round_trip_preserves_accumulator)
+{
+  PropertyElasticConstantsFluctuation original(3);
+  std::array<double, 6> stress{};
+  stress[0] = 2.0;
+  std::array<double, 36> born{};
+  born[0] = 7.0;
+  original.addSample(1, ElasticFluctuationTerms(stress, {}, born, 1.5, 8.0, 3.0), 1.0);
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "raspa3_elastic_fluctuation_round_trip.bin";
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << original;
+  }
+  PropertyElasticConstantsFluctuation restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+  ASSERT_EQ(restored.numberOfBlocks, 3u);
+  EXPECT_DOUBLE_EQ(restored.bookKeeping[1].first.configurationalStress[0], 2.0);
+  EXPECT_DOUBLE_EQ(restored.bookKeeping[1].first.born[0], 7.0);
 }

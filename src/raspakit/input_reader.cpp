@@ -35,6 +35,7 @@ import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
 import property_vacf;
+import property_elastic_constants_fluctuation;
 import write_lammps_data;
 import thermostat;
 import thermobarostat;
@@ -207,6 +208,15 @@ void InputReader::parseBreakthrough([[maybe_unused]] const nlohmann::basic_json<
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
   std::size_t jsonNumberOfBlocks{5};
+  if (parsed_data.contains("NumberOfBlocks"))
+  {
+    if (!parsed_data["NumberOfBlocks"].is_number_unsigned())
+      throw std::runtime_error("[Input reader]: NumberOfBlocks must be an integer of at least three");
+    jsonNumberOfBlocks = parsed_data["NumberOfBlocks"].get<std::size_t>();
+    if (jsonNumberOfBlocks < 3)
+      throw std::runtime_error("[Input reader]: NumberOfBlocks must be at least three");
+  }
+  numberOfBlocks = jsonNumberOfBlocks;
 
   // count number of systems
   if (!parsed_data.contains("Systems"))
@@ -2080,11 +2090,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           barostatChainLength = value["BarostatChainLength"].get<std::size_t>();
         if (value.contains("NumberOfRespaSteps") && value["NumberOfRespaSteps"].is_number_unsigned())
           numberOfRespaSteps = value["NumberOfRespaSteps"].get<std::size_t>();
-        if (value.contains("NumberOfYoshidaSuzukiSteps") &&
-            value["NumberOfYoshidaSuzukiSteps"].is_number_unsigned())
+        if (value.contains("NumberOfYoshidaSuzukiSteps") && value["NumberOfYoshidaSuzukiSteps"].is_number_unsigned())
           numberOfYoshidaSuzukiSteps = value["NumberOfYoshidaSuzukiSteps"].get<std::size_t>();
-        if (value.contains("TimeScaleParameterThermostat") &&
-            value["TimeScaleParameterThermostat"].is_number())
+        if (value.contains("TimeScaleParameterThermostat") && value["TimeScaleParameterThermostat"].is_number())
           timeScaleParameterThermostat = value["TimeScaleParameterThermostat"].get<double>();
         if (value.contains("TimeScaleParameterBarostat") && value["TimeScaleParameterBarostat"].is_number())
           timeScaleParameterBarostat = value["TimeScaleParameterBarostat"].get<double>();
@@ -2093,8 +2101,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               "[Input reader]: thermostat/barostat chain lengths and NumberOfRespaSteps must be positive");
 
         std::string ensembleString = value["Ensemble"].get<std::string>();
-        const std::optional<MolecularDynamicsEnsemble> ensemble =
-            molecularDynamicsEnsembleFromString(ensembleString);
+        const std::optional<MolecularDynamicsEnsemble> ensemble = molecularDynamicsEnsembleFromString(ensembleString);
         if (!ensemble.has_value())
           throw std::runtime_error(std::format(
               "[Input reader]: unknown MD 'Ensemble' '{}'; expected NVE, NVT, NPT, or NPTPR", ensembleString));
@@ -2119,12 +2126,42 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (ensemble == MolecularDynamicsEnsemble::NPT) cellType = CellMinimizationType::Isotropic;
           if (ensemble == MolecularDynamicsEnsemble::NPTPR && cellType == CellMinimizationType::Fixed)
             cellType = CellMinimizationType::Regular;
-          systems[systemId].thermobarostat =
-              Thermobarostat(ensemble.value(), cellType, systems[systemId].monoclinicAngleType,
-                             systems[systemId].temperature, systems[systemId].pressure, systems[systemId].timeStep,
-                             systems[systemId].translationalDegreesOfFreedom, barostatChainLength,
-                             numberOfYoshidaSuzukiSteps, timeScaleParameterBarostat);
+          systems[systemId].thermobarostat = Thermobarostat(
+              ensemble.value(), cellType, systems[systemId].monoclinicAngleType, systems[systemId].temperature,
+              systems[systemId].pressure, systems[systemId].timeStep, systems[systemId].translationalDegreesOfFreedom,
+              barostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterBarostat);
           systems[systemId].thermobarostat->numberOfRespaSteps = numberOfRespaSteps;
+        }
+      }
+
+      if (value.contains("ComputeElasticConstantsFromFluctuations"))
+      {
+        if (!value["ComputeElasticConstantsFromFluctuations"].is_boolean())
+          throw std::runtime_error("[Input reader]: ComputeElasticConstantsFromFluctuations must be a boolean");
+        if (value["ComputeElasticConstantsFromFluctuations"].get<bool>())
+        {
+          std::size_t sampleEvery = 100;
+          if (value.contains("ElasticConstantsSampleEvery"))
+          {
+            if (!value["ElasticConstantsSampleEvery"].is_number_unsigned())
+              throw std::runtime_error("[Input reader]: ElasticConstantsSampleEvery must be a positive integer");
+            sampleEvery = value["ElasticConstantsSampleEvery"].get<std::size_t>();
+          }
+          if (sampleEvery == 0)
+            throw std::runtime_error("[Input reader]: ElasticConstantsSampleEvery must be positive");
+          if (simulationType != SimulationType::MolecularDynamics ||
+              systems[systemId].molecularDynamicsEnsemble != MolecularDynamicsEnsemble::NVT)
+            throw std::runtime_error(
+                "[Input reader]: stress-fluctuation elastic constants currently require NVT molecular dynamics");
+          if (systems[systemId].hasExternalField)
+            throw std::runtime_error(
+                "[Input reader]: stress-fluctuation elastic constants do not support external fields");
+          if (systems[systemId].forceField.computePolarization)
+            throw std::runtime_error(
+                "[Input reader]: stress-fluctuation elastic constants do not support polarization");
+          systems[systemId].propertyElasticConstantsFluctuation =
+              PropertyElasticConstantsFluctuation(jsonNumberOfBlocks);
+          systems[systemId].elasticConstantsSampleEvery = sampleEvery;
         }
       }
 
@@ -2359,6 +2396,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "RestartFromBinaryFile",
     "RandomSeed",
     "NumberOfProductionCycles",
+    "NumberOfBlocks",
     "NumberOfPreInitializationCycles",
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",
@@ -2430,6 +2468,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteMoleculePropertiesEvery",
     "NumberOfBinsMoleculeProperties",
     "BondRangeMoleculeProperties",
+    "ComputeElasticConstantsFromFluctuations",
+    "ElasticConstantsSampleEvery",
     "ComputeRDF",
     "SampleRDFEvery",
     "WriteRDFEvery",

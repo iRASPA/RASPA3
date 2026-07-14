@@ -5,6 +5,7 @@ export module elastic_constants;
 import std;
 
 import system;
+import double3x3;
 
 export struct ElasticConstantsResult
 {
@@ -37,5 +38,17 @@ export struct ElasticConstantsResult
  */
 export ElasticConstantsResult computeElasticConstants(const System& system,
                                                       double relativeEigenvalueTolerance = 1.0e-8);
+
+/**
+ * Compute the instantaneous affine (Born) tensor at the current configuration.
+ *
+ * No internal-coordinate relaxation or external-pressure correction is applied.
+ */
+export std::array<double, 36> computeAffineBornTensor(const System& system);
+
+/**
+ * Return the instantaneous molecular kinetic virial, sum(m v outer v), before volume normalization.
+ */
+export double3x3 computeMolecularKineticVirial(const System& system);
 
 export std::string writeElasticConstants(const ElasticConstantsResult& result);

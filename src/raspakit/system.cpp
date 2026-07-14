@@ -501,11 +501,10 @@ void System::precomputeTotalRigidEnergy() noexcept
 
 void System::precomputeTotalGradients() noexcept
 {
-  runningEnergies = Integrators::updateGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                                 spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x,
-                                                 eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik,
-                                                 interpolationGrids, numberOfMoleculesPerComponent, framework,
-                                                 spanOfFrameworkDynamics());
+  runningEnergies = Integrators::updateGradients(
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
+      components, eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, interpolationGrids,
+      numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics());
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -1082,6 +1081,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.averageRotationalTemperature;
   archive << s.averagePressure;
   archive << s.averageSimulationBox;
+  archive << s.propertyElasticConstantsFluctuation;
+  archive << s.elasticConstantsSampleEvery;
 
   archive << s.samplePDBMovie;
 
@@ -1239,6 +1240,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.averageRotationalTemperature;
   archive >> s.averagePressure;
   archive >> s.averageSimulationBox;
+  if (versionNumber >= 5)
+  {
+    archive >> s.propertyElasticConstantsFluctuation;
+    archive >> s.elasticConstantsSampleEvery;
+  }
 
   archive >> s.samplePDBMovie;
 

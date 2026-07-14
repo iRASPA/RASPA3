@@ -30,6 +30,7 @@ import property_lambda_probability_histogram;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
+import property_elastic_constants_fluctuation;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
@@ -96,13 +97,13 @@ export struct System
    * \param systemProbabilities The move probabilities for the Monte Carlo simulation.
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
-  System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
-         double T, std::optional<double> P, double heliumVoidFraction, 
-         std::optional<Framework> framework, std::vector<Component> components,
-         std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
-         std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
+  System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField, double T,
+         std::optional<double> P, double heliumVoidFraction, std::optional<Framework> framework,
+         std::vector<Component> components, std::vector<std::vector<double3>> initialPositions,
+         std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
+         const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -171,7 +172,7 @@ export struct System
   std::vector<double> idealGasEnergiesPerComponent{};
 
   ForceField forceField;
-  bool hasExternalField{ true };
+  bool hasExternalField{true};
 
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
@@ -241,6 +242,8 @@ export struct System
   PropertyTemperature averageRotationalTemperature;
   PropertyPressure averagePressure;
   PropertySimulationBox averageSimulationBox;
+  std::optional<PropertyElasticConstantsFluctuation> propertyElasticConstantsFluctuation;
+  std::size_t elasticConstantsSampleEvery{100};
 
   std::optional<SampleMovie> samplePDBMovie;
 
@@ -276,7 +279,8 @@ export struct System
   // Fractional molecules per component are stored in Move::Types enum order, then integer molecules.
   // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> PairSwapCFCMC -> PairSwapCBCFCMC -> GibbsSwapCFCMC ->
   //          ReactionConventionalCFCMC -> ReactionCFCMC -> GibbsConventionalCFCMC
-  [[nodiscard]] std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(
@@ -299,14 +303,15 @@ export struct System
   [[nodiscard]] std::size_t indexOfFractionalMoleculeForMove(Move::Types move, std::size_t selectedComponent,
                                                              std::size_t subIndex = 0) const noexcept;
   [[nodiscard]] std::size_t parallelReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
-                                                                    bool isProduct, std::size_t localIndex) const noexcept;
+                                                                    bool isProduct,
+                                                                    std::size_t localIndex) const noexcept;
   [[nodiscard]] std::size_t serialReactionFractionalMoleculeIndex(std::size_t reactionId, std::size_t componentId,
                                                                   std::size_t localIndex) const noexcept;
 
-  void addComponent(const Component &&component) noexcept(false);
+  void addComponent(const Component&& component) noexcept(false);
 
   void createFrameworks();
-  void createInitialMolecules(const std::vector<std::vector<double3>> &initialPositions);
+  void createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions);
 
   void checkCartesianPositions();
 
@@ -318,17 +323,17 @@ export struct System
   void computeTotalElectrostaticPotential() noexcept;
   void computeTotalElectricField() noexcept;
 
-  std::size_t randomFramework(RandomNumber &random)
+  std::size_t randomFramework(RandomNumber& random)
   {
     return std::size_t(random.uniform() * static_cast<double>(numberOfFrameworks));
   }
-  std::size_t randomComponent(RandomNumber &random)
+  std::size_t randomComponent(RandomNumber& random)
   {
     return std::size_t(random.uniform() * static_cast<double>(components.size()));
   }
   std::size_t numerOfAdsorbateComponents() { return components.size(); }
-  std::size_t randomMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
-  std::size_t randomIntegerMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
+  std::size_t randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
+  std::size_t randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
 
   std::size_t globalIndexOfComponentAndMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
 
@@ -363,13 +368,13 @@ export struct System
   std::size_t numberOfMolecules() const
   {
     return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), std::size_t(0),
-                           [](const std::size_t &acc, const std::size_t &b) { return acc + b; });
+                           [](const std::size_t& acc, const std::size_t& b) { return acc + b; });
   }
 
   std::size_t numberOfIntegerMolecules() const
   {
     return std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(),
-                           std::size_t(0), [](const std::size_t &acc, const std::size_t &b) { return acc + b; });
+                           std::size_t(0), [](const std::size_t& acc, const std::size_t& b) { return acc + b; });
   }
 
   // The biased-to-Boltzmann reweighting factor of a configuration removes the bias of every
@@ -384,12 +389,12 @@ export struct System
   double weight() const
   {
     double w = std::transform_reduce(
-        components.begin(), components.end(), 1.0, [](const double &acc, const double &b) { return acc * b; },
-        [](const Component &component) { return component.lambdaGC.weight() * component.lambdaGibbs.weight(); });
+        components.begin(), components.end(), 1.0, [](const double& acc, const double& b) { return acc * b; },
+        [](const Component& component) { return component.lambdaGC.weight() * component.lambdaGibbs.weight(); });
 
     if (usesReactionConventionalCFCMC())
     {
-      for (const Reaction &reaction : reactions.list)
+      for (const Reaction& reaction : reactions.list)
       {
         w *= activeReactionLambdaHistogram(reaction).weight();
       }
@@ -409,7 +414,7 @@ export struct System
   void syncReactionFractionalMoleculeIndices() noexcept;
   void incrementReactionFractionalMoleculeIds(std::size_t componentId) noexcept;
   void initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins);
-  [[nodiscard]] double reactionDUdlambda(const Reaction &reaction) const noexcept;
+  [[nodiscard]] double reactionDUdlambda(const Reaction& reaction) const noexcept;
   void syncReactionLambdaBin(Reaction& reaction) noexcept;
   void syncReactionLambdaBins() noexcept;
   [[nodiscard]] bool usesReactionConventionalCFCMC() const noexcept;
@@ -450,7 +455,7 @@ export struct System
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
-  std::string writeProductionStatusReportMC(const std::string &statusLine) const;
+  std::string writeProductionStatusReportMC(const std::string& statusLine) const;
   std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
@@ -460,68 +465,68 @@ export struct System
   nlohmann::json jsonComponentStatus() const;
   nlohmann::json jsonMCMoveStatistics() const;
 
-  void insertMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
-  void insertMoleculePolarization(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
+  void insertMolecule(std::size_t selectedComponent, const Molecule& molecule, std::vector<Atom> atoms);
+  void insertMoleculePolarization(std::size_t selectedComponent, const Molecule& molecule, std::vector<Atom> atoms,
                                   std::span<double3> electricField);
-  void insertFractionalMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
+  void insertFractionalMolecule(std::size_t selectedComponent, const Molecule& molecule, std::vector<Atom> atoms,
                                 std::size_t moleculeIndex);
-  void insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
-                                       std::vector<Atom> atoms);
-  void insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, const Molecule &molecule,
-                                        std::vector<Atom> atoms, bool isReactant, double lambda,
-                                        std::uint8_t dUdlambdaGroupId);
+  void insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                       const Molecule& molecule, std::vector<Atom> atoms);
+  void insertReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                        const Molecule& molecule, std::vector<Atom> atoms, bool isReactant,
+                                        double lambda, std::uint8_t dUdlambdaGroupId);
   void insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
-                                              const Molecule &molecule, std::vector<Atom> atoms, double lambda,
+                                              const Molecule& molecule, std::vector<Atom> atoms, double lambda,
                                               std::uint8_t dUdlambdaGroupId);
   void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
   void deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
-                                  const std::span<Atom> atoms);
+                                const std::span<Atom> atoms);
   void updateMoleculeAtomInformation();
   void checkMoleculeIds();
 
-  std::vector<Atom> randomConfiguration(RandomNumber &random, std::size_t selectedComponent,
+  std::vector<Atom> randomConfiguration(RandomNumber& random, std::size_t selectedComponent,
                                         const std::span<const Atom> atoms);
 
-  bool insideBlockedPockets(const Component &component, std::span<const Atom> molecule_atoms) const;
+  bool insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const;
 
   void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle);
   void samplePropertiesEvolution(std::size_t absoluteCurrentCycle);
 
-  void writeCPUTimeStatistics(std::ostream &stream) const;
+  void writeCPUTimeStatistics(std::ostream& stream) const;
 
   [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 
-  std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(
-      const SimulationBox& oldBox, const SimulationBox& newBox) const;
+  std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(const SimulationBox& oldBox,
+                                                                                  const SimulationBox& newBox) const;
 
-  void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
+  void writeComponentFittingStatus(std::ostream& stream, const std::vector<std::pair<double, double>>& rawData) const;
 
   void createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId);
-  void createFrameworkInterpolationGrids(std::ostream &stream);
+  void createFrameworkInterpolationGrids(std::ostream& stream);
 
-  void setThermostat(const std::optional<Thermostat> &thermo);
+  void setThermostat(const std::optional<Thermostat>& thermo);
   void setThermobarostat(const std::optional<Thermobarostat>& barostat);
 
-  void setSamplePDBMovie(const std::optional<SampleMovie> &movie);
+  void setSamplePDBMovie(const std::optional<SampleMovie>& movie);
   void updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle);
 
-  void setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram> &hist);
-  void setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist);
-  void setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &grid);
+  void setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram>& hist);
+  void setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram>& hist);
+  void setPropertyDensityGrid(const std::optional<PropertyDensityGrid>& grid);
 
   void setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property);
   void setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property);
   void setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property);
 
-  void setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction> &rdf);
-  void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction> &rdf);
-  void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement> &msd);
-  void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction> &vacf);
+  void setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction>& rdf);
+  void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf);
+  void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
+  void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s);
 
   void writeRestartFile(std::size_t systemId);
 

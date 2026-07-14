@@ -9,13 +9,15 @@ namespace
 {
 
 const std::filesystem::path tmmcExample = "examples/advanced/5_tmmc_methane_in_tobacco_667/0/simulation.json";
+const std::filesystem::path nvtExample = "examples/basic/5_md_methane_in_box_msd/simulation.json";
 
 class TemporaryInput
 {
  public:
-  TemporaryInput(nlohmann::json input, std::string_view suffix)
-      : path_(tmmcExample.parent_path() / std::format("simulation_tmmc_{}_{}.json", suffix,
-                                                      std::chrono::steady_clock::now().time_since_epoch().count()))
+  TemporaryInput(nlohmann::json input, std::string_view suffix,
+                 const std::filesystem::path& directory = tmmcExample.parent_path())
+      : path_(directory / std::format("simulation_tmmc_{}_{}.json", suffix,
+                                      std::chrono::steady_clock::now().time_since_epoch().count()))
   {
     std::ofstream stream(path_);
     stream << input.dump(2);
@@ -50,6 +52,12 @@ class ScopedCurrentPath
 nlohmann::json readTMMCExample()
 {
   std::ifstream stream(tmmcExample);
+  return nlohmann::json::parse(stream);
+}
+
+nlohmann::json readNVTExample()
+{
+  std::ifstream stream(nvtExample);
   return nlohmann::json::parse(stream);
 }
 
@@ -96,4 +104,36 @@ TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
   InputReader reader(temporary.path().filename().string());
   EXPECT_TRUE(reader.minimizationOptions.computeElasticConstants);
   EXPECT_DOUBLE_EQ(reader.minimizationOptions.elasticEigenvalueTolerance, 2.5e-9);
+}
+
+TEST(INPUT_READER_MD, accepts_nvt_stress_fluctuation_elastic_constants)
+{
+  nlohmann::json input = readNVTExample();
+  input["NumberOfBlocks"] = 7;
+  input["Systems"][0]["ComputeElasticConstantsFromFluctuations"] = true;
+  input["Systems"][0]["ElasticConstantsSampleEvery"] = 25;
+  TemporaryInput temporary(std::move(input), "elastic_fluctuation", nvtExample.parent_path());
+  ScopedCurrentPath currentPath(nvtExample.parent_path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_TRUE(reader.systems[0].propertyElasticConstantsFluctuation.has_value());
+  EXPECT_EQ(reader.numberOfBlocks, 7u);
+  EXPECT_EQ(reader.systems[0].propertyElasticConstantsFluctuation->numberOfBlocks, 7u);
+  EXPECT_EQ(reader.systems[0].elasticConstantsSampleEvery, 25u);
+}
+
+TEST(INPUT_READER_MD, rejects_non_nvt_stress_fluctuation_elastic_constants)
+{
+  nlohmann::json input = readNVTExample();
+  input["Systems"][0]["Ensemble"] = "NVE";
+  input["Systems"][0]["ComputeElasticConstantsFromFluctuations"] = true;
+  TemporaryInput temporary(std::move(input), "elastic_fluctuation_nve", nvtExample.parent_path());
+  ScopedCurrentPath currentPath(nvtExample.parent_path());
+
+  EXPECT_THROW(
+      {
+        InputReader reader(temporary.path().filename().string());
+        static_cast<void>(reader);
+      },
+      std::runtime_error);
 }
