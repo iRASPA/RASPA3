@@ -27,6 +27,11 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   system.mc_moves_statistics.addTrial(move);
 
+  if (system.framework && !system.framework->rigid)
+  {
+    throw std::runtime_error("HybridMC does not support flexible frameworks");
+  }
+
   if (system.moleculeData.size() <= 1)
   {
     return std::nullopt;

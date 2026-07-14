@@ -136,6 +136,67 @@ TEST(minimization_hessian_framework, flexible_framework_molecule_cross_block_mat
   }
 }
 
+TEST(minimization_hessian_framework, flexible_md_direct_gradient_matches_finite_difference)
+{
+  ForceField forceField({{"P", false, 15.0, 0.8, 0.0, 8, false}, {"N", false, 14.0, -0.4, 0.0, 7, false}},
+                        {{80.0, 3.0}, {55.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, true,
+                        false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+  const SimulationBox box(24.0, 24.0, 24.0);
+  const Atom frameworkAtom({0.25, 0.25, 0.25}, 0.8, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "charged-flexible-framework", box, 1, {frameworkAtom}, {frameworkAtom},
+                      int3(1, 1, 1));
+  framework.rigid = false;
+  Component component(forceField, "charged-site", 100.0, 1.0e6, 0.1,
+                      {Atom({0.0, 0.0, 0.0}, -0.4, 1.0, 0, 1, 0, false, false)}, ConnectivityTable(1),
+                      Potentials::IntraMolecularPotentials{}, 0, 0);
+  component.rigid = false;
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {component}, {}, {1}, 5);
+  system.spanOfFrameworkAtoms()[0].position = {7.0, 8.0, 9.0};
+  system.spanOfMoleculeAtoms()[0].position = {10.8, 8.4, 8.7};
+
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  std::span<AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
+  const RunningEnergy analytic = Interactions::computeFrameworkMoleculeGradient(
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      moleculeDynamics, system.interpolationGrids, system.framework, frameworkDynamics);
+  EXPECT_NE(analytic.frameworkMoleculeVDW, 0.0);
+  EXPECT_NE(analytic.frameworkMoleculeCharge, 0.0);
+
+  const auto energy = [&]()
+  {
+    return Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
+                                                        system.interpolationGrids, system.framework,
+                                                        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms())
+        .potentialEnergy();
+  };
+  std::array<Atom*, 2> atoms{&system.spanOfFrameworkAtoms()[0], &system.spanOfMoleculeAtoms()[0]};
+  std::array<AtomDynamics*, 2> dynamics{&frameworkDynamics[0], &moleculeDynamics[0]};
+  constexpr double delta = 1.0e-5;
+  constexpr double relativeTolerance = 2.0e-5;
+  for (std::size_t atom = 0; atom < atoms.size(); ++atom)
+  {
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      double& coordinate = (&atoms[atom]->position.x)[axis];
+      coordinate += delta;
+      const double plus = energy();
+      coordinate -= 2.0 * delta;
+      const double minus = energy();
+      coordinate += delta;
+      const double numerical = (plus - minus) / (2.0 * delta);
+      EXPECT_NEAR((&dynamics[atom]->gradient.x)[axis], numerical,
+                  relativeTolerance * std::max(1.0, std::abs(numerical)))
+          << "atom=" << atom << " axis=" << axis;
+    }
+  }
+  EXPECT_NE(double3::dot(frameworkDynamics[0].gradient, frameworkDynamics[0].gradient), 0.0);
+  EXPECT_NE(double3::dot(moleculeDynamics[0].gradient, moleculeDynamics[0].gradient), 0.0);
+  EXPECT_NEAR(frameworkDynamics[0].gradient.x + moleculeDynamics[0].gradient.x, 0.0, 1.0e-12);
+  EXPECT_NEAR(frameworkDynamics[0].gradient.y + moleculeDynamics[0].gradient.y, 0.0, 1.0e-12);
+  EXPECT_NEAR(frameworkDynamics[0].gradient.z + moleculeDynamics[0].gradient.z, 0.0, 1.0e-12);
+}
+
 TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_difference)
 {
   const double delta = 4e-4;

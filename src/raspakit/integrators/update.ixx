@@ -14,6 +14,7 @@ import simulationbox;
 import forcefield;
 import randomnumbers;
 import interpolation_energy_grid;
+import framework;
 
 export namespace Integrators
 {
@@ -27,21 +28,32 @@ export namespace Integrators
  * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Vector of component definitions.
  * \param scaling Pair of scaling factors for velocity and orientation momentum.
+ * \param framework Optional framework definition.
+ * \param frameworkDynamics Per-framework-atom velocities to scale for a flexible framework.
  */
 void scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                      std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
-                     std::pair<double, double> scaling);
+                     std::pair<double, double> scaling, const std::optional<Framework>& framework = std::nullopt,
+                     std::span<AtomDynamics> frameworkDynamics = {});
 
 /**
- * \brief Removes total system velocity.
+ * \brief Removes total movable-system center-of-mass velocity.
  *
  * \param moleculeData Span of molecules whose velocities are to be scaled.
  * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Vector of component definitions.
+ * \param framework Optional framework definition.
+ * \param frameworkAtomPositions Framework atoms used to obtain pseudo-atom masses.
+ * \param frameworkDynamics Per-framework-atom velocities.
+ * \param forceField Force field containing framework pseudo-atom masses.
  */
 void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                      std::span<AtomDynamics> moleculeDynamics,
-                                     const std::vector<Component>& components);
+                                     const std::vector<Component>& components,
+                                     const std::optional<Framework>& framework = std::nullopt,
+                                     std::span<const Atom> frameworkAtomPositions = {},
+                                     std::span<AtomDynamics> frameworkDynamics = {},
+                                     const ForceField* forceField = nullptr);
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *
@@ -52,10 +64,15 @@ void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span
  * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Vector of component definitions.
  * \param dt Time step for the update.
+ * \param framework Optional framework definition.
+ * \param frameworkAtomPositions Framework atoms to propagate when flexible.
+ * \param frameworkDynamics Per-framework-atom velocities.
  */
 void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                      std::span<const AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
-                     double dt);
+                     double dt, const std::optional<Framework>& framework = std::nullopt,
+                     std::span<Atom> frameworkAtomPositions = {},
+                     std::span<const AtomDynamics> frameworkDynamics = {});
 
 /**
  * \brief Updates the velocities and orientation momenta of molecules based on gradients.
@@ -67,9 +84,16 @@ void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeA
  * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Vector of component definitions.
  * \param dt Time step for the update.
+ * \param framework Optional framework definition.
+ * \param frameworkAtomPositions Framework atoms used to obtain pseudo-atom masses.
+ * \param frameworkDynamics Per-framework-atom velocities and gradients.
+ * \param forceField Force field containing framework pseudo-atom masses.
  */
 void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                      std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components, double dt);
+                      std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components, double dt,
+                      const std::optional<Framework>& framework = std::nullopt,
+                      std::span<const Atom> frameworkAtomPositions = {},
+                      std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr);
 
 /**
  * \brief Initializes the velocities according to the Boltzmann distribution
@@ -83,10 +107,17 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
  * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
  * \param components Components to get the inertiaVector
  * \param temperature Temperature to set velocities to.
+ * \param framework Optional framework definition.
+ * \param frameworkAtomPositions Framework atoms used to obtain pseudo-atom masses.
+ * \param frameworkDynamics Per-framework-atom velocities to initialize.
+ * \param forceField Force field containing framework pseudo-atom masses.
  */
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                           std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
-                          const std::vector<Component> components, double temperature);
+                          const std::vector<Component> components, double temperature,
+                          const std::optional<Framework>& framework = std::nullopt,
+                          std::span<const Atom> frameworkAtomPositions = {},
+                          std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.
@@ -158,5 +189,7 @@ RunningEnergy updateGradients(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<std::size_t> numberOfMoleculesPerComponent);
+    const std::vector<std::size_t> numberOfMoleculesPerComponent,
+    const std::optional<Framework>& framework = std::nullopt,
+    std::span<AtomDynamics> frameworkDynamics = {});
 }  // namespace Integrators

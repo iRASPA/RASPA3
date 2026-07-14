@@ -9,25 +9,36 @@ import atom;
 import atom_dynamics;
 import double3;
 import component;
+import framework;
+import forcefield;
 
 export namespace Integrators
 {
 /**
  * \brief Computes the total translational kinetic energy of molecules.
  *
- * Calculates the sum of translational kinetic energies for all molecules in the system.
+ * Calculates the sum of translational kinetic energies for all movable atoms and molecules in the system.
  * For rigid molecules this uses the center-of-mass velocity; for flexible molecules the
- * atomic velocities carry all kinetic energy.
+ * atomic velocities carry all kinetic energy. Flexible-framework atomic kinetic energy is
+ * included when framework state and force-field masses are supplied.
  *
  * \param moleculeData A span of molecules for which to compute the kinetic energy.
  * \param moleculeAtomPositions A span of atoms corresponding to the molecules.
  * \param components A vector of components containing rigidity and mass information.
+ * \param framework Optional framework definition.
+ * \param frameworkAtomPositions Framework atoms used to obtain pseudo-atom masses.
+ * \param frameworkDynamics Per-framework-atom velocities.
+ * \param forceField Force field containing framework pseudo-atom masses.
  * \return The total translational kinetic energy.
  */
 double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
                                          std::span<const Atom> moleculeAtomPositions,
                                          std::span<const AtomDynamics> moleculeDynamics,
-                                         const std::vector<Component>& components);
+                                         const std::vector<Component>& components,
+                                         const std::optional<Framework>& framework = std::nullopt,
+                                         std::span<const Atom> frameworkAtomPositions = {},
+                                         std::span<const AtomDynamics> frameworkDynamics = {},
+                                         const ForceField* forceField = nullptr);
 
 /**
  * \brief Computes the total rotational kinetic energy of molecules.

@@ -81,7 +81,7 @@ std::span<Atom> System::spanOfFrameworkAtoms() { return std::span(atomData.begin
 
 std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
 {
-  return std::span(atomData.begin(), numberOfFrameworkAtoms);
+  return std::span(atomData.begin(), numberOfRigidFrameworkAtoms);
 }
 
 std::span<const Atom> System::spanOfFlexibleAtoms() const

@@ -177,6 +177,10 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   translationalCenterOfMassConstraint = 0;
   translationalDegreesOfFreedom = 0;
   rotationalDegreesOfFreedom = 0;
+  if (framework && !framework->rigid)
+  {
+    translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+  }
 
   createInitialMolecules(initialpositions);
 
@@ -202,7 +206,7 @@ void System::createFrameworks()
       electricFieldNew.push_back(double3(0.0, 0.0, 0.0));
     }
     numberOfFrameworkAtoms += atoms.size();
-    numberOfRigidFrameworkAtoms += atoms.size();
+    numberOfRigidFrameworkAtoms += framework->rigid ? atoms.size() : 0;
     netChargeFramework += framework->netCharge;
     netCharge += framework->netCharge;
   }
@@ -329,7 +333,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
   double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components);
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
+      spanOfFrameworkDynamics(), &forceField);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -498,7 +503,8 @@ void System::precomputeTotalGradients() noexcept
   runningEnergies = Integrators::updateGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
                                                  spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x,
                                                  eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik,
-                                                 interpolationGrids, numberOfMoleculesPerComponent);
+                                                 interpolationGrids, numberOfMoleculesPerComponent, framework,
+                                                 spanOfFrameworkDynamics());
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -1120,6 +1126,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfRigidFrameworkAtoms;
 
   archive >> s.framework;
+  s.numberOfRigidFrameworkAtoms = s.framework && s.framework->rigid ? s.numberOfFrameworkAtoms : 0;
   archive >> s.components;
 
   archive >> s.equationOfState;

@@ -319,7 +319,8 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
 
   double translationalKineticEnergy =
       Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                                     components);
+                                                     components, framework, spanOfFrameworkAtoms(),
+                                                     spanOfFrameworkDynamics(), &forceField);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -640,7 +641,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              static_cast<double>(currentCycle) * timeStep / 1000.0);
 
   double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(
-      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components);
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
+      spanOfFrameworkDynamics(), &forceField);
   double translational_temperature =
       2.0 * translational_kinetic_energy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));

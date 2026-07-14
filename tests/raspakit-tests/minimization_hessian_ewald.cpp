@@ -236,6 +236,81 @@ TEST(minimization_hessian_ewald, flexible_framework_charge_blocks_match_finite_d
   }
 }
 
+TEST(minimization_hessian_ewald, flexible_md_live_framework_gradient_matches_finite_difference)
+{
+  ForceField forceField = makeChargedForceField();
+  const SimulationBox box(25.0, 25.0, 25.0);
+  const Atom frameworkAtom({0.3, 0.4, 0.5}, 0.8, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "charged-framework", box, 1, {frameworkAtom}, {frameworkAtom}, int3(1, 1, 1));
+  framework.rigid = false;
+  Component component = Component(forceField, "excluded-ion-pair", 100.0, 1e6, 0.2,
+                                  {Atom({-0.4, -0.2, -0.1}, -0.4, 1.0, 0, 1, 0, false, false),
+                                   Atom({0.4, 0.2, 0.1}, -0.4, 1.0, 0, 1, 0, false, false)},
+                                  ConnectivityTable(2), Potentials::IntraMolecularPotentials{}, 5, 21);
+  component.rigid = false;
+  System system(forceField, box, false, 300.0, 1e4, 1.0, framework, {component}, {}, {1}, 5);
+  system.spanOfFrameworkAtoms()[0].position = {7.5, 10.0, 12.5};
+  system.spanOfMoleculeAtoms()[0].position = {13.2, 11.7, 9.8};
+  system.spanOfMoleculeAtoms()[1].position = {14.0, 12.1, 10.2};
+
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  std::span<AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
+  const RunningEnergy analytic = Interactions::computeEwaldFourierGradient(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms(), moleculeDynamics, system.netChargeFramework, system.framework,
+      system.spanOfFrameworkAtoms(), frameworkDynamics);
+  EXPECT_NE(analytic.ewald_fourier, 0.0);
+  EXPECT_NE(analytic.ewald_exclusion, 0.0);
+
+  const auto energy = [&]()
+  {
+    std::vector<std::complex<double>> eikX;
+    std::vector<std::complex<double>> eikY;
+    std::vector<std::complex<double>> eikZ;
+    std::vector<std::complex<double>> eikXY;
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> totalEik;
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedEik;
+    std::vector<AtomDynamics> moleculeScratch(system.spanOfMoleculeAtoms().size());
+    std::vector<AtomDynamics> frameworkScratch(system.spanOfFrameworkAtoms().size());
+    const RunningEnergy value = Interactions::computeEwaldFourierGradient(
+        eikX, eikY, eikZ, eikXY, totalEik, fixedEik, system.forceField, system.simulationBox, system.components,
+        system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), moleculeScratch, system.netChargeFramework,
+        system.framework, system.spanOfFrameworkAtoms(), frameworkScratch);
+    return value.ewald_fourier + value.ewald_exclusion;
+  };
+
+  std::array<Atom*, 3> atoms{&system.spanOfFrameworkAtoms()[0], &system.spanOfMoleculeAtoms()[0],
+                             &system.spanOfMoleculeAtoms()[1]};
+  std::array<AtomDynamics*, 3> dynamics{&frameworkDynamics[0], &moleculeDynamics[0], &moleculeDynamics[1]};
+  constexpr double delta = 1.0e-5;
+  constexpr double relativeTolerance = 3.0e-5;
+  for (std::size_t atom = 0; atom < atoms.size(); ++atom)
+  {
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      double& coordinate = (&atoms[atom]->position.x)[axis];
+      coordinate += delta;
+      const double plus = energy();
+      coordinate -= 2.0 * delta;
+      const double minus = energy();
+      coordinate += delta;
+      const double numerical = (plus - minus) / (2.0 * delta);
+      EXPECT_NEAR((&dynamics[atom]->gradient.x)[axis], numerical,
+                  relativeTolerance * std::max(1.0, std::abs(numerical)))
+          << "atom=" << atom << " axis=" << axis;
+    }
+  }
+  EXPECT_NE(double3::dot(frameworkDynamics[0].gradient, frameworkDynamics[0].gradient), 0.0);
+  EXPECT_NE(double3::dot(moleculeDynamics[0].gradient, moleculeDynamics[0].gradient), 0.0);
+  EXPECT_NE(double3::dot(moleculeDynamics[1].gradient, moleculeDynamics[1].gradient), 0.0);
+  const double3 totalGradient =
+      frameworkDynamics[0].gradient + moleculeDynamics[0].gradient + moleculeDynamics[1].gradient;
+  EXPECT_NEAR(totalGradient.x, 0.0, 1.0e-10);
+  EXPECT_NEAR(totalGradient.y, 0.0, 1.0e-10);
+  EXPECT_NEAR(totalGradient.z, 0.0, 1.0e-10);
+}
+
 TEST(minimization_hessian_ewald, flexible_charged_pair_matches_finite_difference)
 {
   // delta balances roundoff (the large erf exclusion energy cancels over 4*delta^2) against

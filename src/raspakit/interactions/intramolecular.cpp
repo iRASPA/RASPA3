@@ -139,6 +139,141 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
   return energy;
 }
 
+RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceField& forceField,
+                                                                   const Framework& framework,
+                                                                   const SimulationBox& simulationBox,
+                                                                   std::span<const Atom> atoms,
+                                                                   std::span<AtomDynamics> dynamics)
+{
+  RunningEnergy energy{};
+  if (framework.rigid) return energy;
+
+  const auto shiftedPosition = [&](std::size_t atom, const int3& shift)
+  {
+    return atoms[atom].position + simulationBox.cell * double3(static_cast<double>(shift.x),
+                                                               static_cast<double>(shift.y),
+                                                               static_cast<double>(shift.z));
+  };
+  const auto& potentials = framework.intraMolecularPotentials;
+  const auto& images = framework.intraMolecularImageShifts;
+  std::set<std::array<std::size_t, 2>> pairs12And13;
+  std::set<std::array<std::size_t, 2>> pairs14;
+  if (!framework.connectivityTable.table.empty())
+  {
+    for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
+    {
+      pairs12And13.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+    }
+    for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
+    {
+      pairs12And13.insert({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+    }
+    for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
+    {
+      const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
+      if (!pairs12And13.contains(pair)) pairs14.insert(pair);
+    }
+  }
+
+  for (std::size_t index = 0; index < potentials.bonds.size(); ++index)
+  {
+    const BondPotential& potential = potentials.bonds[index];
+    const auto& ids = potential.identifiers;
+    auto [termEnergy, gradient, strain] =
+        potential.potentialEnergyGradientStrain(shiftedPosition(ids[0], images.bonds[index][0]),
+                                               shiftedPosition(ids[1], images.bonds[index][1]));
+    energy.bond += termEnergy;
+    dynamics[ids[0]].gradient += gradient[0];
+    dynamics[ids[1]].gradient += gradient[1];
+  }
+  for (std::size_t index = 0; index < potentials.bends.size(); ++index)
+  {
+    const BendPotential& potential = potentials.bends[index];
+    const auto& ids = potential.identifiers;
+    const auto& shifts = images.bends[index];
+    auto [termEnergy, gradient, strain] =
+        potential.potentialEnergyGradientStrain(shiftedPosition(ids[0], shifts[0]),
+                                                shiftedPosition(ids[1], shifts[1]),
+                                                shiftedPosition(ids[2], shifts[2]));
+    energy.bend += termEnergy;
+    for (std::size_t i = 0; i < 3; ++i) dynamics[ids[i]].gradient += gradient[i];
+  }
+  const auto accumulateTorsions = [&](const std::vector<TorsionPotential>& torsions,
+                                      const std::vector<std::array<int3, 4>>& termImages,
+                                      double RunningEnergy::* member)
+  {
+    for (std::size_t index = 0; index < torsions.size(); ++index)
+    {
+      const TorsionPotential& potential = torsions[index];
+      const auto& ids = potential.identifiers;
+      const auto& shifts = termImages[index];
+      auto [termEnergy, gradient, strain] =
+          potential.potentialEnergyGradientStrain(shiftedPosition(ids[0], shifts[0]),
+                                                  shiftedPosition(ids[1], shifts[1]),
+                                                  shiftedPosition(ids[2], shifts[2]),
+                                                  shiftedPosition(ids[3], shifts[3]));
+      energy.*member += termEnergy;
+      for (std::size_t i = 0; i < 4; ++i) dynamics[ids[i]].gradient += gradient[i];
+    }
+  };
+  accumulateTorsions(potentials.torsions, images.torsions, &RunningEnergy::torsion);
+  accumulateTorsions(potentials.improperTorsions, images.improperTorsions, &RunningEnergy::improperTorsion);
+
+  const auto accumulateRadial = [&](std::size_t A, std::size_t B, const double3& dr,
+                                    const Potentials::GradientFactor& factor, double scaling,
+                                    double& energyAccumulator)
+  {
+    energyAccumulator += scaling * factor.energy;
+    const double3 gradient = scaling * factor.gradientFactor * dr;
+    dynamics[A].gradient += gradient;
+    dynamics[B].gradient -= gradient;
+  };
+  for (std::size_t index = 0; index < potentials.vanDerWaals.size(); ++index)
+  {
+    const VanDerWaalsPotential& potential = potentials.vanDerWaals[index];
+    const std::size_t A = potential.identifiers[0];
+    const std::size_t B = potential.identifiers[1];
+    const double3 dr =
+        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+    const double rr = double3::dot(dr, dr);
+    const bool isScaled14 =
+        pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
+    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    {
+      const Potentials::GradientFactor factor = Potentials::potentialVDWGradient(
+          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+      accumulateRadial(A, B, dr, factor, potential.scaling, energy.intraVDW);
+    }
+  }
+  for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
+  {
+    const CoulombPotential& potential = potentials.coulombs[index];
+    const std::size_t A = potential.identifiers[0];
+    const std::size_t B = potential.identifiers[1];
+    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+    const double rr = double3::dot(dr, dr);
+    const double r = std::sqrt(rr);
+    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    {
+      const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
+      energy.intraCoul += k / r;
+      const double3 gradient = (-k / (r * rr)) * dr;
+      dynamics[A].gradient += gradient;
+      dynamics[B].gradient -= gradient;
+    }
+    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+    {
+      const Potentials::GradientFactor factor = Potentials::potentialCoulombGradient(
+          forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
+      energy.intraCoul += factor.energy;
+      const double3 gradient = factor.gradientFactor * dr;
+      dynamics[A].gradient += gradient;
+      dynamics[B].gradient -= gradient;
+    }
+  }
+  return energy;
+}
+
 RunningEnergy Interactions::computeIntraMolecularEnergy(
     const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     std::span<const Atom> moleculeAtoms) noexcept

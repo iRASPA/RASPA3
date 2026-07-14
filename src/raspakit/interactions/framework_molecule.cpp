@@ -487,7 +487,8 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework>& framework, std::span<AtomDynamics> frameworkDynamics) noexcept
 {
   RunningEnergy energySum{};
 
@@ -497,10 +498,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   bool useCharge = forceField.useCharge;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const bool flexibleFramework = framework && !framework->rigid && frameworkDynamics.size() == frameworkAtoms.size();
 
   if (moleculeAtoms.empty()) return energySum;
 
-  // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
@@ -512,7 +513,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    if (interpolationGrids[typeA].has_value() && !isFractional)
+    if (!flexibleFramework && interpolationGrids[typeA].has_value() && !isFractional)
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
       energySum.frameworkMoleculeVDW += energy_vdw;
@@ -528,6 +529,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     {
       for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
+        const std::size_t indexB = static_cast<std::size_t>(it2 - frameworkAtoms.begin());
         posB = it2->position;
         std::size_t typeB = static_cast<std::size_t>(it2->type);
         std::uint8_t groupIdB = it2->groupId;
@@ -550,6 +552,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
           const double3 f = gradientFactor.gradientFactor * dr;
 
           moleculeDynamics[indexA].gradient += f;
+          if (flexibleFramework) frameworkDynamics[indexB].gradient -= f;
         }
         if (useCharge && rr < cutOffChargeSquared)
         {
@@ -563,6 +566,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
           const double3 g = gradientFactor.gradientFactor * dr;
 
           moleculeDynamics[indexA].gradient += g;
+          if (flexibleFramework) frameworkDynamics[indexB].gradient -= g;
         }
       }
     }

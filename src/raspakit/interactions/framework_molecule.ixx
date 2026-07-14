@@ -161,7 +161,9 @@ void computeFrameworkMoleculeElectricFieldDifference(const ForceField &forceFiel
 RunningEnergy computeFrameworkMoleculeGradient(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept;
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework>& framework = std::nullopt,
+    std::span<AtomDynamics> frameworkDynamics = {}) noexcept;
 
 /**
  * \brief Computes the interaction energy, gradients, and strain derivative between the framework and molecule atoms.

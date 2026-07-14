@@ -9,6 +9,8 @@ import atom;
 import atom_dynamics;
 import double3;
 import component;
+import framework;
+import forcefield;
 import simd_quatd;
 import double3x3;
 import interactions_framework_molecule;
@@ -20,7 +22,11 @@ import integrators_cputime;
 double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
                                                       [[maybe_unused]] std::span<const Atom> moleculeAtomPositions,
                                                       std::span<const AtomDynamics> moleculeDynamics,
-                                                      const std::vector<Component>& components)
+                                                      const std::vector<Component>& components,
+                                                      const std::optional<Framework>& framework,
+                                                      std::span<const Atom> frameworkAtomPositions,
+                                                      std::span<const AtomDynamics> frameworkDynamics,
+                                                      const ForceField* forceField)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double energy{};
@@ -43,6 +49,18 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       }
     }
     index += molecule.numberOfAtoms;
+  }
+  if (framework && !framework->rigid)
+  {
+    if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
+    {
+      throw std::runtime_error("Flexible-framework kinetic energy requires force-field and dynamics data");
+    }
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
+      energy += 0.5 * mass * double3::dot(frameworkDynamics[i].velocity, frameworkDynamics[i].velocity);
+    }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function

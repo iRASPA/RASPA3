@@ -205,7 +205,9 @@ RunningEnergy computeEwaldFourierGradient(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> atomData,
-    std::span<AtomDynamics> atomDynamics, double netChargeFramework = 0.0);
+    std::span<AtomDynamics> atomDynamics, double netChargeFramework = 0.0,
+    const std::optional<Framework>& framework = std::nullopt, std::span<const Atom> frameworkAtoms = {},
+    std::span<AtomDynamics> frameworkDynamics = {});
 
 /**
  * \brief Computes the reciprocal-space (Fourier) Ewald force acting on the atoms of a single molecule.

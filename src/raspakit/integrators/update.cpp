@@ -25,10 +25,12 @@ import integrators_compute;
 import randomnumbers;
 import units;
 import interpolation_energy_grid;
+import framework;
 
 void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
-                                  std::pair<double, double> scaling)
+                                  std::pair<double, double> scaling, const std::optional<Framework>& framework,
+                                  std::span<AtomDynamics> frameworkDynamics)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Scale velocities and orientation momenta of each molecule
@@ -49,6 +51,13 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
+  if (framework && !framework->rigid)
+  {
+    for (AtomDynamics& dynamics : frameworkDynamics)
+    {
+      dynamics.velocity *= scaling.first;
+    }
+  }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.scaleVelocities += end - begin;
 }
@@ -56,11 +65,43 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
 void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData,
                                                   std::span<Atom> moleculeAtomPositions,
                                                   std::span<AtomDynamics> moleculeDynamics,
-                                                  const std::vector<Component>& components)
+                                                  const std::vector<Component>& components,
+                                                  const std::optional<Framework>& framework,
+                                                  std::span<const Atom> frameworkAtomPositions,
+                                                  std::span<AtomDynamics> frameworkDynamics,
+                                                  const ForceField* forceField)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-  double3 totalVelocity = computeCenterOfMassVelocity(moleculeData);
+  double3 totalVelocity;
+  const bool flexibleFramework = framework && !framework->rigid;
+  if (flexibleFramework)
+  {
+    if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
+    {
+      throw std::runtime_error("Flexible-framework center-of-mass removal requires force-field and dynamics data");
+    }
+
+    double3 totalMomentum{};
+    double totalMass{};
+    for (const Molecule& molecule : moleculeData)
+    {
+      totalMass += molecule.mass;
+      totalMomentum += molecule.mass * molecule.velocity;
+    }
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
+      totalMass += mass;
+      totalMomentum += mass * frameworkDynamics[i].velocity;
+    }
+    totalVelocity = totalMomentum / totalMass;
+  }
+  else
+  {
+    // Preserve the established rigid-framework/molecule-only arithmetic path.
+    totalVelocity = computeCenterOfMassVelocity(moleculeData);
+  }
   std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
@@ -76,13 +117,23 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
     }
     index += molecule.numberOfAtoms;
   }
+  if (flexibleFramework)
+  {
+    for (AtomDynamics& dynamics : frameworkDynamics)
+    {
+      dynamics.velocity -= totalVelocity;
+    }
+  }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.removeCenterOfMassVelocity += end - begin;
 }
 
 void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                   std::span<const AtomDynamics> moleculeDynamics,
-                                  const std::vector<Component>& components, double dt)
+                                  const std::vector<Component>& components, double dt,
+                                  const std::optional<Framework>& framework,
+                                  std::span<Atom> frameworkAtomPositions,
+                                  std::span<const AtomDynamics> frameworkDynamics)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Update the center of mass positions for each molecule
@@ -103,13 +154,22 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
+  if (framework && !framework->rigid)
+  {
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      frameworkAtomPositions[i].position += dt * frameworkDynamics[i].velocity;
+    }
+  }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updatePositions += end - begin;
 }
 
 void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                    std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
-                                   double dt)
+                                   double dt, const std::optional<Framework>& framework,
+                                   std::span<const Atom> frameworkAtomPositions,
+                                   std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -132,6 +192,18 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     }
     index += molecule.numberOfAtoms;
   }
+  if (framework && !framework->rigid)
+  {
+    if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
+    {
+      throw std::runtime_error("Flexible-framework velocity update requires force-field and dynamics data");
+    }
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
+      frameworkDynamics[i].velocity -= 0.5 * dt * frameworkDynamics[i].gradient / mass;
+    }
+  }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
 }
@@ -139,7 +211,10 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                                        std::span<Atom> moleculeAtomPositions,
                                        std::span<AtomDynamics> moleculeDynamics,
-                                       const std::vector<Component> components, double temperature)
+                                       const std::vector<Component> components, double temperature,
+                                       const std::optional<Framework>& framework,
+                                       std::span<const Atom> frameworkAtomPositions,
+                                       std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField)
 {
   std::size_t index{};
   for (Molecule& molecule : moleculeData)
@@ -187,6 +262,19 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
       molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
     }
     index += molecule.numberOfAtoms;
+  }
+  if (framework && !framework->rigid)
+  {
+    if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
+    {
+      throw std::runtime_error("Flexible-framework velocity initialization requires force-field and dynamics data");
+    }
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
+      frameworkDynamics[i].velocity =
+          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+    }
   }
 }
 
@@ -347,7 +435,8 @@ RunningEnergy Integrators::updateGradients(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<std::size_t> numberOfMoleculesPerComponent)
+    const std::vector<std::size_t> numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
+    std::span<AtomDynamics> frameworkDynamics)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -356,10 +445,20 @@ RunningEnergy Integrators::updateGradients(
   {
     dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
+  const bool flexibleFramework =
+      framework && !framework->rigid && frameworkDynamics.size() == frameworkAtomPositions.size();
+  if (flexibleFramework)
+  {
+    for (AtomDynamics& dynamics : frameworkDynamics)
+    {
+      dynamics.gradient = double3(0.0, 0.0, 0.0);
+    }
+  }
 
   // Compute gradients and energies due to interactions
   RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(
-      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, moleculeDynamics, interpolationGrids);
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, moleculeDynamics, interpolationGrids,
+      framework, frameworkDynamics);
   RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularGradient(
       forceField, simulationBox, moleculeAtomPositions, moleculeDynamics);
   double netChargeFramework = 0.0;
@@ -369,9 +468,15 @@ RunningEnergy Integrators::updateGradients(
   }
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
       eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
-      numberOfMoleculesPerComponent, moleculeAtomPositions, moleculeDynamics, netChargeFramework);
+      numberOfMoleculesPerComponent, moleculeAtomPositions, moleculeDynamics, netChargeFramework, framework,
+      frameworkAtomPositions, frameworkDynamics);
 
   RunningEnergy internal_energies{};
+  if (flexibleFramework)
+  {
+    internal_energies += Interactions::computeFrameworkIntraMolecularGradient(
+        forceField, *framework, simulationBox, frameworkAtomPositions, frameworkDynamics);
+  }
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
   {

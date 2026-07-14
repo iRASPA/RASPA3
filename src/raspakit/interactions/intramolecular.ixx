@@ -27,6 +27,11 @@ RunningEnergy computeFrameworkIntraMolecularEnergy(const ForceField& forceField,
                                                    const SimulationBox& simulationBox,
                                                    std::span<const Atom> frameworkAtoms);
 
+RunningEnergy computeFrameworkIntraMolecularGradient(const ForceField& forceField, const Framework& framework,
+                                                     const SimulationBox& simulationBox,
+                                                     std::span<const Atom> frameworkAtoms,
+                                                     std::span<AtomDynamics> frameworkDynamics);
+
 RunningEnergy computeIntraMolecularEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                           std::span<const Molecule> moleculeData,
                                           std::span<const Atom> moleculeAtoms) noexcept;

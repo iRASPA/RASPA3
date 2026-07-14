@@ -201,7 +201,8 @@ void MolecularDynamics::setup()
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
 
@@ -448,13 +449,20 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   {
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
-                                      system.spanOfMoleculeDynamics(), system.components, system.temperature);
+                                      system.spanOfMoleculeDynamics(), system.components, system.temperature,
+                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
+                                      &system.forceField);
 
     Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                 system.spanOfMoleculeDynamics(), system.components);
+                                                 system.spanOfMoleculeDynamics(), system.components, system.framework,
+                                                 system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
+                                                 &system.forceField);
     if (system.thermostat.has_value())
     {
-      if (!system.framework.has_value() && system.numberOfMolecules() > 1uz)
+      const bool flexibleFrameworkConstraint =
+          system.framework && !system.framework->rigid &&
+          system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
+      if (flexibleFrameworkConstraint || (!system.framework.has_value() && system.numberOfMolecules() > 1uz))
       {
         system.translationalCenterOfMassConstraint = 3;
         system.thermostat->translationalCenterOfMassConstraint = 3;
@@ -464,7 +472,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())
@@ -499,7 +508,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
           system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
           system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-          system.numberOfMoleculesPerComponent);
+          system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -593,7 +602,8 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
     system.runningEnergies.rotationalKineticEnergy =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
     if (system.thermostat.has_value())
@@ -675,7 +685,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
           system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
           system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-          system.numberOfMoleculesPerComponent);
+          system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
