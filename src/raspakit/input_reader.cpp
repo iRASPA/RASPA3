@@ -37,6 +37,7 @@ import property_msd;
 import property_vacf;
 import write_lammps_data;
 import thermostat;
+import thermobarostat;
 import cif_reader;
 import running_energy;
 import minimization_cell_layout;
@@ -2067,16 +2068,63 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("Ensemble") && value["Ensemble"].is_string())
       {
         std::size_t thermostatChainLength{5};
+        std::size_t numberOfRespaSteps{5};
         std::size_t numberOfYoshidaSuzukiSteps{5};
         double timeScaleParameterThermostat{0.15};
+        std::size_t barostatChainLength{5};
+        double timeScaleParameterBarostat{1.0};
+
+        if (value.contains("ThermostatChainLength") && value["ThermostatChainLength"].is_number_unsigned())
+          thermostatChainLength = value["ThermostatChainLength"].get<std::size_t>();
+        if (value.contains("BarostatChainLength") && value["BarostatChainLength"].is_number_unsigned())
+          barostatChainLength = value["BarostatChainLength"].get<std::size_t>();
+        if (value.contains("NumberOfRespaSteps") && value["NumberOfRespaSteps"].is_number_unsigned())
+          numberOfRespaSteps = value["NumberOfRespaSteps"].get<std::size_t>();
+        if (value.contains("NumberOfYoshidaSuzukiSteps") &&
+            value["NumberOfYoshidaSuzukiSteps"].is_number_unsigned())
+          numberOfYoshidaSuzukiSteps = value["NumberOfYoshidaSuzukiSteps"].get<std::size_t>();
+        if (value.contains("TimeScaleParameterThermostat") &&
+            value["TimeScaleParameterThermostat"].is_number())
+          timeScaleParameterThermostat = value["TimeScaleParameterThermostat"].get<double>();
+        if (value.contains("TimeScaleParameterBarostat") && value["TimeScaleParameterBarostat"].is_number())
+          timeScaleParameterBarostat = value["TimeScaleParameterBarostat"].get<double>();
+        if (thermostatChainLength == 0 || barostatChainLength == 0 || numberOfRespaSteps == 0)
+          throw std::runtime_error(
+              "[Input reader]: thermostat/barostat chain lengths and NumberOfRespaSteps must be positive");
 
         std::string ensembleString = value["Ensemble"].get<std::string>();
-        if (caseInSensStringCompare(ensembleString, "NVT"))
+        const std::optional<MolecularDynamicsEnsemble> ensemble =
+            molecularDynamicsEnsembleFromString(ensembleString);
+        if (!ensemble.has_value())
+          throw std::runtime_error(std::format(
+              "[Input reader]: unknown MD 'Ensemble' '{}'; expected NVE, NVT, NPT, or NPTPR", ensembleString));
+        systems[systemId].molecularDynamicsEnsemble = ensemble.value();
+        if (ensemble == MolecularDynamicsEnsemble::NVT || ensemble == MolecularDynamicsEnsemble::NPT ||
+            ensemble == MolecularDynamicsEnsemble::NPTPR)
         {
           systems[systemId].thermostat =
               Thermostat(systems[systemId].temperature, systems[systemId].timeStep,
                          systems[systemId].translationalDegreesOfFreedom, systems[systemId].rotationalDegreesOfFreedom,
                          thermostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterThermostat);
+          systems[systemId].thermostat->numberOfRespaSteps = numberOfRespaSteps;
+        }
+        if (ensemble == MolecularDynamicsEnsemble::NPT || ensemble == MolecularDynamicsEnsemble::NPTPR)
+        {
+          if (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number())
+            throw std::runtime_error("[Input reader]: NPT/NPTPR requires a numeric ExternalPressure");
+          if (value.contains("ExternalPressureX") || value.contains("ExternalPressureY") ||
+              value.contains("ExternalPressureZ"))
+            throw std::runtime_error("[Input reader]: NPT/NPTPR supports hydrostatic ExternalPressure only");
+          CellMinimizationType cellType = systems[systemId].cellMinimizationType;
+          if (ensemble == MolecularDynamicsEnsemble::NPT) cellType = CellMinimizationType::Isotropic;
+          if (ensemble == MolecularDynamicsEnsemble::NPTPR && cellType == CellMinimizationType::Fixed)
+            cellType = CellMinimizationType::Regular;
+          systems[systemId].thermobarostat =
+              Thermobarostat(ensemble.value(), cellType, systems[systemId].monoclinicAngleType,
+                             systems[systemId].temperature, systems[systemId].pressure, systems[systemId].timeStep,
+                             systems[systemId].translationalDegreesOfFreedom, barostatChainLength,
+                             numberOfYoshidaSuzukiSteps, timeScaleParameterBarostat);
+          systems[systemId].thermobarostat->numberOfRespaSteps = numberOfRespaSteps;
         }
       }
 
@@ -2416,6 +2464,12 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteLammpsData",
     "WriteLammpsDataEvery",
     "Ensemble",
+    "ThermostatChainLength",
+    "BarostatChainLength",
+    "NumberOfRespaSteps",
+    "NumberOfYoshidaSuzukiSteps",
+    "TimeScaleParameterThermostat",
+    "TimeScaleParameterBarostat",
     "TimeStep",
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",

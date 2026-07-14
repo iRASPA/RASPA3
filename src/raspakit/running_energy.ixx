@@ -64,7 +64,8 @@ export struct RunningEnergy
         dudlambdaEwald{},
         translationalKineticEnergy(0.0),
         rotationalKineticEnergy(0.0),
-        NoseHooverEnergy(0.0)
+        NoseHooverEnergy(0.0),
+        thermobarostatEnergy(0.0)
   {
   }
 
@@ -201,6 +202,7 @@ export struct RunningEnergy
   inline double translationalPartKineticEnergy() const { return translationalKineticEnergy; }
   inline double rotationalPartKineticEnergy() const { return rotationalKineticEnergy; }
   inline double thermostatEnergy() const { return NoseHooverEnergy; }
+  inline double extendedThermobarostatEnergy() const { return thermobarostatEnergy; }
 
   /**
    * \brief Computes the total Ewald Fourier energy.
@@ -226,7 +228,7 @@ export struct RunningEnergy
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
            bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization +
-           translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
+           translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy + thermobarostatEnergy;
   }
 
   /**
@@ -328,6 +330,7 @@ export struct RunningEnergy
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
     NoseHooverEnergy = 0.0;
+    thermobarostatEnergy = 0.0;
   }
 
   inline RunningEnergy& operator+=(const RunningEnergy& b)
@@ -366,6 +369,7 @@ export struct RunningEnergy
     translationalKineticEnergy += b.translationalKineticEnergy;
     rotationalKineticEnergy += b.rotationalKineticEnergy;
     NoseHooverEnergy += b.NoseHooverEnergy;
+    thermobarostatEnergy += b.thermobarostatEnergy;
 
     return *this;
   }
@@ -406,6 +410,7 @@ export struct RunningEnergy
     translationalKineticEnergy -= b.translationalKineticEnergy;
     rotationalKineticEnergy -= b.rotationalKineticEnergy;
     NoseHooverEnergy -= b.NoseHooverEnergy;
+    thermobarostatEnergy -= b.thermobarostatEnergy;
 
     return *this;
   }
@@ -447,6 +452,7 @@ export struct RunningEnergy
     v.translationalKineticEnergy = -translationalKineticEnergy;
     v.rotationalKineticEnergy = -rotationalKineticEnergy;
     v.NoseHooverEnergy = -NoseHooverEnergy;
+    v.thermobarostatEnergy = -thermobarostatEnergy;
 
     return v;
   }
@@ -487,12 +493,13 @@ export struct RunningEnergy
     translationalKineticEnergy *= b;
     rotationalKineticEnergy *= b;
     NoseHooverEnergy *= b;
+    thermobarostatEnergy *= b;
 
     return *this;
   }
 
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
@@ -528,6 +535,7 @@ export struct RunningEnergy
   double translationalKineticEnergy;  ///< Translational kinetic energy.
   double rotationalKineticEnergy;     ///< Rotational kinetic energy.
   double NoseHooverEnergy;            ///< Energy associated with Nose-Hoover thermostat/barostat.
+  double thermobarostatEnergy;        ///< Pressure-volume, cell kinetic, and barostat-chain energy.
 
   /**
    * \brief Returns a string representation of the RunningEnergy object.
@@ -578,6 +586,7 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy + b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a.thermobarostatEnergy + b.thermobarostatEnergy;
 
   return m;
 }
@@ -619,6 +628,7 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy - b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a.thermobarostatEnergy - b.thermobarostatEnergy;
   return m;
 }
 
@@ -659,6 +669,7 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.translationalKineticEnergy = a * b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a * b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a * b.thermobarostatEnergy;
 
   return m;
 }
@@ -700,6 +711,7 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.translationalKineticEnergy = b * a.translationalKineticEnergy;
   m.rotationalKineticEnergy = b * a.rotationalKineticEnergy;
   m.NoseHooverEnergy = b * a.NoseHooverEnergy;
+  m.thermobarostatEnergy = b * a.thermobarostatEnergy;
 
   return m;
 }

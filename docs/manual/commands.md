@@ -306,12 +306,23 @@ reported separately at the end of the simulation.
     The length of the Nosé-Hoover chain used to thermostat the system. Default:
     `5`.
 
+-   `"NumberOfRespaSteps" : integer`\
+    The number of RESPA substeps used by the thermostat and barostat chains.
+    Default: `5`.
+
 -   `"NumberOfYoshidaSuzukiSteps" : integer`\
     The number of Yoshida/Suzuki multiple-timestep integration steps. Default:
     `5`.
 
 -   `"TimeScaleParameterThermostat" : floating-point-number`\
     The time scale on which the thermostat evolves. Default: `0.15`.
+
+-   `"BarostatChainLength" : integer`\
+    The length of the Nosé-Hoover chain coupled to the isotropic or cell
+    barostat. Default: `5`.
+
+-   `"TimeScaleParameterBarostat" : floating-point-number`\
+    The pressure-coupling time scale in picoseconds. Default: `1.0`.
 
 ### Box/Framework options <a name="boxframework-options"></a>
 
@@ -421,6 +432,29 @@ reported separately at the end of the simulation.
         the average temperature $\left\langle T\right\rangle$ are constant, while
         the instantaneous temperature fluctuates. A Nosé-Hoover thermostat is
         attached.
+
+    -   `"NPT"`\
+        Isothermal-isobaric molecular dynamics with isotropic log-volume
+        coupling. The cell shape is fixed and all three lengths scale together.
+
+    -   `"NPTPR"`\
+        Martyna-Parrinello-Rahman isothermal-isobaric dynamics with a flexible
+        cell. `"CellType"` selects the constrained cell space:
+        `"Regular"` (6 degrees of freedom), `"Monoclinic"` (4),
+        `"Isotropic"` (1), `"Anisotropic"` (3),
+        `"RegularUpperTriangle"`/`"REGULAR_UPPER_TRIANGLE"` (6), or
+        `"MonoclinicUpperTriangle"`/`"MONOCLINIC_UPPER_TRIANGLE"` (4).
+        `"MonoclinicAngleType"` selects `"Alpha"`, `"Beta"` (default), or
+        `"Gamma"` for the single shear degree of freedom. Upper-triangular modes
+        preserve forbidden lower-triangle entries exactly.
+
+    NPT and NPTPR require `"ExternalPressure"` and use hydrostatic pressure
+    coupling. Their reported conserved quantity is the extended enthalpy:
+    physical energy plus thermostat energy, pressure-volume work, cell/barostat
+    kinetic energy, and barostat-chain energy. Complete Nosé-Hoover
+    thermobarostat trajectories are tested for time reversibility and bounded
+    extended-enthalpy drift; canonical symplecticity applies only to isolated
+    Hamiltonian submaps.
 
 ### Options to measure properties <a name="options-to-measure-properties"></a>
 

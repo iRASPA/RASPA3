@@ -15,6 +15,9 @@ import energy_status;
 import archive;
 import json;
 import simulation_schedule;
+import running_energy;
+
+export RunningEnergy molecularDynamicsStep(System& system);
 
 /**
  * \brief Represents a molecular dynamics simulation.

@@ -24,6 +24,8 @@ import energy_status_intra;
 import energy_status_inter;
 import running_energy;
 import atom;
+import atom_dynamics;
+import molecule;
 import double3;
 import double3x3;
 import property_lambda_probability_histogram;
@@ -47,6 +49,279 @@ import integrators_update;
 import integrators_cputime;
 import interpolation_energy_grid;
 import simulation_schedule;
+import thermobarostat;
+import minimization_cell_layout;
+
+namespace
+{
+double3x3 kineticStress(const System& system)
+{
+  double3x3 stress{};
+  const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  const std::span<const AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  const auto add = [&stress](double mass, const double3& velocity)
+  {
+    stress.ax += mass * velocity.x * velocity.x;
+    stress.ay += mass * velocity.x * velocity.y;
+    stress.az += mass * velocity.x * velocity.z;
+    stress.bx += mass * velocity.y * velocity.x;
+    stress.by += mass * velocity.y * velocity.y;
+    stress.bz += mass * velocity.y * velocity.z;
+    stress.cx += mass * velocity.z * velocity.x;
+    stress.cy += mass * velocity.z * velocity.y;
+    stress.cz += mass * velocity.z * velocity.z;
+  };
+  std::size_t atomIndex{};
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    if (system.components[molecule.componentId].rigid)
+      add(molecule.mass, molecule.velocity);
+    else
+    {
+      for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+      {
+        const Atom& atom = moleculeAtoms[atomIndex + i];
+        add(system.forceField.pseudoAtoms[atom.type].mass, moleculeDynamics[atomIndex + i].velocity);
+      }
+    }
+    atomIndex += molecule.numberOfAtoms;
+  }
+  if (system.framework && !system.framework->rigid)
+  {
+    const std::span<const Atom> atoms = system.spanOfFrameworkAtoms();
+    const std::span<const AtomDynamics> dynamics = system.spanOfFrameworkDynamics();
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+      add(system.forceField.pseudoAtoms[atoms[i].type].mass, dynamics[i].velocity);
+  }
+  return stress;
+}
+
+void applyVelocityMatrix(System& system, const double3x3& matrix)
+{
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  std::size_t atomIndex{};
+  for (Molecule& molecule : system.moleculeData)
+  {
+    molecule.velocity = matrix * molecule.velocity;
+    if (!system.components[molecule.componentId].rigid)
+      for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+        moleculeDynamics[atomIndex + i].velocity = matrix * moleculeDynamics[atomIndex + i].velocity;
+    atomIndex += molecule.numberOfAtoms;
+  }
+  if (system.framework && !system.framework->rigid)
+    for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.velocity = matrix * dynamics.velocity;
+}
+
+void propagateCell(System& system, const double3x3& cellVelocity)
+{
+  std::vector<double3> positions;
+  std::vector<double3> velocities;
+  std::vector<double3*> targets;
+  std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  std::size_t atomIndex{};
+  for (Molecule& molecule : system.moleculeData)
+  {
+    if (system.components[molecule.componentId].rigid)
+    {
+      positions.push_back(molecule.centerOfMassPosition);
+      velocities.push_back(molecule.velocity);
+      targets.push_back(&molecule.centerOfMassPosition);
+    }
+    else
+    {
+      for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+      {
+        positions.push_back(moleculeAtoms[atomIndex + i].position);
+        velocities.push_back(moleculeDynamics[atomIndex + i].velocity);
+        targets.push_back(&moleculeAtoms[atomIndex + i].position);
+      }
+    }
+    atomIndex += molecule.numberOfAtoms;
+  }
+  if (system.framework && !system.framework->rigid)
+  {
+    std::span<Atom> atoms = system.spanOfFrameworkAtoms();
+    std::span<AtomDynamics> dynamics = system.spanOfFrameworkDynamics();
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+    {
+      positions.push_back(atoms[i].position);
+      velocities.push_back(dynamics[i].velocity);
+      targets.push_back(&atoms[i].position);
+    }
+  }
+
+  double3x3 cell = system.simulationBox.cell;
+  const bool upper = system.thermobarostat->cellType == CellMinimizationType::RegularUpperTriangle ||
+                     system.thermobarostat->cellType == CellMinimizationType::MonoclinicUpperTriangle;
+  propagateCellAndPosition(cell, positions, velocities, cellVelocity, system.timeStep, upper);
+  if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
+    throw std::runtime_error("Thermobarostat produced an invalid or singular cell");
+  for (std::size_t i = 0; i != targets.size(); ++i) *targets[i] = positions[i];
+  system.simulationBox = SimulationBox(cell);
+  const double3 widths = system.simulationBox.perpendicularWidths();
+  const double requiredWidth =
+      2.0 * std::max({system.forceField.cutOffFrameworkVDWAutomatic ? 0.0
+                                                                    : system.forceField.cutOffFrameworkVDW,
+                      system.forceField.cutOffMoleculeVDWAutomatic ? 0.0
+                                                                   : system.forceField.cutOffMoleculeVDW,
+                      system.forceField.cutOffCoulombAutomatic ? 0.0 : system.forceField.cutOffCoulomb});
+  if (std::min({widths.x, widths.y, widths.z}) <= requiredWidth)
+    throw std::runtime_error(std::format(
+        "Thermobarostat cell violates the minimum-image cutoff requirement (widths: {}, {}, {}; required > {})",
+        widths.x, widths.y, widths.z, requiredWidth));
+  system.forceField.initializeAutomaticCutOff(system.simulationBox);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+}
+
+RunningEnergy thermobarostatVelocityVerlet(System& system)
+{
+  Thermobarostat& barostat = *system.thermobarostat;
+  const auto pressureBefore = system.computeMolecularPressure();
+  system.precomputeTotalGradients();
+  const double3x3 kineticBefore = kineticStress(system);
+
+  const double barostatKinetic =
+      barostat.ensemble == MolecularDynamicsEnsemble::NPT
+          ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
+          : 0.5 * barostat.cellMass *
+                std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0,
+                                      std::plus<>(), [](double value) { return value * value; });
+  const double chainScale = barostat.chainStep(barostatKinetic);
+  barostat.logVolumeVelocity *= chainScale;
+  barostat.cellVelocity = barostat.cellVelocity * chainScale;
+
+  if (system.thermostat)
+  {
+    const auto scaling = system.thermostat->NoseHooverNVT(
+        Integrators::computeTranslationalKineticEnergy(
+            system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+            system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField),
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components));
+    Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, scaling, system.framework, system.spanOfFrameworkDynamics());
+  }
+
+  double3x3 cellRate{};
+  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+  {
+    const double mtkFactor =
+        1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+    const double scalarForce = (pressureBefore.second.trace() + mtkFactor * kineticBefore.trace() -
+                                3.0 * barostat.pressure * system.simulationBox.volume) /
+                               barostat.logVolumeMass;
+    barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
+    cellRate = double3x3(barostat.logVolumeVelocity / 3.0, barostat.logVolumeVelocity / 3.0,
+                        barostat.logVolumeVelocity / 3.0);
+  }
+  else
+  {
+    double3x3 correctedKinetic = kineticBefore;
+    const double mtkCorrection =
+        kineticBefore.trace() /
+        static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+    correctedKinetic.ax += mtkCorrection;
+    correctedKinetic.by += mtkCorrection;
+    correctedKinetic.cz += mtkCorrection;
+    const double3x3 acceleration =
+        cellForce(pressureBefore.second, correctedKinetic, system.simulationBox.volume, barostat.pressure,
+                  barostat.cellMass, barostat.cellType, barostat.monoclinicAngle);
+    barostat.cellVelocity += 0.5 * system.timeStep * acceleration;
+    barostat.cellVelocity =
+        projectCellTensor(barostat.cellVelocity, barostat.cellType, barostat.monoclinicAngle);
+    cellRate = barostat.cellVelocity;
+  }
+
+  applyVelocityMatrix(system, velocityPropagator(cellRate, 0.5 * system.timeStep,
+                                                 system.translationalDegreesOfFreedom));
+  Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
+                                system.spanOfFrameworkDynamics(), &system.forceField);
+  propagateCell(system, cellRate);
+  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+    barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
+  Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep);
+  Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+  RunningEnergy energies = Integrators::updateGradients(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+      system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.components, system.eik_x,
+      system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
+      system.spanOfFrameworkDynamics());
+  Integrators::updateCenterOfMassAndQuaternionGradients(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+  Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
+                                system.spanOfFrameworkDynamics(), &system.forceField);
+  applyVelocityMatrix(system, velocityPropagator(cellRate, 0.5 * system.timeStep,
+                                                 system.translationalDegreesOfFreedom));
+
+  energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
+  energies.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
+  const auto pressureAfter = system.computeMolecularPressure();
+  const double3x3 kineticAfter = kineticStress(system);
+  system.precomputeTotalGradients();
+  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+  {
+    const double mtkFactor =
+        1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+    const double scalarForce = (pressureAfter.second.trace() + mtkFactor * kineticAfter.trace() -
+                                3.0 * barostat.pressure * system.simulationBox.volume) /
+                               barostat.logVolumeMass;
+    barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
+  }
+  else
+  {
+    double3x3 correctedKinetic = kineticAfter;
+    const double mtkCorrection =
+        kineticAfter.trace() /
+        static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+    correctedKinetic.ax += mtkCorrection;
+    correctedKinetic.by += mtkCorrection;
+    correctedKinetic.cz += mtkCorrection;
+    barostat.cellVelocity +=
+        0.5 * system.timeStep *
+        cellForce(pressureAfter.second, correctedKinetic, system.simulationBox.volume, barostat.pressure,
+                  barostat.cellMass, barostat.cellType, barostat.monoclinicAngle);
+    barostat.cellVelocity =
+        projectCellTensor(barostat.cellVelocity, barostat.cellType, barostat.monoclinicAngle);
+  }
+
+  if (system.thermostat)
+  {
+    const auto scaling = system.thermostat->NoseHooverNVT(
+        energies.translationalKineticEnergy, energies.rotationalKineticEnergy);
+    Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, scaling, system.framework, system.spanOfFrameworkDynamics());
+    energies.NoseHooverEnergy = system.thermostat->getEnergy();
+  }
+  const double finalBarostatKinetic =
+      barostat.ensemble == MolecularDynamicsEnsemble::NPT
+          ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
+          : 0.5 * barostat.cellMass *
+                std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0,
+                                      std::plus<>(), [](double value) { return value * value; });
+  const double finalScale = barostat.chainStep(finalBarostatKinetic);
+  barostat.logVolumeVelocity *= finalScale;
+  barostat.cellVelocity = barostat.cellVelocity * finalScale;
+  energies.thermobarostatEnergy = barostat.energy(system.simulationBox.volume);
+  return energies;
+}
+}  // namespace
+
+RunningEnergy molecularDynamicsStep(System& system)
+{
+  if (system.thermobarostat) return thermobarostatVelocityVerlet(system);
+  return Integrators::velocityVerlet(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
+      system.framework, system.spanOfFrameworkDynamics());
+}
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
@@ -469,6 +744,13 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       }
       system.thermostat->initialize(random);
     }
+    if (system.thermobarostat.has_value())
+    {
+      system.thermobarostat->translationalDegreesOfFreedom =
+          system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint;
+      system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
+      system.thermobarostat->initialize(random);
+    }
 
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
@@ -480,6 +762,9 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
     }
+    if (system.thermobarostat.has_value())
+      system.runningEnergies.thermobarostatEnergy =
+          system.thermobarostat->energy(system.simulationBox.volume);
     system.referenceEnergy = system.runningEnergies.conservedEnergy();
 
     if (outputToFiles)
@@ -503,12 +788,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   {
     for (System& system : systems)
     {
-      system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
-          system.timeStep, system.thermostat,
-          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-          system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
+      system.runningEnergies = molecularDynamicsStep(system);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -610,6 +890,9 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
     }
+    if (system.thermobarostat.has_value())
+      system.runningEnergies.thermobarostatEnergy =
+          system.thermobarostat->energy(system.simulationBox.volume);
     system.referenceEnergy = system.runningEnergies.conservedEnergy();
 
     if (outputToFiles)
@@ -680,12 +963,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
     for (System& system : systems)
     {
-      system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
-          system.timeStep, system.thermostat,
-          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-          system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
+      system.runningEnergies = molecularDynamicsStep(system);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=

@@ -446,6 +446,8 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
              conv * rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "Baro/thermostat energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * NoseHooverEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Thermobarostat enthalpy{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * thermobarostatEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();
@@ -496,6 +498,7 @@ nlohmann::json RunningEnergy::jsonMD() const
   status["Total kinetic energy [K]"] = conv * kineticEnergy();
   status["translational [K]"] = conv * translationalKineticEnergy;
   status["rotational [K]"] = conv * rotationalKineticEnergy;
+  status["thermobarostat enthalpy [K]"] = conv * thermobarostatEnergy;
   return status;
 }
 
@@ -614,6 +617,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Runnin
   archive << e.translationalKineticEnergy;
   archive << e.rotationalKineticEnergy;
   archive << e.NoseHooverEnergy;
+  archive << e.thermobarostatEnergy;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -664,6 +668,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;
   archive >> e.NoseHooverEnergy;
+  if (versionNumber >= 2) archive >> e.thermobarostatEnergy;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

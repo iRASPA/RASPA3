@@ -54,6 +54,7 @@ import reactions;
 import transition_matrix;
 import equation_of_states;
 import thermostat;
+import thermobarostat;
 import json;
 import interpolation_energy_grid;
 import write_lammps_data;
@@ -101,7 +102,7 @@ export struct System
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{4};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -122,7 +123,9 @@ export struct System
   std::vector<Component> components;
 
   EquationOfState equationOfState;
+  MolecularDynamicsEnsemble molecularDynamicsEnsemble{MolecularDynamicsEnsemble::NVE};
   std::optional<Thermostat> thermostat;
+  std::optional<Thermobarostat> thermobarostat;
 
   LoadingData loadings;
 
@@ -499,6 +502,7 @@ export struct System
   void createFrameworkInterpolationGrids(std::ostream &stream);
 
   void setThermostat(const std::optional<Thermostat> &thermo);
+  void setThermobarostat(const std::optional<Thermobarostat>& barostat);
 
   void setSamplePDBMovie(const std::optional<SampleMovie> &movie);
   void updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle);

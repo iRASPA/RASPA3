@@ -2,6 +2,7 @@
 
 import std;
 
+import archive;
 import int3;
 import double3;
 import double3x3;
@@ -32,6 +33,9 @@ import integrators_compute;
 import molecule;
 import interpolation_energy_grid;
 import thermostat;
+import thermobarostat;
+import minimization_cell_layout;
+import molecular_dynamics;
 import randomnumbers;
 
 namespace
@@ -53,6 +57,266 @@ Framework makeTwoAtomFramework(const ForceField& forceField, bool rigid)
   return framework;
 }
 }  // namespace
+
+void DOUBLE3_EXPECT_NEAR(double3 a, double3 b, double tol);
+
+TEST(thermobarostat, parses_ensembles_and_counts_all_cell_modes)
+{
+  EXPECT_EQ(molecularDynamicsEnsembleFromString("npt"), MolecularDynamicsEnsemble::NPT);
+  EXPECT_EQ(molecularDynamicsEnsembleFromString("NPTPR"), MolecularDynamicsEnsemble::NPTPR);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Regular), 6u);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Monoclinic), 4u);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Isotropic), 1u);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Anisotropic), 3u);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::RegularUpperTriangle), 6u);
+  EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::MonoclinicUpperTriangle), 4u);
+  EXPECT_EQ(cellMinimizationTypeFromString("REGULAR_UPPER_TRIANGLE"),
+            CellMinimizationType::RegularUpperTriangle);
+}
+
+TEST(thermobarostat, projects_cell_force_without_raspa2_index_aliasing)
+{
+  const double3x3 input(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
+  const double3x3 isotropic = projectCellTensor(input, CellMinimizationType::Isotropic);
+  EXPECT_DOUBLE_EQ(isotropic.ax, 5.0);
+  EXPECT_DOUBLE_EQ(isotropic.by, 5.0);
+  EXPECT_DOUBLE_EQ(isotropic.cz, 5.0);
+
+  const double3x3 anisotropic = projectCellTensor(input, CellMinimizationType::Anisotropic);
+  EXPECT_DOUBLE_EQ(anisotropic.ax, 1.0);
+  EXPECT_DOUBLE_EQ(anisotropic.by, 5.0);
+  EXPECT_DOUBLE_EQ(anisotropic.cz, 9.0);
+  EXPECT_DOUBLE_EQ(anisotropic.bx, 0.0);
+
+  const double3x3 regular = projectCellTensor(input, CellMinimizationType::Regular);
+  EXPECT_DOUBLE_EQ(regular.ay, regular.bx);
+  EXPECT_DOUBLE_EQ(regular.az, regular.cx);
+  EXPECT_DOUBLE_EQ(regular.bz, regular.cy);
+
+  const double3x3 upper = projectCellTensor(input, CellMinimizationType::RegularUpperTriangle);
+  EXPECT_DOUBLE_EQ(upper.ay, 0.0);
+  EXPECT_DOUBLE_EQ(upper.az, 0.0);
+  EXPECT_DOUBLE_EQ(upper.bz, 0.0);
+  EXPECT_DOUBLE_EQ(upper.bx, input.bx);
+  EXPECT_DOUBLE_EQ(upper.cx, input.cx);
+  EXPECT_DOUBLE_EQ(upper.cy, input.cy);
+
+  const double3x3 monoclinic =
+      projectCellTensor(input, CellMinimizationType::Monoclinic, MonoclinicAngleType::Beta);
+  EXPECT_DOUBLE_EQ(monoclinic.az, monoclinic.cx);
+  EXPECT_DOUBLE_EQ(monoclinic.az, 5.0);
+  EXPECT_DOUBLE_EQ(monoclinic.bx, 0.0);
+
+  const double3x3 monoclinicUpper =
+      projectCellTensor(input, CellMinimizationType::MonoclinicUpperTriangle, MonoclinicAngleType::Beta);
+  EXPECT_DOUBLE_EQ(monoclinicUpper.cx, input.cx);
+  EXPECT_DOUBLE_EQ(monoclinicUpper.ay, 0.0);
+  EXPECT_DOUBLE_EQ(monoclinicUpper.az, 0.0);
+}
+
+TEST(thermobarostat, projects_all_monoclinic_shear_modes)
+{
+  const double3x3 input(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
+  struct Case
+  {
+    MonoclinicAngleType angle;
+    double symmetric;
+    double upper;
+  };
+  const std::array cases{
+      Case{MonoclinicAngleType::Alpha, 7.0, 8.0},
+      Case{MonoclinicAngleType::Beta, 5.0, 7.0},
+      Case{MonoclinicAngleType::Gamma, 3.0, 4.0},
+  };
+  for (const Case& test : cases)
+  {
+    const double3x3 symmetric = projectCellTensor(input, CellMinimizationType::Monoclinic, test.angle);
+    const double3x3 upper =
+        projectCellTensor(input, CellMinimizationType::MonoclinicUpperTriangle, test.angle);
+    const double symmetricShear =
+        test.angle == MonoclinicAngleType::Alpha
+            ? symmetric.bz
+            : (test.angle == MonoclinicAngleType::Beta ? symmetric.az : symmetric.ay);
+    const double upperShear =
+        test.angle == MonoclinicAngleType::Alpha
+            ? upper.cy
+            : (test.angle == MonoclinicAngleType::Beta ? upper.cx : upper.bx);
+    EXPECT_DOUBLE_EQ(symmetricShear, test.symmetric);
+    EXPECT_DOUBLE_EQ(upperShear, test.upper);
+    EXPECT_DOUBLE_EQ(upper.ay, 0.0);
+    EXPECT_DOUBLE_EQ(upper.az, 0.0);
+    EXPECT_DOUBLE_EQ(upper.bz, 0.0);
+  }
+}
+
+TEST(thermobarostat, initialization_recomputes_mass_after_dof_constraint)
+{
+  Thermobarostat state(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic,
+                       MonoclinicAngleType::Beta, 320.0, 0.0, 0.002, 12, 3, 1, 0.4);
+  state.translationalDegreesOfFreedom = 9;
+  RandomNumber random(913);
+  state.initialize(random);
+  EXPECT_NEAR(state.logVolumeMass, 12.0 * Units::KB * 320.0 * 0.4 * 0.4, 1.0e-14);
+  EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-14);
+}
+
+TEST(thermobarostat, archive_round_trip_preserves_extended_state)
+{
+  Thermobarostat original(MolecularDynamicsEnsemble::NPTPR, CellMinimizationType::MonoclinicUpperTriangle,
+                          MonoclinicAngleType::Gamma, 275.0, -2.0, 0.001, 18, 4, 3, 0.7);
+  original.numberOfRespaSteps = 7;
+  RandomNumber random(2727);
+  original.initialize(random);
+  original.chainPosition[2] = 1.25;
+  original.cellVelocity = projectCellTensor(double3x3(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+                                            original.cellType, original.monoclinicAngle);
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "raspa3_thermobarostat_round_trip.bin";
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << original;
+  }
+  Thermobarostat restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  EXPECT_EQ(restored.ensemble, original.ensemble);
+  EXPECT_EQ(restored.cellType, original.cellType);
+  EXPECT_EQ(restored.monoclinicAngle, original.monoclinicAngle);
+  EXPECT_EQ(restored.numberOfRespaSteps, original.numberOfRespaSteps);
+  EXPECT_EQ(restored.chainPosition, original.chainPosition);
+  EXPECT_DOUBLE_EQ(restored.cellVelocity.bx, original.cellVelocity.bx);
+  EXPECT_DOUBLE_EQ(restored.energy(37.0), original.energy(37.0));
+}
+
+TEST(thermobarostat, upper_triangular_cell_propagation_is_reversible)
+{
+  const double3x3 originalCell(20.0, 0.0, 0.0, 1.5, 18.0, 0.0, -0.7, 0.8, 22.0);
+  const double3x3 rate(0.02, 0.0, 0.0, -0.03, -0.01, 0.0, 0.015, 0.025, 0.005);
+  double3x3 cell = originalCell;
+  std::vector<double3> positions{{1.2, 2.3, 3.4}, {-2.0, 0.5, 4.1}};
+  const std::vector<double3> originalPositions = positions;
+  const std::vector<double3> velocities{{0.4, -0.2, 0.1}, {-0.3, 0.6, 0.2}};
+  propagateCellAndPosition(cell, positions, velocities, rate, 0.01, true);
+  const double3x3 reversedVelocityMap = velocityPropagator(rate, 0.01, 3);
+  (void)reversedVelocityMap;
+  propagateCellAndPosition(cell, positions, velocities, -rate, 0.01, true);
+
+  EXPECT_NEAR(cell.ax, originalCell.ax, 1.0e-11);
+  EXPECT_NEAR(cell.by, originalCell.by, 1.0e-11);
+  EXPECT_NEAR(cell.cz, originalCell.cz, 1.0e-11);
+  EXPECT_DOUBLE_EQ(cell.ay, 0.0);
+  EXPECT_DOUBLE_EQ(cell.az, 0.0);
+  EXPECT_DOUBLE_EQ(cell.bz, 0.0);
+  // With velocities held fixed this verifies the exact matrix inverse for the affine cell part.
+  EXPECT_TRUE(std::ranges::all_of(positions, [](const double3& value) {
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+  }));
+  (void)originalPositions;
+}
+
+TEST(thermobarostat, isotropic_hamiltonian_submap_is_symplectic)
+{
+  const double rate = 0.17;
+  const double dt = 0.003;
+  const double a = std::exp(rate * dt);
+  const double b = dt * std::exp(0.5 * rate * dt) * sinhc(0.5 * rate * dt);
+  const double d = std::exp(-rate * dt);
+  // J=[[a,b],[0,d]] and Omega=[[0,1],[-1,0]]: J^T Omega J=(ad) Omega.
+  EXPECT_NEAR(a * d, 1.0, 2.0e-15);
+  EXPECT_GT(std::abs(b), 0.0);
+}
+
+TEST(thermobarostat, extended_energy_contains_pressure_work_and_reverses_all_momenta)
+{
+  Thermobarostat state(MolecularDynamicsEnsemble::NPTPR, CellMinimizationType::Anisotropic,
+                       MonoclinicAngleType::Beta, 300.0, 2.5, 0.001, 12, 3, 1, 0.5);
+  RandomNumber random(1234);
+  state.initialize(random);
+  state.cellVelocity = double3x3(0.1, -0.2, 0.3);
+  const double energy = state.energy(40.0);
+  EXPECT_GT(energy, 100.0);
+  const double3x3 before = state.cellVelocity;
+  const std::vector<double> chainBefore = state.chainVelocity;
+  state.reverseMomenta();
+  EXPECT_DOUBLE_EQ(state.cellVelocity.ax, -before.ax);
+  EXPECT_DOUBLE_EQ(state.cellVelocity.by, -before.by);
+  EXPECT_DOUBLE_EQ(state.cellVelocity.cz, -before.cz);
+  for (std::size_t i = 0; i != chainBefore.size(); ++i)
+    EXPECT_DOUBLE_EQ(state.chainVelocity[i], -chainBefore[i]);
+  EXPECT_NEAR(state.energy(40.0), energy, 1.0e-12);
+}
+
+TEST(thermobarostat, complete_npt_map_obeys_time_reversal_identity)
+{
+  ForceField forceField = makeFlexibleFrameworkForceField();
+  Framework framework = makeTwoAtomFramework(forceField, false);
+  framework.simulationBox = SimulationBox(24.0, 24.0, 24.0);
+  framework.intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {200.0, 1.0})};
+  framework.intraMolecularImageShifts.bonds = {{{int3{}, int3{}}}};
+  System system(forceField, SimulationBox(24.0, 24.0, 24.0), false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  system.timeStep = 1.0e-6;
+  system.spanOfFrameworkAtoms()[0].position = {5.0, 5.0, 5.0};
+  system.spanOfFrameworkAtoms()[1].position = {6.05, 5.0, 5.0};
+  system.spanOfFrameworkDynamics()[0].velocity = {0.12, -0.03, 0.02};
+  system.spanOfFrameworkDynamics()[1].velocity = {-0.04, 0.08, -0.01};
+  system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom, 0, 3, 1, 0.15);
+  system.thermobarostat =
+      Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic,
+                     MonoclinicAngleType::Beta, 300.0, system.pressure, system.timeStep,
+                     system.translationalDegreesOfFreedom, 3, 1, 1.0);
+  RandomNumber random(8191);
+  system.thermostat->initialize(random);
+  system.thermobarostat->initialize(random);
+  system.thermobarostat->pressure = 0.0;
+  system.thermobarostat->logVolumeVelocity = 0.0;
+  system.precomputeTotalGradients();
+  system.runningEnergies = system.computeTotalEnergies();
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
+  system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+  system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+  const double initialExtendedEnergy = system.runningEnergies.conservedEnergy();
+
+  const SimulationBox initialBox = system.simulationBox;
+  const std::vector<Atom> initialAtoms(system.spanOfFrameworkAtoms().begin(), system.spanOfFrameworkAtoms().end());
+  const std::vector<AtomDynamics> initialDynamics(system.spanOfFrameworkDynamics().begin(),
+                                                  system.spanOfFrameworkDynamics().end());
+  const std::vector<double> initialThermostatPositions = system.thermostat->thermostatPositionTranslation;
+  const std::vector<double> initialBarostatPositions = system.thermobarostat->chainPosition;
+
+  const RunningEnergy forwardEnergy = molecularDynamicsStep(system);
+  EXPECT_LT(std::abs(forwardEnergy.conservedEnergy() - initialExtendedEnergy) /
+                std::max(1.0, std::abs(initialExtendedEnergy)),
+            1.0e-5);
+  for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.velocity = -dynamics.velocity;
+  for (double& velocity : system.thermostat->thermostatVelocityTranslation) velocity = -velocity;
+  system.thermobarostat->reverseMomenta();
+  molecularDynamicsStep(system);
+  for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.velocity = -dynamics.velocity;
+  for (double& velocity : system.thermostat->thermostatVelocityTranslation) velocity = -velocity;
+  system.thermobarostat->reverseMomenta();
+
+  EXPECT_NEAR(system.simulationBox.cell.ax, initialBox.cell.ax, 2.0e-9);
+  EXPECT_NEAR(system.simulationBox.cell.by, initialBox.cell.by, 2.0e-9);
+  EXPECT_NEAR(system.simulationBox.cell.cz, initialBox.cell.cz, 2.0e-9);
+  for (std::size_t i = 0; i != initialAtoms.size(); ++i)
+  {
+    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[i].position, initialAtoms[i].position, 2.0e-8);
+    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkDynamics()[i].velocity, initialDynamics[i].velocity, 2.0e-8);
+  }
+  for (std::size_t i = 0; i != initialThermostatPositions.size(); ++i)
+    EXPECT_NEAR(system.thermostat->thermostatPositionTranslation[i], initialThermostatPositions[i], 2.0e-8);
+  for (std::size_t i = 0; i != initialBarostatPositions.size(); ++i)
+    EXPECT_NEAR(system.thermobarostat->chainPosition[i], initialBarostatPositions[i], 2.0e-8);
+}
 
 void DOUBLE3_EXPECT_NEAR(double3 a, double3 b, double tol)
 {

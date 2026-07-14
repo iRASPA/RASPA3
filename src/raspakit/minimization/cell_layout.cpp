@@ -42,6 +42,8 @@ std::string CellMinimizationLayout::name() const { return cellMinimizationTypeNa
 
 std::optional<CellMinimizationType> cellMinimizationTypeFromString(std::string_view value)
 {
+  if (equalCaseInsensitive(value, "REGULAR_UPPER_TRIANGLE")) return CellMinimizationType::RegularUpperTriangle;
+  if (equalCaseInsensitive(value, "MONOCLINIC_UPPER_TRIANGLE")) return CellMinimizationType::MonoclinicUpperTriangle;
   for (CellMinimizationType type :
        {CellMinimizationType::Fixed, CellMinimizationType::Isotropic, CellMinimizationType::Anisotropic,
         CellMinimizationType::Monoclinic, CellMinimizationType::Regular, CellMinimizationType::RegularUpperTriangle,

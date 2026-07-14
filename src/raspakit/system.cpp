@@ -65,6 +65,7 @@ import interactions_external_field;
 import interactions_external_field_grid;
 import equation_of_states;
 import thermostat;
+import thermobarostat;
 import json;
 import integrators;
 import integrators_compute;
@@ -855,6 +856,20 @@ void System::setThermostat(const std::optional<Thermostat>& thermo)
   }
 }
 
+void System::setThermobarostat(const std::optional<Thermobarostat>& barostat)
+{
+  if (!barostat.has_value())
+  {
+    thermobarostat.reset();
+    return;
+  }
+  molecularDynamicsEnsemble = barostat->ensemble;
+  thermobarostat = Thermobarostat(barostat->ensemble, barostat->cellType, barostat->monoclinicAngle, temperature,
+                                  pressure, timeStep, translationalDegreesOfFreedom, barostat->chainLength,
+                                  barostat->numberOfYoshidaSuzukiSteps, barostat->timeScaleParameterBarostat);
+  thermobarostat->numberOfRespaSteps = barostat->numberOfRespaSteps;
+}
+
 void System::setSamplePDBMovie(const std::optional<SampleMovie>& movie)
 {
   if (movie.has_value())
@@ -980,7 +995,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.components;
 
   archive << s.equationOfState;
+  archive << static_cast<std::uint8_t>(s.molecularDynamicsEnsemble);
   archive << s.thermostat;
+  archive << s.thermobarostat;
 
   archive << s.loadings;
 
@@ -1130,7 +1147,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.components;
 
   archive >> s.equationOfState;
+  if (versionNumber >= 4)
+  {
+    std::uint8_t molecularDynamicsEnsemble;
+    archive >> molecularDynamicsEnsemble;
+    s.molecularDynamicsEnsemble = static_cast<MolecularDynamicsEnsemble>(molecularDynamicsEnsemble);
+  }
   archive >> s.thermostat;
+  if (versionNumber >= 4) archive >> s.thermobarostat;
 
   archive >> s.loadings;
 
