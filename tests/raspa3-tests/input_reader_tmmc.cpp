@@ -4,6 +4,7 @@ import std;
 
 import input_reader;
 import json;
+import thermobarostat;
 
 namespace
 {
@@ -136,4 +137,68 @@ TEST(INPUT_READER_MD, rejects_non_nvt_stress_fluctuation_elastic_constants)
         static_cast<void>(reader);
       },
       std::runtime_error);
+}
+
+TEST(INPUT_READER_MD, accepts_grand_canonical_molecular_dynamics_ensembles)
+{
+  struct Case
+  {
+    std::string name;
+    MolecularDynamicsEnsemble ensemble;
+    bool hasBarostat;
+  };
+  const std::array cases{
+      Case{"MuVT", MolecularDynamicsEnsemble::MuVT, false},
+      Case{"MuPT", MolecularDynamicsEnsemble::MuPT, true},
+      Case{"MuPTPR", MolecularDynamicsEnsemble::MuPTPR, true},
+  };
+
+  for (const Case& test : cases)
+  {
+    nlohmann::json input = readNVTExample();
+    input["Systems"][0]["Ensemble"] = test.name;
+    input["Systems"][0]["ExternalPressure"] = 1.0e5;
+    if (test.ensemble == MolecularDynamicsEnsemble::MuPTPR)
+      input["Systems"][0]["CellType"] = "RegularUpperTriangle";
+    input["Components"][0]["SwapProbability"] = 1.0;
+    TemporaryInput temporary(std::move(input), test.name, nvtExample.parent_path());
+    ScopedCurrentPath currentPath(nvtExample.parent_path());
+
+    InputReader reader(temporary.path().filename().string());
+    EXPECT_EQ(reader.systems[0].molecularDynamicsEnsemble, test.ensemble);
+    EXPECT_TRUE(reader.systems[0].thermostat.has_value());
+    EXPECT_EQ(reader.systems[0].thermobarostat.has_value(), test.hasBarostat);
+  }
+}
+
+TEST(INPUT_READER_MD, rejects_grand_canonical_md_without_reservoir_or_swap)
+{
+  nlohmann::json missingPressure = readNVTExample();
+  missingPressure["Systems"][0]["Ensemble"] = "MuVT";
+  missingPressure["Components"][0]["SwapProbability"] = 1.0;
+  TemporaryInput pressureInput(std::move(missingPressure), "muvt_pressure", nvtExample.parent_path());
+
+  nlohmann::json missingSwap = readNVTExample();
+  missingSwap["Systems"][0]["Ensemble"] = "MuVT";
+  missingSwap["Systems"][0]["ExternalPressure"] = 1.0e5;
+  TemporaryInput swapInput(std::move(missingSwap), "muvt_swap", nvtExample.parent_path());
+  ScopedCurrentPath currentPath(nvtExample.parent_path());
+
+  EXPECT_THROW(InputReader pressureReader(pressureInput.path().filename().string()), std::runtime_error);
+  EXPECT_THROW(InputReader swapReader(swapInput.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER_MD, reads_grand_canonical_md_examples)
+{
+  const std::array examples{
+      std::filesystem::path{"examples/non_basic/14_md_muvt_methane_box/simulation.json"},
+      std::filesystem::path{"examples/non_basic/15_md_mupt_methane_box/simulation.json"},
+      std::filesystem::path{"examples/non_basic/16_md_muptpr_methane_box/simulation.json"},
+  };
+  for (const std::filesystem::path& example : examples)
+  {
+    ScopedCurrentPath currentPath(example.parent_path());
+    InputReader reader(example.filename().string());
+    EXPECT_TRUE(molecularDynamicsHasParticleExchange(reader.systems[0].molecularDynamicsEnsemble));
+  }
 }

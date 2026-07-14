@@ -74,10 +74,19 @@ Thermostat::Thermostat(double temperature, double timeStep,
   }
 }
 
-void Thermostat::initialize(RandomNumber &random)
+void Thermostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFreedom,
+                                         std::size_t newRotationalDegreesOfFreedom,
+                                         std::size_t newTranslationalCenterOfMassConstraint)
 {
+  translationalDegreesOfFreedom = newTranslationalDegreesOfFreedom;
+  rotationalDegreesOfFreedom = newRotationalDegreesOfFreedom;
+  translationalCenterOfMassConstraint =
+      std::min(newTranslationalCenterOfMassConstraint, newTranslationalDegreesOfFreedom);
+  const std::size_t effectiveTranslationalDegreesOfFreedom =
+      translationalDegreesOfFreedom - translationalCenterOfMassConstraint;
+
   thermostatDegreesOfFreedomTranslation[0] =
-      static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB * temperature;
+      static_cast<double>(effectiveTranslationalDegreesOfFreedom) * Units::KB * temperature;
   for (std::size_t i = 1; i != thermostatChainLength; ++i)
   {
     thermostatDegreesOfFreedomTranslation[i] = Units::KB * temperature;
@@ -85,8 +94,10 @@ void Thermostat::initialize(RandomNumber &random)
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
-    thermostatMassTranslation[i] = thermostatDegreesOfFreedomTranslation[i] *
-                                   timeScaleParameterThermostat * timeScaleParameterThermostat;
+    thermostatMassTranslation[i] =
+        thermostatDegreesOfFreedomTranslation[i] > 0.0
+            ? thermostatDegreesOfFreedomTranslation[i] * timeScaleParameterThermostat * timeScaleParameterThermostat
+            : 1.0;
   }
 
   thermostatDegreesOfFreedomRotation[0] = static_cast<double>(rotationalDegreesOfFreedom) * Units::KB * temperature;
@@ -97,19 +108,33 @@ void Thermostat::initialize(RandomNumber &random)
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
-    thermostatMassRotation[i] = thermostatDegreesOfFreedomRotation[i] *
-                                timeScaleParameterThermostat * timeScaleParameterThermostat;
+    thermostatMassRotation[i] =
+        thermostatDegreesOfFreedomRotation[i] > 0.0
+            ? thermostatDegreesOfFreedomRotation[i] * timeScaleParameterThermostat * timeScaleParameterThermostat
+            : 1.0;
   }
+}
+
+void Thermostat::initialize(RandomNumber &random)
+{
+  refreshDegreesOfFreedom(translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
+                          translationalCenterOfMassConstraint);
+  const std::size_t effectiveTranslationalDegreesOfFreedom =
+      translationalDegreesOfFreedom - translationalCenterOfMassConstraint;
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
-    thermostatVelocityTranslation[i] =
-        random.Gaussian() *
-        std::sqrt(static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) /
-                  thermostatMassTranslation[i]);
+    thermostatVelocityTranslation[i] = effectiveTranslationalDegreesOfFreedom == 0
+                                           ? 0.0
+                                           : random.Gaussian() *
+                                                 std::sqrt(static_cast<double>(effectiveTranslationalDegreesOfFreedom) /
+                                                           thermostatMassTranslation[i]);
 
-    thermostatVelocityRotation[i] =
-        random.Gaussian() * std::sqrt(static_cast<double>(rotationalDegreesOfFreedom) / thermostatMassTranslation[i]);
+    thermostatVelocityRotation[i] = rotationalDegreesOfFreedom == 0
+                                        ? 0.0
+                                        : random.Gaussian() *
+                                              std::sqrt(static_cast<double>(rotationalDegreesOfFreedom) /
+                                                        thermostatMassTranslation[i]);
   }
 }
 

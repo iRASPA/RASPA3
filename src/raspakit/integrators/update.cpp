@@ -208,8 +208,49 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
+void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule,
+                                             std::span<AtomDynamics> moleculeDynamics, const Component& component,
+                                             double temperature)
+{
+  if (component.rigid)
+  {
+    molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                        std::sqrt(Units::KB * temperature / molecule.mass);
+
+    const double3 I = component.inertiaVector;
+    const double3 invI = component.inverseInertiaVector;
+    const double3 angularVelocity =
+        double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
+
+    const simd_quatd q = molecule.orientation;
+    molecule.orientationMomentum.ix =
+        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iy =
+        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iz =
+        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.r =
+        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+  }
+  else
+  {
+    if (moleculeDynamics.size() != molecule.numberOfAtoms)
+      throw std::runtime_error("Flexible-molecule dynamics span has the wrong size");
+    double3 momentum{};
+    for (std::size_t i = 0; i != moleculeDynamics.size(); i++)
+    {
+      const double mass = component.definedAtoms[i].second;
+      moleculeDynamics[i].velocity =
+          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+      momentum += mass * moleculeDynamics[i].velocity;
+    }
+    molecule.velocity = momentum * molecule.invMass;
+    molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
+  }
+}
+
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
-                                       std::span<Atom> moleculeAtomPositions,
+                                       [[maybe_unused]] std::span<Atom> moleculeAtomPositions,
                                        std::span<AtomDynamics> moleculeDynamics,
                                        const std::vector<Component> components, double temperature,
                                        const std::optional<Framework>& framework,
@@ -219,48 +260,8 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
   std::size_t index{};
   for (Molecule& molecule : moleculeData)
   {
-    if (components[molecule.componentId].rigid)
-    {
-      // Draw random vector with variance kBT / m
-      molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
-                          std::sqrt(Units::KB * temperature / molecule.mass);
-
-      // Draw random quaternion with variance by kBT / I
-      double3 I = components[molecule.componentId].inertiaVector;
-      double3 invI = components[molecule.componentId].inverseInertiaVector;
-
-      // factor sqrt(3/2) added to match correct mean
-      double3 angularVelocity =
-          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
-
-      // rotate into orientation frame
-      simd_quatd q = molecule.orientation;
-      molecule.orientationMomentum.ix =
-          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-      molecule.orientationMomentum.iy =
-          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-      molecule.orientationMomentum.iz =
-          2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-      molecule.orientationMomentum.r =
-          2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
-    }
-    else
-    {
-      // Flexible molecule: draw per-atom velocities with variance kBT / m_atom
-      std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
-      double3 momentum{};
-      for (std::size_t i = 0; i != span.size(); i++)
-      {
-        double mass = components[molecule.componentId].definedAtoms[i].second;
-        span[i].velocity =
-            double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
-        momentum += mass * span[i].velocity;
-      }
-
-      // Keep the molecule record in sync: the molecule velocity is the center-of-mass velocity
-      molecule.velocity = momentum * molecule.invMass;
-      molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
-    }
+    std::span<AtomDynamics> dynamics = moleculeDynamics.subspan(index, molecule.numberOfAtoms);
+    initializeMoleculeVelocity(random, molecule, dynamics, components[molecule.componentId], temperature);
     index += molecule.numberOfAtoms;
   }
   if (framework && !framework->rigid)

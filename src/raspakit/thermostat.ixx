@@ -89,6 +89,9 @@ export struct Thermostat
    * \param random A reference to a RandomNumber generator.
    */
   void initialize(RandomNumber &random);
+  void refreshDegreesOfFreedom(std::size_t translationalDegreesOfFreedom,
+                               std::size_t rotationalDegreesOfFreedom,
+                               std::size_t translationalCenterOfMassConstraint);
 
   /**
    * \brief Performs a Nose-Hoover NVT integration step.

@@ -36,6 +36,8 @@ import thermostat;
 import thermobarostat;
 import minimization_cell_layout;
 import molecular_dynamics;
+import mc_moves;
+import mc_moves_move_types;
 import randomnumbers;
 
 namespace
@@ -64,6 +66,14 @@ TEST(thermobarostat, parses_ensembles_and_counts_all_cell_modes)
 {
   EXPECT_EQ(molecularDynamicsEnsembleFromString("npt"), MolecularDynamicsEnsemble::NPT);
   EXPECT_EQ(molecularDynamicsEnsembleFromString("NPTPR"), MolecularDynamicsEnsemble::NPTPR);
+  EXPECT_EQ(molecularDynamicsEnsembleFromString("muvt"), MolecularDynamicsEnsemble::MuVT);
+  EXPECT_EQ(molecularDynamicsEnsembleFromString("MuPT"), MolecularDynamicsEnsemble::MuPT);
+  EXPECT_EQ(molecularDynamicsEnsembleFromString("MUPTPR"), MolecularDynamicsEnsemble::MuPTPR);
+  EXPECT_TRUE(molecularDynamicsUsesThermostat(MolecularDynamicsEnsemble::MuVT));
+  EXPECT_TRUE(molecularDynamicsUsesIsotropicBarostat(MolecularDynamicsEnsemble::MuPT));
+  EXPECT_TRUE(molecularDynamicsUsesFlexibleBarostat(MolecularDynamicsEnsemble::MuPTPR));
+  EXPECT_TRUE(molecularDynamicsHasParticleExchange(MolecularDynamicsEnsemble::MuVT));
+  EXPECT_FALSE(molecularDynamicsHasParticleExchange(MolecularDynamicsEnsemble::NPT));
   EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Regular), 6u);
   EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Monoclinic), 4u);
   EXPECT_EQ(thermobarostatCellDegreesOfFreedom(CellMinimizationType::Isotropic), 1u);
@@ -160,9 +170,72 @@ TEST(thermobarostat, initialization_recomputes_mass_after_dof_constraint)
   EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-14);
 }
 
+TEST(thermostat, refreshes_variable_particle_degrees_of_freedom_without_resetting_chain_state)
+{
+  Thermostat state(300.0, 0.0005, 6, 3, 3, 1, 0.15);
+  RandomNumber random(731);
+  state.initialize(random);
+  state.thermostatPositionTranslation[0] = 1.25;
+  state.thermostatVelocityTranslation[0] = -0.75;
+
+  state.refreshDegreesOfFreedom(12, 6, 3);
+
+  EXPECT_EQ(state.translationalDegreesOfFreedom, 12u);
+  EXPECT_EQ(state.rotationalDegreesOfFreedom, 6u);
+  EXPECT_DOUBLE_EQ(state.thermostatPositionTranslation[0], 1.25);
+  EXPECT_DOUBLE_EQ(state.thermostatVelocityTranslation[0], -0.75);
+  EXPECT_NEAR(state.thermostatDegreesOfFreedomTranslation[0], 9.0 * Units::KB * 300.0, 1.0e-14);
+}
+
+TEST(integrators, initializes_only_the_inserted_molecule_velocity)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, false, false, false);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e4, 1.0, std::nullopt,
+                {methane}, {}, {2}, 5);
+  system.moleculeData[0].velocity = {4.0, 5.0, 6.0};
+  system.moleculeData[1].velocity = {};
+  RandomNumber random(991);
+  Molecule& inserted = system.moleculeData[1];
+
+  Integrators::initializeMoleculeVelocity(
+      random, inserted, system.spanOfMoleculeDynamics().subspan(inserted.atomIndex, inserted.numberOfAtoms),
+      system.components[0], system.temperature);
+
+  EXPECT_EQ(system.moleculeData[0].velocity, double3(4.0, 5.0, 6.0));
+  EXPECT_GT(inserted.velocity.length(), 0.0);
+}
+
+TEST(molecular_dynamics, gcmd_swap_reports_accepted_insertion_and_deletion_without_changing_cell)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, false, false, false);
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.fugacityCoefficient = 1.0;
+  methane.idealGasRosenbluthWeight = 1.0;
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e12, 1.0, std::nullopt,
+                {methane}, {}, {1}, 5);
+  const double3x3 initialCell = system.simulationBox.cell;
+  RandomNumber random(1879);
+
+  MC_Moves::ParticleExchangeResult result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Inserted; ++attempt)
+    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0);
+  ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Inserted);
+  const std::size_t countAfterInsertion = system.numberOfIntegerMoleculesPerComponent[0];
+
+  system.pressure = 1.0e-12;
+  system.components[0].fugacityCoefficient = 1.0;
+  result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Deleted; ++attempt)
+    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0);
+  EXPECT_EQ(result, MC_Moves::ParticleExchangeResult::Deleted);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], countAfterInsertion - 1);
+  EXPECT_EQ(system.simulationBox.cell, initialCell);
+}
+
 TEST(thermobarostat, archive_round_trip_preserves_extended_state)
 {
-  Thermobarostat original(MolecularDynamicsEnsemble::NPTPR, CellMinimizationType::MonoclinicUpperTriangle,
+  Thermobarostat original(MolecularDynamicsEnsemble::MuPTPR, CellMinimizationType::MonoclinicUpperTriangle,
                           MonoclinicAngleType::Gamma, 275.0, -2.0, 0.001, 18, 4, 3, 0.7);
   original.numberOfRespaSteps = 7;
   RandomNumber random(2727);

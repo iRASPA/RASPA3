@@ -142,6 +142,61 @@ void propagateCell(System& system, const double3x3& cellVelocity)
   system.forceField.initializeEwaldParameters(system.simulationBox);
 }
 
+void refreshParticleNumberDependentState(RandomNumber& random, System& system, std::size_t selectedComponent,
+                                         MC_Moves::ParticleExchangeResult result)
+{
+  if (result == MC_Moves::ParticleExchangeResult::Rejected) return;
+
+  if (result == MC_Moves::ParticleExchangeResult::Inserted)
+  {
+    const std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
+    Molecule& molecule =
+        system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+    std::span<AtomDynamics> dynamics =
+        system.spanOfMoleculeDynamics().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    Integrators::initializeMoleculeVelocity(random, molecule, dynamics, system.components[selectedComponent],
+                                            system.temperature);
+  }
+
+  const bool flexibleFrameworkConstraint =
+      system.framework && !system.framework->rigid &&
+      system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
+  const bool moleculeConstraint = !system.framework.has_value() && system.numberOfMolecules() > 1uz;
+  system.translationalCenterOfMassConstraint =
+      flexibleFrameworkConstraint || moleculeConstraint ? std::min<std::size_t>(3, system.translationalDegreesOfFreedom)
+                                                       : 0;
+
+  if (system.thermostat)
+    system.thermostat->refreshDegreesOfFreedom(system.translationalDegreesOfFreedom,
+                                                system.rotationalDegreesOfFreedom,
+                                                system.translationalCenterOfMassConstraint);
+  if (system.thermobarostat)
+  {
+    const std::size_t effectiveDegreesOfFreedom =
+        system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint;
+    system.thermobarostat->refreshDegreesOfFreedom(random, effectiveDegreesOfFreedom, system.simulationBox.volume);
+  }
+
+  system.precomputeTotalGradients();
+  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                        system.spanOfMoleculeDynamics(), system.components);
+}
+
+void attemptParticleExchange(RandomNumber& random, System& system)
+{
+  if (!molecularDynamicsHasParticleExchange(system.molecularDynamicsEnsemble) || system.components.empty()) return;
+
+  const std::size_t selectedComponent =
+      std::min(static_cast<std::size_t>(random.uniform() * static_cast<double>(system.components.size())),
+               system.components.size() - 1);
+  if (system.components[selectedComponent].mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) <= 0.0)
+    return;
+
+  const MC_Moves::ParticleExchangeResult result =
+      MC_Moves::performMolecularDynamicsSwap(random, system, selectedComponent);
+  refreshParticleNumberDependentState(random, system, selectedComponent, result);
+}
+
 RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
@@ -150,7 +205,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   const double3x3 kineticBefore = computeMolecularKineticVirial(system);
 
   const double barostatKinetic =
-      barostat.ensemble == MolecularDynamicsEnsemble::NPT
+      molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
           ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
           : 0.5 * barostat.cellMass *
                 std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0, std::plus<>(),
@@ -171,7 +226,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   }
 
   double3x3 cellRate{};
-  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+  if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
@@ -204,7 +259,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
                                 system.spanOfFrameworkDynamics(), &system.forceField);
   propagateCell(system, cellRate);
-  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+  if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
     barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
   Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep);
   Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
@@ -229,7 +284,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   const auto pressureAfter = system.computeMolecularPressure();
   const double3x3 kineticAfter = computeMolecularKineticVirial(system);
   system.precomputeTotalGradients();
-  if (barostat.ensemble == MolecularDynamicsEnsemble::NPT)
+  if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
@@ -262,7 +317,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   const double finalBarostatKinetic =
-      barostat.ensemble == MolecularDynamicsEnsemble::NPT
+      molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
           ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
           : 0.5 * barostat.cellMass *
                 std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0, std::plus<>(),
@@ -757,6 +812,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   {
     for (System& system : systems)
     {
+      if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
       system.runningEnergies = molecularDynamicsStep(system);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
@@ -945,6 +1001,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
     for (System& system : systems)
     {
+      if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
       system.runningEnergies = molecularDynamicsStep(system);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();

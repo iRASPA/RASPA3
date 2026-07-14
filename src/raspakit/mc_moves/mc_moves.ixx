@@ -18,6 +18,16 @@ import mc_moves_move_types;
 import mc_moves_translation;
 export namespace MC_Moves
 {
+enum class ParticleExchangeResult : std::uint8_t
+{
+  Rejected,
+  Inserted,
+  Deleted
+};
+
+ParticleExchangeResult performMolecularDynamicsSwap(RandomNumber& random, System& system,
+                                                     std::size_t selectedComponent);
+
 /**
  * \brief Performs a random Monte Carlo move on the selected system.
  *

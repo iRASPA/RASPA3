@@ -74,7 +74,9 @@ void zeroLowerTriangle(double3x3& matrix)
 std::optional<MolecularDynamicsEnsemble> molecularDynamicsEnsembleFromString(std::string_view value)
 {
   for (MolecularDynamicsEnsemble ensemble : {MolecularDynamicsEnsemble::NVE, MolecularDynamicsEnsemble::NVT,
-                                             MolecularDynamicsEnsemble::NPT, MolecularDynamicsEnsemble::NPTPR})
+                                             MolecularDynamicsEnsemble::NPT, MolecularDynamicsEnsemble::NPTPR,
+                                             MolecularDynamicsEnsemble::MuVT, MolecularDynamicsEnsemble::MuPT,
+                                             MolecularDynamicsEnsemble::MuPTPR})
   {
     if (equalCaseInsensitive(value, molecularDynamicsEnsembleName(ensemble))) return ensemble;
   }
@@ -93,8 +95,35 @@ std::string molecularDynamicsEnsembleName(MolecularDynamicsEnsemble ensemble)
       return "NPT";
     case MolecularDynamicsEnsemble::NPTPR:
       return "NPTPR";
+    case MolecularDynamicsEnsemble::MuVT:
+      return "MuVT";
+    case MolecularDynamicsEnsemble::MuPT:
+      return "MuPT";
+    case MolecularDynamicsEnsemble::MuPTPR:
+      return "MuPTPR";
   }
   std::unreachable();
+}
+
+bool molecularDynamicsUsesThermostat(MolecularDynamicsEnsemble ensemble)
+{
+  return ensemble != MolecularDynamicsEnsemble::NVE;
+}
+
+bool molecularDynamicsUsesIsotropicBarostat(MolecularDynamicsEnsemble ensemble)
+{
+  return ensemble == MolecularDynamicsEnsemble::NPT || ensemble == MolecularDynamicsEnsemble::MuPT;
+}
+
+bool molecularDynamicsUsesFlexibleBarostat(MolecularDynamicsEnsemble ensemble)
+{
+  return ensemble == MolecularDynamicsEnsemble::NPTPR || ensemble == MolecularDynamicsEnsemble::MuPTPR;
+}
+
+bool molecularDynamicsHasParticleExchange(MolecularDynamicsEnsemble ensemble)
+{
+  return ensemble == MolecularDynamicsEnsemble::MuVT || ensemble == MolecularDynamicsEnsemble::MuPT ||
+         ensemble == MolecularDynamicsEnsemble::MuPTPR;
 }
 
 std::size_t thermobarostatCellDegreesOfFreedom(CellMinimizationType type)
@@ -122,7 +151,7 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
                                double timeStep, std::size_t translationalDegreesOfFreedom, std::size_t chainLength,
                                std::size_t numberOfYoshidaSuzukiSteps, double timeScaleParameterBarostat)
     : ensemble(ensemble),
-      cellType(ensemble == MolecularDynamicsEnsemble::NPT ? CellMinimizationType::Isotropic : cellType),
+      cellType(molecularDynamicsUsesIsotropicBarostat(ensemble) ? CellMinimizationType::Isotropic : cellType),
       monoclinicAngle(monoclinicAngle),
       temperature(temperature),
       pressure(pressure),
@@ -139,10 +168,10 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
       chainMass(chainLength),
       yoshidaSuzukiWeights(::yoshidaSuzukiWeights(numberOfYoshidaSuzukiSteps))
 {
-  if (ensemble != MolecularDynamicsEnsemble::NPT && ensemble != MolecularDynamicsEnsemble::NPTPR)
-    throw std::runtime_error("Thermobarostat requires the NPT or NPTPR ensemble");
-  if (ensemble == MolecularDynamicsEnsemble::NPTPR && cellDegreesOfFreedom == 0)
-    throw std::runtime_error("NPTPR requires a variable CellType");
+  if (!molecularDynamicsUsesIsotropicBarostat(ensemble) && !molecularDynamicsUsesFlexibleBarostat(ensemble))
+    throw std::runtime_error("Thermobarostat requires an NPT, NPTPR, MuPT, or MuPTPR ensemble");
+  if (molecularDynamicsUsesFlexibleBarostat(ensemble) && cellDegreesOfFreedom == 0)
+    throw std::runtime_error("NPTPR/MuPTPR requires a variable CellType");
   if (!(temperature > 0.0) || !std::isfinite(temperature))
     throw std::runtime_error("Thermobarostat temperature must be positive and finite");
   if (!(timeStep > 0.0) || !std::isfinite(timeStep))
@@ -150,38 +179,40 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
   if (!(timeScaleParameterBarostat > 0.0) || !std::isfinite(timeScaleParameterBarostat))
     throw std::runtime_error("Thermobarostat time scale must be positive and finite");
   if (!std::isfinite(pressure)) throw std::runtime_error("Thermobarostat pressure must be finite");
-  if (translationalDegreesOfFreedom == 0)
-    throw std::runtime_error("Thermobarostat requires translational degrees of freedom");
   if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
   const double particleScale = static_cast<double>(translationalDegreesOfFreedom + 3) * Units::KB * temperature;
   logVolumeMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat;
   cellMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat / 3.0;
 }
 
-void Thermobarostat::initialize(RandomNumber& random)
+void Thermobarostat::refreshDegreesOfFreedom(RandomNumber& random, std::size_t newTranslationalDegreesOfFreedom,
+                                             double volume)
 {
-  if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
-  if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
-  if (translationalDegreesOfFreedom == 0)
-    throw std::runtime_error("Thermobarostat requires translational degrees of freedom");
+  if (!(volume > 0.0) || !std::isfinite(volume)) throw std::runtime_error("Thermobarostat requires positive volume");
+  translationalDegreesOfFreedom = newTranslationalDegreesOfFreedom;
 
-  // The center-of-mass constraint is established immediately before initialization.
-  // Recompute masses here so they reflect the final translational DOF count.
   const double particleScale = static_cast<double>(translationalDegreesOfFreedom + 3) * Units::KB * temperature;
   logVolumeMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat;
   cellMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat / 3.0;
+  logVolumePosition = std::log(volume);
 
-  if (ensemble == MolecularDynamicsEnsemble::NPT)
-  {
-    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / logVolumeMass);
-  }
-  else
+  if (molecularDynamicsUsesFlexibleBarostat(ensemble))
   {
     for (std::size_t column = 0; column != 3; ++column)
       for (std::size_t row = 0; row != 3; ++row)
         cellVelocity.mm[column][row] = random.Gaussian() * std::sqrt(Units::KB * temperature / cellMass);
     cellVelocity = projectCellTensor(cellVelocity, cellType, monoclinicAngle);
   }
+}
+
+void Thermobarostat::initialize(RandomNumber& random)
+{
+  if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
+  if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
+  refreshDegreesOfFreedom(random, translationalDegreesOfFreedom, std::exp(logVolumePosition));
+  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
+    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / logVolumeMass);
+
   chainDegreesOfFreedom[0] = static_cast<double>(cellDegreesOfFreedom) * Units::KB * temperature;
   for (std::size_t i = 1; i != chainLength; ++i) chainDegreesOfFreedom[i] = Units::KB * temperature;
   for (std::size_t i = 0; i != chainLength; ++i)
@@ -230,7 +261,7 @@ double Thermobarostat::chainStep(double kineticEnergy)
 double Thermobarostat::energy(double volume) const
 {
   double result = pressure * volume;
-  if (ensemble == MolecularDynamicsEnsemble::NPT)
+  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
     result += 0.5 * logVolumeMass * logVolumeVelocity * logVolumeVelocity;
   else
   {
@@ -402,7 +433,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Thermobarost
   archive >> value.cellVelocity >> value.cellMass;
   archive >> value.chainDegreesOfFreedom >> value.chainForce >> value.chainVelocity >> value.chainPosition;
   archive >> value.chainMass >> value.yoshidaSuzukiWeights;
-  if (value.ensemble != MolecularDynamicsEnsemble::NPT && value.ensemble != MolecularDynamicsEnsemble::NPTPR)
+  if (!molecularDynamicsUsesIsotropicBarostat(value.ensemble) &&
+      !molecularDynamicsUsesFlexibleBarostat(value.ensemble))
     throw std::runtime_error("Invalid Thermobarostat ensemble in restart");
   if (value.cellDegreesOfFreedom != thermobarostatCellDegreesOfFreedom(value.cellType))
     throw std::runtime_error("Inconsistent Thermobarostat cell degrees of freedom in restart");

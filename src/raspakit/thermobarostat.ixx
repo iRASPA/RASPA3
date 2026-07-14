@@ -11,10 +11,14 @@ import randomnumbers;
 import units;
 import minimization_cell_layout;
 
-export enum class MolecularDynamicsEnsemble : std::uint8_t { NVE, NVT, NPT, NPTPR };
+export enum class MolecularDynamicsEnsemble : std::uint8_t { NVE, NVT, NPT, NPTPR, MuVT, MuPT, MuPTPR };
 
 export std::optional<MolecularDynamicsEnsemble> molecularDynamicsEnsembleFromString(std::string_view value);
 export std::string molecularDynamicsEnsembleName(MolecularDynamicsEnsemble ensemble);
+export bool molecularDynamicsUsesThermostat(MolecularDynamicsEnsemble ensemble);
+export bool molecularDynamicsUsesIsotropicBarostat(MolecularDynamicsEnsemble ensemble);
+export bool molecularDynamicsUsesFlexibleBarostat(MolecularDynamicsEnsemble ensemble);
+export bool molecularDynamicsHasParticleExchange(MolecularDynamicsEnsemble ensemble);
 
 export struct Thermobarostat
 {
@@ -53,6 +57,7 @@ export struct Thermobarostat
                  std::size_t numberOfYoshidaSuzukiSteps = 5, double timeScaleParameterBarostat = 1.0);
 
   void initialize(RandomNumber& random);
+  void refreshDegreesOfFreedom(RandomNumber& random, std::size_t translationalDegreesOfFreedom, double volume);
   double chainStep(double kineticEnergy);
   double energy(double volume) const;
   void reverseMomenta();

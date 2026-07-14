@@ -452,13 +452,35 @@ reported separately at the end of the simulation.
         `"Gamma"` for the single shear degree of freedom. Upper-triangular modes
         preserve forbidden lower-triangle entries exactly.
 
-    NPT and NPTPR require `"ExternalPressure"` and use hydrostatic pressure
+    -   `"MuVT"`\
+        Grand-canonical molecular dynamics at fixed volume. RASPA attempts one
+        configurational-bias insertion or deletion every three MD steps and
+        otherwise uses the NVT integrator.
+
+    -   `"MuPT"`\
+        Osmotic molecular dynamics with grand-canonical particle exchange and
+        the isotropic NPT pressure controller.
+
+    -   `"MuPTPR"`\
+        Osmotic molecular dynamics with grand-canonical particle exchange and
+        the flexible-cell NPTPR pressure controller.
+
+    NPT, NPTPR, MuPT, and MuPTPR require `"ExternalPressure"` and use hydrostatic pressure
     coupling. Their reported conserved quantity is the extended enthalpy:
     physical energy plus thermostat energy, pressure-volume work, cell/barostat
     kinetic energy, and barostat-chain energy. Complete Nosé-Hoover
     thermobarostat trajectories are tested for time reversibility and bounded
     extended-enthalpy drift; canonical symplecticity applies only to isolated
     Hamiltonian submaps.
+
+    MuVT, MuPT, and MuPTPR also require `"ExternalPressure"` as the reservoir
+    pressure and `"SwapProbability"` greater than zero for at least one
+    component. The component fugacity is computed from reservoir pressure,
+    mole fraction, and `"FugacityCoefficient"`. Accepted insertions receive
+    Maxwell-Boltzmann velocities, and thermostat/barostat masses are refreshed
+    for the new number of degrees of freedom. Because particle exchange is a
+    stochastic Monte Carlo step, conserved-energy drift is meaningful only
+    between accepted exchanges.
 
 -   `"ComputeElasticConstantsFromFluctuations" : boolean`\
     Enables an isothermal elastic-tensor calculation during fixed-cell NVT

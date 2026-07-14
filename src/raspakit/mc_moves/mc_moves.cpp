@@ -118,6 +118,52 @@ void recordOtherwiseMissingNeutralTMMCTrial(Move::Types moveType, System& system
 
 }  // namespace
 
+MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNumber& random, System& system,
+                                                                        std::size_t selectedComponent)
+{
+  const Move::Types move = Move::Types::SwapCBMC;
+  const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  ParticleExchangeResult result = ParticleExchangeResult::Rejected;
+
+  if (random.uniform() < 0.5)
+  {
+    const auto [energyDifference, unusedAcceptance] = insertionMoveCBMC(random, system, selectedComponent);
+    (void)unusedAcceptance;
+    if (energyDifference)
+    {
+      system.runningEnergies += *energyDifference;
+      result = ParticleExchangeResult::Inserted;
+    }
+    const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    system.components[selectedComponent].mc_moves_cputime[move][Move::Timing::InsertionTotal] += end - begin;
+    system.mc_moves_cputime[move][Move::Timing::InsertionTotal] += end - begin;
+  }
+  else
+  {
+    const std::size_t selectedMolecule =
+        system.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0
+            ? 0
+            : system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    const auto [energyDifference, unusedAcceptance] =
+        deletionMoveCBMC(random, system, selectedComponent, selectedMolecule);
+    (void)unusedAcceptance;
+    if (energyDifference)
+    {
+      system.runningEnergies -= *energyDifference;
+      result = ParticleExchangeResult::Deleted;
+    }
+    const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    system.components[selectedComponent].mc_moves_cputime[move][Move::Timing::DeletionTotal] += end - begin;
+    system.mc_moves_cputime[move][Move::Timing::DeletionTotal] += end - begin;
+  }
+
+  const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  system.mc_moves_cputime[move][Move::Timing::Total] += end - begin;
+  system.components[selectedComponent].mc_moves_cputime[move][Move::Timing::Total] += end - begin;
+  system.components[selectedComponent].mc_moves_statistics.addAllCounts(move);
+  return result;
+}
+
 Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem,
                                                          [[maybe_unused]] System& selectedSecondSystem,
                                                          std::size_t selectedComponent,

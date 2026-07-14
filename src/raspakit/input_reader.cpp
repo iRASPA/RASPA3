@@ -2117,10 +2117,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         const std::optional<MolecularDynamicsEnsemble> ensemble = molecularDynamicsEnsembleFromString(ensembleString);
         if (!ensemble.has_value())
           throw std::runtime_error(std::format(
-              "[Input reader]: unknown MD 'Ensemble' '{}'; expected NVE, NVT, NPT, or NPTPR", ensembleString));
+              "[Input reader]: unknown MD 'Ensemble' '{}'; expected NVE, NVT, NPT, NPTPR, MuVT, MuPT, or MuPTPR",
+              ensembleString));
         systems[systemId].molecularDynamicsEnsemble = ensemble.value();
-        if (ensemble == MolecularDynamicsEnsemble::NVT || ensemble == MolecularDynamicsEnsemble::NPT ||
-            ensemble == MolecularDynamicsEnsemble::NPTPR)
+        if (molecularDynamicsUsesThermostat(ensemble.value()))
         {
           systems[systemId].thermostat =
               Thermostat(systems[systemId].temperature, systems[systemId].timeStep,
@@ -2128,16 +2128,28 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                          thermostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterThermostat);
           systems[systemId].thermostat->numberOfRespaSteps = numberOfRespaSteps;
         }
-        if (ensemble == MolecularDynamicsEnsemble::NPT || ensemble == MolecularDynamicsEnsemble::NPTPR)
+        if (molecularDynamicsHasParticleExchange(ensemble.value()))
         {
           if (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number())
-            throw std::runtime_error("[Input reader]: NPT/NPTPR requires a numeric ExternalPressure");
+            throw std::runtime_error("[Input reader]: MuVT/MuPT/MuPTPR requires a numeric ExternalPressure");
+          const bool hasSwapComponent = std::ranges::any_of(systems[systemId].components, [](const Component& component) {
+            return component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0;
+          });
+          if (!hasSwapComponent)
+            throw std::runtime_error(
+                "[Input reader]: MuVT/MuPT/MuPTPR requires SwapProbability > 0 for at least one component");
+        }
+        if (molecularDynamicsUsesIsotropicBarostat(ensemble.value()) ||
+            molecularDynamicsUsesFlexibleBarostat(ensemble.value()))
+        {
+          if (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number())
+            throw std::runtime_error("[Input reader]: NPT/NPTPR/MuPT/MuPTPR requires a numeric ExternalPressure");
           if (value.contains("ExternalPressureX") || value.contains("ExternalPressureY") ||
               value.contains("ExternalPressureZ"))
-            throw std::runtime_error("[Input reader]: NPT/NPTPR supports hydrostatic ExternalPressure only");
+            throw std::runtime_error("[Input reader]: NPT/NPTPR/MuPT/MuPTPR supports hydrostatic ExternalPressure only");
           CellMinimizationType cellType = systems[systemId].cellMinimizationType;
-          if (ensemble == MolecularDynamicsEnsemble::NPT) cellType = CellMinimizationType::Isotropic;
-          if (ensemble == MolecularDynamicsEnsemble::NPTPR && cellType == CellMinimizationType::Fixed)
+          if (molecularDynamicsUsesIsotropicBarostat(ensemble.value())) cellType = CellMinimizationType::Isotropic;
+          if (molecularDynamicsUsesFlexibleBarostat(ensemble.value()) && cellType == CellMinimizationType::Fixed)
             cellType = CellMinimizationType::Regular;
           systems[systemId].thermobarostat = Thermobarostat(
               ensemble.value(), cellType, systems[systemId].monoclinicAngleType, systems[systemId].temperature,

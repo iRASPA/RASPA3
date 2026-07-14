@@ -112,6 +112,9 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
  * \param frameworkDynamics Per-framework-atom velocities to initialize.
  * \param forceField Force field containing framework pseudo-atom masses.
  */
+void initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule, std::span<AtomDynamics> moleculeDynamics,
+                                const Component& component, double temperature);
+
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                           std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
                           const std::vector<Component> components, double temperature,
