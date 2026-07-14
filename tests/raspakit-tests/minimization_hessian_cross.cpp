@@ -190,7 +190,7 @@ void runCrossTest(const Potentials::IntraMolecularPotentials &intraMolecularPote
                                            std::span<AtomDynamics>)> &computeFunction,
                   const std::function<double(std::span<const Atom>, const Potentials::IntraMolecularPotentials &)> &
                       energyEvaluator,
-                  double delta = 1e-5, double relativeTolerance = 5e-3)
+                  double delta = 1e-4, double relativeTolerance = 5e-3)
 {
   ForceField forceField = makeTestForceField();
   System system = makeChainSystem(forceField, intraMolecularPotentials);

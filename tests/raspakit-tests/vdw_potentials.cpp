@@ -8,7 +8,11 @@ import pseudo_atom;
 import vdwparameters;
 import forcefield;
 import energy_factor;
+import gradient_factor;
+import hessian_factor;
 import potential_energy_vdw;
+import potential_gradient_vdw;
+import potential_hessian_vdw;
 
 // Tests for the van der Waals potentials ported from RASPA2:
 // - value parity with the RASPA2 functional forms at full coupling (lambda = 1)
@@ -36,6 +40,7 @@ std::vector<PotentialTestCase> testCases()
       {VDWParameters::Type::MM3, {120.0, 3.5}, {1.0, 3.2, 3.9, 5.0}},
       {VDWParameters::Type::BornHugginsMeyer, {6.0e4, 3.15, 2.34, 1.0e6, 2.0e6}, {3.0, 4.0, 4.5, 6.0}},
       {VDWParameters::Type::LennardJonesShiftedForce, {119.8, 3.405}, {3.0, 3.405, 3.8, 5.0}},
+      {VDWParameters::Type::LennardJonesSecondOrderTaylorShifted, {119.8, 3.405}, {3.0, 3.405, 3.8, 5.0}},
       {VDWParameters::Type::Potential12_6, {6.0e7, 2.5e4}, {3.2, 3.66, 4.0, 5.0}},
       {VDWParameters::Type::Potential12_6_2_0, {6.0e7, -2.5e4, -100.0, 0.0}, {3.2, 3.66, 4.0, 5.0}},
       {VDWParameters::Type::CFF9_6, {1.0e6, 2.0e4}, {3.2, 3.68, 4.0, 5.0}},
@@ -46,6 +51,7 @@ std::vector<PotentialTestCase> testCases()
       {VDWParameters::Type::HydratedIonWater, {1.0e7, 3.5, 1.0e3, 1.0e4, 1.0e6}, {3.0, 4.3, 5.0, 6.0}},
       {VDWParameters::Type::Mie, {6.0e7, 12.0, 2.5e4, 6.0}, {3.2, 3.66, 4.0, 5.0}},
       {VDWParameters::Type::WeeksChandlerAndersen, {119.8, 3.405}, {3.0, 3.405, 3.7, 3.8}},
+      {VDWParameters::Type::RepulsiveHarmonic, {500.0, 2.5}, {1.0, 2.0, 3.0, 5.0}},
   };
 }
 
@@ -109,6 +115,18 @@ double referenceEnergyInKelvin(const PotentialTestCase &testCase, double r)
       double c6 = std::pow(p[1] / rc, 6);
       return 4.0 * p[0] * (u6 * u6 - u6 - (c6 * c6 - c6) + (12.0 * c6 * c6 - 6.0 * c6) * (r - rc) / rc);
     }
+    case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:
+    {
+      double rc = 12.0;
+      double u6 = std::pow(p[1] / r, 6);
+      double c6 = std::pow(p[1] / rc, 6);
+      double displacement = (r - rc) / rc;
+      double linearCoefficient = 12.0 * c6 * c6 - 6.0 * c6;
+      double quadraticCoefficient = 156.0 * c6 * c6 - 42.0 * c6;
+      return 4.0 * p[0] *
+             (u6 * u6 - u6 - (c6 * c6 - c6) + linearCoefficient * displacement -
+              0.5 * quadraticCoefficient * displacement * displacement);
+    }
     case VDWParameters::Type::Potential12_6:
       return p[0] / std::pow(r, 12) - p[1] / std::pow(r, 6);
     case VDWParameters::Type::Potential12_6_2_0:
@@ -134,6 +152,12 @@ double referenceEnergyInKelvin(const PotentialTestCase &testCase, double r)
       if (r > std::pow(2.0, 1.0 / 6.0) * p[1]) return 0.0;
       double u6 = std::pow(p[1] / r, 6);
       return 4.0 * p[0] * (u6 * u6 - u6) + p[0];
+    }
+    case VDWParameters::Type::RepulsiveHarmonic:
+    {
+      if (r >= p[1]) return 0.0;
+      double displacement = 1.0 - r / p[1];
+      return 0.5 * p[0] * displacement * displacement;
     }
     default:
       return 0.0;
@@ -216,9 +240,66 @@ TEST(vdw_potentials, lambda_derivative_matches_finite_difference)
         double finiteDifference = (forward.energy - backward.energy) / delta;
 
         // dUdlambda holds the symmetric derivative factor X with dU/d(scalingA) = scalingB * X
-        double tolerance = std::max(1e-4, 1e-6 * std::abs(finiteDifference));
+        double tolerance = 1e-5 * std::max(1.0, std::abs(finiteDifference));
         EXPECT_NEAR(scalingB * value.dUdlambda, finiteDifference, tolerance)
             << VDWParameters::nameOfType(testCase.type) << " at r = " << r << ", lambdaA = " << scalingA;
+      }
+    }
+  }
+}
+
+TEST(vdw_potentials, all_spatial_derivatives_match_finite_difference)
+{
+  for (const PotentialTestCase &testCase : testCases())
+  {
+    ForceField forceField = makeForceField(testCase, true);
+    for (const auto [scalingA, scalingB] : {std::pair{1.0, 1.0}, std::pair{0.7, 0.9}})
+    {
+      for (double r : testCase.distances)
+      {
+        const double rr = r * r;
+        const Potentials::EnergyFactor energy =
+            Potentials::potentialVDWEnergy(forceField, scalingA, scalingB, rr, 0, 0);
+        const Potentials::GradientFactor gradient =
+            Potentials::potentialVDWGradient(forceField, scalingA, scalingB, rr, 0, 0);
+        const Potentials::HessianFactor hessian =
+            Potentials::potentialVDWHessian(forceField, scalingA, scalingB, rr, 0, 0);
+
+        const double fieldScale = std::max({1.0, std::abs(energy.energy), std::abs(energy.dUdlambda)});
+        EXPECT_NEAR(gradient.energy, energy.energy, 1e-12 * fieldScale);
+        EXPECT_NEAR(hessian.energy, energy.energy, 1e-12 * fieldScale);
+        EXPECT_NEAR(gradient.dUdlambda, energy.dUdlambda, 1e-12 * fieldScale);
+        EXPECT_NEAR(hessian.dUdlambda, energy.dUdlambda, 1e-12 * fieldScale);
+        EXPECT_NEAR(gradient.gradientFactor, hessian.firstDerivativeFactor,
+                    1e-12 * std::max({1.0, std::abs(gradient.gradientFactor),
+                                      std::abs(hessian.firstDerivativeFactor)}));
+
+        const double step = 1e-4 * std::max(1.0, r);
+        auto energyAt = [&](double distance)
+        {
+          return Potentials::potentialVDWEnergy(forceField, scalingA, scalingB, distance * distance, 0, 0).energy;
+        };
+        const double minus2 = energyAt(r - 2.0 * step);
+        const double minus1 = energyAt(r - step);
+        const double center = energyAt(r);
+        const double plus1 = energyAt(r + step);
+        const double plus2 = energyAt(r + 2.0 * step);
+        const double numericalFirst = (minus2 - 8.0 * minus1 + 8.0 * plus1 - plus2) / (12.0 * step);
+        const double numericalSecond =
+            (-plus2 + 16.0 * plus1 - 30.0 * center + 16.0 * minus1 - minus2) /
+            (12.0 * step * step);
+        const double analyticFirst = gradient.gradientFactor * r;
+        const double analyticSecond =
+            hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * rr;
+
+        EXPECT_NEAR(analyticFirst, numericalFirst,
+                    1e-5 * std::max({1.0, std::abs(analyticFirst), std::abs(numericalFirst)}))
+            << VDWParameters::nameOfType(testCase.type) << " at r = " << r
+            << ", lambda = " << scalingA * scalingB;
+        EXPECT_NEAR(analyticSecond, numericalSecond,
+                    1e-5 * std::max({1.0, std::abs(analyticSecond), std::abs(numericalSecond)}))
+            << VDWParameters::nameOfType(testCase.type) << " at r = " << r
+            << ", lambda = " << scalingA * scalingB;
       }
     }
   }
@@ -235,5 +316,61 @@ TEST(vdw_potentials, wca_continuous_at_internal_cutoff)
     Potentials::EnergyFactor below =
         Potentials::potentialVDWEnergy(forceField, scaling, 1.0, rrCut * (1.0 - 1e-12), 0, 0);
     EXPECT_NEAR(below.energy * Units::EnergyToKelvin, 0.0, 1e-6) << "lambda = " << scaling;
+
+    Potentials::GradientFactor outsideGradient =
+        Potentials::potentialVDWGradient(forceField, scaling, 1.0, rrCut * (1.0 + 1e-8), 0, 0);
+    Potentials::HessianFactor outsideHessian =
+        Potentials::potentialVDWHessian(forceField, scaling, 1.0, rrCut * (1.0 + 1e-8), 0, 0);
+    EXPECT_EQ(outsideGradient.energy, 0.0);
+    EXPECT_EQ(outsideGradient.gradientFactor, 0.0);
+    EXPECT_EQ(outsideHessian.firstDerivativeFactor, 0.0);
+    EXPECT_EQ(outsideHessian.secondDerivativeFactor, 0.0);
   }
+}
+
+TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finite_difference)
+{
+  PotentialTestCase testCase{VDWParameters::Type::LennardJonesSecondOrderTaylorShifted, {119.8, 3.405}, {}};
+  ForceField forceField = makeForceField(testCase, true);
+
+  for (double r : {3.0, 3.405, 3.8, 5.0, 11.0})
+  {
+    constexpr double delta = 1e-5;
+    const Potentials::GradientFactor gradient =
+        Potentials::potentialVDWGradient(forceField, 1.0, 1.0, r * r, 0, 0);
+    const Potentials::HessianFactor hessian =
+        Potentials::potentialVDWHessian(forceField, 1.0, 1.0, r * r, 0, 0);
+
+    const double plus = Potentials::potentialVDWEnergy(
+                            forceField, 1.0, 1.0, (r + delta) * (r + delta), 0, 0)
+                            .energy;
+    const double center = Potentials::potentialVDWEnergy(forceField, 1.0, 1.0, r * r, 0, 0).energy;
+    const double minus = Potentials::potentialVDWEnergy(
+                             forceField, 1.0, 1.0, (r - delta) * (r - delta), 0, 0)
+                             .energy;
+    const double numericalFirst = (plus - minus) / (2.0 * delta);
+    const double numericalSecond = (plus - 2.0 * center + minus) / (delta * delta);
+
+    EXPECT_NEAR(gradient.gradientFactor * r, numericalFirst,
+                1e-5 * std::max(1.0, std::abs(numericalFirst)))
+        << "r = " << r;
+    EXPECT_NEAR(hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r,
+                numericalSecond, 1e-5 * std::max(1.0, std::abs(numericalSecond)))
+        << "r = " << r;
+  }
+}
+
+TEST(vdw_potentials, second_order_taylor_shifted_energy_gradient_and_hessian_vanish_at_cutoff)
+{
+  PotentialTestCase testCase{VDWParameters::Type::LennardJonesSecondOrderTaylorShifted, {119.8, 3.405}, {}};
+  ForceField forceField = makeForceField(testCase, true);
+  constexpr double cutoff = 12.0;
+
+  const Potentials::GradientFactor value =
+      Potentials::potentialVDWGradient(forceField, 1.0, 1.0, cutoff * cutoff, 0, 0);
+  const Potentials::HessianFactor hessian =
+      Potentials::potentialVDWHessian(forceField, 1.0, 1.0, cutoff * cutoff, 0, 0);
+  EXPECT_NEAR(value.energy, 0.0, 1e-14);
+  EXPECT_NEAR(value.gradientFactor, 0.0, 1e-14);
+  EXPECT_NEAR(hessian.secondDerivativeFactor, 0.0, 1e-14);
 }

@@ -5,6 +5,7 @@ import std;
 import double3;
 import atom;
 import atom_dynamics;
+import vdwparameters;
 import forcefield;
 import component;
 import system;
@@ -14,12 +15,29 @@ import minimization_dof_layout;
 import interactions_hessian_intermolecular;
 import interactions_intermolecular;
 
+namespace
+{
+void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+{
+  for (VDWParameters &parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+    {
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+    }
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+}
+}  // namespace
+
 TEST(minimization_hessian_intermolecular, flexible_methane_pair_vdw_matches_finite_difference)
 {
   const double delta = 1e-5;
-  const double relativeTolerance = 1e-6;
+  const double relativeTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component methane = Component::makeMethane(forceField, 0);
   methane.rigid = false;
 

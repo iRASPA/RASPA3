@@ -28,6 +28,22 @@ import connectivity_table;
 import intra_molecular_potentials;
 import molecule;
 
+namespace
+{
+void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+{
+  for (VDWParameters &parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+    {
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+    }
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+}
+}  // namespace
+
 // Helper: build a periodic box of extended (flexible) heptane molecules on a grid and return the system.
 // The molecules are placed WHOLE (never split across the boundary), each as a short zig-zag chain, so the
 // analytic center-of-mass based molecular pressure must agree with the center-of-mass-scaling -dU/dV used
@@ -108,12 +124,13 @@ static double heptaneFdExcessPressure(System& system)
 TEST(MC_strain_tensor, Test_flexible_heptane_molecular_pressure_FD_com_scaling)
 {
   System system = makeHeptaneBox(50.0, 3, /*tailCorrections=*/false);
+  useSecondOrderTaylorShiftedLennardJones(system.forceField);
 
   std::pair<EnergyStatus, double3x3> pressureInfo = system.computeMolecularPressure();
   double analyticExcessPressure = pressureInfo.second.trace() / (3.0 * system.simulationBox.volume);
   double fdExcessPressure = heptaneFdExcessPressure(system);
 
-  EXPECT_NEAR(analyticExcessPressure, fdExcessPressure, 1e-2)
+  EXPECT_NEAR(analyticExcessPressure, fdExcessPressure, 1e-5)
       << "Flexible heptane molecular excess pressure disagrees with -dU/dV";
 }
 
@@ -245,9 +262,10 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
 
 TEST(MC_strain_tensor, Test_fixed_10_CO2_molecular_pressure_FD_com_scaling)
 {
-  double tolerance = 1e-3;
+  double tolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   forceField.useCharge = false;
   forceField.omitEwaldFourier = true;
   Component c = Component::makeCO2(forceField, 0, true);
@@ -457,9 +475,10 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_ewald)
 TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
 {
   double delta = 1e-7;
-  double tolerance = 1e-4;
+  double tolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component c = Component::makeMethane(forceField, 0);
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
@@ -555,16 +574,19 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
                                8.0 * EnergyBackward1.potentialEnergy() + EnergyBackward2.potentialEnergy()) /
                               (6.0 * delta);
 
-    EXPECT_NEAR(strainDerivative, strain.second, tolerance) << "Wrong strainDerivative";
+    EXPECT_NEAR(strainDerivative, strain.second,
+                tolerance * std::max({1.0, std::abs(strainDerivative), std::abs(strain.second)}))
+        << "Wrong strainDerivative";
   }
 }
 
 TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
 {
   double delta = 1e-7;
-  double tolerance = 1e-4;
+  double tolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
   Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
@@ -665,7 +687,9 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
                                8.0 * EnergyBackward1.potentialEnergy() + EnergyBackward2.potentialEnergy()) /
                               (6.0 * delta);
 
-    EXPECT_NEAR(strainDerivative, strain.second, tolerance) << "Wrong strainDerivative";
+    EXPECT_NEAR(strainDerivative, strain.second,
+                tolerance * std::max({1.0, std::abs(strainDerivative), std::abs(strain.second)}))
+        << "Wrong strainDerivative";
   }
 }
 

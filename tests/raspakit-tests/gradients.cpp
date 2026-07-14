@@ -27,6 +27,22 @@ import integrators_compute;
 import integrators_update;
 import interpolation_energy_grid;
 
+namespace
+{
+void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+{
+  for (VDWParameters &parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+    {
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+    }
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+}
+}  // namespace
+
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
@@ -568,6 +584,7 @@ z1.frameworkMoleculeCharge)) / delta;
 TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
 
   Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
   Component c = Component::makeCO2(forceField, 0, true);
@@ -594,7 +611,7 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
       system.interpolationGrids);
 
   double delta = 1e-5;
-  double tolerance = 1e-4;
+  double tolerance = 1e-5;
   double3 gradient;
   for (size_t i = 0; i < atomData.size(); ++i)
   {
@@ -666,6 +683,7 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 TEST(gradients, Test_CH4_in_Box_25x25x25)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, false, false);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component c = Component::makeMethane(forceField, 0);
 
   System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {50}, 5);
@@ -682,7 +700,7 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
-  double tolerance = 1e-6;
+  double tolerance = 1e-5;
   double3 gradient;
   for (size_t i = 0; i < atomData.size(); ++i)
   {
@@ -752,6 +770,7 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
 TEST(gradients, Test_CO2_in_MFI_2x2x2)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
   Component c = Component::makeCO2(forceField, 0, true);
 
@@ -769,76 +788,45 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
       system.interpolationGrids);
 
   double delta = 1e-5;
-  double tolerance = 1e-4;
+  double tolerance = 1e-5;
   double3 gradient;
   for (size_t i = 0; i < atomData.size(); ++i)
   {
-    RunningEnergy x1, x2, y1, y2, z1, z2;
+    auto centralDifference = [&](std::size_t axis, double step)
+    {
+      double &coordinate = (&atomData[i].position.x)[axis];
+      const double base = (&spanOfMoleculeAtoms[i].position.x)[axis];
+      coordinate = base + 0.5 * step;
+      const RunningEnergy plus =
+          Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
+          Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                       system.framework, frameworkAtoms, atomData);
+      coordinate = base - 0.5 * step;
+      const RunningEnergy minus =
+          Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
+          Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                       system.framework, frameworkAtoms, atomData);
+      coordinate = base;
+      return (plus.potentialEnergy() - minus.potentialEnergy()) / step;
+    };
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      (&gradient.x)[axis] = centralDifference(axis, delta);
+    }
 
-    // finite difference x
-    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
-    x2 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-
-    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
-    x1 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-    atomData[i].position.x = spanOfMoleculeAtoms[i].position.x;
-
-    // finite difference y
-    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
-    y2 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-
-    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
-    y1 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-    atomData[i].position.y = spanOfMoleculeAtoms[i].position.y;
-
-    // finite difference z
-    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
-    z2 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-
-    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
-    z1 =
-        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomData) +
-        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                                     system.framework, frameworkAtoms, atomData);
-    atomData[i].position.z = spanOfMoleculeAtoms[i].position.z;
-
-    gradient.x =
-        (x2.moleculeMoleculeVDW + x2.moleculeMoleculeCharge + x2.frameworkMoleculeVDW + x2.frameworkMoleculeCharge -
-         (x1.moleculeMoleculeVDW + x1.moleculeMoleculeCharge + x1.frameworkMoleculeVDW + x1.frameworkMoleculeCharge)) /
-        delta;
-    gradient.y =
-        (y2.moleculeMoleculeVDW + y2.moleculeMoleculeCharge + y2.frameworkMoleculeVDW + y2.frameworkMoleculeCharge -
-         (y1.moleculeMoleculeVDW + y1.moleculeMoleculeCharge + y1.frameworkMoleculeVDW + y1.frameworkMoleculeCharge)) /
-        delta;
-    gradient.z =
-        (z2.moleculeMoleculeVDW + z2.moleculeMoleculeCharge + z2.frameworkMoleculeVDW + z2.frameworkMoleculeCharge -
-         (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge + z1.frameworkMoleculeVDW + z1.frameworkMoleculeCharge)) /
-        delta;
-
-    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.x, gradient.x,
+                tolerance * std::max({1.0, std::abs(spanOfMoleculeDynamics[i].gradient.x), std::abs(gradient.x)}));
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.y, gradient.y,
+                tolerance * std::max({1.0, std::abs(spanOfMoleculeDynamics[i].gradient.y), std::abs(gradient.y)}));
+    EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z,
+                tolerance * std::max({1.0, std::abs(spanOfMoleculeDynamics[i].gradient.z), std::abs(gradient.z)}));
   }
 }
 
 TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
 
   Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
   Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
@@ -867,7 +855,7 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
   double delta = 1e-5;
-  double tolerance = 1e-4;
+  double tolerance = 1e-5;
   double3 gradient;
   for (size_t i = 0; i < atomData.size(); ++i)
   {

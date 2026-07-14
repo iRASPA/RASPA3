@@ -51,6 +51,7 @@ export struct VDWParameters
     HydratedIonWater = 15,
     Mie = 16,
     WeeksChandlerAndersen = 17,
+    LennardJonesSecondOrderTaylorShifted = 18,
     RepulsiveHarmonic = 100
   };
 
@@ -63,7 +64,8 @@ export struct VDWParameters
   /// Additional parameters (p4, p5) and derived constants.
   /// Layout: x,y hold overflow input parameters or precomputed constants
   ///   FeynmannHibbs:            x = FeynmannHibbs pre-factor  hbar^2/(24 mu kB T)  [A^2]
-  ///   LennardJonesShiftedForce: x = (sigma/rc)^6, y = rc
+  ///   LennardJonesShiftedForce and LennardJonesSecondOrderTaylorShifted:
+  ///                                x = (sigma/rc)^6, y = rc
   ///   Generic:                  x = p4, y = p5
   ///   PellenqNicholson:         x = p4 (C10)
   ///   HydratedIonWater:         x = p4 (C12)
@@ -214,6 +216,7 @@ export struct VDWParameters
       case Type::LennardJones:
       case Type::FeynmannHibbs:
       case Type::LennardJonesShiftedForce:
+      case Type::LennardJonesSecondOrderTaylorShifted:
       case Type::CFFEpsilonSigma:
       case Type::MM3:
       case Type::WeeksChandlerAndersen:
@@ -230,6 +233,7 @@ export struct VDWParameters
       case Type::LennardJones:
       case Type::FeynmannHibbs:
       case Type::LennardJonesShiftedForce:
+      case Type::LennardJonesSecondOrderTaylorShifted:
       case Type::CFFEpsilonSigma:
       case Type::MM3:
       case Type::WeeksChandlerAndersen:

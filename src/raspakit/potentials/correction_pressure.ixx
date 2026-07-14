@@ -207,6 +207,7 @@ inline double potentialCorrectionPressure(const VDWParameters &parameters, doubl
       return (p2 * m * std::pow(rc, 3.0 - m)) / (m - 3.0) - (p0 * n * std::pow(rc, 3.0 - n)) / (n - 3.0);
     }
     case VDWParameters::Type::LennardJonesShiftedForce:
+    case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:
     case VDWParameters::Type::WeeksChandlerAndersen:
       return 0.0;
     default:

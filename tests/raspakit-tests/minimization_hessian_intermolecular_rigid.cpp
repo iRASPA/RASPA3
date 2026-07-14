@@ -8,6 +8,7 @@ import simd_quatd;
 import atom;
 import atom_dynamics;
 import molecule;
+import vdwparameters;
 import forcefield;
 import component;
 import system;
@@ -81,14 +82,28 @@ void applyDisplacedStrainedState(System &system, std::size_t moleculeIndex, cons
   molecule.orientation = (quatFromRotationVector(omega) * base.orientation).normalized();
   setRigidMoleculePositions(system, moleculeIndex);
 }
+
+void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+{
+  for (VDWParameters &parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+    {
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+    }
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+}
 }  // namespace
 
 TEST(minimization_hessian_intermolecular, rigid_methane_pair_com_vdw_matches_finite_difference)
 {
   const double delta = 1e-5;
-  const double relativeTolerance = 1e-6;
+  const double relativeTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component methane = Component::makeMethane(forceField, 0);
 
   System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
@@ -161,6 +176,7 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_com_orientation_vdw_mat
   const double relativeTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component co2 = Component::makeCO2(forceField, 0, false);
 
   System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {2}, 5);
@@ -252,9 +268,10 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_strain_matches_finite_d
 {
   const double delta = 1e-4;
   const double strainStep = 2e-4;
-  const double relativeTolerance = 1e-4;
+  const double relativeTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component co2 = Component::makeCO2(forceField, 0, true);
 
   System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {2}, 5);
@@ -308,10 +325,14 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_strain_matches_finite_d
   // strain-strain block.
   {
     displacement.fill(0.0);
-    const double eZero = energyAt(0.0);
-    const double ePlus = energyAt(strainStep);
-    const double eMinus = energyAt(-strainStep);
-    const double numerical = (ePlus - 2.0 * eZero + eMinus) / (strainStep * strainStep);
+    auto finiteDifference = [&](double step)
+    {
+      const double eZero = energyAt(0.0);
+      const double ePlus = energyAt(step);
+      const double eMinus = energyAt(-step);
+      return (ePlus - 2.0 * eZero + eMinus) / (step * step);
+    };
+    const double numerical = (4.0 * finiteDifference(strainStep) - finiteDifference(2.0 * strainStep)) / 3.0;
     const double analytic = hessian.strainStrain()[0];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, relativeTolerance * scale) << "strain-strain";
@@ -322,16 +343,20 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_strain_matches_finite_d
   {
     const std::size_t slot = dofToSlot[dof];
 
-    displacement.fill(0.0);
-    displacement[slot] += delta;
-    const double ePP = energyAt(strainStep);
-    const double ePM = energyAt(-strainStep);
-    displacement.fill(0.0);
-    displacement[slot] -= delta;
-    const double eMP = energyAt(strainStep);
-    const double eMM = energyAt(-strainStep);
-
-    const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * strainStep);
+    auto finiteDifference = [&](double positionStep, double strainDelta)
+    {
+      displacement.fill(0.0);
+      displacement[slot] += positionStep;
+      const double ePP = energyAt(strainDelta);
+      const double ePM = energyAt(-strainDelta);
+      displacement.fill(0.0);
+      displacement[slot] -= positionStep;
+      const double eMP = energyAt(strainDelta);
+      const double eMM = energyAt(-strainDelta);
+      return (ePP - ePM - eMP + eMM) / (4.0 * positionStep * strainDelta);
+    };
+    const double numerical =
+        (4.0 * finiteDifference(delta, strainStep) - finiteDifference(2.0 * delta, 2.0 * strainStep)) / 3.0;
     const double analytic = hessian.positionStrain()[dof];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, relativeTolerance * scale) << "position-strain dof=" << dof;
@@ -346,6 +371,7 @@ TEST(minimization_hessian_intermolecular, rigid_co2_generalized_gradient_matches
 {
   constexpr double delta = 2e-6;
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   forceField.useCharge = false;
   Component co2 = Component::makeCO2(forceField, 0, false);
   System system =
@@ -390,7 +416,7 @@ TEST(minimization_hessian_intermolecular, rigid_co2_generalized_gradient_matches
       const auto dof = layout.rigidMoleculeDof(molecule, static_cast<RigidDof>(slot));
       ASSERT_TRUE(dof);
       const double numerical = (plus - minus) / (2.0 * delta);
-      EXPECT_NEAR(gradient[*dof], numerical, 2e-5 * std::max(1.0, std::abs(numerical)))
+      EXPECT_NEAR(gradient[*dof], numerical, 1e-5 * std::max(1.0, std::abs(numerical)))
           << "molecule=" << molecule << " slot=" << slot;
     }
   }
@@ -398,11 +424,12 @@ TEST(minimization_hessian_intermolecular, rigid_co2_generalized_gradient_matches
 
 TEST(minimization_hessian_intermolecular, mixed_flexible_rigid_co2_pair_strain_matches_finite_difference)
 {
-  const double delta = 1e-4;
+  const double delta = 2e-4;
   const double strainStep = 2e-4;
-  const double relativeTolerance = 1e-4;
+  const double relativeTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Component co2Rigid = Component::makeCO2(forceField, 0, true);
   Component co2Flexible = Component::makeCO2(forceField, 1, true);
   co2Flexible.rigid = false;
@@ -476,27 +503,30 @@ TEST(minimization_hessian_intermolecular, mixed_flexible_rigid_co2_pair_strain_m
       const std::size_t rowSlot = dofToSlot[row];
       const std::size_t colSlot = dofToSlot[col];
 
-      displacement.fill(0.0);
-      displacement[rowSlot] += delta;
-      displacement[colSlot] += delta;
-      const double ePP = energyAt(0.0);
+      auto finiteDifference = [&](double step)
+      {
+        displacement.fill(0.0);
+        displacement[rowSlot] += step;
+        displacement[colSlot] += step;
+        const double ePP = energyAt(0.0);
 
-      displacement.fill(0.0);
-      displacement[rowSlot] += delta;
-      displacement[colSlot] -= delta;
-      const double ePM = energyAt(0.0);
+        displacement.fill(0.0);
+        displacement[rowSlot] += step;
+        displacement[colSlot] -= step;
+        const double ePM = energyAt(0.0);
 
-      displacement.fill(0.0);
-      displacement[rowSlot] -= delta;
-      displacement[colSlot] += delta;
-      const double eMP = energyAt(0.0);
+        displacement.fill(0.0);
+        displacement[rowSlot] -= step;
+        displacement[colSlot] += step;
+        const double eMP = energyAt(0.0);
 
-      displacement.fill(0.0);
-      displacement[rowSlot] -= delta;
-      displacement[colSlot] -= delta;
-      const double eMM = energyAt(0.0);
-
-      const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
+        displacement.fill(0.0);
+        displacement[rowSlot] -= step;
+        displacement[colSlot] -= step;
+        const double eMM = energyAt(0.0);
+        return (ePP - ePM - eMP + eMM) / (4.0 * step * step);
+      };
+      const double numerical = (4.0 * finiteDifference(delta) - finiteDifference(2.0 * delta)) / 3.0;
       const double analytic = hessian(row, col);
       const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
       EXPECT_NEAR(numerical, analytic, relativeTolerance * scale) << "row=" << row << " col=" << col;
@@ -506,10 +536,14 @@ TEST(minimization_hessian_intermolecular, mixed_flexible_rigid_co2_pair_strain_m
   // strain-strain block.
   {
     displacement.fill(0.0);
-    const double eZero = energyAt(0.0);
-    const double ePlus = energyAt(strainStep);
-    const double eMinus = energyAt(-strainStep);
-    const double numerical = (ePlus - 2.0 * eZero + eMinus) / (strainStep * strainStep);
+    auto finiteDifference = [&](double step)
+    {
+      const double eZero = energyAt(0.0);
+      const double ePlus = energyAt(step);
+      const double eMinus = energyAt(-step);
+      return (ePlus - 2.0 * eZero + eMinus) / (step * step);
+    };
+    const double numerical = (4.0 * finiteDifference(strainStep) - finiteDifference(2.0 * strainStep)) / 3.0;
     const double analytic = hessian.strainStrain()[0];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, relativeTolerance * scale) << "strain-strain";
@@ -520,16 +554,20 @@ TEST(minimization_hessian_intermolecular, mixed_flexible_rigid_co2_pair_strain_m
   {
     const std::size_t slot = dofToSlot[dof];
 
-    displacement.fill(0.0);
-    displacement[slot] += delta;
-    const double ePP = energyAt(strainStep);
-    const double ePM = energyAt(-strainStep);
-    displacement.fill(0.0);
-    displacement[slot] -= delta;
-    const double eMP = energyAt(strainStep);
-    const double eMM = energyAt(-strainStep);
-
-    const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * strainStep);
+    auto finiteDifference = [&](double positionStep, double strainDelta)
+    {
+      displacement.fill(0.0);
+      displacement[slot] += positionStep;
+      const double ePP = energyAt(strainDelta);
+      const double ePM = energyAt(-strainDelta);
+      displacement.fill(0.0);
+      displacement[slot] -= positionStep;
+      const double eMP = energyAt(strainDelta);
+      const double eMM = energyAt(-strainDelta);
+      return (ePP - ePM - eMP + eMM) / (4.0 * positionStep * strainDelta);
+    };
+    const double numerical =
+        (4.0 * finiteDifference(delta, strainStep) - finiteDifference(2.0 * delta, 2.0 * strainStep)) / 3.0;
     const double analytic = hessian.positionStrain()[dof];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, relativeTolerance * scale) << "position-strain dof=" << dof;

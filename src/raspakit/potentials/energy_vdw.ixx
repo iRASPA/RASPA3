@@ -7,6 +7,7 @@ import std;
 import vdwparameters;
 import forcefield;
 import energy_factor;
+import potential_vdw_rare_derivatives;
 
 import double4;
 
@@ -63,6 +64,10 @@ export namespace Potentials
     const ForceField& forcefield, const double scalingA, const double scalingB, const double rr,
     const std::size_t typeA, const std::size_t typeB, VDWParameters::Type potentialType)
 {
+  Detail::RareVDWDerivatives derivatives =
+      Detail::evaluateRareVDWDerivatives(forcefield, scalingA, scalingB, rr, typeA, typeB, potentialType);
+  return EnergyFactor(derivatives.energy, derivatives.dUdlambda);
+
   double scaling = scalingA * scalingB;
   switch (potentialType)
   {
@@ -181,6 +186,33 @@ export namespace Potentials
       double deriv = eps4 * (12.0 * u12 - 6.0 * u6) - eps4 * linearCoefficient * rs / rc;
       double dlambda_term = scaling * inv * w6 * deriv / (6.0 * x6);
       return EnergyFactor(scaling * term, term + dlambda_term);
+    }
+    case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:
+    {
+      // LJ minus its second-order Taylor expansion at rc; U, U', and U'' vanish at rc.
+      const VDWParameters& p = forcefield(typeA, typeB);
+      double eps4 = 4.0 * p.parameters.x;
+      double sigma2 = p.parameters.y * p.parameters.y;
+      double sigma6 = sigma2 * sigma2 * sigma2;
+      double c6 = p.parameters2.x;
+      double rc = p.parameters2.y;
+      double linearCoefficient = 12.0 * c6 * c6 - 6.0 * c6;
+      double quadraticCoefficient = 156.0 * c6 * c6 - 42.0 * c6;
+      double inv = 1.0 - scaling;
+      double w6 = p.parameters2.w;
+      double x6 = rr * rr * rr + 0.5 * inv * inv * w6;
+      double rs = std::sqrt(std::cbrt(x6));
+      double displacement = (rs - rc) / rc;
+      double u6 = sigma6 / x6;
+      double u12 = u6 * u6;
+      double term =
+          eps4 * (u12 - u6 - c6 * (c6 - 1.0) + linearCoefficient * displacement -
+                  0.5 * quadraticCoefficient * displacement * displacement);
+      double deriv =
+          eps4 * (12.0 * u12 - 6.0 * u6 - linearCoefficient * rs / rc +
+                  quadraticCoefficient * rs * (rs - rc) / (rc * rc));
+      double dlambdaTerm = scaling * inv * w6 * deriv / (6.0 * x6);
+      return EnergyFactor(scaling * term, term + dlambdaTerm);
     }
     case VDWParameters::Type::Potential12_6:
     {

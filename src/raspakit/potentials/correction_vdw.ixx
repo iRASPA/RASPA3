@@ -198,6 +198,7 @@ inline double potentialCorrectionVDW(const VDWParameters &parameters, double cut
       return p0 * std::pow(rc, 3.0 - n) / (n - 3.0) - p2 * std::pow(rc, 3.0 - m) / (m - 3.0);
     }
     case VDWParameters::Type::LennardJonesShiftedForce:
+    case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:
     case VDWParameters::Type::WeeksChandlerAndersen:
       // zero at (and beyond) the cutoff by construction
       return 0.0;

@@ -9,6 +9,7 @@ import simd_quatd;
 import atom;
 import atom_dynamics;
 import molecule;
+import vdwparameters;
 import forcefield;
 import framework;
 import component;
@@ -17,10 +18,9 @@ import simulationbox;
 import running_energy;
 import generalized_hessian;
 import minimization_dof_layout;
+import minimization_evaluate_derivatives;
 import interactions_hessian_framework_molecule;
 import interactions_framework_molecule;
-import potential_energy_vdw;
-import potential_energy_coulomb;
 
 namespace
 {
@@ -46,17 +46,31 @@ simd_quatd quatFromRotationVector(const double3 &omega)
   }
   return simd_quatd::fromAxisAngle(angle, omega / angle);
 }
+
+void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+{
+  for (VDWParameters &parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+    {
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+    }
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+}
 }  // namespace
 
 TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_difference)
 {
-  const double delta = 1e-4;
+  const double delta = 4e-4;
   const double relativeTolerance = 1e-5;
   // Roundoff floor of the FD reference: the total framework energy is large, so the
   // four-point cancellation leaves noise of order eps * E / (4 delta^2).
-  const double absoluteTolerance = 1e-3;
+  const double absoluteTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   // 2x2x2 unit cells so the box exceeds twice the cutoff (minimum image stays consistent).
   Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
   Component co2 = Component::makeCO2(forceField, 0, true);
@@ -101,27 +115,30 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_diffe
       ASSERT_TRUE(dofRow);
       ASSERT_TRUE(dofCol);
 
-      displacement.fill(0.0);
-      displacement[row] += delta;
-      displacement[col] += delta;
-      const double ePP = energyAtDisplacement(displacement);
+      auto finiteDifference = [&](double step)
+      {
+        displacement.fill(0.0);
+        displacement[row] += step;
+        displacement[col] += step;
+        const double ePP = energyAtDisplacement(displacement);
 
-      displacement.fill(0.0);
-      displacement[row] += delta;
-      displacement[col] -= delta;
-      const double ePM = energyAtDisplacement(displacement);
+        displacement.fill(0.0);
+        displacement[row] += step;
+        displacement[col] -= step;
+        const double ePM = energyAtDisplacement(displacement);
 
-      displacement.fill(0.0);
-      displacement[row] -= delta;
-      displacement[col] += delta;
-      const double eMP = energyAtDisplacement(displacement);
+        displacement.fill(0.0);
+        displacement[row] -= step;
+        displacement[col] += step;
+        const double eMP = energyAtDisplacement(displacement);
 
-      displacement.fill(0.0);
-      displacement[row] -= delta;
-      displacement[col] -= delta;
-      const double eMM = energyAtDisplacement(displacement);
-
-      const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
+        displacement.fill(0.0);
+        displacement[row] -= step;
+        displacement[col] -= step;
+        const double eMM = energyAtDisplacement(displacement);
+        return (ePP - ePM - eMP + eMM) / (4.0 * step * step);
+      };
+      const double numerical = (4.0 * finiteDifference(delta) - finiteDifference(2.0 * delta)) / 3.0;
       const double analytic = hessian(*dofRow, *dofCol);
       const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
       EXPECT_NEAR(numerical, analytic, absoluteTolerance + relativeTolerance * scale)
@@ -130,16 +147,16 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_diffe
   }
 }
 
-TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_fixed_neighbor_list_matches_finite_difference)
+TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_matches_finite_difference)
 {
-  const double delta = 1e-4;
-  const double strainStep = 3e-4;
-  const double relativeTolerance = 1e-4;
+  const double strainStep = 1.2e-3;
+  const double relativeTolerance = 1e-5;
   // Roundoff floor: the total framework-molecule energy is large, so the finite-difference
   // cancellation leaves absolute noise.
-  const double absoluteTolerance = 5e-3;
+  const double absoluteTolerance = 1e-5;
 
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
   Component co2 = Component::makeCO2(forceField, 0, false);
 
@@ -182,37 +199,6 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_fixed_neighbor_li
   GeneralizedHessian hessian(layout.numDofs(), 1);
   const RunningEnergy analyticEnergy = Interactions::computeFrameworkMoleculeHessian(system, layout, hessian);
 
-  struct BasePair
-  {
-    std::size_t frameworkAtom;
-    std::size_t moleculeAtom;
-    bool vdw;
-    bool charge;
-  };
-  std::vector<BasePair> basePairs;
-  // Differentiate the smooth energy represented by the Hessian: the interaction set at the
-  // expansion point. Rebuilding the cutoff list at +/- strain is not a valid FD oracle when a
-  // pair crosses the hard cutoff; in this ITQ29 state two VDW pairs do so at epsilon=+3e-4.
-  const double vdwCutoffSquared =
-      system.forceField.cutOffFrameworkVDW * system.forceField.cutOffFrameworkVDW;
-  const double chargeCutoffSquared = system.forceField.cutOffCoulomb * system.forceField.cutOffCoulomb;
-  std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
-  for (std::size_t frameworkAtom = 0; frameworkAtom < frameworkAtoms.size(); ++frameworkAtom)
-  {
-    for (std::size_t moleculeAtom = 0; moleculeAtom < moleculeAtoms.size(); ++moleculeAtom)
-    {
-      const double3 dr = baseBox.applyPeriodicBoundaryConditions(moleculeAtoms[moleculeAtom].position -
-                                                                 frameworkAtoms[frameworkAtom].position);
-      const double rr = double3::dot(dr, dr);
-      const bool vdw = rr < vdwCutoffSquared;
-      const bool charge = system.forceField.useCharge && rr < chargeCutoffSquared;
-      if (vdw || charge)
-      {
-        basePairs.push_back({frameworkAtom, moleculeAtom, vdw, charge});
-      }
-    }
-  }
-
   auto energyAt = [&](double strainExponent)
   {
     applyState(strainExponent);
@@ -224,37 +210,6 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_fixed_neighbor_li
     return energy.frameworkMoleculeVDW + energy.frameworkMoleculeCharge;
   };
 
-  auto fixedBasePairEnergyAt = [&](double strainExponent)
-  {
-    applyState(strainExponent);
-    const double factor = std::exp(strainExponent);
-    const SimulationBox strainedBox(factor * baseBox.cell.ax, factor * baseBox.cell.by, factor * baseBox.cell.cz);
-    double energy = 0.0;
-    for (const BasePair &pair : basePairs)
-    {
-      const Atom &frameworkAtom = frameworkAtoms[pair.frameworkAtom];
-      const Atom &moleculeAtom = moleculeAtoms[pair.moleculeAtom];
-      const double3 dr =
-          strainedBox.applyPeriodicBoundaryConditions(moleculeAtom.position - frameworkAtom.position);
-      const double rr = double3::dot(dr, dr);
-      if (pair.vdw)
-      {
-        energy += Potentials::potentialVDWEnergy(
-                      system.forceField, frameworkAtom.scalingVDW, moleculeAtom.scalingVDW, rr,
-                      static_cast<std::size_t>(frameworkAtom.type), static_cast<std::size_t>(moleculeAtom.type))
-                      .energy;
-      }
-      if (pair.charge)
-      {
-        energy += Potentials::potentialCoulombEnergy(
-                      system.forceField, frameworkAtom.scalingCoulomb, moleculeAtom.scalingCoulomb, std::sqrt(rr),
-                      frameworkAtom.charge, moleculeAtom.charge)
-                      .energy;
-      }
-    }
-    return energy;
-  };
-
   // Consistency: the Hessian routine and the FD evaluator must see the same base state.
   EXPECT_NEAR(analyticEnergy.frameworkMoleculeVDW + analyticEnergy.frameworkMoleculeCharge, energyAt(0.0), 1e-8)
       << "base-state energy mismatch between analytic Hessian and FD evaluator";
@@ -262,31 +217,48 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_fixed_neighbor_li
   // strain-strain block.
   {
     displacement.fill(0.0);
-    const double eZero = fixedBasePairEnergyAt(0.0);
-    const double ePlus = fixedBasePairEnergyAt(strainStep);
-    const double eMinus = fixedBasePairEnergyAt(-strainStep);
-    const double numerical = (ePlus - 2.0 * eZero + eMinus) / (strainStep * strainStep);
+    auto finiteDifference = [&](double step)
+    {
+      const double eZero = energyAt(0.0);
+      const double ePlus = energyAt(step);
+      const double eMinus = energyAt(-step);
+      return (ePlus - 2.0 * eZero + eMinus) / (step * step);
+    };
+    const double numerical = (4.0 * finiteDifference(strainStep) - finiteDifference(2.0 * strainStep)) / 3.0;
     const double analytic = hessian.strainStrain()[0];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, absoluteTolerance + relativeTolerance * scale) << "strain-strain";
   }
 
   // position-strain blocks over the rigid COM and orientation DOFs.
+  auto gradientAt = [&](double strainExponent)
+  {
+    displacement.fill(0.0);
+    applyState(strainExponent);
+    const double factor = std::exp(strainExponent);
+    system.simulationBox =
+        SimulationBox(factor * baseBox.cell.ax, factor * baseBox.cell.by, factor * baseBox.cell.cz);
+
+    std::vector<double> gradient(layout.numDofs());
+    GeneralizedHessian scratchHessian(layout.numDofs(), 0);
+    DerivativeCapabilities capabilities{.energy = false, .gradient = true, .hessianPositionPosition = true};
+    DerivativeResults derivatives{.gradient = gradient, .hessian = scratchHessian};
+    evaluateDerivatives(system, layout, capabilities, derivatives);
+    for (std::size_t slot = 0; slot < 3; ++slot)
+    {
+      gradient[slot] *= factor;
+    }
+    return gradient;
+  };
+  constexpr double gradientStep = 5e-5;
+  const std::vector<double> gradientPlus = gradientAt(gradientStep);
+  const std::vector<double> gradientMinus = gradientAt(-gradientStep);
   for (std::size_t slot = 0; slot < 6; ++slot)
   {
     const auto dof = layout.rigidMoleculeDof(0, static_cast<RigidDof>(slot));
     ASSERT_TRUE(dof);
 
-    displacement.fill(0.0);
-    displacement[slot] += delta;
-    const double ePP = fixedBasePairEnergyAt(strainStep);
-    const double ePM = fixedBasePairEnergyAt(-strainStep);
-    displacement.fill(0.0);
-    displacement[slot] -= delta;
-    const double eMP = fixedBasePairEnergyAt(strainStep);
-    const double eMM = fixedBasePairEnergyAt(-strainStep);
-
-    const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * strainStep);
+    const double numerical = (gradientPlus[*dof] - gradientMinus[*dof]) / (2.0 * gradientStep);
     const double analytic = hessian.positionStrain()[*dof];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
     EXPECT_NEAR(numerical, analytic, absoluteTolerance + relativeTolerance * scale)
@@ -296,11 +268,13 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_fixed_neighbor_li
   // Restore base state.
   displacement.fill(0.0);
   applyState(0.0);
+  system.simulationBox = baseBox;
 }
 
 TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step_convergence)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
   const Atom frameworkSite(double3(0.25, 0.25, 0.25), 0.0, 1.0, 0, 3, 0, false, false);
   Framework framework(forceField, "single-site", SimulationBox(40.0, 40.0, 40.0), 1, {frameworkSite},
                       {frameworkSite}, int3(1, 1, 1));
@@ -373,7 +347,7 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
 
   // A step sweep distinguishes a bad analytic expression from FD truncation/roundoff.
   // Each estimate must converge to the same analytic value over the stable central-difference range.
-  constexpr std::array<double, 4> strainSteps = {2e-3, 1e-3, 5e-4, 2.5e-4};
+  constexpr std::array<double, 4> strainSteps = {5e-4, 4e-4, 3e-4, 2e-4};
   constexpr double positionStep = 2e-5;
   for (double strainStep : strainSteps)
   {
@@ -381,7 +355,7 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
     const double numericalStrain =
         (energyAt(strainStep) - 2.0 * energyAt(0.0) + energyAt(-strainStep)) / (strainStep * strainStep);
     EXPECT_NEAR(numericalStrain, hessian.strainStrain()[0],
-                2e-4 * std::max({1.0, std::abs(numericalStrain), std::abs(hessian.strainStrain()[0])}))
+                1e-5 * std::max({1.0, std::abs(numericalStrain), std::abs(hessian.strainStrain()[0])}))
         << "strainStep=" << strainStep;
 
     for (std::size_t slot = 0; slot < 6; ++slot)
@@ -397,7 +371,7 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
       const double eMM = energyAt(-strainStep);
       const double numerical = (ePP - ePM - eMP + eMM) / (4.0 * positionStep * strainStep);
       const double analytic = hessian.positionStrain()[*dof];
-      EXPECT_NEAR(numerical, analytic, 2e-4 * std::max({1.0, std::abs(numerical), std::abs(analytic)}))
+      EXPECT_NEAR(numerical, analytic, 1e-5 * std::max({1.0, std::abs(numerical), std::abs(analytic)}))
           << "slot=" << slot << " strainStep=" << strainStep;
     }
   }

@@ -25,6 +25,8 @@ VDWParameters::Type VDWParameters::stringToEnum(const std::string interactionTyp
       {"born-huggins-meyer", Type::BornHugginsMeyer},
       {"lennard-jones-shifted-force", Type::LennardJonesShiftedForce},
       {"lennardjonesshiftedforce", Type::LennardJonesShiftedForce},
+      {"lennard-jones-second-order-taylor-shifted", Type::LennardJonesSecondOrderTaylorShifted},
+      {"lennardjonessecondordertaylorshifted", Type::LennardJonesSecondOrderTaylorShifted},
       {"12-6", Type::Potential12_6},
       {"potential-12-6", Type::Potential12_6},
       {"12-6-2-0", Type::Potential12_6_2_0},
@@ -78,6 +80,8 @@ std::string VDWParameters::nameOfType(VDWParameters::Type type)
       return "Born-Huggins-Meyer";
     case Type::LennardJonesShiftedForce:
       return "Lennard-Jones shifted-force";
+    case Type::LennardJonesSecondOrderTaylorShifted:
+      return "Lennard-Jones second-order Taylor-shifted";
     case Type::Potential12_6:
       return "12-6";
     case Type::Potential12_6_2_0:
@@ -129,6 +133,9 @@ VDWParameters::ParameterMetadata VDWParameters::parameterMetadata(VDWParameters:
       // p0: A [K], p1: b [A^-1], p2: sigma [A], p3: C6 [K A^6], p4: C8 [K A^8]
       return {5, {true, false, false, true, true}};
     case Type::LennardJonesShiftedForce:
+      // p0: epsilon [K], p1: sigma [A]
+      return {2, {true, false}};
+    case Type::LennardJonesSecondOrderTaylorShifted:
       // p0: epsilon [K], p1: sigma [A]
       return {2, {true, false}};
     case Type::Potential12_6:
@@ -274,6 +281,22 @@ double VDWParameters::potentialEnergyAtFullCoupling(double rr) const
              (rri3 * (rri3 - 1.0) - rri3_c * (rri3_c - 1.0) +
               (12.0 * rri3_c * rri3_c - 6.0 * rri3_c) * (r - cutOff) / cutOff);
     }
+    case Type::LennardJonesSecondOrderTaylorShifted:
+    {
+      // Subtract the second-order Taylor expansion at rc so U(rc), U'(rc), and U''(rc) vanish.
+      double r = std::sqrt(rr);
+      double sigma2 = parameters.y * parameters.y;
+      double temp = rr / sigma2;
+      double u6 = 1.0 / (temp * temp * temp);
+      double c6 = parameters2.x;
+      double cutOff = parameters2.y;
+      double displacement = (r - cutOff) / cutOff;
+      double linearCoefficient = 12.0 * c6 * c6 - 6.0 * c6;
+      double quadraticCoefficient = 156.0 * c6 * c6 - 42.0 * c6;
+      return 4.0 * parameters.x *
+             (u6 * (u6 - 1.0) - c6 * (c6 - 1.0) + linearCoefficient * displacement -
+              0.5 * quadraticCoefficient * displacement * displacement);
+    }
     case Type::Potential12_6:
     {
       // p_0/r^12-p_1/r^6
@@ -387,6 +410,7 @@ void VDWParameters::computeDerivedParameters(double cutOff, double temperature)
       break;
     }
     case Type::LennardJonesShiftedForce:
+    case Type::LennardJonesSecondOrderTaylorShifted:
     {
       double temp = (parameters.y * parameters.y) / (cutOff * cutOff);
       parameters2.x = temp * temp * temp;  // (sigma/rc)^6
@@ -411,6 +435,7 @@ void VDWParameters::computeDerivedParameters(double cutOff, double temperature)
     case Type::FeynmannHibbs:
     case Type::MM3:
     case Type::LennardJonesShiftedForce:
+    case Type::LennardJonesSecondOrderTaylorShifted:
     case Type::CFFEpsilonSigma:
     case Type::WeeksChandlerAndersen:
     {
