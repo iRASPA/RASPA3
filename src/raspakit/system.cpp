@@ -73,6 +73,7 @@ import interpolation_energy_grid;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
 import property_conserved_energy_evolution;
+import minimization_cell_layout;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 // import mdspan;
 #endif
@@ -525,8 +526,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
   }
   if (framework && !framework->rigid)
   {
-    runningIntraEnergy +=
-        Interactions::computeFrameworkIntraMolecularEnergy(*framework, simulationBox, frameworkAtomPositions);
+    runningIntraEnergy += Interactions::computeFrameworkIntraMolecularEnergy(forceField, *framework, simulationBox,
+                                                                             frameworkAtomPositions);
   }
 
   if (forceField.computePolarization)
@@ -960,6 +961,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.pressureTensorDiagonal;
   archive << s.input_pressureTensorDiagonal;
   archive << s.beta;
+  archive << static_cast<std::uint8_t>(s.cellMinimizationType);
+  archive << static_cast<std::uint8_t>(s.monoclinicAngleType);
 
   archive << s.heliumVoidFraction;
 
@@ -1100,6 +1103,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.pressureTensorDiagonal;
   archive >> s.input_pressureTensorDiagonal;
   archive >> s.beta;
+  if (versionNumber >= 3)
+  {
+    std::uint8_t cellMinimizationType;
+    std::uint8_t monoclinicAngleType;
+    archive >> cellMinimizationType;
+    archive >> monoclinicAngleType;
+    s.cellMinimizationType = static_cast<CellMinimizationType>(cellMinimizationType);
+    s.monoclinicAngleType = static_cast<MonoclinicAngleType>(monoclinicAngleType);
+  }
 
   archive >> s.heliumVoidFraction;
 

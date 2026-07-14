@@ -12,6 +12,7 @@ import molecule;
 import running_energy;
 import energy_status;
 import simulationbox;
+import forcefield;
 import energy_factor;
 import intra_molecular_potentials;
 import bond_potential;
@@ -22,7 +23,8 @@ import framework;
 
 export namespace Interactions
 {
-RunningEnergy computeFrameworkIntraMolecularEnergy(const Framework& framework, const SimulationBox& simulationBox,
+RunningEnergy computeFrameworkIntraMolecularEnergy(const ForceField& forceField, const Framework& framework,
+                                                   const SimulationBox& simulationBox,
                                                    std::span<const Atom> frameworkAtoms);
 
 RunningEnergy computeIntraMolecularEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,

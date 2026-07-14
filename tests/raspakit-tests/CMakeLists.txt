@@ -38,6 +38,7 @@ add_executable(unit_tests_raspakit
   minimization_hessian_framework.cpp
   minimization_hessian_ewald.cpp
   minimization_driver.cpp
+  minimization_variable_cell.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp

@@ -39,6 +39,7 @@ import write_lammps_data;
 import thermostat;
 import cif_reader;
 import running_energy;
+import minimization_cell_layout;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -288,13 +289,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (!parsed_data["MaximumNumberOfMinimizationSteps"].is_number_unsigned())
     {
-      throw std::runtime_error(
-          "[Input reader]: MaximumNumberOfMinimizationSteps must be a positive unsigned integer");
+      throw std::runtime_error("[Input reader]: MaximumNumberOfMinimizationSteps must be a positive unsigned integer");
     }
-    minimizationOptions.maximumNumberOfSteps =
-        parsed_data["MaximumNumberOfMinimizationSteps"].get<std::size_t>();
+    minimizationOptions.maximumNumberOfSteps = parsed_data["MaximumNumberOfMinimizationSteps"].get<std::size_t>();
   }
-  auto parseMinimizationNumber = [&](const char *key, double &value)
+  auto parseMinimizationNumber = [&](const char* key, double& value)
   {
     if (!parsed_data.contains(key))
     {
@@ -311,14 +310,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   };
   parseMinimizationNumber("MaximumStepLength", minimizationOptions.maximumStepLength);
+  parseMinimizationNumber("MaximumCellStepLength", minimizationOptions.maximumCellStepLength);
   parseMinimizationNumber("RMSGradientTolerance", minimizationOptions.rmsGradientTolerance);
   parseMinimizationNumber("MaxGradientTolerance", minimizationOptions.maxGradientTolerance);
   parseMinimizationNumber("MinimizationConvergenceFactor", minimizationOptions.convergenceFactor);
   parseMinimizationNumber("MinimumEigenvalue", minimizationOptions.minimumEigenvalue);
 
   if (minimizationOptions.maximumNumberOfSteps == 0 || minimizationOptions.maximumStepLength <= 0.0 ||
-      minimizationOptions.rmsGradientTolerance <= 0.0 || minimizationOptions.maxGradientTolerance <= 0.0 ||
-      minimizationOptions.minimumEigenvalue <= 0.0 || minimizationOptions.convergenceFactor < 0.0)
+      minimizationOptions.maximumCellStepLength <= 0.0 || minimizationOptions.rmsGradientTolerance <= 0.0 ||
+      minimizationOptions.maxGradientTolerance <= 0.0 || minimizationOptions.minimumEigenvalue <= 0.0 ||
+      minimizationOptions.convergenceFactor < 0.0)
   {
     throw std::runtime_error(
         "[Input reader]: minimization limits and tolerances must be positive and convergence factor non-negative");
@@ -1470,9 +1471,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             else
             {
-              throw std::runtime_error(
-                  std::format("[Input reader]: unknown 'FrameworkType' '{}'; expected 'Rigid' or 'Flexible'\n",
-                              frameworkType));
+              throw std::runtime_error(std::format(
+                  "[Input reader]: unknown 'FrameworkType' '{}'; expected 'Rigid' or 'Flexible'\n", frameworkType));
             }
           }
 
@@ -1533,6 +1533,40 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       {
+        if (value.contains("CellType"))
+        {
+          if (!value["CellType"].is_string())
+          {
+            throw std::runtime_error("[Input reader]: 'CellType' must have a value of string type\n");
+          }
+          const std::string cellType = value["CellType"].get<std::string>();
+          const std::optional<CellMinimizationType> parsedCellType = cellMinimizationTypeFromString(cellType);
+          if (!parsedCellType.has_value())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: unknown 'CellType' '{}'; expected 'Fixed', 'Isotropic', 'Anisotropic', "
+                "'Monoclinic', 'Regular', 'RegularUpperTriangle', or 'MonoclinicUpperTriangle'\n",
+                cellType));
+          }
+          systems[systemId].cellMinimizationType = parsedCellType.value();
+        }
+        if (value.contains("MonoclinicAngleType"))
+        {
+          if (!value["MonoclinicAngleType"].is_string())
+          {
+            throw std::runtime_error("[Input reader]: 'MonoclinicAngleType' must have a value of string type\n");
+          }
+          const std::string angleType = value["MonoclinicAngleType"].get<std::string>();
+          const std::optional<MonoclinicAngleType> parsedAngleType = monoclinicAngleTypeFromString(angleType);
+          if (!parsedAngleType.has_value())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: unknown 'MonoclinicAngleType' '{}'; expected 'Alpha', 'Beta', or 'Gamma'\n",
+                angleType));
+          }
+          systems[systemId].monoclinicAngleType = parsedAngleType.value();
+        }
+
         double3 inputPressureDiagonal(systems[systemId].input_pressure, systems[systemId].input_pressure,
                                       systems[systemId].input_pressure);
         if (value.contains("ExternalPressureX") && value["ExternalPressureX"].is_number())
@@ -1549,6 +1583,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         systems[systemId].input_pressureTensorDiagonal = inputPressureDiagonal;
         systems[systemId].pressureTensorDiagonal = inputPressureDiagonal / Units::PressureConversionFactor;
+        if (systems[systemId].cellMinimizationType != CellMinimizationType::Fixed &&
+            (value.contains("ExternalPressureX") || value.contains("ExternalPressureY") ||
+             value.contains("ExternalPressureZ")))
+        {
+          throw std::runtime_error(
+              "[Input reader]: variable-cell minimization supports hydrostatic 'ExternalPressure' only");
+        }
       }
 
       if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
@@ -2266,6 +2307,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PrintEvery",
     "MaximumNumberOfMinimizationSteps",
     "MaximumStepLength",
+    "MaximumCellStepLength",
     "RMSGradientTolerance",
     "MaxGradientTolerance",
     "MinimizationConvergenceFactor",
@@ -2304,6 +2346,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "Framework",
     "FrameworkDefinition",
     "FrameworkType",
+    "CellType",
+    "MonoclinicAngleType",
     "Name",
     "NumberOfUnitCells",
     "HeliumVoidFraction",

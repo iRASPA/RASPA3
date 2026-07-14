@@ -11,6 +11,7 @@ import atom;
 import molecule;
 import component;
 import simulationbox;
+import minimization_cell_layout;
 
 namespace
 {
@@ -58,6 +59,71 @@ void wrapMoleculeToPrimaryCell(System& system, std::size_t moleculeIndex)
   {
     atom.position += shift;
   }
+}
+
+double3x3 matrixExponential(double3x3 matrix)
+{
+  const double norm = std::max({std::abs(matrix.m11) + std::abs(matrix.m12) + std::abs(matrix.m13),
+                                std::abs(matrix.m21) + std::abs(matrix.m22) + std::abs(matrix.m23),
+                                std::abs(matrix.m31) + std::abs(matrix.m32) + std::abs(matrix.m33)});
+  const int scaling = norm > 0.5 ? std::max(0, static_cast<int>(std::ceil(std::log2(norm / 0.5)))) : 0;
+  matrix = matrix * std::ldexp(1.0, -scaling);
+
+  double3x3 result = double3x3::identity();
+  double3x3 term = double3x3::identity();
+  for (std::size_t order = 1; order <= 24; ++order)
+  {
+    term = term * matrix;
+    term = term * (1.0 / static_cast<double>(order));
+    result += term;
+  }
+  for (int i = 0; i < scaling; ++i)
+  {
+    result = result * result;
+  }
+  return result;
+}
+
+void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, std::span<const double> displacement)
+{
+  if (layout.numberOfCellDofs() == 0) return;
+
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
+  if (cellLayout.size() != layout.numberOfCellDofs())
+  {
+    throw std::invalid_argument("applyGeneralizedDisplacement: cell layout does not match DOF layout");
+  }
+
+  double3x3 logarithmicStrain{};
+  for (std::size_t coordinate = 0; coordinate < cellLayout.size(); ++coordinate)
+  {
+    logarithmicStrain += displacement[*layout.cellDof(coordinate)] * cellLayout.bases[coordinate];
+  }
+  const double3x3 deformation = matrixExponential(logarithmicStrain);
+
+  for (Atom& atom : system.spanOfFrameworkAtoms())
+  {
+    atom.position = deformation * atom.position;
+  }
+  std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  for (Molecule& molecule : system.moleculeData)
+  {
+    const Component& component = system.components[molecule.componentId];
+    if (component.rigid)
+    {
+      molecule.centerOfMassPosition = deformation * molecule.centerOfMassPosition;
+    }
+    else
+    {
+      for (Atom& atom : moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms))
+      {
+        atom.position = deformation * atom.position;
+      }
+    }
+  }
+
+  system.simulationBox = SimulationBox(deformation * system.simulationBox.cell);
 }
 }  // namespace
 
@@ -119,5 +185,21 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
     }
     regenerateRigidAtoms(system, moleculeIndex);
     wrapMoleculeToPrimaryCell(system, moleculeIndex);
+  }
+
+  if (layout.numberOfCellDofs() != 0)
+  {
+    applyCellDisplacement(system, layout, displacement);
+    for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
+    {
+      if (layout.molecules()[moleculeIndex].rigid)
+      {
+        regenerateRigidAtoms(system, moleculeIndex);
+      }
+      wrapMoleculeToPrimaryCell(system, moleculeIndex);
+    }
+    // Keep cutoff, Ewald alpha, and reciprocal integer bounds fixed during a minimization.
+    // Re-selecting numerical parameters would make the objective discontinuous as the cell changes.
+    system.precomputeTotalRigidEnergy();
   }
 }

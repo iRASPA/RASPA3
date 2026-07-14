@@ -106,6 +106,11 @@ BakerStep computeBakerStep(std::span<const double> hessian, std::span<const doub
   result.eigenvalues = eigenSystem.eigenvalues;
   result.lowestEigenvalue = eigenSystem.eigenvalues.front();
   result.highestEigenvalue = eigenSystem.eigenvalues.back();
+  result.lowestMode.resize(size);
+  for (std::size_t row = 0; row < size; ++row)
+  {
+    result.lowestMode[row] = eigenSystem.eigenvector(row, 0);
+  }
 
   std::vector<std::size_t> activeModes;
   std::vector<double> activeEigenvalues;

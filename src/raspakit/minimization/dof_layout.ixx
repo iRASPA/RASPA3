@@ -39,6 +39,9 @@ export class MinimizationDofLayout
 {
  public:
   std::size_t numDofs() const noexcept { return _numDofs; }
+  std::size_t numberOfPositionDofs() const noexcept { return _numberOfPositionDofs; }
+  std::size_t numberOfCellDofs() const noexcept { return _numberOfCellDofs; }
+  std::optional<std::size_t> cellDof(std::size_t cellCoordinate) const noexcept;
 
   std::span<const MolDofInfo> molecules() const noexcept { return _molecules; }
 
@@ -57,9 +60,12 @@ export class MinimizationDofLayout
  private:
   friend MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
                                                           std::span<const Component> components,
-                                                          std::size_t numberOfFlexibleFrameworkAtoms);
+                                                          std::size_t numberOfFlexibleFrameworkAtoms,
+                                                          std::size_t numberOfCellDofs);
 
   std::size_t _numDofs{};
+  std::size_t _numberOfPositionDofs{};
+  std::size_t _numberOfCellDofs{};
   std::size_t _numberOfFrameworkAtoms{};
   std::size_t _maxAtomsPerMolecule{};
   std::vector<std::int32_t> _frameworkAtomDof;
@@ -70,4 +76,5 @@ export class MinimizationDofLayout
 
 export MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
                                                         std::span<const Component> components,
-                                                        std::size_t numberOfFlexibleFrameworkAtoms = 0);
+                                                        std::size_t numberOfFlexibleFrameworkAtoms = 0,
+                                                        std::size_t numberOfCellDofs = 0);

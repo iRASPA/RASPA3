@@ -57,6 +57,7 @@ import thermostat;
 import json;
 import interpolation_energy_grid;
 import write_lammps_data;
+import minimization_cell_layout;
 
 /**
  * \brief Represents the central system for simulations.
@@ -100,7 +101,7 @@ export struct System
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -108,6 +109,8 @@ export struct System
   double3 pressureTensorDiagonal{1e4, 1e4, 1e4};
   double3 input_pressureTensorDiagonal{1e4, 1e4, 1e4};
   double beta{1.0 / (Units::KB * 300.0)};
+  CellMinimizationType cellMinimizationType{CellMinimizationType::Fixed};
+  MonoclinicAngleType monoclinicAngleType{MonoclinicAngleType::Beta};
 
   double heliumVoidFraction{0.29};
 

@@ -34,7 +34,8 @@ import component;
 import units;
 import threadpool;
 
-RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const Framework& framework,
+RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceField& forceField,
+                                                                 const Framework& framework,
                                                                  const SimulationBox& simulationBox,
                                                                  std::span<const Atom> atoms)
 {
@@ -49,6 +50,24 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const Framework
   };
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  std::set<std::array<std::size_t, 2>> pairs12And13;
+  std::set<std::array<std::size_t, 2>> pairs14;
+  if (!framework.connectivityTable.table.empty())
+  {
+    for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
+    {
+      pairs12And13.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+    }
+    for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
+    {
+      pairs12And13.insert({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+    }
+    for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
+    {
+      const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
+      if (!pairs12And13.contains(pair)) pairs14.insert(pair);
+    }
+  }
 
   for (std::size_t index = 0; index < potentials.bonds.size(); ++index)
   {
@@ -84,15 +103,38 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const Framework
   for (std::size_t index = 0; index < potentials.vanDerWaals.size(); ++index)
   {
     const VanDerWaalsPotential& potential = potentials.vanDerWaals[index];
-    energy.intraVDW +=
-        potential.calculateEnergy(shiftedPosition(potential.identifiers[0], images.vanDerWaals[index][0]),
-                                  shiftedPosition(potential.identifiers[1], images.vanDerWaals[index][1]));
+    const std::size_t A = potential.identifiers[0];
+    const std::size_t B = potential.identifiers[1];
+    const double3 dr =
+        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+    const double rr = double3::dot(dr, dr);
+    const bool isScaled14 =
+        pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
+    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    {
+      const Potentials::EnergyFactor factor = Potentials::potentialVDWEnergy(
+          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+      energy.intraVDW += potential.scaling * factor.energy;
+    }
   }
   for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
   {
     const CoulombPotential& potential = potentials.coulombs[index];
-    energy.intraCoul += potential.calculateEnergy(shiftedPosition(potential.identifiers[0], images.coulombs[index][0]),
-                                                  shiftedPosition(potential.identifiers[1], images.coulombs[index][1]));
+    const std::size_t A = potential.identifiers[0];
+    const std::size_t B = potential.identifiers[1];
+    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+    const double rr = double3::dot(dr, dr);
+    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    {
+      energy.intraCoul += potential.calculateEnergy(shiftedPosition(A, images.coulombs[index][0]),
+                                                    shiftedPosition(B, images.coulombs[index][1]));
+    }
+    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+    {
+      energy.intraCoul += Potentials::potentialCoulombEnergy(forceField, potential.scaling, 1.0, std::sqrt(rr),
+                                                            potential.chargeA, potential.chargeB)
+                              .energy;
+    }
   }
   return energy;
 }

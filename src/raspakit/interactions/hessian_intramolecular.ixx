@@ -10,15 +10,19 @@ import molecule;
 import component;
 import framework;
 import simulationbox;
+import forcefield;
 import running_energy;
 import generalized_hessian;
 import minimization_dof_layout;
+import minimization_cell_layout;
 
 export namespace Interactions
 {
-RunningEnergy computeFrameworkIntraMolecularHessian(const Framework& framework, const SimulationBox& simulationBox,
-                                                    std::span<const Atom> atoms, const MinimizationDofLayout& layout,
-                                                    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics);
+RunningEnergy computeFrameworkIntraMolecularHessian(const ForceField& forceField, const Framework& framework,
+                                                    const SimulationBox& simulationBox, std::span<const Atom> atoms,
+                                                    const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+                                                    std::span<AtomDynamics> dynamics,
+                                                    const CellMinimizationLayout& cellLayout = {});
 
 RunningEnergy computeIntraMolecularBondHessian(std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
                                                std::span<const Component> components,

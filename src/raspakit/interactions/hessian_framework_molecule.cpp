@@ -5,6 +5,7 @@ module interactions_hessian_framework_molecule;
 import std;
 
 import double3;
+import double3x3;
 import atom;
 import molecule;
 import forcefield;
@@ -14,6 +15,81 @@ import potential_hessian_coulomb;
 import hessian_factor;
 import minimization_hessian_scatter;
 import minimization_rigid_kinematics;
+import minimization_cell_layout;
+
+namespace
+{
+void addFrameworkMoleculeCellCorrection(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                        const Minimization::RigidDerivativeCache& rigidCache,
+                                        const CellMinimizationLayout& cellLayout, std::size_t frameworkAtom,
+                                        bool flexibleFramework, std::size_t molecule, std::size_t localAtom, bool rigid,
+                                        const double3& moleculePosition, const double3& moleculeCom,
+                                        const double3& frameworkPosition, double f1, double f2, const double3& dr)
+{
+  const double3 offset = rigid ? moleculePosition - moleculeCom : double3{};
+  const double3 exactBase = dr - offset;
+  const double3 rawBase = moleculeCom - (flexibleFramework ? frameworkPosition : double3{});
+  const double3 baseCorrection = exactBase - rawBase;
+  const double3 gradient = f1 * dr;
+  double3x3 strain{};
+  strain.ax = exactBase.x * gradient.x;
+  strain.bx = exactBase.y * gradient.x;
+  strain.cx = exactBase.z * gradient.x;
+  strain.ay = exactBase.x * gradient.y;
+  strain.by = exactBase.y * gradient.y;
+  strain.cy = exactBase.z * gradient.y;
+  strain.az = exactBase.x * gradient.z;
+  strain.bz = exactBase.y * gradient.z;
+  strain.cz = exactBase.z * gradient.z;
+  hessian.strainGradient() += strain;
+
+  for (std::size_t a = 0; a < cellLayout.size(); ++a)
+  {
+    const std::size_t cellA = *layout.cellDof(a);
+    const double3 deltaV = cellLayout.bases[a] * baseCorrection;
+    const double3 mixedCorrection = f1 * deltaV + f2 * double3::dot(dr, deltaV) * dr;
+    const std::size_t moleculeBase =
+        rigid ? *layout.rigidMoleculeDof(molecule, RigidDof::ComX) : layout.flexibleAtomDofBase(molecule, localAtom);
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      hessian.add(moleculeBase + axis, cellA, (&mixedCorrection.x)[axis]);
+      hessian.add(cellA, moleculeBase + axis, (&mixedCorrection.x)[axis]);
+      if (flexibleFramework)
+      {
+        const std::size_t frameworkBase = *layout.frameworkAtomDof(frameworkAtom, MinimizationDofAxis::X);
+        hessian.add(frameworkBase + axis, cellA, -(&mixedCorrection.x)[axis]);
+        hessian.add(cellA, frameworkBase + axis, -(&mixedCorrection.x)[axis]);
+      }
+    }
+    if (rigid)
+    {
+      const std::size_t orientationBase = *layout.rigidMoleculeDof(molecule, RigidDof::OriX);
+      const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(molecule, localAtom);
+      const std::array<double3, 3> directions = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        const double value = double3::dot(directions[axis], mixedCorrection);
+        hessian.add(orientationBase + axis, cellA, value);
+        hessian.add(cellA, orientationBase + axis, value);
+      }
+    }
+
+    const double3 exactV = cellLayout.bases[a] * exactBase;
+    const double3 rawV = cellLayout.bases[a] * rawBase;
+    for (std::size_t b = 0; b < cellLayout.size(); ++b)
+    {
+      const double3 exactW = cellLayout.bases[b] * exactBase;
+      const double3 rawW = cellLayout.bases[b] * rawBase;
+      const double exactValue = f1 * double3::dot(exactV, exactW) +
+                                f2 * double3::dot(dr, exactV) * double3::dot(dr, exactW) +
+                                double3::dot(gradient, cellStrainSecondDerivative(cellLayout, a, b) * exactBase);
+      const double rawValue = f1 * double3::dot(rawV, rawW) + f2 * double3::dot(dr, rawV) * double3::dot(dr, rawW) +
+                              double3::dot(gradient, cellStrainSecondDerivative(cellLayout, a, b) * rawBase);
+      hessian.add(cellA, *layout.cellDof(b), exactValue - rawValue);
+    }
+  }
+}
+}  // namespace
 
 RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system, const MinimizationDofLayout& layout,
                                                             GeneralizedHessian& hessian,
@@ -42,6 +118,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system
   const bool useCharge = forceField.useCharge;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
+  const bool flexibleFramework = layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
@@ -81,7 +160,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system
         {
           frameworkDynamics[frameworkAtom].gradient -= factors.firstDerivativeFactor * dr;
         }
-        if (layout.numberOfFrameworkAtoms() == frameworkAtoms.size())
+        if (flexibleFramework)
         {
           Minimization::scatterFlexibleFrameworkMoleculeHessian(
               hessian, layout, rigidCache, frameworkAtom, moleculeIndex, localAtom, rigid,
@@ -93,6 +172,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system
                                                         factors.firstDerivativeFactor, factors.secondDerivativeFactor,
                                                         dr);
         }
+        addFrameworkMoleculeCellCorrection(hessian, layout, rigidCache, cellLayout, frameworkAtom, flexibleFramework,
+                                           moleculeIndex, localAtom, rigid, it1->position, comA, it2->position,
+                                           factors.firstDerivativeFactor, factors.secondDerivativeFactor, dr);
         if (hessian.numStrain() == 1)
         {
           const double3 drStrainDerivative = dr - (it1->position - comA);
@@ -122,7 +204,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system
         {
           frameworkDynamics[frameworkAtom].gradient -= factors.firstDerivativeFactor * dr;
         }
-        if (layout.numberOfFrameworkAtoms() == frameworkAtoms.size())
+        if (flexibleFramework)
         {
           Minimization::scatterFlexibleFrameworkMoleculeHessian(
               hessian, layout, rigidCache, frameworkAtom, moleculeIndex, localAtom, rigid,
@@ -134,6 +216,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(const System& system
                                                         factors.firstDerivativeFactor, factors.secondDerivativeFactor,
                                                         dr);
         }
+        addFrameworkMoleculeCellCorrection(hessian, layout, rigidCache, cellLayout, frameworkAtom, flexibleFramework,
+                                           moleculeIndex, localAtom, rigid, it1->position, comA, it2->position,
+                                           factors.firstDerivativeFactor, factors.secondDerivativeFactor, dr);
         if (hessian.numStrain() == 1)
         {
           const double3 drStrainDerivative = dr - (it1->position - comA);

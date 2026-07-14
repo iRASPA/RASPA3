@@ -6,10 +6,12 @@ import std;
 
 MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
                                                  std::span<const Component> components,
-                                                 std::size_t numberOfFlexibleFrameworkAtoms)
+                                                 std::size_t numberOfFlexibleFrameworkAtoms,
+                                                 std::size_t numberOfCellDofs)
 {
   MinimizationDofLayout layout;
   layout._numberOfFrameworkAtoms = numberOfFlexibleFrameworkAtoms;
+  layout._numberOfCellDofs = numberOfCellDofs;
   layout._molecules.resize(moleculeData.size());
 
   for (const Molecule& molecule : moleculeData)
@@ -58,8 +60,15 @@ MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> molec
     }
   }
 
-  layout._numDofs = nextDof;
+  layout._numberOfPositionDofs = nextDof;
+  layout._numDofs = nextDof + numberOfCellDofs;
   return layout;
+}
+
+std::optional<std::size_t> MinimizationDofLayout::cellDof(std::size_t cellCoordinate) const noexcept
+{
+  if (cellCoordinate >= _numberOfCellDofs) return std::nullopt;
+  return _numberOfPositionDofs + cellCoordinate;
 }
 
 std::optional<std::size_t> MinimizationDofLayout::frameworkAtomDof(std::size_t atom,

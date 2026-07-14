@@ -130,9 +130,10 @@ double readScalingFactor(const nlohmann::basic_json<nlohmann::raspa_map>& data, 
   return scaling;
 }
 
-bool readExclusionOption(const nlohmann::basic_json<nlohmann::raspa_map>& data, const std::string& key)
+bool readExclusionOption(const nlohmann::basic_json<nlohmann::raspa_map>& data, const std::string& key,
+                         bool defaultValue = true)
 {
-  if (!data.contains(key)) return true;
+  if (!data.contains(key)) return defaultValue;
   if (!data[key].is_boolean())
   {
     throw std::runtime_error(std::format("[Framework reader]: '{}' must be a boolean\n", key));
@@ -546,6 +547,8 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
 
   const bool exclude12Interactions = readExclusionOption(data, "ExcludeIntra12Interactions");
   const bool exclude13Interactions = readExclusionOption(data, "ExcludeIntra13Interactions");
+  const bool excludeBondInteractions = readExclusionOption(data, "ExcludeIntraBondInteractions", false);
+  const bool excludeBendInteractions = readExclusionOption(data, "ExcludeIntraBendInteractions", false);
   const double vanDerWaals14Scaling = readScalingFactor(data, "Intra14VanDerWaalsScalingValue");
   const double chargeCharge14Scaling = readScalingFactor(data, "Intra14ChargeChargeScalingValue");
 
@@ -554,50 +557,55 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
   {
     pairs12.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
   }
-
+  std::set<std::array<std::size_t, 2>> definedBondPairs;
+  for (const BondPotential& bond : potentials.bonds)
+  {
+    definedBondPairs.insert(
+        {std::min(bond.identifiers[0], bond.identifiers[1]), std::max(bond.identifiers[0], bond.identifiers[1])});
+  }
   std::set<std::array<std::size_t, 2>> pairs13;
   for (const std::array<std::size_t, 3>& bend : connectivity.findAllBends())
   {
     const std::array<std::size_t, 2> pair{std::min(bend[0], bend[2]), std::max(bend[0], bend[2])};
     if (!pairs12.contains(pair)) pairs13.insert(pair);
   }
-
-  if (!exclude12Interactions)
+  std::set<std::array<std::size_t, 2>> definedBendPairs;
+  for (const BendPotential& bend : potentials.bends)
   {
-    for (const std::array<std::size_t, 2>& indices : pairs12)
-    {
-      addVanDerWaals(indices, 1.0);
-      addCoulomb(indices, 1.0);
-    }
+    const std::array<std::size_t, 2> pair{std::min(bend.identifiers[0], bend.identifiers[2]),
+                                         std::max(bend.identifiers[0], bend.identifiers[2])};
+    definedBendPairs.insert(pair);
   }
-  if (!exclude13Interactions)
+  std::set<std::array<std::size_t, 2>> pairs14;
+  for (const std::array<std::size_t, 4>& torsion : connectivity.findAllTorsions())
   {
-    for (const std::array<std::size_t, 2>& indices : pairs13)
-    {
-      addVanDerWaals(indices, 1.0);
-      addCoulomb(indices, 1.0);
-    }
+    const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
+    if (!pairs12.contains(pair) && !pairs13.contains(pair)) pairs14.insert(pair);
   }
 
-  if (vanDerWaals14Scaling > 0.0 || chargeCharge14Scaling > 0.0)
+  for (std::size_t i = 0; i + 1 < atoms.size(); ++i)
   {
-    std::set<std::array<std::size_t, 2>> pairs14;
-    for (const std::array<std::size_t, 4>& torsion : connectivity.findAllTorsions())
+    for (std::size_t j = i + 1; j < atoms.size(); ++j)
     {
-      const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
-      if (!pairs12.contains(pair) && !pairs13.contains(pair)) pairs14.insert(pair);
+      const std::array<std::size_t, 2> pair{i, j};
+      if ((exclude12Interactions && pairs12.contains(pair)) ||
+          (excludeBondInteractions && definedBondPairs.contains(pair)) ||
+          (exclude13Interactions && pairs13.contains(pair)) ||
+          (excludeBendInteractions && definedBendPairs.contains(pair)))
+      {
+        continue;
+      }
+      if (pairs14.contains(pair))
+      {
+        if (vanDerWaals14Scaling > 0.0) addVanDerWaals(pair, vanDerWaals14Scaling);
+        if (chargeCharge14Scaling > 0.0) addCoulomb(pair, chargeCharge14Scaling);
+      }
+      else
+      {
+        addVanDerWaals(pair, 1.0);
+        addCoulomb(pair, 1.0);
+      }
     }
-    for (const std::array<std::size_t, 2>& indices : pairs14)
-    {
-      if (vanDerWaals14Scaling > 0.0) addVanDerWaals(indices, vanDerWaals14Scaling);
-      if (chargeCharge14Scaling > 0.0) addCoulomb(indices, chargeCharge14Scaling);
-    }
-  }
-
-  for (const std::array<std::size_t, 2>& indices : connectivity.findAllVanDerWaals())
-  {
-    addVanDerWaals(indices, 1.0);
-    addCoulomb(indices, 1.0);
   }
 
   std::map<std::array<std::size_t, 2>, int3> directedBondShifts;

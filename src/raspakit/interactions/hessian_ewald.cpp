@@ -11,11 +11,13 @@ import atom;
 import atom_dynamics;
 import molecule;
 import component;
+import coulomb_potential;
 import forcefield;
 import simulationbox;
 import minimization_dof_layout;
 import minimization_hessian_scatter;
 import minimization_rigid_kinematics;
+import minimization_cell_layout;
 
 namespace
 {
@@ -35,6 +37,7 @@ struct SiteProjection
 {
   std::array<std::size_t, 6> dof{};
   std::array<double, 6> projection{};
+  std::array<double3, 6> direction{};
   std::size_t count{};
   std::size_t orientationStart{};  // entries [orientationStart, count) are orientation DOFs
 };
@@ -45,11 +48,14 @@ SiteProjection buildSiteProjection(const EwaldSite& site, const double3& rk)
   if (site.positionBase)
   {
     result.dof[result.count] = *site.positionBase + 0;
-    result.projection[result.count++] = rk.x;
+    result.projection[result.count] = rk.x;
+    result.direction[result.count++] = double3(1.0, 0.0, 0.0);
     result.dof[result.count] = *site.positionBase + 1;
-    result.projection[result.count++] = rk.y;
+    result.projection[result.count] = rk.y;
+    result.direction[result.count++] = double3(0.0, 1.0, 0.0);
     result.dof[result.count] = *site.positionBase + 2;
-    result.projection[result.count++] = rk.z;
+    result.projection[result.count] = rk.z;
+    result.direction[result.count++] = double3(0.0, 0.0, 1.0);
   }
   result.orientationStart = result.count;
   if (site.orientationBase && site.derivatives != nullptr)
@@ -58,10 +64,16 @@ SiteProjection buildSiteProjection(const EwaldSite& site, const double3& rk)
     for (std::size_t axis = 0; axis < 3; ++axis)
     {
       result.dof[result.count] = *site.orientationBase + axis;
-      result.projection[result.count++] = double3::dot(rk, dVec[axis]);
+      result.projection[result.count] = double3::dot(rk, dVec[axis]);
+      result.direction[result.count++] = dVec[axis];
     }
   }
   return result;
+}
+
+double realInner(const std::complex<double>& lhs, const std::complex<double>& rhs)
+{
+  return lhs.real() * rhs.real() + lhs.imag() * rhs.imag();
 }
 }  // namespace
 
@@ -91,6 +103,13 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
   const double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
   const bool omitInterInteractions = forceField.omitInterInteractions;
   const bool computeStrain = (hessian.numStrain() == 1);
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
+  const std::size_t numberOfCellDofs = layout.numberOfCellDofs();
+  if (numberOfCellDofs != cellLayout.size())
+  {
+    throw std::invalid_argument("computeEwaldFourierHessian: cell layout does not match minimization DOFs");
+  }
 
   const double3x3 inv_box = simulationBox.inverseCell;
   const double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
@@ -148,6 +167,33 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
       }
     }
   };
+  const auto addFlexiblePairCellDerivatives =
+      [&](std::size_t baseI, std::size_t baseJ, double f1, double f2, const double3& dr)
+  {
+    for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+    {
+      const double3 displacementA = cellLayout.bases[a] * dr;
+      const double3 mixedA =
+          f1 * displacementA + f2 * double3::dot(dr, displacementA) * dr + cellLayout.bases[a] * (f1 * dr);
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        const double value = (&mixedA.x)[axis];
+        hessian.add(baseI + axis, *layout.cellDof(a), value);
+        hessian.add(*layout.cellDof(a), baseI + axis, value);
+        hessian.add(baseJ + axis, *layout.cellDof(a), -value);
+        hessian.add(*layout.cellDof(a), baseJ + axis, -value);
+      }
+      for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+      {
+        const double3 displacementB = cellLayout.bases[b] * dr;
+        const double3 secondDisplacement = cellStrainSecondDerivative(cellLayout, a, b) * dr;
+        const double value = f1 * double3::dot(displacementA, displacementB) +
+                             f2 * double3::dot(dr, displacementA) * double3::dot(dr, displacementB) +
+                             f1 * double3::dot(dr, secondDisplacement);
+        hessian.add(*layout.cellDof(a), *layout.cellDof(b), value);
+      }
+    }
+  };
 
   const std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
   const std::size_t ky_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.y);
@@ -201,6 +247,12 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
   const std::size_t numDofs = layout.numDofs();
   std::vector<std::complex<double>> dofPhase(numDofs);  // V_a = sum_i P_i^a e_i
   std::vector<double> positionStrainScratch(computeStrain ? numDofs : 0);
+  std::vector<std::complex<double>> cellStructureFirst(numberOfCellDofs);
+  std::vector<std::complex<double>> cellDynamicFirst(numberOfCellDofs);
+  std::vector<std::complex<double>> cellStructureSecond(numberOfCellDofs * numberOfCellDofs);
+  std::vector<std::complex<double>> cellDynamicSecond(numberOfCellDofs * numberOfCellDofs);
+  std::vector<std::complex<double>> dofPhaseCell(numberOfCellDofs * numDofs);
+  std::vector<double> singleIonCellCell(numberOfCellDofs * numberOfCellDofs);
 
   std::size_t nvec = 0;
   double singleIonFourierSum = 0.0;
@@ -250,6 +302,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
                                                    : std::complex<double>(0.0, 0.0);
 
           std::complex<double> total = rigidSF + cksum;
+          const std::complex<double> fullTotal = total;
 
           const double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           singleIonFourierSum += temp;
@@ -286,6 +339,11 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
           singleIonStrainStrain -= temp * (traceTheta * traceTheta - rksq / alpha_squared);
 
           std::ranges::fill(dofPhase, std::complex<double>(0.0, 0.0));
+          std::ranges::fill(cellStructureFirst, std::complex<double>(0.0, 0.0));
+          std::ranges::fill(cellDynamicFirst, std::complex<double>(0.0, 0.0));
+          std::ranges::fill(cellStructureSecond, std::complex<double>(0.0, 0.0));
+          std::ranges::fill(cellDynamicSecond, std::complex<double>(0.0, 0.0));
+          std::ranges::fill(dofPhaseCell, std::complex<double>(0.0, 0.0));
           if (computeStrain)
           {
             std::ranges::fill(positionStrainScratch, 0.0);
@@ -309,6 +367,45 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
             for (std::size_t a = 0; a < proj.count; ++a)
             {
               dofPhase[proj.dof[a]] += proj.projection[a] * e;
+            }
+
+            if (numberOfCellDofs != 0)
+            {
+              std::array<double, 6> phaseFirst{};
+              for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+              {
+                const double3 transformedWaveVector = cellLayout.bases[a] * rk;
+                phaseFirst[a] = site.rigid ? -double3::dot(transformedWaveVector, site.internalOffset) : 0.0;
+                if (site.rigid)
+                {
+                  const std::complex<double> first = std::complex<double>(0.0, phaseFirst[a]) * e;
+                  cellStructureFirst[a] += first;
+                  cellDynamicFirst[a] += first;
+                }
+
+                for (std::size_t p = 0; p < proj.count; ++p)
+                {
+                  const double projectionFirst =
+                      p < proj.orientationStart ? 0.0 : -double3::dot(transformedWaveVector, proj.direction[p]);
+                  dofPhaseCell[a * numDofs + proj.dof[p]] +=
+                      (std::complex<double>(0.0, projectionFirst) - proj.projection[p] * phaseFirst[a]) * e;
+                }
+              }
+              if (site.rigid)
+              {
+                for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+                {
+                  for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+                  {
+                    const double phaseSecond =
+                        double3::dot(cellStrainSecondDerivative(cellLayout, a, b) * rk, site.internalOffset);
+                    const std::complex<double> second =
+                        (std::complex<double>(0.0, phaseSecond) - phaseFirst[a] * phaseFirst[b]) * e;
+                    cellStructureSecond[a * numberOfCellDofs + b] += second;
+                    cellDynamicSecond[a * numberOfCellDofs + b] += second;
+                  }
+                }
+              }
             }
 
             // Same-site curvature: f2 P_a P_b, plus f1 (k . d2r/domega_a domega_b) for orientations.
@@ -371,17 +468,83 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
           }
 
           // Pair term: 2 factor Re[dS/dtheta_a conj(dS/dtheta_b)] = 2 factor Re[V_a conj(V_b)].
-          for (std::size_t a = 0; a < numDofs; ++a)
+          // It cancels against the subtracted |C|^2 channel when intermolecular interactions are omitted.
+          if (!omitInterInteractions)
           {
-            const std::complex<double> va = dofPhase[a];
-            if (va.real() == 0.0 && va.imag() == 0.0)
+            for (std::size_t a = 0; a < numDofs; ++a)
             {
-              continue;
+              const std::complex<double> va = dofPhase[a];
+              if (va.real() == 0.0 && va.imag() == 0.0)
+              {
+                continue;
+              }
+              for (std::size_t b = 0; b < numDofs; ++b)
+              {
+                const std::complex<double> vb = dofPhase[b];
+                hessian.add(a, b, 2.0 * temp * (va.real() * vb.real() + va.imag() * vb.imag()));
+              }
             }
-            for (std::size_t b = 0; b < numDofs; ++b)
+          }
+
+          if (numberOfCellDofs != 0)
+          {
+            const double c = 0.25 / alpha_squared;
+            std::array<double, 6> radiusFirst{};
+            std::array<double, 6> logTempFirst{};
+            std::array<double, 6> amplitudeFirst{};
+            for (std::size_t a = 0; a < numberOfCellDofs; ++a)
             {
-              const std::complex<double> vb = dofPhase[b];
-              hessian.add(a, b, 2.0 * temp * (va.real() * vb.real() + va.imag() * vb.imag()));
+              radiusFirst[a] = -2.0 * double3::dot(rk, cellLayout.bases[a] * rk);
+              logTempFirst[a] = -cellLayout.bases[a].trace() + (-c - 1.0 / rksq) * radiusFirst[a];
+              amplitudeFirst[a] = 2.0 * realInner(cellStructureFirst[a], fullTotal) -
+                                  (omitInterInteractions ? 2.0 * realInner(cellDynamicFirst[a], cksum) : 0.0);
+            }
+
+            const double amplitude =
+                std::norm(fullTotal) - std::norm(rigidSF) - (omitInterInteractions ? std::norm(cksum) : 0.0);
+            for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+            {
+              for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+              {
+                const double3x3 secondBasis = cellStrainSecondDerivative(cellLayout, a, b);
+                const double radiusSecond = 4.0 * double3::dot(rk, secondBasis * rk);
+                const double logTempSecond =
+                    (-c - 1.0 / rksq) * radiusSecond + radiusFirst[a] * radiusFirst[b] / (rksq * rksq);
+                const double tempFirstA = temp * logTempFirst[a];
+                const double tempFirstB = temp * logTempFirst[b];
+                const double tempSecond = temp * (logTempFirst[a] * logTempFirst[b] + logTempSecond);
+                const std::size_t ab = a * numberOfCellDofs + b;
+                const double amplitudeSecond =
+                    2.0 * realInner(cellStructureSecond[ab], fullTotal) +
+                    2.0 * realInner(cellStructureFirst[a], cellStructureFirst[b]) -
+                    (omitInterInteractions ? 2.0 * realInner(cellDynamicSecond[ab], cksum) +
+                                                 2.0 * realInner(cellDynamicFirst[a], cellDynamicFirst[b])
+                                           : 0.0);
+                const double cellCell = tempSecond * amplitude + tempFirstA * amplitudeFirst[b] +
+                                        tempFirstB * amplitudeFirst[a] + temp * amplitudeSecond;
+                hessian.add(*layout.cellDof(a), *layout.cellDof(b), cellCell);
+                singleIonCellCell[ab] -= tempSecond;
+              }
+            }
+
+            for (std::size_t p = 0; p < layout.numberOfPositionDofs(); ++p)
+            {
+              const std::complex<double> phasePosition = std::complex<double>(0.0, 1.0) * dofPhase[p];
+              const double amplitudePosition = 2.0 * realInner(phasePosition, fullTotal) -
+                                               (omitInterInteractions ? 2.0 * realInner(phasePosition, cksum) : 0.0);
+              for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+              {
+                const std::complex<double> phasePositionCell = dofPhaseCell[a * numDofs + p];
+                const double amplitudePositionCell =
+                    2.0 * realInner(phasePositionCell, fullTotal) +
+                    2.0 * realInner(phasePosition, cellStructureFirst[a]) -
+                    (omitInterInteractions ? 2.0 * realInner(phasePositionCell, cksum) +
+                                                 2.0 * realInner(phasePosition, cellDynamicFirst[a])
+                                           : 0.0);
+                const double mixed = temp * (logTempFirst[a] * amplitudePosition + amplitudePositionCell);
+                hessian.add(p, *layout.cellDof(a), mixed);
+                hessian.add(*layout.cellDof(a), p, mixed);
+              }
             }
           }
 
@@ -480,6 +643,11 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
           hessian.strainGradient() += strain;
 
           Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2, dr);
+          if (numberOfCellDofs != 0)
+          {
+            addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
+                                           layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+          }
           if (computeStrain)
           {
             Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1,
@@ -494,29 +662,73 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
     if (flexibleFramework)
     {
       const std::span<const Atom> frameworkAtoms = atoms.first(frameworkOffset);
-      for (std::size_t i = 0; i + 1 < frameworkAtoms.size(); ++i)
+      std::set<std::array<std::size_t, 2>> excludedPairs;
+      std::map<std::array<std::size_t, 2>, double> coulombScaling;
+      for (const CoulombPotential& potential : system.framework->intraMolecularPotentials.coulombs)
       {
-        for (std::size_t j = i + 1; j < frameworkAtoms.size(); ++j)
+        coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
+                        std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
+      }
+      const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
+      {
+        const auto scaling = coulombScaling.find(pair);
+        if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
+      };
+      if (!system.framework->connectivityTable.table.empty())
+      {
+        for (const std::array<std::size_t, 2>& bond : system.framework->connectivityTable.findAllBonds())
         {
-          double3 dr =
-              simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
-          const double rr = double3::dot(dr, dr);
-          const double r = std::sqrt(rr);
-          const double chargeProduct = Units::CoulombicConversionFactor * frameworkAtoms[i].scalingCoulomb *
-                                       frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge *
-                                       frameworkAtoms[j].charge;
-          const double erfTerm = std::erf(alpha * r);
-          const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
-          energySum.ewald_exclusion -= chargeProduct * erfTerm / r;
-          const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-          const double f2 = chargeProduct * (2.0 * alpha_squared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
-                                             3.0 * erfTerm / (r * rr * rr));
-          const double3 gradientI = f1 * dr;
-          addGradient(i, gradientI);
-          addGradient(j, -gradientI);
-          Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
-                                                           *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2,
-                                                           dr);
+          excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+        }
+        for (const std::array<std::size_t, 3>& bend : system.framework->connectivityTable.findAllBends())
+        {
+          excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+        }
+        for (const std::array<std::size_t, 4>& torsion : system.framework->connectivityTable.findAllTorsions())
+        {
+          const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]),
+                                               std::max(torsion[0], torsion[3])};
+          excludeIfAbsentOrScaled(pair);
+        }
+      }
+      for (const std::array<std::size_t, 2>& pair : excludedPairs)
+      {
+        const std::size_t i = pair[0];
+        const std::size_t j = pair[1];
+        double3 dr =
+            simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
+        const double rr = double3::dot(dr, dr);
+        const double r = std::sqrt(rr);
+        const double chargeProduct = Units::CoulombicConversionFactor * frameworkAtoms[i].scalingCoulomb *
+                                     frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge *
+                                     frameworkAtoms[j].charge;
+        const double erfTerm = std::erf(alpha * r);
+        const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
+        energySum.ewald_exclusion -= chargeProduct * erfTerm / r;
+        const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
+        const double f2 = chargeProduct * (2.0 * alpha_squared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
+                                           3.0 * erfTerm / (r * rr * rr));
+        const double3 gradientI = f1 * dr;
+        addGradient(i, gradientI);
+        addGradient(j, -gradientI);
+        double3x3 strain{};
+        strain.ax = dr.x * gradientI.x;
+        strain.bx = dr.y * gradientI.x;
+        strain.cx = dr.z * gradientI.x;
+        strain.ay = dr.x * gradientI.y;
+        strain.by = dr.y * gradientI.y;
+        strain.cy = dr.z * gradientI.y;
+        strain.az = dr.x * gradientI.z;
+        strain.bz = dr.y * gradientI.z;
+        strain.cz = dr.z * gradientI.z;
+        hessian.strainGradient() += strain;
+        Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
+                                                         *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2,
+                                                         dr);
+        if (numberOfCellDofs != 0)
+        {
+          addFlexiblePairCellDerivatives(*layout.frameworkAtomDof(i, MinimizationDofAxis::X),
+                                         *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
         }
       }
     }
@@ -544,6 +756,14 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
     }
     energySum.ewald_fourier += uIon * netChargeFactor;
     hessian.strainGradient() += netChargeFactor * singleIonStrainGradient;
+    for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+    {
+      for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+      {
+        hessian.add(*layout.cellDof(a), *layout.cellDof(b),
+                    netChargeFactor * singleIonCellCell[a * numberOfCellDofs + b]);
+      }
+    }
     if (computeStrain)
     {
       hessian.addStrainStrain(0, 0, netChargeFactor * singleIonStrainStrain);

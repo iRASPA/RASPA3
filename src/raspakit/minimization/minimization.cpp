@@ -11,9 +11,67 @@ import randomnumbers;
 import mc_moves;
 import property_lambda_probability_histogram;
 import component;
+import double3x3;
 import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
+import minimization_cell_layout;
+
+namespace
+{
+void clipCellStep(BakerStep& step, const MinimizationDofLayout& layout, const CellMinimizationLayout& cellLayout,
+                  double maximumNorm)
+{
+  if (cellLayout.empty()) return;
+  double3x3 strain{};
+  for (std::size_t a = 0; a < cellLayout.size(); ++a)
+  {
+    strain += step.displacement[*layout.cellDof(a)] * cellLayout.bases[a];
+  }
+  double normSquared = 0.0;
+  for (std::size_t column = 0; column < 3; ++column)
+  {
+    for (std::size_t row = 0; row < 3; ++row)
+    {
+      normSquared += strain.mm[column][row] * strain.mm[column][row];
+    }
+  }
+  const double norm = std::sqrt(normSquared);
+  if (norm <= maximumNorm || norm == 0.0) return;
+  const double scale = maximumNorm / norm;
+  for (std::size_t a = 0; a < cellLayout.size(); ++a)
+  {
+    step.displacement[*layout.cellDof(a)] *= scale;
+  }
+  step.stepNorm =
+      std::sqrt(std::inner_product(step.displacement.begin(), step.displacement.end(), step.displacement.begin(), 0.0));
+}
+
+bool useNegativeModeEscape(BakerStep& step, std::span<const double> gradient, const MinimizationOptions& options)
+{
+  if (step.negativeModes == 0 || step.lowestMode.size() != step.displacement.size())
+  {
+    return false;
+  }
+  const double collapseThreshold = std::min(1.0e-2, 0.1 * options.maximumStepLength);
+  if (step.stepNorm >= collapseThreshold)
+  {
+    return false;
+  }
+
+  const double escapeLength = std::min(5.0e-2, options.maximumStepLength);
+  const double projection = std::inner_product(gradient.begin(), gradient.end(), step.lowestMode.begin(), 0.0);
+  const double sign = projection > 0.0 ? -1.0 : 1.0;
+  for (std::size_t i = 0; i < step.displacement.size(); ++i)
+  {
+    step.displacement[i] = sign * escapeLength * step.lowestMode[i];
+  }
+  step.stepNorm = escapeLength;
+  step.convergenceReason = "escaping lowest negative Hessian mode";
+  return true;
+}
+
+}  // namespace
 
 Minimization::Minimization(InputReader& inputReader)
     : options(inputReader.minimizationOptions),
@@ -58,9 +116,10 @@ void Minimization::setup()
       std::print(streams[systemIndex], "{}", system.writeOutputHeader());
       std::print(streams[systemIndex], "{}\n", system.writeSystemStatus());
       std::print(streams[systemIndex],
-                 "Baker minimization: maxSteps={} maxStep={} rmsTolerance={} maxTolerance={} minEigenvalue={}\n\n",
-                 options.maximumNumberOfSteps, options.maximumStepLength, options.rmsGradientTolerance,
-                 options.maxGradientTolerance, options.minimumEigenvalue);
+                 "Baker minimization: maxSteps={} maxStep={} maxCellStep={} rmsTolerance={} maxTolerance={} "
+                 "minEigenvalue={}\n\n",
+                 options.maximumNumberOfSteps, options.maximumStepLength, options.maximumCellStepLength,
+                 options.rmsGradientTolerance, options.maxGradientTolerance, options.minimumEigenvalue);
     }
   }
 }
@@ -325,8 +384,14 @@ void Minimization::runPhase()
     MinimizationSystemResult& systemResult = results[systemIndex];
     const std::size_t numberOfFlexibleFrameworkAtoms =
         system.framework && !system.framework->rigid ? system.spanOfFrameworkAtoms().size() : 0;
-    const MinimizationDofLayout layout =
-        buildMinimizationDofLayout(system.moleculeData, system.components, numberOfFlexibleFrameworkAtoms);
+    const CellMinimizationLayout cellLayout =
+        makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
+    if (!cellLayout.empty() && system.hasExternalField)
+    {
+      throw std::runtime_error("Variable-cell minimization does not support an external field");
+    }
+    const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components,
+                                                                    numberOfFlexibleFrameworkAtoms, cellLayout.size());
     GeneralizedHessian hessian(layout.numDofs(), 0);
     std::vector<double> gradient(layout.numDofs(), 0.0);
 
@@ -343,7 +408,10 @@ void Minimization::runPhase()
       {
         throw std::runtime_error(std::format("Minimization system {} produced a non-finite energy", systemIndex));
       }
-      const BakerStep step = computeBakerStep(hessian.positionPosition(), gradient, options);
+      bool negativeModeEscape = false;
+      BakerStep step = computeBakerStep(hessian.positionPosition(), gradient, options);
+      negativeModeEscape = !cellLayout.empty() && useNegativeModeEscape(step, gradient, options);
+      clipCellStep(step, layout, cellLayout, options.maximumCellStepLength);
       if (iteration == 0)
       {
         systemResult.initialEnergy = derivatives.energy;
@@ -356,13 +424,24 @@ void Minimization::runPhase()
       systemResult.zeroModes = step.zeroModes;
       systemResult.converged = step.converged;
 
+      const double currentVolume = system.simulationBox.volume;
+      system.updateSamplePDBMovie(systemIndex, iteration);
+
+      double acceptedScale = 1.0;
+      if (!step.converged && iteration + 1 < options.maximumNumberOfSteps)
+      {
+        applyGeneralizedDisplacement(system, layout, step.displacement);
+        step.stepNorm *= acceptedScale;
+      }
+
       if (iteration % std::max<std::size_t>(1, options.printEvery) == 0 || step.converged)
       {
         const std::string status = std::format(
             "Minimization s{} step {:6d}: E={: .12e} rms(g)={:.5e} max(g)={:.5e} "
-            "negative={} zero={} |dx|={:.5e}\n",
+            "negative={} zero={} |dx|={:.5e} alpha={:.5e} V={:.8e}{}\n",
             systemIndex, iteration, derivatives.energy, step.rmsGradient, step.maxGradient, step.negativeModes,
-            step.zeroModes, step.stepNorm);
+            step.zeroModes, step.stepNorm, acceptedScale, currentVolume,
+            negativeModeEscape ? " negative-mode escape" : "");
         std::cout << status;
         if (outputToFiles)
         {
@@ -370,15 +449,9 @@ void Minimization::runPhase()
         }
       }
 
-      system.updateSamplePDBMovie(systemIndex, iteration);
-
       if (step.converged)
       {
         break;
-      }
-      if (iteration + 1 < options.maximumNumberOfSteps)
-      {
-        applyGeneralizedDisplacement(system, layout, step.displacement);
       }
     }
     if (!systemResult.converged)

@@ -34,6 +34,7 @@ import mc_moves_cputime;
 import json;
 import integrators;
 import integrators_compute;
+import minimization_cell_layout;
 
 // System output: status reports and JSON/text formatting for simulation results.
 
@@ -800,6 +801,20 @@ std::string System::writeSystemStatus() const
   std::print(stream, "Beta:                 {} [-]\n", beta);
   std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor,
              Units::unitOfPressureString);
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(cellMinimizationType, monoclinicAngleType);
+  std::print(stream, "Cell minimization:    {}", cellLayout.name());
+  if (cellLayout.isCompatibilityAlias())
+  {
+    std::print(stream, " (symmetric-strain compatibility alias for {})",
+               cellMinimizationType == CellMinimizationType::RegularUpperTriangle ? "Regular" : "Monoclinic");
+  }
+  std::print(stream, "\n");
+  if (cellMinimizationType == CellMinimizationType::Monoclinic ||
+      cellMinimizationType == CellMinimizationType::MonoclinicUpperTriangle)
+  {
+    std::print(stream, "Monoclinic angle:     {}\n", monoclinicAngleTypeName(monoclinicAngleType));
+  }
   std::print(stream, "Helium void fraction: {} [-]\n\n", heliumVoidFraction);
 
   stream << simulationBox.printStatus();
@@ -826,6 +841,8 @@ nlohmann::json System::jsonSystemStatus() const
   system["temperature"] = temperature;
   system["beta"] = beta;
   system["pressure"] = pressure * Units::PressureConversionFactor;
+  system["cellMinimizationType"] = cellMinimizationTypeName(cellMinimizationType);
+  system["monoclinicAngleType"] = monoclinicAngleTypeName(monoclinicAngleType);
 
   system.merge_patch(simulationBox.jsonStatus());
   return system;

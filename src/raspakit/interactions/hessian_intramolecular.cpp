@@ -8,6 +8,7 @@ import double3;
 import double3x3;
 import int3;
 import units;
+import forcefield;
 import framework;
 import simulationbox;
 import intra_molecular_potentials;
@@ -21,6 +22,10 @@ import bend_potential_gradient_hessian_strain;
 import torsion_potential_gradient_hessian_strain;
 import distance_potential_gradient_hessian_strain;
 import minimization_hessian_scatter;
+import minimization_cell_layout;
+import potential_hessian_vdw;
+import potential_hessian_coulomb;
+import hessian_factor;
 
 namespace
 {
@@ -29,11 +34,94 @@ BondType bondTypeFromUreyBradley(UreyBradleyType type)
 {
   return static_cast<BondType>(static_cast<std::size_t>(type) + 1);
 }
+
+template <std::size_t N>
+bool hasPeriodicShift(const std::array<int3, N>& shifts)
+{
+  return std::ranges::any_of(shifts, [](const int3& shift) { return shift.x != 0 || shift.y != 0 || shift.z != 0; });
+}
+
+template <std::size_t N>
+void addFrameworkTermCellCorrection(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                    const CellMinimizationLayout& cellLayout, const std::array<std::size_t, N>& atomIds,
+                                    const std::array<double3, N>& positions,
+                                    const std::array<double3, N>& shiftedPositions,
+                                    const std::array<double3, N>& gradients, const GeneralizedHessian& localHessian)
+{
+  if (cellLayout.empty()) return;
+  std::array<double3, N> shift{};
+  bool hasPeriodicShift = false;
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    shift[i] = shiftedPositions[i] - positions[i];
+    hasPeriodicShift = hasPeriodicShift || double3::dot(shift[i], shift[i]) > 0.0;
+  }
+  if (!hasPeriodicShift) return;
+
+  for (std::size_t a = 0; a < cellLayout.size(); ++a)
+  {
+    const std::size_t cellA = *layout.cellDof(a);
+    std::array<double3, N> rawDirection{};
+    std::array<double3, N> exactDirection{};
+    std::array<double3, N> correctionDirection{};
+    for (std::size_t i = 0; i < N; ++i)
+    {
+      rawDirection[i] = cellLayout.bases[a] * positions[i];
+      exactDirection[i] = cellLayout.bases[a] * shiftedPositions[i];
+      correctionDirection[i] = exactDirection[i] - rawDirection[i];
+    }
+
+    for (std::size_t i = 0; i < N; ++i)
+    {
+      const std::size_t globalBase = *layout.frameworkAtomDof(atomIds[i], MinimizationDofAxis::X);
+      for (std::size_t axisI = 0; axisI < 3; ++axisI)
+      {
+        double value = 0.0;
+        const std::size_t localI = 3 * i + axisI;
+        for (std::size_t j = 0; j < N; ++j)
+        {
+          for (std::size_t axisJ = 0; axisJ < 3; ++axisJ)
+          {
+            value += localHessian(localI, 3 * j + axisJ) * (&correctionDirection[j].x)[axisJ];
+          }
+        }
+        hessian.add(globalBase + axisI, cellA, value);
+        hessian.add(cellA, globalBase + axisI, value);
+      }
+    }
+
+    for (std::size_t b = 0; b < cellLayout.size(); ++b)
+    {
+      double value = 0.0;
+      for (std::size_t i = 0; i < N; ++i)
+      {
+        const double3 rawI = rawDirection[i];
+        const double3 exactI = exactDirection[i];
+        value += double3::dot(gradients[i], cellStrainSecondDerivative(cellLayout, a, b) * shift[i]);
+        for (std::size_t j = 0; j < N; ++j)
+        {
+          const double3 rawJ = cellLayout.bases[b] * positions[j];
+          const double3 exactJ = cellLayout.bases[b] * shiftedPositions[j];
+          for (std::size_t axisI = 0; axisI < 3; ++axisI)
+          {
+            for (std::size_t axisJ = 0; axisJ < 3; ++axisJ)
+            {
+              value += ((&exactI.x)[axisI] * (&exactJ.x)[axisJ] - (&rawI.x)[axisI] * (&rawJ.x)[axisJ]) *
+                       localHessian(3 * i + axisI, 3 * j + axisJ);
+            }
+          }
+        }
+      }
+      hessian.add(cellA, *layout.cellDof(b), value);
+    }
+  }
+}
 }  // namespace
 
 RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
-    const Framework& framework, const SimulationBox& simulationBox, std::span<const Atom> atoms,
-    const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+    const ForceField& forceField, const Framework& framework, const SimulationBox& simulationBox,
+    std::span<const Atom> atoms, const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+    std::span<AtomDynamics> dynamics, const CellMinimizationLayout& cellLayout)
 {
   RunningEnergy energies{};
   if (framework.rigid) return energies;
@@ -56,11 +144,47 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     energyAccumulator += energy;
     dynamics[A].gradient += gradientA;
     dynamics[B].gradient -= gradientA;
+    hessian.strainGradient().ax += dr.x * gradientA.x;
+    hessian.strainGradient().bx += dr.y * gradientA.x;
+    hessian.strainGradient().cx += dr.z * gradientA.x;
+    hessian.strainGradient().ay += dr.x * gradientA.y;
+    hessian.strainGradient().by += dr.y * gradientA.y;
+    hessian.strainGradient().cy += dr.z * gradientA.y;
+    hessian.strainGradient().az += dr.x * gradientA.z;
+    hessian.strainGradient().bz += dr.y * gradientA.z;
+    hessian.strainGradient().cz += dr.z * gradientA.z;
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, dr);
+    if (!cellLayout.empty() && hasPeriodicShift(shifts))
+    {
+      GeneralizedHessian localHessian(6, 0);
+      Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, dr);
+      addFrameworkTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{A, B},
+                                     std::array<double3, 2>{atoms[A].position, atoms[B].position},
+                                     std::array<double3, 2>{positionA, positionB},
+                                     std::array<double3, 2>{gradientA, -gradientA}, localHessian);
+    }
   };
 
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  std::set<std::array<std::size_t, 2>> pairs12And13;
+  std::set<std::array<std::size_t, 2>> pairs14;
+  if (!framework.connectivityTable.table.empty())
+  {
+    for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
+    {
+      pairs12And13.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+    }
+    for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
+    {
+      pairs12And13.insert({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+    }
+    for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
+    {
+      const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
+      if (!pairs12And13.contains(pair)) pairs14.insert(pair);
+    }
+  }
   for (std::size_t index = 0; index < potentials.bonds.size(); ++index)
   {
     const BondPotential& bond = potentials.bonds[index];
@@ -74,6 +198,14 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     dynamics[B].gradient += gradient[1];
     hessian.strainGradient() += strain;
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, positionA - positionB);
+    if (!cellLayout.empty() && hasPeriodicShift(images.bonds[index]))
+    {
+      GeneralizedHessian localHessian(6, 0);
+      Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, positionA - positionB);
+      addFrameworkTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{A, B},
+                                     std::array<double3, 2>{atoms[A].position, atoms[B].position},
+                                     std::array<double3, 2>{positionA, positionB}, gradient, localHessian);
+    }
   }
 
   for (std::size_t index = 0; index < potentials.bends.size(); ++index)
@@ -81,13 +213,23 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const BendPotential& bend = potentials.bends[index];
     const auto& ids = bend.identifiers;
     const auto& shifts = images.bends[index];
+    const std::array<double3, 3> shifted = {shiftedPosition(ids[0], shifts[0]), shiftedPosition(ids[1], shifts[1]),
+                                            shiftedPosition(ids[2], shifts[2])};
     auto [energy, gradient, strain, geometry] = Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
-        bend.type, bend.parameters, shiftedPosition(ids[0], shifts[0]), shiftedPosition(ids[1], shifts[1]),
-        shiftedPosition(ids[2], shifts[2]));
+        bend.type, bend.parameters, shifted[0], shifted[1], shifted[2]);
     energies.bend += energy;
     for (std::size_t i = 0; i < 3; ++i) dynamics[ids[i]].gradient += gradient[i];
     hessian.strainGradient() += strain;
     Minimization::scatterBendHessianByDof(hessian, {dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2])}, geometry);
+    if (!cellLayout.empty() && hasPeriodicShift(shifts))
+    {
+      GeneralizedHessian localHessian(9, 0);
+      Minimization::scatterBendHessianByDof(localHessian, {0, 3, 6}, geometry);
+      addFrameworkTermCellCorrection(
+          hessian, layout, cellLayout, ids,
+          std::array<double3, 3>{atoms[ids[0]].position, atoms[ids[1]].position, atoms[ids[2]].position}, shifted,
+          gradient, localHessian);
+    }
   }
 
   const auto accumulateTorsions = [&](const std::vector<TorsionPotential>& torsions,
@@ -99,14 +241,24 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       const TorsionPotential& torsion = torsions[index];
       const auto& ids = torsion.identifiers;
       const auto& shifts = termImages[index];
+      const std::array<double3, 4> shifted = {shiftedPosition(ids[0], shifts[0]), shiftedPosition(ids[1], shifts[1]),
+                                              shiftedPosition(ids[2], shifts[2]), shiftedPosition(ids[3], shifts[3])};
       auto [energy, gradient, strain, geometry] = Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
-          torsion.type, torsion.parameters, shiftedPosition(ids[0], shifts[0]), shiftedPosition(ids[1], shifts[1]),
-          shiftedPosition(ids[2], shifts[2]), shiftedPosition(ids[3], shifts[3]));
+          torsion.type, torsion.parameters, shifted[0], shifted[1], shifted[2], shifted[3]);
       energies.*energyMember += energy;
       for (std::size_t i = 0; i < 4; ++i) dynamics[ids[i]].gradient += gradient[i];
       hessian.strainGradient() += strain;
       Minimization::scatterTorsionHessianByDof(
           hessian, {dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2]), dofBase(ids[3])}, geometry);
+      if (!cellLayout.empty() && hasPeriodicShift(shifts))
+      {
+        GeneralizedHessian localHessian(12, 0);
+        Minimization::scatterTorsionHessianByDof(localHessian, {0, 3, 6, 9}, geometry);
+        addFrameworkTermCellCorrection(hessian, layout, cellLayout, ids,
+                                       std::array<double3, 4>{atoms[ids[0]].position, atoms[ids[1]].position,
+                                                              atoms[ids[2]].position, atoms[ids[3]].position},
+                                       shifted, gradient, localHessian);
+      }
     }
   };
   accumulateTorsions(potentials.torsions, images.torsions, &RunningEnergy::torsion);
@@ -120,12 +272,16 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const double3 dr =
         shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
     const double rr = double3::dot(dr, dr);
-    const double sigmaOverR2 = (potential.parameters[1] * potential.parameters[1]) / rr;
-    const double t = sigmaOverR2 * sigmaOverR2 * sigmaOverR2;
-    const double prefactor = potential.scaling * potential.parameters[0];
-    accumulateRadial(A, B, images.vanDerWaals[index], 4.0 * prefactor * t * (t - 1.0),
-                     24.0 * prefactor * t * (1.0 - 2.0 * t) / rr, 96.0 * prefactor * t * (7.0 * t - 2.0) / (rr * rr),
-                     energies.intraVDW);
+    const bool isScaled14 =
+        pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
+    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    {
+      const Potentials::HessianFactor factors = Potentials::potentialVDWHessian(
+          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+      accumulateRadial(A, B, images.vanDerWaals[index], potential.scaling * factors.energy,
+                       potential.scaling * factors.firstDerivativeFactor,
+                       potential.scaling * factors.secondDerivativeFactor, energies.intraVDW);
+    }
   }
 
   for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
@@ -135,9 +291,22 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const std::size_t B = potential.identifiers[1];
     const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
     const double rr = double3::dot(dr, dr);
-    const double r = std::sqrt(rr);
-    const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-    accumulateRadial(A, B, images.coulombs[index], k / r, -k / (r * rr), 3.0 * k / (r * rr * rr), energies.intraCoul);
+    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    {
+      const double r = std::sqrt(rr);
+      const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
+      accumulateRadial(A, B, images.coulombs[index], k / r, -k / (r * rr), 3.0 * k / (r * rr * rr),
+                       energies.intraCoul);
+    }
+    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+    {
+      const double r = std::sqrt(rr);
+      const Potentials::HessianFactor factors =
+          Potentials::potentialCoulombHessian(forceField, potential.scaling, 1.0, rr, r, potential.chargeA,
+                                              potential.chargeB);
+      accumulateRadial(A, B, images.coulombs[index], factors.energy, factors.firstDerivativeFactor,
+                       factors.secondDerivativeFactor, energies.intraCoul);
+    }
   }
 
   return energies;

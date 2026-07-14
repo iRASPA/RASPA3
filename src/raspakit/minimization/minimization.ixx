@@ -26,7 +26,7 @@ export struct MinimizationSystemResult
   std::size_t zeroModes{};
 };
 
-/** Fixed-cell Baker eigenvector-following minimization driver. */
+/** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */
 export struct Minimization
 {
   Minimization() = default;

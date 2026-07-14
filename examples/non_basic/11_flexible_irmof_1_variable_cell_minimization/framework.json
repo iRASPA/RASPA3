@@ -1,6 +1,9 @@
 {
-  "ExcludeIntra12Interactions": true,
-  "ExcludeIntra13Interactions": true,
+  "Type": "Flexible",
+  "ExcludeIntra12Interactions": false,
+  "ExcludeIntra13Interactions": false,
+  "ExcludeIntraBondInteractions": true,
+  "ExcludeIntraBendInteractions": true,
   "Intra14VanDerWaalsScalingValue": 1.0,
   "Intra14ChargeChargeScalingValue": 1.0,
   "Bonds": [

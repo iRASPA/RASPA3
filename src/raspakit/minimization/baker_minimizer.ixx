@@ -11,6 +11,7 @@ export struct BakerStep
 {
   std::vector<double> displacement;
   std::vector<double> eigenvalues;
+  std::vector<double> lowestMode;
   double rmsGradient{};
   double maxGradient{};
   double stepNorm{};
