@@ -301,6 +301,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
         system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
     results.energy += inversionBendEnergy.inversionBend;
 
+    RunningEnergy outOfPlaneBendEnergy = Interactions::computeIntraMolecularOutOfPlaneBendHessian(
+        system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
+    results.energy += outOfPlaneBendEnergy.outOfPlaneBend;
+
     if (system.framework && !system.framework->rigid)
     {
       const RunningEnergy frameworkIntraEnergy = Interactions::computeFrameworkIntraMolecularHessian(
@@ -311,12 +315,14 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
 
     if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain)
     {
-      RunningEnergy interEnergy =
-          Interactions::computeInterMolecularHessian(system, layout, results.hessian, moleculeDynamics);
+      RunningEnergy interEnergy = Interactions::computeInterMolecularHessian(
+          system.forceField, system.simulationBox, system.moleculeData, system.components, moleculeAtomPositions,
+          layout, results.hessian, moleculeDynamics, cellLayout);
       results.energy += interEnergy.moleculeMoleculeVDW + interEnergy.moleculeMoleculeCharge;
 
       RunningEnergy frameworkEnergy = Interactions::computeFrameworkMoleculeHessian(
-          system, layout, results.hessian, moleculeDynamics, frameworkDynamics);
+          system.forceField, system.simulationBox, system.moleculeData, system.components, frameworkAtomPositions,
+          moleculeAtomPositions, layout, results.hessian, moleculeDynamics, frameworkDynamics, cellLayout);
       results.energy += frameworkEnergy.frameworkMoleculeVDW + frameworkEnergy.frameworkMoleculeCharge;
 
       if (layout.numberOfCellDofs() != cellLayout.size())
@@ -357,8 +363,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
       }
 
       const double3x3 strainBeforeEwald = results.hessian.strainGradient();
-      RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierHessian(system, layout, results.hessian,
-                                                                           moleculeDynamics, frameworkDynamics);
+      RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierHessian(
+          system.forceField, system.simulationBox, system.framework, system.fixedFrameworkStoredEik,
+          system.netChargeFramework, system.moleculeData, system.components, frameworkAtomPositions,
+          moleculeAtomPositions, layout, results.hessian, moleculeDynamics, frameworkDynamics, cellLayout);
       results.energy += ewaldEnergy.ewald_fourier + ewaldEnergy.ewald_self + ewaldEnergy.ewald_exclusion;
       if (layout.numberOfCellDofs() != 0)
       {

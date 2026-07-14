@@ -29,7 +29,7 @@ export namespace Interactions
  * \param moleculeAtoms A span of atoms for which to compute inter-molecular energies.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
@@ -43,7 +43,7 @@ RunningEnergy computeInterMolecularEnergy(const ForceField &forceField, const Si
  * \param moleculeAtoms A span of atoms for which to compute the tail energy correction.
  * \return The tail energy contributions to the total energy.
  */
-RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+RunningEnergy computeInterMolecularTailEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                               std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
@@ -61,7 +61,7 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \return The energy difference due to the atom changes, or std::nullopt if an overlap occurs.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
@@ -78,8 +78,8 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \param oldatoms A span of atoms to be removed from the system.
  * \return The change in tail energy contributions due to the atom changes.
  */
-[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(const ForceField &forceField,
-                                                                      const SimulationBox &simulationBox,
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(const ForceField& forceField,
+                                                                      const SimulationBox& simulationBox,
                                                                       std::span<const Atom> moleculeAtoms,
                                                                       std::span<const Atom> newatoms,
                                                                       std::span<const Atom> oldatoms) noexcept;
@@ -88,8 +88,7 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \brief Computes inter-molecular tail energy from pseudo-atom type counts.
  */
 [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyFromTypeCounts(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const std::size_t> typeCounts) noexcept;
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> typeCounts) noexcept;
 
 /**
  * \brief Tail correction difference when replacing one molecule type with another (identity change).
@@ -97,18 +96,16 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * Equivalent to RASPA2 TailMolecularEnergyDifferenceAddRemove.
  */
 [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAddRemove(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const std::size_t> currentTypeCounts, const Component &componentToAdd,
-    const Component &componentToRemove) noexcept;
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,
+    const Component& componentToAdd, const Component& componentToRemove) noexcept;
 
 /**
  * \brief Tail correction difference for a reaction ensemble move (RASPA2 TailMolecularEnergyDifferenceRXMX).
  */
 [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceReaction(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const std::size_t> currentTypeCounts, const std::vector<std::size_t> &reactantStoichiometry,
-    const std::vector<std::size_t> &productStoichiometry, const std::vector<Component> &components,
-    bool forward) noexcept;
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,
+    const std::vector<std::size_t>& reactantStoichiometry, const std::vector<std::size_t>& productStoichiometry,
+    const std::vector<Component>& components, bool forward) noexcept;
 
 /**
  * \brief Computes the inter-molecular forces and energy.
@@ -122,7 +119,7 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \param moleculeAtoms A span of atoms for which to compute inter-molecular forces and energies.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const SimulationBox &simulationBox,
+RunningEnergy computeInterMolecularGradient(const ForceField& forceField, const SimulationBox& simulationBox,
                                             std::span<const Atom> moleculeAtoms,
                                             std::span<AtomDynamics> moleculeDynamics) noexcept;
 
@@ -144,7 +141,7 @@ RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const 
  * \param selectedAtoms A span of the atoms of the selected molecule (current or trial positions).
  * \param selectedDynamics A span (size = selectedAtoms.size()) into which the per-atom gradient is accumulated.
  */
-void computeInterMolecularGradientMolecule(const ForceField &forceField, const SimulationBox &simulationBox,
+void computeInterMolecularGradientMolecule(const ForceField& forceField, const SimulationBox& simulationBox,
                                            std::span<const Atom> moleculeAtoms, std::span<const Atom> selectedAtoms,
                                            std::span<AtomDynamics> selectedDynamics) noexcept;
 
@@ -162,7 +159,7 @@ void computeInterMolecularGradientMolecule(const ForceField &forceField, const S
  * \return A pair containing the energy status and the strain derivative tensor.
  */
 std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
-    const ForceField &forceField, const std::vector<Component> &components, const SimulationBox &simulationBox,
+    const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 /**
@@ -177,24 +174,9 @@ std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
  * \param electricPotentialMolecules A span to store the computed electric potentials.
  * \param moleculeAtoms A span of atoms for which to compute the electric potentials.
  */
-void computeInterMolecularElectrostaticPotential(const ForceField &forceField, const SimulationBox &box,
+void computeInterMolecularElectrostaticPotential(const ForceField& forceField, const SimulationBox& box,
                                                  std::span<double> electricPotentialMolecules,
                                                  std::span<const Atom> moleculeAtoms) noexcept;
-
-/**
- * \brief Computes the inter-molecular polarization energy.
- *
- * Calculates the energy contribution from polarization interactions between atoms in \p moleculeAtoms,
- * excluding interactions within the same molecule.
- *
- * \param forceField The force field parameters used for the calculations.
- * \param simulationBox The simulation box containing the atoms.
- * \param moleculeAtoms A span of atoms for which to compute the polarization energy.
- * \return The total inter-molecular polarization energy.
- */
-Potentials::EnergyFactor computeInterMolecularPolarizationEnergy(const ForceField &forceField,
-                                                                 const SimulationBox &simulationBox,
-                                                                 std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric field for each atom.
@@ -209,7 +191,7 @@ Potentials::EnergyFactor computeInterMolecularPolarizationEnergy(const ForceFiel
  * \param moleculeAtoms A span of atoms for which to compute the electric fields.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularElectricField(const ForceField &forceField, const SimulationBox &box,
+RunningEnergy computeInterMolecularElectricField(const ForceField& forceField, const SimulationBox& box,
                                                  std::span<double3> electricFieldMolecules,
                                                  std::span<const Atom> moleculeAtoms) noexcept;
 
@@ -231,7 +213,7 @@ RunningEnergy computeInterMolecularElectricField(const ForceField &forceField, c
  * \return The energy difference due to the atom changes, or std::nullopt if an overlap occurs.
  */
 std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &box, std::span<double3> electricFieldMolecules,
+    const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept;
 
@@ -255,7 +237,7 @@ std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
  * \return The inter-molecular energy difference, or std::nullopt if an overlap is detected.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularPolarizationElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &box, std::span<double3> electricFieldNeighborDelta,
+    const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldNeighborDelta,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 };  // namespace Interactions

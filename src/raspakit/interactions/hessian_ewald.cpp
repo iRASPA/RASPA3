@@ -19,6 +19,7 @@ import minimization_hessian_scatter;
 import minimization_rigid_kinematics;
 import minimization_cell_layout;
 import potential_coulomb_real_space;
+import interactions_ewald_kvector;
 
 namespace
 {
@@ -78,22 +79,23 @@ double realInner(const std::complex<double>& lhs, const std::complex<double>& rh
 }
 }  // namespace
 
-RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, const MinimizationDofLayout& layout,
-                                                       GeneralizedHessian& hessian,
-                                                       std::span<AtomDynamics> moleculeDynamics,
-                                                       std::span<AtomDynamics> frameworkDynamics)
+RunningEnergy Interactions::computeEwaldFourierHessian(
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::optional<Framework>& framework,
+    std::span<const std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik,
+    double netChargeFramework, std::span<const Molecule> moleculeData, std::span<const Component> components,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, const MinimizationDofLayout& layout,
+    GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics, std::span<AtomDynamics> frameworkDynamics,
+    const CellMinimizationLayout& cellLayout)
 {
   RunningEnergy energySum{};
 
-  const ForceField& forceField = system.forceField;
   if (!forceField.useCharge) return energySum;
   if (!forceField.usesEwaldFourier())
   {
     if (!forceField.omitInterInteractions)
     {
-      const double prefactor =
-          Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
-      for (const Atom& atom : system.spanOfMoleculeAtoms())
+      const double prefactor = Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
+      for (const Atom& atom : moleculeAtoms)
       {
         const double scaledCharge = atom.scalingCoulomb * atom.charge;
         energySum.ewald_self += prefactor * scaledCharge * scaledCharge;
@@ -102,12 +104,19 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
     return energySum;
   }
 
-  const SimulationBox& simulationBox = system.simulationBox;
-  const bool flexibleFramework = system.framework && !system.framework->rigid &&
-                                 layout.numberOfFrameworkAtoms() == system.spanOfFrameworkAtoms().size();
-  const std::size_t frameworkOffset = flexibleFramework ? system.spanOfFrameworkAtoms().size() : 0;
-  std::span<const Atom> atoms =
-      flexibleFramework ? std::span<const Atom>(system.atomData) : system.spanOfMoleculeAtoms();
+  const bool flexibleFramework =
+      framework && !framework->rigid && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  const std::size_t frameworkOffset = flexibleFramework ? frameworkAtoms.size() : 0;
+  // For a flexible framework the Fourier sums run over the framework and molecule atoms as one
+  // indexed array; assemble that view locally so the spans need not be contiguous in memory.
+  std::vector<Atom> combinedAtoms{};
+  if (flexibleFramework)
+  {
+    combinedAtoms.reserve(frameworkAtoms.size() + moleculeAtoms.size());
+    combinedAtoms.insert(combinedAtoms.end(), frameworkAtoms.begin(), frameworkAtoms.end());
+    combinedAtoms.insert(combinedAtoms.end(), moleculeAtoms.begin(), moleculeAtoms.end());
+  }
+  std::span<const Atom> atoms = flexibleFramework ? std::span<const Atom>(combinedAtoms) : moleculeAtoms;
   const std::size_t numberOfAtoms = atoms.size();
   if (numberOfAtoms == 0) return energySum;
 
@@ -117,8 +126,6 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
   const double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
   const bool omitInterInteractions = forceField.omitInterInteractions;
   const bool computeStrain = (hessian.numStrain() == 1);
-  const CellMinimizationLayout cellLayout =
-      makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
   const std::size_t numberOfCellDofs = layout.numberOfCellDofs();
   if (numberOfCellDofs != cellLayout.size())
   {
@@ -131,7 +138,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
   const double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
   const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(system.moleculeData, system.components, atoms);
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
 
   // Per-atom site metadata in global atom order.
   std::vector<EwaldSite> sites(numberOfAtoms);
@@ -142,9 +149,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
       sites[atom].positionBase = layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
     }
   }
-  for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
+  for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
-    const Molecule& molecule = system.moleculeData[moleculeIndex];
+    const Molecule& molecule = moleculeData[moleculeIndex];
     const bool rigid = layout.molecules()[moleculeIndex].rigid;
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
@@ -175,7 +182,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
     else
     {
       const std::size_t moleculeAtom = atom - frameworkOffset;
-      if (moleculeDynamics.size() == system.spanOfMoleculeAtoms().size())
+      if (moleculeDynamics.size() == moleculeAtoms.size())
       {
         moleculeDynamics[moleculeAtom].gradient += gradient;
       }
@@ -223,40 +230,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
   std::vector<std::complex<double>> eik_xy(numberOfAtoms);
   std::vector<std::complex<double>> eikr(numberOfAtoms);
 
-  // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
-  for (std::size_t i = 0; i != numberOfAtoms; ++i)
-  {
-    eik_x[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
-    eik_y[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
-    eik_z[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
-    const double3 s = 2.0 * std::numbers::pi * (inv_box * atoms[i].position);
-    eik_x[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.x), std::sin(s.x));
-    eik_y[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.y), std::sin(s.y));
-    eik_z[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.z), std::sin(s.z));
-  }
-
-  // Calculate remaining positive kx, ky and kz by recurrence
-  for (std::size_t kx = 2; kx <= kx_max_unsigned; ++kx)
-  {
-    for (std::size_t i = 0; i != numberOfAtoms; ++i)
-    {
-      eik_x[i + kx * numberOfAtoms] = eik_x[i + (kx - 1) * numberOfAtoms] * eik_x[i + 1 * numberOfAtoms];
-    }
-  }
-  for (std::size_t ky = 2; ky <= ky_max_unsigned; ++ky)
-  {
-    for (std::size_t i = 0; i != numberOfAtoms; ++i)
-    {
-      eik_y[i + ky * numberOfAtoms] = eik_y[i + (ky - 1) * numberOfAtoms] * eik_y[i + 1 * numberOfAtoms];
-    }
-  }
-  for (std::size_t kz = 2; kz <= kz_max_unsigned; ++kz)
-  {
-    for (std::size_t i = 0; i != numberOfAtoms; ++i)
-    {
-      eik_z[i + kz * numberOfAtoms] = eik_z[i + (kz - 1) * numberOfAtoms] * eik_z[i + 1 * numberOfAtoms];
-    }
-  }
+  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atoms, kx_max_unsigned, ky_max_unsigned, kz_max_unsigned, inv_box);
 
   const std::size_t numDofs = layout.numDofs();
   std::vector<std::complex<double>> dofPhase(numDofs);  // V_a = sum_i P_i^a e_i
@@ -285,12 +259,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
       const double3 kvec_y = 2.0 * std::numbers::pi * static_cast<double>(ky) * ay;
 
       // Precompute and store eik_x * eik_y outside the kz-loop
-      for (std::size_t i = 0; i != numberOfAtoms; ++i)
-      {
-        std::complex<double> eiky_temp = eik_y[i + numberOfAtoms * static_cast<std::size_t>(std::abs(ky))];
-        eiky_temp.imag(ky >= 0 ? eiky_temp.imag() : -eiky_temp.imag());
-        eik_xy[i] = eik_x[i + numberOfAtoms * static_cast<std::size_t>(kx)] * eiky_temp;
-      }
+      Ewald::fillEikXYRow(eik_xy, eik_x, eik_y, numberOfAtoms, kx, ky);
 
       for (std::make_signed_t<std::size_t> kz = -kz_max; kz <= kz_max; ++kz)
       {
@@ -311,8 +280,8 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
             cksum += eikr[i];
           }
 
-          const std::complex<double> rigidSF = (!flexibleFramework && nvec < system.fixedFrameworkStoredEik.size())
-                                                   ? system.fixedFrameworkStoredEik[nvec].first
+          const std::complex<double> rigidSF = (!flexibleFramework && nvec < fixedFrameworkStoredEik.size())
+                                                   ? fixedFrameworkStoredEik[nvec].first
                                                    : std::complex<double>(0.0, 0.0);
 
           std::complex<double> total = rigidSF + cksum;
@@ -603,9 +572,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
 
     // Subtract exclusion-energy U = -C q_i q_j erf(alpha r)/r within each molecule. For rigid
     // molecules the internal distances are constant, so only the energy contributes.
-    for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
+    for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
     {
-      const Molecule& molecule = system.moleculeData[moleculeIndex];
+      const Molecule& molecule = moleculeData[moleculeIndex];
       if (molecule.numberOfAtoms < 2)
       {
         continue;
@@ -678,7 +647,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
       const std::span<const Atom> frameworkAtoms = atoms.first(frameworkOffset);
       std::set<std::array<std::size_t, 2>> excludedPairs;
       std::map<std::array<std::size_t, 2>, double> coulombScaling;
-      for (const CoulombPotential& potential : system.framework->intraMolecularPotentials.coulombs)
+      for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
       {
         coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
                         std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
@@ -688,20 +657,19 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
         const auto scaling = coulombScaling.find(pair);
         if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
       };
-      if (!system.framework->connectivityTable.table.empty())
+      if (!framework->connectivityTable.table.empty())
       {
-        for (const std::array<std::size_t, 2>& bond : system.framework->connectivityTable.findAllBonds())
+        for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
         {
           excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
         }
-        for (const std::array<std::size_t, 3>& bend : system.framework->connectivityTable.findAllBends())
+        for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
         {
           excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
         }
-        for (const std::array<std::size_t, 4>& torsion : system.framework->connectivityTable.findAllTorsions())
+        for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
         {
-          const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]),
-                                               std::max(torsion[0], torsion[3])};
+          const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
           excludeIfAbsentOrScaled(pair);
         }
       }
@@ -759,7 +727,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(const System& system, con
     }
     const double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
     double netChargeFactor = 0.0;
-    const double rigidFrameworkCharge = flexibleFramework ? 0.0 : system.netChargeFramework;
+    const double rigidFrameworkCharge = flexibleFramework ? 0.0 : netChargeFramework;
     if (omitInterInteractions)
     {
       netChargeFactor = 2.0 * rigidFrameworkCharge * netChargeAdsorbates;

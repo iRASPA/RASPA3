@@ -119,7 +119,8 @@ TEST(minimization_hessian_intermolecular, rigid_methane_pair_com_vdw_matches_fin
   ASSERT_EQ(layout.numDofs(), 12u);
 
   GeneralizedHessian hessian(layout.numDofs(), 0);
-  Interactions::computeInterMolecularHessian(system, layout, hessian);
+  Interactions::computeInterMolecularHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                             system.components, system.spanOfMoleculeAtoms(), layout, hessian);
 
   auto interEnergy = [&]()
   {
@@ -198,7 +199,8 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_com_orientation_vdw_mat
   ASSERT_EQ(layout.numDofs(), 12u);
 
   GeneralizedHessian hessian(layout.numDofs(), 0);
-  Interactions::computeInterMolecularHessian(system, layout, hessian);
+  Interactions::computeInterMolecularHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                             system.components, system.spanOfMoleculeAtoms(), layout, hessian);
 
   // Global DOF index -> (molecule, local index within its 6-vector displacement).
   std::array<std::pair<std::size_t, std::size_t>, 12> dofMap{};
@@ -298,7 +300,8 @@ TEST(minimization_hessian_intermolecular, rigid_co2_pair_strain_matches_finite_d
   ASSERT_EQ(layout.numDofs(), 12u);
 
   GeneralizedHessian hessian(layout.numDofs(), 1);
-  Interactions::computeInterMolecularHessian(system, layout, hessian);
+  Interactions::computeInterMolecularHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                             system.components, system.spanOfMoleculeAtoms(), layout, hessian);
 
   std::array<std::size_t, 12> dofToSlot{};
   for (std::size_t moleculeIndex = 0; moleculeIndex < 2; ++moleculeIndex)
@@ -465,7 +468,8 @@ TEST(minimization_hessian_intermolecular, mixed_flexible_rigid_co2_pair_strain_m
   ASSERT_EQ(layout.numDofs(), 15u);
 
   GeneralizedHessian hessian(layout.numDofs(), 1);
-  Interactions::computeInterMolecularHessian(system, layout, hessian);
+  Interactions::computeInterMolecularHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                             system.components, system.spanOfMoleculeAtoms(), layout, hessian);
 
   std::array<std::size_t, 15> dofToSlot{};
   for (std::size_t local = 0; local < 6; ++local)

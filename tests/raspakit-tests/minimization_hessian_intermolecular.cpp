@@ -52,7 +52,9 @@ TEST(minimization_hessian_intermolecular, flexible_methane_pair_vdw_matches_fini
 
   GeneralizedHessian hessian(layout.numDofs(), 0);
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  Interactions::computeInterMolecularHessian(system, layout, hessian, dynamics);
+  Interactions::computeInterMolecularHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                             system.components, system.spanOfMoleculeAtoms(), layout, hessian,
+                                             dynamics);
 
   auto interEnergy = [&]()
   {

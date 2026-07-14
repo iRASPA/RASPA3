@@ -185,15 +185,20 @@ TEST(minimization_hessian_ewald, flexible_framework_charge_blocks_match_finite_d
   GeneralizedHessian hessian(layout.numDofs(), 0);
   std::vector<AtomDynamics> moleculeDynamics(1);
   std::vector<AtomDynamics> frameworkDynamics(1);
-  Interactions::computeEwaldFourierHessian(system, layout, hessian, moleculeDynamics, frameworkDynamics);
+  Interactions::computeEwaldFourierHessian(
+      system.forceField, system.simulationBox, system.framework, system.fixedFrameworkStoredEik,
+      system.netChargeFramework, system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+      system.spanOfMoleculeAtoms(), layout, hessian, moleculeDynamics, frameworkDynamics);
 
   const auto energy = [&]()
   {
     GeneralizedHessian unused(layout.numDofs(), 0);
     std::vector<AtomDynamics> moleculeScratch(1);
     std::vector<AtomDynamics> frameworkScratch(1);
-    const RunningEnergy value =
-        Interactions::computeEwaldFourierHessian(system, layout, unused, moleculeScratch, frameworkScratch);
+    const RunningEnergy value = Interactions::computeEwaldFourierHessian(
+        system.forceField, system.simulationBox, system.framework, system.fixedFrameworkStoredEik,
+        system.netChargeFramework, system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+        system.spanOfMoleculeAtoms(), layout, unused, moleculeScratch, frameworkScratch);
     return value.ewald_fourier + value.ewald_exclusion;
   };
   std::array<Atom*, 2> atoms{&system.spanOfFrameworkAtoms()[0], &system.spanOfMoleculeAtoms()[0]};
@@ -326,7 +331,10 @@ TEST(minimization_hessian_ewald, flexible_charged_pair_matches_finite_difference
 
   GeneralizedHessian hessian(layout.numDofs(), 1);
   std::vector<AtomDynamics> dynamics(system.spanOfMoleculeAtoms().size());
-  Interactions::computeEwaldFourierHessian(system, layout, hessian, dynamics);
+  Interactions::computeEwaldFourierHessian(system.forceField, system.simulationBox, system.framework,
+                                           system.fixedFrameworkStoredEik, system.netChargeFramework,
+                                           system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+                                           system.spanOfMoleculeAtoms(), layout, hessian, dynamics);
 
   EwaldEnergyEvaluator evaluator{};
   auto energy = [&]() { return evaluator(system, system.simulationBox); };
@@ -387,7 +395,10 @@ TEST(minimization_hessian_ewald, single_ion_bogusz_correction_cancels_strain_der
   ASSERT_EQ(layout.numDofs(), 3u);
   GeneralizedHessian hessian(layout.numDofs(), 1);
   std::vector<AtomDynamics> dynamics(1);
-  Interactions::computeEwaldFourierHessian(system, layout, hessian, dynamics);
+  Interactions::computeEwaldFourierHessian(system.forceField, system.simulationBox, system.framework,
+                                           system.fixedFrameworkStoredEik, system.netChargeFramework,
+                                           system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+                                           system.spanOfMoleculeAtoms(), layout, hessian, dynamics);
 
   // For one ion, Fourier + Bogusz equals the constant self term. Consequently every position,
   // position-strain, and strain derivative vanishes. This catches the Bogusz derivatives without
@@ -449,7 +460,10 @@ TEST(minimization_hessian_ewald, flexible_charged_pair_strain_matches_finite_dif
   const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
   GeneralizedHessian hessian(layout.numDofs(), 1);
   std::vector<AtomDynamics> dynamics(system.spanOfMoleculeAtoms().size());
-  Interactions::computeEwaldFourierHessian(system, layout, hessian, dynamics);
+  Interactions::computeEwaldFourierHessian(system.forceField, system.simulationBox, system.framework,
+                                           system.fixedFrameworkStoredEik, system.netChargeFramework,
+                                           system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+                                           system.spanOfMoleculeAtoms(), layout, hessian, dynamics);
 
   EwaldEnergyEvaluator evaluator{};
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
@@ -527,7 +541,10 @@ TEST(minimization_hessian_ewald, rigid_co2_pair_matches_finite_difference)
 
   GeneralizedHessian hessian(layout.numDofs(), 1);
   std::vector<AtomDynamics> dynamics(system.spanOfMoleculeAtoms().size());
-  Interactions::computeEwaldFourierHessian(system, layout, hessian, dynamics);
+  Interactions::computeEwaldFourierHessian(system.forceField, system.simulationBox, system.framework,
+                                           system.fixedFrameworkStoredEik, system.netChargeFramework,
+                                           system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+                                           system.spanOfMoleculeAtoms(), layout, hessian, dynamics);
 
   // Global DOF index -> slot in the 12-vector displacement.
   std::array<std::size_t, 12> dofToSlot{};

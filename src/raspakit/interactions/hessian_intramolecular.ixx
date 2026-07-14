@@ -89,4 +89,10 @@ RunningEnergy computeIntraMolecularInversionBendHessian(std::span<const Molecule
                                                         const MinimizationDofLayout& layout,
                                                         GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics);
 
+RunningEnergy computeIntraMolecularOutOfPlaneBendHessian(std::span<const Molecule> moleculeData,
+                                                         std::span<const Atom> atoms,
+                                                         std::span<const Component> components,
+                                                         const MinimizationDofLayout& layout,
+                                                         GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics);
+
 }  // namespace Interactions

@@ -9,16 +9,17 @@ import double4;
 import units;
 import forcefield;
 import gradient_factor;
-import potential_coulomb_real_space;
+import potential_pair_derivatives;
+import potential_pair_coulomb;
 
 export namespace Potentials
 {
 /**
- * \brief Computes the gradient of the Coulomb potential.
+ * \brief Computes the energy and gradient of the Coulomb potential.
  *
- * This function calculates the gradient of the Coulomb potential based on the specified
- * charge method in the provided force field. It handles different charge calculation
- * methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
+ * Thin wrapper around the unified potentialCoulomb<1> evaluator; see potential_pair_coulomb
+ * for the implementation shared with the energy and Hessian entry points. It handles different
+ * charge calculation methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
  *
  * The returned GradientFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -29,7 +30,7 @@ export namespace Potentials
  * \param r The distance between the two charges.
  * \param chargeA The charge of the first particle.
  * \param chargeB The charge of the second particle.
- * \return A ForceFactor object representing the computed force factors.
+ * \return A GradientFactor object representing the computed force factors.
  *
  * \note This function returns D[U[r], r] / r, where U[r] is the potential energy.
  */
@@ -38,33 +39,7 @@ export namespace Potentials
                                                                         const double& r, const double& chargeA,
                                                                         const double& chargeB)
 {
-  double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
-
-  switch (forcefield.chargeMethod)
-  {
-    [[likely]] case ForceField::ChargeMethod::Ewald:
-    {
-      double alpha = forcefield.EwaldAlpha;
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      return GradientFactor(scaling * temp, temp,
-                            -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) *
-                                                             std::numbers::inv_sqrtpi_v<double>) /
-                                 (r * r * r)));
-    }
-    case ForceField::ChargeMethod::Coulomb:
-    case ForceField::ChargeMethod::Wolf:
-    case ForceField::ChargeMethod::DampedShiftedForce:
-    case ForceField::ChargeMethod::ModifiedShiftedForce:
-    case ForceField::ChargeMethod::ZeroDipole:
-    {
-      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
-      const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
-      return GradientFactor(scaling * prefactor * factors.potential, prefactor * factors.potential,
-                            scaling * prefactor * factors.firstDerivativeFactor);
-    }
-  }
-
-  std::unreachable();
+  const PairDerivatives<1> derivatives = potentialCoulomb<1>(forcefield, scalingA, scalingB, r, chargeA, chargeB);
+  return GradientFactor(derivatives.energy, derivatives.dUdlambda, derivatives.firstDerivativeFactor);
 };
 }  // namespace Potentials

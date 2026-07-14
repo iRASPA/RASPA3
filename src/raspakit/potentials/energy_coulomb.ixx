@@ -6,8 +6,8 @@ import std;
 
 import forcefield;
 import energy_factor;
-import units;
-import potential_coulomb_real_space;
+import potential_pair_derivatives;
+import potential_pair_coulomb;
 
 import double4;
 
@@ -16,10 +16,9 @@ export namespace Potentials
 /**
  * \brief Calculates the Coulomb potential energy factor between two atoms.
  *
- * This function computes the Coulombic energy between two atoms based on the specified
- * force field's charge method. It accounts for scaling factors and the distance between
- * atoms. Supported methods include Ewald, Coulomb, Wolf, damped/modified shifted
- * force, and zero-dipole summation.
+ * Thin wrapper around the unified potentialCoulomb<0> evaluator; see potential_pair_coulomb
+ * for the implementation shared with the gradient and Hessian entry points. Supported methods
+ * include Ewald, Coulomb, Wolf, damped/modified shifted force, and zero-dipole summation.
  *
  * The returned EnergyFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -39,28 +38,7 @@ export namespace Potentials
                                                                     const double& r, const double& chargeA,
                                                                     const double& chargeB)
 {
-  double scaling = scalingA * scalingB;
-  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
-  switch (forcefield.chargeMethod)
-  {
-    [[likely]] case ForceField::ChargeMethod::Ewald:
-    {
-      double alpha = forcefield.EwaldAlpha;
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      return EnergyFactor(scaling * temp, temp);
-    }
-    case ForceField::ChargeMethod::Coulomb:
-    case ForceField::ChargeMethod::Wolf:
-    case ForceField::ChargeMethod::DampedShiftedForce:
-    case ForceField::ChargeMethod::ModifiedShiftedForce:
-    case ForceField::ChargeMethod::ZeroDipole:
-    {
-      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
-      const double temp = Units::CoulombicConversionFactor * chargeA * chargeB * factors.potential;
-      return EnergyFactor(scaling * temp, temp);
-    }
-  }
-
-  std::unreachable();
+  const PairDerivatives<0> derivatives = potentialCoulomb<0>(forcefield, scalingA, scalingB, r, chargeA, chargeB);
+  return EnergyFactor(derivatives.energy, derivatives.dUdlambda);
 };
 }  // namespace Potentials

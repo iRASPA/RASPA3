@@ -86,8 +86,9 @@ TEST(minimization_hessian_framework, flexible_framework_molecule_cross_block_mat
       buildMinimizationDofLayout(system.moleculeData, system.components, system.spanOfFrameworkAtoms().size());
   ASSERT_EQ(layout.numDofs(), 6u);
   GeneralizedHessian hessian(layout.numDofs(), 0);
-  Interactions::computeFrameworkMoleculeHessian(system, layout, hessian, system.spanOfMoleculeDynamics(),
-                                                system.spanOfFrameworkDynamics());
+  Interactions::computeFrameworkMoleculeHessian(
+      system.forceField, system.simulationBox, system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+      system.spanOfMoleculeAtoms(), layout, hessian, system.spanOfMoleculeDynamics(), system.spanOfFrameworkDynamics());
 
   const auto energy = [&]()
   {
@@ -225,7 +226,9 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_diffe
   ASSERT_EQ(layout.numDofs(), 6u);
 
   GeneralizedHessian hessian(layout.numDofs(), 0);
-  Interactions::computeFrameworkMoleculeHessian(system, layout, hessian);
+  Interactions::computeFrameworkMoleculeHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                                system.components, system.spanOfFrameworkAtoms(),
+                                                system.spanOfMoleculeAtoms(), layout, hessian);
 
   auto energyAtDisplacement = [&](std::span<const double> displacement)
   {
@@ -332,7 +335,9 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_matches_finite_di
   ASSERT_EQ(layout.numDofs(), 6u);
 
   GeneralizedHessian hessian(layout.numDofs(), 1);
-  const RunningEnergy analyticEnergy = Interactions::computeFrameworkMoleculeHessian(system, layout, hessian);
+  const RunningEnergy analyticEnergy = Interactions::computeFrameworkMoleculeHessian(
+      system.forceField, system.simulationBox, system.moleculeData, system.components, system.spanOfFrameworkAtoms(),
+      system.spanOfMoleculeAtoms(), layout, hessian);
 
   auto energyAt = [&](double strainExponent)
   {
@@ -438,7 +443,9 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
   ASSERT_EQ(layout.numDofs(), 6u);
   GeneralizedHessian hessian(layout.numDofs(), 1);
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  Interactions::computeFrameworkMoleculeHessian(system, layout, hessian, dynamics);
+  Interactions::computeFrameworkMoleculeHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                                system.components, system.spanOfFrameworkAtoms(),
+                                                system.spanOfMoleculeAtoms(), layout, hessian, dynamics);
 
   constexpr double gradientStep = 1e-5;
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();

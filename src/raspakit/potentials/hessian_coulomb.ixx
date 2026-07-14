@@ -9,17 +9,17 @@ import double4;
 import units;
 import forcefield;
 import hessian_factor;
-import potential_coulomb_real_space;
+import potential_pair_derivatives;
+import potential_pair_coulomb;
 
 export namespace Potentials
 {
 /**
- * \brief Computes the gradient of the Coulomb potential.
+ * \brief Computes the energy, gradient, and Hessian of the Coulomb potential.
  *
- * This function calculates the energy, gradient, and hessian of the Coulomb potential based
- * on the specified charge method in the provided force field. It handles different charge
- * method in the provided force field. It handles different charge calculation
- * methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
+ * Thin wrapper around the unified potentialCoulomb<2> evaluator; see potential_pair_coulomb
+ * for the implementation shared with the energy and gradient entry points. It handles different
+ * charge calculation methods such as Ewald, Coulomb, Wolf, shifted-force, and zero-dipole.
  *
  * The returned HessianFactor.dUdlambda holds the symmetric derivative factor X such that
  *   dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.
@@ -27,52 +27,22 @@ export namespace Potentials
  * \param forcefield The force field configuration containing charge method and parameters.
  * \param scalingA Scaling factor for the first interaction.
  * \param scalingB Scaling factor for the second interaction.
- * \param rr The distance squared between the two charges.
+ * \param rr The distance squared between the two charges (unused; kept for API compatibility).
  * \param r The distance between the two charges.
  * \param chargeA The charge of the first particle.
  * \param chargeB The charge of the second particle.
- * \return A ForceFactor object representing the computed force factors.
+ * \return A HessianFactor object representing the computed force factors.
  *
- * \note This function returns derivates as D[U[r], r] / r, where U[r] is the potential energy.
+ * \note This function returns derivatives as D[U[r], r] / r, where U[r] is the potential energy.
  */
 [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(const ForceField& forcefield,
                                                                       const double& scalingA, const double& scalingB,
-                                                                      const double& rr, const double& r,
-                                                                      const double& chargeA, const double& chargeB)
+                                                                      [[maybe_unused]] const double& rr,
+                                                                      const double& r, const double& chargeA,
+                                                                      const double& chargeB)
 {
-  double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
-
-  switch (forcefield.chargeMethod)
-  {
-    [[likely]] case ForceField::ChargeMethod::Ewald:
-    {
-      double alpha = forcefield.EwaldAlpha;
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      return HessianFactor(
-          scaling * temp, temp,
-          -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-              ((std::erfc(alpha * r) +
-                2.0 * alpha * r * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>) /
-               (rr * r)),
-          Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-              (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
-               4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
-               6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr)));
-    }
-    case ForceField::ChargeMethod::Coulomb:
-    case ForceField::ChargeMethod::Wolf:
-    case ForceField::ChargeMethod::DampedShiftedForce:
-    case ForceField::ChargeMethod::ModifiedShiftedForce:
-    case ForceField::ChargeMethod::ZeroDipole:
-    {
-      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
-      const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
-      return HessianFactor(scaling * prefactor * factors.potential, prefactor * factors.potential,
-                           scaling * prefactor * factors.firstDerivativeFactor,
-                           scaling * prefactor * factors.secondDerivativeFactor);
-    }
-  }
-
-  std::unreachable();
+  const PairDerivatives<2> derivatives = potentialCoulomb<2>(forcefield, scalingA, scalingB, r, chargeA, chargeB);
+  return HessianFactor(derivatives.energy, derivatives.dUdlambda, derivatives.firstDerivativeFactor,
+                       derivatives.secondDerivativeFactor);
 };
 }  // namespace Potentials

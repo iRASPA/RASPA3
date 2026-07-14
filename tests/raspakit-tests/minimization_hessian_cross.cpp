@@ -18,6 +18,7 @@ import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
 import inversion_bend_potential;
+import out_of_plane_bend_potential;
 import generalized_hessian;
 import minimization_dof_layout;
 import interactions_hessian_intramolecular;
@@ -562,4 +563,26 @@ TEST(minimization_hessian_cross, inversion_bend_planar2)
 TEST(minimization_hessian_cross, inversion_bend_mm3)
 {
   runInversionBendTest(InversionBendType::MM3, {0.5, 25.0});
+}
+
+// The out-of-plane-bend energy is currently a stub returning zero, so its analytic Hessian must be
+// exactly zero and agree with the finite-difference of the (zero) energy. This guards the wiring of
+// the driver through the shared four-body hyper-dual scatter: once a real functional form is added to
+// both OutOfPlaneBendPotential::calculateEnergy and the hyper-dual energy expression, this test starts
+// validating the physics automatically.
+TEST(minimization_hessian_cross, out_of_plane_bend_harmonic)
+{
+  Potentials::IntraMolecularPotentials potentials{};
+  potentials.outOfPlaneBends = {OutOfPlaneBendPotential({0, 1, 2, 3}, OutOfPlaneBendType::Harmonic, {60000.0, 25.0})};
+
+  runCrossTest(
+      potentials, &Interactions::computeIntraMolecularOutOfPlaneBendHessian,
+      [](std::span<const Atom> atoms, const Potentials::IntraMolecularPotentials &p)
+      {
+        double energy = 0.0;
+        for (const OutOfPlaneBendPotential &t : p.outOfPlaneBends)
+          energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
+                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+        return energy;
+      });
 }
