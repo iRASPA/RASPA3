@@ -14,7 +14,7 @@ import simulationbox;
 
 namespace
 {
-simd_quatd quaternionFromRotationVector(const double3 &omega)
+simd_quatd quaternionFromRotationVector(const double3& omega)
 {
   const double angle = std::sqrt(double3::dot(omega, omega));
   if (angle < 1.0e-30)
@@ -24,10 +24,10 @@ simd_quatd quaternionFromRotationVector(const double3 &omega)
   return simd_quatd::fromAxisAngle(angle, omega / angle);
 }
 
-void regenerateRigidAtoms(System &system, std::size_t moleculeIndex)
+void regenerateRigidAtoms(System& system, std::size_t moleculeIndex)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
-  const Component &component = system.components[molecule.componentId];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
   const double3x3 rotation = double3x3::buildRotationMatrixInverse(molecule.orientation);
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
@@ -37,13 +37,12 @@ void regenerateRigidAtoms(System &system, std::size_t moleculeIndex)
   }
 }
 
-void wrapMoleculeToPrimaryCell(System &system, std::size_t moleculeIndex)
+void wrapMoleculeToPrimaryCell(System& system, std::size_t moleculeIndex)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
-  const Component &component = system.components[molecule.componentId];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
   std::span<Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
-  const double3 centerOfMass =
-      component.rigid ? molecule.centerOfMassPosition : component.computeCenterOfMass(atoms);
+  const double3 centerOfMass = component.rigid ? molecule.centerOfMassPosition : component.computeCenterOfMass(atoms);
   const double3 centerOfMassPbc = system.simulationBox.mapToBox(centerOfMass);
   const double3 shift = centerOfMassPbc - centerOfMass;
   if (double3::dot(shift, shift) < 1.0e-30)
@@ -55,14 +54,14 @@ void wrapMoleculeToPrimaryCell(System &system, std::size_t moleculeIndex)
   {
     molecule.centerOfMassPosition = centerOfMassPbc;
   }
-  for (Atom &atom : atoms)
+  for (Atom& atom : atoms)
   {
     atom.position += shift;
   }
 }
 }  // namespace
 
-void applyGeneralizedDisplacement(System &system, const MinimizationDofLayout &layout,
+void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& layout,
                                   std::span<const double> displacement)
 {
   if (displacement.size() != layout.numDofs())
@@ -70,10 +69,22 @@ void applyGeneralizedDisplacement(System &system, const MinimizationDofLayout &l
     throw std::invalid_argument("applyGeneralizedDisplacement: displacement extent does not match DOF layout");
   }
 
+  std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+  for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
+  {
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      if (const auto dof = layout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis)))
+      {
+        (&frameworkAtoms[atom].position.x)[axis] += displacement[*dof];
+      }
+    }
+  }
+
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
-    Molecule &molecule = system.moleculeData[moleculeIndex];
+    Molecule& molecule = system.moleculeData[moleculeIndex];
     if (!layout.molecules()[moleculeIndex].rigid)
     {
       for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
@@ -81,8 +92,7 @@ void applyGeneralizedDisplacement(System &system, const MinimizationDofLayout &l
         double3 delta{};
         for (std::size_t axis = 0; axis < 3; ++axis)
         {
-          const auto dof =
-              layout.flexibleAtomDof(moleculeIndex, localAtom, static_cast<MinimizationDofAxis>(axis));
+          const auto dof = layout.flexibleAtomDof(moleculeIndex, localAtom, static_cast<MinimizationDofAxis>(axis));
           if (dof)
           {
             (&delta.x)[axis] = displacement[*dof];

@@ -38,7 +38,8 @@ export namespace Interactions
  * Per-atom Cartesian gradients are accumulated into \p dynamics; the strain first derivative is
  * accumulated into hessian.strainGradient().
  */
-RunningEnergy computeEwaldFourierHessian(const System &system, const MinimizationDofLayout &layout,
-                                         GeneralizedHessian &hessian, std::span<AtomDynamics> dynamics);
+RunningEnergy computeEwaldFourierHessian(const System& system, const MinimizationDofLayout& layout,
+                                         GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics,
+                                         std::span<AtomDynamics> frameworkDynamics = {});
 
 }  // namespace Interactions

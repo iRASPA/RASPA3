@@ -1453,6 +1453,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                               value["FrameworkDefinition"].get<std::string>());
           }
 
+          if (value.contains("FrameworkType"))
+          {
+            if (!value["FrameworkType"].is_string())
+            {
+              throw std::runtime_error("[Input reader]: 'FrameworkType' must have a value of string type\n");
+            }
+            const std::string frameworkType = value["FrameworkType"].get<std::string>();
+            if (caseInSensStringCompare(frameworkType, "Flexible"))
+            {
+              framework.rigid = false;
+            }
+            else if (caseInSensStringCompare(frameworkType, "Rigid"))
+            {
+              framework.rigid = true;
+            }
+            else
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: unknown 'FrameworkType' '{}'; expected 'Rigid' or 'Flexible'\n",
+                              frameworkType));
+            }
+          }
+
           std::optional<Framework> jsonFrameworkComponents{framework};
 
           // create system
@@ -2280,6 +2303,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "UseChargesFrom",
     "Framework",
     "FrameworkDefinition",
+    "FrameworkType",
     "Name",
     "NumberOfUnitCells",
     "HeliumVoidFraction",

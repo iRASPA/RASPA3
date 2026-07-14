@@ -12,7 +12,9 @@ import system;
 
 export namespace Interactions
 {
-RunningEnergy computeFrameworkMoleculeHessian(const System &system, const MinimizationDofLayout &layout,
-                                              GeneralizedHessian &hessian, std::span<AtomDynamics> dynamics = {});
+RunningEnergy computeFrameworkMoleculeHessian(const System& system, const MinimizationDofLayout& layout,
+                                              GeneralizedHessian& hessian,
+                                              std::span<AtomDynamics> moleculeDynamics = {},
+                                              std::span<AtomDynamics> frameworkDynamics = {});
 
 }  // namespace Interactions

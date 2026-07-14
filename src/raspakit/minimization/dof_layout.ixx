@@ -7,15 +7,13 @@ import std;
 import molecule;
 import component;
 
-export enum class MinimizationDofAxis : std::size_t
-{
+export enum class MinimizationDofAxis : std::size_t {
   X = 0,
   Y = 1,
   Z = 2,
 };
 
-export enum class RigidDof : std::size_t
-{
+export enum class RigidDof : std::size_t {
   ComX = 0,
   ComY = 1,
   ComZ = 2,
@@ -44,6 +42,9 @@ export class MinimizationDofLayout
 
   std::span<const MolDofInfo> molecules() const noexcept { return _molecules; }
 
+  std::size_t numberOfFrameworkAtoms() const noexcept { return _numberOfFrameworkAtoms; }
+  std::optional<std::size_t> frameworkAtomDof(std::size_t atom, MinimizationDofAxis axis) const noexcept;
+
   std::optional<std::size_t> flexibleAtomDof(std::size_t moleculeIndex, std::size_t localAtom,
                                              MinimizationDofAxis axis) const noexcept;
 
@@ -55,14 +56,18 @@ export class MinimizationDofLayout
 
  private:
   friend MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
-                                                          std::span<const Component> components);
+                                                          std::span<const Component> components,
+                                                          std::size_t numberOfFlexibleFrameworkAtoms);
 
   std::size_t _numDofs{};
+  std::size_t _numberOfFrameworkAtoms{};
   std::size_t _maxAtomsPerMolecule{};
+  std::vector<std::int32_t> _frameworkAtomDof;
   std::vector<MolDofInfo> _molecules;
   std::vector<std::int32_t> _flexibleAtomDof;
   std::vector<std::int32_t> _rigidMoleculeDof;
 };
 
 export MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
-                                                        std::span<const Component> components);
+                                                        std::span<const Component> components,
+                                                        std::size_t numberOfFlexibleFrameworkAtoms = 0);

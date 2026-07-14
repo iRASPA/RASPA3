@@ -4,12 +4,18 @@ import std;
 
 import archive;
 import atom;
+import atom_dynamics;
 import cif_reader;
 import double3;
 import forcefield;
 import framework;
+import generalized_hessian;
 import int3;
+import interactions_hessian_intramolecular;
+import interactions_internal;
+import minimization_dof_layout;
 import pseudo_atom;
+import running_energy;
 import simulationbox;
 import vdwparameters;
 
@@ -88,20 +94,182 @@ TEST(framework_intramolecular_reader, periodic_connectivity_and_reversed_type_ma
   ForceField forceField = makeTestForceField();
   Framework framework = makePeriodicPairFramework(forceField);
   TemporaryFile definition("raspa3-framework-periodic-definition.json",
-                           R"({"Bonds": [[["C2", "C1"], "HARMONIC", [100.0, 1.0]]]})");
+                           R"({"Type": "Flexible",
+                               "Bonds": [[["C2", "C1"], "HARMONIC", [100.0, 1.0]]]})");
 
   framework.readFrameworkDefinition(forceField, definition.path.string());
 
   ASSERT_EQ(framework.connectivityTable.findAllBonds().size(), 1);
   ASSERT_EQ(framework.intraMolecularPotentials.bonds.size(), 1);
+  EXPECT_FALSE(framework.rigid);
   EXPECT_EQ(framework.intraMolecularPotentials.bonds[0].identifiers, (std::array<std::size_t, 2>{0, 1}));
+  ASSERT_EQ(framework.intraMolecularImageShifts.bonds.size(), 1);
+  EXPECT_EQ(framework.intraMolecularImageShifts.bonds[0][0], int3(0, 0, 0));
+  EXPECT_EQ(framework.intraMolecularImageShifts.bonds[0][1], int3(-1, 0, 0));
 
   const std::string status = framework.printStatus(forceField);
+  EXPECT_NE(status.find("framework type: Flexible\n    number of bonds: 1"), std::string::npos);
   EXPECT_NE(status.find("C1 - C2 : HARMONIC p_0/k_B=100 [K/Å^2], p_1=1 [Å] (1 found)"), std::string::npos);
   EXPECT_NE(status.find("number of bend potentials"), std::string::npos);
   EXPECT_NE(status.find("number of torsion potentials"), std::string::npos);
   EXPECT_NE(status.find("number of intra-framework Van der Waals potentials"), std::string::npos);
   EXPECT_NE(status.find("number of intra-framework Coulomb potentials"), std::string::npos);
+}
+
+TEST(framework_intramolecular_reader, rigid_framework_skips_internal_derivatives_and_dofs)
+{
+  ForceField forceField = makeTestForceField();
+  Framework framework = makePeriodicPairFramework(forceField);
+  TemporaryFile definition("raspa3-framework-rigid-definition.json",
+                           R"({"Type": "Rigid",
+                               "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+  ASSERT_TRUE(framework.rigid);
+  ASSERT_FALSE(framework.intraMolecularPotentials.bonds.empty());
+  EXPECT_NE(framework.printStatus(forceField).find("framework type: Rigid\n    number of bonds: 1"), std::string::npos);
+
+  const std::size_t numberOfFlexibleFrameworkAtoms = framework.rigid ? 0 : framework.atoms.size();
+  const MinimizationDofLayout layout = buildMinimizationDofLayout({}, {}, numberOfFlexibleFrameworkAtoms);
+  EXPECT_EQ(layout.numDofs(), 0);
+  EXPECT_FALSE(layout.frameworkAtomDof(0, MinimizationDofAxis::X).has_value());
+
+  GeneralizedHessian hessian(layout.numDofs(), 0);
+  std::vector<AtomDynamics> dynamics(framework.atoms.size());
+  const RunningEnergy energy = Interactions::computeFrameworkIntraMolecularHessian(
+      framework, SimulationBox(10.0, 10.0, 10.0), framework.atoms, layout, hessian, dynamics);
+  EXPECT_DOUBLE_EQ(energy.potentialEnergy(), 0.0);
+  EXPECT_TRUE(std::ranges::all_of(dynamics, [](const AtomDynamics& value) {
+    return value.gradient == double3(0.0, 0.0, 0.0);
+  }));
+}
+
+TEST(framework_intramolecular_reader, periodic_bond_gradient_and_hessian_match_finite_difference)
+{
+  ForceField forceField = makeTestForceField();
+  Framework framework = makePeriodicPairFramework(forceField);
+  TemporaryFile definition("raspa3-framework-periodic-derivatives.json",
+                           R"({"Type": "Flexible",
+                               "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+
+  const SimulationBox box(10.0, 10.0, 10.0);
+  std::vector<Atom> atoms = framework.atoms;
+  std::vector<AtomDynamics> dynamics(atoms.size());
+  const MinimizationDofLayout layout = buildMinimizationDofLayout({}, {}, atoms.size());
+  GeneralizedHessian hessian(layout.numDofs(), 0);
+  const RunningEnergy analytic =
+      Interactions::computeFrameworkIntraMolecularHessian(framework, box, atoms, layout, hessian, dynamics);
+  EXPECT_DOUBLE_EQ(analytic.bond, Interactions::computeFrameworkIntraMolecularEnergy(framework, box, atoms).bond);
+
+  const auto energy = [&]() { return Interactions::computeFrameworkIntraMolecularEnergy(framework, box, atoms).bond; };
+  constexpr double delta = 1.0e-5;
+  constexpr double gradientTolerance = 1.0e-5;
+  constexpr double hessianTolerance = 2.0e-2;
+  const double referenceEnergy = energy();
+
+  for (std::size_t row = 0; row < layout.numDofs(); ++row)
+  {
+    const std::size_t atomA = row / 3;
+    const std::size_t axisA = row % 3;
+    (&atoms[atomA].position.x)[axisA] += delta;
+    const double energyPlus = energy();
+    (&atoms[atomA].position.x)[axisA] -= 2.0 * delta;
+    const double energyMinus = energy();
+    (&atoms[atomA].position.x)[axisA] += delta;
+    EXPECT_NEAR((&dynamics[atomA].gradient.x)[axisA], (energyPlus - energyMinus) / (2.0 * delta), gradientTolerance);
+
+    for (std::size_t column = 0; column < layout.numDofs(); ++column)
+    {
+      const std::size_t atomB = column / 3;
+      const std::size_t axisB = column % 3;
+      double numerical{};
+      if (row == column)
+      {
+        numerical = (energyPlus - 2.0 * referenceEnergy + energyMinus) / (delta * delta);
+      }
+      else
+      {
+        (&atoms[atomA].position.x)[axisA] += delta;
+        (&atoms[atomB].position.x)[axisB] += delta;
+        const double ePP = energy();
+        (&atoms[atomB].position.x)[axisB] -= 2.0 * delta;
+        const double ePM = energy();
+        (&atoms[atomA].position.x)[axisA] -= 2.0 * delta;
+        const double eMM = energy();
+        (&atoms[atomB].position.x)[axisB] += 2.0 * delta;
+        const double eMP = energy();
+        (&atoms[atomA].position.x)[axisA] += delta;
+        (&atoms[atomB].position.x)[axisB] -= delta;
+        numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
+      }
+      EXPECT_NEAR(hessian(row, column), numerical, hessianTolerance);
+    }
+  }
+}
+
+TEST(framework_intramolecular_reader, periodic_bend_and_torsion_hessian_match_finite_difference)
+{
+  ForceField forceField = makeTestForceField();
+  const SimulationBox box(12.0, 12.0, 12.0);
+  std::vector<Atom> fractionalAtoms{
+      fractionalAtom({9.5 / 12.0, 4.8 / 12.0, 5.0 / 12.0}, *forceField.findPseudoAtom("C1")),
+      fractionalAtom({10.8 / 12.0, 5.1 / 12.0, 5.0 / 12.0}, *forceField.findPseudoAtom("C2")),
+      fractionalAtom({0.1 / 12.0, 4.9 / 12.0, 5.2 / 12.0}, *forceField.findPseudoAtom("C3")),
+      fractionalAtom({1.4 / 12.0, 5.2 / 12.0, 5.1 / 12.0}, *forceField.findPseudoAtom("H1"))};
+  Framework framework(forceField, "periodic-chain", box, 1, fractionalAtoms, fractionalAtoms, {1, 1, 1});
+  TemporaryFile definition("raspa3-framework-periodic-chain.json",
+                           R"({"Type": "Flexible",
+          "Intra14VanDerWaalsScalingValue": 0.0,
+          "Intra14ChargeChargeScalingValue": 0.0,
+          "Bonds": [
+            [["C1", "C2"], "HARMONIC", [200.0, 1.3]],
+            [["C2", "C3"], "HARMONIC", [200.0, 1.3]],
+            [["C3", "H1"], "HARMONIC", [200.0, 1.3]]
+          ],
+          "Bends": [
+            [["C1", "C2", "C3"], "HARMONIC", [100.0, 150.0]],
+            [["C2", "C3", "H1"], "HARMONIC", [100.0, 150.0]]
+          ],
+          "Torsions": [
+            [["C1", "C2", "C3", "H1"], "TRAPPE", [10.0, 20.0, 30.0, 40.0]]
+          ]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+  ASSERT_EQ(framework.intraMolecularImageShifts.bends.size(), 2);
+  ASSERT_EQ(framework.intraMolecularImageShifts.torsions.size(), 1);
+  EXPECT_EQ(framework.intraMolecularImageShifts.torsions[0][2], int3(1, 0, 0));
+  EXPECT_EQ(framework.intraMolecularImageShifts.torsions[0][3], int3(1, 0, 0));
+
+  std::vector<Atom> atoms = framework.atoms;
+  const MinimizationDofLayout layout = buildMinimizationDofLayout({}, {}, atoms.size());
+  GeneralizedHessian hessian(layout.numDofs(), 0);
+  std::vector<AtomDynamics> referenceDynamics(atoms.size());
+  Interactions::computeFrameworkIntraMolecularHessian(framework, box, atoms, layout, hessian, referenceDynamics);
+
+  constexpr double delta = 2.0e-5;
+  constexpr double tolerance = 5.0e-2;
+  for (std::size_t column = 0; column < layout.numDofs(); ++column)
+  {
+    const std::size_t atom = column / 3;
+    const std::size_t axis = column % 3;
+    (&atoms[atom].position.x)[axis] += delta;
+    GeneralizedHessian plusHessian(layout.numDofs(), 0);
+    std::vector<AtomDynamics> plusDynamics(atoms.size());
+    Interactions::computeFrameworkIntraMolecularHessian(framework, box, atoms, layout, plusHessian, plusDynamics);
+
+    (&atoms[atom].position.x)[axis] -= 2.0 * delta;
+    GeneralizedHessian minusHessian(layout.numDofs(), 0);
+    std::vector<AtomDynamics> minusDynamics(atoms.size());
+    Interactions::computeFrameworkIntraMolecularHessian(framework, box, atoms, layout, minusHessian, minusDynamics);
+    (&atoms[atom].position.x)[axis] += delta;
+
+    for (std::size_t row = 0; row < layout.numDofs(); ++row)
+    {
+      const double numerical =
+          ((&plusDynamics[row / 3].gradient.x)[row % 3] - (&minusDynamics[row / 3].gradient.x)[row % 3]) /
+          (2.0 * delta);
+      EXPECT_NEAR(hessian(row, column), numerical, tolerance) << "row=" << row << " column=" << column;
+    }
+  }
 }
 
 TEST(framework_intramolecular_reader, converted_irmof_definition_expands_all_templates)
@@ -264,6 +432,9 @@ TEST(framework_intramolecular_reader, rejects_unknown_ambiguous_and_malformed_de
 
   TemporaryFile invalidExclusion("raspa3-framework-invalid-exclusion.json", R"({"ExcludeIntra12Interactions": 1})");
   EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidExclusion.path.string()), std::runtime_error);
+
+  TemporaryFile invalidType("raspa3-framework-invalid-type.json", R"({"Type": "deformable"})");
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidType.path.string()), std::runtime_error);
 }
 
 TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_potentials)
@@ -271,7 +442,8 @@ TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_
   ForceField forceField = makeTestForceField();
   Framework framework = makePeriodicPairFramework(forceField);
   TemporaryFile definition("raspa3-framework-archive-definition.json",
-                           R"({"Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
+                           R"({"Type": "Flexible",
+                               "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
   framework.readFrameworkDefinition(forceField, definition.path.string());
 
   const std::filesystem::path archivePath =
@@ -291,8 +463,10 @@ TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_
   std::filesystem::remove(archivePath);
 
   EXPECT_EQ(restored.connectivityTable.findAllBonds(), framework.connectivityTable.findAllBonds());
+  EXPECT_FALSE(restored.rigid);
   ASSERT_EQ(restored.intraMolecularPotentials.bonds.size(), 1);
   EXPECT_EQ(restored.intraMolecularPotentials.bonds[0].identifiers,
             framework.intraMolecularPotentials.bonds[0].identifiers);
   EXPECT_EQ(restored.intraMolecularPotentials.bonds[0].type, framework.intraMolecularPotentials.bonds[0].type);
+  EXPECT_EQ(restored.intraMolecularImageShifts.bonds, framework.intraMolecularImageShifts.bonds);
 }

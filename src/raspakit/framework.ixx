@@ -19,6 +19,16 @@ import connectivity_table;
 import intra_molecular_potentials;
 import json;
 
+export struct FrameworkIntraMolecularImageShifts
+{
+  std::vector<std::array<int3, 2>> bonds{};
+  std::vector<std::array<int3, 3>> bends{};
+  std::vector<std::array<int3, 4>> torsions{};
+  std::vector<std::array<int3, 4>> improperTorsions{};
+  std::vector<std::array<int3, 2>> vanDerWaals{};
+  std::vector<std::array<int3, 2>> coulombs{};
+};
+
 /**
  * \brief Represents a framework in the simulation system.
  *
@@ -52,9 +62,9 @@ export struct Framework
    * \param fractionalAtoms Vector of atoms defining the fractional positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(const ForceField &forceField, std::string componentName,
-            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms,
-            const std::vector<Atom> &fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
+  Framework(const ForceField& forceField, std::string componentName, SimulationBox simulationBox,
+            std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
+            const std::vector<Atom>& fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
 
   /**
    * \brief Constructs a Framework programmatically with specified parameters.
@@ -70,18 +80,18 @@ export struct Framework
    * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(const ForceField &forceField, std::string componentName,
-            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
-            const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false);
+  Framework(const ForceField& forceField, std::string componentName, SimulationBox simulationBox,
+            std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
+            int3 numberOfUnitCells) noexcept(false);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization purposes.
 
   SimulationBox simulationBox;          ///< Simulation box defining the unit cell dimensions.
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
   int3 numberOfUnitCells{1, 1, 1};      ///< Number of unit cells in each dimension for the supercell.
 
-  std::string name{};                         ///< Name of the framework component.
-  std::string filename{};                     ///< File name of the framework.
+  std::string name{};      ///< Name of the framework component.
+  std::string filename{};  ///< File name of the framework.
   std::size_t numberOfComponents{1};
 
   bool rigid{true};  ///< Flag indicating if the framework is rigid.
@@ -89,25 +99,26 @@ export struct Framework
   double mass{0.0};          ///< Total mass of the framework.
   double unitCellMass{0.0};  ///< Mass of the unit cell.
 
-  double netCharge{0.0};                                       ///< Net charge of the framework.
-  double smallestCharge{0.0};                                  ///< Smallest atomic charge in the framework.
-  double largestCharge{0.0};                                   ///< Largest atomic charge in the framework.
+  double netCharge{0.0};       ///< Net charge of the framework.
+  double smallestCharge{0.0};  ///< Smallest atomic charge in the framework.
+  double largestCharge{0.0};   ///< Largest atomic charge in the framework.
 
-  std::vector<Atom> definedAtoms{};            ///< Fractional Atoms defining the unit cell before symmetry operations.
-  std::vector<Atom> fractionalUnitCellAtoms;   ///< Fractional atoms in the unit cell after applying symmetry operations.
-  std::vector<Atom> unitCellAtoms;             ///< Cartesian atoms in the unit cell after applying symmetry operations.
-  std::vector<Atom> atoms{};                   ///< All Cartesian atoms in the framework after constructing the supercell.
+  std::vector<Atom> definedAtoms{};           ///< Fractional Atoms defining the unit cell before symmetry operations.
+  std::vector<Atom> fractionalUnitCellAtoms;  ///< Fractional atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> unitCellAtoms;            ///< Cartesian atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> atoms{};  ///< All Cartesian atoms in the framework after constructing the supercell.
   std::unordered_set<std::size_t> uniqueAtomTypes{};
 
   ConnectivityTable connectivityTable{};                            ///< Periodic framework bond connectivity.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< Indexed internal framework potentials.
+  FrameworkIntraMolecularImageShifts intraMolecularImageShifts{};   ///< Periodic images for internal potentials.
 
   void determineUniqueAtomTypes();
 
   /**
    * Reads type-based intramolecular definitions and expands them over the framework supercell.
    */
-  void readFrameworkDefinition(const ForceField &forceField, const std::string &definitionName);
+  void readFrameworkDefinition(const ForceField& forceField, const std::string& definitionName);
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.
@@ -121,12 +132,12 @@ export struct Framework
 
   std::vector<double3> fractionalAtomPositionsUnitCell() const;
   std::vector<double3> cartesianAtomPositionsUnitCell() const;
-  std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField &forceField) const;
+  std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const;
 
-  std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position,
+  std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField& forceField, double3 probe_position,
                                                                double well_depth_factor) const;
-  bool computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const;
-  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor,
+  bool computeVanDerWaalsRadiusOverlap(const ForceField& forceField, double3 probe_position) const;
+  bool computeOverlap(const ForceField& forceField, double3 probe_position, double well_depth_factor,
                       std::size_t probe_type, std::make_signed_t<std::size_t> skip) const;
 
   /**
@@ -138,7 +149,7 @@ export struct Framework
    * \param forceField Reference to the force field containing pseudo-atom definitions.
    * \return A string representing the framework status.
    */
-  std::string printStatus(const ForceField &forceField) const;
+  std::string printStatus(const ForceField& forceField) const;
 
   /**
    * \brief Generates a string representation of the breakthrough status.
@@ -157,8 +168,8 @@ export struct Framework
    */
   nlohmann::json jsonStatus() const;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c);
 
   /**
    * \brief Returns a string representation of the Framework.
@@ -170,10 +181,10 @@ export struct Framework
    */
   std::string repr() const;
 
-  static Framework makeFAU(const ForceField &forceField, int3 replicate = {1, 1, 1});
-  static Framework makeITQ29(const ForceField &forceField, int3 replicate = {1, 1, 1});
-  static Framework makeMFI(const ForceField &forceField, int3 replicate = {1, 1, 1});
-  static Framework makeCHA(const ForceField &forceField, int3 replicate = {1, 1, 1});
+  static Framework makeFAU(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeITQ29(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeMFI(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeCHA(const ForceField& forceField, int3 replicate = {1, 1, 1});
 };
 
 /**
@@ -190,7 +201,7 @@ export struct Framework
  * \throws std::runtime_error If no values could be read.
  */
 template <typename T>
-std::vector<T> parseListOfParameters(const std::string &arguments, std::size_t lineNumber)
+std::vector<T> parseListOfParameters(const std::string& arguments, std::size_t lineNumber)
 {
   std::vector<T> list{};
 

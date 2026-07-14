@@ -13,6 +13,8 @@ import vdwparameters;
 import forcefield;
 import framework;
 import component;
+import connectivity_table;
+import intra_molecular_potentials;
 import system;
 import simulationbox;
 import running_energy;
@@ -24,10 +26,10 @@ import interactions_framework_molecule;
 
 namespace
 {
-void setRigidMoleculePositions(System &system, std::size_t moleculeIndex)
+void setRigidMoleculePositions(System& system, std::size_t moleculeIndex)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
-  const Component &component = system.components[molecule.componentId];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
   const double3x3 rotation = double3x3::buildRotationMatrixInverse(molecule.orientation);
   const double3 com = molecule.centerOfMassPosition;
   for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
@@ -37,7 +39,7 @@ void setRigidMoleculePositions(System &system, std::size_t moleculeIndex)
   }
 }
 
-simd_quatd quatFromRotationVector(const double3 &omega)
+simd_quatd quatFromRotationVector(const double3& omega)
 {
   const double angle = std::sqrt(double3::dot(omega, omega));
   if (angle < 1e-30)
@@ -47,9 +49,9 @@ simd_quatd quatFromRotationVector(const double3 &omega)
   return simd_quatd::fromAxisAngle(angle, omega / angle);
 }
 
-void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
+void useSecondOrderTaylorShiftedLennardJones(ForceField& forceField)
 {
-  for (VDWParameters &parameters : forceField.data)
+  for (VDWParameters& parameters : forceField.data)
   {
     if (parameters.type == VDWParameters::Type::LennardJones)
     {
@@ -60,6 +62,79 @@ void useSecondOrderTaylorShiftedLennardJones(ForceField &forceField)
   forceField.preComputePotentialShift();
 }
 }  // namespace
+
+TEST(minimization_hessian_framework, flexible_framework_molecule_cross_block_matches_finite_difference)
+{
+  ForceField forceField({{"A", false, 12.0, 0.0, 0.0, 6, false}}, {{120.0, 3.4}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, true, false, false);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const Atom frameworkAtom({0.25, 0.25, 0.25}, 0.0, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "flexible-framework", box, 1, {frameworkAtom}, {frameworkAtom}, {1, 1, 1});
+  framework.rigid = false;
+
+  ConnectivityTable connectivity(1);
+  Component component(forceField, "single-site", 100.0, 1.0e6, 0.1,
+                      {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, connectivity,
+                      Potentials::IntraMolecularPotentials{}, 0, 0);
+  component.rigid = false;
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {component}, {}, {1}, 5);
+  system.spanOfFrameworkAtoms()[0].position = {5.0, 5.0, 5.0};
+  system.spanOfMoleculeAtoms()[0].position = {8.8, 5.2, 5.1};
+
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout(system.moleculeData, system.components, system.spanOfFrameworkAtoms().size());
+  ASSERT_EQ(layout.numDofs(), 6u);
+  GeneralizedHessian hessian(layout.numDofs(), 0);
+  Interactions::computeFrameworkMoleculeHessian(system, layout, hessian, system.spanOfMoleculeDynamics(),
+                                                system.spanOfFrameworkDynamics());
+
+  const auto energy = [&]()
+  {
+    const RunningEnergy value = Interactions::computeFrameworkMoleculeEnergy(
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+    return value.frameworkMoleculeVDW + value.frameworkMoleculeCharge;
+  };
+  constexpr double delta = 2.0e-4;
+  constexpr double tolerance = 5.0e-2;
+  std::array<Atom*, 2> atoms{&system.spanOfFrameworkAtoms()[0], &system.spanOfMoleculeAtoms()[0]};
+  const double referenceEnergy = energy();
+  for (std::size_t row = 0; row < 6; ++row)
+  {
+    for (std::size_t column = 0; column < 6; ++column)
+    {
+      Atom& atomA = *atoms[row / 3];
+      Atom& atomB = *atoms[column / 3];
+      double numerical{};
+      if (row == column)
+      {
+        (&atomA.position.x)[row % 3] += delta;
+        const double plus = energy();
+        (&atomA.position.x)[row % 3] -= 2.0 * delta;
+        const double minus = energy();
+        (&atomA.position.x)[row % 3] += delta;
+        numerical = (plus - 2.0 * referenceEnergy + minus) / (delta * delta);
+      }
+      else
+      {
+        (&atomA.position.x)[row % 3] += delta;
+        (&atomB.position.x)[column % 3] += delta;
+        const double ePP = energy();
+        (&atomB.position.x)[column % 3] -= 2.0 * delta;
+        const double ePM = energy();
+        (&atomA.position.x)[row % 3] -= 2.0 * delta;
+        const double eMM = energy();
+        (&atomB.position.x)[column % 3] += 2.0 * delta;
+        const double eMP = energy();
+        (&atomA.position.x)[row % 3] += delta;
+        (&atomB.position.x)[column % 3] -= delta;
+        numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
+      }
+      EXPECT_NEAR(hessian(row, column), numerical, tolerance) << "row=" << row << " column=" << column;
+    }
+  }
+}
 
 TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_difference)
 {
@@ -93,7 +168,7 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_diffe
 
   auto energyAtDisplacement = [&](std::span<const double> displacement)
   {
-    Molecule &molecule = system.moleculeData[0];
+    Molecule& molecule = system.moleculeData[0];
     molecule.centerOfMassPosition = baseCom + double3(displacement[0], displacement[1], displacement[2]);
     const double3 omega(displacement[3], displacement[4], displacement[5]);
     molecule.orientation = (quatFromRotationVector(omega) * baseOrientation).normalized();
@@ -180,9 +255,8 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_matches_finite_di
   auto applyState = [&](double strainExponent)
   {
     const double factor = std::exp(strainExponent);
-    Molecule &molecule = system.moleculeData[0];
-    molecule.centerOfMassPosition =
-        factor * (baseCom + double3(displacement[0], displacement[1], displacement[2]));
+    Molecule& molecule = system.moleculeData[0];
+    molecule.centerOfMassPosition = factor * (baseCom + double3(displacement[0], displacement[1], displacement[2]));
     const double3 omega(displacement[3], displacement[4], displacement[5]);
     molecule.orientation = (quatFromRotationVector(omega) * baseOrientation).normalized();
     setRigidMoleculePositions(system, 0);
@@ -236,8 +310,7 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_matches_finite_di
     displacement.fill(0.0);
     applyState(strainExponent);
     const double factor = std::exp(strainExponent);
-    system.simulationBox =
-        SimulationBox(factor * baseBox.cell.ax, factor * baseBox.cell.by, factor * baseBox.cell.cz);
+    system.simulationBox = SimulationBox(factor * baseBox.cell.ax, factor * baseBox.cell.by, factor * baseBox.cell.cz);
 
     std::vector<double> gradient(layout.numDofs());
     GeneralizedHessian scratchHessian(layout.numDofs(), 0);
@@ -261,8 +334,7 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_strain_matches_finite_di
     const double numerical = (gradientPlus[*dof] - gradientMinus[*dof]) / (2.0 * gradientStep);
     const double analytic = hessian.positionStrain()[*dof];
     const double scale = std::max({1.0, std::abs(numerical), std::abs(analytic)});
-    EXPECT_NEAR(numerical, analytic, absoluteTolerance + relativeTolerance * scale)
-        << "position-strain dof=" << *dof;
+    EXPECT_NEAR(numerical, analytic, absoluteTolerance + relativeTolerance * scale) << "position-strain dof=" << *dof;
   }
 
   // Restore base state.
@@ -276,11 +348,10 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   useSecondOrderTaylorShiftedLennardJones(forceField);
   const Atom frameworkSite(double3(0.25, 0.25, 0.25), 0.0, 1.0, 0, 3, 0, false, false);
-  Framework framework(forceField, "single-site", SimulationBox(40.0, 40.0, 40.0), 1, {frameworkSite},
-                      {frameworkSite}, int3(1, 1, 1));
+  Framework framework(forceField, "single-site", SimulationBox(40.0, 40.0, 40.0), 1, {frameworkSite}, {frameworkSite},
+                      int3(1, 1, 1));
   Component co2 = Component::makeCO2(forceField, 0, false);
-  System system =
-      System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {co2}, {}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {co2}, {}, {1}, 5);
 
   const double3 frameworkBase(10.0, 10.0, 10.0);
   const double3 comBase(14.0, 12.0, 11.0);
@@ -293,9 +364,8 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
   {
     const double scale = std::exp(epsilon);
     system.spanOfFrameworkAtoms()[0].position = scale * frameworkBase;
-    Molecule &molecule = system.moleculeData[0];
-    molecule.centerOfMassPosition =
-        scale * (comBase + double3(displacement[0], displacement[1], displacement[2]));
+    Molecule& molecule = system.moleculeData[0];
+    molecule.centerOfMassPosition = scale * (comBase + double3(displacement[0], displacement[1], displacement[2]));
     molecule.orientation =
         (quatFromRotationVector(double3(displacement[3], displacement[4], displacement[5])) * orientationBase)
             .normalized();
@@ -315,7 +385,7 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
   {
     for (std::size_t axis = 0; axis < 3; ++axis)
     {
-      double &coordinate = (&moleculeAtoms[atom].position.x)[axis];
+      double& coordinate = (&moleculeAtoms[atom].position.x)[axis];
       coordinate += gradientStep;
       const RunningEnergy plus = Interactions::computeFrameworkMoleculeEnergy(
           system.forceField, SimulationBox(40.0, 40.0, 40.0), system.interpolationGrids, system.framework,
@@ -325,12 +395,10 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
           system.forceField, SimulationBox(40.0, 40.0, 40.0), system.interpolationGrids, system.framework,
           system.spanOfFrameworkAtoms(), moleculeAtoms);
       coordinate += gradientStep;
-      const double numerical =
-          ((plus.frameworkMoleculeVDW + plus.frameworkMoleculeCharge) -
-           (minus.frameworkMoleculeVDW + minus.frameworkMoleculeCharge)) /
-          (2.0 * gradientStep);
-      EXPECT_NEAR((&dynamics[atom].gradient.x)[axis], numerical,
-                  1e-5 * std::max(1.0, std::abs(numerical)));
+      const double numerical = ((plus.frameworkMoleculeVDW + plus.frameworkMoleculeCharge) -
+                                (minus.frameworkMoleculeVDW + minus.frameworkMoleculeCharge)) /
+                               (2.0 * gradientStep);
+      EXPECT_NEAR((&dynamics[atom].gradient.x)[axis], numerical, 1e-5 * std::max(1.0, std::abs(numerical)));
     }
   }
 

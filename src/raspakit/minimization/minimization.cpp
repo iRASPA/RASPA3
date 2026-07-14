@@ -15,7 +15,7 @@ import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 
-Minimization::Minimization(InputReader &inputReader)
+Minimization::Minimization(InputReader& inputReader)
     : options(inputReader.minimizationOptions),
       numberOfPreInitializationCycles(inputReader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(inputReader.numberOfInitializationCycles),
@@ -30,7 +30,7 @@ Minimization::Minimization(InputReader &inputReader)
 {
 }
 
-Minimization::Minimization(const MinimizationOptions &options, std::vector<System> systems, bool outputToFiles)
+Minimization::Minimization(const MinimizationOptions& options, std::vector<System> systems, bool outputToFiles)
     : options(options), outputToFiles(outputToFiles), systems(std::move(systems))
 {
 }
@@ -49,7 +49,7 @@ void Minimization::setup()
 
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
-    System &system = systems[systemIndex];
+    System& system = systems[systemIndex];
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
     system.precomputeTotalRigidEnergy();
@@ -117,10 +117,12 @@ void Minimization::performCycle()
         }
 
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
 
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Run:
         break;
@@ -240,7 +242,8 @@ void Minimization::equilibrate()
       component.lambdaGC.clear();
       if (system.usesGibbsConventionalCFCMC())
       {
-        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, true);
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                  true);
         component.lambdaGibbs.clear();
       }
     }
@@ -293,8 +296,10 @@ void Minimization::equilibrate()
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
           }
         }
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
-        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+        system.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+        system.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
       }
     }
 
@@ -316,9 +321,12 @@ void Minimization::runPhase()
 
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
-    System &system = systems[systemIndex];
-    MinimizationSystemResult &systemResult = results[systemIndex];
-    const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
+    System& system = systems[systemIndex];
+    MinimizationSystemResult& systemResult = results[systemIndex];
+    const std::size_t numberOfFlexibleFrameworkAtoms =
+        system.framework && !system.framework->rigid ? system.spanOfFrameworkAtoms().size() : 0;
+    const MinimizationDofLayout layout =
+        buildMinimizationDofLayout(system.moleculeData, system.components, numberOfFlexibleFrameworkAtoms);
     GeneralizedHessian hessian(layout.numDofs(), 0);
     std::vector<double> gradient(layout.numDofs(), 0.0);
 
@@ -350,11 +358,11 @@ void Minimization::runPhase()
 
       if (iteration % std::max<std::size_t>(1, options.printEvery) == 0 || step.converged)
       {
-        const std::string status =
-            std::format("Minimization s{} step {:6d}: E={: .12e} rms(g)={:.5e} max(g)={:.5e} "
-                        "negative={} zero={} |dx|={:.5e}\n",
-                        systemIndex, iteration, derivatives.energy, step.rmsGradient, step.maxGradient,
-                        step.negativeModes, step.zeroModes, step.stepNorm);
+        const std::string status = std::format(
+            "Minimization s{} step {:6d}: E={: .12e} rms(g)={:.5e} max(g)={:.5e} "
+            "negative={} zero={} |dx|={:.5e}\n",
+            systemIndex, iteration, derivatives.energy, step.rmsGradient, step.maxGradient, step.negativeModes,
+            step.zeroModes, step.stepNorm);
         std::cout << status;
         if (outputToFiles)
         {
@@ -420,8 +428,8 @@ void Minimization::output()
 {
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
-    const System &system = systems[systemIndex];
-    const MinimizationSystemResult &result = results[systemIndex];
+    const System& system = systems[systemIndex];
+    const MinimizationSystemResult& result = results[systemIndex];
     std::ofstream json(std::format("output/minimization.s{}.json", systemIndex), std::ios::out);
     std::print(json,
                "{{\n  \"converged\": {},\n  \"iterations\": {},\n  \"initialEnergy\": {:.17g},\n"
@@ -447,7 +455,7 @@ void Minimization::tearDown()
     output();
     for (std::size_t systemIndex = 0; systemIndex < results.size(); ++systemIndex)
     {
-      const MinimizationSystemResult &result = results[systemIndex];
+      const MinimizationSystemResult& result = results[systemIndex];
       std::print(streams[systemIndex],
                  "\nFinal minimization status: converged={} iterations={} initialEnergy={:.12e} "
                  "finalEnergy={:.12e} rmsGradient={:.5e} maxGradient={:.5e}\n",

@@ -9,9 +9,9 @@ import minimization_rigid_kinematics;
 
 namespace
 {
-constexpr std::array<double, 3> drComponents(const double3 &dr) { return {dr.x, dr.y, dr.z}; }
+constexpr std::array<double, 3> drComponents(const double3& dr) { return {dr.x, dr.y, dr.z}; }
 
-std::optional<std::size_t> positionDofBase(const MinimizationDofLayout &layout, std::size_t moleculeIndex,
+std::optional<std::size_t> positionDofBase(const MinimizationDofLayout& layout, std::size_t moleculeIndex,
                                            std::size_t localAtomIndex, bool rigid)
 {
   if (rigid)
@@ -21,22 +21,21 @@ std::optional<std::size_t> positionDofBase(const MinimizationDofLayout &layout, 
   return layout.flexibleAtomDof(moleculeIndex, localAtomIndex, MinimizationDofAxis::X);
 }
 
-std::optional<std::size_t> orientationDofBase(const MinimizationDofLayout &layout, std::size_t moleculeIndex)
+std::optional<std::size_t> orientationDofBase(const MinimizationDofLayout& layout, std::size_t moleculeIndex)
 {
   return layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
 }
 
-void addMatrixBlock(GeneralizedHessian &hessian, std::optional<std::size_t> rowBase,
-                    std::optional<std::size_t> columnBase, const double3x3 &matrix, double scale = 1.0)
+void addMatrixBlock(GeneralizedHessian& hessian, std::optional<std::size_t> rowBase,
+                    std::optional<std::size_t> columnBase, const double3x3& matrix, double scale = 1.0)
 {
   if (!rowBase || !columnBase)
   {
     return;
   }
 
-  const std::array<std::array<double, 3>, 3> values = {{{matrix.ax, matrix.ay, matrix.az},
-                                                        {matrix.bx, matrix.by, matrix.bz},
-                                                        {matrix.cx, matrix.cy, matrix.cz}}};
+  const std::array<std::array<double, 3>, 3> values = {
+      {{matrix.ax, matrix.ay, matrix.az}, {matrix.bx, matrix.by, matrix.bz}, {matrix.cx, matrix.cy, matrix.cz}}};
   for (std::size_t row = 0; row < 3; ++row)
   {
     for (std::size_t column = 0; column < 3; ++column)
@@ -46,7 +45,7 @@ void addMatrixBlock(GeneralizedHessian &hessian, std::optional<std::size_t> rowB
   }
 }
 
-void scatterSameEntityBlock(GeneralizedHessian &hessian, std::size_t baseDof, double f1, double f2, const double3 &dr)
+void scatterSameEntityBlock(GeneralizedHessian& hessian, std::size_t baseDof, double f1, double f2, const double3& dr)
 {
   const auto components = drComponents(dr);
   for (std::size_t alpha = 0; alpha < 3; ++alpha)
@@ -59,8 +58,8 @@ void scatterSameEntityBlock(GeneralizedHessian &hessian, std::size_t baseDof, do
   }
 }
 
-void scatterCrossEntityBlock(GeneralizedHessian &hessian, std::size_t baseDofA, std::size_t baseDofB, double f1,
-                             double f2, const double3 &dr)
+void scatterCrossEntityBlock(GeneralizedHessian& hessian, std::size_t baseDofA, std::size_t baseDofB, double f1,
+                             double f2, const double3& dr)
 {
   const auto components = drComponents(dr);
   for (std::size_t alpha = 0; alpha < 3; ++alpha)
@@ -74,7 +73,7 @@ void scatterCrossEntityBlock(GeneralizedHessian &hessian, std::size_t baseDofA, 
   }
 }
 
-double3x3 transposeBlock(const double3x3 &matrix)
+double3x3 transposeBlock(const double3x3& matrix)
 {
   double3x3 transposed{};
   transposed.ax = matrix.ax;
@@ -94,14 +93,14 @@ double3x3 transposeBlock(const double3x3 &matrix)
  * entry (row = position axis alpha, column = orientation axis beta) is
  *   f2 (dr . DVec_beta) dr_alpha + f1 [DVec_beta]_alpha.
  */
-double3x3 positionOrientationBlock(double f1, double f2, const double3 &dr,
-                                   const Minimization::RigidAtomDerivatives &derivatives)
+double3x3 positionOrientationBlock(double f1, double f2, const double3& dr,
+                                   const Minimization::RigidAtomDerivatives& derivatives)
 {
   const std::array<double3, 3> dVec = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
 
   double3x3 block{};
-  std::array<double *, 9> entries = {&block.ax, &block.ay, &block.az, &block.bx, &block.by,
-                                     &block.bz, &block.cx, &block.cy, &block.cz};
+  std::array<double*, 9> entries = {&block.ax, &block.ay, &block.az, &block.bx, &block.by,
+                                    &block.bz, &block.cx, &block.cy, &block.cz};
   const std::array<double, 3> drComponentsArray = drComponents(dr);
   for (std::size_t alpha = 0; alpha < 3; ++alpha)
   {
@@ -115,13 +114,13 @@ double3x3 positionOrientationBlock(double f1, double f2, const double3 &dr,
   return block;
 }
 
-void scatterCenterOfMassOrientation(GeneralizedHessian &hessian, std::optional<std::size_t> positionBaseI,
+void scatterCenterOfMassOrientation(GeneralizedHessian& hessian, std::optional<std::size_t> positionBaseI,
                                     std::optional<std::size_t> orientationBaseI,
                                     std::optional<std::size_t> positionBaseJ,
                                     std::optional<std::size_t> orientationBaseJ,
-                                    const Minimization::RigidAtomDerivatives *derivativesI,
-                                    const Minimization::RigidAtomDerivatives *derivativesJ, double f1, double f2,
-                                    const double3 &dr)
+                                    const Minimization::RigidAtomDerivatives* derivativesI,
+                                    const Minimization::RigidAtomDerivatives* derivativesJ, double f1, double f2,
+                                    const double3& dr)
 {
   // dr = posA - posB. Same-molecule blocks enter with +, cross-molecule blocks with -;
   // both orders are written since the generalized Hessian stores the full dense matrix.
@@ -152,33 +151,32 @@ void scatterCenterOfMassOrientation(GeneralizedHessian &hessian, std::optional<s
  *                f2 (dr . DVec_a)(dr . DVec_b) + f1 (DVec_a . DVec_b).
  * Cross: -[f2 (dr . DVecI_a)(dr . DVecJ_b) + f1 (DVecI_a . DVecJ_b)].
  */
-void scatterOrientationOrientation(GeneralizedHessian &hessian, std::optional<std::size_t> orientationBaseI,
+void scatterOrientationOrientation(GeneralizedHessian& hessian, std::optional<std::size_t> orientationBaseI,
                                    std::optional<std::size_t> orientationBaseJ,
-                                   const Minimization::RigidAtomDerivatives *derivativesI,
-                                   const Minimization::RigidAtomDerivatives *derivativesJ, double f1, double f2,
-                                   const double3 &dr)
+                                   const Minimization::RigidAtomDerivatives* derivativesI,
+                                   const Minimization::RigidAtomDerivatives* derivativesJ, double f1, double f2,
+                                   const double3& dr)
 {
-  auto dVecs = [](const Minimization::RigidAtomDerivatives &derivatives)
+  auto dVecs = [](const Minimization::RigidAtomDerivatives& derivatives)
   { return std::array<double3, 3>{derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ}; };
 
   // ddVec[alpha][beta], symmetric in (alpha, beta)
-  auto ddVecs = [](const Minimization::RigidAtomDerivatives &derivatives)
+  auto ddVecs = [](const Minimization::RigidAtomDerivatives& derivatives)
   {
-    return std::array<std::array<double3, 3>, 3>{
-        {{derivatives.ddVecAX, derivatives.ddVecAY, derivatives.ddVecAZ},
-         {derivatives.ddVecAY, derivatives.ddVecBY, derivatives.ddVecBZ},
-         {derivatives.ddVecAZ, derivatives.ddVecBZ, derivatives.ddVecCZ}}};
+    return std::array<std::array<double3, 3>, 3>{{{derivatives.ddVecAX, derivatives.ddVecAY, derivatives.ddVecAZ},
+                                                  {derivatives.ddVecAY, derivatives.ddVecBY, derivatives.ddVecBZ},
+                                                  {derivatives.ddVecAZ, derivatives.ddVecBZ, derivatives.ddVecCZ}}};
   };
 
   // dr = posA - posB, so d(dr)/domegaI = +DVecI and d(dr)/domegaJ = -DVecJ;
   // the DDVec term enters with + for molecule I and - for molecule J.
-  auto sameMoleculeBlock = [&](const Minimization::RigidAtomDerivatives &derivatives, double ddSign)
+  auto sameMoleculeBlock = [&](const Minimization::RigidAtomDerivatives& derivatives, double ddSign)
   {
     const auto dVec = dVecs(derivatives);
     const auto ddVec = ddVecs(derivatives);
     double3x3 block{};
-    std::array<double *, 9> entries = {&block.ax, &block.ay, &block.az, &block.bx, &block.by,
-                                       &block.bz, &block.cx, &block.cy, &block.cz};
+    std::array<double*, 9> entries = {&block.ax, &block.ay, &block.az, &block.bx, &block.by,
+                                      &block.bz, &block.cx, &block.cy, &block.cz};
     for (std::size_t alpha = 0; alpha < 3; ++alpha)
     {
       for (std::size_t beta = 0; beta < 3; ++beta)
@@ -206,8 +204,8 @@ void scatterOrientationOrientation(GeneralizedHessian &hessian, std::optional<st
     const auto dVecI = dVecs(*derivativesI);
     const auto dVecJ = dVecs(*derivativesJ);
     double3x3 cross{};
-    std::array<double *, 9> entries = {&cross.ax, &cross.ay, &cross.az, &cross.bx, &cross.by,
-                                       &cross.bz, &cross.cx, &cross.cy, &cross.cz};
+    std::array<double*, 9> entries = {&cross.ax, &cross.ay, &cross.az, &cross.bx, &cross.by,
+                                      &cross.bz, &cross.cx, &cross.cy, &cross.cz};
     for (std::size_t alpha = 0; alpha < 3; ++alpha)
     {
       for (std::size_t beta = 0; beta < 3; ++beta)
@@ -221,9 +219,9 @@ void scatterOrientationOrientation(GeneralizedHessian &hessian, std::optional<st
   }
 }
 
-void addBendCartesianBlock(GeneralizedHessian &hessian, std::optional<std::size_t> baseI,
-                           std::optional<std::size_t> baseJ, const double3 &dtI, const double3 &dtJ, double ddf,
-                           const double3x3 &d2)
+void addBendCartesianBlock(GeneralizedHessian& hessian, std::optional<std::size_t> baseI,
+                           std::optional<std::size_t> baseJ, const double3& dtI, const double3& dtJ, double ddf,
+                           const double3x3& d2)
 {
   if (!baseI || !baseJ)
   {
@@ -245,19 +243,18 @@ void addBendCartesianBlock(GeneralizedHessian &hessian, std::optional<std::size_
   }
 }
 
-void addBendOffDiagonalBlock(GeneralizedHessian &hessian, std::optional<std::size_t> baseI,
-                              std::optional<std::size_t> baseJ, const double3 &dtI, const double3 &dtJ, double ddf,
-                              const double3x3 &d2)
+void addBendOffDiagonalBlock(GeneralizedHessian& hessian, std::optional<std::size_t> baseI,
+                             std::optional<std::size_t> baseJ, const double3& dtI, const double3& dtJ, double ddf,
+                             const double3x3& d2)
 {
   addBendCartesianBlock(hessian, baseI, baseJ, dtI, dtJ, ddf, d2);
   addBendCartesianBlock(hessian, baseJ, baseI, dtJ, dtI, ddf, transposeBlock(d2));
 }
 }  // namespace
 
-void Minimization::scatterAtomicPositionPosition(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                                 std::size_t moleculeA, std::size_t localAtomA,
-                                                 std::size_t moleculeB, std::size_t localAtomB, double f1, double f2,
-                                                 const double3 &dr)
+void Minimization::scatterAtomicPositionPosition(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                                 std::size_t moleculeA, std::size_t localAtomA, std::size_t moleculeB,
+                                                 std::size_t localAtomB, double f1, double f2, const double3& dr)
 {
   const auto baseA = layout.flexibleAtomDof(moleculeA, localAtomA, MinimizationDofAxis::X);
   const auto baseB = layout.flexibleAtomDof(moleculeB, localAtomB, MinimizationDofAxis::X);
@@ -266,23 +263,29 @@ void Minimization::scatterAtomicPositionPosition(GeneralizedHessian &hessian, co
     return;
   }
 
-  if (moleculeA == moleculeB && localAtomA == localAtomB)
+  scatterAtomicPositionPositionByDof(hessian, *baseA, *baseB, f1, f2, dr);
+}
+
+void Minimization::scatterAtomicPositionPositionByDof(GeneralizedHessian& hessian, std::size_t baseA, std::size_t baseB,
+                                                      double f1, double f2, const double3& dr)
+{
+  if (baseA == baseB)
   {
-    scatterSameEntityBlock(hessian, *baseA, f1, f2, dr);
+    scatterSameEntityBlock(hessian, baseA, f1, f2, dr);
     return;
   }
 
-  scatterSameEntityBlock(hessian, *baseA, f1, f2, dr);
-  scatterSameEntityBlock(hessian, *baseB, f1, f2, dr);
-  scatterCrossEntityBlock(hessian, *baseA, *baseB, f1, f2, dr);
+  scatterSameEntityBlock(hessian, baseA, f1, f2, dr);
+  scatterSameEntityBlock(hessian, baseB, f1, f2, dr);
+  scatterCrossEntityBlock(hessian, baseA, baseB, f1, f2, dr);
 }
 
-void Minimization::scatterInteractionHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                             const RigidDerivativeCache &rigidCache, std::size_t moleculeA,
-                                             std::size_t localAtomA, bool rigidA, const double3 &posA,
-                                             const double3 &comA, std::size_t moleculeB, std::size_t localAtomB,
-                                             bool rigidB, const double3 &posB, const double3 &comB, double f1, double f2,
-                                             const double3 &dr)
+void Minimization::scatterInteractionHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                             const RigidDerivativeCache& rigidCache, std::size_t moleculeA,
+                                             std::size_t localAtomA, bool rigidA, const double3& posA,
+                                             const double3& comA, std::size_t moleculeB, std::size_t localAtomB,
+                                             bool rigidB, const double3& posB, const double3& comB, double f1,
+                                             double f2, const double3& dr)
 {
   const auto positionBaseA = positionDofBase(layout, moleculeA, localAtomA, rigidA);
   const auto positionBaseB = positionDofBase(layout, moleculeB, localAtomB, rigidB);
@@ -301,10 +304,8 @@ void Minimization::scatterInteractionHessian(GeneralizedHessian &hessian, const 
   scatterSameEntityBlock(hessian, *positionBaseB, f1, f2, dr);
   scatterCrossEntityBlock(hessian, *positionBaseA, *positionBaseB, f1, f2, dr);
 
-  const Minimization::RigidAtomDerivatives *derivativesA =
-      rigidA ? &rigidCache.atom(moleculeA, localAtomA) : nullptr;
-  const Minimization::RigidAtomDerivatives *derivativesB =
-      rigidB ? &rigidCache.atom(moleculeB, localAtomB) : nullptr;
+  const Minimization::RigidAtomDerivatives* derivativesA = rigidA ? &rigidCache.atom(moleculeA, localAtomA) : nullptr;
+  const Minimization::RigidAtomDerivatives* derivativesB = rigidB ? &rigidCache.atom(moleculeB, localAtomB) : nullptr;
 
   scatterCenterOfMassOrientation(hessian, positionBaseA, orientationDofBase(layout, moleculeA), positionBaseB,
                                  orientationDofBase(layout, moleculeB), derivativesA, derivativesB, f1, f2, dr);
@@ -317,10 +318,10 @@ void Minimization::scatterInteractionHessian(GeneralizedHessian &hessian, const 
   (void)comB;
 }
 
-void Minimization::scatterFrameworkMoleculeHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                                   const RigidDerivativeCache &rigidCache, std::size_t moleculeIndex,
+void Minimization::scatterFrameworkMoleculeHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                                   const RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
                                                    std::size_t localAtom, bool rigid, double f1, double f2,
-                                                   const double3 &dr)
+                                                   const double3& dr)
 {
   const auto positionBase = positionDofBase(layout, moleculeIndex, localAtom, rigid);
   if (!positionBase)
@@ -332,7 +333,7 @@ void Minimization::scatterFrameworkMoleculeHessian(GeneralizedHessian &hessian, 
 
   if (rigid)
   {
-    const Minimization::RigidAtomDerivatives *derivatives = &rigidCache.atom(moleculeIndex, localAtom);
+    const Minimization::RigidAtomDerivatives* derivatives = &rigidCache.atom(moleculeIndex, localAtom);
     const auto orientationBase = orientationDofBase(layout, moleculeIndex);
     scatterCenterOfMassOrientation(hessian, positionBase, orientationBase, std::nullopt, std::nullopt, derivatives,
                                    nullptr, f1, f2, dr);
@@ -340,9 +341,34 @@ void Minimization::scatterFrameworkMoleculeHessian(GeneralizedHessian &hessian, 
   }
 }
 
-void Minimization::scatterBendHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                       std::size_t moleculeIndex, std::size_t localAtomA, std::size_t localAtomB,
-                                       std::size_t localAtomC, const BendHessianGeometry &geometry)
+void Minimization::scatterFlexibleFrameworkMoleculeHessian(GeneralizedHessian& hessian,
+                                                           const MinimizationDofLayout& layout,
+                                                           const RigidDerivativeCache& rigidCache,
+                                                           std::size_t frameworkAtom, std::size_t moleculeIndex,
+                                                           std::size_t localAtom, bool moleculeRigid, double f1,
+                                                           double f2, const double3& dr)
+{
+  const auto moleculePositionBase = positionDofBase(layout, moleculeIndex, localAtom, moleculeRigid);
+  const auto frameworkPositionBase = layout.frameworkAtomDof(frameworkAtom, MinimizationDofAxis::X);
+  if (!moleculePositionBase || !frameworkPositionBase) return;
+
+  scatterSameEntityBlock(hessian, *moleculePositionBase, f1, f2, dr);
+  scatterSameEntityBlock(hessian, *frameworkPositionBase, f1, f2, dr);
+  scatterCrossEntityBlock(hessian, *moleculePositionBase, *frameworkPositionBase, f1, f2, dr);
+
+  if (moleculeRigid)
+  {
+    const RigidAtomDerivatives* derivatives = &rigidCache.atom(moleculeIndex, localAtom);
+    const auto orientationBase = orientationDofBase(layout, moleculeIndex);
+    scatterCenterOfMassOrientation(hessian, moleculePositionBase, orientationBase, frameworkPositionBase, std::nullopt,
+                                   derivatives, nullptr, f1, f2, dr);
+    scatterOrientationOrientation(hessian, orientationBase, std::nullopt, derivatives, nullptr, f1, f2, dr);
+  }
+}
+
+void Minimization::scatterBendHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                      std::size_t moleculeIndex, std::size_t localAtomA, std::size_t localAtomB,
+                                      std::size_t localAtomC, const BendHessianGeometry& geometry)
 {
   const auto baseA = layout.flexibleAtomDof(moleculeIndex, localAtomA, MinimizationDofAxis::X);
   const auto baseB = layout.flexibleAtomDof(moleculeIndex, localAtomB, MinimizationDofAxis::X);
@@ -352,13 +378,23 @@ void Minimization::scatterBendHessian(GeneralizedHessian &hessian, const Minimiz
     return;
   }
 
+  scatterBendHessianByDof(hessian, {*baseA, *baseB, *baseC}, geometry);
+}
+
+void Minimization::scatterBendHessianByDof(GeneralizedHessian& hessian, const std::array<std::size_t, 3>& bases,
+                                           const BendHessianGeometry& geometry)
+{
+  const std::optional<std::size_t> baseA = bases[0];
+  const std::optional<std::size_t> baseB = bases[1];
+  const std::optional<std::size_t> baseC = bases[2];
+
   const double DF = geometry.DF;
   const double DDF = geometry.DDF;
-  const double3 &dtA = geometry.dtA;
-  const double3 &dtB = geometry.dtB;
-  const double3 &dtC = geometry.dtC;
-  const double3 &rab = geometry.Rab;
-  const double3 &rbc = geometry.Rbc;
+  const double3& dtA = geometry.dtA;
+  const double3& dtB = geometry.dtB;
+  const double3& dtC = geometry.dtC;
+  const double3& rab = geometry.Rab;
+  const double3& rbc = geometry.Rbc;
   const double cosTheta = geometry.cosTheta;
   const double rabLength = geometry.rab;
   const double rbcLength = geometry.rbc;
@@ -439,10 +475,10 @@ void Minimization::scatterBendHessian(GeneralizedHessian &hessian, const Minimiz
   addBendOffDiagonalBlock(hessian, baseC, baseB, dtC, dtB, DDF, d2CB);
 }
 
-void Minimization::scatterTorsionHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
+void Minimization::scatterTorsionHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
                                          std::size_t moleculeIndex, std::size_t localAtomA, std::size_t localAtomB,
                                          std::size_t localAtomC, std::size_t localAtomD,
-                                         const TorsionHessianGeometry &geometry)
+                                         const TorsionHessianGeometry& geometry)
 {
   const auto baseA = layout.flexibleAtomDof(moleculeIndex, localAtomA, MinimizationDofAxis::X);
   const auto baseB = layout.flexibleAtomDof(moleculeIndex, localAtomB, MinimizationDofAxis::X);
@@ -453,18 +489,29 @@ void Minimization::scatterTorsionHessian(GeneralizedHessian &hessian, const Mini
     return;
   }
 
+  scatterTorsionHessianByDof(hessian, {*baseA, *baseB, *baseC, *baseD}, geometry);
+}
+
+void Minimization::scatterTorsionHessianByDof(GeneralizedHessian& hessian, const std::array<std::size_t, 4>& bases,
+                                              const TorsionHessianGeometry& geometry)
+{
+  const std::optional<std::size_t> baseA = bases[0];
+  const std::optional<std::size_t> baseB = bases[1];
+  const std::optional<std::size_t> baseC = bases[2];
+  const std::optional<std::size_t> baseD = bases[3];
+
   const double DF = geometry.DF;
   const double DDF = geometry.DDF;
-  const double3 &dtA = geometry.dtA;
-  const double3 &dtB = geometry.dtB;
-  const double3 &dtC = geometry.dtC;
-  const double3 &dtD = geometry.dtD;
-  const double3 &Dab = geometry.Dab;
-  const double3 &Dcb = geometry.Dcb;  // unit vector
-  const double3 &Ddc = geometry.Ddc;
+  const double3& dtA = geometry.dtA;
+  const double3& dtB = geometry.dtB;
+  const double3& dtC = geometry.dtC;
+  const double3& dtD = geometry.dtD;
+  const double3& Dab = geometry.Dab;
+  const double3& Dcb = geometry.Dcb;  // unit vector
+  const double3& Ddc = geometry.Ddc;
   const double rbc = geometry.rbc;
-  const double3 &dr = geometry.dr;  // unit vector
-  const double3 &ds = geometry.ds;  // unit vector
+  const double3& dr = geometry.dr;  // unit vector
+  const double3& ds = geometry.ds;  // unit vector
   const double r = geometry.r;
   const double s = geometry.s;
   const double d = geometry.d;
@@ -611,10 +658,10 @@ void Minimization::scatterTorsionHessian(GeneralizedHessian &hessian, const Mini
   addBendOffDiagonalBlock(hessian, baseC, baseD, dtC, dtD, DDF, d2KL);
 }
 
-void Minimization::scatterAtomicPositionStrainIsotropic(GeneralizedHessian &hessian,
-                                                        const MinimizationDofLayout &layout, std::size_t moleculeA,
+void Minimization::scatterAtomicPositionStrainIsotropic(GeneralizedHessian& hessian,
+                                                        const MinimizationDofLayout& layout, std::size_t moleculeA,
                                                         std::size_t localAtomA, std::size_t moleculeB,
-                                                        std::size_t localAtomB, double f1, double f2, const double3 &dr)
+                                                        std::size_t localAtomB, double f1, double f2, const double3& dr)
 {
   if (hessian.numStrain() != 1)
   {
@@ -653,10 +700,10 @@ void Minimization::scatterAtomicPositionStrainIsotropic(GeneralizedHessian &hess
   }
 }
 
-void Minimization::scatterSitePositionStrainIsotropic(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                                      const RigidDerivativeCache &rigidCache, std::size_t moleculeIndex,
+void Minimization::scatterSitePositionStrainIsotropic(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                                      const RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
                                                       std::size_t localAtom, bool rigid, double sign, double f1,
-                                                      double f2, const double3 &dr, const double3 &drStrainDerivative)
+                                                      double f2, const double3& dr, const double3& drStrainDerivative)
 {
   if (hessian.numStrain() != 1)
   {
@@ -676,7 +723,7 @@ void Minimization::scatterSitePositionStrainIsotropic(GeneralizedHessian &hessia
     }
     if (const auto orientationBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX))
     {
-      const RigidAtomDerivatives &derivatives = rigidCache.atom(moleculeIndex, localAtom);
+      const RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
       const std::array<double3, 3> dVec = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
       for (std::size_t axis = 0; axis < 3; ++axis)
       {
@@ -699,9 +746,10 @@ void Minimization::scatterSitePositionStrainIsotropic(GeneralizedHessian &hessia
   }
 }
 
-void Minimization::scatterAtomicStrainStrainIsotropic(GeneralizedHessian &hessian, double f1, double f2,
-                                                      const double3 &dr, const double3 &posA, const double3 &comA,
-                                                      const double3 &posB, const double3 &comB, bool rigidA, bool rigidB)
+void Minimization::scatterAtomicStrainStrainIsotropic(GeneralizedHessian& hessian, double f1, double f2,
+                                                      const double3& dr, const double3& posA, const double3& comA,
+                                                      const double3& posB, const double3& comB, bool rigidA,
+                                                      bool rigidB)
 {
   if (hessian.numStrain() != 1)
   {
@@ -724,7 +772,6 @@ void Minimization::scatterAtomicStrainStrainIsotropic(GeneralizedHessian &hessia
   const double3 strainDerivative = dr - offsetA + offsetB;
   const double projection = double3::dot(dr, strainDerivative);
   const double value =
-      f2 * projection * projection +
-      f1 * (double3::dot(strainDerivative, strainDerivative) + projection);
+      f2 * projection * projection + f1 * (double3::dot(strainDerivative, strainDerivative) + projection);
   hessian.addStrainStrain(0, 0, value);
 }

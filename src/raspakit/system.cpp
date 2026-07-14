@@ -44,9 +44,9 @@ import property_temperature;
 import property_msd;
 import running_energy;
 import threadpool;
-//import isotherm;
-//import multi_site_isotherm;
-//import pressure_range;
+// import isotherm;
+// import multi_site_isotherm;
+// import pressure_range;
 import bond_potential;
 import move_statistics;
 import mc_moves_probabilities;
@@ -74,7 +74,7 @@ import property_number_of_molecules_evolution;
 import property_volume_evolution;
 import property_conserved_energy_evolution;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+// import mdspan;
 #endif
 
 // construct System programmatically
@@ -83,9 +83,8 @@ import property_conserved_energy_evolution;
  *
  *  Detailed description starts here.
  */
-System::System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField,
-               double T, std::optional<double> P, double heliumVoidFraction,
-               std::optional<Framework> f, std::vector<Component> c,
+System::System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField, double T,
+               std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities)
     : temperature(T),
@@ -161,7 +160,6 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   rescaleMolarFractions();
   computeNumberOfPseudoAtoms();
 
-
   createFrameworks();
   if (framework.has_value())
   {
@@ -181,14 +179,12 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
 
   createInitialMolecules(initialpositions);
 
-  equationOfState =
-      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
-                      P.value_or(0.0), simulationBox, heliumVoidFraction, components);
+  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
+                                    P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
   averagePartialMolarProperties.resize(swappableComponents.size());
 }
-
 
 void System::createFrameworks()
 {
@@ -210,8 +206,6 @@ void System::createFrameworks()
     netCharge += framework->netCharge;
   }
 }
-
-
 
 void System::determineSwappableComponents()
 {
@@ -326,8 +320,6 @@ void System::computeNumberOfPseudoAtoms()
   }
 }
 
-
-
 void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
@@ -335,9 +327,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy =
-      Integrators::computeTranslationalKineticEnergy(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                                     components);
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
@@ -394,7 +385,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     {
       const double pairLambda = component.lambdaPairSwap.lambdaValue();
       component.lambdaPairSwap.sampleHistogram(
-          currentBlock, componentDensity, runningEnergies.dudlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
+          currentBlock, componentDensity,
+          runningEnergies.dudlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
           containsTheFractionalMolecule, w);
     }
 
@@ -429,8 +421,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   if (propertyRadialDistributionFunction.has_value())
   {
     precomputeTotalGradients();
-    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(),
-                                                          spanOfMoleculeDynamics(), components);
+    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                                          components);
     propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
                                                moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
                                                currentCycle, currentBlock);
@@ -478,7 +470,6 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   mc_moves_cputime.propertySampling += (t2 - t1);
 }
 
-
 void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
 {
   if (propertyNumberOfMoleculesEvolution.has_value())
@@ -495,8 +486,6 @@ void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
   }
 }
 
-
-
 void System::precomputeTotalRigidEnergy() noexcept
 {
   Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField,
@@ -505,10 +494,10 @@ void System::precomputeTotalRigidEnergy() noexcept
 
 void System::precomputeTotalGradients() noexcept
 {
-  runningEnergies = Integrators::updateGradients(
-      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
-      components, eik_x, eik_y, eik_z, eik_xy,
-      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
+  runningEnergies = Integrators::updateGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                                 spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x,
+                                                 eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik,
+                                                 interpolationGrids, numberOfMoleculesPerComponent);
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -534,6 +523,11 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     index += numberOfMoleculesPerComponent[i];
   }
+  if (framework && !framework->rigid)
+  {
+    runningIntraEnergy +=
+        Interactions::computeFrameworkIntraMolecularEnergy(*framework, simulationBox, frameworkAtomPositions);
+  }
 
   if (forceField.computePolarization)
   {
@@ -551,7 +545,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy intermolecularEnergy;
     if (forceField.omitInterPolarization)
     {
-      intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+      intermolecularEnergy =
+          Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
     }
     else
     {
@@ -571,8 +566,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
     RunningEnergy externalFieldEnergy;
-    Interactions::computeExternalFieldEnergy(hasExternalField,
-      forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
+    Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
+                                             externalFieldEnergy, externalFieldInterpolationGrid);
 
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
            ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
@@ -594,8 +589,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
         numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
     RunningEnergy externalFieldEnergy;
-    Interactions::computeExternalFieldEnergy(hasExternalField,
-      forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
+    Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
+                                             externalFieldEnergy, externalFieldInterpolationGrid);
 
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
            ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
@@ -682,15 +677,15 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
-  pressureInfo =
-      pairSum(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
-                                forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
+  pressureInfo = pairSum(pressureInfo,
+                         Interactions::computeInterMolecularEnergyStrainDerivative(
+                             forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
 
-  pressureInfo = pairSum(
-      pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
-                        eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                        framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                        spanOfMoleculeDynamics(), netChargeFramework, netChargePerComponent));
+  pressureInfo = pairSum(pressureInfo,
+                         Interactions::computeEwaldFourierEnergyStrainDerivative(
+                             eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
+                             framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
+                             spanOfMoleculeDynamics(), netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -843,23 +838,17 @@ void System::checkCartesianPositions()
   }
 }
 
-
-
-
-
-
-void System::setThermostat(const std::optional<Thermostat> &thermo)
+void System::setThermostat(const std::optional<Thermostat>& thermo)
 {
   if (thermo.has_value())
   {
-    thermostat = Thermostat(temperature, timeStep, 
-                            translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
+    thermostat = Thermostat(temperature, timeStep, translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
                             thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps,
                             thermo->timeScaleParameterThermostat);
   }
 }
 
-void System::setSamplePDBMovie(const std::optional<SampleMovie> &movie)
+void System::setSamplePDBMovie(const std::optional<SampleMovie>& movie)
 {
   if (movie.has_value())
   {
@@ -876,17 +865,16 @@ void System::updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle
   }
 }
 
-void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram> &hist)
+void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram>& hist)
 {
   if (hist.has_value())
   {
-    averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(hist->numberOfBlocks, components.size(), 
-                                                                hist->range, hist->sampleEvery, hist->writeEvery);
+    averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(
+        hist->numberOfBlocks, components.size(), hist->range, hist->sampleEvery, hist->writeEvery);
   }
 }
 
-
-void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram> &hist)
+void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram>& hist)
 {
   if (hist.has_value())
   {
@@ -894,7 +882,7 @@ void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogr
   }
 }
 
-void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &grid)
+void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid>& grid)
 {
   if (grid.has_value())
   {
@@ -902,10 +890,9 @@ void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid> &gr
   }
 }
 
-
 void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property)
 {
-  if(property.has_value())
+  if (property.has_value())
   {
     propertyNumberOfMoleculesEvolution = property;
   }
@@ -913,7 +900,7 @@ void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberO
 
 void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property)
 {
-  if(property.has_value())
+  if (property.has_value())
   {
     propertyVolumeEvolution = property;
   }
@@ -921,63 +908,45 @@ void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> p
 
 void System::setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property)
 {
-  if(property.has_value())
+  if (property.has_value())
   {
     propertyConservedEnergyEvolution = property;
   }
 }
 
-void System::setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction> &rdf)
+void System::setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction>& rdf)
 {
-  if(rdf.has_value())
+  if (rdf.has_value())
   {
     propertyConventionalRadialDistributionFunction = PropertyConventionalRadialDistributionFunction(
-           5,
-           forceField.pseudoAtoms.size(),
-           rdf->numberOfBins,
-           12.0,
-           rdf->sampleEvery,
-           rdf->writeEvery
-         );
+        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, 12.0, rdf->sampleEvery, rdf->writeEvery);
   }
 }
 
-void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFunction> &rdf)
+void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf)
 {
-  if(rdf.has_value())
+  if (rdf.has_value())
   {
     propertyRadialDistributionFunction = PropertyRadialDistributionFunction();
   }
 }
 
-void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement> &msd)
+void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd)
 {
-  if(msd.has_value())
+  if (msd.has_value())
   {
-    propertyMSD = PropertyMeanSquaredDisplacement(
-           numberOfMoleculesPerComponent,
-           moleculeData.size(),
-           timeStep,
-           msd->numberOfBlockElementsMSD,
-           msd->sampleEvery,
-           msd->writeEvery
-        );
+    propertyMSD = PropertyMeanSquaredDisplacement(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,
+                                                  msd->numberOfBlockElementsMSD, msd->sampleEvery, msd->writeEvery);
   }
 }
 
-void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction> &vacf)
+void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf)
 {
-  if(vacf.has_value())
+  if (vacf.has_value())
   {
-    propertyVACF = PropertyVelocityAutoCorrelationFunction(
-           numberOfMoleculesPerComponent,
-           moleculeData.size(),
-           timeStep,
-           vacf->numberOfBuffersVACF,
-           vacf->bufferLengthVACF,
-           vacf->sampleEvery,
-           vacf->writeEvery);
-
+    propertyVACF = PropertyVelocityAutoCorrelationFunction(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,
+                                                           vacf->numberOfBuffersVACF, vacf->bufferLengthVACF,
+                                                           vacf->sampleEvery, vacf->writeEvery);
   }
 }
 
@@ -1244,21 +1213,21 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyVolumeEvolution;
   archive >> s.propertyConservedEnergyEvolution;
 
-  //archive >> s.columnNumberOfGridPoints;
-  //archive >> s.columnTotalPressure;
-  //archive >> s.columnPressureGradient;
-  //archive >> s.columnVoidFraction;
-  //archive >> s.columnParticleDensity;
-  //archive >> s.columnEntranceVelocity;
-  //archive >> s.columnLength;
-  //archive >> s.columnTimeStep;
-  //archive >> s.columnNumberOfTimeSteps;
-  //archive >> s.columnAutoNumberOfTimeSteps;
-  //archive >> s.mixturePredictionMethod;
-  //archive >> s.pressure_range;
-  //archive >> s.numberOfCarrierGases;
-  //archive >> s.carrierGasComponent;
-  //archive >> s.maxIsothermTerms;
+  // archive >> s.columnNumberOfGridPoints;
+  // archive >> s.columnTotalPressure;
+  // archive >> s.columnPressureGradient;
+  // archive >> s.columnVoidFraction;
+  // archive >> s.columnParticleDensity;
+  // archive >> s.columnEntranceVelocity;
+  // archive >> s.columnLength;
+  // archive >> s.columnTimeStep;
+  // archive >> s.columnNumberOfTimeSteps;
+  // archive >> s.columnAutoNumberOfTimeSteps;
+  // archive >> s.mixturePredictionMethod;
+  // archive >> s.pressure_range;
+  // archive >> s.numberOfCarrierGases;
+  // archive >> s.carrierGasComponent;
+  // archive >> s.maxIsothermTerms;
 
   archive >> s.interpolationGrids;
   archive >> s.externalFieldInterpolationGrid;

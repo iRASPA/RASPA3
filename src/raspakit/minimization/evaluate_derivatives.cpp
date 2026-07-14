@@ -7,8 +7,8 @@ import std;
 import double3;
 import running_energy;
 
-void evaluateDerivatives(System &system, const MinimizationDofLayout &layout, DerivativeCapabilities capabilities,
-                         DerivativeResults &results)
+void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, DerivativeCapabilities capabilities,
+                         DerivativeResults& results)
 {
   results.energy = 0.0;
 
@@ -18,8 +18,7 @@ void evaluateDerivatives(System &system, const MinimizationDofLayout &layout, De
     results.hessian.resize(layout.numDofs(), nStrain);
   }
 
-  if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain ||
-      capabilities.hessianStrainStrain)
+  if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain)
   {
     results.hessian.zero();
   }
@@ -31,8 +30,10 @@ void evaluateDerivatives(System &system, const MinimizationDofLayout &layout, De
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  std::span<Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
+  std::span<AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
 
-  for (AtomDynamics &dynamics : moleculeDynamics)
+  for (AtomDynamics& dynamics : system.atomDynamics)
   {
     dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
@@ -88,35 +89,52 @@ void evaluateDerivatives(System &system, const MinimizationDofLayout &layout, De
         system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
     results.energy += inversionBendEnergy.inversionBend;
 
-    if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain ||
-        capabilities.hessianStrainStrain)
+    if (system.framework && !system.framework->rigid)
+    {
+      const RunningEnergy frameworkIntraEnergy = Interactions::computeFrameworkIntraMolecularHessian(
+          *system.framework, system.simulationBox, frameworkAtomPositions, layout, results.hessian, frameworkDynamics);
+      results.energy += frameworkIntraEnergy.potentialEnergy();
+    }
+
+    if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain)
     {
       RunningEnergy interEnergy =
           Interactions::computeInterMolecularHessian(system, layout, results.hessian, moleculeDynamics);
       results.energy += interEnergy.moleculeMoleculeVDW + interEnergy.moleculeMoleculeCharge;
 
-      RunningEnergy frameworkEnergy =
-          Interactions::computeFrameworkMoleculeHessian(system, layout, results.hessian, moleculeDynamics);
+      RunningEnergy frameworkEnergy = Interactions::computeFrameworkMoleculeHessian(
+          system, layout, results.hessian, moleculeDynamics, frameworkDynamics);
       results.energy += frameworkEnergy.frameworkMoleculeVDW + frameworkEnergy.frameworkMoleculeCharge;
 
-      RunningEnergy ewaldEnergy =
-          Interactions::computeEwaldFourierHessian(system, layout, results.hessian, moleculeDynamics);
+      RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierHessian(system, layout, results.hessian,
+                                                                           moleculeDynamics, frameworkDynamics);
       results.energy += ewaldEnergy.ewald_fourier + ewaldEnergy.ewald_self + ewaldEnergy.ewald_exclusion;
     }
 
     if (capabilities.gradient && !results.gradient.empty())
     {
+      for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
+      {
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          if (const auto dof = layout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis)))
+          {
+            results.gradient[*dof] = (&frameworkDynamics[atom].gradient.x)[axis];
+          }
+        }
+      }
+
       const Minimization::RigidDerivativeCache rigidCache =
           Minimization::RigidDerivativeCache::build(system.moleculeData, system.components, moleculeAtomPositions);
       std::size_t moleculeIndex = 0;
-      for (const Molecule &molecule : system.moleculeData)
+      for (const Molecule& molecule : system.moleculeData)
       {
-        const Component &component = system.components[molecule.componentId];
+        const Component& component = system.components[molecule.componentId];
         if (!component.rigid)
         {
           for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
           {
-            const AtomDynamics &dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
+            const AtomDynamics& dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
             for (std::size_t axis = 0; axis < 3; ++axis)
             {
               if (auto dof = layout.flexibleAtomDof(moleculeIndex, localAtom, static_cast<MinimizationDofAxis>(axis)))
@@ -132,8 +150,8 @@ void evaluateDerivatives(System &system, const MinimizationDofLayout &layout, De
           double3 orientationGradient{};
           for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
           {
-            const AtomDynamics &dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
-            const Minimization::RigidAtomDerivatives &derivatives = rigidCache.atom(moleculeIndex, localAtom);
+            const AtomDynamics& dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
+            const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
             centerOfMassGradient += dynamics.gradient;
             orientationGradient.x += double3::dot(dynamics.gradient, derivatives.dVecX);
             orientationGradient.y += double3::dot(dynamics.gradient, derivatives.dVecY);

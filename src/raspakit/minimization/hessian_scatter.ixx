@@ -19,39 +19,49 @@ export namespace Minimization
  * Uses RASPA2 conventions with f1 = (1/r) dU/dr and f2 = d²U/dr² terms assembled as
  * f2 * dr_i dr_j + f1 * delta_ij on diagonal blocks and the negative cross block.
  */
-void scatterAtomicPositionPosition(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
+void scatterAtomicPositionPosition(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
                                    std::size_t moleculeA, std::size_t localAtomA, std::size_t moleculeB,
-                                   std::size_t localAtomB, double f1, double f2, const double3 &dr);
+                                   std::size_t localAtomB, double f1, double f2, const double3& dr);
+void scatterAtomicPositionPositionByDof(GeneralizedHessian& hessian, std::size_t baseA, std::size_t baseB, double f1,
+                                        double f2, const double3& dr);
 
 /** Scatter intermolecular / framework pair Hessian blocks for flexible and rigid molecules. */
-void scatterInteractionHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                               const RigidDerivativeCache &rigidCache, std::size_t moleculeA,
-                               std::size_t localAtomA, bool rigidA, const double3 &posA, const double3 &comA,
-                               std::size_t moleculeB, std::size_t localAtomB, bool rigidB, const double3 &posB,
-                               const double3 &comB, double f1, double f2, const double3 &dr);
+void scatterInteractionHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                               const RigidDerivativeCache& rigidCache, std::size_t moleculeA, std::size_t localAtomA,
+                               bool rigidA, const double3& posA, const double3& comA, std::size_t moleculeB,
+                               std::size_t localAtomB, bool rigidB, const double3& posB, const double3& comB, double f1,
+                               double f2, const double3& dr);
 
 /**
  * Scatter a framework-molecule pair; the framework atom carries no degrees of freedom, so only the
  * molecule-side diagonal blocks are written. Convention: dr = posMolecule - posFramework.
  */
-void scatterFrameworkMoleculeHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                     const RigidDerivativeCache &rigidCache, std::size_t moleculeIndex,
-                                     std::size_t localAtom, bool rigid, double f1, double f2, const double3 &dr);
+void scatterFrameworkMoleculeHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                     const RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
+                                     std::size_t localAtom, bool rigid, double f1, double f2, const double3& dr);
+void scatterFlexibleFrameworkMoleculeHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                             const RigidDerivativeCache& rigidCache, std::size_t frameworkAtom,
+                                             std::size_t moleculeIndex, std::size_t localAtom, bool moleculeRigid,
+                                             double f1, double f2, const double3& dr);
 
 /** Scatter a harmonic (and related) bend Hessian for a flexible triplet of atoms. */
-void scatterBendHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout, std::size_t moleculeIndex,
+void scatterBendHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout, std::size_t moleculeIndex,
                         std::size_t localAtomA, std::size_t localAtomB, std::size_t localAtomC,
-                        const BendHessianGeometry &geometry);
+                        const BendHessianGeometry& geometry);
+void scatterBendHessianByDof(GeneralizedHessian& hessian, const std::array<std::size_t, 3>& bases,
+                             const BendHessianGeometry& geometry);
 
 /** Scatter a dihedral (torsion / improper torsion) Hessian for a flexible quadruplet of atoms. */
-void scatterTorsionHessian(GeneralizedHessian &hessian, const MinimizationDofLayout &layout, std::size_t moleculeIndex,
+void scatterTorsionHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout, std::size_t moleculeIndex,
                            std::size_t localAtomA, std::size_t localAtomB, std::size_t localAtomC,
-                           std::size_t localAtomD, const TorsionHessianGeometry &geometry);
+                           std::size_t localAtomD, const TorsionHessianGeometry& geometry);
+void scatterTorsionHessianByDof(GeneralizedHessian& hessian, const std::array<std::size_t, 4>& bases,
+                                const TorsionHessianGeometry& geometry);
 
 /** Isotropic strain coupling for a single strain degree of freedom (NPT, nStrain = 1). */
-void scatterAtomicPositionStrainIsotropic(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
+void scatterAtomicPositionStrainIsotropic(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
                                           std::size_t moleculeA, std::size_t localAtomA, std::size_t moleculeB,
-                                          std::size_t localAtomB, double f1, double f2, const double3 &dr);
+                                          std::size_t localAtomB, double f1, double f2, const double3& dr);
 
 /**
  * One-sided isotropic position-strain scatter for one site of an interaction pair, valid for
@@ -68,14 +78,14 @@ void scatterAtomicPositionStrainIsotropic(GeneralizedHessian &hessian, const Min
  * the partner. For a flexible-flexible pair (c = dr) this reduces to the classic
  * f2 r^2 dr_a + 2 f1 dr_a form.
  */
-void scatterSitePositionStrainIsotropic(GeneralizedHessian &hessian, const MinimizationDofLayout &layout,
-                                        const RigidDerivativeCache &rigidCache, std::size_t moleculeIndex,
+void scatterSitePositionStrainIsotropic(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                        const RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
                                         std::size_t localAtom, bool rigid, double sign, double f1, double f2,
-                                        const double3 &dr, const double3 &drStrainDerivative);
+                                        const double3& dr, const double3& drStrainDerivative);
 
 /** Isotropic strain-strain contribution for a single strain degree of freedom. */
-void scatterAtomicStrainStrainIsotropic(GeneralizedHessian &hessian, double f1, double f2, const double3 &dr,
-                                        const double3 &posA, const double3 &comA, const double3 &posB,
-                                        const double3 &comB, bool rigidA, bool rigidB);
+void scatterAtomicStrainStrainIsotropic(GeneralizedHessian& hessian, double f1, double f2, const double3& dr,
+                                        const double3& posA, const double3& comA, const double3& posB,
+                                        const double3& comB, bool rigidA, bool rigidB);
 
 }  // namespace Minimization

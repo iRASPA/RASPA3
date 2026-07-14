@@ -9,6 +9,8 @@ import atom;
 import atom_dynamics;
 import molecule;
 import forcefield;
+import framework;
+import int3;
 import component;
 import system;
 import simulationbox;
@@ -35,7 +37,7 @@ struct EwaldEnergyEvaluator
   std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik;
   std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik;
 
-  double operator()(const System &system, const SimulationBox &box)
+  double operator()(const System& system, const SimulationBox& box)
   {
     RunningEnergy energy = Interactions::computeEwaldFourierEnergy(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, system.forceField, box, system.components,
@@ -46,14 +48,13 @@ struct EwaldEnergyEvaluator
 
 ForceField makeChargedForceField()
 {
-  return ForceField({{"P", false, 15.0, 0.8, 0.0, 8, false},
-                     {"N", false, 14.0, -0.4, 0.0, 8, false}},
-                    {{60.0, 3.0}, {40.0, 3.2}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true, false, true);
+  return ForceField({{"P", false, 15.0, 0.8, 0.0, 8, false}, {"N", false, 14.0, -0.4, 0.0, 8, false}},
+                    {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true,
+                    false, true);
 }
 
 // Two flexible bent 3-site molecules with zero net charge each.
-System makeFlexiblePairSystem(const ForceField &forceField)
+System makeFlexiblePairSystem(const ForceField& forceField)
 {
   ConnectivityTable connectivityTable(3);
   connectivityTable[0, 1] = true;
@@ -61,11 +62,11 @@ System makeFlexiblePairSystem(const ForceField &forceField)
   connectivityTable[1, 2] = true;
   connectivityTable[2, 1] = true;
 
-  Component component = Component(forceField, "flexibleIon", 100.0, 1e6, 0.2,
-                                  {Atom({-0.9, 0.4, 0.1}, -0.4, 1.0, 0, 1, 0, false, false),
-                                   Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false),
-                                   Atom({1.0, 0.3, -0.2}, -0.4, 1.0, 0, 1, 0, false, false)},
-                                  connectivityTable, Potentials::IntraMolecularPotentials{}, 5, 21);
+  Component component = Component(
+      forceField, "flexibleIon", 100.0, 1e6, 0.2,
+      {Atom({-0.9, 0.4, 0.1}, -0.4, 1.0, 0, 1, 0, false, false), Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false),
+       Atom({1.0, 0.3, -0.2}, -0.4, 1.0, 0, 1, 0, false, false)},
+      connectivityTable, Potentials::IntraMolecularPotentials{}, 5, 21);
   component.rigid = false;
 
   System system =
@@ -82,12 +83,11 @@ System makeFlexiblePairSystem(const ForceField &forceField)
   return system;
 }
 
-System makeSingleIonSystem(const ForceField &forceField)
+System makeSingleIonSystem(const ForceField& forceField)
 {
   Component component =
-      Component(forceField, "singleIon", 100.0, 1e6, 0.2,
-                {Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false)}, ConnectivityTable(1),
-                Potentials::IntraMolecularPotentials{}, 5, 21);
+      Component(forceField, "singleIon", 100.0, 1e6, 0.2, {Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false)},
+                ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 5, 21);
   component.rigid = false;
 
   System system =
@@ -102,12 +102,12 @@ struct FlexibleDofLabel
   std::size_t axis;
 };
 
-std::vector<FlexibleDofLabel> buildFlexibleDofLabels(const MinimizationDofLayout &layout, const System &system)
+std::vector<FlexibleDofLabel> buildFlexibleDofLabels(const MinimizationDofLayout& layout, const System& system)
 {
   std::vector<FlexibleDofLabel> labels(layout.numDofs());
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
-    const Molecule &molecule = system.moleculeData[moleculeIndex];
+    const Molecule& molecule = system.moleculeData[moleculeIndex];
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
       for (std::size_t axis = 0; axis < 3; ++axis)
@@ -121,10 +121,10 @@ std::vector<FlexibleDofLabel> buildFlexibleDofLabels(const MinimizationDofLayout
   return labels;
 }
 
-void setRigidMoleculePositions(System &system, std::size_t moleculeIndex)
+void setRigidMoleculePositions(System& system, std::size_t moleculeIndex)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
-  const Component &component = system.components[molecule.componentId];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
   const double3x3 rotation = double3x3::buildRotationMatrixInverse(molecule.orientation);
   const double3 com = molecule.centerOfMassPosition;
   for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
@@ -134,7 +134,7 @@ void setRigidMoleculePositions(System &system, std::size_t moleculeIndex)
   }
 }
 
-simd_quatd quatFromRotationVector(const double3 &omega)
+simd_quatd quatFromRotationVector(const double3& omega)
 {
   const double angle = std::sqrt(double3::dot(omega, omega));
   if (angle < 1e-30)
@@ -152,10 +152,10 @@ struct RigidState
 
 // Orientation displacements premultiply the base orientation with the exponential map of the
 // rotation vector; the center of mass scales with the isotropic strain.
-void applyDisplacedState(System &system, std::size_t moleculeIndex, const RigidState &base,
+void applyDisplacedState(System& system, std::size_t moleculeIndex, const RigidState& base,
                          std::span<const double> displacement, double strainFactor)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
   molecule.centerOfMassPosition =
       strainFactor * (base.com + double3(displacement[0], displacement[1], displacement[2]));
   const double3 omega(displacement[3], displacement[4], displacement[5]);
@@ -163,6 +163,78 @@ void applyDisplacedState(System &system, std::size_t moleculeIndex, const RigidS
   setRigidMoleculePositions(system, moleculeIndex);
 }
 }  // namespace
+
+TEST(minimization_hessian_ewald, flexible_framework_charge_blocks_match_finite_difference)
+{
+  ForceField forceField = makeChargedForceField();
+  const SimulationBox box(25.0, 25.0, 25.0);
+  const Atom frameworkAtom({0.3, 0.4, 0.5}, 0.8, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "charged-framework", box, 1, {frameworkAtom}, {frameworkAtom}, int3(1, 1, 1));
+  framework.rigid = false;
+  Component component =
+      Component(forceField, "single-ion", 100.0, 1e6, 0.2, {Atom({0.0, 0.0, 0.0}, -0.4, 1.0, 0, 1, 0, false, false)},
+                ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 5, 21);
+  component.rigid = false;
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {component}, {}, {1}, 5);
+  system.spanOfFrameworkAtoms()[0].position = {7.5, 10.0, 12.5};
+  system.spanOfMoleculeAtoms()[0].position = {13.2, 11.7, 9.8};
+
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout(system.moleculeData, system.components, system.spanOfFrameworkAtoms().size());
+  ASSERT_EQ(layout.numDofs(), 6u);
+  GeneralizedHessian hessian(layout.numDofs(), 0);
+  std::vector<AtomDynamics> moleculeDynamics(1);
+  std::vector<AtomDynamics> frameworkDynamics(1);
+  Interactions::computeEwaldFourierHessian(system, layout, hessian, moleculeDynamics, frameworkDynamics);
+
+  const auto energy = [&]()
+  {
+    GeneralizedHessian unused(layout.numDofs(), 0);
+    std::vector<AtomDynamics> moleculeScratch(1);
+    std::vector<AtomDynamics> frameworkScratch(1);
+    const RunningEnergy value =
+        Interactions::computeEwaldFourierHessian(system, layout, unused, moleculeScratch, frameworkScratch);
+    return value.ewald_fourier + value.ewald_exclusion;
+  };
+  std::array<Atom*, 2> atoms{&system.spanOfFrameworkAtoms()[0], &system.spanOfMoleculeAtoms()[0]};
+  constexpr double delta = 5.0e-4;
+  constexpr double tolerance = 5.0e-2;
+  const double referenceEnergy = energy();
+  for (std::size_t row = 0; row < 6; ++row)
+  {
+    for (std::size_t column = 0; column < 6; ++column)
+    {
+      Atom& atomA = *atoms[row / 3];
+      Atom& atomB = *atoms[column / 3];
+      double numerical{};
+      if (row == column)
+      {
+        (&atomA.position.x)[row % 3] += delta;
+        const double plus = energy();
+        (&atomA.position.x)[row % 3] -= 2.0 * delta;
+        const double minus = energy();
+        (&atomA.position.x)[row % 3] += delta;
+        numerical = (plus - 2.0 * referenceEnergy + minus) / (delta * delta);
+      }
+      else
+      {
+        (&atomA.position.x)[row % 3] += delta;
+        (&atomB.position.x)[column % 3] += delta;
+        const double ePP = energy();
+        (&atomB.position.x)[column % 3] -= 2.0 * delta;
+        const double ePM = energy();
+        (&atomA.position.x)[row % 3] -= 2.0 * delta;
+        const double eMM = energy();
+        (&atomB.position.x)[column % 3] += 2.0 * delta;
+        const double eMP = energy();
+        (&atomA.position.x)[row % 3] += delta;
+        (&atomB.position.x)[column % 3] -= delta;
+        numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
+      }
+      EXPECT_NEAR(hessian(row, column), numerical, tolerance) << "row=" << row << " column=" << column;
+    }
+  }
+}
 
 TEST(minimization_hessian_ewald, flexible_charged_pair_matches_finite_difference)
 {
@@ -187,7 +259,7 @@ TEST(minimization_hessian_ewald, flexible_charged_pair_matches_finite_difference
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   const std::vector<FlexibleDofLabel> labels = buildFlexibleDofLabels(layout, system);
 
-  auto perturb = [&](const FlexibleDofLabel &label, double amount)
+  auto perturb = [&](const FlexibleDofLabel& label, double amount)
   { (&atoms[label.atom].position.x)[label.axis] += amount; };
 
   // Gradient check.
@@ -258,7 +330,7 @@ TEST(minimization_hessian_ewald, single_ion_bogusz_correction_cancels_strain_der
     }
   }
   EXPECT_NEAR(hessian.strainStrain()[0], 0.0, tolerance);
-  const double3x3 &strain = hessian.strainGradient();
+  const double3x3& strain = hessian.strainGradient();
   EXPECT_NEAR(strain.ax, 0.0, tolerance);
   EXPECT_NEAR(strain.ay, 0.0, tolerance);
   EXPECT_NEAR(strain.az, 0.0, tolerance);
@@ -274,8 +346,8 @@ TEST(minimization_hessian_ewald, single_ion_bogusz_correction_cancels_strain_der
   {
     const double scale = std::exp(epsilon);
     system.spanOfMoleculeAtoms()[0].position = scale * basePosition;
-    return evaluator(system, SimulationBox(scale * baseBoxLengths.x, scale * baseBoxLengths.y,
-                                           scale * baseBoxLengths.z));
+    return evaluator(system,
+                     SimulationBox(scale * baseBoxLengths.x, scale * baseBoxLengths.y, scale * baseBoxLengths.z));
   };
 
   // A comparatively large step suppresses cancellation noise from the constant self-energy

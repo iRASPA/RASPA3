@@ -8,6 +8,9 @@ import simd_quatd;
 import atom;
 import molecule;
 import component;
+import framework;
+import int3;
+import bond_potential;
 import forcefield;
 import system;
 import simulationbox;
@@ -21,10 +24,10 @@ import sample_movies;
 
 namespace
 {
-void setRigidMoleculePositions(System &system, std::size_t moleculeIndex)
+void setRigidMoleculePositions(System& system, std::size_t moleculeIndex)
 {
-  Molecule &molecule = system.moleculeData[moleculeIndex];
-  const Component &component = system.components[molecule.componentId];
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
   const double3x3 rotation = double3x3::buildRotationMatrixInverse(molecule.orientation);
   for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
   {
@@ -117,8 +120,7 @@ TEST(minimization_driver, generalized_displacement_updates_rigid_quaternion_char
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Component co2 = Component::makeCO2(forceField, 0, false);
-  System system =
-      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {1}, 5);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {1}, 5);
   system.moleculeData[0].centerOfMassPosition = double3(8.0, 9.0, 10.0);
   system.moleculeData[0].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
   setRigidMoleculePositions(system, 0);
@@ -132,8 +134,7 @@ TEST(minimization_driver, generalized_displacement_updates_rigid_quaternion_char
   applyGeneralizedDisplacement(system, layout, displacement);
 
   EXPECT_NEAR(system.moleculeData[0].centerOfMassPosition.x, 8.2, 1e-14);
-  const double3 oxygenOffset = system.spanOfMoleculeAtoms()[0].position -
-                               system.moleculeData[0].centerOfMassPosition;
+  const double3 oxygenOffset = system.spanOfMoleculeAtoms()[0].position - system.moleculeData[0].centerOfMassPosition;
   EXPECT_NEAR(std::sqrt(double3::dot(oxygenOffset, oxygenOffset)), 1.149, 1e-12);
   EXPECT_GT(std::abs(oxygenOffset.x), 0.05);
 }
@@ -142,8 +143,8 @@ TEST(minimization_driver, rigid_methane_pair_reaches_local_minimum)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Component methane = Component::makeMethane(forceField, 0);
-  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {},
-                         {2}, 5);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
   system.moleculeData[0].centerOfMassPosition = double3(10.0, 12.5, 12.5);
   system.moleculeData[1].centerOfMassPosition = double3(13.0, 12.5, 12.5);
   setRigidMoleculePositions(system, 0);
@@ -169,8 +170,8 @@ TEST(minimization_driver, writes_pdb_movie_during_minimization)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Component methane = Component::makeMethane(forceField, 0);
-  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {},
-                         {2}, 5);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
   system.moleculeData[0].centerOfMassPosition = double3(10.0, 12.5, 12.5);
   system.moleculeData[1].centerOfMassPosition = double3(13.0, 12.5, 12.5);
   setRigidMoleculePositions(system, 0);
@@ -196,13 +197,45 @@ TEST(minimization_driver, writes_pdb_movie_during_minimization)
   EXPECT_GT(std::ranges::count(contents, '\n'), 5u);
 }
 
+TEST(minimization_driver, flexible_framework_bond_reaches_local_minimum)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{1.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, false, false, false);
+  const SimulationBox box(10.0, 10.0, 10.0);
+  const Atom atomA({0.20, 0.5, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true);
+  const Atom atomB({0.40, 0.5, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "flexible-dimer", box, 1, {atomA, atomB}, {atomA, atomB}, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.intraMolecularPotentials.bonds.emplace_back(std::array<std::size_t, 2>{0, 1}, BondType::Harmonic,
+                                                        std::vector<double>{1000.0, 1.5});
+  framework.intraMolecularImageShifts.bonds.push_back({int3{}, int3{}});
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {}, {}, {}, 5);
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 100;
+  options.maximumStepLength = 0.2;
+  options.convergenceFactor = 0.0;
+  options.rmsGradientTolerance = 1.0e-8;
+  options.maxGradientTolerance = 1.0e-7;
+  options.printEvery = 100;
+  Minimization minimization(options, {system}, false);
+  ASSERT_NO_THROW(minimization.run());
+
+  ASSERT_EQ(minimization.results.size(), 1u);
+  EXPECT_TRUE(minimization.results[0].converged);
+  EXPECT_LT(minimization.results[0].finalEnergy, minimization.results[0].initialEnergy);
+  const std::span<const Atom> minimizedAtoms = minimization.systems[0].spanOfFrameworkAtoms();
+  const double3 dr = minimizedAtoms[0].position - minimizedAtoms[1].position;
+  EXPECT_NEAR(std::sqrt(double3::dot(dr, dr)), 1.5, 1.0e-8);
+}
+
 TEST(minimization_driver, flexible_methane_pair_reaches_local_minimum)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Component methane = Component::makeMethane(forceField, 0);
   methane.rigid = false;
-  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {},
-                         {2}, 5);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
   system.spanOfMoleculeAtoms()[0].position = double3(10.0, 12.5, 12.5);
   system.spanOfMoleculeAtoms()[1].position = double3(13.0, 12.5, 12.5);
 
