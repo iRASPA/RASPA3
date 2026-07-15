@@ -96,9 +96,10 @@ cd examples/basic/1_mc_methane_in_box
 - Smart MC
 - partial molar energies/volumes
 - polarization
-- optimization
+- Baker/MFO-optimization
 - flexible frameworks
 - elastic constants
+- phonon dispersion curves
 
 # Todo-list
 - ASE interface

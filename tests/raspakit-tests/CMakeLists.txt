@@ -42,6 +42,8 @@ add_executable(unit_tests_raspakit
   minimization_variable_cell.cpp
   elastic_constants.cpp
   normal_modes.cpp
+  force_constants.cpp
+  phonon_dispersion.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp
