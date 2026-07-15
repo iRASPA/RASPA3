@@ -41,6 +41,7 @@ add_executable(unit_tests_raspakit
   minimization_driver.cpp
   minimization_variable_cell.cpp
   elastic_constants.cpp
+  normal_modes.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp

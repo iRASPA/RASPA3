@@ -17,6 +17,7 @@ import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 import minimization_cell_layout;
 import elastic_constants;
+import normal_modes;
 import units;
 
 namespace
@@ -119,10 +120,14 @@ void Minimization::setup()
       std::print(streams[systemIndex], "{}\n", system.writeSystemStatus());
       std::print(streams[systemIndex],
                  "Baker minimization: maxSteps={} maxStep={} maxCellStep={} rmsTolerance={} maxTolerance={} "
-                 "minEigenvalue={} computeElasticConstants={} elasticEigenvalueTolerance={}\n\n",
+                 "minEigenvalue={} computeElasticConstants={} elasticEigenvalueTolerance={} computeNormalModes={} "
+                 "normalModeMovies={} normalModeMoviePeriods={} normalModeMoviePointsPerPeriod={} "
+                 "normalModeMovieAmplitude={}\n\n",
                  options.maximumNumberOfSteps, options.maximumStepLength, options.maximumCellStepLength,
                  options.rmsGradientTolerance, options.maxGradientTolerance, options.minimumEigenvalue,
-                 options.computeElasticConstants, options.elasticEigenvalueTolerance);
+                 options.computeElasticConstants, options.elasticEigenvalueTolerance, options.computeNormalModes,
+                 options.normalModeMovies, options.normalModeMoviePeriods, options.normalModeMoviePointsPerPeriod,
+                 options.normalModeMovieAmplitude);
     }
   }
 }
@@ -461,9 +466,21 @@ void Minimization::runPhase()
     {
       allConverged = false;
     }
-    else if (options.computeElasticConstants)
+    else
     {
-      systemResult.elasticConstants = computeElasticConstants(system, options.elasticEigenvalueTolerance);
+      if (options.computeElasticConstants)
+      {
+        systemResult.elasticConstants = computeElasticConstants(system, options.elasticEigenvalueTolerance);
+      }
+      if (options.computeNormalModes || options.normalModeMovies)
+      {
+        systemResult.normalModes = computeNormalModes(system);
+        if (options.normalModeMovies && outputToFiles)
+        {
+          writeNormalModeMovies(system, *systemResult.normalModes, systemIndex, options.normalModeMoviePeriods,
+                                options.normalModeMoviePointsPerPeriod, options.normalModeMovieAmplitude);
+        }
+      }
     }
   }
 
@@ -574,6 +591,22 @@ void Minimization::output()
       }
       std::print(json, "\n  }}");
     }
+    if (result.normalModes)
+    {
+      const NormalModesResult& modes = *result.normalModes;
+      const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+      std::print(json, ",\n  \"normalModes\": {{\n");
+      std::print(json,
+                 "    \"numberOfModes\": {},\n    \"negativeModes\": {},\n    \"zeroModes\": {},\n"
+                 "    \"discardedRotationalDofs\": {},\n",
+                 modes.numberOfModes, modes.negativeModes, modes.zeroModes, modes.discardedRotationalDofs);
+      std::print(json, "    \"eigenvalueUnit\": \"{}\",\n    \"eigenvalues\": ",
+                 reduced ? "reduced omega^2" : "ps^-2");
+      writeArray(json, modes.eigenvalues, 1.0);
+      std::print(json, ",\n    \"frequencyUnit\": \"{}\",\n    \"frequencies\": ", reduced ? "reduced" : "cm^-1");
+      writeArray(json, normalModeFrequencies(modes), 1.0);
+      std::print(json, "\n  }}");
+    }
     std::print(json, "\n}}\n");
   }
 }
@@ -594,6 +627,10 @@ void Minimization::tearDown()
       if (result.elasticConstants)
       {
         std::print(streams[systemIndex], "{}", writeElasticConstants(*result.elasticConstants));
+      }
+      if (result.normalModes)
+      {
+        std::print(streams[systemIndex], "{}", writeNormalModes(*result.normalModes));
       }
     }
   }

@@ -14,6 +14,7 @@ import minimization_options;
 import minimization_baker;
 import minimization_generalized_coordinates;
 import elastic_constants;
+import normal_modes;
 
 export struct MinimizationSystemResult
 {
@@ -26,6 +27,7 @@ export struct MinimizationSystemResult
   std::size_t negativeModes{};
   std::size_t zeroModes{};
   std::optional<ElasticConstantsResult> elasticConstants{};
+  std::optional<NormalModesResult> normalModes{};
 };
 
 /** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */

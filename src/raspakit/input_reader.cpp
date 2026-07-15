@@ -337,6 +337,54 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     minimizationOptions.computeElasticConstants = parsed_data["ComputeElasticConstants"].get<bool>();
   }
 
+  if (parsed_data.contains("ComputeNormalModes"))
+  {
+    if (!parsed_data["ComputeNormalModes"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: ComputeNormalModes must be a boolean");
+    }
+    minimizationOptions.computeNormalModes = parsed_data["ComputeNormalModes"].get<bool>();
+  }
+
+  if (parsed_data.contains("NormalModeMovies"))
+  {
+    if (!parsed_data["NormalModeMovies"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: NormalModeMovies must be a boolean");
+    }
+    minimizationOptions.normalModeMovies = parsed_data["NormalModeMovies"].get<bool>();
+  }
+
+  if (parsed_data.contains("NormalModeMoviePeriods"))
+  {
+    if (!parsed_data["NormalModeMoviePeriods"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: NormalModeMoviePeriods must be a positive unsigned integer");
+    }
+    minimizationOptions.normalModeMoviePeriods = parsed_data["NormalModeMoviePeriods"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("NormalModeMoviePointsPerPeriod"))
+  {
+    if (!parsed_data["NormalModeMoviePointsPerPeriod"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: NormalModeMoviePointsPerPeriod must be a positive unsigned integer");
+    }
+    minimizationOptions.normalModeMoviePointsPerPeriod =
+        parsed_data["NormalModeMoviePointsPerPeriod"].get<std::size_t>();
+  }
+
+  parseMinimizationNumber("NormalModeMovieAmplitude", minimizationOptions.normalModeMovieAmplitude);
+
+  if (minimizationOptions.normalModeMovies &&
+      (minimizationOptions.normalModeMoviePeriods == 0 ||
+       minimizationOptions.normalModeMoviePointsPerPeriod == 0 || minimizationOptions.normalModeMovieAmplitude <= 0.0))
+  {
+    throw std::runtime_error(
+        "[Input reader]: NormalModeMoviePeriods and NormalModeMoviePointsPerPeriod must be positive and "
+        "NormalModeMovieAmplitude must be positive");
+  }
+
   if (minimizationOptions.maximumNumberOfSteps == 0 || minimizationOptions.maximumStepLength <= 0.0 ||
       minimizationOptions.maximumCellStepLength <= 0.0 || minimizationOptions.rmsGradientTolerance <= 0.0 ||
       minimizationOptions.maxGradientTolerance <= 0.0 || minimizationOptions.minimumEigenvalue <= 0.0 ||
@@ -2435,6 +2483,11 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "MinimumEigenvalue",
     "ComputeElasticConstants",
     "ElasticEigenvalueTolerance",
+    "ComputeNormalModes",
+    "NormalModeMovies",
+    "NormalModeMoviePeriods",
+    "NormalModeMoviePointsPerPeriod",
+    "NormalModeMovieAmplitude",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",

@@ -9,6 +9,8 @@
   "MinimumEigenvalue": 1.0e-3,
   "ComputeElasticConstants": true,
   "ElasticEigenvalueTolerance": 1.0e-8,
+  "computeNormalModes" : true,
+  "NormalModeMovies" : true,
   "PrintEvery": 1,
 
   "Systems": [

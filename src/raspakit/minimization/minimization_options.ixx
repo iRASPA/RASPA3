@@ -9,6 +9,11 @@ export struct MinimizationOptions
   std::size_t maximumNumberOfSteps{10000};
   std::size_t printEvery{1};
   bool computeElasticConstants{false};
+  bool computeNormalModes{false};
+  bool normalModeMovies{false};
+  std::size_t normalModeMoviePeriods{1};
+  std::size_t normalModeMoviePointsPerPeriod{16};
+  double normalModeMovieAmplitude{0.5};
   double maximumStepLength{0.3};
   double maximumCellStepLength{0.1};
   double rmsGradientTolerance{1.0e-6};

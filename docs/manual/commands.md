@@ -175,6 +175,27 @@ reported separately at the end of the simulation.
     in GPa (compliance in GPa^-1); shear entries use engineering-strain Voigt
     order `xx, yy, zz, yz, xz, xy`.
 
+    `"ComputeNormalModes" : boolean` optionally performs a Gamma-point
+    normal-mode analysis after convergence. The generalized Hessian is
+    mass-weighted (atomic masses for Cartesian degrees of freedom; molecular
+    mass and the space-frame inertia tensor for rigid-molecule center-of-mass
+    and orientation degrees of freedom) and diagonalized. Frequencies are
+    reported per mode as omega^2, THz, cm^-1, and meV (reduced units in the
+    reduced unit system); imaginary modes appear as negative frequencies.
+    Orientation directions with vanishing moment of inertia (single-bead or
+    linear rigid molecules) are excluded from the mass metric and show up as
+    zero modes.
+
+    `"NormalModeMovies" : boolean` optionally writes an animated PDB movie of
+    every normal mode into a `normal_modes` directory (implying the normal-mode
+    analysis). Each file `mode_XXXX.s{system}.pdb` animates the atoms
+    oscillating along the mode's displacement pattern. `"NormalModeMoviePeriods"
+    : integer` sets the number of full oscillation periods shown per movie
+    (default `1`), `"NormalModeMoviePointsPerPeriod" : integer` sets the number
+    of frames sampled within one period (default `16`), and
+    `"NormalModeMovieAmplitude" : number` sets the maximum atomic displacement in
+    Angstrom used to scale each mode (default `0.5`).
+
     `"ElasticEigenvalueTolerance" : real` controls the relative spectral
     threshold used to remove translational and rotational zero modes from the
     internal Hessian (default `1.0e-8`). A significant negative internal mode
