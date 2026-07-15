@@ -15,6 +15,7 @@ import minimization_baker;
 import minimization_generalized_coordinates;
 import elastic_constants;
 import normal_modes;
+import phonon_dynamical_matrix;
 
 export struct MinimizationSystemResult
 {
@@ -28,6 +29,7 @@ export struct MinimizationSystemResult
   std::size_t zeroModes{};
   std::optional<ElasticConstantsResult> elasticConstants{};
   std::optional<NormalModesResult> normalModes{};
+  std::optional<PhononDispersionResult> phononDispersion{};
 };
 
 /** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */

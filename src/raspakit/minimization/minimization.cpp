@@ -11,6 +11,7 @@ import randomnumbers;
 import mc_moves;
 import property_lambda_probability_histogram;
 import component;
+import double3;
 import double3x3;
 import generalized_hessian;
 import minimization_dof_layout;
@@ -18,6 +19,8 @@ import minimization_evaluate_derivatives;
 import minimization_cell_layout;
 import elastic_constants;
 import normal_modes;
+import phonon_kpath;
+import phonon_dynamical_matrix;
 import units;
 
 namespace
@@ -122,12 +125,13 @@ void Minimization::setup()
                  "Baker minimization: maxSteps={} maxStep={} maxCellStep={} rmsTolerance={} maxTolerance={} "
                  "minEigenvalue={} computeElasticConstants={} elasticEigenvalueTolerance={} computeNormalModes={} "
                  "normalModeMovies={} normalModeMoviePeriods={} normalModeMoviePointsPerPeriod={} "
-                 "normalModeMovieAmplitude={}\n\n",
+                 "normalModeMovieAmplitude={} computePhononDispersion={} phononDispersionPointsPerSegment={}\n\n",
                  options.maximumNumberOfSteps, options.maximumStepLength, options.maximumCellStepLength,
                  options.rmsGradientTolerance, options.maxGradientTolerance, options.minimumEigenvalue,
                  options.computeElasticConstants, options.elasticEigenvalueTolerance, options.computeNormalModes,
                  options.normalModeMovies, options.normalModeMoviePeriods, options.normalModeMoviePointsPerPeriod,
-                 options.normalModeMovieAmplitude);
+                 options.normalModeMovieAmplitude, options.computePhononDispersion,
+                 options.phononDispersionPointsPerSegment);
     }
   }
 }
@@ -481,6 +485,18 @@ void Minimization::runPhase()
                                 options.normalModeMoviePointsPerPeriod, options.normalModeMovieAmplitude);
         }
       }
+      if (options.computePhononDispersion)
+      {
+        // Default to a connected G-X-G-Y-G-Z star along the reciprocal axes when no path is supplied.
+        std::vector<PhononPathNode> nodes = options.phononDispersionPath;
+        if (nodes.empty())
+        {
+          nodes = {{double3(0.0, 0.0, 0.0), "G"}, {double3(0.5, 0.0, 0.0), "X"}, {double3(0.0, 0.0, 0.0), "G"},
+                   {double3(0.0, 0.5, 0.0), "Y"}, {double3(0.0, 0.0, 0.0), "G"}, {double3(0.0, 0.0, 0.5), "Z"}};
+        }
+        systemResult.phononDispersion =
+            computePhononDispersionAlongPath(system, nodes, options.phononDispersionPointsPerSegment);
+      }
     }
   }
 
@@ -607,6 +623,49 @@ void Minimization::output()
       writeArray(json, normalModeFrequencies(modes), 1.0);
       std::print(json, "\n  }}");
     }
+    if (result.phononDispersion)
+    {
+      const PhononDispersionResult& dispersion = *result.phononDispersion;
+      const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+      const std::size_t numberOfBands =
+          dispersion.modes.empty() ? 0 : dispersion.modes.front().eigenvalues.size();
+      std::print(json, ",\n  \"phononDispersion\": {{\n");
+      std::print(json,
+                 "    \"numberOfKPoints\": {},\n    \"numberOfBands\": {},\n"
+                 "    \"eigenvalueUnit\": \"{}\",\n    \"frequencyUnit\": \"{}\",\n    \"kPoints\": [\n",
+                 dispersion.path.size(), numberOfBands, reduced ? "reduced omega^2" : "ps^-2",
+                 reduced ? "reduced" : "cm^-1");
+      for (std::size_t index = 0; index < dispersion.path.size(); ++index)
+      {
+        const PhononKPoint& point = dispersion.path[index];
+        std::print(json,
+                   "      {{\"label\": \"{}\", \"kFractional\": [{:.17g}, {:.17g}, {:.17g}], "
+                   "\"pathCoordinate\": {:.17g},\n        \"eigenvalues\": ",
+                   point.label, point.kFractional.x, point.kFractional.y, point.kFractional.z, point.pathCoordinate);
+        writeArray(json, dispersion.modes[index].eigenvalues, 1.0);
+        std::print(json, ",\n        \"frequencies\": ");
+        writeArray(json, phononFrequenciesWavenumber(dispersion.modes[index].eigenvalues), 1.0);
+        std::print(json, "}}{}\n", index + 1 == dispersion.path.size() ? "" : ",");
+      }
+      std::print(json, "    ]\n  }}");
+
+      // Gnuplot-friendly band file: one row per k-point, "pathCoordinate band0 band1 ...".
+      std::ofstream bands(std::format("output/phonon_dispersion.s{}.txt", systemIndex), std::ios::out);
+      std::print(bands, "# phonon dispersion, frequencies in {}\n", reduced ? "reduced units" : "cm^-1");
+      std::print(bands, "# column 1: path coordinate, columns 2..{}: bands; labeled k-points annotated with #\n",
+                 numberOfBands + 1);
+      for (std::size_t index = 0; index < dispersion.path.size(); ++index)
+      {
+        const PhononKPoint& point = dispersion.path[index];
+        std::print(bands, "{:.17g}", point.pathCoordinate);
+        for (const double frequency : phononFrequenciesWavenumber(dispersion.modes[index].eigenvalues))
+        {
+          std::print(bands, " {:.17g}", frequency);
+        }
+        if (!point.label.empty()) std::print(bands, "  # {}", point.label);
+        std::print(bands, "\n");
+      }
+    }
     std::print(json, "\n}}\n");
   }
 }
@@ -631,6 +690,10 @@ void Minimization::tearDown()
       if (result.normalModes)
       {
         std::print(streams[systemIndex], "{}", writeNormalModes(*result.normalModes));
+      }
+      if (result.phononDispersion)
+      {
+        std::print(streams[systemIndex], "{}", writePhononDispersion(*result.phononDispersion));
       }
     }
   }

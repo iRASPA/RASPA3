@@ -7,6 +7,7 @@ import std;
 import double3;
 import system;
 import phonon_force_constants;
+import phonon_kpath;
 
 /**
  * k-dependent dynamical matrix and phonon frequencies built from the image-resolved force constants.
@@ -75,3 +76,24 @@ export std::vector<PhononModes> computePhononDispersion(const System& system, st
 
 /** Convert squared angular frequencies to wavenumbers [cm^-1]; imaginary modes are returned as negatives. */
 export std::vector<double> phononFrequenciesWavenumber(std::span<const double> eigenvalues);
+
+/** Phonon band structure along a labeled high-symmetry path: sampled k-points and their modes (parallel). */
+export struct PhononDispersionResult
+{
+  std::vector<PhononKPoint> path;   ///< Sampled k-points (fractional, path coordinate, labels).
+  std::vector<PhononModes> modes;   ///< Modes at each path point, parallel to `path`.
+};
+
+/**
+ * Sample the phonon dispersion along the band-structure path defined by `nodes`.
+ *
+ * The nodes are expanded into a dense path with `pointsPerSegment` steps per segment (see
+ * buildPhononKPath), then computePhononDispersion is evaluated at every sampled k-point. The k-point
+ * metadata (path coordinate, labels) is retained alongside the squared frequencies for plotting.
+ */
+export PhononDispersionResult computePhononDispersionAlongPath(const System& system,
+                                                               std::span<const PhononPathNode> nodes,
+                                                               std::size_t pointsPerSegment);
+
+/** Human-readable band-structure table (path coordinate, k-point, and per-band wavenumbers). */
+export std::string writePhononDispersion(const PhononDispersionResult& result);

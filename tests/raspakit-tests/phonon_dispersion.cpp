@@ -20,6 +20,7 @@ import simulationbox;
 import normal_modes;
 import phonon_force_constants;
 import phonon_dynamical_matrix;
+import phonon_kpath;
 
 namespace
 {
@@ -621,6 +622,75 @@ TEST(phonon_dispersion, ewald_exclusion_correction_contributes_at_gamma)
   double maxMagnitude = 0.0;
   for (const std::complex<double>& value : reciprocal) maxMagnitude = std::max(maxMagnitude, std::abs(value));
   EXPECT_GT(maxMagnitude, 0.0);
+}
+
+TEST(phonon_dispersion, kpath_samples_segments_with_labels_and_monotonic_coordinate)
+{
+  const SimulationBox box(12.0, 12.0, 12.0);
+  const std::array<PhononPathNode, 3> nodes = {PhononPathNode{double3(0.0, 0.0, 0.0), "G"},
+                                               PhononPathNode{double3(0.5, 0.0, 0.0), "X"},
+                                               PhononPathNode{double3(0.5, 0.5, 0.0), "M"}};
+
+  const std::size_t pointsPerSegment = 10;
+  const std::vector<PhononKPoint> path = buildPhononKPath(nodes, pointsPerSegment, box);
+
+  // One shared start node plus pointsPerSegment per segment.
+  ASSERT_EQ(path.size(), 1u + 2u * pointsPerSegment);
+
+  // Endpoints carry their labels; the path coordinate starts at zero and never decreases.
+  EXPECT_EQ(path.front().label, "G");
+  EXPECT_EQ(path[pointsPerSegment].label, "X");
+  EXPECT_EQ(path.back().label, "M");
+  EXPECT_DOUBLE_EQ(path.front().pathCoordinate, 0.0);
+  for (std::size_t index = 1; index < path.size(); ++index)
+  {
+    EXPECT_GE(path[index].pathCoordinate, path[index - 1].pathCoordinate) << "index=" << index;
+  }
+  EXPECT_GT(path.back().pathCoordinate, 0.0);
+
+  // Interior nodes are unlabeled and the fractional coordinate interpolates linearly along a segment.
+  EXPECT_TRUE(path[3].label.empty());
+  EXPECT_NEAR(path[5].kFractional.x, 0.25, 1e-12);  // halfway along G->X
+  EXPECT_NEAR(path[5].kFractional.y, 0.0, 1e-12);
+}
+
+TEST(phonon_dispersion, dispersion_along_path_matches_pointwise_and_gamma_normal_modes)
+{
+  System system = makeFlexibleChainSystem();
+
+  const std::array<PhononPathNode, 2> nodes = {PhononPathNode{double3(0.0, 0.0, 0.0), "G"},
+                                               PhononPathNode{double3(0.5, 0.0, 0.0), "X"}};
+  const std::size_t pointsPerSegment = 8;
+  const PhononDispersionResult dispersion = computePhononDispersionAlongPath(system, nodes, pointsPerSegment);
+
+  ASSERT_EQ(dispersion.path.size(), 1u + pointsPerSegment);
+  ASSERT_EQ(dispersion.modes.size(), dispersion.path.size());
+  for (const PhononModes& modes : dispersion.modes) ASSERT_EQ(modes.eigenvalues.size(), 9u);
+
+  // The first path point is Gamma, which must reproduce the independent normal-mode spectrum.
+  const NormalModesResult gamma = computeNormalModes(system);
+  double scale = 0.0;
+  for (const double value : gamma.eigenvalues) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+  for (std::size_t mode = 0; mode < gamma.numberOfModes; ++mode)
+  {
+    EXPECT_NEAR(dispersion.modes.front().eigenvalues[mode], gamma.eigenvalues[mode], 1e-7 * scale + 1e-10)
+        << "mode=" << mode;
+  }
+
+  // The along-path modes must agree with a direct pointwise evaluation at the same k-points.
+  std::vector<double3> kPoints;
+  for (const PhononKPoint& point : dispersion.path) kPoints.push_back(point.kFractional);
+  const std::vector<PhononModes> pointwise = computePhononDispersion(system, kPoints);
+  ASSERT_EQ(pointwise.size(), dispersion.modes.size());
+  for (std::size_t index = 0; index < pointwise.size(); ++index)
+  {
+    for (std::size_t mode = 0; mode < 9u; ++mode)
+    {
+      EXPECT_DOUBLE_EQ(dispersion.modes[index].eigenvalues[mode], pointwise[index].eigenvalues[mode])
+          << "index=" << index << " mode=" << mode;
+    }
+  }
 }
 
 TEST(phonon_dispersion, gamma_point_with_ewald_matches_normal_modes_charged_flexible_framework)

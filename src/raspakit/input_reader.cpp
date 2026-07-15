@@ -42,6 +42,7 @@ import thermobarostat;
 import cif_reader;
 import running_energy;
 import minimization_cell_layout;
+import phonon_kpath;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -383,6 +384,84 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     throw std::runtime_error(
         "[Input reader]: NormalModeMoviePeriods and NormalModeMoviePointsPerPeriod must be positive and "
         "NormalModeMovieAmplitude must be positive");
+  }
+
+  if (parsed_data.contains("ComputePhononDispersion"))
+  {
+    if (!parsed_data["ComputePhononDispersion"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: ComputePhononDispersion must be a boolean");
+    }
+    minimizationOptions.computePhononDispersion = parsed_data["ComputePhononDispersion"].get<bool>();
+  }
+
+  if (parsed_data.contains("PhononDispersionPointsPerSegment"))
+  {
+    if (!parsed_data["PhononDispersionPointsPerSegment"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: PhononDispersionPointsPerSegment must be a positive unsigned integer");
+    }
+    minimizationOptions.phononDispersionPointsPerSegment =
+        parsed_data["PhononDispersionPointsPerSegment"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("PhononDispersionPath"))
+  {
+    // A band-structure path is a JSON array of nodes. Each node is either a bare [kx, ky, kz] array or an
+    // object {"Label": "...", "kPoint": [kx, ky, kz]} of fractional reciprocal-lattice coordinates.
+    const auto& pathData = parsed_data["PhononDispersionPath"];
+    if (!pathData.is_array())
+    {
+      throw std::runtime_error("[Input reader]: PhononDispersionPath must be an array of k-point nodes");
+    }
+    const auto parseKPoint = [](const auto& coordinates) -> double3
+    {
+      if (!coordinates.is_array() || coordinates.size() != 3 ||
+          !std::ranges::all_of(coordinates, [](const auto& value) { return value.is_number(); }))
+      {
+        throw std::runtime_error("[Input reader]: PhononDispersionPath k-point must be 3 finite numbers");
+      }
+      return double3(coordinates[0].template get<double>(), coordinates[1].template get<double>(),
+                     coordinates[2].template get<double>());
+    };
+
+    std::vector<PhononPathNode> nodes;
+    for (const auto& nodeData : pathData)
+    {
+      PhononPathNode node{};
+      if (nodeData.is_array())
+      {
+        node.kPoint = parseKPoint(nodeData);
+      }
+      else if (nodeData.is_object())
+      {
+        if (nodeData.contains("Label"))
+        {
+          if (!nodeData["Label"].is_string())
+          {
+            throw std::runtime_error("[Input reader]: PhononDispersionPath node 'Label' must be a string");
+          }
+          node.label = nodeData["Label"].template get<std::string>();
+        }
+        if (!nodeData.contains("kPoint"))
+        {
+          throw std::runtime_error("[Input reader]: PhononDispersionPath object node requires a 'kPoint' array");
+        }
+        node.kPoint = parseKPoint(nodeData["kPoint"]);
+      }
+      else
+      {
+        throw std::runtime_error(
+            "[Input reader]: PhononDispersionPath node must be a [kx, ky, kz] array or an object with 'kPoint'");
+      }
+      nodes.push_back(std::move(node));
+    }
+    minimizationOptions.phononDispersionPath = std::move(nodes);
+  }
+
+  if (minimizationOptions.computePhononDispersion && minimizationOptions.phononDispersionPointsPerSegment == 0)
+  {
+    throw std::runtime_error("[Input reader]: PhononDispersionPointsPerSegment must be positive");
   }
 
   if (minimizationOptions.maximumNumberOfSteps == 0 || minimizationOptions.maximumStepLength <= 0.0 ||
@@ -2488,6 +2567,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "NormalModeMoviePeriods",
     "NormalModeMoviePointsPerPeriod",
     "NormalModeMovieAmplitude",
+    "ComputePhononDispersion",
+    "PhononDispersionPointsPerSegment",
+    "PhononDispersionPath",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",

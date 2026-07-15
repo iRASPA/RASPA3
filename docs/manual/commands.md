@@ -196,6 +196,23 @@ reported separately at the end of the simulation.
     `"NormalModeMovieAmplitude" : number` sets the maximum atomic displacement in
     Angstrom used to scale each mode (default `0.5`).
 
+    `"ComputePhononDispersion" : boolean` optionally computes the phonon band
+    structure after convergence. The image-resolved force constants are Fourier
+    transformed to the k-dependent dynamical matrix `D(k)` (including the
+    reciprocal-space Ewald term for charged systems), mass-weighted, and
+    diagonalized along a high-symmetry path. Rigid molecules are handled in
+    generalized center-of-mass/orientation coordinates, so at the Gamma point the
+    result matches `ComputeNormalModes`. `"PhononDispersionPath" : array` defines
+    the path as a list of nodes in fractional reciprocal-lattice coordinates,
+    each node being either a bare `[kx, ky, kz]` array or an object
+    `{"Label": "X", "kPoint": [kx, ky, kz]}`; consecutive nodes form the segments.
+    When omitted, a default connected `G-X-G-Y-G-Z` star along the reciprocal axes
+    is used. `"PhononDispersionPointsPerSegment" : integer` sets the number of
+    sampled k-points per segment (default `20`). Results are written to
+    `output/minimization.s{system}.json` and to a gnuplot-friendly band file
+    `output/phonon_dispersion.s{system}.txt` (frequencies in cm^-1, negative for
+    imaginary/unstable modes).
+
     `"ElasticEigenvalueTolerance" : real` controls the relative spectral
     threshold used to remove translational and rotational zero modes from the
     internal Hessian (default `1.0e-8`). A significant negative internal mode

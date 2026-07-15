@@ -16,6 +16,7 @@ import forcefield;
 import simulationbox;
 import system;
 import phonon_force_constants;
+import phonon_kpath;
 import hermitian_eigensolver;
 import generalized_hessian;
 import minimization_cell_layout;
@@ -654,4 +655,45 @@ std::vector<double> phononFrequenciesWavenumber(std::span<const double> eigenval
     frequencies.push_back(eigenvalue < 0.0 ? -magnitude : magnitude);
   }
   return frequencies;
+}
+
+PhononDispersionResult computePhononDispersionAlongPath(const System& system, std::span<const PhononPathNode> nodes,
+                                                        std::size_t pointsPerSegment)
+{
+  PhononDispersionResult result;
+  result.path = buildPhononKPath(nodes, pointsPerSegment, system.simulationBox);
+
+  std::vector<double3> kFractionalPoints;
+  kFractionalPoints.reserve(result.path.size());
+  for (const PhononKPoint& point : result.path) kFractionalPoints.push_back(point.kFractional);
+
+  result.modes = computePhononDispersion(system, kFractionalPoints);
+  return result;
+}
+
+std::string writePhononDispersion(const PhononDispersionResult& result)
+{
+  const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+  const std::size_t numberOfBands = result.modes.empty() ? 0 : result.modes.front().eigenvalues.size();
+
+  std::string output = std::format(
+      "\nPhonon dispersion\n"
+      "Number of k-points: {}\n"
+      "Number of bands:    {}\n"
+      "Frequencies are wavenumbers [{}]; negative values denote imaginary (unstable) modes.\n\n",
+      result.path.size(), numberOfBands, reduced ? "reduced" : "cm^-1");
+
+  for (std::size_t index = 0; index < result.path.size(); ++index)
+  {
+    const PhononKPoint& point = result.path[index];
+    output += std::format("k-point {:5d}  {:<4}  ({: .5f}, {: .5f}, {: .5f})  path={: .6f}\n", index,
+                          point.label.empty() ? "-" : point.label, point.kFractional.x, point.kFractional.y,
+                          point.kFractional.z, point.pathCoordinate);
+    const std::vector<double> frequencies = phononFrequenciesWavenumber(result.modes[index].eigenvalues);
+    for (std::size_t band = 0; band < frequencies.size(); ++band)
+    {
+      output += std::format("    band {:5d}: {: 18.8f}\n", band, frequencies[band]);
+    }
+  }
+  return output;
 }
