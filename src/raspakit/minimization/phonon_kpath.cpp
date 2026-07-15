@@ -29,10 +29,19 @@ std::vector<PhononKPoint> buildPhononKPath(std::span<const PhononPathNode> nodes
   path.push_back(PhononKPoint{.kFractional = nodes[0].kPoint, .pathCoordinate = 0.0, .label = nodes[0].label});
   double3 previousCartesian = cartesian(nodes[0].kPoint);
 
-  for (std::size_t segment = 0; segment + 1 < nodes.size(); ++segment)
+  for (std::size_t node = 1; node < nodes.size(); ++node)
   {
-    const double3 start = nodes[segment].kPoint;
-    const double3 end = nodes[segment + 1].kPoint;
+    if (nodes[node].startsNewSegment)
+    {
+      // Discontinuity: begin a new sub-path at the current coordinate without drawing a connecting segment.
+      previousCartesian = cartesian(nodes[node].kPoint);
+      path.push_back(
+          PhononKPoint{.kFractional = nodes[node].kPoint, .pathCoordinate = cumulative, .label = nodes[node].label});
+      continue;
+    }
+
+    const double3 start = nodes[node - 1].kPoint;
+    const double3 end = nodes[node].kPoint;
     for (std::size_t step = 1; step <= steps; ++step)
     {
       const double fraction = static_cast<double>(step) / static_cast<double>(steps);
@@ -41,7 +50,7 @@ std::vector<PhononKPoint> buildPhononKPath(std::span<const PhononPathNode> nodes
       cumulative += (kCartesian - previousCartesian).length();
       previousCartesian = kCartesian;
 
-      const std::string label = (step == steps) ? nodes[segment + 1].label : std::string{};
+      const std::string label = (step == steps) ? nodes[node].label : std::string{};
       path.push_back(PhononKPoint{.kFractional = kFractional, .pathCoordinate = cumulative, .label = label});
     }
   }

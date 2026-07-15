@@ -13,6 +13,8 @@ import property_lambda_probability_histogram;
 import component;
 import double3;
 import double3x3;
+import simulationbox;
+import skbandpath;
 import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
@@ -75,6 +77,81 @@ bool useNegativeModeEscape(BakerStep& step, std::span<const double> gradient, co
   step.stepNorm = escapeLength;
   step.convergenceReason = "escaping lowest negative Hessian mode";
   return true;
+}
+
+// Build a symmetry-aware default phonon band path (HPKOT high-symmetry points and recommended path) for the
+// framework of `system`. Symmetry is detected on the final (minimized) simulation cell together with all of
+// its framework atoms: findSpaceGroup reduces the supercell to its true primitive cell internally, so the
+// returned transformation maps the conventional cell directly onto the minimized simulation cell and the
+// high-symmetry points can be expressed in the simulation-cell reciprocal basis without any extra supercell
+// bookkeeping. Returns an empty list when no framework is present or the symmetry could not be detected, in
+// which case the caller falls back to a simple reciprocal-axis star.
+std::vector<PhononPathNode> symmetryDefaultPhononPath(const System& system)
+{
+  std::vector<PhononPathNode> nodes;
+  if (!system.framework.has_value()) return nodes;
+
+  const SimulationBox& box = system.simulationBox;
+
+  std::vector<std::tuple<double3, std::size_t, double>> atoms;
+  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+  atoms.reserve(frameworkAtoms.size());
+  for (const Atom& atom : frameworkAtoms)
+  {
+    double3 fractional = box.inverseCell * atom.position;
+    atoms.emplace_back(fractional, static_cast<std::size_t>(atom.type), 1.0);
+  }
+  if (atoms.empty()) return nodes;
+
+  std::optional<SKBandPath> bandPath =
+      SKBrillouinZonePath(box.cell, atoms, /*allowPartialOccupancies=*/true, /*symmetryPrecision=*/1e-4);
+  if (!bandPath) return nodes;
+
+  auto toNode = [&](const std::string& label) -> std::optional<PhononPathNode>
+  {
+    std::optional<double3> coordinates = bandPath->coordinatesForLabel(label);
+    if (!coordinates) return std::nullopt;
+    // Map from the primitive reciprocal basis directly into the (minimized) simulation-cell reciprocal basis.
+    double3 fractional = bandPath->reciprocalFractionalInAnalyzedCell(*coordinates);
+    std::string display = (label == "GAMMA") ? std::string{"G"} : label;
+    return PhononPathNode{.kPoint = fractional, .label = display};
+  };
+
+  std::string previousLabel;
+  for (const auto& [from, to] : bandPath->segments)
+  {
+    std::optional<PhononPathNode> endNode = toNode(to);
+    if (!endNode)
+    {
+      nodes.clear();
+      return nodes;
+    }
+    if (nodes.empty())
+    {
+      std::optional<PhononPathNode> startNode = toNode(from);
+      if (!startNode)
+      {
+        nodes.clear();
+        return nodes;
+      }
+      nodes.push_back(*startNode);
+    }
+    else if (from != previousLabel)
+    {
+      // Discontinuity in the recommended path: anchor a new sub-path at `from`.
+      std::optional<PhononPathNode> startNode = toNode(from);
+      if (!startNode)
+      {
+        nodes.clear();
+        return nodes;
+      }
+      startNode->startsNewSegment = true;
+      nodes.push_back(*startNode);
+    }
+    nodes.push_back(*endNode);
+    previousLabel = to;
+  }
+  return nodes;
 }
 
 }  // namespace
@@ -487,10 +564,15 @@ void Minimization::runPhase()
       }
       if (options.computePhononDispersion)
       {
-        // Default to a connected G-X-G-Y-G-Z star along the reciprocal axes when no path is supplied.
         std::vector<PhononPathNode> nodes = options.phononDispersionPath;
         if (nodes.empty())
         {
+          // Prefer a symmetry-aware HPKOT path derived from the framework's space group.
+          nodes = symmetryDefaultPhononPath(system);
+        }
+        if (nodes.empty())
+        {
+          // Fall back to a connected G-X-G-Y-G-Z star along the reciprocal axes.
           nodes = {{double3(0.0, 0.0, 0.0), "G"}, {double3(0.5, 0.0, 0.0), "X"}, {double3(0.0, 0.0, 0.0), "G"},
                    {double3(0.0, 0.5, 0.0), "Y"}, {double3(0.0, 0.0, 0.0), "G"}, {double3(0.0, 0.0, 0.5), "Z"}};
         }

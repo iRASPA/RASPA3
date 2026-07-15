@@ -16,6 +16,13 @@ export struct PhononPathNode
 {
   double3 kPoint{};
   std::string label{};
+  /**
+   * When true, the segment connecting the previous node to this node is a discontinuity and is not sampled:
+   * this node instead starts a new (disconnected) sub-path at the same cumulative path coordinate. This is
+   * used for the breaks that appear in crystallographic high-symmetry paths (e.g. "... U | K ..."). The first
+   * node in the list ignores this flag.
+   */
+  bool startsNewSegment{false};
 };
 
 /**
