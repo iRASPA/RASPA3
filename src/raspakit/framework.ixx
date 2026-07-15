@@ -30,6 +30,23 @@ export struct FrameworkIntraMolecularImageShifts
 };
 
 /**
+ * \brief A type-based intramolecular potential definition parsed from a flexible-framework definition.
+ *
+ * Stores the pseudo-atom types the potential applies to, the potential-type keyword (e.g. "HARMONIC"),
+ * and its numeric parameters. These definitions are retained on the Framework so the concrete
+ * intramolecular potentials can be re-derived on a different atom set (e.g. a reduced primitive cell)
+ * without re-reading the definition file. \tparam N Number of atoms the potential couples (2 bond, 3 bend,
+ * 4 torsion/improper).
+ */
+export template <std::size_t N>
+struct FrameworkPotentialDefinition
+{
+  std::array<std::size_t, N> atomTypes{};
+  std::string potentialType{};
+  std::vector<double> parameters{};
+};
+
+/**
  * \brief Represents a framework in the simulation system.
  *
  * The Framework struct encapsulates the properties and behaviors of a framework
@@ -113,7 +130,61 @@ export struct Framework
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< Indexed internal framework potentials.
   FrameworkIntraMolecularImageShifts intraMolecularImageShifts{};   ///< Periodic images for internal potentials.
 
+  ///@{
+  /// Retained nonbonded intra-framework generation options. Stored so the van der Waals pair list can
+  /// be regenerated for a finalized simulation box and cutoff (e.g. with periodic-image replicas when a
+  /// cell is smaller than twice the cutoff).
+  bool excludeIntra12Interactions{true};
+  bool excludeIntra13Interactions{true};
+  bool excludeIntraBondInteractions{false};
+  bool excludeIntraBendInteractions{false};
+  double intra14VanDerWaalsScaling{0.0};
+  double intra14ChargeChargeScaling{0.0};
+  /// Name/path of the flexible-framework intramolecular definition (empty for rigid or programmatic
+  /// frameworks). Retained so the intramolecular topology can be re-derived on a reduced primitive cell.
+  std::string frameworkDefinitionName{};
+  /// Parsed type-based potential definitions retained from the framework definition. Together with the
+  /// exclusion/scaling options above these are the complete input to generateIntraMolecularPotentials(),
+  /// so the intramolecular topology can be re-derived on any atom set without re-reading the file.
+  std::vector<FrameworkPotentialDefinition<2>> bondDefinitions{};
+  std::vector<FrameworkPotentialDefinition<3>> bendDefinitions{};
+  std::vector<FrameworkPotentialDefinition<4>> torsionDefinitions{};
+  std::vector<FrameworkPotentialDefinition<4>> improperTorsionDefinitions{};
+  ///@}
+
   void determineUniqueAtomTypes();
+
+  /**
+   * \brief Derives connectivity and all intramolecular potentials from the stored type-based definitions.
+   *
+   * Detects the framework bond connectivity from covalent radii, matches every bond/bend/torsion/improper
+   * against the retained potential definitions, and generates the nonbonded (van der Waals / Coulomb) pair
+   * list honoring the retained exclusion and 1-4 scaling options. The periodic-image shifts for every
+   * potential are recomputed for the current simulation box. Operates on the current \c atoms using the
+   * stored \c bondDefinitions / \c bendDefinitions / \c torsionDefinitions / \c improperTorsionDefinitions,
+   * so it can be re-run after reducing the framework to a primitive cell without touching the file system.
+   *
+   * \param forceField Force field providing pseudo-atom radii, van der Waals parameters, and charge usage.
+   */
+  void generateIntraMolecularPotentials(const ForceField& forceField);
+
+  /**
+   * \brief Rebuilds the intra-framework van der Waals pair list with periodic-image replicas if needed.
+   *
+   * When the smallest perpendicular width of \p box is at least twice \p cutOffFrameworkVDW a single
+   * minimum image is sufficient and the list is left unchanged. Otherwise the van der Waals potentials
+   * and their periodic-image shifts are regenerated so that every atom pair (including an atom with its
+   * own periodic images) contributes one entry per replica cell that falls within the cutoff. The 1-2/1-3
+   * exclusions and 1-4 scaling apply only to the covalently bonded (minimum) image; all other images are
+   * treated as full van der Waals neighbors. The real-space Coulomb list is unaffected, since Ewald always
+   * uses a half-box cutoff for which the minimum image is exact.
+   *
+   * \param forceField Force field providing the van der Waals parameters.
+   * \param box Finalized simulation box.
+   * \param cutOffFrameworkVDW Finalized framework van der Waals cutoff distance.
+   */
+  void regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
+                                      double cutOffFrameworkVDW);
 
   /**
    * Reads type-based intramolecular definitions and expands them over the framework supercell.

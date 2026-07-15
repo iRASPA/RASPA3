@@ -18,6 +18,7 @@ import system;
 import phonon_force_constants;
 import phonon_kpath;
 import hermitian_eigensolver;
+import threadpool;
 import generalized_hessian;
 import minimization_cell_layout;
 import minimization_dof_layout;
@@ -34,6 +35,97 @@ double checkedInverseSqrtMass(double mass, std::string_view what)
     throw std::runtime_error(std::format("Phonon analysis requires positive masses, but {} has mass {}", what, mass));
   }
   return 1.0 / std::sqrt(mass);
+}
+
+/**
+ * Evaluate `modeAt(index)` for every k-point and store the result at `output[index]`. The k-points are
+ * independent, so the loop is parallelized according to the configured threading type:
+ *   - OpenMP: an `omp parallel for`; exceptions cannot cross the region boundary, so the first one is
+ *     captured under a critical section and rethrown afterwards (matching the serial first-failure behaviour).
+ *   - ThreadPool: the k-points are split into (getThreadCount() + 1) contiguous blocks; one block is enqueued
+ *     per pool worker and the calling thread evaluates the final block itself (rather than blocking) before
+ *     joining, so every core computes. This matches the block/inline-last-block convention used by the
+ *     framework-molecule energy. The first exception is captured under a mutex and rethrown after the join.
+ *   - Serial / GPU-Offload / no pool: a plain sequential loop.
+ * Each worker builds its own dynamical matrix and LAPACK workspace; the shared inputs (`system`, force
+ * constants, masses) are only read. For best scaling keep the BLAS/LAPACK backend single-threaded so the
+ * parallelism lives here rather than inside each eigensolve.
+ */
+template <typename ModeFunction>
+  requires std::invocable<ModeFunction, std::size_t> &&
+           std::is_same_v<PhononModes, std::invoke_result_t<ModeFunction, std::size_t>>
+std::vector<PhononModes> evaluateModesAlongPath(std::size_t numberOfKPoints, ModeFunction&& modeAt)
+{
+  std::vector<PhononModes> modes(numberOfKPoints);
+
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  const ThreadPool::ThreadingType threadingType = pool.getThreadingType();
+
+  if (threadingType == ThreadPool::ThreadingType::OpenMP)
+  {
+    std::exception_ptr firstError{};
+#pragma omp parallel for schedule(dynamic)
+    for (std::size_t index = 0; index < numberOfKPoints; ++index)
+    {
+      try
+      {
+        modes[index] = modeAt(index);
+      }
+      catch (...)
+      {
+#pragma omp critical(phononDispersionError)
+        if (!firstError) firstError = std::current_exception();
+      }
+    }
+    if (firstError) std::rethrow_exception(firstError);
+    return modes;
+  }
+
+  // The work-stealing pool needs at least one worker thread; otherwise fall back to the serial loop below.
+  if (threadingType == ThreadPool::ThreadingType::ThreadPool && pool.getThreadCount() > 0)
+  {
+    const std::size_t numberOfHelperThreads = pool.getThreadCount();
+    const std::size_t blockSize = numberOfKPoints / (numberOfHelperThreads + 1);
+
+    std::exception_ptr firstError{};
+    std::mutex errorMutex;
+
+    // Evaluate a contiguous [begin, end) block of k-points, storing each result in place. Exceptions are
+    // captured (not propagated) so the calling thread and every worker finish their block before we rethrow.
+    auto task = [&](std::size_t begin, std::size_t end)
+    {
+      for (std::size_t index = begin; index < end; ++index)
+      {
+        try
+        {
+          modes[index] = modeAt(index);
+        }
+        catch (...)
+        {
+          const std::scoped_lock lock(errorMutex);
+          if (!firstError) firstError = std::current_exception();
+        }
+      }
+    };
+
+    std::vector<std::future<void>> threads(numberOfHelperThreads);
+    std::size_t blockStart = 0;
+    for (std::size_t i = 0; i != numberOfHelperThreads; ++i)
+    {
+      const std::size_t blockEnd = blockStart + blockSize;
+      threads[i] = pool.enqueue(task, blockStart, blockEnd);
+      blockStart = blockEnd;
+    }
+    // The calling thread evaluates the final block (including the division remainder) rather than blocking.
+    task(blockStart, numberOfKPoints);
+
+    for (std::future<void>& thread : threads) thread.get();
+    if (firstError) std::rethrow_exception(firstError);
+    return modes;
+  }
+
+  for (std::size_t index = 0; index < numberOfKPoints; ++index) modes[index] = modeAt(index);
+  return modes;
 }
 
 /** A charged site participating in the reciprocal sum, in force-constant site order. */
@@ -148,7 +240,7 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
   const int kyMax = static_cast<int>(forceField.numberOfWaveVectors.y);
   const int kzMax = static_cast<int>(forceField.numberOfWaveVectors.z);
 
-  std::vector<std::complex<double>> phase(numberOfAtoms);  // e_a = q_a exp(i q . r_a)
+  std::vector<std::complex<double>> phase(numberOfAtoms);                    // e_a = q_a exp(i q . r_a)
   std::vector<double3> selfDiagonal(numberOfAtoms, double3(0.0, 0.0, 0.0));  // diag(G_a G_a) contributions
   std::vector<double> selfDiagonalXY(numberOfAtoms, 0.0);                    // off-diagonal xy/xz/yz
   std::vector<double> selfDiagonalXZ(numberOfAtoms, 0.0);
@@ -411,90 +503,94 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   // Cartesian gradient (which drives Xi) already includes the reciprocal force.
   const bool useEwald = system.forceField.useCharge && system.forceField.usesEwaldFourier();
 
-  std::vector<PhononModes> dispersion;
-  dispersion.reserve(kPath.size());
-  for (const double3 kFractional : kPath)
-  {
-    // Un-weighted Cartesian dynamical matrix D_cart(k) = Sum_R Phi(R) exp(2 pi i k.R).
-    std::vector<std::complex<double>> cartesian(cartesianDimension * cartesianDimension, std::complex<double>{});
-    for (const auto& [latticeVector, block] : forceConstants.blocks())
-    {
-      const double argument = twoPi * (kFractional.x * static_cast<double>(latticeVector.x) +
-                                       kFractional.y * static_cast<double>(latticeVector.y) +
-                                       kFractional.z * static_cast<double>(latticeVector.z));
-      const std::complex<double> phase = std::polar(1.0, argument);
-      for (std::size_t index = 0; index < cartesian.size(); ++index) cartesian[index] += block[index] * phase;
-    }
-
-    if (useEwald)
-    {
-      const std::vector<std::complex<double>> reciprocal = ewaldReciprocalCartesianMatrix(cartesianSystem, kFractional);
-      if (reciprocal.size() != cartesian.size())
+  return evaluateModesAlongPath(
+      kPath.size(),
+      [&](std::size_t kIndex)
       {
-        throw std::runtime_error(
-            "computeGeneralizedDispersion: reciprocal-space matrix extent does not match the Cartesian force constants");
-      }
-      for (std::size_t index = 0; index < cartesian.size(); ++index) cartesian[index] += reciprocal[index];
-    }
-
-    // Project onto generalized coordinates: D_gen = J^T D_cart J.
-    std::vector<std::complex<double>> generalized(numberOfGeneralizedDofs * numberOfGeneralizedDofs,
-                                                  std::complex<double>{});
-    for (std::size_t rowSite = 0; rowSite < numberOfSites; ++rowSite)
-    {
-      if (siteContributions[rowSite].empty()) continue;
-      for (std::size_t columnSite = 0; columnSite < numberOfSites; ++columnSite)
-      {
-        if (siteContributions[columnSite].empty()) continue;
-        std::array<std::complex<double>, 9> pairBlock{};
-        for (std::size_t alpha = 0; alpha < 3; ++alpha)
+        const double3 kFractional = kPath[kIndex];
+        // Un-weighted Cartesian dynamical matrix D_cart(k) = Sum_R Phi(R) exp(2 pi i k.R).
+        std::vector<std::complex<double>> cartesian(cartesianDimension * cartesianDimension, std::complex<double>{});
+        for (const auto& [latticeVector, block] : forceConstants.blocks())
         {
-          for (std::size_t beta = 0; beta < 3; ++beta)
+          const double argument = twoPi * (kFractional.x * static_cast<double>(latticeVector.x) +
+                                           kFractional.y * static_cast<double>(latticeVector.y) +
+                                           kFractional.z * static_cast<double>(latticeVector.z));
+          const std::complex<double> phase = std::polar(1.0, argument);
+          for (std::size_t index = 0; index < cartesian.size(); ++index) cartesian[index] += block[index] * phase;
+        }
+
+        if (useEwald)
+        {
+          const std::vector<std::complex<double>> reciprocal =
+              ewaldReciprocalCartesianMatrix(cartesianSystem, kFractional);
+          if (reciprocal.size() != cartesian.size())
           {
-            pairBlock[alpha * 3 + beta] = cartesian[(3 * rowSite + alpha) * cartesianDimension + (3 * columnSite + beta)];
+            throw std::runtime_error(
+                "computeGeneralizedDispersion: reciprocal-space matrix extent does not match the Cartesian force "
+                "constants");
+          }
+          for (std::size_t index = 0; index < cartesian.size(); ++index) cartesian[index] += reciprocal[index];
+        }
+
+        // Project onto generalized coordinates: D_gen = J^T D_cart J.
+        std::vector<std::complex<double>> generalized(numberOfGeneralizedDofs * numberOfGeneralizedDofs,
+                                                      std::complex<double>{});
+        for (std::size_t rowSite = 0; rowSite < numberOfSites; ++rowSite)
+        {
+          if (siteContributions[rowSite].empty()) continue;
+          for (std::size_t columnSite = 0; columnSite < numberOfSites; ++columnSite)
+          {
+            if (siteContributions[columnSite].empty()) continue;
+            std::array<std::complex<double>, 9> pairBlock{};
+            for (std::size_t alpha = 0; alpha < 3; ++alpha)
+            {
+              for (std::size_t beta = 0; beta < 3; ++beta)
+              {
+                pairBlock[alpha * 3 + beta] =
+                    cartesian[(3 * rowSite + alpha) * cartesianDimension + (3 * columnSite + beta)];
+              }
+            }
+            for (const SiteDofContribution& rowContribution : siteContributions[rowSite])
+            {
+              const double3 u = rowContribution.direction;
+              std::array<std::complex<double>, 3> uTimesBlock{};
+              for (std::size_t beta = 0; beta < 3; ++beta)
+              {
+                uTimesBlock[beta] =
+                    u.x * pairBlock[0 * 3 + beta] + u.y * pairBlock[1 * 3 + beta] + u.z * pairBlock[2 * 3 + beta];
+              }
+              for (const SiteDofContribution& columnContribution : siteContributions[columnSite])
+              {
+                const double3 v = columnContribution.direction;
+                const std::complex<double> value = uTimesBlock[0] * v.x + uTimesBlock[1] * v.y + uTimesBlock[2] * v.z;
+                generalized[rowContribution.dof * numberOfGeneralizedDofs + columnContribution.dof] += value;
+              }
+            }
           }
         }
-        for (const SiteDofContribution& rowContribution : siteContributions[rowSite])
+
+        for (std::size_t index = 0; index < generalized.size(); ++index) generalized[index] += gradientCurvature[index];
+
+        // Mass weighting D <- W D W with the real symmetric metric, applied to real and imaginary parts.
+        std::vector<double> realPart(generalized.size());
+        std::vector<double> imaginaryPart(generalized.size());
+        for (std::size_t index = 0; index < generalized.size(); ++index)
         {
-          const double3 u = rowContribution.direction;
-          std::array<std::complex<double>, 3> uTimesBlock{};
-          for (std::size_t beta = 0; beta < 3; ++beta)
-          {
-            uTimesBlock[beta] =
-                u.x * pairBlock[0 * 3 + beta] + u.y * pairBlock[1 * 3 + beta] + u.z * pairBlock[2 * 3 + beta];
-          }
-          for (const SiteDofContribution& columnContribution : siteContributions[columnSite])
-          {
-            const double3 v = columnContribution.direction;
-            const std::complex<double> value = uTimesBlock[0] * v.x + uTimesBlock[1] * v.y + uTimesBlock[2] * v.z;
-            generalized[rowContribution.dof * numberOfGeneralizedDofs + columnContribution.dof] += value;
-          }
+          realPart[index] = generalized[index].real();
+          imaginaryPart[index] = generalized[index].imag();
         }
-      }
-    }
+        const std::vector<double> weightedReal = applyMassMetric(realPart, numberOfGeneralizedDofs, metric);
+        const std::vector<double> weightedImaginary = applyMassMetric(imaginaryPart, numberOfGeneralizedDofs, metric);
+        std::vector<std::complex<double>> weighted(generalized.size());
+        for (std::size_t index = 0; index < generalized.size(); ++index)
+        {
+          weighted[index] = std::complex<double>(weightedReal[index], weightedImaginary[index]);
+        }
 
-    for (std::size_t index = 0; index < generalized.size(); ++index) generalized[index] += gradientCurvature[index];
-
-    // Mass weighting D <- W D W with the real symmetric metric, applied to real and imaginary parts.
-    std::vector<double> realPart(generalized.size());
-    std::vector<double> imaginaryPart(generalized.size());
-    for (std::size_t index = 0; index < generalized.size(); ++index)
-    {
-      realPart[index] = generalized[index].real();
-      imaginaryPart[index] = generalized[index].imag();
-    }
-    const std::vector<double> weightedReal = applyMassMetric(realPart, numberOfGeneralizedDofs, metric);
-    const std::vector<double> weightedImaginary = applyMassMetric(imaginaryPart, numberOfGeneralizedDofs, metric);
-    std::vector<std::complex<double>> weighted(generalized.size());
-    for (std::size_t index = 0; index < generalized.size(); ++index)
-    {
-      weighted[index] = std::complex<double>(weightedReal[index], weightedImaginary[index]);
-    }
-
-    const HermitianEigenSystem eigensystem = diagonalizeHermitian(weighted, numberOfGeneralizedDofs);
-    dispersion.push_back(PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues});
-  }
-  return dispersion;
+        const HermitianEigenSystem eigensystem =
+            diagonalizeHermitian(weighted, numberOfGeneralizedDofs, /*computeEigenvectors=*/false);
+        return PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues};
+      });
 }
 }  // namespace
 
@@ -527,9 +623,9 @@ std::vector<double> phononInverseSqrtMasses(const System& system)
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
       const std::size_t type = static_cast<std::size_t>(moleculeAtoms[molecule.atomIndex + localAtom].type);
-      weights.push_back(checkedInverseSqrtMass(
-          system.forceField.pseudoAtoms[type].mass,
-          std::format("atom {} of molecule {} ({})", localAtom, moleculeIndex, component.name)));
+      weights.push_back(
+          checkedInverseSqrtMass(system.forceField.pseudoAtoms[type].mass,
+                                 std::format("atom {} of molecule {} ({})", localAtom, moleculeIndex, component.name)));
     }
   }
   return weights;
@@ -571,8 +667,8 @@ std::vector<std::complex<double>> computeDynamicalMatrix(const ForceConstants& f
 }
 
 std::vector<std::complex<double>> computeEwaldReciprocalDynamicalMatrix(const System& system,
-                                                                       std::span<const double> inverseSqrtMass,
-                                                                       double3 kFractional)
+                                                                        std::span<const double> inverseSqrtMass,
+                                                                        double3 kFractional)
 {
   const std::size_t numberOfAtoms = inverseSqrtMass.size();
   const std::size_t dimension = 3 * numberOfAtoms;
@@ -606,7 +702,8 @@ PhononModes computePhononModes(const ForceConstants& forceConstants, std::span<c
 {
   const std::vector<std::complex<double>> dynamicalMatrix =
       computeDynamicalMatrix(forceConstants, inverseSqrtMass, kFractional);
-  const HermitianEigenSystem eigensystem = diagonalizeHermitian(dynamicalMatrix, forceConstants.dimension());
+  const HermitianEigenSystem eigensystem =
+      diagonalizeHermitian(dynamicalMatrix, forceConstants.dimension(), /*computeEigenvectors=*/false);
   return PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues};
 }
 
@@ -621,7 +718,8 @@ PhononModes computePhononModes(const System& system, const ForceConstants& force
   {
     dynamicalMatrix[index] += reciprocal[index];
   }
-  const HermitianEigenSystem eigensystem = diagonalizeHermitian(dynamicalMatrix, forceConstants.dimension());
+  const HermitianEigenSystem eigensystem =
+      diagonalizeHermitian(dynamicalMatrix, forceConstants.dimension(), /*computeEigenvectors=*/false);
   return PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues};
 }
 
@@ -635,13 +733,8 @@ std::vector<PhononModes> computePhononDispersion(const System& system, std::span
   const ForceConstants forceConstants = computeRealSpaceForceConstants(system);
   const std::vector<double> inverseSqrtMass = phononInverseSqrtMasses(system);
 
-  std::vector<PhononModes> dispersion;
-  dispersion.reserve(kPath.size());
-  for (const double3 k : kPath)
-  {
-    dispersion.push_back(computePhononModes(system, forceConstants, inverseSqrtMass, k));
-  }
-  return dispersion;
+  return evaluateModesAlongPath(kPath.size(), [&](std::size_t index)
+                                { return computePhononModes(system, forceConstants, inverseSqrtMass, kPath[index]); });
 }
 
 std::vector<double> phononFrequenciesWavenumber(std::span<const double> eigenvalues)

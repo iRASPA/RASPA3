@@ -311,6 +311,23 @@ export struct System
   void createFrameworks();
   void createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions);
 
+  /**
+   * \brief Retargets this system in place to a different framework and simulation box.
+   *
+   * Reinitializes all framework-dependent state (framework atoms and per-atom dynamics/field buffers,
+   * framework atom counts, net charges, flexible-framework degrees of freedom, pseudo-atom counts, Ewald
+   * parameters, and the rigid reciprocal-space precompute) so an existing System can be reused for a new
+   * framework and cell without going through the full constructor. This is the single-object equivalent of
+   * the constructor's framework setup. Any guest-molecule atoms (the storage after the framework prefix) are
+   * preserved; because their positions are expressed in the previous cell, callers that also change the box
+   * (e.g. reduction to a primitive cell for phonon dispersion) should apply this to a framework-only system
+   * or a copy so the retained conventional-cell system is not disturbed.
+   *
+   * \param newFramework New framework whose atoms and intramolecular potentials replace the current ones.
+   * \param newSimulationBox Simulation box associated with \p newFramework.
+   */
+  void rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox);
+
   void checkCartesianPositions();
 
   void precomputeTotalRigidEnergy() noexcept;

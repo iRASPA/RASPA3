@@ -41,14 +41,6 @@ import json;
 
 namespace
 {
-template <std::size_t N>
-struct FrameworkPotentialDefinition
-{
-  std::array<std::size_t, N> atomTypes;
-  std::string potentialType;
-  std::vector<double> parameters;
-};
-
 std::filesystem::path frameworkDefinitionPath(const std::string& definitionName)
 {
   std::filesystem::path directPath{definitionName};
@@ -376,6 +368,7 @@ void Framework::determineUniqueAtomTypes()
 
 void Framework::readFrameworkDefinition(const ForceField& forceField, const std::string& definitionName)
 {
+  frameworkDefinitionName = definitionName;
   const std::filesystem::path path = frameworkDefinitionPath(definitionName);
   std::ifstream input(path);
   if (!input)
@@ -412,15 +405,26 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
     }
   }
 
-  const std::vector<FrameworkPotentialDefinition<2>> bondDefinitions =
-      readPotentialDefinitions<2>(forceField, data, "Bonds");
-  const std::vector<FrameworkPotentialDefinition<3>> bendDefinitions =
-      readPotentialDefinitions<3>(forceField, data, "Bends");
-  const std::vector<FrameworkPotentialDefinition<4>> torsionDefinitions =
-      readPotentialDefinitions<4>(forceField, data, "Torsions");
-  const std::vector<FrameworkPotentialDefinition<4>> improperDefinitions =
-      readPotentialDefinitions<4>(forceField, data, "ImproperTorsions");
+  // Retain the parsed type-based potential definitions and the nonbonded generation options so the
+  // intramolecular topology can be re-derived from memory (e.g. on a reduced primitive cell) without
+  // re-reading the definition file.
+  bondDefinitions = readPotentialDefinitions<2>(forceField, data, "Bonds");
+  bendDefinitions = readPotentialDefinitions<3>(forceField, data, "Bends");
+  torsionDefinitions = readPotentialDefinitions<4>(forceField, data, "Torsions");
+  improperTorsionDefinitions = readPotentialDefinitions<4>(forceField, data, "ImproperTorsions");
 
+  excludeIntra12Interactions = readExclusionOption(data, "ExcludeIntra12Interactions");
+  excludeIntra13Interactions = readExclusionOption(data, "ExcludeIntra13Interactions");
+  excludeIntraBondInteractions = readExclusionOption(data, "ExcludeIntraBondInteractions", false);
+  excludeIntraBendInteractions = readExclusionOption(data, "ExcludeIntraBendInteractions", false);
+  intra14VanDerWaalsScaling = readScalingFactor(data, "Intra14VanDerWaalsScalingValue");
+  intra14ChargeChargeScaling = readScalingFactor(data, "Intra14ChargeChargeScalingValue");
+
+  generateIntraMolecularPotentials(forceField);
+}
+
+void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
+{
   std::vector<BondType> bondTypes;
   std::vector<BendType> bendTypes;
   std::vector<TorsionType> torsionTypes;
@@ -428,14 +432,14 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
   bondTypes.reserve(bondDefinitions.size());
   bendTypes.reserve(bendDefinitions.size());
   torsionTypes.reserve(torsionDefinitions.size());
-  improperTypes.reserve(improperDefinitions.size());
+  improperTypes.reserve(improperTorsionDefinitions.size());
   std::ranges::transform(bondDefinitions, std::back_inserter(bondTypes),
                          [](const auto& definition) { return bondType(definition); });
   std::ranges::transform(bendDefinitions, std::back_inserter(bendTypes),
                          [](const auto& definition) { return bendType(definition); });
   std::ranges::transform(torsionDefinitions, std::back_inserter(torsionTypes),
                          [](const auto& definition) { return torsionType(definition, "torsion"); });
-  std::ranges::transform(improperDefinitions, std::back_inserter(improperTypes),
+  std::ranges::transform(improperTorsionDefinitions, std::back_inserter(improperTypes),
                          [](const auto& definition) { return torsionType(definition, "improper torsion"); });
 
   ConnectivityTable connectivity(atoms.size());
@@ -484,9 +488,9 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
   }
 
   std::map<std::array<std::size_t, 4>, std::size_t> improperOwners;
-  for (std::size_t definitionIndex = 0; definitionIndex < improperDefinitions.size(); ++definitionIndex)
+  for (std::size_t definitionIndex = 0; definitionIndex < improperTorsionDefinitions.size(); ++definitionIndex)
   {
-    const auto& definition = improperDefinitions[definitionIndex];
+    const auto& definition = improperTorsionDefinitions[definitionIndex];
     for (std::size_t center = 0; center < atoms.size(); ++center)
     {
       if (static_cast<std::size_t>(atoms[center].type) != definition.atomTypes[1]) continue;
@@ -545,13 +549,6 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
     }
   };
 
-  const bool exclude12Interactions = readExclusionOption(data, "ExcludeIntra12Interactions");
-  const bool exclude13Interactions = readExclusionOption(data, "ExcludeIntra13Interactions");
-  const bool excludeBondInteractions = readExclusionOption(data, "ExcludeIntraBondInteractions", false);
-  const bool excludeBendInteractions = readExclusionOption(data, "ExcludeIntraBendInteractions", false);
-  const double vanDerWaals14Scaling = readScalingFactor(data, "Intra14VanDerWaalsScalingValue");
-  const double chargeCharge14Scaling = readScalingFactor(data, "Intra14ChargeChargeScalingValue");
-
   std::set<std::array<std::size_t, 2>> pairs12;
   for (const std::array<std::size_t, 2>& bond : connectivity.findAllBonds())
   {
@@ -588,17 +585,17 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
     for (std::size_t j = i + 1; j < atoms.size(); ++j)
     {
       const std::array<std::size_t, 2> pair{i, j};
-      if ((exclude12Interactions && pairs12.contains(pair)) ||
-          (excludeBondInteractions && definedBondPairs.contains(pair)) ||
-          (exclude13Interactions && pairs13.contains(pair)) ||
-          (excludeBendInteractions && definedBendPairs.contains(pair)))
+      if ((excludeIntra12Interactions && pairs12.contains(pair)) ||
+          (excludeIntraBondInteractions && definedBondPairs.contains(pair)) ||
+          (excludeIntra13Interactions && pairs13.contains(pair)) ||
+          (excludeIntraBendInteractions && definedBendPairs.contains(pair)))
       {
         continue;
       }
       if (pairs14.contains(pair))
       {
-        if (vanDerWaals14Scaling > 0.0) addVanDerWaals(pair, vanDerWaals14Scaling);
-        if (chargeCharge14Scaling > 0.0) addCoulomb(pair, chargeCharge14Scaling);
+        if (intra14VanDerWaalsScaling > 0.0) addVanDerWaals(pair, intra14VanDerWaalsScaling);
+        if (intra14ChargeChargeScaling > 0.0) addCoulomb(pair, intra14ChargeChargeScaling);
       }
       else
       {
@@ -663,6 +660,139 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
   connectivityTable = std::move(connectivity);
   intraMolecularPotentials = std::move(potentials);
   intraMolecularImageShifts = std::move(imageShifts);
+}
+
+void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
+                                               double cutOffFrameworkVDW)
+{
+  if (rigid || cutOffFrameworkVDW <= 0.0 || atoms.empty()) return;
+
+  // Only frameworks whose construction generated a nonbonded van der Waals pair list are replicated.
+  // An empty list means the framework has no nonbonded van der Waals interactions (e.g. a purely bonded
+  // model or a programmatically assembled framework), so there is nothing to extend over replica cells.
+  if (intraMolecularPotentials.vanDerWaals.empty()) return;
+
+  const double3 widths = box.perpendicularWidths();
+  const double smallestWidth = std::min({widths.x, widths.y, widths.z});
+  // A single minimum image already covers the cutoff; keep the construction-time list untouched.
+  if (smallestWidth >= 2.0 * cutOffFrameworkVDW) return;
+
+  const double cutOffSquared = cutOffFrameworkVDW * cutOffFrameworkVDW;
+
+  // Topological classification (unordered pairs), reconstructed from the stored connectivity exactly as
+  // in the construction-time nonbonded generation.
+  std::set<std::array<std::size_t, 2>> pairs12;
+  std::set<std::array<std::size_t, 2>> pairs13;
+  std::set<std::array<std::size_t, 2>> pairs14;
+  if (!connectivityTable.table.empty())
+  {
+    for (const std::array<std::size_t, 2>& bond : connectivityTable.findAllBonds())
+    {
+      pairs12.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+    }
+    for (const std::array<std::size_t, 3>& bend : connectivityTable.findAllBends())
+    {
+      const std::array<std::size_t, 2> pair{std::min(bend[0], bend[2]), std::max(bend[0], bend[2])};
+      if (!pairs12.contains(pair)) pairs13.insert(pair);
+    }
+    for (const std::array<std::size_t, 4>& torsion : connectivityTable.findAllTorsions())
+    {
+      const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
+      if (!pairs12.contains(pair) && !pairs13.contains(pair)) pairs14.insert(pair);
+    }
+  }
+  std::set<std::array<std::size_t, 2>> definedBondPairs;
+  for (const BondPotential& bond : intraMolecularPotentials.bonds)
+  {
+    definedBondPairs.insert(
+        {std::min(bond.identifiers[0], bond.identifiers[1]), std::max(bond.identifiers[0], bond.identifiers[1])});
+  }
+  std::set<std::array<std::size_t, 2>> definedBendPairs;
+  for (const BendPotential& bend : intraMolecularPotentials.bends)
+  {
+    definedBendPairs.insert(
+        {std::min(bend.identifiers[0], bend.identifiers[2]), std::max(bend.identifiers[0], bend.identifiers[2])});
+  }
+
+  std::vector<VanDerWaalsPotential> vanDerWaals;
+  std::vector<std::array<int3, 2>> vanDerWaalsImages;
+
+  const auto emitPair = [&](std::size_t i, std::size_t j, const int3& shift, double scaling)
+  {
+    const std::size_t typeA = static_cast<std::size_t>(atoms[i].type);
+    const std::size_t typeB = static_cast<std::size_t>(atoms[j].type);
+    const double4 parameters = forceField(typeA, typeB).parameters;
+    vanDerWaals.emplace_back(
+        std::array<std::size_t, 2>{i, j}, VanDerWaalsType::LennardJones,
+        std::vector<double>{parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, scaling);
+    vanDerWaalsImages.push_back({int3{}, shift});
+  };
+
+  // Range of replica shells to scan; ceil(2 cutoff / width) is a safe upper bound per axis.
+  const int3 shells = box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOffFrameworkVDW);
+
+  // Distinct-atom pairs: atom i sits in the home cell, atom j roams over all periodic images. Fixing
+  // i in the home cell and iterating i < j counts every unordered pair-image exactly once.
+  for (std::size_t i = 0; i + 1 < atoms.size(); ++i)
+  {
+    for (std::size_t j = i + 1; j < atoms.size(); ++j)
+    {
+      const std::array<std::size_t, 2> pair{i, j};
+      const bool excludedBonded = (excludeIntra12Interactions && pairs12.contains(pair)) ||
+                                  (excludeIntraBondInteractions && definedBondPairs.contains(pair)) ||
+                                  (excludeIntra13Interactions && pairs13.contains(pair)) ||
+                                  (excludeIntraBendInteractions && definedBendPairs.contains(pair));
+      const bool scaled14 = pairs14.contains(pair);
+      // The covalently bonded neighbour is the minimum image; only that image is excluded or 1-4 scaled.
+      const int3 bondedImage = periodicImageShift(box, atoms[i].position, atoms[j].position);
+
+      for (int a = -shells.x; a <= shells.x; ++a)
+      {
+        for (int b = -shells.y; b <= shells.y; ++b)
+        {
+          for (int c = -shells.z; c <= shells.z; ++c)
+          {
+            const int3 shift(a, b, c);
+            const bool isBondedImage = (shift == bondedImage);
+            if (isBondedImage && excludedBonded) continue;
+            if (isBondedImage && scaled14)
+            {
+              if (intra14VanDerWaalsScaling > 0.0) emitPair(i, j, shift, intra14VanDerWaalsScaling);
+              continue;
+            }
+            const double3 dr = atoms[i].position - (atoms[j].position + box.cell * double3(static_cast<double>(a),
+                                                                                           static_cast<double>(b),
+                                                                                           static_cast<double>(c)));
+            if (double3::dot(dr, dr) < cutOffSquared) emitPair(i, j, shift, 1.0);
+          }
+        }
+      }
+    }
+  }
+
+  // Self-images: an atom interacts with its own periodic images. n and -n describe the same unordered
+  // pair, so only a positive half-shell is enumerated to avoid double counting. Self-images are never
+  // covalently bonded in the supercell atom indexing, so no exclusion applies.
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    for (int a = -shells.x; a <= shells.x; ++a)
+    {
+      for (int b = -shells.y; b <= shells.y; ++b)
+      {
+        for (int c = -shells.z; c <= shells.z; ++c)
+        {
+          const bool positiveHalf = (a > 0) || (a == 0 && b > 0) || (a == 0 && b == 0 && c > 0);
+          if (!positiveHalf) continue;
+          const double3 dr =
+              box.cell * double3(static_cast<double>(-a), static_cast<double>(-b), static_cast<double>(-c));
+          if (double3::dot(dr, dr) < cutOffSquared) emitPair(i, i, int3(a, b, c), 1.0);
+        }
+      }
+    }
+  }
+
+  intraMolecularPotentials.vanDerWaals = std::move(vanDerWaals);
+  intraMolecularImageShifts.vanDerWaals = std::move(vanDerWaalsImages);
 }
 
 void Framework::makeSuperCell()

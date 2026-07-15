@@ -11,10 +11,15 @@ import randomnumbers;
 import mc_moves;
 import property_lambda_probability_histogram;
 import component;
+import int3;
 import double3;
 import double3x3;
 import simulationbox;
+import framework;
+import forcefield;
 import skbandpath;
+import skspacegroup;
+import sksymmetrycell;
 import generalized_hessian;
 import minimization_dof_layout;
 import minimization_evaluate_derivatives;
@@ -154,6 +159,93 @@ std::vector<PhononPathNode> symmetryDefaultPhononPath(const System& system)
   return nodes;
 }
 
+// Reduce the minimized simulation cell to its primitive cell (SymmetryKit) and retarget the given System in
+// place to that primitive cell. The intramolecular topology is re-derived from the retained framework
+// definitions on the reduced atoms, and the configured van der Waals cutoff is kept: periodic-image replicas
+// satisfy the minimum-image convention on the (small) primitive cell, while Ewald falls back to a half-box
+// real-space cutoff. Returns false and leaves \p system unchanged when there is no flexible framework, no
+// retained definition, or the symmetry/primitive reduction fails, in which case the caller keeps the
+// simulation cell. This is called only after the elastic constants and normal modes have been computed, so
+// consuming (overwriting) the minimized conventional cell is safe.
+bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
+{
+  if (!system.framework.has_value() || system.framework->rigid) return false;
+  const Framework& framework = *system.framework;
+  if (framework.frameworkDefinitionName.empty()) return false;
+
+  const SimulationBox& box = system.simulationBox;
+  const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+  if (frameworkAtoms.empty()) return false;
+
+  std::vector<std::tuple<double3, std::size_t, double>> atoms;
+  atoms.reserve(frameworkAtoms.size());
+  std::unordered_map<std::size_t, double> chargeForType;
+  for (const Atom& atom : frameworkAtoms)
+  {
+    atoms.emplace_back(box.inverseCell * atom.position, static_cast<std::size_t>(atom.type), 1.0);
+    chargeForType.try_emplace(static_cast<std::size_t>(atom.type), atom.charge);
+  }
+
+  std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> primitive =
+      SKSpaceGroup::SKFindPrimitive(box.cell, atoms, /*allowPartialOccupancies=*/true, symmetryPrecision);
+  if (!primitive || primitive->atoms.empty()) return false;
+
+  const double3x3 primitiveCell = primitive->cell.unitCell();
+  const SimulationBox primitiveBox(primitiveCell);
+
+  std::vector<Atom> primitiveFractionalAtoms;
+  primitiveFractionalAtoms.reserve(primitive->atoms.size());
+  for (const auto& [fractional, type, occupancy] : primitive->atoms)
+  {
+    const auto charge = chargeForType.find(type);
+    primitiveFractionalAtoms.emplace_back(fractional, charge != chargeForType.end() ? charge->second : 0.0, 1.0, 0,
+                                          static_cast<std::uint16_t>(type), 0, 0, static_cast<std::uint8_t>(true));
+  }
+
+  try
+  {
+    Framework primitiveFramework(system.forceField, framework.name + "-primitive", primitiveBox, 1,
+                                 primitiveFractionalAtoms, primitiveFractionalAtoms, int3(1, 1, 1));
+    // Re-derive connectivity and all intramolecular potentials (bonds/bends/torsions/vdw/coulomb) on the
+    // reduced atoms directly from the parent framework's retained type-based definitions and exclusion/
+    // scaling options, i.e. without re-reading the definition file. All fallible work happens here on local
+    // objects, so `system` is left untouched if the primitive framework cannot be constructed.
+    primitiveFramework.rigid = framework.rigid;
+    primitiveFramework.frameworkDefinitionName = framework.frameworkDefinitionName;
+    primitiveFramework.bondDefinitions = framework.bondDefinitions;
+    primitiveFramework.bendDefinitions = framework.bendDefinitions;
+    primitiveFramework.torsionDefinitions = framework.torsionDefinitions;
+    primitiveFramework.improperTorsionDefinitions = framework.improperTorsionDefinitions;
+    primitiveFramework.excludeIntra12Interactions = framework.excludeIntra12Interactions;
+    primitiveFramework.excludeIntra13Interactions = framework.excludeIntra13Interactions;
+    primitiveFramework.excludeIntraBondInteractions = framework.excludeIntraBondInteractions;
+    primitiveFramework.excludeIntraBendInteractions = framework.excludeIntraBendInteractions;
+    primitiveFramework.intra14VanDerWaalsScaling = framework.intra14VanDerWaalsScaling;
+    primitiveFramework.intra14ChargeChargeScaling = framework.intra14ChargeChargeScaling;
+    primitiveFramework.generateIntraMolecularPotentials(system.forceField);
+
+    // Retarget the minimized system in place to the primitive cell. Keep the (finalized) van der Waals cutoff
+    // so the force constants are computed at the same range; periodic-image replicas satisfy the minimum-image
+    // convention on the small primitive cell. Only the real-space Coulomb cutoff is clamped to the primitive
+    // half-box (Ewald is exact for any box at a half-box real-space cutoff).
+    system.forceField.cutOffFrameworkVDWAutomatic = false;
+    system.forceField.cutOffMoleculeVDWAutomatic = false;
+    const double3 primitiveWidths = primitiveBox.perpendicularWidths();
+    const double halfSmallestWidth =
+        0.5 * std::min({primitiveWidths.x, primitiveWidths.y, primitiveWidths.z}) - std::numeric_limits<double>::epsilon();
+    system.forceField.cutOffCoulomb = std::min(system.forceField.cutOffCoulomb, halfSmallestWidth);
+
+    system.rebuildForFramework(primitiveFramework, primitiveBox);
+    system.framework->regenerateVanDerWaalsImageList(system.forceField, primitiveBox,
+                                                     system.forceField.cutOffFrameworkVDW);
+    return true;
+  }
+  catch (const std::exception&)
+  {
+    return false;
+  }
+}
+
 }  // namespace
 
 Minimization::Minimization(InputReader& inputReader)
@@ -193,6 +285,14 @@ void Minimization::setup()
     System& system = systems[systemIndex];
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+    // For cells smaller than twice the van der Waals cutoff a single minimum image is insufficient;
+    // regenerate the framework van der Waals pair list with periodic-image replicas so the minimization
+    // energy, gradient and Hessian (and the downstream phonon force constants) remain exact.
+    if (system.framework.has_value() && !system.framework->rigid)
+    {
+      system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
+                                                       system.forceField.cutOffFrameworkVDW);
+    }
     system.precomputeTotalRigidEnergy();
     if (outputToFiles)
     {
@@ -564,6 +664,19 @@ void Minimization::runPhase()
       }
       if (options.computePhononDispersion)
       {
+        // The phonon dispersion is the final post-processing step: the elastic constants and normal modes
+        // above are already computed and stored, so the minimized conventional cell is no longer needed and
+        // can be consumed here. Optionally reduce it in place to the primitive cell so the dispersion is the
+        // true unfolded band structure along the primitive Brillouin zone (no zone folding). The reduction is
+        // a no-op (system left unchanged) when it is unavailable (rigid/no framework, no retained definition,
+        // or symmetry detection fails). An explicit path is given in the simulation-cell reciprocal basis, so
+        // it is only meaningful on the simulation cell; primitive reduction is used only together with the
+        // default symmetry-derived path.
+        if (options.phononUsePrimitiveCell && options.phononDispersionPath.empty())
+        {
+          reduceSystemToPrimitiveFramework(system, options.phononPrimitiveCellSymmetryPrecision);
+        }
+
         std::vector<PhononPathNode> nodes = options.phononDispersionPath;
         if (nodes.empty())
         {

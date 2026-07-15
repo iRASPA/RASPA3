@@ -17,5 +17,8 @@ export struct HermitianEigenSystem
 /**
  * Diagonalize a complex Hermitian matrix supplied in row-major order.
  * Eigenvalues are ascending and (complex) eigenvectors are returned as columns.
+ * When `computeEigenvectors` is false only the eigenvalues are computed (LAPACK jobz='N'), which is
+ * substantially faster and leaves `eigenvectors` empty.
  */
-export HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size);
+export HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size,
+                                                 bool computeEigenvectors = true);

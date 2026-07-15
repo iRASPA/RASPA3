@@ -2,6 +2,7 @@
   "MixingRule": "Lorentz-Berthelot",
   "TruncationMethod": "shifted",
   "TailCorrections": false,
+  "CutOffVDW": 12.0,
   "EwaldPrecision" : 1e-10,
   "PseudoAtoms": [
     {

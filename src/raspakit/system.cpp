@@ -213,6 +213,54 @@ void System::createFrameworks()
   }
 }
 
+void System::rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox)
+{
+  const bool previousFrameworkFlexible = framework.has_value() && !framework->rigid;
+  const std::size_t previousFrameworkAtoms = numberOfFrameworkAtoms;
+
+  // Detach any guest-molecule storage (the suffix after the framework prefix) so it can be re-appended once
+  // the new framework atoms are in place. For a framework-only system these are empty.
+  const auto moleculeOffset = static_cast<std::vector<Atom>::difference_type>(previousFrameworkAtoms);
+  std::vector<Atom> moleculeAtoms(atomData.begin() + moleculeOffset, atomData.end());
+  std::vector<AtomDynamics> moleculeDynamics(atomDynamics.begin() + moleculeOffset, atomDynamics.end());
+
+  framework = newFramework;
+  simulationBox = newSimulationBox;
+
+  const std::vector<Atom>& frameworkAtoms = framework->atoms;
+  numberOfFrameworkAtoms = frameworkAtoms.size();
+  numberOfRigidFrameworkAtoms = framework->rigid ? frameworkAtoms.size() : 0;
+
+  // Rebuild the per-atom storage as [new framework atoms] ++ [preserved molecule atoms]; the field/potential
+  // buffers are reset to the new size (they are recomputed on the next energy/field evaluation).
+  atomData.assign(frameworkAtoms.begin(), frameworkAtoms.end());
+  atomData.insert(atomData.end(), moleculeAtoms.begin(), moleculeAtoms.end());
+  atomDynamics.assign(frameworkAtoms.size(), AtomDynamics{});
+  atomDynamics.insert(atomDynamics.end(), moleculeDynamics.begin(), moleculeDynamics.end());
+  electricPotential.assign(atomData.size(), 0.0);
+  electricField.assign(atomData.size(), double3(0.0, 0.0, 0.0));
+  electricFieldNew.assign(atomData.size(), double3(0.0, 0.0, 0.0));
+
+  // Swap the old framework net-charge contribution for the new one (adsorbate contribution is unchanged).
+  netCharge -= netChargeFramework;
+  netChargeFramework = framework->netCharge;
+  netCharge += netChargeFramework;
+
+  // A flexible framework contributes 3 Cartesian degrees of freedom per atom; adjust for the new atom count.
+  if (previousFrameworkFlexible) translationalDegreesOfFreedom -= 3 * previousFrameworkAtoms;
+  if (!framework->rigid) translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+
+  // Note: pseudo-atom counts intentionally track only component (guest) atoms, matching the constructor which
+  // computes them before the framework atoms are appended; the preserved guest counts stay valid, so framework
+  // atoms are not (re)counted here.
+
+  forceField.initializeEwaldParameters(simulationBox);
+  CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
+      eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
+
+  precomputeTotalRigidEnergy();
+}
+
 void System::determineSwappableComponents()
 {
   for (std::size_t componentId{0}; Component& component : components)

@@ -8,15 +8,16 @@ using blas_int = int;
 
 extern "C"
 {
-  void zheevd_(char *jobz, char *uplo, blas_int *n, double *a, blas_int *lda, double *w, double *work, blas_int *lwork,
-               double *rwork, blas_int *lrwork, blas_int *iwork, blas_int *liwork, blas_int *info);
+  void zheevd_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
+               double* rwork, blas_int* lrwork, blas_int* iwork, blas_int* liwork, blas_int* info);
 }
 
 module hermitian_eigensolver;
 
 import std;
 
-HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size)
+HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size,
+                                          bool computeEigenvectors)
 {
   if (matrix.size() != size * size)
   {
@@ -31,8 +32,20 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
     throw std::overflow_error("diagonalizeHermitian: matrix is too large for the configured LAPACK integer type");
   }
 
-  HermitianEigenSystem result{.size = size, .eigenvalues = std::vector<double>(size),
-                              .eigenvectors = std::vector<std::complex<double>>(size * size)};
+  HermitianEigenSystem result{
+      .size = size,
+      .eigenvalues = std::vector<double>(size),
+      .eigenvectors = std::vector<std::complex<double>>(computeEigenvectors ? size * size : std::size_t{0})};
+
+  // In eigenvalues-only mode LAPACK still overwrites the input matrix, so use scratch storage instead of
+  // the (empty) eigenvector array.
+  std::vector<std::complex<double>> scratch;
+  std::complex<double>* storage = result.eigenvectors.data();
+  if (!computeEigenvectors)
+  {
+    scratch.resize(size * size);
+    storage = scratch.data();
+  }
 
   // Hermitize into column-major storage: a[row + size*column] = 0.5 (M[row][column] + conj(M[column][row])).
   for (std::size_t row = 0; row < size; ++row)
@@ -44,11 +57,11 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
       {
         throw std::runtime_error("diagonalizeHermitian: matrix contains a non-finite value");
       }
-      result.eigenvectors[row + size * column] = value;
+      storage[row + size * column] = value;
     }
   }
 
-  char jobz = 'V';
+  char jobz = computeEigenvectors ? 'V' : 'N';
   char uplo = 'U';
   blas_int n = static_cast<blas_int>(size);
   blas_int lda = n;
@@ -59,7 +72,7 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
   double workQuery[2] = {0.0, 0.0};
   double rworkQuery = 0.0;
   blas_int iworkQuery = 0;
-  double *a = reinterpret_cast<double *>(result.eigenvectors.data());
+  double* a = reinterpret_cast<double*>(storage);
   zheevd_(&jobz, &uplo, &n, a, &lda, result.eigenvalues.data(), workQuery, &lwork, &rworkQuery, &lrwork, &iworkQuery,
           &liwork, &info);
   if (info != 0)
@@ -73,7 +86,7 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
   std::vector<std::complex<double>> work(static_cast<std::size_t>(lwork));
   std::vector<double> rwork(static_cast<std::size_t>(lrwork));
   std::vector<blas_int> iwork(static_cast<std::size_t>(liwork));
-  zheevd_(&jobz, &uplo, &n, a, &lda, result.eigenvalues.data(), reinterpret_cast<double *>(work.data()), &lwork,
+  zheevd_(&jobz, &uplo, &n, a, &lda, result.eigenvalues.data(), reinterpret_cast<double*>(work.data()), &lwork,
           rwork.data(), &lrwork, iwork.data(), &liwork, &info);
   if (info < 0)
   {

@@ -405,6 +405,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         parsed_data["PhononDispersionPointsPerSegment"].get<std::size_t>();
   }
 
+  if (parsed_data.contains("PhononUsePrimitiveCell"))
+  {
+    if (!parsed_data["PhononUsePrimitiveCell"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: PhononUsePrimitiveCell must be a boolean");
+    }
+    minimizationOptions.phononUsePrimitiveCell = parsed_data["PhononUsePrimitiveCell"].get<bool>();
+  }
+
   if (parsed_data.contains("PhononDispersionPath"))
   {
     // A band-structure path is a JSON array of nodes. Each node is either a bare [kx, ky, kz] array or an
@@ -2570,6 +2579,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ComputePhononDispersion",
     "PhononDispersionPointsPerSegment",
     "PhononDispersionPath",
+    "PhononUsePrimitiveCell",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",
