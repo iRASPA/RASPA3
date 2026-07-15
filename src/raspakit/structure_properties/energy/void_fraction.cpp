@@ -14,8 +14,8 @@ import forcefield;
 import framework;
 import simulationbox;
 import atom;
-import potential_energy_vdw;
-import energy_factor;
+import potential_pair_derivatives;
+import potential_pair_vdw;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
@@ -73,7 +73,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
               double rr = double3::dot(dr, dr);
               if (rr < cutoff * cutoff)
               {
-                Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+                Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
                   forceField, 1.0, 1.0, rr, probe_type.value(), typeB);
 
                 energy += energyFactor.energy;

@@ -14,7 +14,6 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;

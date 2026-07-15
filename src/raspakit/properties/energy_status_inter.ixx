@@ -5,17 +5,17 @@ export module energy_status_inter;
 import std;
 
 import archive;
-import energy_factor;
+import energy_dudlambda;
 
 export struct EnergyInter
 {
   std::uint64_t versionNumber{1};
 
-  Potentials::EnergyFactor VanDerWaals;
-  Potentials::EnergyFactor VanDerWaalsTailCorrection;
-  Potentials::EnergyFactor CoulombicReal;
-  Potentials::EnergyFactor CoulombicFourier;
-  Potentials::EnergyFactor totalInter;
+  EnergyDuDlambda VanDerWaals;
+  EnergyDuDlambda VanDerWaalsTailCorrection;
+  EnergyDuDlambda CoulombicReal;
+  EnergyDuDlambda CoulombicFourier;
+  EnergyDuDlambda totalInter;
 
   EnergyInter()
       : VanDerWaals(0.0, 0.0),
@@ -30,21 +30,16 @@ export struct EnergyInter
 
   void zero()
   {
-    VanDerWaals = Potentials::EnergyFactor(0.0, 0.0);
-    VanDerWaalsTailCorrection = Potentials::EnergyFactor(0.0, 0.0);
-    CoulombicReal = Potentials::EnergyFactor(0.0, 0.0);
-    CoulombicFourier = Potentials::EnergyFactor(0.0, 0.0);
-    totalInter = Potentials::EnergyFactor(0.0, 0.0);
+    VanDerWaals = EnergyDuDlambda(0.0, 0.0);
+    VanDerWaalsTailCorrection = EnergyDuDlambda(0.0, 0.0);
+    CoulombicReal = EnergyDuDlambda(0.0, 0.0);
+    CoulombicFourier = EnergyDuDlambda(0.0, 0.0);
+    totalInter = EnergyDuDlambda(0.0, 0.0);
   }
 
   void sumTotal() { totalInter = VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier; }
 
-  inline Potentials::EnergyFactor totalEnergyFactor() const
-  {
-    return VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
-  }
-
-  inline Potentials::EnergyFactor total() const
+  inline EnergyDuDlambda total() const
   {
     return VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
   }

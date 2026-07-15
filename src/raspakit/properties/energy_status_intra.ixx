@@ -6,7 +6,7 @@ import std;
 
 import archive;
 import stringutils;
-import energy_factor;
+import energy_dudlambda;
 
 export struct EnergyIntra
 {
@@ -47,9 +47,9 @@ export struct EnergyIntra
 
   bool operator==(EnergyIntra const&) const = default;
 
-  inline Potentials::EnergyFactor total() const
+  inline EnergyDuDlambda total() const
   {
-    return Potentials::EnergyFactor(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
+    return EnergyDuDlambda(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
                                         improperTorsion + bondBond + bondBend + bondTorsion + bendBend + bendTorsion +
                                         vanDerWaals + coulomb,
                                     0.0);

@@ -7,7 +7,6 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
-import gradient_factor;
 import units;
 
 BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType type,

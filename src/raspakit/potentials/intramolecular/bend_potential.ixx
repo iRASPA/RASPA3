@@ -10,8 +10,6 @@ import randomnumbers;
 import double3;
 import double3x3;
 import units;
-import gradient_factor;
-
 /**
  * \brief Maximum number of parameters allowed for bend potentials.
  *

@@ -11,8 +11,6 @@ import atom_dynamics;
 import running_energy;
 import energy_status;
 import simulationbox;
-import energy_factor;
-import gradient_factor;
 import forcefield;
 import component;
 

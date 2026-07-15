@@ -5,10 +5,6 @@ module cbmc_interactions_external_field;
 import std;
 
 import energy_status;
-import potential_energy_vdw;
-import potential_gradient_vdw;
-import potential_energy_coulomb;
-import potential_gradient_coulomb;
 import potential_correction_vdw;
 import simulationbox;
 import double3;
@@ -16,8 +12,7 @@ import double4;
 import double3x3;
 import forcefield;
 import atom;
-import energy_factor;
-import gradient_factor;
+import potential_pair_derivatives;
 import energy_status_inter;
 import running_energy;
 import units;
@@ -57,7 +52,7 @@ import interpolation_energy_grid;
         [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
         // Fill in the energy based on the atom properties and the fractional position 's'
-        Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
+        Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
         if (externalFieldInterpolationGrid.has_value())
         {

@@ -5,7 +5,7 @@ export module energy_status;
 import std;
 
 import archive;
-import energy_factor;
+import energy_dudlambda;
 import energy_status_intra;
 import energy_status_inter;
 import component;
@@ -52,9 +52,9 @@ export struct EnergyStatus
     return interComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  Potentials::EnergyFactor interEnergyComponent(std::size_t compA)
+  EnergyDuDlambda interEnergyComponent(std::size_t compA)
   {
-    Potentials::EnergyFactor sum(0.0, 0.0);
+    EnergyDuDlambda sum(0.0, 0.0);
     for (std::size_t i = 0; i < numberOfComponents; i++)
     {
       sum += interComponentEnergies[compA * numberOfComponents + i].totalInter;
@@ -64,8 +64,8 @@ export struct EnergyStatus
 
   void zero()
   {
-    totalEnergy = Potentials::EnergyFactor(0.0, 0.0);
-    polarizationEnergy = Potentials::EnergyFactor(0.0, 0.0);
+    totalEnergy = EnergyDuDlambda(0.0, 0.0);
+    polarizationEnergy = EnergyDuDlambda(0.0, 0.0);
     dUdlambda = 0.0;
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
@@ -213,7 +213,7 @@ export struct EnergyStatus
   std::size_t numberOfExternalFields;
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
-  Potentials::EnergyFactor totalEnergy;
+  EnergyDuDlambda totalEnergy;
   EnergyIntra intraEnergy;
   EnergyInter externalFieldMoleculeEnergy;
   EnergyInter frameworkMoleculeEnergy;
@@ -222,7 +222,7 @@ export struct EnergyStatus
   std::vector<EnergyInter> externalFieldComponentEnergies;
   std::vector<EnergyInter> frameworkComponentEnergies;
   std::vector<EnergyInter> interComponentEnergies;
-  Potentials::EnergyFactor polarizationEnergy;
+  EnergyDuDlambda polarizationEnergy;
   double dUdlambda;
   double translationalKineticEnergy;
   double rotationalKineticEnergy;

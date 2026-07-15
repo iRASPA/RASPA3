@@ -23,9 +23,9 @@ import torsion_potential_gradient_hessian_strain;
 import distance_potential_gradient_hessian_strain;
 import minimization_hessian_scatter;
 import minimization_cell_layout;
-import potential_hessian_vdw;
-import potential_hessian_coulomb;
-import hessian_factor;
+import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
 
 namespace
 {
@@ -276,7 +276,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
         pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
     if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
-      const Potentials::HessianFactor factors = Potentials::potentialVDWHessian(
+      const Potentials::PairDerivatives<2> factors = Potentials::potentialVDW<2>(
           forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
       accumulateRadial(A, B, images.vanDerWaals[index], potential.scaling * factors.energy,
                        potential.scaling * factors.firstDerivativeFactor,
@@ -301,9 +301,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
     {
       const double r = std::sqrt(rr);
-      const Potentials::HessianFactor factors =
-          Potentials::potentialCoulombHessian(forceField, potential.scaling, 1.0, rr, r, potential.chargeA,
-                                              potential.chargeB);
+      const Potentials::PairDerivatives<2> factors =
+          Potentials::potentialCoulomb<2>(forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
       accumulateRadial(A, B, images.coulombs[index], factors.energy, factors.firstDerivativeFactor,
                        factors.secondDerivativeFactor, energies.intraCoul);
     }

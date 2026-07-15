@@ -14,7 +14,6 @@ import cbmc;
 import randomnumbers;
 import system;
 import molecule;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;

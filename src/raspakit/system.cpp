@@ -30,7 +30,7 @@ import skcell;
 import sample_movies;
 import property_enthalpy;
 import property_pressure;
-import energy_factor;
+import energy_dudlambda;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
@@ -731,7 +731,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   if (forceField.computePolarization)
   {
     RunningEnergy e = computePolarizationEnergy();
-    pressureInfo.first.polarizationEnergy = Potentials::EnergyFactor(e.polarization, 0.0);
+    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(e.polarization, 0.0);
   }
 
   pressureInfo.first.sumTotal();

@@ -14,7 +14,6 @@ import double3x3;
 import simulationbox;
 import energy_status;
 import forcefield;
-import energy_factor;
 import energy_status;
 import running_energy;
 import framework;

@@ -15,7 +15,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
 import running_energy;
 import cbmc_interactions;
 import interactions_intermolecular;

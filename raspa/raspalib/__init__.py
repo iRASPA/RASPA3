@@ -141,7 +141,7 @@ __all__ = [
     "MonteCarlo",
     "LoadingData",
     "SampleMovie",
-    "EnergyFactor",
+    "EnergyDuDlambda",
     "EnergyStatus",
     "AverageEnergyType",
     "PropertyEnergy",

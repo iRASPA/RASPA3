@@ -1,4 +1,4 @@
-class EnergyFactor():
+class EnergyDuDlambda():
     """
     Store an energy term and its thermodynamic-integration derivative.
 
@@ -13,7 +13,7 @@ class EnergyFactor():
     ) -> None:
         ...
         """
-        Initialize an :class:`EnergyFactor`.
+        Initialize an :class:`EnergyDuDlambda`.
 
         Args:
             energy: Energy contribution.
@@ -30,4 +30,3 @@ class EnergyFactor():
     def dudlambda(self) -> float:
         """Return the stored ``dU/dlambda`` contribution."""
         ...
-

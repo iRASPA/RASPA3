@@ -20,8 +20,6 @@ import intra_molecular_potentials;
 import bond_potential;
 import system;
 import simulationbox;
-import energy_factor;
-import gradient_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;

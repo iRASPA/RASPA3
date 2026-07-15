@@ -16,7 +16,7 @@ export namespace Potentials
  *   - Order 1: adds firstDerivativeFactor
  *   - Order 2: adds secondDerivativeFactor
  *
- * Conventions (identical to the legacy EnergyFactor/GradientFactor/HessianFactor):
+ * Conventions:
  *   - energy is the scaled pair energy scalingA * scalingB * u.
  *   - dUdlambda holds the symmetric derivative factor X such that
  *       dU/d(scalingA) = scalingB * X   and   dU/d(scalingB) = scalingA * X.

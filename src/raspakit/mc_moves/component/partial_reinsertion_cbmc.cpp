@@ -17,7 +17,6 @@ import cbmc_interactions;
 import cbmc_growth_context;
 import randomnumbers;
 import system;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;

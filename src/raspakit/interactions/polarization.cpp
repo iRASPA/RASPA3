@@ -12,8 +12,6 @@ import simulationbox;
 import energy_status;
 import energy_status_inter;
 import units;
-import energy_factor;
-import gradient_factor;
 import running_energy;
 import framework;
 import component;

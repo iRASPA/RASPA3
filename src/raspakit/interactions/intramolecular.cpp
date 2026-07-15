@@ -5,10 +5,9 @@ module interactions_internal;
 import std;
 
 import energy_status;
-import potential_energy_vdw;
-import potential_gradient_vdw;
-import potential_energy_coulomb;
-import potential_gradient_coulomb;
+import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
 import potential_correction_vdw;
 import potential_electrostatics;
 import simulationbox;
@@ -20,8 +19,6 @@ import framework;
 import atom;
 import atom_dynamics;
 import molecule;
-import energy_factor;
-import gradient_factor;
 import energy_status_inter;
 import running_energy;
 import intra_molecular_potentials;
@@ -112,7 +109,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
         pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
     if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
-      const Potentials::EnergyFactor factor = Potentials::potentialVDWEnergy(
+      const Potentials::PairDerivatives<0> factor = Potentials::potentialVDW<0>(
           forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
       energy.intraVDW += potential.scaling * factor.energy;
     }
@@ -131,8 +128,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
     }
     else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
     {
-      energy.intraCoul += Potentials::potentialCoulombEnergy(forceField, potential.scaling, 1.0, std::sqrt(rr),
-                                                            potential.chargeA, potential.chargeB)
+      energy.intraCoul += Potentials::potentialCoulomb<0>(forceField, potential.scaling, 1.0, std::sqrt(rr),
+                                                          potential.chargeA, potential.chargeB)
                               .energy;
     }
   }
@@ -220,11 +217,11 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
   accumulateTorsions(potentials.improperTorsions, images.improperTorsions, &RunningEnergy::improperTorsion);
 
   const auto accumulateRadial = [&](std::size_t A, std::size_t B, const double3& dr,
-                                    const Potentials::GradientFactor& factor, double scaling,
+                                    const Potentials::PairDerivatives<1>& factor, double scaling,
                                     double& energyAccumulator)
   {
     energyAccumulator += scaling * factor.energy;
-    const double3 gradient = scaling * factor.gradientFactor * dr;
+    const double3 gradient = scaling * factor.firstDerivativeFactor * dr;
     dynamics[A].gradient += gradient;
     dynamics[B].gradient -= gradient;
   };
@@ -240,7 +237,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
         pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
     if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
-      const Potentials::GradientFactor factor = Potentials::potentialVDWGradient(
+      const Potentials::PairDerivatives<1> factor = Potentials::potentialVDW<1>(
           forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
       accumulateRadial(A, B, dr, factor, potential.scaling, energy.intraVDW);
     }
@@ -263,10 +260,10 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
     }
     else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
     {
-      const Potentials::GradientFactor factor = Potentials::potentialCoulombGradient(
+      const Potentials::PairDerivatives<1> factor = Potentials::potentialCoulomb<1>(
           forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
       energy.intraCoul += factor.energy;
-      const double3 gradient = factor.gradientFactor * dr;
+      const double3 gradient = factor.firstDerivativeFactor * dr;
       dynamics[A].gradient += gradient;
       dynamics[B].gradient -= gradient;
     }

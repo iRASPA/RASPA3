@@ -15,7 +15,6 @@ import double3x3;
 import simulationbox;
 import energy_status;
 import forcefield;
-import energy_factor;
 import running_energy;
 import framework;
 import interpolation_energy_grid;

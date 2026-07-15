@@ -7,10 +7,10 @@
 import forcefield;
 import vdwparameters;
 import pseudo_atom;
-import potential_energy_vdw;
-import energy_factor;
+import potential_pair_derivatives;
+import potential_pair_vdw;
 
-// Micro-benchmark for the Lennard-Jones hot path of Potentials::potentialVDWEnergy.
+// Micro-benchmark for the Lennard-Jones hot path of Potentials::potentialVDW<0>.
 // Loops over a pre-generated set of squared distances and type pairs, mimicking the
 // access pattern of the interaction loops.
 
@@ -56,8 +56,8 @@ static void BM_PotentialVDWEnergyLennardJones(benchmark::State& state)
     double dudlambdaSum = 0.0;
     for (std::size_t i = 0; i < N; ++i)
     {
-      Potentials::EnergyFactor ef =
-          Potentials::potentialVDWEnergy(forceField, 1.0, 1.0, rrs[i], typeAs[i], typeBs[i]);
+      Potentials::PairDerivatives<0> ef =
+          Potentials::potentialVDW<0>(forceField, 1.0, 1.0, rrs[i], typeAs[i], typeBs[i]);
       energySum += ef.energy;
       dudlambdaSum += ef.dUdlambda;
     }
@@ -93,8 +93,8 @@ static void BM_PotentialVDWEnergyLennardJonesFractional(benchmark::State& state)
     double dudlambdaSum = 0.0;
     for (std::size_t i = 0; i < N; ++i)
     {
-      Potentials::EnergyFactor ef =
-          Potentials::potentialVDWEnergy(forceField, 0.65, 1.0, rrs[i], typeAs[i], typeBs[i]);
+      Potentials::PairDerivatives<0> ef =
+          Potentials::potentialVDW<0>(forceField, 0.65, 1.0, rrs[i], typeAs[i], typeBs[i]);
       energySum += ef.energy;
       dudlambdaSum += ef.dUdlambda;
     }

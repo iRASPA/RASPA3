@@ -20,7 +20,6 @@ import cbmc_util;
 import cbmc_multiple_first_bead;
 import cbmc_interactions;
 import forcefield;
-import energy_factor;
 import running_energy;
 import framework;
 import component;

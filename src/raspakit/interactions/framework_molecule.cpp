@@ -9,12 +9,9 @@ import double4;
 import double3x3;
 import double3x3x3;
 import energy_status;
-import potential_energy_vdw;
-import potential_energy_coulomb;
-import potential_gradient_vdw;
-import potential_gradient_coulomb;
-import potential_hessian_vdw;
-import potential_hessian_coulomb;
+import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
 import potential_tricubic_derivative_lj;
 import potential_tricubic_derivative_real_ewald;
 import potential_triquintic_derivative_lj;
@@ -24,15 +21,12 @@ import simulationbox;
 import framework;
 import forcefield;
 import atom;
-import energy_factor;
+import energy_dudlambda;
 import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
 // import threading;
-import energy_factor;
-import gradient_factor;
-import hessian_factor;
 import tricubic_derivative_factor;
 import triquintic_derivative_factor;
 import framework;
@@ -179,8 +173,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField&
 
         if (rr < cutOffFrameworkVDWSquared)
         {
-          Potentials::EnergyFactor energyFactor =
-              Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          Potentials::PairDerivatives<0> energyFactor =
+              Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
           energySum.frameworkMoleculeVDW += energyFactor.energy;
@@ -189,8 +183,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField&
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::EnergyFactor energyFactor =
-              Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+          Potentials::PairDerivatives<0> energyFactor =
+              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge += energyFactor.energy;
           energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
@@ -235,8 +229,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField&
 
         if (rr < cutOffFrameworkVDWSquared)
         {
-          Potentials::EnergyFactor energyFactor =
-              Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          Potentials::PairDerivatives<0> energyFactor =
+              Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
           energySum.frameworkMoleculeVDW -= energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -energyFactor.dUdlambda);
@@ -244,8 +238,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField&
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::EnergyFactor energyFactor =
-              Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+          Potentials::PairDerivatives<0> energyFactor =
+              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge -= energyFactor.energy;
           energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, -energyFactor.dUdlambda);
@@ -298,8 +292,8 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
       rr = double3::dot(dr, dr);
       if (rr < cutOffFrameworkVDWSquared)
       {
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
         if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
         energySum.frameworkMoleculeVDW += energyFactor.energy;
@@ -308,15 +302,15 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
       if (useCharge && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge += energyFactor.energy;
         energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
 
-        Potentials::GradientFactor gradientFactor =
-            scalingCoulombA * chargeA * Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMoleculeNew[indexB] += gradientFactor.gradientFactor * dr;
+        Potentials::PairDerivatives<1> gradientFactor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        electricFieldMoleculeNew[indexB] += scalingCoulombA * chargeA * gradientFactor.firstDerivativeFactor * dr;
       }
     }
 
@@ -336,8 +330,8 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
 
       if (rr < cutOffFrameworkVDWSquared)
       {
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energySum.frameworkMoleculeVDW -= energyFactor.energy;
         energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -energyFactor.dUdlambda);
@@ -345,15 +339,15 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
       if (useCharge && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge -= energyFactor.energy;
         energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, -energyFactor.dUdlambda);
 
-        Potentials::GradientFactor gradientFactor =
-            scalingCoulombA * chargeA * Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMoleculeOld[indexB] -= gradientFactor.gradientFactor * dr;
+        Potentials::PairDerivatives<1> gradientFactor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        electricFieldMoleculeOld[indexB] -= scalingCoulombA * chargeA * gradientFactor.firstDerivativeFactor * dr;
       }
     }
   }
@@ -392,9 +386,9 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
       {
         double r = std::sqrt(rr);
 
-        Potentials::GradientFactor gradientFactor =
-            scalingCoulombA * chargeA * Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMoleculeNew[indexB] += gradientFactor.gradientFactor * dr;
+        Potentials::PairDerivatives<1> gradientFactor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        electricFieldMoleculeNew[indexB] += scalingCoulombA * chargeA * gradientFactor.firstDerivativeFactor * dr;
       }
     }
 
@@ -411,9 +405,9 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
       {
         double r = std::sqrt(rr);
 
-        Potentials::GradientFactor gradientFactor =
-            scalingCoulombA * chargeA * Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMoleculeOld[indexB] -= gradientFactor.gradientFactor * dr;
+        Potentials::PairDerivatives<1> gradientFactor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        electricFieldMoleculeOld[indexB] -= scalingCoulombA * chargeA * gradientFactor.firstDerivativeFactor * dr;
       }
     }
   }
@@ -557,7 +551,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
-      energy.frameworkComponentEnergy(0, compA).VanDerWaals += Potentials::EnergyFactor(energy_vdw, 0.0);
+      energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(energy_vdw, 0.0);
       const double3 f = gradient_vdw;
 
       moleculeDynamics[indexA].gradient += f;
@@ -567,7 +561,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       {
         auto [energy_real_ewald, gradient_real_ewald] = interpolationGrids.back()->interpolateGradient(posA);
         energy.frameworkComponentEnergy(0, compA).CoulombicReal +=
-            Potentials::EnergyFactor(chargeA * energy_real_ewald, 0.0);
+            EnergyDuDlambda(chargeA * energy_real_ewald, 0.0);
         const double3 g = chargeA * gradient_real_ewald;
 
         moleculeDynamics[indexA].gradient += g;
@@ -581,7 +575,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
         std::size_t typeB = static_cast<std::size_t>(it2->type);
         double scalingVDWB = it2->scalingVDW;
 
-        Potentials::EnergyFactor temp(
+        EnergyDuDlambda temp(
             preFactor * scalingVDWA * scalingVDWB * forceField(typeB, typeA).tailCorrectionEnergy, 0.0);
         energy.frameworkComponentEnergy(0, compA).VanDerWaalsTailCorrection += 2.0 * temp;
 
@@ -595,12 +589,12 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
             forceField, simulationBox, *it1, *it2, cutOffFrameworkVDWSquared, cutOffChargeSquared, useCharge,
             [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
             {
-              energy.frameworkComponentEnergy(0, compA).VanDerWaals += Potentials::EnergyFactor(factors.energy, 0.0);
+              energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(factors.energy, 0.0);
               accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
             },
             [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
             {
-              energy.frameworkComponentEnergy(0, compA).CoulombicReal += Potentials::EnergyFactor(factors.energy, 0.0);
+              energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(factors.energy, 0.0);
               accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
             });
       }
@@ -694,8 +688,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
 
       if (rr < cutOffFrameworkVDWSquared)
       {
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energySum.frameworkMoleculeVDW += energyFactor.energy;
         energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
@@ -703,16 +697,16 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
       if (useCharge && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        Potentials::EnergyFactor energyFactor =
-            Potentials::potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge += energyFactor.energy;
         energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
 
-        Potentials::GradientFactor gradientFactor =
-            scalingCoulombA * chargeA * Potentials::potentialCoulombGradient(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        Potentials::PairDerivatives<1> gradientFactor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
         std::size_t index = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
-        electricFieldMolecules[index] += gradientFactor.gradientFactor * dr;
+        electricFieldMolecules[index] += scalingCoulombA * chargeA * gradientFactor.firstDerivativeFactor * dr;
       }
     }
   }
@@ -743,7 +737,7 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionV
 
     if (rr < cutOffFrameworkVDWSquared)
     {
-      Potentials::HessianFactor v = Potentials::potentialVDWHessian(forceField, 1.0, scalingB, rr, typeA, typeB);
+      Potentials::PairDerivatives<2> v = Potentials::potentialVDW<2>(forceField, 1.0, scalingB, rr, typeA, typeB);
 
       energy += v.energy;
 
@@ -792,8 +786,7 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionC
     if (rr < cutOffChargeSquared)
     {
       double r = std::sqrt(rr);
-      Potentials::HessianFactor v =
-          Potentials::potentialCoulombHessian(forceField, 1.0, scalingB, rr, r, chargeA, chargeB);
+      Potentials::PairDerivatives<2> v = Potentials::potentialCoulomb<2>(forceField, 1.0, scalingB, r, chargeA, chargeB);
 
       energy += v.energy;
 

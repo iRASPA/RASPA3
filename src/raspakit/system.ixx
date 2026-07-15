@@ -20,8 +20,6 @@ import forcefield;
 import averages;
 import running_energy;
 import energy_status;
-import energy_factor;
-import gradient_factor;
 import property_loading;
 import sample_movies;
 import property_enthalpy;

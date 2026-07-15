@@ -40,7 +40,7 @@ import molecular_dynamics;
 import simulation_schedule;
 import input_reader;
 import property_loading;
-import energy_factor;
+import energy_dudlambda;
 import energy_status;
 import sample_movies;
 import property_energy;
@@ -677,9 +677,9 @@ EXPAND_MODULE(MODULE_NAME)
       .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
 
-  nanobind::class_<Potentials::EnergyFactor>(m, "EnergyFactor")
-      .def_ro("energy", &Potentials::EnergyFactor::energy)
-      .def_ro("dudlambda", &Potentials::EnergyFactor::dUdlambda);
+  nanobind::class_<EnergyDuDlambda>(m, "EnergyDuDlambda")
+      .def_ro("energy", &EnergyDuDlambda::energy)
+      .def_ro("dudlambda", &EnergyDuDlambda::dUdlambda);
 
   nanobind::class_<EnergyStatus>(m, "EnergyStatus")
       .def_rw("total_energy", &EnergyStatus::totalEnergy)

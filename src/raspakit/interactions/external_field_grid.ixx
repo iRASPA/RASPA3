@@ -10,7 +10,6 @@ import atom;
 import running_energy;
 import energy_status;
 import simulationbox;
-import gradient_factor;
 import forcefield;
 import component;
 

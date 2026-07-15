@@ -8,7 +8,6 @@ import double4;
 
 import units;
 import forcefield;
-import energy_factor;
 import potential_coulomb_real_space;
 
 export namespace Potentials

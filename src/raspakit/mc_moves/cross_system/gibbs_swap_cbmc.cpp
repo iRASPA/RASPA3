@@ -11,7 +11,6 @@ import system;
 import atom;
 import cbmc;
 import cbmc_chain_data;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import property_lambda_probability_histogram;

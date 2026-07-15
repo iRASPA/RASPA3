@@ -10,7 +10,7 @@ import units;
 import component;
 import energy_status_intra;
 import energy_status_inter;
-import energy_factor;
+import energy_dudlambda;
 import json;
 
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &components, const std::string &label)

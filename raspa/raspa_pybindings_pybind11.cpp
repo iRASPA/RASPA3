@@ -41,7 +41,7 @@ import molecular_dynamics;
 import simulation_schedule;
 import input_reader;
 import property_loading;
-import energy_factor;
+import energy_dudlambda;
 import energy_status;
 import sample_movies;
 import property_energy;
@@ -504,9 +504,9 @@ EXPAND_MODULE(MODULE_NAME)
       .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
 
-  pybind11::class_<Potentials::EnergyFactor>(m, "EnergyFactor")
-      .def_readonly("energy", &Potentials::EnergyFactor::energy)
-      .def_readonly("dudlambda", &Potentials::EnergyFactor::dUdlambda);
+  pybind11::class_<EnergyDuDlambda>(m, "EnergyDuDlambda")
+      .def_readonly("energy", &EnergyDuDlambda::energy)
+      .def_readonly("dudlambda", &EnergyDuDlambda::dUdlambda);
 
   pybind11::class_<EnergyStatus>(m, "EnergyStatus")
       .def_readwrite("total_energy", &EnergyStatus::totalEnergy)

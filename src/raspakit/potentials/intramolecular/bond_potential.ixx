@@ -9,7 +9,6 @@ import archive;
 import randomnumbers;
 import double3;
 import double3x3;
-import gradient_factor;
 import units;
 
 /**

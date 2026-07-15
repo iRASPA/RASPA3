@@ -5,7 +5,7 @@ module energy_status_inter;
 import std;
 
 import archive;
-import energy_factor;
+import energy_dudlambda;
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyInter &e)
 {

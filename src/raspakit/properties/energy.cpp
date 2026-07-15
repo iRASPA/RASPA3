@@ -8,7 +8,7 @@ import archive;
 import stringutils;
 import framework;
 import component;
-import energy_factor;
+import energy_dudlambda;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;

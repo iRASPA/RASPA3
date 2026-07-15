@@ -6,7 +6,6 @@ import std;
 
 import atom;
 import molecule;
-import energy_factor;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;

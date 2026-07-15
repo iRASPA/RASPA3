@@ -14,7 +14,6 @@ import simd_quatd;
 import simulationbox;
 import energy_status;
 import forcefield;
-import energy_factor;
 import cbmc_first_bead_data;
 import cbmc_multiple_first_bead;
 import cbmc_rigid_insertion;

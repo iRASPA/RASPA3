@@ -22,7 +22,6 @@ import cbmc_interactions;
 import cbmc_growth_context;
 import cbmc_generate_trialorientations_mc;
 import forcefield;
-import energy_factor;
 import running_energy;
 import framework;
 import component;

@@ -40,7 +40,9 @@ void perturbAtom(std::span<Atom> atoms, std::size_t atom, std::size_t axis, doub
 
 TEST(minimization_hessian_bend, harmonic_propane_flexible_analytic_matches_finite_difference)
 {
-  const double delta = 1e-5;
+  // delta ~ eps^(1/4) balances truncation against roundoff for a second-derivative central
+  // difference; 1e-5 puts the roundoff noise (~ eps * k / delta^2) above the tolerance.
+  const double delta = 1e-4;
   // The finite-difference reference carries O(delta^2) truncation and roundoff noise;
   // the analytic entries are exact, so the tolerance reflects the FD error, not the Hessian.
   const double relativeTolerance = 5e-3;
@@ -71,8 +73,14 @@ TEST(minimization_hessian_bend, harmonic_propane_flexible_analytic_matches_finit
                                   connectivityTable, intraMolecularPotentials, 5, 21);
   component.rigid = false;
 
-  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {1},
-                         5);
+  // Deterministic geometry a few degrees away from the equilibrium bend angle. Growing the
+  // molecule instead (initialNumberOfMolecules = 1) uses a time-seeded RNG, which makes the
+  // stored energy -- and hence the finite-difference noise floor -- vary from run to run.
+  const std::vector<std::vector<double3>> initialPositions = {
+      {double3(0.0, 0.0, 0.0), double3(1.54, 0.0, 0.0), double3(2.10, 1.47, 0.10)}};
+
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component},
+                         initialPositions, {0}, 5);
 
   const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
   ASSERT_EQ(layout.numDofs(), 9u);
@@ -138,6 +146,7 @@ TEST(minimization_hessian_bend, harmonic_propane_flexible_analytic_matches_finit
         perturbAtom(atoms, colLabel.atom, colLabel.axis, 2.0 * delta);
         const double eMP = bendEnergy(intraMolecularPotentials, atoms);
         perturbAtom(atoms, rowLabel.atom, rowLabel.axis, delta);
+        perturbAtom(atoms, colLabel.atom, colLabel.axis, -delta);
         numerical = (ePP - ePM - eMP + eMM) / (4.0 * delta * delta);
       }
 

@@ -15,7 +15,7 @@ from raspalib.widom_data import *
 from raspalib.loading_data import *
 from raspalib.pressure_data import *
 from raspalib.sample_movie import *
-from raspalib.energy_factor import *
+from raspalib.energy_dudlambda import *
 from raspalib.energy_status import *
 from raspalib.average_energy_type import *
 from raspalib.property_energy import *
@@ -66,7 +66,7 @@ __all__ = [
     "MonteCarlo",
     "LoadingData",
     "SampleMovie",
-    "EnergyFactor",
+    "EnergyDuDlambda",
     "EnergyStatus",
     "AverageEnergyType",
     "PropertyEnergy",

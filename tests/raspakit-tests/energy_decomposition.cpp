@@ -15,7 +15,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
 import energy_status;
 import running_energy;
 import interactions_intermolecular;
@@ -105,12 +104,15 @@ TEST(energy_decomposition, CO2_in_IRMOF1_OMS_geometry)
     return energy;
   };
 
-  const std::array<double3, 3> raspa2Oms = {double3(10.136569193677, 10.136569193677, 7.419907533962),
-                                            double3(9.417951022032, 9.417951022032, 7.955982945414),
-                                            double3(8.699332850387, 8.699332850387, 8.492058356865)};
-  const std::array<double3, 3> raspa3Pore = {double3(9.4276655408314216, 17.808185239505558, 16.404334459168581),
-                                             double3(9.919740710490089, 18.722474610990751, 15.912259289509912),
-                                             double3(10.411815880148756, 19.636763982475944, 15.420184119851244)};
+  // These positions were recorded against the old P1 IRMOF-1.cif. The current symmetry-based
+  // CIF describes the same crystal in a setting shifted by c/2, so the z coordinates carry a
+  // +12.916 Angstrom (half unit cell) translation relative to the original values.
+  const std::array<double3, 3> raspa2Oms = {double3(10.136569193677, 10.136569193677, 20.335907533962),
+                                            double3(9.417951022032, 9.417951022032, 20.871982945414),
+                                            double3(8.699332850387, 8.699332850387, 21.408058356865)};
+  const std::array<double3, 3> raspa3Pore = {double3(9.4276655408314216, 17.808185239505558, 3.488334459168581),
+                                             double3(9.919740710490089, 18.722474610990751, 2.996259289509912),
+                                             double3(10.411815880148756, 19.636763982475944, 2.504184119851244)};
 
   const RunningEnergy omsEnergy = evaluateAtPositions("RASPA3 at RASPA2 OMS geometry", raspa2Oms);
   evaluateAtPositions("RASPA3 at RASPA3 pore geometry (seed 12345)", raspa3Pore);

@@ -5,10 +5,9 @@ module cbmc_interactions_framework_molecule;
 import std;
 
 import energy_status;
-import potential_energy_vdw;
-import potential_gradient_vdw;
-import potential_energy_coulomb;
-import potential_gradient_coulomb;
+import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
 import potential_correction_vdw;
 import framework;
 import simulationbox;
@@ -16,8 +15,6 @@ import double3;
 import double3x3;
 import forcefield;
 import atom;
-import energy_factor;
-import gradient_factor;
 import energy_status_inter;
 import running_energy;
 import units;
@@ -87,7 +84,7 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
                 forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
@@ -99,7 +96,7 @@ template <>
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
                 forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
@@ -168,7 +165,7 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
                 forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
             if (energyFactor.energy > overlapCriteria)
@@ -182,7 +179,7 @@ template <>
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
                 forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
@@ -285,7 +282,7 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
                 forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
@@ -297,7 +294,7 @@ template <>
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
                 forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;

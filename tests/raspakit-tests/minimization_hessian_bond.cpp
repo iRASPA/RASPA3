@@ -36,7 +36,9 @@ void perturbAtom(std::span<Atom> atoms, std::size_t atom, std::size_t axis, doub
 
 TEST(minimization_hessian_bond, harmonic_ethane_flexible_analytic_matches_finite_difference)
 {
-  const double delta = 1e-5;
+  // delta ~ eps^(1/4) balances truncation against roundoff for a second-derivative central
+  // difference; 1e-5 puts the roundoff noise (~ eps * k * r / delta^2) above the tolerance.
+  const double delta = 1e-4;
   const double tolerance = 1e-2;
 
   ForceField forceField = ForceField({{"CH4", false, 16.04246, 0.0, 0.0, 8, false},
@@ -60,8 +62,14 @@ TEST(minimization_hessian_bond, harmonic_ethane_flexible_analytic_matches_finite
                                   connectivityTable, intraMolecularPotentials, 5, 21);
   component.rigid = false;
 
-  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {1},
-                         5);
+  // Deterministic, slightly stretched and off-axis geometry. Growing the molecule instead
+  // (initialNumberOfMolecules = 1) uses a time-seeded RNG, which makes the stored energy --
+  // and hence the finite-difference noise floor -- vary from run to run.
+  const std::vector<std::vector<double3>> initialPositions = {
+      {double3(0.0, 0.0, 0.0), double3(1.60, 0.12, -0.07)}};
+
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component},
+                         initialPositions, {0}, 5);
 
   const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
   ASSERT_EQ(layout.numDofs(), 6u);

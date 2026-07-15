@@ -13,8 +13,7 @@ import simulationbox;
 import energy_status;
 import energy_status_inter;
 import units;
-import energy_factor;
-import gradient_factor;
+import potential_pair_derivatives;
 import running_energy;
 import component;
 import forcefield;
@@ -49,7 +48,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
       // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
+      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
       if (externalFieldInterpolationGrid.has_value())
       {
@@ -234,7 +233,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       [[maybe_unused]] double chargeA = it1->charge;
 
       // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
+      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
       if (externalFieldInterpolationGrid.has_value())
       {
@@ -395,7 +394,7 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
       [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
       // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::EnergyFactor energyFactor = Potentials::EnergyFactor(0.0, 0.0);
+      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
       if (externalFieldInterpolationGrid.has_value())
       {

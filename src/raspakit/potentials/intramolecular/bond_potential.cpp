@@ -8,7 +8,6 @@ import archive;
 import randomnumbers;
 import double3;
 import double3x3;
-import gradient_factor;
 import distance_potential_gradient_strain;
 import distance_potential_gradient_hessian_strain;
 
