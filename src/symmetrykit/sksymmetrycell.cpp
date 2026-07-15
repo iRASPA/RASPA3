@@ -705,6 +705,25 @@ SKSymmetryCell::computeReducedNiggliCellAndChangeOfBasisMatrix()
   double eta = (2.0 * _a * _c * std::cos(_beta));
   double zeta = (2.0 * _a * _b * std::cos(_gamma));
 
+  // Every branch condition below is homogeneous of degree one in (A, B, C, xi, eta, zeta), so scaling all six
+  // quantities by a common positive factor leaves the chosen integer change-of-basis matrices unchanged. We
+  // normalize by a characteristic squared length (the geometric mean of A, B, C) so that the fixed absolute
+  // tolerance `epsilon` behaves as a relative tolerance. This follows the recommendation of Grosse-Kunstleve
+  // et al. (2004) to scale the tolerance by (a b c)^(1/3), which in squared-length units equals (A B C)^(1/3).
+  // The scale is only used for the comparisons; the metric quantities are restored to absolute units before
+  // constructing the reduced cell, and the returned change-of-basis matrix is unaffected.
+  double scale = std::cbrt(A * B * C);
+  if (!(scale > 0.0))
+  {
+    scale = 1.0;
+  }
+  A /= scale;
+  B /= scale;
+  C /= scale;
+  xi /= scale;
+  eta /= scale;
+  zeta /= scale;
+
   SKTransformationMatrix changeOfBasisMatrix = SKTransformationMatrix::identity;
 
 algorithmStart:
@@ -873,11 +892,21 @@ algorithmStart:
   }
 }
 
-  SKSymmetryCell cell =
-      SKSymmetryCell(std::sqrt(A), std::sqrt(B), std::sqrt(C),
-                     std::acos(xi / (2.0 * std::sqrt(B) * std::sqrt(C))) * 180.0 / std::numbers::pi,
-                     std::acos(eta / (2.0 * std::sqrt(A) * std::sqrt(C))) * 180.0 / std::numbers::pi,
-                     std::acos(zeta / (2.0 * std::sqrt(A) * std::sqrt(B))) * 180.0 / std::numbers::pi);
+  // Restore absolute (squared-length) units. Angles are scale-invariant, but lengths must be rescaled.
+  A *= scale;
+  B *= scale;
+  C *= scale;
+  xi *= scale;
+  eta *= scale;
+  zeta *= scale;
+
+  auto safeAcosDegrees = [](double cosine)
+  { return std::acos(std::clamp(cosine, -1.0, 1.0)) * 180.0 / std::numbers::pi; };
+
+  SKSymmetryCell cell = SKSymmetryCell(std::sqrt(A), std::sqrt(B), std::sqrt(C),
+                                       safeAcosDegrees(xi / (2.0 * std::sqrt(B) * std::sqrt(C))),
+                                       safeAcosDegrees(eta / (2.0 * std::sqrt(A) * std::sqrt(C))),
+                                       safeAcosDegrees(zeta / (2.0 * std::sqrt(A) * std::sqrt(B))));
 
   return std::make_pair(cell, changeOfBasisMatrix);
 }

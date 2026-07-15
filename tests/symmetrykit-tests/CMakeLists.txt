@@ -7,6 +7,7 @@ add_executable(unit_tests_symmetrykit
   find_spacegroup.cpp
   find_spacegroup_symmetry_metric.cpp
   band_path.cpp
+  niggli_reduction.cpp
   poscar_parser.cpp
   cif_symmetry.cpp
   main.cpp)
