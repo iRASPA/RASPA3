@@ -794,3 +794,99 @@ std::string writePhononDispersion(const PhononDispersionResult& result)
   }
   return output;
 }
+
+PhononDensityOfStates computePhononDensityOfStates(const System& system, int3 mesh, std::size_t numberOfBins,
+                                                   double broadening)
+{
+  PhononDensityOfStates result;
+  const int n1 = std::max(1, mesh.x);
+  const int n2 = std::max(1, mesh.y);
+  const int n3 = std::max(1, mesh.z);
+  result.mesh = int3(n1, n2, n3);
+
+  // Gamma-centered uniform grid over the reciprocal unit cell: k = (i/n1, j/n2, l/n3). A uniform grid over
+  // the reciprocal unit cell samples the Brillouin zone without bias (same measure), so averaging over it
+  // integrates over the BZ.
+  std::vector<double3> qPoints;
+  qPoints.reserve(static_cast<std::size_t>(n1) * static_cast<std::size_t>(n2) * static_cast<std::size_t>(n3));
+  for (int i = 0; i < n1; ++i)
+  {
+    for (int j = 0; j < n2; ++j)
+    {
+      for (int l = 0; l < n3; ++l)
+      {
+        qPoints.emplace_back(static_cast<double>(i) / static_cast<double>(n1),
+                             static_cast<double>(j) / static_cast<double>(n2),
+                             static_cast<double>(l) / static_cast<double>(n3));
+      }
+    }
+  }
+  result.numberOfQPoints = qPoints.size();
+
+  const std::vector<PhononModes> modes = computePhononDispersion(system, qPoints);
+
+  std::vector<double> frequencies;
+  for (const PhononModes& mode : modes)
+  {
+    const std::vector<double> wavenumbers = phononFrequenciesWavenumber(mode.eigenvalues);
+    frequencies.insert(frequencies.end(), wavenumbers.begin(), wavenumbers.end());
+  }
+  if (frequencies.empty() || result.numberOfQPoints == 0) return result;
+
+  const std::size_t bins = std::max<std::size_t>(1, numberOfBins);
+  double minimumFrequency = *std::ranges::min_element(frequencies);
+  double maximumFrequency = *std::ranges::max_element(frequencies);
+
+  // Pad the range by a few broadenings so the Gaussian tails at the extreme modes are captured.
+  const double padding = 3.0 * std::max(broadening, 0.0);
+  minimumFrequency -= padding;
+  maximumFrequency += padding;
+  if (!(maximumFrequency > minimumFrequency)) maximumFrequency = minimumFrequency + 1.0;
+
+  const double binWidth = (maximumFrequency - minimumFrequency) / static_cast<double>(bins);
+  const double sigma = broadening > 0.0 ? broadening : binWidth;
+  const double gaussianPrefactor = 1.0 / (sigma * std::sqrt(2.0 * std::numbers::pi));
+  const double inverseNumberOfQPoints = 1.0 / static_cast<double>(result.numberOfQPoints);
+  const double tailCutoff = 5.0 * sigma;
+
+  result.frequency.resize(bins);
+  result.dos.assign(bins, 0.0);
+  for (std::size_t bin = 0; bin < bins; ++bin)
+  {
+    result.frequency[bin] = minimumFrequency + (static_cast<double>(bin) + 0.5) * binWidth;
+  }
+
+  // Accumulate each mode frequency as a normalized Gaussian; dividing by the number of q-points makes the
+  // integral of the DOS equal to the number of branches (3N).
+  for (const double frequency : frequencies)
+  {
+    const int firstBin =
+        std::max<int>(0, static_cast<int>(std::floor((frequency - tailCutoff - minimumFrequency) / binWidth)));
+    const int lastBin = std::min<int>(static_cast<int>(bins) - 1,
+                                      static_cast<int>(std::ceil((frequency + tailCutoff - minimumFrequency) / binWidth)));
+    for (int bin = firstBin; bin <= lastBin; ++bin)
+    {
+      const double delta = result.frequency[static_cast<std::size_t>(bin)] - frequency;
+      result.dos[static_cast<std::size_t>(bin)] +=
+          inverseNumberOfQPoints * gaussianPrefactor * std::exp(-0.5 * delta * delta / (sigma * sigma));
+    }
+  }
+  return result;
+}
+
+std::string writePhononDensityOfStates(const PhononDensityOfStates& result)
+{
+  const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+  std::string output = std::format(
+      "\nPhonon density of states\n"
+      "Q-mesh: {} x {} x {} ({} q-points)\n"
+      "Frequencies are wavenumbers [{}]; negative values denote imaginary (unstable) modes.\n"
+      "The DOS integrates to the number of branches (3N).\n\n",
+      result.mesh.x, result.mesh.y, result.mesh.z, result.numberOfQPoints, reduced ? "reduced" : "cm^-1");
+  output += std::format("    {:>18}  {:>18}\n", reduced ? "frequency" : "frequency [cm^-1]", "DOS");
+  for (std::size_t index = 0; index < result.frequency.size(); ++index)
+  {
+    output += std::format("    {: 18.8f}  {: 18.8e}\n", result.frequency[index], result.dos[index]);
+  }
+  return output;
+}

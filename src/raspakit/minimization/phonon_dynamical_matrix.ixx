@@ -4,6 +4,7 @@ export module phonon_dynamical_matrix;
 
 import std;
 
+import int3;
 import double3;
 import system;
 import phonon_force_constants;
@@ -97,3 +98,34 @@ export PhononDispersionResult computePhononDispersionAlongPath(const System& sys
 
 /** Human-readable band-structure table (path coordinate, k-point, and per-band wavenumbers). */
 export std::string writePhononDispersion(const PhononDispersionResult& result);
+
+/** Phonon density of states obtained by integrating the modes over a uniform Brillouin-zone q-mesh. */
+export struct PhononDensityOfStates
+{
+  int3 mesh{};                     ///< Gamma-centered Monkhorst-Pack mesh dimensions used for the integration.
+  std::size_t numberOfQPoints{};   ///< Total number of sampled q-points (mesh.x * mesh.y * mesh.z).
+  std::vector<double> frequency;   ///< Bin-center frequencies [cm^-1] (or reduced units).
+  std::vector<double> dos;         ///< Density of states; integral over frequency equals the number of branches 3N.
+};
+
+/**
+ * Compute the phonon density of states on a Gamma-centered uniform q-mesh over the Brillouin zone.
+ *
+ * The dynamical matrix is diagonalized at every q-point of the `mesh` (using the same machinery as the
+ * dispersion), the resulting frequencies are converted to wavenumbers, and each frequency is accumulated
+ * onto a linear frequency grid of `numberOfBins` bins with a normalized Gaussian of width `broadening`
+ * (same units as the frequency axis). The DOS is normalized by the number of q-points so that its integral
+ * over frequency equals the number of branches (3N). Because a uniform grid over the reciprocal unit cell is
+ * an unbiased sampling of the Brillouin zone, this is the quantity to compare with an inelastic-neutron
+ * generalized phonon DOS. Intended to be evaluated on the primitive-cell system (unfolded spectrum).
+ *
+ * \param system System carrying the (minimized) framework/molecules and force field.
+ * \param mesh Gamma-centered q-mesh dimensions; each component is clamped to at least 1.
+ * \param numberOfBins Number of frequency bins in the histogram.
+ * \param broadening Gaussian broadening (standard deviation) on the frequency axis; if <= 0 the bin width is used.
+ */
+export PhononDensityOfStates computePhononDensityOfStates(const System& system, int3 mesh, std::size_t numberOfBins,
+                                                          double broadening);
+
+/** Human-readable two-column density-of-states table (frequency, DOS). */
+export std::string writePhononDensityOfStates(const PhononDensityOfStates& result);

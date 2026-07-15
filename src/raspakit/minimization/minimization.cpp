@@ -662,35 +662,44 @@ void Minimization::runPhase()
                                 options.normalModeMoviePointsPerPeriod, options.normalModeMovieAmplitude);
         }
       }
-      if (options.computePhononDispersion)
+      if (options.computePhononDispersion || options.computePhononDensityOfStates)
       {
-        // The phonon dispersion is the final post-processing step: the elastic constants and normal modes
-        // above are already computed and stored, so the minimized conventional cell is no longer needed and
-        // can be consumed here. Optionally reduce it in place to the primitive cell so the dispersion is the
-        // true unfolded band structure along the primitive Brillouin zone (no zone folding). The reduction is
-        // a no-op (system left unchanged) when it is unavailable (rigid/no framework, no retained definition,
-        // or symmetry detection fails). An explicit path is given in the simulation-cell reciprocal basis, so
-        // it is only meaningful on the simulation cell; primitive reduction is used only together with the
-        // default symmetry-derived path.
+        // The phonon post-processing is the final step: the elastic constants and normal modes above are
+        // already computed and stored, so the minimized conventional cell is no longer needed and can be
+        // consumed here. Optionally reduce it in place to the primitive cell so both the dispersion and the
+        // density of states describe the true unfolded spectrum over the primitive Brillouin zone (no zone
+        // folding). The reduction is a no-op (system left unchanged) when it is unavailable (rigid/no
+        // framework, no retained definition, or symmetry detection fails). An explicit dispersion path is
+        // given in the simulation-cell reciprocal basis, so it is only meaningful on the simulation cell;
+        // primitive reduction is used only together with the default symmetry-derived path.
         if (options.phononUsePrimitiveCell && options.phononDispersionPath.empty())
         {
           reduceSystemToPrimitiveFramework(system, options.phononPrimitiveCellSymmetryPrecision);
         }
 
-        std::vector<PhononPathNode> nodes = options.phononDispersionPath;
-        if (nodes.empty())
+        if (options.computePhononDispersion)
         {
-          // Prefer a symmetry-aware HPKOT path derived from the framework's space group.
-          nodes = symmetryDefaultPhononPath(system);
+          std::vector<PhononPathNode> nodes = options.phononDispersionPath;
+          if (nodes.empty())
+          {
+            // Prefer a symmetry-aware HPKOT path derived from the framework's space group.
+            nodes = symmetryDefaultPhononPath(system);
+          }
+          if (nodes.empty())
+          {
+            // Fall back to a connected G-X-G-Y-G-Z star along the reciprocal axes.
+            nodes = {{double3(0.0, 0.0, 0.0), "G"}, {double3(0.5, 0.0, 0.0), "X"}, {double3(0.0, 0.0, 0.0), "G"},
+                     {double3(0.0, 0.5, 0.0), "Y"}, {double3(0.0, 0.0, 0.0), "G"}, {double3(0.0, 0.0, 0.5), "Z"}};
+          }
+          systemResult.phononDispersion =
+              computePhononDispersionAlongPath(system, nodes, options.phononDispersionPointsPerSegment);
         }
-        if (nodes.empty())
+
+        if (options.computePhononDensityOfStates)
         {
-          // Fall back to a connected G-X-G-Y-G-Z star along the reciprocal axes.
-          nodes = {{double3(0.0, 0.0, 0.0), "G"}, {double3(0.5, 0.0, 0.0), "X"}, {double3(0.0, 0.0, 0.0), "G"},
-                   {double3(0.0, 0.5, 0.0), "Y"}, {double3(0.0, 0.0, 0.0), "G"}, {double3(0.0, 0.0, 0.5), "Z"}};
+          systemResult.phononDensityOfStates = computePhononDensityOfStates(
+              system, options.phononDOSMesh, options.phononDOSNumberOfBins, options.phononDOSBroadening);
         }
-        systemResult.phononDispersion =
-            computePhononDispersionAlongPath(system, nodes, options.phononDispersionPointsPerSegment);
       }
     }
   }
@@ -861,6 +870,31 @@ void Minimization::output()
         std::print(bands, "\n");
       }
     }
+    if (result.phononDensityOfStates)
+    {
+      const PhononDensityOfStates& dos = *result.phononDensityOfStates;
+      const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+      std::print(json, ",\n  \"phononDensityOfStates\": {{\n");
+      std::print(json,
+                 "    \"mesh\": [{}, {}, {}],\n    \"numberOfQPoints\": {},\n"
+                 "    \"frequencyUnit\": \"{}\",\n    \"frequency\": ",
+                 dos.mesh.x, dos.mesh.y, dos.mesh.z, dos.numberOfQPoints, reduced ? "reduced" : "cm^-1");
+      writeArray(json, dos.frequency, 1.0);
+      std::print(json, ",\n    \"dos\": ");
+      writeArray(json, dos.dos, 1.0);
+      std::print(json, "\n  }}");
+
+      // Gnuplot-friendly two-column file: "frequency dos".
+      std::ofstream dosStream(std::format("output/phonon_dos.s{}.txt", systemIndex), std::ios::out);
+      std::print(dosStream, "# phonon density of states, frequencies in {}\n", reduced ? "reduced units" : "cm^-1");
+      std::print(dosStream, "# q-mesh {} x {} x {} ({} q-points); integral of column 2 = number of branches (3N)\n",
+                 dos.mesh.x, dos.mesh.y, dos.mesh.z, dos.numberOfQPoints);
+      std::print(dosStream, "# column 1: frequency, column 2: DOS\n");
+      for (std::size_t index = 0; index < dos.frequency.size(); ++index)
+      {
+        std::print(dosStream, "{:.17g} {:.17g}\n", dos.frequency[index], dos.dos[index]);
+      }
+    }
     std::print(json, "\n}}\n");
   }
 }
@@ -889,6 +923,10 @@ void Minimization::tearDown()
       if (result.phononDispersion)
       {
         std::print(streams[systemIndex], "{}", writePhononDispersion(*result.phononDispersion));
+      }
+      if (result.phononDensityOfStates)
+      {
+        std::print(streams[systemIndex], "{}", writePhononDensityOfStates(*result.phononDensityOfStates));
       }
     }
   }

@@ -414,6 +414,51 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     minimizationOptions.phononUsePrimitiveCell = parsed_data["PhononUsePrimitiveCell"].get<bool>();
   }
 
+  if (parsed_data.contains("ComputePhononDensityOfStates"))
+  {
+    if (!parsed_data["ComputePhononDensityOfStates"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: ComputePhononDensityOfStates must be a boolean");
+    }
+    minimizationOptions.computePhononDensityOfStates = parsed_data["ComputePhononDensityOfStates"].get<bool>();
+  }
+
+  if (parsed_data.contains("PhononDOSMesh"))
+  {
+    const auto& meshData = parsed_data["PhononDOSMesh"];
+    if (!meshData.is_array() || meshData.size() != 3 ||
+        !std::ranges::all_of(meshData, [](const auto& value) { return value.is_number_unsigned(); }))
+    {
+      throw std::runtime_error("[Input reader]: PhononDOSMesh must be an array of 3 positive integers");
+    }
+    const int n1 = static_cast<int>(meshData[0].template get<std::size_t>());
+    const int n2 = static_cast<int>(meshData[1].template get<std::size_t>());
+    const int n3 = static_cast<int>(meshData[2].template get<std::size_t>());
+    if (n1 < 1 || n2 < 1 || n3 < 1)
+    {
+      throw std::runtime_error("[Input reader]: PhononDOSMesh entries must be >= 1");
+    }
+    minimizationOptions.phononDOSMesh = int3(n1, n2, n3);
+  }
+
+  if (parsed_data.contains("PhononDOSNumberOfBins"))
+  {
+    if (!parsed_data["PhononDOSNumberOfBins"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: PhononDOSNumberOfBins must be a positive unsigned integer");
+    }
+    minimizationOptions.phononDOSNumberOfBins = parsed_data["PhononDOSNumberOfBins"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("PhononDOSBroadening"))
+  {
+    if (!parsed_data["PhononDOSBroadening"].is_number())
+    {
+      throw std::runtime_error("[Input reader]: PhononDOSBroadening must be a number");
+    }
+    minimizationOptions.phononDOSBroadening = parsed_data["PhononDOSBroadening"].get<double>();
+  }
+
   if (parsed_data.contains("PhononDispersionPath"))
   {
     // A band-structure path is a JSON array of nodes. Each node is either a bare [kx, ky, kz] array or an
@@ -2580,6 +2625,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PhononDispersionPointsPerSegment",
     "PhononDispersionPath",
     "PhononUsePrimitiveCell",
+    "ComputePhononDensityOfStates",
+    "PhononDOSMesh",
+    "PhononDOSNumberOfBins",
+    "PhononDOSBroadening",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "OptimizeMCMovesEvery",

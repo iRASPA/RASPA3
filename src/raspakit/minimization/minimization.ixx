@@ -30,6 +30,7 @@ export struct MinimizationSystemResult
   std::optional<ElasticConstantsResult> elasticConstants{};
   std::optional<NormalModesResult> normalModes{};
   std::optional<PhononDispersionResult> phononDispersion{};
+  std::optional<PhononDensityOfStates> phononDensityOfStates{};
 };
 
 /** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */
