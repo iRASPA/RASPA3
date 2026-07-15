@@ -24,6 +24,10 @@ export namespace Potentials
  *       firstDerivativeFactor * dr with dr = posA - posB.
  *   - secondDerivativeFactor is (U'' - U'/r) / r^2, so the Cartesian Hessian block is
  *       secondDerivativeFactor * (dr ⊗ dr) + firstDerivativeFactor * I.
+ *   - thirdDerivativeFactor is (1/r) d(secondDerivativeFactor)/dr = (U''' - 3 U''/r + 3 U'/r^2) / r^3,
+ *     so the Cartesian third-gradient tensor is
+ *       thirdDerivativeFactor * (dr_a dr_b dr_c) +
+ *       secondDerivativeFactor * (delta_ab dr_c + delta_ac dr_b + delta_bc dr_a).
  */
 template <std::size_t Order>
 struct PairDerivatives;
@@ -50,5 +54,15 @@ struct PairDerivatives<2>
   double dUdlambda;
   double firstDerivativeFactor;
   double secondDerivativeFactor;
+};
+
+template <>
+struct PairDerivatives<3>
+{
+  double energy;
+  double dUdlambda;
+  double firstDerivativeFactor;
+  double secondDerivativeFactor;
+  double thirdDerivativeFactor;
 };
 }  // namespace Potentials

@@ -283,6 +283,10 @@ struct SiteDofContribution
  */
 std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std::span<const double3> kPath)
 {
+  // Polarization is supported here at every k: the image-resolved Cartesian force constants and the
+  // Cartesian gradient of the fully-flexible copy already include the polarization contribution, so the
+  // rigid-body identity D_gen(k) = J^T D_cart(k) J + Xi carries it through the projection unchanged.
+
   // Fully-flexible copy: rigid molecule atoms become independent Cartesian sites (no intramolecular
   // stiffness, since rigid internal geometry is a constraint), which is what the Cartesian force
   // constants and Cartesian gradients require.

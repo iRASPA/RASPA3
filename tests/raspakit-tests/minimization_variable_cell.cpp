@@ -12,6 +12,7 @@ import double3x3;
 import forcefield;
 import framework;
 import generalized_hessian;
+import interactions_polarization_derivatives;
 import intra_molecular_potentials;
 import int3;
 import minimization_cell_layout;
@@ -131,6 +132,233 @@ System makeRigidChargedPair()
   regenerateRigidMolecule(system, 1);
   system.cellMinimizationType = CellMinimizationType::Regular;
   return system;
+}
+
+// Two flexible, polarizable single-atom ions in a box (no framework): the polarization field is entirely
+// real-space, so this validates the analytic real-space cell-strain derivatives (stress, position-strain,
+// strain-strain), including the many-body Term A coupling.
+System makePolarizableFlexiblePair()
+{
+  ForceField forceField({{"P", false, 15.0, 0.8, 1.5, 8, false}, {"N", false, 14.0, -0.8, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, true, false,
+                        true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  Component positive =
+      Component(forceField, "positive", 100.0, 1e6, 0.2, {Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false)},
+                ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 5, 21);
+  Component negative =
+      Component(forceField, "negative", 100.0, 1e6, 0.2, {Atom({0.0, 0.0, 0.0}, -0.8, 1.0, 0, 1, 0, false, false)},
+                ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 5, 21);
+  positive.rigid = false;
+  negative.rigid = false;
+  System system = System(forceField, SimulationBox(23.0, 21.0, 19.0), false, 300.0, 1.5e5, 1.0, {},
+                         {positive, negative}, {}, {1, 1}, 5);
+  system.spanOfMoleculeAtoms()[0].position = double3(7.3, 9.1, 8.4);
+  system.spanOfMoleculeAtoms()[1].position = double3(12.2, 11.4, 10.7);
+  system.cellMinimizationType = CellMinimizationType::Regular;
+  return system;
+}
+
+// A rigid charged framework plus two flexible, polarizable ions with Ewald: the polarization field now has
+// a fixed-framework reciprocal (structure-factor) contribution in addition to the real-space part, so this
+// validates the analytic reciprocal-space (k / volume) cell-strain derivatives.
+System makePolarizableRigidFrameworkPair()
+{
+  ForceField forceField({{"P", false, 15.0, 0.4, 1.5, 8, false}, {"N", false, 14.0, -0.4, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true,
+                        false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.3;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  const SimulationBox box(24.0, 24.0, 24.0);
+  const std::size_t typeP = *forceField.findPseudoAtom("P");
+  const std::size_t typeN = *forceField.findPseudoAtom("N");
+
+  std::vector<Atom> frameworkAtoms{Atom({0.25, 0.5, 0.5}, 0.4, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, 0, true),
+                                   Atom({0.75, 0.5, 0.5}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, 0, true)};
+  Framework framework(forceField, "rigid-charged", box, 1, frameworkAtoms, frameworkAtoms, int3(1, 1, 1));
+  framework.rigid = true;
+
+  Component cation(forceField, "cation", 30.0, 1.0e6, 0.011,
+                   {Atom({0.0, 0.0, 0.0}, 0.4, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, false, false)},
+                   ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  cation.rigid = false;
+  Component anion(forceField, "anion", 30.0, 1.0e6, 0.011,
+                  {Atom({0.0, 0.0, 0.0}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false)},
+                  ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  anion.rigid = false;
+
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {cation, anion}, {}, {1, 1}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(6.0, 14.0, 12.0);
+  atoms[1].position = double3(9.0, 11.5, 13.5);
+  system.cellMinimizationType = CellMinimizationType::Regular;
+  return system;
+}
+
+// A rigid, polarizable three-site molecule pair in a box (no framework): the polarizable field points sit
+// off the center of mass, so this validates the analytic real-space cell-strain derivatives for rigid
+// molecules (center-of-mass separation arm; pure force change projected onto center-of-mass and orientation
+// DOFs plus the B_a . grad kinematic term).
+System makePolarizableRigidMoleculePair()
+{
+  ForceField forceField({{"P", false, 15.0, 0.8, 1.5, 8, false}, {"N", false, 14.0, -0.4, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, true, false,
+                        true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  const std::size_t typeP = *forceField.findPseudoAtom("P");
+  const std::size_t typeN = *forceField.findPseudoAtom("N");
+  Component molecule =
+      Component(forceField, "rigid-polar", 100.0, 1e6, 0.2,
+                {Atom({-1.0, 0.0, 0.0}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false),
+                 Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, false, false),
+                 Atom({1.0, 0.0, 0.0}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false)},
+                ConnectivityTable(3), Potentials::IntraMolecularPotentials{}, 5, 21);
+  molecule.rigid = true;
+  System system =
+      System(forceField, SimulationBox(23.0, 21.0, 19.0), false, 300.0, 1.5e5, 1.0, {}, {molecule}, {}, {2}, 5);
+  system.moleculeData[0].centerOfMassPosition = double3(7.3, 9.1, 8.4);
+  system.moleculeData[1].centerOfMassPosition = double3(12.2, 11.4, 10.7);
+  system.moleculeData[0].orientation = simd_quatd::fromAxisAngle(0.35, double3(0.0, 1.0, 0.0));
+  system.moleculeData[1].orientation = simd_quatd::fromAxisAngle(-0.27, double3(0.0, 0.0, 1.0));
+  regenerateRigidMolecule(system, 0);
+  regenerateRigidMolecule(system, 1);
+  system.cellMinimizationType = CellMinimizationType::Regular;
+  return system;
+}
+
+// A rigid, polarizable three-site molecule inside a rigid charged framework with Ewald: the polarizable
+// field points belong to a rigid molecule, so this validates the reciprocal-space cell-strain derivatives
+// including the body-offset phase terms of a rigid field point (the phase k.r_A deforms only via the COM).
+// The molecule atoms are left uncharged (only polarizable): the framework reciprocal field is still sampled
+// at the rigid molecule atoms, but the (separately validated) framework-molecule Ewald charge interaction is
+// switched off so this test isolates the polarization reciprocal contribution.
+System makePolarizableRigidMoleculeInFramework()
+{
+  ForceField forceField({{"P", false, 15.0, 0.4, 1.5, 8, false}, {"N", false, 14.0, -0.4, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true,
+                        false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.3;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  const SimulationBox box(24.0, 24.0, 24.0);
+  const std::size_t typeP = *forceField.findPseudoAtom("P");
+  const std::size_t typeN = *forceField.findPseudoAtom("N");
+
+  std::vector<Atom> frameworkAtoms{Atom({0.25, 0.5, 0.5}, 0.4, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, 0, true),
+                                   Atom({0.75, 0.5, 0.5}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, 0, true)};
+  Framework framework(forceField, "rigid-charged", box, 1, frameworkAtoms, frameworkAtoms, int3(1, 1, 1));
+  framework.rigid = true;
+
+  Component molecule =
+      Component(forceField, "rigid-polar", 30.0, 1.0e6, 0.011,
+                {Atom({-1.0, 0.0, 0.0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false),
+                 Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, false, false),
+                 Atom({1.0, 0.0, 0.0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false)},
+                ConnectivityTable(3), Potentials::IntraMolecularPotentials{}, 0, 0);
+  molecule.rigid = true;
+
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {molecule}, {}, {1}, 5);
+  system.moleculeData[0].centerOfMassPosition = double3(12.0, 6.0, 12.0);
+  system.moleculeData[0].orientation = simd_quatd::fromAxisAngle(0.5, double3(0.57735, 0.57735, 0.57735));
+  regenerateRigidMolecule(system, 0);
+  system.cellMinimizationType = CellMinimizationType::Regular;
+  return system;
+}
+
+// Finite-difference check of the polarization cell-strain derivatives in isolation: it differences only the
+// polarization energy of computePolarizationDerivatives under a homogeneous cell deformation, so it validates
+// the analytic polarization stress (cellGradient) and strain-strain block directly, without depending on the
+// other interactions' cell-strain Hessians (the framework-molecule Ewald/vdW rigid-body strain Hessian is a
+// separate, pre-existing code path).
+void expectPolarizationStrainMatchesFiniteDifference(System system, double gradientTolerance,
+                                                     double hessianTolerance)
+{
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
+  const std::size_t numberOfFrameworkAtoms = system.spanOfFrameworkAtoms().size();
+  const std::size_t numberOfMoleculeAtoms = system.spanOfMoleculeAtoms().size();
+  const bool flexibleFramework = system.framework.has_value() && !system.framework->rigid;
+  const std::size_t frameworkDofs = flexibleFramework ? numberOfFrameworkAtoms : 0;
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout(system.moleculeData, system.components, frameworkDofs, cellLayout.size());
+
+  std::vector<std::uint8_t> movable(numberOfFrameworkAtoms + numberOfMoleculeAtoms, 0);
+  for (std::size_t atom = 0; atom < numberOfFrameworkAtoms; ++atom) movable[atom] = flexibleFramework ? 1 : 0;
+  for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom) movable[numberOfFrameworkAtoms + atom] = 1;
+
+  const Interactions::PolarizationDerivatives reference =
+      Interactions::computePolarizationDerivatives(system, movable, cellLayout.bases);
+  constexpr double delta = 2.0e-5;
+
+  const auto polarizationEnergy = [&](const std::vector<double>& displacement)
+  {
+    System deformed = system;
+    applyGeneralizedDisplacement(deformed, layout, displacement);
+    return Interactions::computePolarizationDerivatives(deformed, movable).energy;
+  };
+  // Evaluate the reference along the same deformation path (zero displacement) so the rigid-molecule
+  // regeneration in applyGeneralizedDisplacement does not introduce a constant offset in the 2-point
+  // diagonal second difference.
+  const double referenceEnergy = polarizationEnergy(std::vector<double>(layout.numDofs(), 0.0));
+
+  const std::size_t n = cellLayout.size();
+  for (std::size_t a = 0; a < n; ++a)
+  {
+    const std::size_t columnA = *layout.cellDof(a);
+    std::vector<double> plus(layout.numDofs(), 0.0);
+    std::vector<double> minus(layout.numDofs(), 0.0);
+    plus[columnA] = delta;
+    minus[columnA] = -delta;
+    const double ePlus = polarizationEnergy(plus);
+    const double eMinus = polarizationEnergy(minus);
+
+    const double numericalGradient = (ePlus - eMinus) / (2.0 * delta);
+    const double gradientScale = std::max({1.0, std::abs(numericalGradient), std::abs(reference.cellGradient[a])});
+    EXPECT_NEAR(reference.cellGradient[a], numericalGradient, gradientTolerance * gradientScale) << "strain a=" << a;
+
+    for (std::size_t b = 0; b < n; ++b)
+    {
+      double numericalHessian{};
+      if (a == b)
+      {
+        numericalHessian = (ePlus - 2.0 * referenceEnergy + eMinus) / (delta * delta);
+      }
+      else
+      {
+        const std::size_t columnB = *layout.cellDof(b);
+        std::vector<double> pp(layout.numDofs(), 0.0);
+        std::vector<double> pm(layout.numDofs(), 0.0);
+        std::vector<double> mp(layout.numDofs(), 0.0);
+        std::vector<double> mm(layout.numDofs(), 0.0);
+        pp[columnA] = pp[columnB] = delta;
+        pm[columnA] = delta;
+        pm[columnB] = -delta;
+        mp[columnA] = -delta;
+        mp[columnB] = delta;
+        mm[columnA] = mm[columnB] = -delta;
+        numericalHessian = (polarizationEnergy(pp) - polarizationEnergy(pm) - polarizationEnergy(mp) +
+                            polarizationEnergy(mm)) /
+                           (4.0 * delta * delta);
+      }
+      const double analyticHessian = reference.strainStrain[a * n + b];
+      const double hessianScale = std::max({1.0, std::abs(numericalHessian), std::abs(analyticHessian)});
+      EXPECT_NEAR(analyticHessian, numericalHessian, hessianTolerance * hessianScale)
+          << "strain a=" << a << " b=" << b;
+    }
+  }
 }
 
 void expectCellDerivativesMatchFiniteDifference(System system, double gradientTolerance, double hessianTolerance)
@@ -334,6 +562,37 @@ TEST(minimization_variable_cell, periodic_framework_bend_and_torsion_blocks_matc
 TEST(minimization_variable_cell, rigid_charged_mixed_blocks_match_finite_difference)
 {
   expectCellDerivativesMatchFiniteDifference(makeRigidChargedPair(), 3.0e-4, 5.0e-3);
+}
+
+TEST(minimization_variable_cell, polarization_real_space_matches_finite_difference)
+{
+  expectCellDerivativesMatchFiniteDifference(makePolarizableFlexiblePair(), 3.0e-4, 3.0e-3);
+}
+
+TEST(minimization_variable_cell, polarization_reciprocal_framework_matches_finite_difference)
+{
+  expectCellDerivativesMatchFiniteDifference(makePolarizableRigidFrameworkPair(), 5.0e-4, 5.0e-3);
+}
+
+TEST(minimization_variable_cell, polarization_rigid_molecule_real_space_matches_finite_difference)
+{
+  expectCellDerivativesMatchFiniteDifference(makePolarizableRigidMoleculePair(), 3.0e-4, 5.0e-3);
+}
+
+// Isolated polarization stress + strain-strain for a rigid molecule (real-space only): a direct check of the
+// analytic center-of-mass-arm derivatives independent of the other interactions' cell-strain Hessians.
+TEST(minimization_variable_cell, polarization_rigid_molecule_real_space_strain_matches_finite_difference)
+{
+  expectPolarizationStrainMatchesFiniteDifference(makePolarizableRigidMoleculePair(), 3.0e-4, 3.0e-3);
+}
+
+// Isolated polarization stress + strain-strain for a rigid molecule sampling the fixed-framework reciprocal
+// field: validates the rigid field-point body-offset phase terms of the reciprocal strain derivatives. The
+// framework-molecule Ewald/vdW rigid-body strain Hessian (a separate, pre-existing path) is not exercised
+// here because only the polarization energy is differenced.
+TEST(minimization_variable_cell, polarization_rigid_molecule_reciprocal_strain_matches_finite_difference)
+{
+  expectPolarizationStrainMatchesFiniteDifference(makePolarizableRigidMoleculeInFramework(), 5.0e-4, 5.0e-3);
 }
 
 TEST(minimization_variable_cell, fixed_cell_keeps_original_layout_and_energy)

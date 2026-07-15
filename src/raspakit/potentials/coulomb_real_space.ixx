@@ -13,6 +13,7 @@ struct CoulombRealSpaceFactors
   double potential;
   double firstDerivativeFactor;
   double secondDerivativeFactor;
+  double thirdDerivativeFactor;
 };
 
 inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
@@ -66,10 +67,25 @@ inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
   const double baseSecond =
       2.0 * erfc * inverseRR * inverseR +
       2.0 * twoAlphaInvSqrtPi * exponential * (inverseRR + alphaSquared);
+  const double baseThird =
+      -6.0 * erfc * inverseRR * inverseRR -
+      twoAlphaInvSqrtPi * exponential *
+          (4.0 * alphaSquared * alphaSquared * r + 4.0 * alphaSquared * inverseR + 6.0 * inverseR * inverseRR);
+
+  // Convert raw radial derivatives (B', B'', B''') into the RASPA factor convention:
+  //   f1 = B'/r, f2 = (B'' - B'/r)/r^2, f3 = (B''' - 3 B''/r + 3 B'/r^2)/r^3.
+  const auto factorsFrom = [&](double value, double firstDerivative, double secondDerivative, double thirdDerivative)
+  {
+    return CoulombRealSpaceFactors{
+        value, firstDerivative * inverseR, (secondDerivative - firstDerivative * inverseR) * inverseRR,
+        (thirdDerivative - 3.0 * secondDerivative * inverseR + 3.0 * firstDerivative * inverseRR) * inverseR *
+            inverseRR};
+  };
 
   if (forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
   {
-    return {base, basePrime * inverseR, (baseSecond - basePrime * inverseR) * inverseRR};
+    return {base, basePrime * inverseR, (baseSecond - basePrime * inverseR) * inverseRR,
+            (baseThird - 3.0 * baseSecond * inverseR + 3.0 * basePrime * inverseRR) * inverseR * inverseRR};
   }
 
   const double cutoff = forceField.cutOffCoulomb;
@@ -85,6 +101,7 @@ inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
   double potential = base;
   double firstDerivative = basePrime;
   double secondDerivative = baseSecond;
+  double thirdDerivative = baseThird;
 
   switch (forceField.chargeMethod)
   {
@@ -102,6 +119,7 @@ inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
       potential -= cutoffBase + cutoffPrime * (switching - 1.0) / beta;
       firstDerivative -= cutoffPrime * switching;
       secondDerivative -= cutoffPrime * beta * switching;
+      thirdDerivative -= cutoffPrime * beta * beta * switching;
       break;
     }
     case ForceField::ChargeMethod::ZeroDipole:
@@ -118,12 +136,12 @@ inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
       potential = inverseR;
       firstDerivative = -inverseRR;
       secondDerivative = 2.0 * inverseRR * inverseR;
+      thirdDerivative = -6.0 * inverseRR * inverseRR;
       break;
     case ForceField::ChargeMethod::Ewald:
       std::unreachable();
   }
 
-  return {potential, firstDerivative * inverseR,
-          (secondDerivative - firstDerivative * inverseR) * inverseRR};
+  return factorsFrom(potential, firstDerivative, secondDerivative, thirdDerivative);
 }
 }  // namespace Potentials

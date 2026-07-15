@@ -44,6 +44,7 @@ add_executable(unit_tests_raspakit
   normal_modes.cpp
   force_constants.cpp
   phonon_dispersion.cpp
+  polarization_phonon.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
   internal_potentials.cpp

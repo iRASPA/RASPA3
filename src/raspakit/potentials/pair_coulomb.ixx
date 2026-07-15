@@ -42,7 +42,7 @@ export template <std::size_t Order>
                                                                         const double r, const double chargeA,
                                                                         const double chargeB)
 {
-  static_assert(Order <= 2, "potentialCoulomb supports derivative orders 0, 1, and 2");
+  static_assert(Order <= 3, "potentialCoulomb supports derivative orders 0, 1, 2, and 3");
 
   double scaling = scalingA * scalingB;
 
@@ -71,13 +71,31 @@ export template <std::size_t Order>
         else
         {
           double rr = r * r;
+          double gaussian = std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>;
           double secondDerivativeFactor =
               Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-              (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
-               4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
-               6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr));
+              (3.0 * std::erfc(alpha * r) / (rr * rr * r) + 4.0 * alpha * alpha * alpha * gaussian / rr +
+               6.0 * alpha * gaussian / (rr * rr));
 
-          return {scaling * temp, temp, firstDerivativeFactor, secondDerivativeFactor};
+          if constexpr (Order == 2)
+          {
+            return {scaling * temp, temp, firstDerivativeFactor, secondDerivativeFactor};
+          }
+          else
+          {
+            // thirdDerivativeFactor = (1/r) d(secondDerivativeFactor)/dr for U = C q_A q_B erfc(alpha r)/r,
+            // giving -C q_A q_B [ 15 erfc/r^7 + (2 alpha/sqrt(pi)) e^{-alpha^2 r^2} (4 alpha^4/r^2 + 10 alpha^2/r^4
+            //                                                                      + 15/r^6) ].
+            double thirdDerivativeFactor =
+                -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+                (15.0 * std::erfc(alpha * r) / (rr * rr * rr * r) +
+                 2.0 * alpha *
+                     (4.0 * alpha * alpha * alpha * alpha / rr + 10.0 * alpha * alpha / (rr * rr) +
+                      15.0 / (rr * rr * rr)) *
+                     gaussian);
+
+            return {scaling * temp, temp, firstDerivativeFactor, secondDerivativeFactor, thirdDerivativeFactor};
+          }
         }
       }
     }
@@ -99,11 +117,18 @@ export template <std::size_t Order>
         return {scaling * prefactor * factors.potential, prefactor * factors.potential,
                 scaling * prefactor * factors.firstDerivativeFactor};
       }
-      else
+      else if constexpr (Order == 2)
       {
         return {scaling * prefactor * factors.potential, prefactor * factors.potential,
                 scaling * prefactor * factors.firstDerivativeFactor,
                 scaling * prefactor * factors.secondDerivativeFactor};
+      }
+      else
+      {
+        return {scaling * prefactor * factors.potential, prefactor * factors.potential,
+                scaling * prefactor * factors.firstDerivativeFactor,
+                scaling * prefactor * factors.secondDerivativeFactor,
+                scaling * prefactor * factors.thirdDerivativeFactor};
       }
     }
   }

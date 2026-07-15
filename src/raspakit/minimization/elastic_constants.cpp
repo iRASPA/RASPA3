@@ -65,8 +65,6 @@ std::vector<double> pseudoInverse(const std::vector<double>& matrix, std::size_t
 std::array<double, 36> computeAffineBornTensor(const System& system)
 {
   if (system.hasExternalField) throw std::runtime_error("Elastic constants do not support an external field");
-  if (system.forceField.computePolarization)
-    throw std::runtime_error("Elastic constants do not support polarization because its strain Hessian is unavailable");
 
   System derivativeSystem = system;
   derivativeSystem.pressure = 0.0;

@@ -30,6 +30,7 @@ import minimization_dof_layout;
 import system;
 import interactions_pair_kernel;
 import interactions_hessian_intramolecular;
+import interactions_polarization_derivatives;
 import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
@@ -456,11 +457,6 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
           "computeRealSpaceForceConstants: rigid molecules are not supported in this increment (flexible atoms only)");
     }
   }
-  if (system.forceField.computePolarization)
-  {
-    throw std::runtime_error("computeRealSpaceForceConstants: polarization is not supported");
-  }
-
   const bool flexibleFramework = system.framework.has_value() && !system.framework->rigid;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
@@ -542,6 +538,41 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
   // Ewald intramolecular exclusion correction (removes the reciprocal-counted intramolecular charge
   // pairs). Its short-ranged Hessian folds directly into the image-resolved force constants.
   addMoleculeEwaldExclusion(system, forceConstants, numberOfFrameworkSites);
+
+  // Polarization (non-self-consistent induced-dipole) Hessian, resolved by periodic image so the Bloch
+  // phase is applied per lattice vector. The real-space field-gradient blocks connecting a home-cell
+  // field point to a source in image R are recorded against R (many-body Term A three-center blocks land
+  // at R_C - R_B); the reciprocal-space (fixed framework) contribution is an on-site R = 0 term that is
+  // k-independent. Summing over R reproduces the folded Gamma-point Hessian.
+  if (system.forceField.computePolarization)
+  {
+    std::vector<std::uint8_t> movable(frameworkAtoms.size() + moleculeAtoms.size(), 0);
+    if (flexibleFramework)
+    {
+      for (std::size_t atom = 0; atom < frameworkAtoms.size(); ++atom) movable[atom] = 1;
+    }
+    for (std::size_t atom = 0; atom < moleculeAtoms.size(); ++atom) movable[frameworkAtoms.size() + atom] = 1;
+
+    const Interactions::PolarizationDerivatives derivatives =
+        Interactions::computePolarizationDerivatives(system, movable);
+
+    const auto siteOfGlobal = [&](std::size_t global) -> std::size_t
+    {
+      if (global < frameworkAtoms.size()) return global;  // flexible framework atom -> leading site
+      return numberOfFrameworkSites + (global - frameworkAtoms.size());
+    };
+
+    for (const auto& [latticeVector, blocks] : derivatives.imageHessianBlocks)
+    {
+      for (const auto& [pair, block] : blocks)
+      {
+        const std::size_t i = pair[0];
+        const std::size_t j = pair[1];
+        if (!movable[i] || !movable[j]) continue;
+        forceConstants.addBlock(siteOfGlobal(i), siteOfGlobal(j), latticeVector, block);
+      }
+    }
+  }
 
   return forceConstants;
 }
