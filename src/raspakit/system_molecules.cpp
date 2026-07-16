@@ -556,6 +556,107 @@ std::vector<Atom> System::randomConfiguration(RandomNumber& random, std::size_t 
   }
   return copied_atoms;
 }
+
+std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent)
+{
+  Component& component = components[selectedComponent];
+
+  // Persistent scratch conformation stored on the Component: initialised once to the reference geometry,
+  // then advanced in place so the reinsertion Markov chain stays warm between calls.
+  std::vector<Atom>& scratchAtoms = component.grownIdealGasAtoms;
+  if (scratchAtoms.size() != component.atoms.size()) scratchAtoms = component.atoms;
+
+  Molecule scratchMolecule(double3(0.0, 0.0, 0.0), simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
+                           selectedComponent, component.atoms.size());
+
+  if (component.atoms.size() < 2) return scratchAtoms;
+
+  // Isolated (ideal-gas) growth context: no framework, no interpolation grids, no external field and no
+  // other molecules, so CBMC growth feels only the intra-molecular potential and hence samples exp(-beta *
+  // U_intra). The grid vector must still be sized like the real one (indexed by pseudo-atom type).
+  const std::optional<Framework> noFramework{};
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
+  const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
+
+  double cutOffFrameworkVDW = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffCoulomb;
+
+  const CBMC::GrowContext context{false,
+                                  forceField,
+                                  simulationBox,
+                                  noGrids,
+                                  noExternalFieldGrid,
+                                  noFramework,
+                                  std::span<const Atom>{},
+                                  std::span<const Atom>{},
+                                  beta,
+                                  cutOffFrameworkVDW,
+                                  cutOffMoleculeVDW,
+                                  cutOffCoulomb};
+
+  // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
+  // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.
+  constexpr std::size_t numberOfReinsertionMoves = 20;
+  for (std::size_t move = 0; move != numberOfReinsertionMoves; ++move)
+  {
+    std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
+        random, context, component, selectedComponent, component.growType, scratchMolecule, scratchAtoms);
+    if (!growData) continue;
+
+    const std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
+        random, context, component, component.growType, scratchMolecule, scratchAtoms, growData->storedR);
+    if (!retraceData) continue;
+
+    // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
+    // corrections apply): accept with min(1, W_new / W_old).
+    if (random.uniform() < growData->RosenbluthWeight / retraceData->RosenbluthWeight)
+    {
+      std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
+      scratchMolecule = growData->molecule;
+    }
+  }
+
+  // Re-center on the mass center so the caller can place the molecule by its center of mass.
+  double totalMass = 0.0;
+  double3 com(0.0, 0.0, 0.0);
+  for (const Atom& atom : scratchAtoms)
+  {
+    double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+    com += mass * atom.position;
+    totalMass += mass;
+  }
+  if (totalMass > 0.0) com /= totalMass;
+  for (Atom& atom : scratchAtoms) atom.position -= com;
+
+  return scratchAtoms;
+}
+
+std::pair<Molecule, std::vector<Atom>> System::equilibratedIdealGasMoleculeRandomInBox(RandomNumber& random,
+                                                                                      std::size_t selectedComponent)
+{
+  const Component& component = components[selectedComponent];
+
+  // Body-frame atoms: rigid components keep their fixed reference geometry; flexible components draw an
+  // internal conformation from the ideal-gas Boltzmann distribution exp(-beta * U_intra). In both cases the
+  // body is placed with a uniformly random overall orientation at a uniformly random center of mass.
+  const std::vector<Atom> bodyAtoms =
+      component.rigid ? component.atoms : equilibratedIdealGasConformation(random, selectedComponent);
+
+  simd_quatd q = random.randomSimdQuatd();
+  double3x3 M = double3x3::buildRotationMatrixInverse(q);
+  double3 com = simulationBox.randomPosition(random);
+
+  std::vector<Atom> trial_atoms(bodyAtoms);
+  for (std::size_t i = 0; i != bodyAtoms.size(); ++i)
+  {
+    trial_atoms[i].position = com + M * bodyAtoms[i].position;
+  }
+
+  return {{com, q, component.totalMass, selectedComponent, component.atoms.size()}, trial_atoms};
+}
+
+
 std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
 {
   std::vector<Molecule> scaledMolecules(moleculeData);

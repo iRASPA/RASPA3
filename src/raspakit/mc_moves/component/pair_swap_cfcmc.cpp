@@ -253,9 +253,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
     // (2) insert a new fractional pair with lambda_new at random positions
     std::pair<Molecule, std::vector<Atom>> trialMoleculeA =
-        componentA.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
+        system.equilibratedIdealGasMoleculeRandomInBox(random, selectedComponent);
     std::pair<Molecule, std::vector<Atom>> trialMoleculeB =
-        componentBRef.equilibratedMoleculeRandomInBox(random, componentB, system.simulationBox);
+        system.equilibratedIdealGasMoleculeRandomInBox(random, componentB);
 
     const std::size_t upcomingMoleculeIdA = system.numberOfMolecules();
     const std::size_t upcomingMoleculeIdB = system.numberOfMolecules() + 1;

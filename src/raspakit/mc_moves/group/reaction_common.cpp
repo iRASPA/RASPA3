@@ -263,8 +263,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       }
       else
       {
-        auto [molecule, atoms] =
-            component.equilibratedMoleculeRandomInBox(random, componentId, system.simulationBox);
+        auto [molecule, atoms] = system.equilibratedIdealGasMoleculeRandomInBox(random, componentId);
         for (Atom& atom : atoms)
         {
           atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);

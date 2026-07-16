@@ -516,7 +516,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
 
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
-        componentB.equilibratedMoleculeRandomInBox(random, selectedComponent, systemB.simulationBox);
+        systemB.equilibratedIdealGasMoleculeRandomInBox(random, selectedComponent);
 
     // std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
     std::transform(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), trialMolecule.second.begin(),

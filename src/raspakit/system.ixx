@@ -516,6 +516,38 @@ export struct System
   std::vector<Atom> randomConfiguration(RandomNumber& random, std::size_t selectedComponent,
                                         const std::span<const Atom> atoms);
 
+  /**
+   * \brief Generates an equilibrated ideal-gas molecule placed randomly in the simulation box.
+   *
+   * Produces a trial molecule at a uniformly random center-of-mass position in the box with a uniformly
+   * random overall orientation. Rigid components use their fixed reference geometry. Flexible components
+   * draw an internal conformation from the ideal-gas (intra-molecular) Boltzmann distribution
+   * exp(-beta * U_intra) via equilibratedIdealGasConformation, so that the conventional (non-CBMC)
+   * swap/CFCMC/Gibbs acceptance rules, which do not include the intra-molecular energy, sample the correct
+   * distribution.
+   *
+   * \param random A random number generator instance.
+   * \param selectedComponent The component to generate a molecule for.
+   * \return A pair containing the equilibrated molecule and its corresponding atoms.
+   */
+  std::pair<Molecule, std::vector<Atom>> equilibratedIdealGasMoleculeRandomInBox(RandomNumber& random,
+                                                                                 std::size_t selectedComponent);
+
+  /**
+   * \brief Samples an ideal-gas (isolated) internal conformation of a flexible molecule.
+   *
+   * Runs a short Markov chain of CBMC reinsertion moves on an isolated scratch molecule (no framework, no
+   * other molecules, no external field), so the growth samples only the intra-molecular potential. The
+   * accepted conformation is therefore an unbiased draw from the ideal-gas Boltzmann distribution
+   * exp(-beta * U_intra). The result is returned centered on its mass center. Rigid components (or those
+   * with fewer than two atoms) return the reference geometry unchanged.
+   *
+   * \param random A random number generator instance.
+   * \param selectedComponent The component to sample an internal conformation for.
+   * \return The sampled, mass-centered internal conformation.
+   */
+  std::vector<Atom> equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent);
+
   bool insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const;
 
   void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle);

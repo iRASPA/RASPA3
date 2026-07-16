@@ -197,6 +197,10 @@ export struct Component
   // by the internal-Monte-Carlo trial-orientation scheme. Marked 'mutable' so the scheme can run on
   // a 'const Component&'.
   mutable std::vector<Atom> grownAtoms{};
+  // Persistent scratch conformation of a flexible molecule grown in isolation (ideal-gas), i.e. drawn
+  // from exp(-beta * U_intra). Kept between calls so the CBMC reinsertion Markov chain that produces
+  // equilibrated ideal-gas conformations (System::equilibratedIdealGasConformation) stays warm.
+  mutable std::vector<Atom> grownIdealGasAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
@@ -313,18 +317,6 @@ export struct Component
    * \return A vector of copied atoms with adjusted positions.
    */
   std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
-
-  /**
-   * \brief Generates an equilibrated molecule randomly placed within a simulation box.
-   *
-   * Rotates and translates the molecule randomly to ensure equilibration within the simulation box.
-   *
-   * \param random A random number generator instance.
-   * \param simulationBox The simulation box within which to place the molecule.
-   * \return A pair containing the equilibrated molecule and its corresponding atoms.
-   */
-  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(RandomNumber &random, std::size_t componentId,
-                                                                         const SimulationBox &simulationBox) const;
 
   /**
    * \brief Translates a molecule by a specified displacement.

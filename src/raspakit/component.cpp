@@ -874,22 +874,6 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
   return copied_atoms;
 }
 
-std::pair<Molecule, std::vector<Atom>> Component::equilibratedMoleculeRandomInBox(
-    RandomNumber &random, std::size_t componentId, const SimulationBox &simulationBox) const
-{
-  simd_quatd q = random.randomSimdQuatd();
-  double3x3 M = double3x3::buildRotationMatrixInverse(q);
-  double3 com = simulationBox.randomPosition(random);
-
-  std::vector<Atom> trial_atoms(atoms);
-  for (std::size_t i = 0; i != atoms.size(); i++)
-  {
-    trial_atoms[i].position = com + M * atoms[i].position;
-  }
-
-  return {{com, q, totalMass, componentId, atoms.size()}, trial_atoms};
-}
-
 std::pair<Molecule, std::vector<Atom>> Component::translate(const Molecule &molecule, std::span<Atom> molecule_atoms,
                                                             double3 displacement) const
 {
@@ -1693,6 +1677,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
   archive << c.grownAtoms;
+  archive << c.grownIdealGasAtoms;
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
   archive << c.gibbsIdentityChanges;
@@ -1781,6 +1766,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
   archive >> c.grownAtoms;
+  archive >> c.grownIdealGasAtoms;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
   archive >> c.gibbsIdentityChanges;

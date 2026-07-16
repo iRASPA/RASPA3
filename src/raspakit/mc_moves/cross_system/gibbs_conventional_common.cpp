@@ -496,8 +496,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         return true;
       }
 
-      trial.conventionalInsert =
-          component.equilibratedMoleculeRandomInBox(random, selectedComponent, system.simulationBox);
+      trial.conventionalInsert = system.equilibratedIdealGasMoleculeRandomInBox(random, selectedComponent);
       std::vector<Atom> trialAtoms = trial.conventionalInsert.second;
       const std::size_t upcomingMoleculeId = system.numberOfMolecules();
       for (Atom& atom : trialAtoms)

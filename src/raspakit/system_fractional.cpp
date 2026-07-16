@@ -1007,8 +1007,7 @@ void System::createParallelReactionFractionalMolecules()
           }
           else
           {
-            auto [molecule, atoms] =
-                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            auto [molecule, atoms] = equilibratedIdealGasMoleculeRandomInBox(random, componentId);
             for (Atom& atom : atoms)
             {
               atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
@@ -1049,8 +1048,7 @@ void System::createParallelReactionFractionalMolecules()
           }
           else
           {
-            auto [molecule, atoms] =
-                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            auto [molecule, atoms] = equilibratedIdealGasMoleculeRandomInBox(random, componentId);
             for (Atom& atom : atoms)
             {
               atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
@@ -1122,8 +1120,7 @@ void System::createSerialReactionFractionalMolecules()
           }
           else
           {
-            auto [molecule, atoms] =
-                components[componentId].equilibratedMoleculeRandomInBox(random, componentId, simulationBox);
+            auto [molecule, atoms] = equilibratedIdealGasMoleculeRandomInBox(random, componentId);
             for (Atom& atom : atoms)
             {
               atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
