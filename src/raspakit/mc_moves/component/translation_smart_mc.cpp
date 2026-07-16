@@ -1,6 +1,6 @@
 module;
 
-module mc_moves_force_biased_translation;
+module mc_moves_translation_smart_mc;
 
 import std;
 
@@ -52,7 +52,7 @@ static double3 computeMoleculeForce(
   return -gradient;
 }
 
-std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &random, System &system,
+std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &random, System &system,
                                                                std::size_t selectedComponent,
                                                                std::size_t selectedMolecule)
 {
@@ -60,7 +60,7 @@ std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMove(RandomNumber &ra
   Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
   std::chrono::steady_clock::time_point time_begin, time_end;
-  Move::Types move = Move::Types::ForceBiasTranslation;
+  Move::Types move = Move::Types::TranslationSmartMC;
   Component &component = system.components[selectedComponent];
 
   component.mc_moves_statistics.addTrial(move);

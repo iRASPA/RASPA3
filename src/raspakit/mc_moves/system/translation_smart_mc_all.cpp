@@ -1,6 +1,6 @@
 module;
 
-module mc_moves_force_biased_translation_all;
+module mc_moves_translation_smart_mc_all;
 
 import std;
 
@@ -15,10 +15,10 @@ import integrators_update;
 import interactions_ewald;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::forceBiasTranslationMoveAll(RandomNumber &random, System &system)
+std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &random, System &system)
 {
   std::chrono::steady_clock::time_point time_begin, time_end;
-  Move::Types move = Move::Types::ForceBiasTranslationAll;
+  Move::Types move = Move::Types::TranslationSmartMCAll;
 
   system.mc_moves_statistics.addTrial(move);
 

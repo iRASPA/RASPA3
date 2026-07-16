@@ -647,12 +647,30 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("ForceBiasTranslationProbability") && item["ForceBiasTranslationProbability"].is_number_float())
+      if (item.contains("TranslationSmartMCProbability") && item["TranslationSmartMCProbability"].is_number_float())
       {
-        double forceBiasTranslationProbability = item["ForceBiasTranslationProbability"].get<double>();
+        double translationSmartMCProbability = item["TranslationSmartMCProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(Move::Types::ForceBiasTranslation, forceBiasTranslationProbability);
+          move_probabilities[i].setProbability(Move::Types::TranslationSmartMC, translationSmartMCProbability);
+        }
+      }
+      // Backward-compatible alias for the renamed TranslationSmartMCProbability keyword.
+      if (item.contains("ForceBiasTranslationProbability") && item["ForceBiasTranslationProbability"].is_number_float())
+      {
+        double translationSmartMCProbability = item["ForceBiasTranslationProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::TranslationSmartMC, translationSmartMCProbability);
+        }
+      }
+
+      if (item.contains("RotationSmartMCProbability") && item["RotationSmartMCProbability"].is_number_float())
+      {
+        double rotationSmartMCProbability = item["RotationSmartMCProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::RotationSmartMC, rotationSmartMCProbability);
         }
       }
 
@@ -1321,11 +1339,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
       }
 
+      if (value.contains("TranslationSmartMCAllProbability") &&
+          value["TranslationSmartMCAllProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::TranslationSmartMCAll,
+                                              value["TranslationSmartMCAllProbability"].get<double>());
+      }
+      // Backward-compatible alias for the renamed TranslationSmartMCAllProbability keyword.
       if (value.contains("ForceBiasTranslationAllProbability") &&
           value["ForceBiasTranslationAllProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(Move::Types::ForceBiasTranslationAll,
+        mc_moves_probabilities.setProbability(Move::Types::TranslationSmartMCAll,
                                               value["ForceBiasTranslationAllProbability"].get<double>());
+      }
+
+      if (value.contains("RotationSmartMCAllProbability") &&
+          value["RotationSmartMCAllProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::RotationSmartMCAll,
+                                              value["RotationSmartMCAllProbability"].get<double>());
       }
 
       if (value.contains("ReactionCBMCProbability") && value["ReactionCBMCProbability"].is_number_float())
@@ -2622,7 +2654,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
     "HybridMCMoveNumberOfSteps",
+    "TranslationSmartMCAllProbability",
     "ForceBiasTranslationAllProbability",
+    "RotationSmartMCAllProbability",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
@@ -2722,7 +2756,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "MoleculeDefinition",
     "TranslationProbability",
     "RandomTranslationProbability",
+    "TranslationSmartMCProbability",
     "ForceBiasTranslationProbability",
+    "RotationSmartMCProbability",
     "RotationProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",

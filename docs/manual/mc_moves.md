@@ -19,7 +19,8 @@ the [Commands](\ref commands) page for the full input documentation.
   * [Random translation](#random-translation)
   * [Rotation](#rotation)
   * [Random rotation](#random-rotation)
-  * [Force-bias translation (smart MC)](#force-bias-translation)
+  * [Translation smart MC](#translation-smart-mc)
+  * [Rotation smart MC](#rotation-smart-mc)
 * [Configurational-bias moves](#configurational-bias-moves)
   * [Reinsertion (CBMC)](#reinsertion-cbmc)
   * [Partial reinsertion (CBMC)](#partial-reinsertion-cbmc)
@@ -37,7 +38,8 @@ the [Commands](\ref commands) page for the full input documentation.
   * [Volume change](#volume-change)
   * [Anisotropic volume change](#anisotropic-volume-change)
   * [Hybrid MC](#hybrid-mc)
-  * [Force-bias translation of all molecules](#force-bias-translation-all)
+  * [Translation smart MC of all molecules](#translation-smart-mc-all)
+  * [Rotation smart MC of all molecules](#rotation-smart-mc-all)
 * [Gibbs ensemble moves](#gibbs-ensemble-moves)
   * [Gibbs volume change](#gibbs-volume-change)
   * [Gibbs swap (CBMC)](#gibbs-swap-cbmc)
@@ -155,8 +157,8 @@ probability accumulated in the collection matrix.
 
 Trial construction/energy overlap failures and blocked-pocket placements reject
 immediately. “Integer molecule” always excludes reserved fractional slots.
-Translation, random translation, rotation, random rotation, force-biased
-single-molecule translation, reinsertion, and partial reinsertion first guard
+Translation, random translation, rotation, random rotation, translation smart MC,
+rotation smart MC, reinsertion, and partial reinsertion first guard
 that the selected component has at least one molecule and then sample uniformly
 from **all** its molecule slots, including fractional slots. Deletion,
 identity-change, pair-deletion, transfer-donor, and reaction selections that
@@ -319,9 +321,10 @@ Reference: D. Dubbeldam, A. Torres-Knoop, and K.S. Walton, *On the Inner
 Workings of Monte Carlo Codes*, Mol. Simul. **39**, 1253-1292 (2013).
 <https://doi.org/10.1080/08927022.2013.819102>
 
-### Force-bias translation (smart MC) <a name="force-bias-translation"></a>
+### Translation smart MC <a name="translation-smart-mc"></a>
 
-Keyword: `"ForceBiasTranslationProbability"` (component move)
+Keyword: `"TranslationSmartMCProbability"` (component move; alias
+`"ForceBiasTranslationProbability"`)
 
 A "smart Monte Carlo" displacement: the trial translation of a single molecule
 is biased in the direction of the force acting on it, so that trial moves
@@ -373,6 +376,56 @@ for simulating water and aqueous solutions*, Chem. Phys. Lett. **55**, 413-417
 P.J. Rossky, J.D. Doll, and H.L. Friedman, *Brownian dynamics as smart Monte
 Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
 <https://doi.org/10.1063/1.436415>
+
+### Rotation smart MC <a name="rotation-smart-mc"></a>
+
+Keyword: `"RotationSmartMCProbability"` (component move)
+
+The rotational analogue of [translation smart MC](#translation-smart-mc): the
+trial orientation change of a single molecule is biased along the torque acting
+on it. The rotation is applied as a quaternion about the center of mass (rigid
+molecules) or the starting bead (flexible molecules), updating
+`Molecule::orientation` through the same quaternion machinery as the ordinary
+rotation move.
+
+Steps:
+
+- select a random box,
+- select a random component,
+- select a random molecule of that component in the chosen box (reject immediately
+  if the molecule is monoatomic),
+- compute the lab-frame torque \f$\boldsymbol{\tau}_\mathbf{o}\f$ on the molecule,
+- draw a Gaussian random vector \f$\boldsymbol{\xi}\f$ and form the angular
+  displacement
+  \f[
+  \Delta\boldsymbol{\phi} = b\,\boldsymbol{\tau}_\mathbf{o} + \sigma\,\boldsymbol{\xi},
+  \qquad b = \frac{1}{2}\beta\sigma^2 ,
+  \f]
+  where \f$\sigma\f$ is the tuned angular step size (radians),
+- convert \f$\Delta\boldsymbol{\phi}\f$ to a unit quaternion and left-multiply it
+  onto the molecule's orientation quaternion,
+- compute the energy difference \f$\Delta U\f$ and the torque
+  \f$\boldsymbol{\tau}_\mathbf{n}\f$ in the trial configuration,
+- accept or reject including the Hastings correction for the asymmetric proposal.
+
+Polarization torques are omitted from the drift (as for translation smart MC);
+polarization energy still enters \f$\Delta U\f$.
+
+Acceptance rule:
+
+\f[
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+   e^{-\beta \Delta U}\,
+   \exp\left[\frac{\left|\Delta\boldsymbol{\phi} - b\boldsymbol{\tau}_\mathbf{o}\right|^2
+                 - \left|\Delta\boldsymbol{\phi} + b\boldsymbol{\tau}_\mathbf{n}\right|^2}{2\sigma^2}\right]
+   \right)
+\f]
+
+Useful for: dense molecular liquids and high loadings of anisotropic adsorbates,
+where unbiased random rotations have low acceptance.
+
+References: same as [translation smart MC](#translation-smart-mc); see also
+R. Hens et al., Brick-CFCMC supporting information (smart rotations).
 
 ----------------------------------------------------------------------------------
 
@@ -1143,11 +1196,12 @@ B. Mehlig, D.W. Heermann, and B.M. Forrest, *Hybrid Monte Carlo method for
 condensed-matter systems*, Phys. Rev. B **45**, 679-685 (1992).
 <https://doi.org/10.1103/PhysRevB.45.679>
 
-### Force-bias translation of all molecules <a name="force-bias-translation-all"></a>
+### Translation smart MC of all molecules <a name="translation-smart-mc-all"></a>
 
-Keyword: `"ForceBiasTranslationAllProbability"` (system move)
+Keyword: `"TranslationSmartMCAllProbability"` (system move; alias
+`"ForceBiasTranslationAllProbability"`)
 
-The collective variant of the [force-bias translation](#force-bias-translation):
+The collective variant of the [translation smart MC](#translation-smart-mc):
 *all* molecules in the box are displaced simultaneously, each biased along the
 force acting on it, with a global Metropolis-Hastings correction. It behaves
 like a single Brownian-dynamics step wrapped in an exact acceptance rule.
@@ -1183,6 +1237,38 @@ hybrid MC for collective translational relaxation.
 Reference: P.J. Rossky, J.D. Doll, and H.L. Friedman, *Brownian dynamics as
 smart Monte Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
 <https://doi.org/10.1063/1.436415>
+
+### Rotation smart MC of all molecules <a name="rotation-smart-mc-all"></a>
+
+Keyword: `"RotationSmartMCAllProbability"` (system move)
+
+The collective variant of [rotation smart MC](#rotation-smart-mc): every rigid
+multi-atomic molecule is rotated simultaneously about its own center of mass,
+each biased along the torque acting on it, with orientations updated through
+quaternions. Monoatomic molecules are left unchanged. A single global
+Metropolis-Hastings correction restores detailed balance.
+
+Steps:
+
+- select a random box,
+- compute the lab-frame torques on all rigid multi-atomic molecules,
+- rotate every such molecule by the quaternion corresponding to
+  \f$\Delta\boldsymbol{\phi}_i = b\,\boldsymbol{\tau}_{i,\mathbf{o}} + \sigma\,\boldsymbol{\xi}_i\f$,
+- recompute the energy and the torques in the trial configuration,
+- accept or reject all rotations together with the Hastings-corrected Metropolis
+  rule.
+
+Acceptance rule:
+
+\f[
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+  e^{-\beta \Delta U}\,
+  \exp\left[\sum_i \frac{\left|\Delta\boldsymbol{\phi}_i - b\boldsymbol{\tau}_{i,\mathbf{o}}\right|^2
+     - \left|\Delta\boldsymbol{\phi}_i + b\boldsymbol{\tau}_{i,\mathbf{n}}\right|^2}{2\sigma^2}\right]\right)
+\f]
+
+Useful for: dense molecular liquids, as a cheaper alternative to hybrid MC for
+collective orientational relaxation.
 
 ----------------------------------------------------------------------------------
 

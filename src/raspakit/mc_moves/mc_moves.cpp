@@ -28,8 +28,10 @@ import mc_moves_cputime;
 import transition_matrix;
 import mc_moves_translation;
 import mc_moves_random_translation;
-import mc_moves_force_biased_translation;
-import mc_moves_force_biased_translation_all;
+import mc_moves_translation_smart_mc;
+import mc_moves_translation_smart_mc_all;
+import mc_moves_rotation_smart_mc;
+import mc_moves_rotation_smart_mc_all;
 import mc_moves_rotation;
 import mc_moves_random_rotation;
 import mc_moves_reinsertion;
@@ -77,7 +79,8 @@ bool isAlwaysTMMCNeutralLocalMove(Move::Types moveType)
     case Move::Types::Widom:
     case Move::Types::WidomCFCMC:
     case Move::Types::WidomCBCFCMC:
-    case Move::Types::ForceBiasTranslationAll:
+    case Move::Types::TranslationSmartMCAll:
+    case Move::Types::RotationSmartMCAll:
     case Move::Types::HybridMC:
       return true;
     default:
@@ -91,7 +94,8 @@ bool isGuardedTMMCNeutralMove(Move::Types moveType)
   {
     case Move::Types::Translation:
     case Move::Types::RandomTranslation:
-    case Move::Types::ForceBiasTranslation:
+    case Move::Types::TranslationSmartMC:
+    case Move::Types::RotationSmartMC:
     case Move::Types::Rotation:
     case Move::Types::RandomRotation:
     case Move::Types::ReinsertionCBMC:
@@ -313,7 +317,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       }
       break;
     }
-    case Move::Types::ForceBiasTranslation:
+    case Move::Types::TranslationSmartMC:
     {
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
@@ -321,7 +325,27 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
+            MC_Moves::translationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
+      break;
+    }
+    case Move::Types::RotationSmartMC:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -745,9 +769,18 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       }
       break;
     }
-    case Move::Types::ForceBiasTranslationAll:
+    case Move::Types::TranslationSmartMCAll:
     {
-      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      std::optional<RunningEnergy> energy = MC_Moves::translationSmartMCMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::RotationSmartMCAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::rotationSmartMCMoveAll(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
@@ -889,7 +922,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       }
       break;
     }
-    case Move::Types::ForceBiasTranslation:
+    case Move::Types::TranslationSmartMC:
     {
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
@@ -897,7 +930,27 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
+            MC_Moves::translationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
+      break;
+    }
+    case Move::Types::RotationSmartMC:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -1321,9 +1374,18 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       }
       break;
     }
-    case Move::Types::ForceBiasTranslationAll:
+    case Move::Types::TranslationSmartMCAll:
     {
-      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      std::optional<RunningEnergy> energy = MC_Moves::translationSmartMCMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::RotationSmartMCAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::rotationSmartMCMoveAll(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
@@ -1459,7 +1521,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       }
       break;
     }
-    case Move::Types::ForceBiasTranslation:
+    case Move::Types::TranslationSmartMC:
     {
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
       {
@@ -1467,7 +1529,27 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
-            MC_Moves::forceBiasTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule);
+            MC_Moves::translationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+
+      break;
+    }
+    case Move::Types::RotationSmartMC:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        // perform move
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationSmartMCMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -1954,9 +2036,18 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       }
       break;
     }
-    case Move::Types::ForceBiasTranslationAll:
+    case Move::Types::TranslationSmartMCAll:
     {
-      std::optional<RunningEnergy> energy = MC_Moves::forceBiasTranslationMoveAll(random, selectedSystem);
+      std::optional<RunningEnergy> energy = MC_Moves::translationSmartMCMoveAll(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::RotationSmartMCAll:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::rotationSmartMCMoveAll(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();

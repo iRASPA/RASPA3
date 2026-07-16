@@ -93,7 +93,7 @@ cd examples/basic/1_mc_methane_in_box
 - Reaction MC conventional CFCMC/CBMC
 - Reaction MC CFCMC
 - Reaction MC CFCMC/CBMC
-- Smart MC
+- Translation / rotation smart MC
 - partial molar energies/volumes
 - polarization
 - Baker/MFO-optimization

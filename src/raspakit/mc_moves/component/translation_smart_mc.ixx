@@ -1,6 +1,6 @@
 module;
 
-export module mc_moves_force_biased_translation;
+export module mc_moves_translation_smart_mc;
 
 import std;
 
@@ -11,7 +11,7 @@ import system;
 export namespace MC_Moves
 {
 /**
- * \brief Attempts a force-biased (smart Monte Carlo) translation of a single molecule.
+ * \brief Attempts a force-biased (translation smart Monte Carlo) move of a single molecule.
  *
  * This move is the force-biased analogue of the ordinary translation move: instead of drawing an
  * isotropic random displacement, the trial center-of-mass displacement is biased along the force
@@ -32,6 +32,6 @@ export namespace MC_Moves
  * \return An optional RunningEnergy containing the energy difference if the move is accepted;
  *         std::nullopt if the move is rejected.
  */
-std::optional<RunningEnergy> forceBiasTranslationMove(RandomNumber &random, System &system,
-                                                      std::size_t selectedComponent, std::size_t selectedMolecule);
+std::optional<RunningEnergy> translationSmartMCMove(RandomNumber &random, System &system,
+                                                    std::size_t selectedComponent, std::size_t selectedMolecule);
 }  // namespace MC_Moves

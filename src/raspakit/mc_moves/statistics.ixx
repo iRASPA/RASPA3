@@ -71,11 +71,17 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::ParallelTempering)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::HybridMC)] =
         MoveStatistics<double>{.maxChange = 0.0005, .lowerLimit = 0.000001, .upperLimit = 0.01};
-    // Force-biased (smart-MC) translation: 'maxChange' is the standard deviation (in Angstrom) of the
+    // Translation smart MC: 'maxChange' is the standard deviation (in Angstrom) of the
     // Gaussian part of the trial displacement; the drift is derived from this via beta * sigma^2 / 2.
-    stats[std::to_underlying(Move::Types::ForceBiasTranslation)] =
+    stats[std::to_underlying(Move::Types::TranslationSmartMC)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.001, .upperLimit = 1.5};
-    stats[std::to_underlying(Move::Types::ForceBiasTranslationAll)] =
+    stats[std::to_underlying(Move::Types::TranslationSmartMCAll)] =
+        MoveStatistics<double>{.maxChange = 0.05, .lowerLimit = 0.001, .upperLimit = 1.5};
+    // Rotation smart MC: 'maxChange' is the angular standard deviation (radians); the torque drift
+    // uses the same b = beta * sigma^2 / 2 relation, applied as a quaternion rotation.
+    stats[std::to_underlying(Move::Types::RotationSmartMC)] =
+        MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.001, .upperLimit = 1.5};
+    stats[std::to_underlying(Move::Types::RotationSmartMCAll)] =
         MoveStatistics<double>{.maxChange = 0.05, .lowerLimit = 0.001, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::ReactionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::ReactionConventionalCFCMC)] = MoveStatistics<double>{};

@@ -32,7 +32,7 @@ static double3 sumMoleculeGradient(std::span<const AtomDynamics> dynamics, std::
   return sum;
 }
 
-TEST(force_biased_translation, single_molecule_force_matches_full_gradient)
+TEST(translation_smart_mc, single_molecule_force_matches_full_gradient)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.automaticEwald = false;

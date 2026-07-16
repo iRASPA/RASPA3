@@ -1,6 +1,6 @@
 module;
 
-export module mc_moves_force_biased_translation_all;
+export module mc_moves_translation_smart_mc_all;
 
 import std;
 
@@ -11,9 +11,9 @@ import system;
 export namespace MC_Moves
 {
 /**
- * \brief Attempts a force-biased (smart Monte Carlo) translation of all molecules simultaneously.
+ * \brief Attempts a force-biased (translation smart Monte Carlo) move of all molecules simultaneously.
  *
- * This is the collective variant of \ref forceBiasTranslationMove: every molecule is displaced in a
+ * This is the collective variant of \ref translationSmartMCMove: every molecule is displaced in a
  * single trial move, each along the force acting on it,
  * \f[
  *   \Delta r_i = \frac{\beta \sigma^2}{2}\, F_{\text{old},i} + \sigma\, \xi_i,
@@ -29,5 +29,5 @@ export namespace MC_Moves
  * \return An optional RunningEnergy containing the new total running energy if the move is accepted;
  *         std::nullopt if the move is rejected.
  */
-std::optional<RunningEnergy> forceBiasTranslationMoveAll(RandomNumber &random, System &system);
+std::optional<RunningEnergy> translationSmartMCMoveAll(RandomNumber &random, System &system);
 }  // namespace MC_Moves

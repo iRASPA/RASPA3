@@ -450,9 +450,15 @@ reported separately at the end of the simulation.
     The probability per cycle of attempting a parallel-tempering swap between two
     systems.
 
--   `"ForceBiasTranslationAllProbability" : floating-point-number`\
-    The probability per cycle of attempting a force-bias move that displaces all
-    molecules simultaneously along the forces acting on them.
+-   `"TranslationSmartMCAllProbability" : floating-point-number`\
+    The probability per cycle of attempting a translation smart-MC move that
+    displaces all molecules simultaneously along the forces acting on them.
+    Alias: `"ForceBiasTranslationAllProbability"`.
+
+-   `"RotationSmartMCAllProbability" : floating-point-number`\
+    The probability per cycle of attempting a rotation smart-MC move that
+    rotates all rigid multi-atomic molecules simultaneously along the torques
+    acting on them (quaternion update).
 
 ### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
 
@@ -947,10 +953,18 @@ and `"BinaryInteractions"` are read from the force field file
     reinsertion, except that reinsertion also changes the internal conformation
     and uses biasing.
 
+-   `"TranslationSmartMCProbability" : floating-point-number`\
+    The relative probability of a translation smart-MC (force-biased) move of a
+    single molecule. Alias: `"ForceBiasTranslationProbability"`.
+
 -   `"RotationProbability" : floating-point-number`\
     The relative probability of a rotation move about the starting bead. A random
     vector on the unit sphere is generated and the molecule is rotated by a
     random angle around it.
+
+-   `"RotationSmartMCProbability" : floating-point-number`\
+    The relative probability of a rotation smart-MC (torque-biased) move of a
+    single molecule. The trial orientation is updated with a quaternion.
 
 -   `"ReinsertionProbability" : floating-point-number`\
     The relative probability of a full `CBMC` reinsertion move. Several first

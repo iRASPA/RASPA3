@@ -39,8 +39,10 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Pair swap (CBMC)",
   "Pair swap (CFCMC)",
   "Pair swap (CB/CFCMC)",
-  "Force-biased translation",
-  "Force-biased translation (all)"
+  "Translation smart MC",
+  "Translation smart MC (all)",
+  "Rotation smart MC",
+  "Rotation smart MC (all)"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -194,9 +196,13 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   std::vector<Move::Timing>{Move::Timing::InsertionNonEwald, Move::Timing::InsertionEwald, Move::Timing::InsertionTail,
                             Move::Timing::DeletionNonEwald, Move::Timing::DeletionEwald, Move::Timing::DeletionTail,
                             Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail},
-  // ForceBiasTranslation
+  // TranslationSmartMC
   std::vector<Move::Timing>{Move::Timing::Integration},
-  // ForceBiasTranslationAll
+  // TranslationSmartMCAll
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // RotationSmartMC
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // RotationSmartMCAll
   std::vector<Move::Timing>{Move::Timing::Integration}
 };
 
