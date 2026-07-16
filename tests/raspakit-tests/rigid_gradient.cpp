@@ -57,7 +57,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 
   Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField,
                                system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
-                               system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                               system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
                                system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components);
@@ -131,7 +131,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 
   Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField,
                                system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
-                               system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                               system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
                                system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components);
@@ -238,7 +238,7 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 
   RunningEnergy force = Integrators::updateGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
-      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components);

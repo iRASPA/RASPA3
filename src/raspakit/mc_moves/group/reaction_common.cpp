@@ -68,7 +68,7 @@ void acceptChargedEwaldMove(System& system) noexcept
   const std::vector<std::vector<Atom>> oldMolecules = splitAtomsByMoleculeId(oldAtoms);
 
   RunningEnergy ewaldCombined = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newAtoms, oldAtoms, system.netCharge);
 
   // The combined difference treats each atom set as one big molecule and therefore adds spurious
@@ -105,22 +105,22 @@ void acceptChargedEwaldMove(System& system) noexcept
     accumulateExclusion(newMolecule, -1.0, ewaldCombined);
   }
 
-  // rebuild totalEik by replacing the molecules one at a time, keeping storedEik untouched
+  // rebuild trialEik by replacing the molecules one at a time, keeping storedEik untouched
   const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEikSnapshot = system.storedEik;
   std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> workingStoredEik = storedEikSnapshot;
   for (const std::vector<Atom>& oldMolecule : oldMolecules)
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     workingStoredEik, system.totalEik, system.forceField,
+                                                     workingStoredEik, system.trialEik, system.forceField,
                                                      system.simulationBox, std::span<const Atom>{}, oldMolecule);
-    workingStoredEik = system.totalEik;
+    workingStoredEik = system.trialEik;
   }
   for (const std::vector<Atom>& newMolecule : newMolecules)
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     workingStoredEik, system.totalEik, system.forceField,
+                                                     workingStoredEik, system.trialEik, system.forceField,
                                                      system.simulationBox, newMolecule, std::span<const Atom>{});
-    workingStoredEik = system.totalEik;
+    workingStoredEik = system.trialEik;
   }
   system.storedEik = storedEikSnapshot;
 
@@ -551,7 +551,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   if (includeEwaldCorrections)
   {
     RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, newAtoms, oldAtoms, system.netCharge);
     energyDifference += ewaldDifference;
   }
@@ -1615,7 +1615,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   setReactionFractionalScaling(system, reaction, lambdaNew);
   reaction.currentLambda = lambdaNew;
   system.syncReactionLambdaBin(reaction);

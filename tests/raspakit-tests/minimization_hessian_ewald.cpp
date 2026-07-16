@@ -261,7 +261,7 @@ TEST(minimization_hessian_ewald, flexible_md_live_framework_gradient_matches_fin
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
   const RunningEnergy analytic = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), moleculeDynamics, system.netChargeFramework, system.framework,
       system.spanOfFrameworkAtoms(), frameworkDynamics);
@@ -274,12 +274,12 @@ TEST(minimization_hessian_ewald, flexible_md_live_framework_gradient_matches_fin
     std::vector<std::complex<double>> eikY;
     std::vector<std::complex<double>> eikZ;
     std::vector<std::complex<double>> eikXY;
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> totalEik;
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik;
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedEik;
     std::vector<AtomDynamics> moleculeScratch(system.spanOfMoleculeAtoms().size());
     std::vector<AtomDynamics> frameworkScratch(system.spanOfFrameworkAtoms().size());
     const RunningEnergy value = Interactions::computeEwaldFourierGradient(
-        eikX, eikY, eikZ, eikXY, totalEik, fixedEik, system.forceField, system.simulationBox, system.components,
+        eikX, eikY, eikZ, eikXY, trialEik, fixedEik, system.forceField, system.simulationBox, system.components,
         system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), moleculeScratch, system.netChargeFramework,
         system.framework, system.spanOfFrameworkAtoms(), frameworkScratch);
     return value.ewald_fourier + value.ewald_exclusion;

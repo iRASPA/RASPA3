@@ -23,7 +23,7 @@ RunningEnergy Integrators::velocityVerlet(
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
@@ -64,7 +64,7 @@ RunningEnergy Integrators::velocityVerlet(
   RunningEnergy runningEnergies = updateGradients(
       moleculeData, moleculeAtomPositions, moleculeDynamics, frameworkAtomPositions, forceField, simulationBox,
       components, eik_x, eik_y, eik_z, eik_xy,
-      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent, framework,
+      trialEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent, framework,
       frameworkDynamics);
 
   // compute the gradients on the center of mass and the orientation

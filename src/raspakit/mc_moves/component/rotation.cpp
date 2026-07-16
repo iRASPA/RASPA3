@@ -123,13 +123,13 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
         trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
@@ -163,7 +163,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     component.mc_moves_statistics.addAccepted(move, selectedDirection);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;

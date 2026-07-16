@@ -433,7 +433,7 @@ RunningEnergy Integrators::updateGradients(
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
@@ -468,7 +468,7 @@ RunningEnergy Integrators::updateGradients(
     netChargeFramework += atom.charge;
   }
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
-      eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
+      eik_x, eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
       numberOfMoleculesPerComponent, moleculeAtomPositions, moleculeDynamics, netChargeFramework, framework,
       frameworkAtomPositions, frameworkDynamics);
 

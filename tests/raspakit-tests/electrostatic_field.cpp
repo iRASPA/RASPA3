@@ -56,7 +56,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 
   // system.precomputeTotalRigidEnergy();
   // RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-  //     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+  //     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
   //     system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
   //     system.spanOfMoleculeAtoms());
 
@@ -126,12 +126,12 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy energy1 = Interactions::computeEwaldFourierElectricField(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, system.simulationBox, moleculeElectricField, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
   RunningEnergy energy2 = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), dynamicsData);
 

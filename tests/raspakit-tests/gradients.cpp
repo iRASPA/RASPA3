@@ -295,7 +295,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
@@ -384,7 +384,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics());
 
@@ -414,7 +414,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   }
   [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
-      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 
   // EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);

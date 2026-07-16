@@ -209,7 +209,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::steady_clock::now();
@@ -248,7 +248,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
         groupChargeSum(fractionalMoleculeA));
     time_end = std::chrono::steady_clock::now();
@@ -376,14 +376,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                                                       grownElectricFieldA, {}, growDataA->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
+            system.trialEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
 
         Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                       system.spanOfFrameworkAtoms(),
                                                                       grownElectricFieldB, {}, growDataB->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
+            system.trialEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
         accumulateInterMolecularFieldDelta(system, growDataA->atoms, {}, electricFieldNeighborDelta);
         accumulateInterMolecularFieldDelta(system, growDataB->atoms, {}, electricFieldNeighborDelta);
@@ -412,14 +412,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                                                       grownElectricFieldA, {}, growDataA->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
+            system.trialEik, system.forceField, system.simulationBox, grownElectricFieldA, {}, growDataA->atoms, {});
 
         Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                       system.spanOfFrameworkAtoms(),
                                                                       grownElectricFieldB, {}, growDataB->atoms, {});
         Interactions::computeEwaldFourierElectricFieldDifference(
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-            system.totalEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
+            system.trialEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
         polarizationDifference = Interactions::computePolarizationEnergyDifference(
                                      system.forceField, grownElectricFieldA, {}, growDataA->atoms, {}) +
@@ -431,11 +431,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // Ewald and tail-correction energy contributions of the grown pair
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, runningNetCharge);
     runningNetCharge += scaledChargeDifference(growDataA->atoms, {});
     RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, std::span(growDataB->atoms.begin(), growDataB->atoms.end()), {}, runningNetCharge,
         groupChargeSum(growDataA->atoms));
     RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -479,7 +479,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
       lambda.setCurrentBin(newBin);
 
@@ -645,11 +645,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // Ewald and tail-correction energy contributions of removing the fractional pair
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, {}, fractionalMoleculeA, runningNetCharge, groupChargeSum(fractionalMoleculeB));
     runningNetCharge += scaledChargeDifference({}, fractionalMoleculeA);
     RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, {}, fractionalMoleculeB, runningNetCharge);
     runningNetCharge += scaledChargeDifference({}, fractionalMoleculeB);
     RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -708,7 +708,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, newFractionalMoleculeA, oldNewFractionalMoleculeA, runningNetCharge);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
@@ -750,7 +750,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, newFractionalMoleculeB, oldNewFractionalMoleculeB, runningNetCharge,
         groupChargeSum(newFractionalMoleculeA));
     time_end = std::chrono::steady_clock::now();
@@ -832,7 +832,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       lambda.setCurrentBin(newBin);
 
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
@@ -927,7 +927,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
         groupChargeSum(fractionalMoleculeB));
     time_end = std::chrono::steady_clock::now();
@@ -966,7 +966,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
         groupChargeSum(fractionalMoleculeA));
     time_end = std::chrono::steady_clock::now();
@@ -999,7 +999,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       componentA.mc_moves_statistics.addAccepted(move, 2);
 
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)

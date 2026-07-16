@@ -171,13 +171,13 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
         trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
@@ -203,7 +203,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
 
   time_begin = std::chrono::steady_clock::now();
   std::vector<AtomDynamics> dynamicsNew;
-  computeMoleculeGradients(system, trialMolecule.second, system.totalEik, dynamicsNew);
+  computeMoleculeGradients(system, trialMolecule.second, system.trialEik, dynamicsNew);
   double3 torqueNew = computeMoleculeTorque(component, trialMolecule.first, trialMolecule.second, dynamicsNew);
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
@@ -220,7 +220,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
   {
     component.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;

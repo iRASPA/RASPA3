@@ -194,7 +194,7 @@ TEST(energy_decomposition, CO2_Methane_in_Framework)
   RunningEnergy energyForces = Integrators::updateGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
       system.forceField, system.simulationBox,
-      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 
   std::pair<EnergyStatus, double3x3> strainDerivative = system.computeMolecularPressure();

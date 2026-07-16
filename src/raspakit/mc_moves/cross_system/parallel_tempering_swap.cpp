@@ -139,10 +139,10 @@ void rebuildConfigurationDerivedState(System& system)
   system.eik_xy.clear();
   system.storedEik.clear();
   system.fixedFrameworkStoredEik.clear();
-  system.totalEik.clear();
+  system.trialEik.clear();
   system.precomputeTotalRigidEnergy();
   system.runningEnergies = system.computeTotalEnergies();
-  system.totalEik = system.storedEik;
+  system.trialEik = system.storedEik;
   system.CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.forceField, system.simulationBox,
       double3(0.0, 0.0, 0.0), 1.0);

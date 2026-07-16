@@ -182,7 +182,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
   }
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, trialAtoms, oldAtoms, system.netCharge);
 
   RunningEnergy tailDifference =
@@ -270,7 +270,7 @@ RunningEnergy growEwaldTailDifference(
     std::span<const Atom> growAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, growAtoms, {}, system.netCharge);
   RunningEnergy tailDifference = probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, growAtoms, {});
   return ewaldDifference + tailDifference;
@@ -282,7 +282,7 @@ RunningEnergy retraceEwaldTailDifference(
     std::span<const Atom> retraceAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, {}, retraceAtoms, system.netCharge);
   RunningEnergy tailDifference =
       probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, {}, retraceAtoms);
@@ -372,15 +372,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalB);
 
   const auto originalStoredEikA = systemA.storedEik;
-  const auto originalTotalEikA = systemA.totalEik;
+  const auto originalTrialEikA = systemA.trialEik;
   const auto originalStoredEikB = systemB.storedEik;
-  const auto originalTotalEikB = systemB.totalEik;
+  const auto originalTrialEikB = systemB.trialEik;
   auto restoreEwaldState = [&]()
   {
     systemA.storedEik = originalStoredEikA;
-    systemA.totalEik = originalTotalEikA;
+    systemA.trialEik = originalTrialEikA;
     systemB.storedEik = originalStoredEikB;
-    systemB.totalEik = originalTotalEikB;
+    systemB.trialEik = originalTrialEikB;
   };
 
   // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
@@ -420,13 +420,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     applyTargetScaling(fractionalMoleculeA, moveKindA, lambdaNewA);
     // The second boundary operation starts from the structure factor produced by
     // the first fractional-scaling operation, so reciprocal-space cross terms are retained.
-    systemA.storedEik = systemA.totalEik;
+    systemA.storedEik = systemA.trialEik;
   }
   if (moveKindB != GibbsMoveKind::LambdaChange)
   {
     savedFractionalB = std::vector<Atom>(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
     applyTargetScaling(fractionalMoleculeB, moveKindB, lambdaNewB);
-    systemB.storedEik = systemB.totalEik;
+    systemB.storedEik = systemB.trialEik;
   }
 
   auto restoreFractionals = [&]()
@@ -617,8 +617,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   }
 
   componentA.mc_moves_statistics.addAccepted(move);
-  Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
-  Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+  Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
+  Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
   auto acceptBox = [&](System& system, Component& component, GibbsMoveKind moveKind, double lambdaNew,
                        std::size_t indexFractional, BoundaryTrial& boundary)

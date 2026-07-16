@@ -179,7 +179,7 @@ void setGibbsLambda(System &system, std::size_t componentId, std::size_t bin)
     atom.setScalingToFractional(lambda, component.lambdaGibbs.dUdlambdaGroupId);
   }
   system.runningEnergies = system.computeTotalEnergies();
-  system.totalEik = system.storedEik;
+  system.trialEik = system.storedEik;
 }
 
 void favorAllBinsExceptCurrent(Component &component)
@@ -807,9 +807,9 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_swaps_complete_configuration_only)
   systemA.mc_moves_statistics.setMaxChange(Move::Types::ParallelTempering, 0.123);
   systemB.mc_moves_statistics.setMaxChange(Move::Types::ParallelTempering, 0.456);
   systemA.runningEnergies = systemA.computeTotalEnergies();
-  systemA.totalEik = systemA.storedEik;
+  systemA.trialEik = systemA.storedEik;
   systemB.runningEnergies = systemB.computeTotalEnergies();
-  systemB.totalEik = systemB.storedEik;
+  systemB.trialEik = systemB.storedEik;
 
   const double temperatureA = systemA.temperature;
   const double betaA = systemA.beta;
@@ -889,9 +889,9 @@ TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
   favorAllBinsExceptCurrent(systems[1].components[0]);
 
   const RunningEnergy beforeA = systems[0].computeTotalEnergies();
-  systems[0].totalEik = systems[0].storedEik;
+  systems[0].trialEik = systems[0].storedEik;
   const RunningEnergy beforeB = systems[1].computeTotalEnergies();
-  systems[1].totalEik = systems[1].storedEik;
+  systems[1].trialEik = systems[1].storedEik;
   RandomNumber acceptedRandom(42);
   const auto delta =
       MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(acceptedRandom, systems[0], systems[1], 0, false);
@@ -913,9 +913,9 @@ TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
   rejectAllBinsExceptCurrent(systems[0].components[0]);
   rejectAllBinsExceptCurrent(systems[1].components[0]);
   const auto storedA = systems[0].storedEik;
-  const auto totalA = systems[0].totalEik;
+  const auto totalA = systems[0].trialEik;
   const auto storedB = systems[1].storedEik;
-  const auto totalB = systems[1].totalEik;
+  const auto totalB = systems[1].trialEik;
   const std::size_t countA = systems[0].numberOfIntegerMoleculesPerComponent[0];
   const std::size_t countB = systems[1].numberOfIntegerMoleculesPerComponent[0];
   const double scalingA = systems[0].spanOfMolecule(
@@ -928,9 +928,9 @@ TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
                    rejectedRandom, systems[0], systems[1], 0, false)
                    .has_value());
   EXPECT_EQ(systems[0].storedEik, storedA);
-  EXPECT_EQ(systems[0].totalEik, totalA);
+  EXPECT_EQ(systems[0].trialEik, totalA);
   EXPECT_EQ(systems[1].storedEik, storedB);
-  EXPECT_EQ(systems[1].totalEik, totalB);
+  EXPECT_EQ(systems[1].trialEik, totalB);
   EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], countA);
   EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], countB);
   EXPECT_EQ(systems[0].spanOfMolecule(
@@ -954,9 +954,9 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_rejection_preserves_configuration)
   System systemA(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e9, 1.0, {}, {particle}, {}, {2}, 5);
   System systemB(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0, 1.0, {}, {particle}, {}, {4}, 5);
   systemA.runningEnergies = systemA.computeTotalEnergies();
-  systemA.totalEik = systemA.storedEik;
+  systemA.trialEik = systemA.storedEik;
   systemB.runningEnergies = systemB.computeTotalEnergies();
-  systemB.totalEik = systemB.storedEik;
+  systemB.trialEik = systemB.storedEik;
   const auto atomsA = systemA.atomData;
   const auto atomsB = systemB.atomData;
   const SimulationBox boxA = systemA.simulationBox;
@@ -1007,9 +1007,9 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_keeps_framework_bundle_fixed)
   System systemA(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {methane}, {}, {2}, 5);
   System systemB(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {methane}, {}, {4}, 5);
   systemA.runningEnergies = systemA.computeTotalEnergies();
-  systemA.totalEik = systemA.storedEik;
+  systemA.trialEik = systemA.storedEik;
   systemB.runningEnergies = systemB.computeTotalEnergies();
-  systemB.totalEik = systemB.storedEik;
+  systemB.trialEik = systemB.storedEik;
   const std::vector<Atom> frameworkAtomsA(systemA.spanOfFrameworkAtoms().begin(), systemA.spanOfFrameworkAtoms().end());
   const std::vector<Atom> frameworkAtomsB(systemB.spanOfFrameworkAtoms().begin(), systemB.spanOfFrameworkAtoms().end());
   const double3 mobilePositionA = systemA.spanOfMolecule(0, 0)[0].position;

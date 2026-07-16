@@ -68,7 +68,7 @@ TEST(translation_smart_mc, single_molecule_force_matches_full_gradient)
                                                  system.interpolationGrids);
   Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
                                               dynamics);
-  Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+  Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
                                             system.fixedFrameworkStoredEik, system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
                                             system.spanOfMoleculeAtoms(), dynamics);

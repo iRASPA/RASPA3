@@ -99,7 +99,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Compute energy difference due to Ewald Fourier components
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMolecule, {}, system.netCharge);
   time_end = std::chrono::steady_clock::now();
 
@@ -130,7 +130,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, new_electric_field, {}, growData->atoms, {});
+        system.trialEik, system.forceField, system.simulationBox, new_electric_field, {}, growData->atoms, {});
 
     // Molecule-molecule polarization: field on the inserted molecule plus the change of the field on every
     // existing molecule (inter-molecular energy is already accounted for through CBMC, discard returned energy).
@@ -187,7 +187,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     component.mc_moves_statistics.addAccepted(move, 0);
 
     // Accept Ewald move and insert the new molecule into the system
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {

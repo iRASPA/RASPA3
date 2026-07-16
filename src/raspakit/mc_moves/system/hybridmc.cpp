@@ -85,7 +85,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // Gradients must live on the trial copies: Velocity Verlet's first half-kick uses them.
   RunningEnergy referenceEnergy = Integrators::updateGradients(
       moleculeData, moleculeAtomPositions, moleculeDynamics, trialFrameworkAtoms, system.forceField,
-      system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
       trialFrameworkDynamics);
   Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics,
@@ -103,7 +103,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     currentEnergy = Integrators::velocityVerlet(
         moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, dt, thermostat, trialFrameworkAtoms,
-        system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+        system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
         system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
         system.framework, trialFrameworkDynamics);
   }
@@ -131,7 +131,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     }
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     return currentEnergy;
   }
   return std::nullopt;

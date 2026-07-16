@@ -320,7 +320,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
 
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factor = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atomData,
       atomDynamics);
 

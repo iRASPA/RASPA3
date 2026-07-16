@@ -95,7 +95,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   }
 
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newAtoms, oldAtoms, system.netCharge);
 
   RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifferenceReaction(
@@ -126,7 +126,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
   ReactionCommon::deleteSelectedMolecules(system, selectedMolecules);
   ReactionCommon::insertGrownMolecules(system, growData->molecules, insertStoichiometry);

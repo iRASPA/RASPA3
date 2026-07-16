@@ -589,7 +589,7 @@ void System::precomputeTotalGradients() noexcept
 {
   runningEnergies = Integrators::updateGradients(
       moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
-      components, eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, interpolationGrids,
+      components, eik_x, eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik, interpolationGrids,
       numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics());
 }
 
@@ -1191,7 +1191,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.eik_z;
   archive << s.storedEik;
   archive << s.fixedFrameworkStoredEik;
-  archive << s.totalEik;
+  archive << s.trialEik;
   archive << s.CoulombicFourierEnergySingleIon;
   archive << s.netCharge;
   archive << s.netChargeFramework;
@@ -1350,7 +1350,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.eik_z;
   archive >> s.storedEik;
   archive >> s.fixedFrameworkStoredEik;
-  archive >> s.totalEik;
+  archive >> s.trialEik;
   archive >> s.CoulombicFourierEnergySingleIon;
   archive >> s.netCharge;
   archive >> s.netChargeFramework;

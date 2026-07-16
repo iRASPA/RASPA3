@@ -224,7 +224,7 @@ export struct System
   std::vector<std::complex<double>> eik_z{};
   std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik{};
   std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik{};
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> totalEik{};
+  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik{};
   double CoulombicFourierEnergySingleIon{0.0};
   double netCharge{0.0};
   double netChargeFramework{0.0};

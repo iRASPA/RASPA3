@@ -90,7 +90,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Compute the energy difference in Fourier space due to the deletion
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, {}, molecule, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     // Update the CPU time statistics for the Ewald part of the move
@@ -125,7 +125,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, {}, old_electric_field, {}, old_molecule);
+          system.trialEik, system.forceField, system.simulationBox, {}, old_electric_field, {}, old_molecule);
 
       // Molecule-molecule polarization: field on the deleted molecule plus the change of the field on every
       // remaining molecule (inter-molecular energy is already accounted for through CBMC, discard returned energy).
@@ -177,7 +177,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     {
       component.mc_moves_statistics.addAccepted(move, 1);
 
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
       {

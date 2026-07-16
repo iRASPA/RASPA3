@@ -135,7 +135,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Compute Ewald energy contribution
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldEnergyDifferenceStep1 = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
@@ -243,7 +243,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Compute Ewald energy contribution
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldEnergyDifferenceStep2 = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
         system.simulationBox, trialMolecule.second, {}, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
@@ -288,7 +288,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                                                     {}, trialMolecule.second, {});
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, trialElectricField, {}, trialMolecule.second, {});
+          system.trialEik, system.forceField, system.simulationBox, trialElectricField, {}, trialMolecule.second, {});
       [[maybe_unused]] std::optional<RunningEnergy> e2 =
           Interactions::computeInterMolecularPolarizationElectricFieldDifference(
               system.forceField, system.simulationBox, electricFieldNeighborDelta, trialElectricField,
@@ -307,7 +307,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                                                     {}, trialMolecule.second, {});
       Interactions::computeEwaldFourierElectricFieldDifference(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, trialElectricField, {}, trialMolecule.second, {});
+          system.trialEik, system.forceField, system.simulationBox, trialElectricField, {}, trialMolecule.second, {});
       polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, trialElectricField,
                                                                                  {}, trialMolecule.second, {});
     }
@@ -332,7 +332,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
       component.lambdaGC.setCurrentBin(newBin);
 
@@ -472,7 +472,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Compute Ewald energy contribution
       time_begin = std::chrono::steady_clock::now();
       RunningEnergy EwaldEnergyDifferenceStep1 = Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
           system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
@@ -569,7 +569,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Compute Ewald energy contribution
       time_begin = std::chrono::steady_clock::now();
       RunningEnergy EwaldEnergyDifferenceStep2 = Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.totalEik, system.forceField,
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
           system.simulationBox, newFractionalMolecule, savedFractionalMolecule, system.netCharge);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
@@ -663,7 +663,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Apply acceptance/rejection rule
       if (random.uniform() < biasTransitionMatrix * samplingPacc)
       {
-        Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+        Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
         component.lambdaGC.setCurrentBin(newBin);
 
         // Commit the field changes on the remaining molecules (the removed molecule's own entries were zeroed).
@@ -783,7 +783,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Compute Ewald energy contribution
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, trialPositions, molecule, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
@@ -846,7 +846,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Apply acceptance/rejection rule
     if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       component.mc_moves_statistics.addAccepted(move, 2);
 
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)

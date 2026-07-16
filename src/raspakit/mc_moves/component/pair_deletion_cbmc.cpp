@@ -78,13 +78,13 @@ static RunningEnergy pairDeletionPolarizationDifference(System& system, std::siz
                                                                   {}, oldMoleculeA);
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldA, {}, oldMoleculeA);
+        system.trialEik, system.forceField, system.simulationBox, {}, oldElectricFieldA, {}, oldMoleculeA);
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), {}, oldElectricFieldB,
                                                                   {}, oldMoleculeB);
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, {}, oldElectricFieldB, {}, oldMoleculeB);
+        system.trialEik, system.forceField, system.simulationBox, {}, oldElectricFieldB, {}, oldMoleculeB);
 
     polarizationDifference =
         Interactions::computePolarizationEnergyDifference(system.forceField, {}, oldElectricFieldA, {}, moleculeA) +
@@ -244,18 +244,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());
 
   const auto savedStoredEik = system.storedEik;
-  const auto savedTotalEik = system.totalEik;
+  const auto savedTrialEik = system.trialEik;
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, {}, oldMoleculeB, system.netCharge);
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
   system.storedEik = savedStoredEik;
-  system.totalEik = savedTotalEik;
+  system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
@@ -328,15 +328,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
     }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, {}, oldMoleculeB);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.deleteMolecule(componentB, selectedMoleculeB, moleculeB);
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, {}, oldMoleculeA);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.deleteMolecule(selectedComponent, selectedMolecule, moleculeA);
 
     return {retraceDataA.energies + retraceDataB.energies - energyFourierDifference - tailEnergyDifference -
@@ -497,18 +497,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());
 
   const auto savedStoredEik = system.storedEik;
-  const auto savedTotalEik = system.totalEik;
+  const auto savedTrialEik = system.trialEik;
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, {}, oldMoleculeB, system.netCharge);
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
   system.storedEik = savedStoredEik;
-  system.totalEik = savedTotalEik;
+  system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
@@ -581,15 +581,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
     }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, {}, oldMoleculeB);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.deleteMolecule(componentB, selectedMoleculeB, moleculeB);
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, {}, oldMoleculeA);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.deleteMolecule(selectedComponent, selectedMolecule, moleculeA);
 
     return {retraceDataA.energies + retraceDataB.energies - energyFourierDifference - tailEnergyDifference -

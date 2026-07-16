@@ -563,11 +563,11 @@ TEST(integrators_flexible_framework, nose_hoover_velocity_verlet_scales_framewor
 
   const RunningEnergy nveEnergy = Integrators::velocityVerlet(
       {}, {}, {}, {}, nve.timeStep, nve.thermostat, nve.spanOfFrameworkAtoms(), nve.forceField, nve.simulationBox,
-      nve.eik_x, nve.eik_y, nve.eik_z, nve.eik_xy, nve.totalEik, nve.fixedFrameworkStoredEik, nve.interpolationGrids,
+      nve.eik_x, nve.eik_y, nve.eik_z, nve.eik_xy, nve.trialEik, nve.fixedFrameworkStoredEik, nve.interpolationGrids,
       {}, nve.framework, nve.spanOfFrameworkDynamics());
   const RunningEnergy nvtEnergy = Integrators::velocityVerlet(
       {}, {}, {}, {}, nvt.timeStep, nvt.thermostat, nvt.spanOfFrameworkAtoms(), nvt.forceField, nvt.simulationBox,
-      nvt.eik_x, nvt.eik_y, nvt.eik_z, nvt.eik_xy, nvt.totalEik, nvt.fixedFrameworkStoredEik, nvt.interpolationGrids,
+      nvt.eik_x, nvt.eik_y, nvt.eik_z, nvt.eik_xy, nvt.trialEik, nvt.fixedFrameworkStoredEik, nvt.interpolationGrids,
       {}, nvt.framework, nvt.spanOfFrameworkDynamics());
 
   DOUBLE3_EXPECT_NEAR(nve.spanOfFrameworkDynamics()[0].velocity, double3(1.0, -2.0, 0.5), 1.0e-14);
@@ -601,7 +601,7 @@ TEST(integrators_flexible_framework, harmonic_velocity_verlet_has_bounded_short_
 
   RunningEnergy initial = Integrators::updateGradients(
       {}, {}, {}, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, {}, system.eik_x,
-      system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.interpolationGrids, {}, system.framework, system.spanOfFrameworkDynamics());
   initial.translationalKineticEnergy =
       Integrators::computeTranslationalKineticEnergy({}, {}, {}, {}, system.framework, system.spanOfFrameworkAtoms(),
@@ -614,7 +614,7 @@ TEST(integrators_flexible_framework, harmonic_velocity_verlet_has_bounded_short_
     const RunningEnergy current =
         Integrators::velocityVerlet({}, {}, {}, {}, 1.0e-4, system.thermostat, system.spanOfFrameworkAtoms(),
                                     system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
-                                    system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                                    system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
                                     system.interpolationGrids, {}, system.framework, system.spanOfFrameworkDynamics());
     maximumDrift = std::max(maximumDrift, std::abs(current.conservedEnergy() - initialEnergy));
   }
@@ -748,7 +748,7 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                               system.components, system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(),
                               system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
-                              system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
                               system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculeData[0].centerOfMassPosition, double3(5.933550, 7.933050, 5.933550), 1e-6);
@@ -763,7 +763,7 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                               system.components, system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(),
                               system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
-                              system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
                               system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculeData[0].centerOfMassPosition, double3(5.933550, 7.932550, 5.933550), 1e-6);

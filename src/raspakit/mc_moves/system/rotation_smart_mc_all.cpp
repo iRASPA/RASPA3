@@ -154,7 +154,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     system.runningEnergies = savedRunningEnergy + energyDifference;
     return system.runningEnergies;

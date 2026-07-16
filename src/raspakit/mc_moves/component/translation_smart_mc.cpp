@@ -22,7 +22,7 @@ import mc_moves_move_types;
 // Computes the total (center-of-mass) force on the selected molecule at the configuration given by
 // 'selectedAtoms'. Contributions: framework (real space + interpolation grid), inter-molecular real space, and
 // the reciprocal-space Ewald force evaluated from the supplied total structure factor 'structureFactor'
-// (S_old = system.storedEik for the current configuration, S_new = system.totalEik for the trial configuration).
+// (S_old = system.storedEik for the current configuration, S_new = system.trialEik for the trial configuration).
 //
 // Intramolecular self/exclusion Ewald corrections are omitted on purpose: they generate internal forces that
 // cancel in the net force of a rigid translation. Polarization forces are not included in the drift; the bias
@@ -143,7 +143,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
   system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
   if (!interMolecule.has_value()) return std::nullopt;
 
-  // Ewald energy difference. This also fills 'system.totalEik' with the updated total structure factor S_new
+  // Ewald energy difference. This also fills 'system.trialEik' with the updated total structure factor S_new
   // (S_new = S_old - S_molecule_old + S_molecule_new); most terms cancel, so only the moved molecule contributes.
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy ewaldFourierEnergy;
@@ -151,13 +151,13 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
         trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
@@ -185,7 +185,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
   // other molecules are unchanged, so the current 'spanOfMoleculeAtoms()' (still holding the old positions of
   // the moved molecule) is used; the self-interaction is excluded by molecule id.
   time_begin = std::chrono::steady_clock::now();
-  double3 forceNew = computeMoleculeForce(system, trialMolecule.second, system.totalEik);
+  double3 forceNew = computeMoleculeForce(system, trialMolecule.second, system.trialEik);
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
@@ -203,7 +203,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
   {
     component.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;

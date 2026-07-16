@@ -142,7 +142,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   time_begin = std::chrono::steady_clock::now();
   data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
@@ -169,7 +169,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, data.newElectricField, data.oldElectricField,
+        system.trialEik, system.forceField, system.simulationBox, data.newElectricField, data.oldElectricField,
         data.growData.atoms, data.oldMoleculeCopy);
 
     data.polarizationDifference = Interactions::computePolarizationEnergyDifference(
@@ -187,7 +187,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
 void acceptBoxIdentityChange(System& system, BoxIdentityChangeData& data)
 {
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
   std::vector<Atom> acceptedAtoms(data.growData.atoms.begin(), data.growData.atoms.end());
   for (Atom& atom : acceptedAtoms)

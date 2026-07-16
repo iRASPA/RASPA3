@@ -90,7 +90,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Compute new Ewald Fourier energy for systemA
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
-      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
+      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.trialEik,
       systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second,
       systemA.netChargeFramework);
   time_end = std::chrono::steady_clock::now();
@@ -157,7 +157,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Compute new Ewald Fourier energy for systemB
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
-      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
+      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.trialEik,
       systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second,
       systemB.netChargeFramework);
   time_end = std::chrono::steady_clock::now();
@@ -204,14 +204,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculeData.begin());
     std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomData.begin());
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
 
     systemB.mc_moves_statistics.addAccepted(move);
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculeData.begin());
     std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomData.begin());
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
     return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
   }

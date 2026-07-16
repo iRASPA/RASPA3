@@ -122,7 +122,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   // Compute the energy difference in the Fourier space due to Ewald summation.
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMolecule, molecule_atoms);
   time_end = std::chrono::steady_clock::now();
 
@@ -161,7 +161,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
+        system.trialEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
         growData->atoms, old_molecule);
 
     // Molecule-molecule polarization (inter-molecular energy already handled via CBMC; discard returned energy).
@@ -196,7 +196,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
 
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)

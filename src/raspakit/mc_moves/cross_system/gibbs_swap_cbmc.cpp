@@ -144,7 +144,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Compute Ewald Fourier energy difference for system A
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.totalEik,
+      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
       systemA.forceField, systemA.simulationBox, newMolecule, {}, systemA.netCharge);
   time_end = std::chrono::steady_clock::now();
 
@@ -213,7 +213,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Compute Ewald Fourier energy difference for system B
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.totalEik,
+      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
       systemB.forceField, systemB.simulationBox, {}, molecule, systemB.netCharge);
   time_end = std::chrono::steady_clock::now();
 
@@ -268,14 +268,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     componentA.mc_moves_statistics.addAccepted(move);
 
     // Accept Ewald updates and insert the new molecule into system A
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
     systemA.insertMolecule(selectedComponent, growData->molecule, growData->atoms);
 
     // Update accepted move statistics for system B
     componentB.mc_moves_statistics.addAccepted(move);
 
     // Accept Ewald updates and delete the selected molecule from system B
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
     systemB.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
     // Return the energy differences for both systems

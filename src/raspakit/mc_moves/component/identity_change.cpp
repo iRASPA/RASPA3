@@ -166,7 +166,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMolecule, oldMoleculeAtoms, system.netCharge);
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
@@ -194,7 +194,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
+        system.trialEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
         growData->atoms, old_molecule);
 
     // Molecule-molecule polarization: the old and new molecule occupy the same "slot", so the grown atoms are given
@@ -254,7 +254,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     const RunningEnergy energyDifference = (growData->energies - retraceData.energies) + energyFourierDifference +
                                            tailEnergyDifference + polarizationDifference;
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     // Apply the field changes on the surrounding molecules before the old molecule is removed and the new one added.
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)

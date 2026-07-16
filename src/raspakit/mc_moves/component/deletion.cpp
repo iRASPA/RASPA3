@@ -94,13 +94,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.totalEik, system.forceField, system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule,
+          system.trialEik, system.forceField, system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule,
           system.netCharge);
     }
     else
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
           system.simulationBox, {}, molecule, system.netCharge);
     }
     time_end = std::chrono::steady_clock::now();
@@ -168,7 +168,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
       component.mc_moves_statistics.addAccepted(move, 1);
 
       // Accept Ewald move and delete molecule from system
-      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
       // Apply the field changes on the remaining molecules before the deleted molecule (and its field) is removed.
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)

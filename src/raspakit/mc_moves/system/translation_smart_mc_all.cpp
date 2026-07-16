@@ -99,7 +99,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     // Add only the gradient-based potential difference to the maintained running energy.
     system.runningEnergies = savedRunningEnergy + energyDifference;

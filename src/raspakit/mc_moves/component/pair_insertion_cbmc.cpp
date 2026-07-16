@@ -172,18 +172,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   std::vector<double3> newElectricFieldB = std::vector<double3>(newMoleculeB.size());
 
   const auto savedStoredEik = system.storedEik;
-  const auto savedTotalEik = system.totalEik;
+  const auto savedTrialEik = system.trialEik;
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMoleculeA, {}, system.netCharge);
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMoleculeB, {}, system.netCharge + system.components[selectedComponent].netCharge);
   system.storedEik = savedStoredEik;
-  system.totalEik = savedTotalEik;
+  system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
@@ -213,7 +213,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, newElectricFieldA, {}, growDataA->atoms, {});
+        system.trialEik, system.forceField, system.simulationBox, newElectricFieldA, {}, growDataA->atoms, {});
 
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), newElectricFieldB, {},
@@ -221,7 +221,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atoms, {});
+        system.trialEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atoms, {});
 
     if (!system.forceField.omitInterPolarization)
     {
@@ -307,15 +307,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, newMoleculeA, {});
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.insertMoleculePolarization(selectedComponent, growDataA->molecule, growDataA->atoms, newElectricFieldA);
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, newMoleculeB, {});
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.insertMoleculePolarization(componentB, growDataB->molecule, growDataB->atoms, newElectricFieldB);
 
     return {growDataA->energies + growDataB->energies + energyFourierDifference + tailEnergyDifference +
@@ -448,18 +448,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   std::vector<double3> newElectricFieldB = std::vector<double3>(newMoleculeB.size());
 
   const auto savedStoredEik = system.storedEik;
-  const auto savedTotalEik = system.totalEik;
+  const auto savedTrialEik = system.trialEik;
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMoleculeA, {}, system.netCharge);
-  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newMoleculeB, {}, system.netCharge + system.components[selectedComponent].netCharge);
   system.storedEik = savedStoredEik;
-  system.totalEik = savedTotalEik;
+  system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
@@ -489,7 +489,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, newElectricFieldA, {}, growDataA->atoms, {});
+        system.trialEik, system.forceField, system.simulationBox, newElectricFieldA, {}, growDataA->atoms, {});
 
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), newElectricFieldB, {},
@@ -497,7 +497,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atoms, {});
+        system.trialEik, system.forceField, system.simulationBox, newElectricFieldB, {}, growDataB->atoms, {});
 
     if (!system.forceField.omitInterPolarization)
     {
@@ -583,15 +583,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     }
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, newMoleculeA, {});
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.insertMoleculePolarization(selectedComponent, growDataA->molecule, growDataA->atoms, newElectricFieldA);
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik, system.forceField,
+                                               system.storedEik, system.trialEik, system.forceField,
                                                system.simulationBox, newMoleculeB, {});
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.insertMoleculePolarization(componentB, growDataB->molecule, growDataB->atoms, newElectricFieldB);
 
     return {growDataA->energies + growDataB->energies + energyFourierDifference + tailEnergyDifference +

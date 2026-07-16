@@ -139,7 +139,7 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
       system.forceField, system.simulationBox, moleculeElectricField, system.spanOfMoleculeAtoms());
 
   [[maybe_unused]] RunningEnergy energy3 = Interactions::computeEwaldFourierElectricField(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, system.simulationBox, moleculeElectricField, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
@@ -167,7 +167,7 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
@@ -273,7 +273,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
       system.forceField, system.simulationBox, moleculeElectricField, system.spanOfMoleculeAtoms());
 
   [[maybe_unused]] RunningEnergy energy3 = Interactions::computeEwaldFourierElectricField(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, system.simulationBox, moleculeElectricField, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
@@ -289,7 +289,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
@@ -395,7 +395,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
       system.forceField, system.simulationBox, moleculeElectricField, system.spanOfMoleculeAtoms());
 
   [[maybe_unused]] RunningEnergy energy3 = Interactions::computeEwaldFourierElectricField(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, system.simulationBox, moleculeElectricField, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
@@ -415,7 +415,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 
   [[maybe_unused]] RunningEnergy energy6 = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
       system.spanOfMoleculeAtoms(), spanOfMoleculeDynamics);
 

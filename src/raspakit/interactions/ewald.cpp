@@ -344,7 +344,7 @@ void Interactions::precomputeEwaldFourierRigid(
 }
 
 // Energy, called with 'storedEik'
-// Volume-move, called with 'totalEik' for 'storedEik'
+// Volume-move, called with 'trialEik' for 'storedEik'
 RunningEnergy Interactions::computeEwaldFourierEnergy(
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
@@ -560,7 +560,7 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
 RunningEnergy Interactions::computeEwaldFourierGradient(
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
     const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> atomData,
@@ -696,7 +696,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
-  if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (trialEik.size() < numberOfWaveVectors) trialEik.resize(numberOfWaveVectors);
   if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atoms, kx_max_unsigned, ky_max_unsigned, kz_max_unsigned, inv_box);
@@ -781,7 +781,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
                                (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk);
           }
 
-          totalEik[nvec] = total;
+          trialEik[nvec] = total;
           ++nvec;
         }
       }
@@ -1017,7 +1017,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& storedEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms, double netCharge,
     const std::array<double, maximumNumberOfDUDlambdaGroups>& netChargeDerivativeExternal)
@@ -1059,7 +1059,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
-  if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (trialEik.size() < numberOfWaveVectors) trialEik.resize(numberOfWaveVectors);
 
   Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, oldatoms, newatoms, kx_max_unsigned, ky_max_unsigned,
                         kz_max_unsigned, inv_box);
@@ -1125,8 +1125,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
                               storedEik[nvec].second + cksum_new.second - cksum_old.second);
           addFourierDUdlambda(energy, -2.0 * temp, storedEik[nvec].first, storedEik[nvec].second);
 
-          totalEik[nvec].first = storedEik[nvec].first + cksum_new.first - cksum_old.first;
-          totalEik[nvec].second = storedEik[nvec].second + cksum_new.second - cksum_old.second;
+          trialEik[nvec].first = storedEik[nvec].first + cksum_new.first - cksum_old.first;
+          trialEik[nvec].second = storedEik[nvec].second + cksum_new.second - cksum_old.second;
 
           ++nvec;
         }
@@ -1210,7 +1210,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& storedEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<double3> electricFieldNew,
     std::span<double3> electricFieldOld, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
     double netCharge, const std::array<double, maximumNumberOfDUDlambdaGroups>& netChargeDerivativeExternal)
@@ -1253,7 +1253,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
-  if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (trialEik.size() < numberOfWaveVectors) trialEik.resize(numberOfWaveVectors);
   if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, oldatoms, newatoms, kx_max_unsigned, ky_max_unsigned,
@@ -1329,8 +1329,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
                               storedEik[nvec].second + cksum_new.second - cksum_old.second);
           addFourierDUdlambda(energy, -2.0 * temp, storedEik[nvec].first, storedEik[nvec].second);
 
-          totalEik[nvec].first = storedEik[nvec].first + cksum_new.first - cksum_old.first;
-          totalEik[nvec].second = storedEik[nvec].second + cksum_new.second - cksum_old.second;
+          trialEik[nvec].first = storedEik[nvec].first + cksum_new.first - cksum_old.first;
+          trialEik[nvec].second = storedEik[nvec].second + cksum_new.second - cksum_old.second;
 
           ++nvec;
         }
@@ -1420,7 +1420,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& storedEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<double3> electricFieldNew,
     std::span<double3> electricFieldOld, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
@@ -1448,7 +1448,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
 
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   if (storedEik.size() < numberOfWaveVectors) storedEik.resize(numberOfWaveVectors);
-  if (totalEik.size() < numberOfWaveVectors) totalEik.resize(numberOfWaveVectors);
+  if (trialEik.size() < numberOfWaveVectors) trialEik.resize(numberOfWaveVectors);
   if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, oldatoms, newatoms, kx_max_unsigned, ky_max_unsigned,
@@ -1516,12 +1516,12 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
 void Interactions::acceptEwaldMove(
     const ForceField& forceField,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& storedEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& totalEik)
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik)
 {
   if (!forceField.useCharge) return;
   if (!forceField.usesEwaldFourier()) return;
 
-  storedEik = totalEik;
+  storedEik = trialEik;
 }
 
 std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrainDerivative(

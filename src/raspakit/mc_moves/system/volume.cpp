@@ -78,7 +78,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   time_begin = std::chrono::steady_clock::now();
   // Compute new Ewald Fourier energy
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
       system.netChargeFramework);
   time_end = std::chrono::steady_clock::now();
@@ -119,7 +119,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
     std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     return newTotalEnergy - oldTotalEnergy;
   }
@@ -186,7 +186,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
       system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
       system.netChargeFramework);
   time_end = std::chrono::steady_clock::now();
@@ -227,7 +227,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
     std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     return newTotalEnergy - oldTotalEnergy;
   }
