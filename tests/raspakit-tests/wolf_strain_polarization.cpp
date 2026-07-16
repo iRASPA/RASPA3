@@ -21,7 +21,10 @@ import randomnumbers;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
+import interactions_polarization_derivatives;
 import mc_moves_translation;
+import connectivity_table;
+import intra_molecular_potentials;
 
 namespace
 {
@@ -237,4 +240,105 @@ TEST(wolf_polarization, stored_field_consistency_translation)
   RunningEnergy recomputed = system.computeTotalEnergies();
   EXPECT_NEAR(running.polarization - recomputed.polarization, 0.0, 1e-6);
   EXPECT_NEAR(running.potentialEnergy() - recomputed.potentialEnergy(), 0.0, 1e-6);
+}
+
+// Molecular excess pressure must include the polarization strain. With polarizable rigid molecules the
+// analytic COM-based pressure (now with polarization cellGradient folded into the strain tensor) is
+// checked against center-of-mass-scaling -dU/dV of the full energy including U_pol.
+TEST(wolf_polarization, molecular_pressure_includes_polarization_strain)
+{
+  double tolerance = 1e-5;
+
+  ForceField forceField({{"P", false, 15.0, 0.8, 1.5, 8, false}, {"N", false, 14.0, -0.4, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, true, false,
+                        true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.omitEwaldFourier = true;
+  forceField.chargeMethod = ForceField::ChargeMethod::Wolf;
+  forceField.EwaldAlpha = 0.25;
+  for (VDWParameters& parameters : forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones)
+      parameters.type = VDWParameters::Type::LennardJonesSecondOrderTaylorShifted;
+  }
+  forceField.preComputeDerivedParameters();
+  forceField.preComputePotentialShift();
+
+  const std::size_t typeP = *forceField.findPseudoAtom("P");
+  const std::size_t typeN = *forceField.findPseudoAtom("N");
+  Component molecule =
+      Component(forceField, "rigid-polar", 100.0, 1e6, 0.2,
+                {Atom({-1.0, 0.0, 0.0}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false),
+                 Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, static_cast<std::uint16_t>(typeP), 0, false, false),
+                 Atom({1.0, 0.0, 0.0}, -0.4, 1.0, 0, static_cast<std::uint16_t>(typeN), 0, false, false)},
+                ConnectivityTable(3), Potentials::IntraMolecularPotentials{}, 5, 21);
+  molecule.rigid = true;
+
+  System system =
+      System(forceField, SimulationBox(23.0, 21.0, 19.0), false, 300.0, 1.5e5, 1.0, {}, {molecule}, {}, {2}, 5);
+  system.moleculeData[0].centerOfMassPosition = double3(7.3, 9.1, 8.4);
+  system.moleculeData[1].centerOfMassPosition = double3(12.2, 11.4, 10.7);
+  // Place atoms consistently with the stored COMs (rigid linear molecule along x).
+  {
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    atoms[0].position = double3(6.3, 9.1, 8.4);
+    atoms[1].position = double3(7.3, 9.1, 8.4);
+    atoms[2].position = double3(8.3, 9.1, 8.4);
+    atoms[3].position = double3(11.2, 11.4, 10.7);
+    atoms[4].position = double3(12.2, 11.4, 10.7);
+    atoms[5].position = double3(13.2, 11.4, 10.7);
+  }
+
+  system.computeTotalElectricField();
+  const double polarizationEnergy = system.computePolarizationEnergy().polarization;
+  EXPECT_NE(polarizationEnergy, 0.0);
+
+  std::pair<EnergyStatus, double3x3> pressureInfo = system.computeMolecularPressure();
+  EXPECT_NEAR(pressureInfo.first.polarizationEnergy.energy, polarizationEnergy, 1e-10);
+
+  const double analyticExcessPressure = pressureInfo.second.trace() / (3.0 * system.simulationBox.volume);
+
+  // Without polarization the pressure must differ once U_pol is strain-dependent.
+  System systemNoPol = system;
+  systemNoPol.forceField.computePolarization = false;
+  const double excessWithoutPolarization =
+      systemNoPol.computeMolecularPressure().second.trace() / (3.0 * systemNoPol.simulationBox.volume);
+  EXPECT_NE(analyticExcessPressure, excessWithoutPolarization);
+
+  double delta = 1e-5;
+  SimulationBox boxPlus = system.simulationBox.scaled(std::cbrt(1.0 + delta));
+  SimulationBox boxMinus = system.simulationBox.scaled(std::cbrt(1.0 - delta));
+  auto posPlus = system.scaledCenterOfMassPositions(system.simulationBox, boxPlus);
+  auto posMinus = system.scaledCenterOfMassPositions(system.simulationBox, boxMinus);
+
+  auto totalEnergy = [&](System& reference, const SimulationBox& box, std::span<const Atom> atoms)
+  {
+    RunningEnergy inter = Interactions::computeInterMolecularEnergy(reference.forceField, box, atoms) +
+                          Interactions::computeInterMolecularTailEnergy(reference.forceField, box, atoms);
+    RunningEnergy ewald = Interactions::computeEwaldFourierEnergy(
+        reference.eik_x, reference.eik_y, reference.eik_z, reference.eik_xy, reference.fixedFrameworkStoredEik,
+        reference.storedEik, reference.forceField, box, reference.components, reference.numberOfMoleculesPerComponent,
+        atoms);
+
+    System strained = reference;
+    strained.simulationBox = box;
+    std::span<Atom> strainedAtoms = strained.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < atoms.size(); ++i) strainedAtoms[i] = atoms[i];
+    const std::size_t numberOfFrameworkAtoms = strained.spanOfFrameworkAtoms().size();
+    const std::size_t numberOfMoleculeAtoms = strainedAtoms.size();
+    std::vector<std::uint8_t> movable(numberOfFrameworkAtoms + numberOfMoleculeAtoms, 0);
+    for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom) movable[numberOfFrameworkAtoms + atom] = 1;
+    const double polarization =
+        Interactions::computePolarizationDerivatives(strained, movable, {}, false, true).energy;
+
+    return (inter + ewald).potentialEnergy() + polarization;
+  };
+
+  double dUdV = (totalEnergy(system, boxPlus, posPlus.second) - totalEnergy(system, boxMinus, posMinus.second)) /
+                (boxPlus.volume - boxMinus.volume);
+
+  EXPECT_NEAR(analyticExcessPressure, -dUdV, tolerance)
+      << "Polarizable molecular excess pressure disagrees with -dU/dV";
 }

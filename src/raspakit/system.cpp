@@ -63,6 +63,7 @@ import interactions_ewald;
 import interactions_internal;
 import interactions_external_field;
 import interactions_external_field_grid;
+import interactions_polarization_derivatives;
 import equation_of_states;
 import thermostat;
 import thermobarostat;
@@ -815,8 +816,33 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   if (forceField.computePolarization)
   {
-    RunningEnergy e = computePolarizationEnergy();
-    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(e.polarization, 0.0);
+    // Molecular (COM-scaling) polarization strain: first-order cellGradient only, no Hessian.
+    // The strain already uses mass-weighted COM arms for every molecule, so the atomic-to-molecular
+    // virial correction below must NOT see polarization forces (they are intentionally omitted).
+    const std::size_t numberOfFrameworkAtoms = spanOfFrameworkAtoms().size();
+    const std::size_t numberOfMoleculeAtoms = spanOfMoleculeAtoms().size();
+    std::vector<std::uint8_t> movable(numberOfFrameworkAtoms + numberOfMoleculeAtoms, 0);
+    for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom) movable[numberOfFrameworkAtoms + atom] = 1;
+
+    const CellMinimizationLayout cellLayout =
+        makeCellMinimizationLayout(CellMinimizationType::Regular, monoclinicAngleType);
+    const Interactions::PolarizationDerivatives polarization =
+        Interactions::computePolarizationDerivatives(*this, movable, cellLayout.bases,
+                                                     /*computeHessian=*/false,
+                                                     /*molecularCenterOfMassStrain=*/true);
+
+    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(polarization.energy, 0.0);
+
+    // Regular Voigt order: xx, xy, xz, yy, yz, zz. Shear bases carry the conventional 1/2 factor, so
+    // each shear cellGradient equals the corresponding symmetrized off-diagonal strain derivative.
+    double3x3 polarizationStrain{};
+    polarizationStrain.ax = polarization.cellGradient[0];
+    polarizationStrain.ay = polarizationStrain.bx = polarization.cellGradient[1];
+    polarizationStrain.az = polarizationStrain.cx = polarization.cellGradient[2];
+    polarizationStrain.by = polarization.cellGradient[3];
+    polarizationStrain.bz = polarizationStrain.cy = polarization.cellGradient[4];
+    polarizationStrain.cz = polarization.cellGradient[5];
+    pressureInfo.second += polarizationStrain;
   }
 
   pressureInfo.first.sumTotal();

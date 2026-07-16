@@ -83,7 +83,8 @@ double3 unitAxis(std::size_t axis)
 }  // namespace
 
 Interactions::PolarizationDerivatives Interactions::computePolarizationDerivatives(
-    const System& system, std::span<const std::uint8_t> movable, std::span<const double3x3> strainBases)
+    const System& system, std::span<const std::uint8_t> movable, std::span<const double3x3> strainBases,
+    bool computeHessian, bool molecularCenterOfMassStrain)
 {
   const ForceField& forceField = system.forceField;
   const SimulationBox& box = system.simulationBox;
@@ -96,6 +97,9 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
 
   const std::size_t numberOfStrainBases = strainBases.size();
   const bool computeStrain = numberOfStrainBases > 0;
+  const bool wantHessian = computeHessian;
+  const bool wantGradient = computeHessian;
+  const bool wantStrainSecond = computeStrain && computeHessian;
 
   PolarizationDerivatives result;
   result.numberOfFrameworkAtoms = numberOfFrameworkAtoms;
@@ -105,8 +109,11 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
   if (computeStrain)
   {
     result.cellGradient.assign(numberOfStrainBases, 0.0);
-    result.positionStrain.assign(numberOfAtoms * numberOfStrainBases, double3(0.0, 0.0, 0.0));
-    result.strainStrain.assign(numberOfStrainBases * numberOfStrainBases, 0.0);
+    if (wantStrainSecond)
+    {
+      result.positionStrain.assign(numberOfAtoms * numberOfStrainBases, double3(0.0, 0.0, 0.0));
+      result.strainStrain.assign(numberOfStrainBases * numberOfStrainBases, 0.0);
+    }
   }
 
   if (movable.size() != numberOfAtoms)
@@ -115,21 +122,44 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
   }
   if (!forceField.computePolarization || !forceField.useCharge || numberOfMoleculeAtoms == 0) return result;
 
-  // Rigid-molecule atoms deform via their center of mass under cell strain (y_i = F COM + sigma_i, with the
-  // rigid body offset sigma_i strain-independent). Precompute sigma_i for every molecule atom so the affine
-  // separation-arm can be corrected from the atom-atom vector to the COM-COM vector, and so the reciprocal
-  // structure-factor phase (which is only invariant for the COM part) carries the extra body-offset terms.
+  // Under cell strain, molecule atoms deform via their center of mass (y_i = F COM + sigma_i, with the
+  // body offset sigma_i strain-independent). Precompute sigma_i so the affine separation-arm can be
+  // corrected from the atom-atom vector to the COM-COM vector, and so the reciprocal structure-factor
+  // phase (which is only invariant for the COM part) carries the extra body-offset terms.
+  // Minimization uses stored rigid-molecule COMs; molecular-pressure sampling recomputes a mass-weighted
+  // COM from current atom positions for every molecule (matching the COM-scaling volume move).
   std::vector<double3> moleculeAtomOffset;
   if (computeStrain)
   {
     moleculeAtomOffset.assign(numberOfMoleculeAtoms, double3(0.0, 0.0, 0.0));
     for (const Molecule& molecule : system.moleculeData)
     {
-      if (!system.components[molecule.componentId].rigid) continue;
-      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+      if (molecularCenterOfMassStrain)
       {
-        const std::size_t index = molecule.atomIndex + localAtom;
-        moleculeAtomOffset[index] = moleculeAtoms[index].position - molecule.centerOfMassPosition;
+        double totalMass = 0.0;
+        double3 com(0.0, 0.0, 0.0);
+        for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+        {
+          const std::size_t index = molecule.atomIndex + localAtom;
+          const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(moleculeAtoms[index].type)].mass;
+          com += mass * moleculeAtoms[index].position;
+          totalMass += mass;
+        }
+        com = com / totalMass;
+        for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+        {
+          const std::size_t index = molecule.atomIndex + localAtom;
+          moleculeAtomOffset[index] = moleculeAtoms[index].position - com;
+        }
+      }
+      else
+      {
+        if (!system.components[molecule.componentId].rigid) continue;
+        for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+        {
+          const std::size_t index = molecule.atomIndex + localAtom;
+          moleculeAtomOffset[index] = moleculeAtoms[index].position - molecule.centerOfMassPosition;
+        }
       }
     }
   }
@@ -228,13 +258,16 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
       field -= sourceCharge * factors.firstDerivativeFactor * d;
 
       // T = q_source * (firstDerivativeFactor * I + secondDerivativeFactor * d (x) d) = q_source * H_phi.
-      Mat3 tensor = identityScaled(sourceCharge * factors.firstDerivativeFactor);
-      const Mat3 dd = outer(d, d);
-      for (std::size_t index = 0; index < 9; ++index)
-        tensor[index] += sourceCharge * factors.secondDerivativeFactor * dd[index];
+      if (wantHessian || wantGradient)
+      {
+        Mat3 tensor = identityScaled(sourceCharge * factors.firstDerivativeFactor);
+        const Mat3 dd = outer(d, d);
+        for (std::size_t index = 0; index < 9; ++index)
+          tensor[index] += sourceCharge * factors.secondDerivativeFactor * dd[index];
 
-      // dE_A/dr_A gets -T from every source.
-      for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] -= tensor[index];
+        // dE_A/dr_A gets -T from every source.
+        for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] -= tensor[index];
+      }
 
       const double3 sourceOffset = (computeStrain && globalIndex >= numberOfFrameworkAtoms)
                                        ? moleculeAtomOffset[globalIndex - numberOfFrameworkAtoms]
@@ -301,8 +334,11 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
             const double weight = 2.0 * temp;
 
             field += weight * fValue * kVector;
-            const Mat3 kk = outer(kVector, kVector);
-            for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] += weight * hValue * kk[index];
+            if (wantHessian || wantGradient)
+            {
+              const Mat3 kk = outer(kVector, kVector);
+              for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] += weight * hValue * kk[index];
+            }
 
             reciprocalTerms.push_back(
                 ReciprocalTerm{.k = kVector, .weight = weight, .f = fValue, .hValue = hValue});
@@ -313,129 +349,132 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
 
     result.energy -= 0.5 * alphaA * double3::dot(field, field);
 
-    // Term A on-site: -alpha_A (dE_A/dr_A)^T (dE_A/dr_A). fieldGradientAA is symmetric.
-    Mat3 blockAA{};
+    if (wantHessian || wantGradient)
     {
-      const Mat3 product = matmul(fieldGradientAA, fieldGradientAA);
-      for (std::size_t index = 0; index < 9; ++index) blockAA[index] += -alphaA * product[index];
-    }
-
-    // Reciprocal Term B (on-site): +alpha_A sum_k weight f (E.k) (k (x) k).
-    for (const ReciprocalTerm& term : reciprocalTerms)
-    {
-      const double eDotK = double3::dot(field, term.k);
-      const Mat3 kk = outer(term.k, term.k);
-      const double scalar = alphaA * term.weight * term.f * eDotK;
-      for (std::size_t index = 0; index < 9; ++index) blockAA[index] += scalar * kk[index];
-    }
-
-    // gradient contribution for the field point itself: -alpha_A E_A^T (dE_A/dr_A).
-    {
-      double3 g(0.0, 0.0, 0.0);
-      for (std::size_t column = 0; column < 3; ++column)
+      // Term A on-site: -alpha_A (dE_A/dr_A)^T (dE_A/dr_A). fieldGradientAA is symmetric.
+      Mat3 blockAA{};
       {
-        const double value = field.x * fieldGradientAA[0 * 3 + column] + field.y * fieldGradientAA[1 * 3 + column] +
-                             field.z * fieldGradientAA[2 * 3 + column];
-        (&g.x)[column] = -alphaA * value;
+        const Mat3 product = matmul(fieldGradientAA, fieldGradientAA);
+        for (std::size_t index = 0; index < 9; ++index) blockAA[index] += -alphaA * product[index];
       }
-      result.gradient[globalA] += g;
-    }
 
-    // Per-source contributions (Term B on-site over all sources; cross/off-diagonal only for movable sources).
-    const double3 fieldVector = field;
-    for (const RealSource& source : sources)
-    {
-      // T = q (f1 I + f2 d(x)d); D_A(source) = +T.
-      Mat3 tensor = identityScaled(source.charge * source.firstDerivativeFactor);
-      const Mat3 dd = outer(source.d, source.d);
-      for (std::size_t index = 0; index < 9; ++index)
-        tensor[index] += source.charge * source.secondDerivativeFactor * dd[index];
+      // Reciprocal Term B (on-site): +alpha_A sum_k weight f (E.k) (k (x) k).
+      for (const ReciprocalTerm& term : reciprocalTerms)
+      {
+        const double eDotK = double3::dot(field, term.k);
+        const Mat3 kk = outer(term.k, term.k);
+        const double scalar = alphaA * term.weight * term.f * eDotK;
+        for (std::size_t index = 0; index < 9; ++index) blockAA[index] += scalar * kk[index];
+      }
 
-      // W(a,b) = -q [ f2 (E_a d_b + E_b d_a + delta_ab (E.d)) + f3 (E.d) d_a d_b ]  (field-Hessian contracted E).
-      const double eDotD = double3::dot(fieldVector, source.d);
-      const std::array<double, 3> e = {fieldVector.x, fieldVector.y, fieldVector.z};
-      const std::array<double, 3> d = {source.d.x, source.d.y, source.d.z};
-      Mat3 w{};
-      for (std::size_t i = 0; i < 3; ++i)
-        for (std::size_t j = 0; j < 3; ++j)
+      // gradient contribution for the field point itself: -alpha_A E_A^T (dE_A/dr_A).
+      {
+        double3 g(0.0, 0.0, 0.0);
+        for (std::size_t column = 0; column < 3; ++column)
         {
-          double value = source.secondDerivativeFactor * (e[i] * d[j] + e[j] * d[i] + (i == j ? eDotD : 0.0));
-          value += source.thirdDerivativeFactor * eDotD * d[i] * d[j];
-          w[i * 3 + j] = -source.charge * value;
+          const double value = field.x * fieldGradientAA[0 * 3 + column] + field.y * fieldGradientAA[1 * 3 + column] +
+                               field.z * fieldGradientAA[2 * 3 + column];
+          (&g.x)[column] = -alphaA * value;
+        }
+        result.gradient[globalA] += g;
+      }
+
+      // Per-source contributions (Term B on-site over all sources; cross/off-diagonal only for movable sources).
+      const double3 fieldVector = field;
+      for (const RealSource& source : sources)
+      {
+        // T = q (f1 I + f2 d(x)d); D_A(source) = +T.
+        Mat3 tensor = identityScaled(source.charge * source.firstDerivativeFactor);
+        const Mat3 dd = outer(source.d, source.d);
+        for (std::size_t index = 0; index < 9; ++index)
+          tensor[index] += source.charge * source.secondDerivativeFactor * dd[index];
+
+        // W(a,b) = -q [ f2 (E_a d_b + E_b d_a + delta_ab (E.d)) + f3 (E.d) d_a d_b ]  (field-Hessian contracted E).
+        const double eDotD = double3::dot(fieldVector, source.d);
+        const std::array<double, 3> e = {fieldVector.x, fieldVector.y, fieldVector.z};
+        const std::array<double, 3> d = {source.d.x, source.d.y, source.d.z};
+        Mat3 w{};
+        for (std::size_t i = 0; i < 3; ++i)
+          for (std::size_t j = 0; j < 3; ++j)
+          {
+            double value = source.secondDerivativeFactor * (e[i] * d[j] + e[j] * d[i] + (i == j ? eDotD : 0.0));
+            value += source.thirdDerivativeFactor * eDotD * d[i] * d[j];
+            w[i * 3 + j] = -source.charge * value;
+          }
+
+        // Term B on-site (all sources contribute to d^2E_A/dr_A dr_A).
+        for (std::size_t index = 0; index < 9; ++index) blockAA[index] += -alphaA * w[index];
+
+        if (!movable[source.globalIndex]) continue;
+
+        // Term A cross: block(A,src) = -alpha_A D_AA^T T ; block(src,A) transpose.
+        const Mat3 crossAsrcTermA = matmul(fieldGradientAA, tensor);
+        Mat3 blockAsrc{};
+        Mat3 blockSrcA{};
+        for (std::size_t index = 0; index < 9; ++index)
+        {
+          blockAsrc[index] += -alphaA * crossAsrcTermA[index];
+        }
+        const Mat3 crossSrcATermA = matmul(tensor, fieldGradientAA);
+        for (std::size_t index = 0; index < 9; ++index)
+        {
+          blockSrcA[index] += -alphaA * crossSrcATermA[index];
         }
 
-      // Term B on-site (all sources contribute to d^2E_A/dr_A dr_A).
-      for (std::size_t index = 0; index < 9; ++index) blockAA[index] += -alphaA * w[index];
-
-      if (!movable[source.globalIndex]) continue;
-
-      // Term A cross: block(A,src) = -alpha_A D_AA^T T ; block(src,A) transpose.
-      const Mat3 crossAsrcTermA = matmul(fieldGradientAA, tensor);
-      Mat3 blockAsrc{};
-      Mat3 blockSrcA{};
-      for (std::size_t index = 0; index < 9; ++index)
-      {
-        blockAsrc[index] += -alphaA * crossAsrcTermA[index];
-      }
-      const Mat3 crossSrcATermA = matmul(tensor, fieldGradientAA);
-      for (std::size_t index = 0; index < 9; ++index)
-      {
-        blockSrcA[index] += -alphaA * crossSrcATermA[index];
-      }
-
-      // Term B cross (+alpha_A W on both off-diagonal blocks) and on-site source block (-alpha_A W).
-      for (std::size_t index = 0; index < 9; ++index)
-      {
-        blockAsrc[index] += alphaA * w[index];
-        blockSrcA[index] += alphaA * w[index];
-      }
-      // block(field, source) sits at +R (source image), block(source, field) at -R; the source self-block
-      // couples the same image to itself, so it stays in the home image R = 0.
-      addBlock(globalA, source.globalIndex, source.latticeVector, blockAsrc);
-      addBlock(source.globalIndex, globalA, -source.latticeVector, blockSrcA);
-
-      Mat3 blockSrcSrcTermB{};
-      for (std::size_t index = 0; index < 9; ++index) blockSrcSrcTermB[index] += -alphaA * w[index];
-      addBlock(source.globalIndex, source.globalIndex, int3(0, 0, 0), blockSrcSrcTermB);
-
-      // gradient for the source atom: -alpha_A E_A^T T.
-      double3 g(0.0, 0.0, 0.0);
-      for (std::size_t column = 0; column < 3; ++column)
-      {
-        const double value =
-            fieldVector.x * tensor[0 * 3 + column] + fieldVector.y * tensor[1 * 3 + column] +
-            fieldVector.z * tensor[2 * 3 + column];
-        (&g.x)[column] = -alphaA * value;
-      }
-      result.gradient[source.globalIndex] += g;
-    }
-
-    addBlock(globalA, globalA, int3(0, 0, 0), blockAA);
-
-    // Term A three-center: block(B,C) += -alpha_A T_AB^T T_AC over movable source pairs (including B == C).
-    for (std::size_t bIndex = 0; bIndex < sources.size(); ++bIndex)
-    {
-      if (!movable[sources[bIndex].globalIndex]) continue;
-      Mat3 tensorB = identityScaled(sources[bIndex].charge * sources[bIndex].firstDerivativeFactor);
-      const Mat3 ddB = outer(sources[bIndex].d, sources[bIndex].d);
-      for (std::size_t index = 0; index < 9; ++index)
-        tensorB[index] += sources[bIndex].charge * sources[bIndex].secondDerivativeFactor * ddB[index];
-
-      for (std::size_t cIndex = 0; cIndex < sources.size(); ++cIndex)
-      {
-        if (!movable[sources[cIndex].globalIndex]) continue;
-        Mat3 tensorC = identityScaled(sources[cIndex].charge * sources[cIndex].firstDerivativeFactor);
-        const Mat3 ddC = outer(sources[cIndex].d, sources[cIndex].d);
+        // Term B cross (+alpha_A W on both off-diagonal blocks) and on-site source block (-alpha_A W).
         for (std::size_t index = 0; index < 9; ++index)
-          tensorC[index] += sources[cIndex].charge * sources[cIndex].secondDerivativeFactor * ddC[index];
+        {
+          blockAsrc[index] += alphaA * w[index];
+          blockSrcA[index] += alphaA * w[index];
+        }
+        // block(field, source) sits at +R (source image), block(source, field) at -R; the source self-block
+        // couples the same image to itself, so it stays in the home image R = 0.
+        addBlock(globalA, source.globalIndex, source.latticeVector, blockAsrc);
+        addBlock(source.globalIndex, globalA, -source.latticeVector, blockSrcA);
 
-        const Mat3 product = matmul(tensorB, tensorC);
-        Mat3 contribution{};
-        for (std::size_t index = 0; index < 9; ++index) contribution[index] = -alphaA * product[index];
-        // Both sources are referenced to the same home-cell field point, so their relative image is
-        // R_C - R_B (the field-point cell cancels); B == C then lands in the home image R = 0.
-        const int3 latticeVector = sources[cIndex].latticeVector - sources[bIndex].latticeVector;
-        addBlock(sources[bIndex].globalIndex, sources[cIndex].globalIndex, latticeVector, contribution);
+        Mat3 blockSrcSrcTermB{};
+        for (std::size_t index = 0; index < 9; ++index) blockSrcSrcTermB[index] += -alphaA * w[index];
+        addBlock(source.globalIndex, source.globalIndex, int3(0, 0, 0), blockSrcSrcTermB);
+
+        // gradient for the source atom: -alpha_A E_A^T T.
+        double3 g(0.0, 0.0, 0.0);
+        for (std::size_t column = 0; column < 3; ++column)
+        {
+          const double value =
+              fieldVector.x * tensor[0 * 3 + column] + fieldVector.y * tensor[1 * 3 + column] +
+              fieldVector.z * tensor[2 * 3 + column];
+          (&g.x)[column] = -alphaA * value;
+        }
+        result.gradient[source.globalIndex] += g;
+      }
+
+      addBlock(globalA, globalA, int3(0, 0, 0), blockAA);
+
+      // Term A three-center: block(B,C) += -alpha_A T_AB^T T_AC over movable source pairs (including B == C).
+      for (std::size_t bIndex = 0; bIndex < sources.size(); ++bIndex)
+      {
+        if (!movable[sources[bIndex].globalIndex]) continue;
+        Mat3 tensorB = identityScaled(sources[bIndex].charge * sources[bIndex].firstDerivativeFactor);
+        const Mat3 ddB = outer(sources[bIndex].d, sources[bIndex].d);
+        for (std::size_t index = 0; index < 9; ++index)
+          tensorB[index] += sources[bIndex].charge * sources[bIndex].secondDerivativeFactor * ddB[index];
+
+        for (std::size_t cIndex = 0; cIndex < sources.size(); ++cIndex)
+        {
+          if (!movable[sources[cIndex].globalIndex]) continue;
+          Mat3 tensorC = identityScaled(sources[cIndex].charge * sources[cIndex].firstDerivativeFactor);
+          const Mat3 ddC = outer(sources[cIndex].d, sources[cIndex].d);
+          for (std::size_t index = 0; index < 9; ++index)
+            tensorC[index] += sources[cIndex].charge * sources[cIndex].secondDerivativeFactor * ddC[index];
+
+          const Mat3 product = matmul(tensorB, tensorC);
+          Mat3 contribution{};
+          for (std::size_t index = 0; index < 9; ++index) contribution[index] = -alphaA * product[index];
+          // Both sources are referenced to the same home-cell field point, so their relative image is
+          // R_C - R_B (the field-point cell cancels); B == C then lands in the home image R = 0.
+          const int3 latticeVector = sources[cIndex].latticeVector - sources[bIndex].latticeVector;
+          addBlock(sources[bIndex].globalIndex, sources[cIndex].globalIndex, latticeVector, contribution);
+        }
       }
     }
 
@@ -495,6 +534,8 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
       dFieldStrain[a] = accumulated;
       result.cellGradient[a] += -alphaA * double3::dot(field, accumulated);
     }
+
+    if (!wantStrainSecond) continue;
 
     // Strain-strain block, d^2U/ds_a ds_b.
     for (std::size_t a = 0; a < numberOfStrainBases; ++a)

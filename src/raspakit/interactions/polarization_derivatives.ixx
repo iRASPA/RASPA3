@@ -80,7 +80,17 @@ struct PolarizationDerivatives
  *
  * When `strainBases` is non-empty the analytic cell-strain derivatives are computed as well (see above);
  * `strainBases` holds the (symmetric) strain generator matrices B_a of the active cell degrees of freedom.
+ *
+ * `computeHessian`: when false, skip the Cartesian Hessian, atomic gradients, and second strain
+ * derivatives; only the energy and (if requested) first-order `cellGradient` are produced. Used by
+ * molecular-pressure sampling.
+ *
+ * `molecularCenterOfMassStrain`: when true with non-empty `strainBases`, every molecule (rigid or
+ * flexible) uses a mass-weighted center-of-mass arm under strain, matching the COM-scaling volume move
+ * and `computeMolecularPressure`. Offsets are recomputed from current atom positions.
  */
 PolarizationDerivatives computePolarizationDerivatives(const System& system, std::span<const std::uint8_t> movable,
-                                                       std::span<const double3x3> strainBases = {});
+                                                       std::span<const double3x3> strainBases = {},
+                                                       bool computeHessian = true,
+                                                       bool molecularCenterOfMassStrain = false);
 }  // namespace Interactions
