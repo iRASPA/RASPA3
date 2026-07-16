@@ -11,10 +11,10 @@ export struct ConnectivityTable
 {
   std::uint64_t versionNumber{1};
 
-  std::size_t numberOfBeads;
-  std::vector<bool> table;
+  std::size_t numberOfBeads{0};
+  std::vector<bool> table{};
 
-  ConnectivityTable() {};
+  ConnectivityTable() = default;
   ConnectivityTable(std::size_t numberOfBeads) : numberOfBeads(numberOfBeads), table(numberOfBeads * numberOfBeads) {};
 
   bool operator[](std::size_t i, std::size_t j) const { return table[i * numberOfBeads + j]; }

@@ -27,9 +27,9 @@ std::string ConnectivityTable::print(const std::string &prestring) const
 {
   std::ostringstream stream;
 
-  for (std::size_t i = 0; i != numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
-    for (std::size_t j = i + 1; j != numberOfBeads; ++j)
+    for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
       if (table[i * numberOfBeads + j])
       {
@@ -274,7 +274,8 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllBonds() const
 {
   std::vector<std::array<std::size_t, 2>> result{};
 
-  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  // Use i + 1 < n: with unsigned size_t, `i < n - 1` underflows when n == 0.
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
     for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
@@ -374,9 +375,13 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
 std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() const
 {
   std::vector<std::array<std::size_t, 2>> result{};
+  if (numberOfBeads < 2)
+  {
+    return result;
+  }
   result.reserve(numberOfBeads * (numberOfBeads - 1) / 2);
 
-  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
     for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
