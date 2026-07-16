@@ -1797,11 +1797,11 @@ a conventional/parallel probability. Thus a reaction is never accidentally
 sampled by two algorithms.
 
 The two non-CBMC implementations,
-`ReactionConventionalCFCMC` and `ReactionCFCMC`, support only reactions whose
-participating components all have `Component::GrowType::Rigid`; a selected
-non-rigid reaction is ineligible/rejected. `ReactionCBMC`,
-`ReactionConventionalCBCFCMC`, and `ReactionCBCFCMC` use CBMC growth/retrace and
-support flexible participating components.
+`ReactionConventionalCFCMC` and `ReactionCFCMC`, insert molecules with
+`equilibratedIdealGasMoleculeRandomInBox` (rigid reference geometry, or an
+ideal-gas Boltzmann conformation for flexible components — the same helper used
+by `Swap` / `SwapCFCMC`). `ReactionCBMC`,
+`ReactionConventionalCBCFCMC`, and `ReactionCBCFCMC` use CBMC growth/retrace.
 
 ### Reaction (CBMC) <a name="reaction-cbmc"></a>
 
@@ -1888,7 +1888,7 @@ Steps:
 - select a random box,
 - select uniformly among reactions assigned to
   `ReactionConventionalCFCMC` and having initialized parallel fractional-slot
-  vectors **and only rigid participating components**; reject if none,
+  vectors; reject if none,
 - draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$,
 - if \f$\lambda_\mathbf{n}\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale all fractional
   molecules of the reaction (reactants to \f$1-\lambda_\mathbf{n}\f$, products to \f$\lambda_\mathbf{n}\f$)
@@ -2017,16 +2017,15 @@ Steps:
 
 - select a random box,
 - select uniformly among reactions assigned to `ReactionCFCMC`; reject if
-  there is none, if any participating component is non-rigid, or if the active
-  fractional side has no slots,
+  there is none or if the active fractional side has no slots,
 - select a sub-move: with 50% probability a **\f$\lambda\f$-change**; otherwise, below
   the \f$\lambda\f$ switch point a **fractional reaction**, above it a
   **whole-molecule reaction**,
 - **\f$\lambda\f$-change**: draw \f$\lambda_\mathbf{n} = \lambda_\mathbf{o} + \Delta\lambda\f$ (rejected if outside
   \f$[0,1]\f$) and rescale the fractional molecules of the active side,
 - **fractional reaction**: delete the fractional molecules of the active side
-  and place the other side with conventional uniform position/orientation
-  proposals at the *same* \f$\lambda\f$; \f$\delta\f$ flips and whole-molecule counts
+  and place the other side with `equilibratedIdealGasMoleculeRandomInBox`
+  (ideal-gas conformation for flexible components) at the *same* \f$\lambda\f$; \f$\delta\f$ flips and whole-molecule counts
   do not change,
 - **whole-molecule reaction**: the fractional molecules of the active side
   become whole molecules in place, and independently and uniformly selected

@@ -44,26 +44,6 @@ import interactions_intermolecular;
          system.components[componentId].intraMolecularPotentials.computeInternalEnergies(atoms);
 }
 
-[[nodiscard]] bool systemReactionUsesOnlyRigidComponents(const System& system,
-                                                         const Reaction& reaction) noexcept
-{
-  const std::size_t componentCount =
-      std::min({system.components.size(), reaction.reactantStoichiometry.size(),
-                reaction.productStoichiometry.size()});
-  for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
-  {
-    const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
-                              reaction.productStoichiometry[componentId] > 0;
-    if (participates && system.components[componentId].growType != Component::GrowType::Rigid)
-    {
-      return false;
-    }
-  }
-  return componentCount == system.components.size() &&
-         reaction.reactantStoichiometry.size() == system.components.size() &&
-         reaction.productStoichiometry.size() == system.components.size();
-}
-
 void System::determineFractionalComponents()
 {
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -899,16 +879,6 @@ void System::createReactionFractionalMolecules()
   if (reactions.list.empty())
   {
     return;
-  }
-
-  for (const Reaction& reaction : reactions.list)
-  {
-    const bool conventional = reaction.reactionMove == Move::Types::ReactionConventionalCFCMC ||
-                              reaction.reactionMove == Move::Types::ReactionCFCMC;
-    if (conventional && !systemReactionUsesOnlyRigidComponents(*this, reaction))
-    {
-      return;
-    }
   }
 
   if (!components.empty())

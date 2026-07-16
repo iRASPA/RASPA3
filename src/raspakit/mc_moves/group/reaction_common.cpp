@@ -249,10 +249,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     for (std::size_t n = 0; n < stoichiometry[componentId]; ++n)
     {
       Component& component = system.components[componentId];
-      if (!useCBMC && component.growType != Component::GrowType::Rigid)
-      {
-        return std::nullopt;
-      }
       const std::size_t selectedMolecule = system.numberOfMolecules() + result.molecules.size();
 
       std::optional<ChainGrowData> growData;
@@ -282,6 +278,8 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       }
       else
       {
+        // Non-CBMC path (ReactionCFCMC / ReactionConventionalCFCMC), same as SwapCFCMC:
+        // rigid reference geometry or an ideal-gas Boltzmann conformation, then random COM/orientation.
         auto [molecule, atoms] = system.equilibratedIdealGasMoleculeRandomInBox(random, componentId);
         for (Atom& atom : atoms)
         {
@@ -429,26 +427,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     }
   }
   return weight;
-}
-
-[[nodiscard]] bool conventionalReactionUsesOnlyRigidComponents(const System& system,
-                                                               const Reaction& reaction) noexcept
-{
-  const std::size_t componentCount =
-      std::min({system.components.size(), reaction.reactantStoichiometry.size(),
-                reaction.productStoichiometry.size()});
-  for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
-  {
-    const bool participates = reaction.reactantStoichiometry[componentId] > 0 ||
-                              reaction.productStoichiometry[componentId] > 0;
-    if (participates && system.components[componentId].growType != Component::GrowType::Rigid)
-    {
-      return false;
-    }
-  }
-  return componentCount == system.components.size() &&
-         reaction.reactantStoichiometry.size() == system.components.size() &&
-         reaction.productStoichiometry.size() == system.components.size();
 }
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept
@@ -834,11 +812,6 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
                                                               Move::Types move, bool useCBMC,
                                                               std::optional<SerialMoveKind> forcedKind) noexcept
 {
-  if (!useCBMC && !conventionalReactionUsesOnlyRigidComponents(system, reaction))
-  {
-    return std::nullopt;
-  }
-
   // the active fractional side must have molecules to operate on
   const std::vector<std::size_t>& activeStoichiometry =
       reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry : reaction.productStoichiometry;
@@ -1567,8 +1540,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   for (Reaction& candidate : system.reactions.list)
   {
     if (candidate.reactionMove == move &&
-        candidate.reactantFractionalMoleculeIds.size() == system.components.size() &&
-        (useCBMC || conventionalReactionUsesOnlyRigidComponents(system, candidate)))
+        candidate.reactantFractionalMoleculeIds.size() == system.components.size())
     {
       parallelReactions.push_back(&candidate);
     }

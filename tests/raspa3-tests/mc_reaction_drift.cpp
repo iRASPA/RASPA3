@@ -106,6 +106,8 @@ Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities& probabiliti
   return Move::Types::ReactionCBMC;
 }
 
+// Prefer rigid geometries for long conventional CFCMC drift runs (higher lambda-change acceptance).
+// Flexible conventional CFCMC is covered by the dedicated flexible_* tests and fractional-order tests.
 bool usesConventionalReactionGrowth(const MCMoveProbabilities& probabilities)
 {
   return probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0 ||
@@ -366,7 +368,7 @@ TEST(MC_REACTION_DRIFT, reaction_cbmc)
   runReactionDriftTest({makePropaneButaneReactionSystem(systemProbabilities)});
 }
 
-TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_rejects_conventional_but_allows_cbmc)
+TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_allows_conventional_ideal_gas_and_cbmc)
 {
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
   systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
@@ -382,41 +384,38 @@ TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_rejects_conventional_but_
   const auto cbmc = MC_Moves::ReactionCommon::growMoleculeGroupInsertion(
       cbmcRandom, system, stoichiometry, exclusions, 0.5, true, 1, true);
 
-  EXPECT_FALSE(conventional.has_value());
+  ASSERT_TRUE(conventional.has_value());
+  EXPECT_EQ(conventional->RosenbluthWeight, 1.0);
   ASSERT_TRUE(cbmc.has_value());
   EXPECT_NE(cbmc->RosenbluthWeight, 1.0);
 }
 
-TEST(MC_REACTION_DRIFT, reaction_flexible_runtime_restriction_covers_serial_and_parallel)
+TEST(MC_REACTION_DRIFT, reaction_flexible_creates_fractional_slots_for_serial_and_parallel)
 {
   MCMoveProbabilities serialProbabilities = MCMoveProbabilities();
   serialProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
-  System invalidSerial = makePropaneButaneReactionSystem(serialProbabilities);
-  invalidSerial.reactions.list[0].reactionMove = Move::Types::ReactionCFCMC;
-  invalidSerial.createReactionFractionalMolecules();
-  EXPECT_TRUE(invalidSerial.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  System serialSystem = makePropaneButaneReactionSystem(serialProbabilities);
+  serialSystem.reactions.list[0].reactionMove = Move::Types::ReactionCFCMC;
+  serialSystem.createReactionFractionalMolecules();
+  ASSERT_FALSE(serialSystem.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  ASSERT_FALSE(serialSystem.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+  serialSystem.runningEnergies = serialSystem.computeTotalEnergies();
   RandomNumber serialRandom(42);
-  EXPECT_FALSE(MC_Moves::ReactionCommon::serialReactionMove(
-                   serialRandom, invalidSerial, invalidSerial.reactions.list[0], Move::Types::ReactionCFCMC, false,
-                   MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange)
-                   .has_value());
-
-  System validSerial = makePropaneButaneReactionSystem(serialProbabilities);
-  validSerial.createReactionFractionalMolecules();
-  EXPECT_FALSE(validSerial.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+  // Must not early-reject solely because participating components are flexible.
+  (void)MC_Moves::ReactionCommon::serialReactionMove(
+      serialRandom, serialSystem, serialSystem.reactions.list[0], Move::Types::ReactionCFCMC, false,
+      MC_Moves::ReactionCommon::SerialMoveKind::LambdaChange);
 
   MCMoveProbabilities parallelProbabilities = MCMoveProbabilities();
   parallelProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
-  System invalidParallel = makePropaneButaneReactionSystem(parallelProbabilities);
-  invalidParallel.reactions.list[0].reactionMove = Move::Types::ReactionConventionalCFCMC;
-  invalidParallel.createReactionFractionalMolecules();
-  EXPECT_TRUE(invalidParallel.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  System parallelSystem = makePropaneButaneReactionSystem(parallelProbabilities);
+  parallelSystem.reactions.list[0].reactionMove = Move::Types::ReactionConventionalCFCMC;
+  parallelSystem.createReactionFractionalMolecules();
+  ASSERT_FALSE(parallelSystem.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  ASSERT_FALSE(parallelSystem.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+  parallelSystem.runningEnergies = parallelSystem.computeTotalEnergies();
   RandomNumber parallelRandom(42);
-  EXPECT_FALSE(MC_Moves::reactionMove_ConventionalCFCMC(parallelRandom, invalidParallel).has_value());
-
-  System validParallel = makePropaneButaneReactionSystem(parallelProbabilities);
-  validParallel.createReactionFractionalMolecules();
-  EXPECT_FALSE(validParallel.reactions.list[0].reactantFractionalMoleculeIds[0].empty());
+  (void)MC_Moves::reactionMove_ConventionalCFCMC(parallelRandom, parallelSystem);
 }
 
 TEST(MC_REACTION_DRIFT, reaction_serial_move_filters_exact_reaction_type)

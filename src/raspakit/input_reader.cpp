@@ -1825,36 +1825,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       systems[systemId].reactions.list = std::move(jsonReactions[systemId]);
-      for (const Reaction& reaction : systems[systemId].reactions.list)
-      {
-        const bool conventional = reaction.reactionMove == Move::Types::ReactionConventionalCFCMC ||
-                                  reaction.reactionMove == Move::Types::ReactionCFCMC;
-        if (!conventional)
-        {
-          continue;
-        }
-
-        const std::size_t componentCount =
-            std::min({systems[systemId].components.size(), reaction.reactantStoichiometry.size(),
-                      reaction.productStoichiometry.size()});
-        for (std::size_t componentId = 0; componentId < componentCount; ++componentId)
-        {
-          const bool participates =
-              reaction.reactantStoichiometry[componentId] > 0 || reaction.productStoichiometry[componentId] > 0;
-          if (participates && systems[systemId].components[componentId].growType != Component::GrowType::Rigid)
-          {
-            throw std::runtime_error(
-                std::format("[Input reader]: reaction {} uses conventional move '{}' with flexible component "
-                            "'{}'; conventional reaction moves require every participating component to have "
-                            "fixed internal conformation (component Type 'Rigid'). Use '{}' for flexible "
-                            "components\n",
-                            reaction.id, Move::moveNames[std::to_underlying(reaction.reactionMove)],
-                            systems[systemId].components[componentId].name,
-                            reaction.reactionMove == Move::Types::ReactionCFCMC ? "ReactionCBCFCMC"
-                                                                                : "ReactionConventionalCBCFCMC"));
-          }
-        }
-      }
       if (!systems[systemId].reactions.list.empty() && systems[systemId].usesReactionConventionalCFCMC())
       {
         systems[systemId].createReactionFractionalMolecules();

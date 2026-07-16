@@ -62,9 +62,6 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
 
-[[nodiscard]] bool conventionalReactionUsesOnlyRigidComponents(const System& system,
-                                                               const Reaction& reaction) noexcept;
-
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
 
 [[nodiscard]] double computeReactionEquilibriumLogTerm(const System& system, const Reaction& reaction,
