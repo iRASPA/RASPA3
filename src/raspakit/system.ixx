@@ -175,6 +175,14 @@ export struct System
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
 
+  // Brick-CFCMC-style aggregated van der Waals tail-correction accounting.
+  // effectiveNumberOfPseudoAtomsVDW[type] = sum over all molecule atoms of that type of scalingVDW
+  // (integer atoms contribute 1, fractional atoms contribute their lambda-scaled scalingVDW).
+  std::vector<double> effectiveNumberOfPseudoAtomsVDW;
+  // Per dU/dlambda group (0-based index = groupId - 1), the number of molecule atoms of each type
+  // that belong to that group; used to reconstruct the tail dU/dlambda contribution.
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> fractionalPseudoAtomCountsPerGroup;
+
   std::size_t translationalCenterOfMassConstraint{};
   std::size_t translationalDegreesOfFreedom{};
   std::size_t rotationalDegreesOfFreedom{};
@@ -462,6 +470,12 @@ export struct System
   void rescaleMolarFractions();
   void computeComponentFluidProperties();
   void computeNumberOfPseudoAtoms();
+  /// Rebuilds effectiveNumberOfPseudoAtomsVDW and fractionalPseudoAtomCountsPerGroup from the current molecule atoms.
+  void computeTailCorrectionCounts();
+  /// Incrementally adds a single atom's contribution to the aggregated tail-correction counts.
+  void addAtomToTailCorrectionCounts(const Atom& atom);
+  /// Incrementally removes a single atom's contribution from the aggregated tail-correction counts.
+  void removeAtomFromTailCorrectionCounts(const Atom& atom);
   void optimizeMCMoves();
 
   std::string writeOutputHeader() const;

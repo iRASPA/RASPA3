@@ -50,9 +50,41 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceF
   return energySum;
 }
 
+// Brick-CFCMC-style aggregated accounting: build effective (fractionally-weighted) pseudo-atom-type counts
+// from the atom span (O(N)), then evaluate the tail energy in O(nType^2). Mathematically identical to the
+// per-atom double sum because the tail constant depends only on the atom types.
 RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField& forceField,
                                                             const SimulationBox& simulationBox,
                                                             std::span<const Atom> moleculeAtoms) noexcept
+{
+  if (forceField.omitInterInteractions) return RunningEnergy{};
+
+  const std::size_t numberOfPseudoAtoms = forceField.numberOfPseudoAtoms;
+
+  std::vector<double> effectiveTypeCounts(numberOfPseudoAtoms, 0.0);
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupCounts;
+  for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+  {
+    groupCounts[group].assign(numberOfPseudoAtoms, 0.0);
+  }
+
+  for (const Atom& atom : moleculeAtoms)
+  {
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveTypeCounts[type] += atom.scalingVDW;
+    if (atom.groupId != 0)
+    {
+      groupCounts[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
+    }
+  }
+
+  return computeInterMolecularTailEnergyAggregated(forceField, simulationBox, effectiveTypeCounts, groupCounts);
+}
+
+// Reference per-atom O(N^2) implementation, retained as the validation oracle.
+RunningEnergy Interactions::computeInterMolecularTailEnergyReference(const ForceField& forceField,
+                                                                     const SimulationBox& simulationBox,
+                                                                     std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energySum{};
 
@@ -82,6 +114,82 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField& fo
   }
 
   return energySum;
+}
+
+RunningEnergy Interactions::computeInterMolecularTailEnergyAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts) noexcept
+{
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+
+  const double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  const std::size_t numberOfPseudoAtoms = forceField.numberOfPseudoAtoms;
+
+  for (std::size_t typeA = 0; typeA < numberOfPseudoAtoms; ++typeA)
+  {
+    // w_a = sum_b eff_b * C_ab
+    double wA = 0.0;
+    for (std::size_t typeB = 0; typeB < numberOfPseudoAtoms; ++typeB)
+    {
+      wA += effectiveTypeCounts[typeB] * forceField(typeA, typeB).tailCorrectionEnergy;
+    }
+
+    energySum.tail += preFactor * effectiveTypeCounts[typeA] * wA;
+
+    // dU/dlambda_g = 2 * (2 pi / V) * sum_a n[g][a] * w_a
+    for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+    {
+      double nAg = groupCounts[group][typeA];
+      if (nAg != 0.0)
+      {
+        energySum.dudlambdaVDW[group] += 2.0 * preFactor * nAg * wA;
+      }
+    }
+  }
+
+  return energySum;
+}
+
+void Interactions::updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
+                                             std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts,
+                                             std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+{
+  for (const Atom& atom : newatoms)
+  {
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveTypeCounts[type] += atom.scalingVDW;
+    if (atom.groupId != 0)
+    {
+      groupCounts[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
+    }
+  }
+  for (const Atom& atom : oldatoms)
+  {
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveTypeCounts[type] -= atom.scalingVDW;
+    if (atom.groupId != 0)
+    {
+      groupCounts[static_cast<std::size_t>(atom.groupId) - 1][type] -= 1.0;
+    }
+  }
+}
+
+RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept
+{
+  if (forceField.omitInterInteractions) return RunningEnergy{};
+
+  std::vector<double> effectiveAfter(effectiveTypeCounts.begin(), effectiveTypeCounts.end());
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupAfter = groupCounts;
+
+  updateEffectiveTypeCounts(effectiveAfter, groupAfter, newatoms, oldatoms);
+
+  return computeInterMolecularTailEnergyAggregated(forceField, simulationBox, effectiveAfter, groupAfter) -
+         computeInterMolecularTailEnergyAggregated(forceField, simulationBox, effectiveTypeCounts, groupCounts);
 }
 
 // used in mc_moves_translation.cpp, mc_moves_rotation.cpp,

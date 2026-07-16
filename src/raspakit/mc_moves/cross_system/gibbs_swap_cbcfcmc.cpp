@@ -107,8 +107,27 @@ void restoreGibbsSwapFractionalMolecules(System& system, const GibbsSwapFraction
   }
 }
 
+// Brick-CFCMC-style aggregated tail-correction difference. The effective type counts are threaded across the
+// sequential sub-steps of the move: each call returns the difference for its (newAtoms, oldAtoms) change and then
+// advances the running counts so the next sub-step sees the updated background.
+static RunningEnergy computeTailEnergyDifference(
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> newAtoms,
+    std::span<const Atom> oldAtoms)
+{
+  RunningEnergy result =
+      Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+          system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
+  Interactions::updateEffectiveTypeCounts(tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms);
+  return result;
+}
+
 std::optional<RunningEnergy> computeGibbsSwapFractionalMoleculesEnergyDifference(
-    System& system, std::span<const Atom> newAtomsCombined, std::span<const Atom> oldAtomsCombined) noexcept
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::span<const Atom> newAtomsCombined, std::span<const Atom> oldAtomsCombined) noexcept
 {
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
@@ -130,17 +149,16 @@ std::optional<RunningEnergy> computeGibbsSwapFractionalMoleculesEnergyDifference
       system.simulationBox, newAtomsCombined, oldAtomsCombined, system.netCharge);
 
   RunningEnergy tailDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(
-          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newAtomsCombined, oldAtomsCombined) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(
-          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newAtomsCombined, oldAtomsCombined);
+      computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined, oldAtomsCombined);
 
   return frameworkDifference.value() + moleculeDifference.value() + ewaldDifference + tailDifference;
 }
 
 std::optional<RunningEnergy> computeSerialFlagSwapFractionalEnergyDifference(
-    System& system, const GibbsSwapFractionalSnapshot& beforeSnapshot, std::size_t selectedComponent,
-    bool systemBecomesActive, double selectedActiveLambda, const System& lambdaSourceSystem) noexcept
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    const GibbsSwapFractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
+    double selectedActiveLambda, const System& lambdaSourceSystem) noexcept
 {
   std::vector<Atom> oldAtomsCombined;
   for (const auto& [indices, moleculeAtoms] : beforeSnapshot)
@@ -179,12 +197,15 @@ std::optional<RunningEnergy> computeSerialFlagSwapFractionalEnergyDifference(
     }
   }
 
-  return computeGibbsSwapFractionalMoleculesEnergyDifference(system, newAtomsCombined, oldAtomsCombined);
+  return computeGibbsSwapFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                             newAtomsCombined, oldAtomsCombined);
 }
 
 std::optional<RunningEnergy> computeSerialFlagSwapOtherComponentsEnergyDifference(
-    System& system, const GibbsSwapFractionalSnapshot& beforeSnapshot, std::size_t selectedComponent,
-    bool systemBecomesActive, const System& lambdaSourceSystem) noexcept
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    const GibbsSwapFractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
+    const System& lambdaSourceSystem) noexcept
 {
   std::vector<Atom> oldAtomsCombined;
   std::vector<Atom> newAtomsCombined;
@@ -221,7 +242,8 @@ std::optional<RunningEnergy> computeSerialFlagSwapOtherComponentsEnergyDifferenc
     return RunningEnergy{};
   }
 
-  return computeGibbsSwapFractionalMoleculesEnergyDifference(system, newAtomsCombined, oldAtomsCombined);
+  return computeGibbsSwapFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                             newAtomsCombined, oldAtomsCombined);
 }
 
 void applySerialGibbsFlagSwapScaling(System& system, std::size_t selectedComponent, bool systemBecomesActive,
@@ -325,6 +347,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     const GibbsSwapFractionalSnapshot snapshotA = saveGibbsSwapFractionalMolecules(systemA);
     const GibbsSwapFractionalSnapshot snapshotB = saveGibbsSwapFractionalMolecules(systemB);
 
+    // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
+    std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
+        systemA.fractionalPseudoAtomCountsPerGroup;
+    std::vector<double> tailEffB = systemB.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
+        systemB.fractionalPseudoAtomCountsPerGroup;
+
     // System A: copy inactive fractional molecule from B into the active fractional slot
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
     for (Atom& atom : fractionalMoleculeA)
@@ -343,7 +373,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // computed and applied to memory before the grow so the grow sees the post-flag-swap background.
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> flagSwapFractionalDifferenceA = computeSerialFlagSwapFractionalEnergyDifference(
-        systemA, snapshotA, selectedComponent, false, oldLambda, systemA);
+        systemA, tailEffA, tailGroupA, snapshotA, selectedComponent, false, oldLambda, systemA);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
@@ -393,13 +423,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::steady_clock::now();
-    RunningEnergy tailEnergyDifferenceGrowA =
-        Interactions::computeInterMolecularTailEnergyDifference(
-            systemA.forceField, systemA.simulationBox, systemA.spanOfMoleculeAtoms(),
-            std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(
-            systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(),
-            std::span(growData->atoms.begin(), growData->atoms.end()), {});
+    RunningEnergy tailEnergyDifferenceGrowA = computeTailEnergyDifference(
+        systemA, tailEffA, tailGroupA, std::span(growData->atoms.begin(), growData->atoms.end()), {});
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
@@ -436,10 +461,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy tailEnergyDifferenceRetraceB =
-        Interactions::computeInterMolecularTailEnergyDifference(
-            systemB.forceField, systemB.simulationBox, systemB.spanOfMoleculeAtoms(), {}, selectedIntegerMoleculeB) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(
-            systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(), {}, selectedIntegerMoleculeB);
+        computeTailEnergyDifference(systemB, tailEffB, tailGroupB, {}, selectedIntegerMoleculeB);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
@@ -507,18 +529,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy tailEnergyDifferenceB2 =
-        Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                systemB.spanOfMoleculeAtoms(), fractionalMoleculeB,
-                                                                oldFractionalMoleculeB) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                   systemB.spanOfFrameworkAtoms(), fractionalMoleculeB,
-                                                                   oldFractionalMoleculeB);
+        computeTailEnergyDifference(systemB, tailEffB, tailGroupB, fractionalMoleculeB, oldFractionalMoleculeB);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeTail] += (time_end - time_begin);
 
     std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB =
-        computeSerialFlagSwapOtherComponentsEnergyDifference(systemB, snapshotB, selectedComponent, true, systemA);
+        computeSerialFlagSwapOtherComponentsEnergyDifference(systemB, tailEffB, tailGroupB, snapshotB, selectedComponent,
+                                                             true, systemA);
     if (!flagSwapOtherComponentsDifferenceB.has_value())
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
@@ -603,6 +621,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       systemA.updateMoleculeAtomInformation();
       systemB.updateMoleculeAtomInformation();
 
+      systemA.computeTailCorrectionCounts();
+      systemB.computeTailCorrectionCounts();
+
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }
 
@@ -629,6 +650,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
     const GibbsSwapFractionalSnapshot snapshotA = saveGibbsSwapFractionalMolecules(systemA);
     const GibbsSwapFractionalSnapshot snapshotB = saveGibbsSwapFractionalMolecules(systemB);
+
+    // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
+    std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
+        systemA.fractionalPseudoAtomCountsPerGroup;
+    std::vector<double> tailEffB = systemB.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
+        systemB.fractionalPseudoAtomCountsPerGroup;
 
     std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
 
@@ -659,7 +688,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // memory so the remainder of the move sees the post-flag-swap background.
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> flagSwapFractionalDifferenceA = computeSerialFlagSwapFractionalEnergyDifference(
-        systemA, snapshotA, selectedComponent, false, oldLambda, systemA);
+        systemA, tailEffA, tailGroupA, snapshotA, selectedComponent, false, oldLambda, systemA);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
@@ -750,18 +779,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.mc_moves_cputime[move][Move::Timing::LambdaShuffleEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::steady_clock::now();
-    RunningEnergy tailEnergyDifferenceB = Interactions::computeInterMolecularTailEnergyDifference(
-                                              systemB.forceField, systemB.simulationBox, systemB.spanOfMoleculeAtoms(),
-                                              fractionalMoleculeB, oldFractionalMoleculeB) +
-                                          Interactions::computeFrameworkMoleculeTailEnergyDifference(
-                                              systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(),
-                                              fractionalMoleculeB, oldFractionalMoleculeB);
+    RunningEnergy tailEnergyDifferenceB =
+        computeTailEnergyDifference(systemB, tailEffB, tailGroupB, fractionalMoleculeB, oldFractionalMoleculeB);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaShuffleTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaShuffleTail] += (time_end - time_begin);
 
     std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB =
-        computeSerialFlagSwapOtherComponentsEnergyDifference(systemB, snapshotB, selectedComponent, true, systemA);
+        computeSerialFlagSwapOtherComponentsEnergyDifference(systemB, tailEffB, tailGroupB, snapshotB, selectedComponent,
+                                                             true, systemA);
     if (!flagSwapOtherComponentsDifferenceB.has_value())
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
@@ -806,6 +832,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       systemA.updateMoleculeAtomInformation();
       systemB.updateMoleculeAtomInformation();
 
+      systemA.computeTailCorrectionCounts();
+      systemB.computeTailCorrectionCounts();
+
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }
 
@@ -836,6 +865,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                      return a;
                    });
 
+    // Snapshot effective tail-correction counts; threaded through the sub-step.
+    std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
+        systemA.fractionalPseudoAtomCountsPerGroup;
+
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> frameworkEnergyDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
         systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
@@ -864,12 +898,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.mc_moves_cputime[move][Move::Timing::LambdaChangeEwald] += (time_end - time_begin);
 
     time_begin = std::chrono::steady_clock::now();
-    RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifference(
-                                             systemA.forceField, systemA.simulationBox, systemA.spanOfMoleculeAtoms(),
-                                             trialPositions, fractionalMoleculeA) +
-                                         Interactions::computeFrameworkMoleculeTailEnergyDifference(
-                                             systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(),
-                                             trialPositions, fractionalMoleculeA);
+    RunningEnergy tailEnergyDifference =
+        computeTailEnergyDifference(systemA, tailEffA, tailGroupA, trialPositions, fractionalMoleculeA);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaChangeTail] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaChangeTail] += (time_end - time_begin);
@@ -888,6 +918,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       componentA.mc_moves_statistics.addAccepted(move, 2);
 
       std::copy(trialPositions.begin(), trialPositions.end(), fractionalMoleculeA.begin());
+      systemA.computeTailCorrectionCounts();
 
       componentA.lambdaGC.setCurrentBin(newBin);
 

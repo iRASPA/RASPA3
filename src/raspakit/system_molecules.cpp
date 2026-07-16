@@ -63,6 +63,7 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
+    addAtomToTailCorrectionCounts(atom);
   }
 
   updateMoleculeAtomInformation();
@@ -136,6 +137,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
     atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
+    addAtomToTailCorrectionCounts(atom);
   }
 
   updateMoleculeAtomInformation();
@@ -177,6 +179,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
     atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
+    addAtomToTailCorrectionCounts(atom);
   }
 
   updateMoleculeAtomInformation();
@@ -202,6 +205,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
+    removeAtomFromTailCorrectionCounts(atom);
   }
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
@@ -239,6 +243,7 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
+    removeAtomFromTailCorrectionCounts(atom);
   }
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);

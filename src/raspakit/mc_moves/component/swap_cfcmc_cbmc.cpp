@@ -167,14 +167,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
 
-    // Compute tail-correction energy contribution
+    // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
+    // Snapshot the committed effective type counts and thread them across the sequential sub-steps.
     time_begin = std::chrono::steady_clock::now();
-    RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifference(
-                                             system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
-                                             fractionalMolecule, oldFractionalMolecule) +
-                                         Interactions::computeFrameworkMoleculeTailEnergyDifference(
-                                             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-                                             fractionalMolecule, oldFractionalMolecule);
+    std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
+        system.fractionalPseudoAtomCountsPerGroup;
+    RunningEnergy tailEnergyDifference =
+        Interactions::computeInterMolecularTailEnergyDifferenceAggregated(system.forceField, system.simulationBox,
+                                                                          tailEffectiveCounts, tailGroupCounts,
+                                                                          fractionalMolecule, oldFractionalMolecule) +
+        Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                   system.spanOfFrameworkAtoms(), fractionalMolecule,
+                                                                   oldFractionalMolecule);
+    Interactions::updateEffectiveTypeCounts(tailEffectiveCounts, tailGroupCounts, fractionalMolecule,
+                                            oldFractionalMolecule);
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -227,14 +234,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     component.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
 
-    // Compute tail-correction energy contribution for the new molecule
+    // Compute tail-correction energy contribution for the new molecule (threaded counts include the step-1 change).
     time_begin = std::chrono::steady_clock::now();
-    RunningEnergy tailEnergyDifferenceGrow = Interactions::computeInterMolecularTailEnergyDifference(
-                                                 system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
-                                                 std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
-                                             Interactions::computeFrameworkMoleculeTailEnergyDifference(
-                                                 system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-                                                 std::span(growData->atoms.begin(), growData->atoms.end()), {});
+    RunningEnergy tailEnergyDifferenceGrow =
+        Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+            system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts,
+            std::span(growData->atoms.begin(), growData->atoms.end()), {}) +
+        Interactions::computeFrameworkMoleculeTailEnergyDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
+            std::span(growData->atoms.begin(), growData->atoms.end()), {});
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
@@ -352,6 +360,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
 
       system.updateMoleculeAtomInformation();
+      system.computeTailCorrectionCounts();
 
       component.mc_moves_statistics.addAccepted(move, 0);
 
@@ -420,13 +429,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
 
-      // Compute tail-correction energy difference for the retraced molecule
+      // Compute tail-correction energy difference for the retraced molecule (Brick-CFCMC-style aggregated accounting).
+      // Snapshot the committed effective type counts and thread them across the sequential sub-steps.
       time_begin = std::chrono::steady_clock::now();
+      std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
+      std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
+          system.fractionalPseudoAtomCountsPerGroup;
       RunningEnergy tailEnergyDifferenceRetrace =
-          Interactions::computeInterMolecularTailEnergyDifference(
-              system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, fractionalMolecule) +
+          Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+              system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, {}, fractionalMolecule) +
           Interactions::computeFrameworkMoleculeTailEnergyDifference(
               system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, fractionalMolecule);
+      Interactions::updateEffectiveTypeCounts(tailEffectiveCounts, tailGroupCounts, {}, fractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
@@ -528,14 +542,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
 
-      // Compute tail-correction energy contribution for the new fractional molecule
+      // Compute tail-correction energy contribution for the new fractional molecule (threaded counts include step 1).
       time_begin = std::chrono::steady_clock::now();
-      RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifference(
-                                               system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(),
-                                               newFractionalMolecule, savedFractionalMolecule) +
-                                           Interactions::computeFrameworkMoleculeTailEnergyDifference(
-                                               system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-                                               newFractionalMolecule, savedFractionalMolecule);
+      RunningEnergy tailEnergyDifference =
+          Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+              system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, newFractionalMolecule,
+              savedFractionalMolecule) +
+          Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                     system.spanOfFrameworkAtoms(), newFractionalMolecule,
+                                                                     savedFractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
@@ -644,6 +659,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
         // Delete the selected molecule
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
+        system.computeTailCorrectionCounts();
 
         component.mc_moves_statistics.addAccepted(move, 1);
 
@@ -762,11 +778,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       system.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
     }
 
-    // Compute tail-correction energy difference
+    // Compute tail-correction energy difference (Brick-CFCMC-style aggregated accounting)
     time_begin = std::chrono::steady_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
-        Interactions::computeInterMolecularTailEnergyDifference(
-            system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialPositions, molecule) +
+        Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+            system.forceField, system.simulationBox, system.effectiveNumberOfPseudoAtomsVDW,
+            system.fractionalPseudoAtomCountsPerGroup, trialPositions, molecule) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
@@ -819,6 +836,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Update molecule positions with new scaling
       std::copy(trialPositions.begin(), trialPositions.end(), molecule.begin());
+      system.computeTailCorrectionCounts();
 
       component.lambdaGC.setCurrentBin(newBin);
 

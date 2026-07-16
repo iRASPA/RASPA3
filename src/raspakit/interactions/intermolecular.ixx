@@ -45,6 +45,52 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField& forceField, cons
                                               std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
+ * \brief Reference (per-atom, O(N^2)) inter-molecular van der Waals tail correction.
+ *
+ * Retained as the oracle for validating the Brick-CFCMC-style aggregated accounting; not used on the hot path.
+ */
+RunningEnergy computeInterMolecularTailEnergyReference(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                       std::span<const Atom> moleculeAtoms) noexcept;
+
+/**
+ * \brief Brick-CFCMC-style aggregated inter-molecular van der Waals tail correction.
+ *
+ * Computes the tail energy and its per-group dU/dlambda from effective (fractionally-weighted) pseudo-atom-type
+ * counts, U_tail = (2 pi / V) sum_a sum_b eff_a eff_b C_ab, in O(nType^2). Mathematically identical to the
+ * per-atom sum because the tail constant C_ab depends only on the atom types.
+ *
+ * \param forceField The force field parameters.
+ * \param simulationBox The simulation box (provides the volume).
+ * \param effectiveTypeCounts Per-type sum of scalingVDW over all molecule atoms.
+ * \param groupCounts Per dU/dlambda group, the number of molecule atoms of each type in that group.
+ * \return The tail energy and per-group dU/dlambda contributions.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts) noexcept;
+
+/**
+ * \brief Aggregated inter-molecular tail-correction difference for replacing \p oldatoms with \p newatoms.
+ *
+ * Given the effective type counts of the system in its current ("old") configuration, returns
+ * Aggregated(counts - oldatoms + newatoms) - Aggregated(counts). Correct-by-construction parity (energy and
+ * dU/dlambda) with computeInterMolecularTailEnergyDifference.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Advances local effective type counts by (+newatoms, -oldatoms).
+ *
+ * Used by CFCMC moves to thread the intermediate effective counts across sequential sub-steps.
+ */
+void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
+                               std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts,
+                               std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
+/**
  * \brief Computes the difference in inter-molecular energy due to atom changes.
  *
  * Calculates the energy difference resulting from replacing \p oldatoms with \p newatoms

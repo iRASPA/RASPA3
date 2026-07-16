@@ -130,8 +130,40 @@ void applyTargetScaling(std::span<Atom> atoms, GibbsMoveKind moveKind, double la
   }
 }
 
-std::optional<RunningEnergy> computeMoleculeEnergyDifference(System& system, std::span<const Atom> trialAtoms,
-                                                             std::span<const Atom> oldAtoms)
+// Brick-CFCMC-style aggregated tail-correction difference. The effective type counts are threaded across the
+// sequential sub-steps of the move: each call returns the difference for its (newAtoms, oldAtoms) change and then
+// advances the running counts so the next sub-step sees the updated background.
+RunningEnergy computeTailEnergyDifference(
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> newAtoms,
+    std::span<const Atom> oldAtoms)
+{
+  RunningEnergy result =
+      Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+          system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
+  Interactions::updateEffectiveTypeCounts(tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms);
+  return result;
+}
+
+// Non-committing probe variant: computes the aggregated tail difference against the current running counts without
+// advancing them (used by the CBMC grow/retrace correction factors, which do not represent a committed state change).
+RunningEnergy probeTailEnergyDifference(
+    System& system, const std::vector<double>& tailEffectiveCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> newAtoms,
+    std::span<const Atom> oldAtoms)
+{
+  return Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+             system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms) +
+         Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                   system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
+}
+
+std::optional<RunningEnergy> computeMoleculeEnergyDifference(
+    System& system, std::vector<double>& tailEffectiveCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> trialAtoms,
+    std::span<const Atom> oldAtoms)
 {
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
@@ -153,10 +185,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(System& system, std
       system.simulationBox, trialAtoms, oldAtoms, system.netCharge);
 
   RunningEnergy tailDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), trialAtoms, oldAtoms) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), trialAtoms, oldAtoms);
+      computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialAtoms, oldAtoms);
 
   if (system.hasExternalField)
   {
@@ -234,29 +263,28 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
   system.updateMoleculeAtomInformation();
 }
 
-RunningEnergy growEwaldTailDifference(System& system, std::span<const Atom> growAtoms)
+RunningEnergy growEwaldTailDifference(
+    System& system, const std::vector<double>& tailEffectiveCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::span<const Atom> growAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, growAtoms, {}, system.netCharge);
-  RunningEnergy tailDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), growAtoms, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), growAtoms, {});
+  RunningEnergy tailDifference = probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, growAtoms, {});
   return ewaldDifference + tailDifference;
 }
 
-RunningEnergy retraceEwaldTailDifference(System& system, std::span<const Atom> retraceAtoms)
+RunningEnergy retraceEwaldTailDifference(
+    System& system, const std::vector<double>& tailEffectiveCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::span<const Atom> retraceAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, {}, retraceAtoms, system.netCharge);
   RunningEnergy tailDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), {}, retraceAtoms) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), {}, retraceAtoms);
+      probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, {}, retraceAtoms);
   return ewaldDifference + tailDifference;
 }
 
@@ -354,11 +382,19 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     systemB.totalEik = originalTotalEikB;
   };
 
+  // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
+  std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
+      systemA.fractionalPseudoAtomCountsPerGroup;
+  std::vector<double> tailEffB = systemB.effectiveNumberOfPseudoAtomsVDW;
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
+      systemB.fractionalPseudoAtomCountsPerGroup;
+
   // First step: the fractional molecule of each box takes its target scaling
   std::vector<Atom> trialFractionalA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
   applyTargetScaling(trialFractionalA, moveKindA, lambdaNewA);
   std::optional<RunningEnergy> energyFirstStepA =
-      computeMoleculeEnergyDifference(systemA, trialFractionalA, fractionalMoleculeA);
+      computeMoleculeEnergyDifference(systemA, tailEffA, tailGroupA, trialFractionalA, fractionalMoleculeA);
   if (!energyFirstStepA.has_value())
   {
     restoreEwaldState();
@@ -368,7 +404,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::vector<Atom> trialFractionalB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
   applyTargetScaling(trialFractionalB, moveKindB, lambdaNewB);
   std::optional<RunningEnergy> energyFirstStepB =
-      computeMoleculeEnergyDifference(systemB, trialFractionalB, fractionalMoleculeB);
+      computeMoleculeEnergyDifference(systemB, tailEffB, tailGroupB, trialFractionalB, fractionalMoleculeB);
   if (!energyFirstStepB.has_value())
   {
     restoreEwaldState();
@@ -414,7 +450,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     std::size_t selectedInteger{0};
   };
 
-  auto constructBoundaryTrial = [&](System& system, Component& component, GibbsMoveKind moveKind, double lambdaNew,
+  auto constructBoundaryTrial = [&](System& system, std::vector<double>& tailEffectiveCounts,
+                                    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+                                    Component& component, GibbsMoveKind moveKind, double lambdaNew,
                                     BoundaryTrial& trial) -> bool
   {
     const double integerCount = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
@@ -449,7 +487,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
           return false;
         }
 
-        RunningEnergy ewaldTail = growEwaldTailDifference(system, trial.cbmcInsert->atoms);
+        RunningEnergy ewaldTail =
+            growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, trial.cbmcInsert->atoms);
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
         const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
         trial.acceptanceFactor = (trial.cbmcInsert->RosenbluthWeight / idealGas) *
@@ -468,7 +507,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
       std::optional<RunningEnergy> insertionEnergy =
-          computeMoleculeEnergyDifference(system, trialAtoms, std::span<const Atom>{});
+          computeMoleculeEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialAtoms,
+                                          std::span<const Atom>{});
       if (!insertionEnergy.has_value())
       {
         return false;
@@ -485,7 +525,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
       ChainRetraceData retraceData =
           CBMC::retraceMoleculeSwapDeletion(random, context, component, component.growType, selectedMolecule);
-      RunningEnergy ewaldTail = retraceEwaldTailDifference(system, selectedMolecule);
+      RunningEnergy ewaldTail =
+          retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, selectedMolecule);
       trial.acceptanceFactor = (integerCount / volume) /
                                (retraceData.RosenbluthWeight * std::exp(system.beta * ewaldTail.potentialEnergy()));
       std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
@@ -497,7 +538,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
     }
     std::optional<RunningEnergy> deletionEnergy =
-        computeMoleculeEnergyDifference(system, trialSelected, selectedMolecule);
+        computeMoleculeEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialSelected, selectedMolecule);
     if (!deletionEnergy.has_value())
     {
       return false;
@@ -512,8 +553,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   BoundaryTrial boundaryA{};
   BoundaryTrial boundaryB{};
-  if (!constructBoundaryTrial(systemA, componentA, moveKindA, lambdaNewA, boundaryA) ||
-      !constructBoundaryTrial(systemB, componentB, moveKindB, lambdaNewB, boundaryB))
+  if (!constructBoundaryTrial(systemA, tailEffA, tailGroupA, componentA, moveKindA, lambdaNewA, boundaryA) ||
+      !constructBoundaryTrial(systemB, tailEffB, tailGroupB, componentB, moveKindB, lambdaNewB, boundaryB))
   {
     restoreFractionals();
     return std::nullopt;
@@ -576,6 +617,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   acceptBox(systemA, componentA, moveKindA, lambdaNewA, indexFractionalA, boundaryA);
   acceptBox(systemB, componentB, moveKindB, lambdaNewB, indexFractionalB, boundaryB);
+
+  systemA.computeTailCorrectionCounts();
+  systemB.computeTailCorrectionCounts();
 
   RunningEnergy energyDifferenceA = energyFirstStepA.value() + boundaryA.energy;
   RunningEnergy energyDifferenceB = energyFirstStepB.value() + boundaryB.energy;

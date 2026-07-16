@@ -68,9 +68,10 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  // Compute new tail corrections
-  RunningEnergy newTotalTailEnergy =
-      Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
+  // Compute new tail corrections. The tail energy is position-independent, so a volume change only rescales it
+  // through the box volume; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
+  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergyAggregated(
+      system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW, system.fractionalPseudoAtomCountsPerGroup);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
@@ -177,8 +178,9 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  RunningEnergy newTotalTailEnergy =
-      Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
+  // Tail energy is position-independent; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
+  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergyAggregated(
+      system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW, system.fractionalPseudoAtomCountsPerGroup);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 

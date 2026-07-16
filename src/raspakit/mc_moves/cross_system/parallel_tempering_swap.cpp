@@ -150,6 +150,7 @@ void rebuildConfigurationDerivedState(System& system)
       LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
   system.updateMoleculeAtomInformation();
   system.computeNumberOfPseudoAtoms();
+  system.computeTailCorrectionCounts();
   system.netCharge = system.netChargeFramework + system.netChargeAdsorbates;
   system.checkMoleculeIds();
 }

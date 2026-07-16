@@ -79,10 +79,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  // Compute new tail corrections for systemA
+  // Compute new tail corrections for systemA. Tail energy is position-independent; reuse the maintained
+  // effective pseudo-atom-type counts (O(nType^2)).
   time_begin = std::chrono::steady_clock::now();
-  RunningEnergy newTotalTailEnergyA =
-      Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
+  RunningEnergy newTotalTailEnergyA = Interactions::computeInterMolecularTailEnergyAggregated(
+      systemA.forceField, newBoxA, systemA.effectiveNumberOfPseudoAtomsVDW, systemA.fractionalPseudoAtomCountsPerGroup);
   time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
@@ -145,10 +146,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  // Compute new tail corrections for systemB
+  // Compute new tail corrections for systemB. Tail energy is position-independent; reuse the maintained
+  // effective pseudo-atom-type counts (O(nType^2)).
   time_begin = std::chrono::steady_clock::now();
-  RunningEnergy newTotalTailEnergyB =
-      Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
+  RunningEnergy newTotalTailEnergyB = Interactions::computeInterMolecularTailEnergyAggregated(
+      systemB.forceField, newBoxB, systemB.effectiveNumberOfPseudoAtomsVDW, systemB.fractionalPseudoAtomCountsPerGroup);
   time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 

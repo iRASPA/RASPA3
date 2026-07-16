@@ -161,6 +161,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   rescaleMoveProbabilities();
   rescaleMolarFractions();
   computeNumberOfPseudoAtoms();
+  computeTailCorrectionCounts();
 
   createFrameworks();
   if (framework.has_value())
@@ -184,6 +185,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   }
 
   createInitialMolecules(initialpositions);
+  computeTailCorrectionCounts();
 
   equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
                                     P.value_or(0.0), simulationBox, heliumVoidFraction, components);
@@ -371,6 +373,47 @@ void System::computeNumberOfPseudoAtoms()
     std::size_t type = static_cast<std::size_t>(atom.type);
     numberOfPseudoAtoms[componentId][type] += 1;
     totalNumberOfPseudoAtoms[type] += 1;
+  }
+}
+
+void System::computeTailCorrectionCounts()
+{
+  std::size_t numberOfPseudoAtomTypes = forceField.pseudoAtoms.size();
+
+  effectiveNumberOfPseudoAtomsVDW.assign(numberOfPseudoAtomTypes, 0.0);
+  for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+  {
+    fractionalPseudoAtomCountsPerGroup[group].assign(numberOfPseudoAtomTypes, 0.0);
+  }
+
+  for (const Atom& atom : spanOfMoleculeAtoms())
+  {
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveNumberOfPseudoAtomsVDW[type] += atom.scalingVDW;
+    if (atom.groupId != 0)
+    {
+      fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
+    }
+  }
+}
+
+void System::addAtomToTailCorrectionCounts(const Atom& atom)
+{
+  std::size_t type = static_cast<std::size_t>(atom.type);
+  effectiveNumberOfPseudoAtomsVDW[type] += atom.scalingVDW;
+  if (atom.groupId != 0)
+  {
+    fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
+  }
+}
+
+void System::removeAtomFromTailCorrectionCounts(const Atom& atom)
+{
+  std::size_t type = static_cast<std::size_t>(atom.type);
+  effectiveNumberOfPseudoAtomsVDW[type] -= atom.scalingVDW;
+  if (atom.groupId != 0)
+  {
+    fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] -= 1.0;
   }
 }
 
@@ -1328,6 +1371,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
   archive >> s.interpolationGrids;
   archive >> s.externalFieldInterpolationGrid;
+
+  // Derived quantities: rebuild the aggregated tail-correction counts from the restored atoms.
+  s.computeTailCorrectionCounts();
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

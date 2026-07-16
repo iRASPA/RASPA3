@@ -919,10 +919,14 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
           auto posP = system.scaledCenterOfMassPositions(system.simulationBox, boxP);
           auto posM = system.scaledCenterOfMassPositions(system.simulationBox, boxM);
           double eP = (Interactions::computeInterMolecularEnergy(system.forceField, boxP, posP.second) +
-                       Interactions::computeInterMolecularTailEnergy(system.forceField, boxP, posP.second))
+                       Interactions::computeInterMolecularTailEnergyAggregated(
+                           system.forceField, boxP, system.effectiveNumberOfPseudoAtomsVDW,
+                           system.fractionalPseudoAtomCountsPerGroup))
                           .potentialEnergy();
           double eM = (Interactions::computeInterMolecularEnergy(system.forceField, boxM, posM.second) +
-                       Interactions::computeInterMolecularTailEnergy(system.forceField, boxM, posM.second))
+                       Interactions::computeInterMolecularTailEnergyAggregated(
+                           system.forceField, boxM, system.effectiveNumberOfPseudoAtomsVDW,
+                           system.fractionalPseudoAtomCountsPerGroup))
                           .potentialEnergy();
           double fdExcess = -(eP - eM) / (boxP.volume - boxM.volume);
           double maxComComponent = 0.0;
