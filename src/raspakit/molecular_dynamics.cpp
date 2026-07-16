@@ -201,7 +201,6 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
   const auto pressureBefore = system.computeMolecularPressure();
-  system.precomputeTotalGradients();
   const double3x3 kineticBefore = computeMolecularKineticVirial(system);
 
   const double barostatKinetic =
@@ -283,7 +282,6 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
       Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
   const auto pressureAfter = system.computeMolecularPressure();
   const double3x3 kineticAfter = computeMolecularKineticVirial(system);
-  system.precomputeTotalGradients();
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =

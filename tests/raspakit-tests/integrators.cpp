@@ -623,6 +623,70 @@ TEST(integrators_flexible_framework, harmonic_velocity_verlet_has_bounded_short_
   EXPECT_LT(maximumDrift / std::max(1.0, std::abs(initialEnergy)), 2.0e-5);
 }
 
+TEST(integrators_flexible_adsorbate, molecular_pressure_preserves_live_md_gradients)
+{
+  // Molecular pressure evaluates intermolecular/framework strain forces into a scratch buffer and
+  // must leave live AtomDynamics gradients (including intramolecular) untouched for Velocity-Verlet.
+  ForceField forceField =
+      ForceField({{"CH3", false, 15.03452, 0.0, 0.0, 8, false}}, {{108.0, 3.76}},
+                 ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+
+  ConnectivityTable connectivityTable(2);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+  // Soft enough for stable single-step NVE drift checks, stiff enough that wiping bond forces matters.
+  intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {5000.0, 1.54})};
+
+  Component component =
+      Component(forceField, "ethane", 305.33, 4871800.0, 0.0993,
+                {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                 Atom({1.70, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                connectivityTable, intraMolecularPotentials, 5, 21);
+  ASSERT_FALSE(component.rigid);
+
+  const std::vector<std::vector<double3>> initialPositions = {
+      {double3(5.0, 5.0, 5.0), double3(6.70, 5.0, 5.0)}};
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component},
+             initialPositions, {0}, 5);
+  system.timeStep = 1.0e-4;
+  system.spanOfMoleculeDynamics()[0].velocity = {0.05, -0.02, 0.01};
+  system.spanOfMoleculeDynamics()[1].velocity = {-0.04, 0.03, -0.01};
+
+  system.precomputeTotalGradients();
+  const double3 gradient0Before = system.spanOfMoleculeDynamics()[0].gradient;
+  const double3 gradient1Before = system.spanOfMoleculeDynamics()[1].gradient;
+  ASSERT_GT(std::abs(gradient0Before.x), 1.0);
+
+  system.computeMolecularPressure();
+  DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeDynamics()[0].gradient, gradient0Before, 1.0e-12);
+  DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeDynamics()[1].gradient, gradient1Before, 1.0e-12);
+
+  RunningEnergy initial = Integrators::updateGradients(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+      system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.components, system.eik_x,
+      system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
+      system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
+      system.spanOfFrameworkDynamics());
+  initial.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField);
+  const double initialEnergy = initial.conservedEnergy();
+
+  system.computeMolecularPressure();
+  const RunningEnergy afterPressure = Integrators::velocityVerlet(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
+      system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
+      system.spanOfFrameworkDynamics());
+  const double relativeDrift =
+      std::abs(afterPressure.conservedEnergy() - initialEnergy) / std::max(1.0, std::abs(initialEnergy));
+  EXPECT_LT(relativeDrift, 1.0e-6);
+}
+
 TEST(hybrid_mc, flexible_framework_only_does_not_throw_and_restores_on_reject)
 {
   ForceField forceField = makeFlexibleFrameworkForceField();

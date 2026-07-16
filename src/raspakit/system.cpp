@@ -757,14 +757,16 @@ void System::computeTotalElectricField() noexcept
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 {
-  for (AtomDynamics& dynamics : atomDynamics)
-  {
-    dynamics.gradient = double3(0.0, 0.0, 0.0);
-  }
+  // Scratch buffer so molecular-pressure sampling does not mutate live MD site gradients.
+  // Strain-derivative routines write intermolecular/framework forces here for the atomic-to-molecular
+  // virial correction. Intramolecular bonded forces are intentionally omitted (they cancel in the
+  // molecular virial) and must not overwrite AtomDynamics used by Velocity-Verlet.
+  std::vector<AtomDynamics> pressureMoleculeDynamics(spanOfMoleculeAtoms().size());
+  std::span<AtomDynamics> pressureDynamics(pressureMoleculeDynamics);
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
-      spanOfMoleculeAtoms(), spanOfMoleculeDynamics());
+      spanOfMoleculeAtoms(), pressureDynamics);
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
@@ -772,13 +774,13 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeInterMolecularEnergyStrainDerivative(
-                             forceField, components, simulationBox, spanOfMoleculeAtoms(), spanOfMoleculeDynamics()));
+                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics));
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeEwaldFourierEnergyStrainDerivative(
                              eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                              framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                             spanOfMoleculeDynamics(), netChargeFramework, netChargePerComponent));
+                             pressureDynamics, netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -807,7 +809,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       // Intramolecular potentials (bonds, bends, torsions, ...) must NOT contribute to the molecular
       // (center-of-mass based) pressure: internal forces sum to zero over each molecule and cancel in the
       // molecular virial. Their strain derivative is therefore intentionally not accumulated here, and their
-      // gradients are deliberately kept out of 'spanOfMoleculeDynamics()' so they cannot pollute the
+      // gradients are deliberately kept out of 'pressureDynamics' so they cannot pollute the
       // atomic-to-molecular correction term computed below. Only the energy is recorded (above) for reporting.
     }
 
@@ -879,8 +881,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   double3x3 correctionTerm{};
   for (Molecule& molecule : moleculeData)
   {
+    const std::size_t localAtomIndex = molecule.atomIndex - numberOfFrameworkAtoms;
     const std::span<Atom> span = {&atomData[molecule.atomIndex], molecule.numberOfAtoms};
-    const std::span<AtomDynamics> spanDynamics = {&atomDynamics[molecule.atomIndex], molecule.numberOfAtoms};
+    const std::span<AtomDynamics> spanDynamics = {&pressureMoleculeDynamics[localAtomIndex], molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);

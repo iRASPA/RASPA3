@@ -556,8 +556,9 @@ export struct System
   void writeCPUTimeStatistics(std::ostream& stream) const;
 
   /**
-   * Molecular (center-of-mass) excess pressure: fills site gradients from framework + intermolecular +
-   * Ewald interactions (no intramolecular), then applies the atomic-to-molecular virial correction.
+   * Molecular (center-of-mass) excess pressure: evaluates framework + intermolecular + Ewald site
+   * forces (no intramolecular) into a scratch gradient buffer, then applies the atomic-to-molecular
+   * virial correction. Does not mutate live AtomDynamics gradients used by MD.
    */
   [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
