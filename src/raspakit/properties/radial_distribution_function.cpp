@@ -20,7 +20,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
                                                 std::span<const AtomDynamics> moleculeDynamics,
                                                 std::size_t currentCycle, std::size_t block)
 {
-  double3 dr, posA, posB, f;
+  double3 dr, posA, posB;
   double3 gradientA, gradientB;
   double rr, r;
 
@@ -28,33 +28,43 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
 
   if (moleculeAtoms.empty()) return;
 
+  // Site forces must already be present in frameworkDynamics / moleculeDynamics (MD integrator, or
+  // System::sampleForceBasedRDFWithFullGradients for MC). This sampler does not evaluate forces.
+
+  auto accumulatePair = [&](std::size_t typeA, std::size_t typeB, const double3 &gradA, const double3 &gradB,
+                            const double3 &separation)
+  {
+    pairCount[channel(typeA, typeB)]++;
+    pairCount[channel(typeB, typeA)]++;
+
+    dr = simulationBox.applyPeriodicBoundaryConditions(separation);
+    rr = double3::dot(dr, dr);
+    r = std::sqrt(rr);
+    if (!(r < range) || r < 1.0e-12) return;
+
+    // Borgis estimator: (∇U_A - ∇U_B)·(r_A - r_B) / r^3 accumulated for all bins with r_bin < r.
+    const double value = double3::dot(gradA - gradB, dr) / (rr * r);
+    for (std::size_t i = 0; i < numberOfBins; ++i)
+    {
+      if ((static_cast<double>(i) + 0.5) * deltaR < r)
+      {
+        histogram(block, channel(typeA, typeB), i) += value;
+        histogram(block, channel(typeB, typeA), i) += value;
+      }
+    }
+  };
+
   for (std::size_t ia = 0; ia < frameworkAtoms.size(); ++ia)
   {
     posA = frameworkAtoms[ia].position;
-    gradientA = frameworkDynamics[ia].gradient;
+      gradientA = ia < frameworkDynamics.size() ? frameworkDynamics[ia].gradient : double3();
     std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
     for (std::size_t ib = 0; ib < moleculeAtoms.size(); ++ib)
     {
       posB = moleculeAtoms[ib].position;
       gradientB = moleculeDynamics[ib].gradient;
       std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
-
-      pairCount[channel(typeA, typeB)]++;
-      pairCount[channel(typeB, typeA)]++;
-
-      dr = posA - posB;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      rr = double3::dot(dr, dr);
-      r = std::sqrt(rr);
-
-      double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
-
-      std::size_t bin = static_cast<std::size_t>(r / deltaR);
-      for (std::size_t i = 0; i < bin; ++i)
-      {
-        histogram(block, channel(typeA, typeB), bin) += value;
-        histogram(block, channel(typeB, typeA), bin) += value;
-      }
+      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
     }
   }
 
@@ -70,36 +80,14 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
     {
       std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
       std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
-      gradientB = moleculeDynamics[ib].gradient;
 
       // skip interactions within the same molecule
-      if (!((compA == compB) && (molA == molB)))
-      {
-        posB = moleculeAtoms[ib].position;
-        std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      if ((compA == compB) && (molA == molB)) continue;
 
-        pairCount[channel(typeA, typeB)]++;
-        pairCount[channel(typeB, typeA)]++;
-
-        dr = posA - posB;
-        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-        rr = double3::dot(dr, dr);
-        r = std::sqrt(rr);
-
-        if (r < range)
-        {
-          double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
-
-          for (std::size_t i = 0; i < numberOfBins; ++i)
-          {
-            if ((static_cast<double>(i) + 0.5) * deltaR < r)
-            {
-              histogram(block, channel(typeA, typeB), i) += value;
-              histogram(block, channel(typeB, typeA), i) += value;
-            }
-          }
-        }
-      }
+      posB = moleculeAtoms[ib].position;
+      gradientB = moleculeDynamics[ib].gradient;
+      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
     }
   }
 

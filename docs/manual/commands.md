@@ -634,8 +634,14 @@ is written to the directory `molecule_properties`.
 
 `"ComputeRDF" : boolean`
 
-Whether to compute the force-based radial distribution function (RDF). Output is
-written to the directory `rdf`.
+Whether to compute the force-based (Borgis) radial distribution function using
+site gradients. Output is written to the directory `rdf`.
+
+In molecular dynamics the integrator forces are reused. In Monte Carlo a full
+site-gradient evaluation is performed when sampling (framework + intermolecular +
+Ewald + intramolecular), so flexible molecules are handled correctly. This is
+independent of the molecular-pressure gradient path, which omits intramolecular
+forces for the atomic-to-molecular virial correction.
 
 -   `"SampleRDFEvery" : integer`\
     Sample the RDF every `int` cycles. Default: `10`.

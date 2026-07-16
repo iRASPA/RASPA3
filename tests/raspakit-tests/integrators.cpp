@@ -35,6 +35,7 @@ import thermobarostat;
 import minimization_cell_layout;
 import molecular_dynamics;
 import mc_moves;
+import mc_moves_hybridmc;
 import mc_moves_move_types;
 import randomnumbers;
 
@@ -620,6 +621,99 @@ TEST(integrators_flexible_framework, harmonic_velocity_verlet_has_bounded_short_
 
   EXPECT_GT(std::abs(system.spanOfFrameworkAtoms()[0].position.x - 5.0), 1.0e-5);
   EXPECT_LT(maximumDrift / std::max(1.0, std::abs(initialEnergy)), 2.0e-5);
+}
+
+TEST(hybrid_mc, flexible_framework_only_does_not_throw_and_restores_on_reject)
+{
+  ForceField forceField = makeFlexibleFrameworkForceField();
+  Framework framework = makeTwoAtomFramework(forceField, false);
+  framework.intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {2000.0, 1.0})};
+  framework.intraMolecularImageShifts.bonds = {{{int3{}, int3{}}}};
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  system.spanOfFrameworkAtoms()[0].position = {5.0, 5.0, 5.0};
+  system.spanOfFrameworkAtoms()[1].position = {6.1, 5.0, 5.0};
+  system.numberOfHybridMCSteps = 5;
+  // Large timestep makes energy drift large so the move is almost surely rejected.
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
+
+  const double3 initial0 = system.spanOfFrameworkAtoms()[0].position;
+  const double3 initial1 = system.spanOfFrameworkAtoms()[1].position;
+  RandomNumber random(12);
+  const std::optional<RunningEnergy> accepted = MC_Moves::hybridMCMove(random, system);
+  EXPECT_FALSE(accepted.has_value());
+  DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[0].position, initial0, 1.0e-14);
+  DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[1].position, initial1, 1.0e-14);
+}
+
+TEST(hybrid_mc, rigid_molecules_in_rigid_framework_does_not_throw)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  System system(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+  ASSERT_TRUE(system.framework->rigid);
+  ASSERT_TRUE(system.components[0].rigid);
+  system.numberOfHybridMCSteps = 3;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-4);
+
+  RandomNumber random(7);
+  EXPECT_NO_THROW(std::ignore = MC_Moves::hybridMCMove(random, system));
+}
+
+TEST(hybrid_mc, flexible_molecule_in_rigid_framework_does_not_throw)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  co2.rigid = false;
+  System system(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+  ASSERT_TRUE(system.framework->rigid);
+  ASSERT_FALSE(system.components[0].rigid);
+  system.numberOfHybridMCSteps = 2;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5.0e-5);
+
+  RandomNumber random(11);
+  EXPECT_NO_THROW(std::ignore = MC_Moves::hybridMCMove(random, system));
+}
+
+TEST(hybrid_mc, rigid_molecule_in_flexible_framework_does_not_throw)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(8.0, false, false, false);
+  std::vector<Atom> atoms{Atom({5.0, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({6.0, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "two-atom-framework", SimulationBox(20.0, 20.0, 20.0), 1, atoms, atoms,
+                      int3(1, 1, 1));
+  framework.rigid = false;
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+  ASSERT_FALSE(system.framework->rigid);
+  ASSERT_TRUE(system.components[0].rigid);
+  system.numberOfHybridMCSteps = 2;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5.0e-5);
+
+  RandomNumber random(19);
+  EXPECT_NO_THROW(std::ignore = MC_Moves::hybridMCMove(random, system));
+}
+
+TEST(hybrid_mc, flexible_molecule_in_flexible_framework_does_not_throw)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(8.0, false, false, false);
+  // Keep the flexible framework tiny so the Hybrid MC trial stays a cheap unit test.
+  std::vector<Atom> atoms{Atom({5.0, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({6.0, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "two-atom-framework", SimulationBox(20.0, 20.0, 20.0), 1, atoms, atoms,
+                      int3(1, 1, 1));
+  framework.rigid = false;
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  co2.rigid = false;
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+  ASSERT_FALSE(system.framework->rigid);
+  ASSERT_FALSE(system.components[0].rigid);
+  system.numberOfHybridMCSteps = 2;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5.0e-5);
+
+  RandomNumber random(3);
+  EXPECT_NO_THROW(std::ignore = MC_Moves::hybridMCMove(random, system));
 }
 
 TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)

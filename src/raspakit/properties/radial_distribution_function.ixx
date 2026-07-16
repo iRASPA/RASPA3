@@ -12,8 +12,9 @@ import simulationbox;
 import forcefield;
 export import property_block_average;
 
-// Computes Radial Distribution Function
-// Also works correctly for a small number of molecules (RDF still goes to unity)
+// Force-based (Borgis) radial distribution function from known site gradients.
+// Does not evaluate forces: callers must provide current full-U gradients in atomDynamics
+// (MD integrator, or System::sampleForceBasedRDFWithFullGradients on the MC path).
 
 export struct PropertyRadialDistributionFunction
 {

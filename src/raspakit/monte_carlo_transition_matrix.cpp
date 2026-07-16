@@ -683,6 +683,10 @@ void MonteCarloTransitionMatrix::production()
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      if (system.forceBasedRDFSampleDue(currentCycle))
+      {
+        system.sampleForceBasedRDFWithFullGradients(currentCycle, estimation.currentBin);
+      }
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {

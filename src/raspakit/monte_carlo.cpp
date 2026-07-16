@@ -898,6 +898,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
     {
       system.sampleProperties(system_id, estimation.currentBin, currentCycle);
       system.samplePropertiesEvolution(absoluteCurrentCycle);
+      if (system.forceBasedRDFSampleDue(currentCycle))
+      {
+        system.sampleForceBasedRDFWithFullGradients(currentCycle, estimation.currentBin);
+      }
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
@@ -930,16 +934,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
                            system.fractionalPseudoAtomCountsPerGroup))
                           .potentialEnergy();
           double fdExcess = -(eP - eM) / (boxP.volume - boxM.volume);
-          double maxComComponent = 0.0;
-          double boxEdge = system.simulationBox.cell.ax;
-          for (const Molecule& m : system.moleculeData)
-          {
-            maxComComponent = std::max({maxComComponent, std::abs(m.centerOfMassPosition.x),
-                                        std::abs(m.centerOfMassPosition.y), std::abs(m.centerOfMassPosition.z)});
-          }
-          std::print(
-              "[PRESSURE_FD] cycle {} analyticExcess {:.6e} fdExcess {:.6e} ratio {:.4f} maxCom {:.2f} box {:.2f}\n",
-              currentCycle, analyticExcess, fdExcess, analyticExcess / fdExcess, maxComComponent, boxEdge);
+          std::print(std::cerr,
+                     "[RASPA_PRESSURE_FD] cycle={} analytic={:.8e} FD={:.8e} delta={:.8e} relative={:.4e}\n",
+                     currentCycle, analyticExcess, fdExcess, analyticExcess - fdExcess,
+                     std::abs(analyticExcess - fdExcess) / std::max(1.0, std::abs(fdExcess)));
         }
       }
 

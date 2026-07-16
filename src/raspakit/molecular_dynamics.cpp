@@ -1018,6 +1018,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      // MD forces from the integrator step above are current; reuse them for the force-based RDF.
+      if (system.forceBasedRDFSampleDue(currentCycle))
+      {
+        system.sampleForceBasedRDFFromCurrentGradients(currentCycle, estimation.currentBin);
+      }
 
       ++system_id;
     }

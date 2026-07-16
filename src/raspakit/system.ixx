@@ -555,7 +555,26 @@ export struct System
 
   void writeCPUTimeStatistics(std::ostream& stream) const;
 
+  /**
+   * Molecular (center-of-mass) excess pressure: fills site gradients from framework + intermolecular +
+   * Ewald interactions (no intramolecular), then applies the atomic-to-molecular virial correction.
+   */
   [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
+
+  /// True when the force-based RDF is enabled and should sample on this cycle.
+  [[nodiscard]] bool forceBasedRDFSampleDue(std::size_t currentCycle) const;
+
+  /**
+   * Accumulate the Borgis force-based RDF from site gradients already stored in atomDynamics
+   * (e.g. after an MD integrator force evaluation). Does not recompute forces.
+   */
+  void sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, std::size_t currentBlock);
+
+  /**
+   * Evaluate full site gradients (framework + inter + Ewald + intramolecular) and sample the
+   * force-based RDF. Use this on the MC path so flexible molecules get bonded forces in Borgis.
+   */
+  void sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock);
 
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 

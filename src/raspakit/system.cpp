@@ -516,15 +516,9 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
                                                            currentCycle, currentBlock);
   }
 
-  if (propertyRadialDistributionFunction.has_value())
-  {
-    precomputeTotalGradients();
-    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                                          components);
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
-                                               moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                               currentCycle, currentBlock);
-  }
+  // Force-based RDF is not sampled here. Monte Carlo calls sampleForceBasedRDFWithFullGradients()
+  // (full U, including intramolecular). Molecular dynamics reuses integrator forces via
+  // sampleForceBasedRDFFromCurrentGradients().
 
   if (propertyMoleculeProperties.has_value())
   {
@@ -1039,8 +1033,30 @@ void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFuncti
 {
   if (rdf.has_value())
   {
-    propertyRadialDistributionFunction = PropertyRadialDistributionFunction();
+    propertyRadialDistributionFunction = PropertyRadialDistributionFunction(
+        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, rdf->range, rdf->sampleEvery, rdf->writeEvery);
   }
+}
+
+bool System::forceBasedRDFSampleDue(std::size_t currentCycle) const
+{
+  return propertyRadialDistributionFunction.has_value() && propertyRadialDistributionFunction->sampleEvery > 0uz &&
+         (currentCycle % propertyRadialDistributionFunction->sampleEvery == 0uz);
+}
+
+void System::sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, std::size_t currentBlock)
+{
+  if (!propertyRadialDistributionFunction.has_value()) return;
+  propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
+                                             moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                             currentCycle, currentBlock);
+}
+
+void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock)
+{
+  if (!forceBasedRDFSampleDue(currentCycle)) return;
+  precomputeTotalGradients();
+  sampleForceBasedRDFFromCurrentGradients(currentCycle, currentBlock);
 }
 
 void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd)
