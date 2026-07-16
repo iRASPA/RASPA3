@@ -9,6 +9,8 @@ add_executable(unit_tests_raspakit
   dudlambda.cpp
   coulomb_real_space_methods.cpp
   ewald.cpp
+  wolf_exclusion.cpp
+  wolf_strain_polarization.cpp
   insertion_deletion.cpp
   mc.cpp
   pressure.cpp
@@ -39,6 +41,7 @@ add_executable(unit_tests_raspakit
   minimization_hessian_intermolecular_rigid.cpp
   minimization_hessian_framework.cpp
   minimization_hessian_ewald.cpp
+  minimization_hessian_wolf.cpp
   minimization_driver.cpp
   minimization_variable_cell.cpp
   elastic_constants.cpp

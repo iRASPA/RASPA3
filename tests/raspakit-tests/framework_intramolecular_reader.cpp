@@ -325,8 +325,9 @@ TEST(framework_intramolecular_reader, converted_irmof_definition_expands_all_tem
   auto [box, hallNumber, definedAtoms, fractionalAtoms] = *cif;
   Framework framework(forceField, "IRMOF-1", box, hallNumber, definedAtoms, fractionalAtoms, {1, 1, 1});
 
-  framework.readFrameworkDefinition(forceField,
-                                    (root / "data/frameworks/Dubbeldam2007FlexibleIRMOF-1/framework.json").string());
+  framework.readFrameworkDefinition(
+      forceField,
+      (root / "examples/non_basic/11_flexible_irmof_1_variable_cell_minimization/framework.json").string());
   forceField.initializeEwaldParameters(framework.simulationBox.scaled(framework.numberOfUnitCells));
 
   const MinimizationDofLayout diagnosticLayout = buildMinimizationDofLayout({}, {}, framework.atoms.size());

@@ -77,6 +77,219 @@ double realInner(const std::complex<double>& lhs, const std::complex<double>& rh
 {
   return lhs.real() * rhs.real() + lhs.imag() * rhs.imag();
 }
+
+// Intra-molecular exclusion / completion Hessian for the finite-cutoff shifted charge methods (Wolf,
+// damped-shifted-force, modified-shifted-force, zero-dipole). These have no reciprocal space, so this mirrors
+// the erf-based Ewald exclusion block but uses the shifted real-space potential completion
+// U(r) = q_i q_j (V(r) - 1/r). In RASPA's factor convention (f1 = U'/r, f2 = (U'' - U'/r)/r^2) the shifted
+// potential contributes factors.firstDerivativeFactor / .secondDerivativeFactor, and the bare -1/r term adds
+// +1/r^3 to f1 and -3/r^5 to f2. Only intra-molecular adsorbate pairs inside the Coulomb cutoff are treated,
+// matching the energy/gradient/strain paths. Rigid molecules contribute energy only: the term is invariant
+// under their center-of-mass and orientation degrees of freedom. The self-energy is position independent.
+void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forceField,
+                                const SimulationBox& simulationBox, const std::optional<Framework>& framework,
+                                std::span<const Molecule> moleculeData, const MinimizationDofLayout& layout,
+                                GeneralizedHessian& hessian, std::span<const Atom> frameworkAtoms,
+                                std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+                                std::span<AtomDynamics> frameworkDynamics, const CellMinimizationLayout& cellLayout)
+{
+  if (forceField.omitInterInteractions) return;
+
+  const bool flexibleFramework =
+      framework.has_value() && !framework->rigid && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  if (moleculeAtoms.empty() && !flexibleFramework) return;
+
+  // Per-atom self-energy (position and strain independent). For a flexible framework the framework charges also
+  // carry a self term, mirroring the Ewald self loop over the combined framework + molecule atom list.
+  const double selfPrefactor = Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
+  for (const Atom& atom : moleculeAtoms)
+  {
+    const double scaledCharge = atom.scalingCoulomb * atom.charge;
+    energySum.ewald_self += selfPrefactor * scaledCharge * scaledCharge;
+  }
+  if (flexibleFramework)
+  {
+    for (const Atom& atom : frameworkAtoms)
+    {
+      const double scaledCharge = atom.scalingCoulomb * atom.charge;
+      energySum.ewald_self += selfPrefactor * scaledCharge * scaledCharge;
+    }
+  }
+
+  const bool computeStrain = (hessian.numStrain() == 1);
+  const std::size_t numberOfCellDofs = layout.numberOfCellDofs();
+  const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  const auto addFlexiblePairCellDerivatives =
+      [&](std::size_t baseI, std::size_t baseJ, double f1, double f2, const double3& dr)
+  {
+    for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+    {
+      const double3 displacementA = cellLayout.bases[a] * dr;
+      const double3 mixedA =
+          f1 * displacementA + f2 * double3::dot(dr, displacementA) * dr + cellLayout.bases[a] * (f1 * dr);
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        const double value = (&mixedA.x)[axis];
+        hessian.add(baseI + axis, *layout.cellDof(a), value);
+        hessian.add(*layout.cellDof(a), baseI + axis, value);
+        hessian.add(baseJ + axis, *layout.cellDof(a), -value);
+        hessian.add(*layout.cellDof(a), baseJ + axis, -value);
+      }
+      for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+      {
+        const double3 displacementB = cellLayout.bases[b] * dr;
+        const double3 secondDisplacement = cellStrainSecondDerivative(cellLayout, a, b) * dr;
+        const double value = f1 * double3::dot(displacementA, displacementB) +
+                             f2 * double3::dot(dr, displacementA) * double3::dot(dr, displacementB) +
+                             f1 * double3::dot(dr, secondDisplacement);
+        hessian.add(*layout.cellDof(a), *layout.cellDof(b), value);
+      }
+    }
+  };
+
+  for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
+  {
+    const Molecule& molecule = moleculeData[moleculeIndex];
+    if (molecule.numberOfAtoms < 2) continue;
+    const bool rigid = layout.molecules()[moleculeIndex].rigid;
+    std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    std::span<AtomDynamics> dynamicsSpan = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+
+    for (std::size_t i = 0; i != span.size() - 1; ++i)
+    {
+      for (std::size_t j = i + 1; j != span.size(); ++j)
+      {
+        double3 dr = simulationBox.applyPeriodicBoundaryConditions(span[i].position - span[j].position);
+        const double rr = double3::dot(dr, dr);
+        if (rr >= cutOffSquared) continue;
+        const double r = std::sqrt(rr);
+
+        const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+        const double chargeProduct = Units::CoulombicConversionFactor * span[i].scalingCoulomb *
+                                     span[j].scalingCoulomb * span[i].charge * span[j].charge;
+
+        energySum.ewald_exclusion += chargeProduct * (factors.potential - 1.0 / r);
+
+        if (rigid) continue;
+
+        const double f1 = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
+        const double f2 = chargeProduct * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
+
+        const double3 gradientA = f1 * dr;
+        dynamicsSpan[i].gradient += gradientA;
+        dynamicsSpan[j].gradient -= gradientA;
+
+        double3x3 strain{};
+        strain.ax = dr.x * gradientA.x;
+        strain.bx = dr.y * gradientA.x;
+        strain.cx = dr.z * gradientA.x;
+        strain.ay = dr.x * gradientA.y;
+        strain.by = dr.y * gradientA.y;
+        strain.cy = dr.z * gradientA.y;
+        strain.az = dr.x * gradientA.z;
+        strain.bz = dr.y * gradientA.z;
+        strain.cz = dr.z * gradientA.z;
+        hessian.strainGradient() += strain;
+
+        Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2, dr);
+        if (numberOfCellDofs != 0)
+        {
+          addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
+                                         layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+        }
+        if (computeStrain)
+        {
+          Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2,
+                                                             dr);
+          Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, span[i].position, span[i].position,
+                                                           span[j].position, span[j].position, false, false);
+        }
+      }
+    }
+  }
+
+  // Flexible-framework intra-molecular exclusion / completion (bonded 1-2, 1-3, 1-4 pairs excluded from the
+  // real-space shifted pair sum). Only the framework atomic degrees of freedom couple; mirrors the erf-based
+  // Ewald framework exclusion block but uses the shifted completion q_i q_j (V(r) - 1/r).
+  if (flexibleFramework)
+  {
+    std::set<std::array<std::size_t, 2>> excludedPairs;
+    std::map<std::array<std::size_t, 2>, double> coulombScaling;
+    for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
+    {
+      coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
+                      std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
+    }
+    const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
+    {
+      const auto scaling = coulombScaling.find(pair);
+      if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
+    };
+    if (!framework->connectivityTable.table.empty())
+    {
+      for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
+      {
+        excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+      }
+      for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
+      {
+        excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+      }
+      for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
+      {
+        excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
+      }
+    }
+    for (const std::array<std::size_t, 2>& pair : excludedPairs)
+    {
+      const std::size_t i = pair[0];
+      const std::size_t j = pair[1];
+      double3 dr =
+          simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
+      const double rr = double3::dot(dr, dr);
+      if (rr >= cutOffSquared) continue;
+      const double r = std::sqrt(rr);
+
+      const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+      const double chargeProduct = Units::CoulombicConversionFactor * frameworkAtoms[i].scalingCoulomb *
+                                   frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge *
+                                   frameworkAtoms[j].charge;
+
+      energySum.ewald_exclusion += chargeProduct * (factors.potential - 1.0 / r);
+
+      const double f1 = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
+      const double f2 = chargeProduct * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
+
+      const double3 gradientI = f1 * dr;
+      if (frameworkDynamics.size() == frameworkAtoms.size())
+      {
+        frameworkDynamics[i].gradient += gradientI;
+        frameworkDynamics[j].gradient -= gradientI;
+      }
+
+      double3x3 strain{};
+      strain.ax = dr.x * gradientI.x;
+      strain.bx = dr.y * gradientI.x;
+      strain.cx = dr.z * gradientI.x;
+      strain.ay = dr.x * gradientI.y;
+      strain.by = dr.y * gradientI.y;
+      strain.cy = dr.z * gradientI.y;
+      strain.az = dr.x * gradientI.z;
+      strain.bz = dr.y * gradientI.z;
+      strain.cz = dr.z * gradientI.z;
+      hessian.strainGradient() += strain;
+
+      Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
+                                                       *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
+      if (numberOfCellDofs != 0)
+      {
+        addFlexiblePairCellDerivatives(*layout.frameworkAtomDof(i, MinimizationDofAxis::X),
+                                       *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
+      }
+    }
+  }
+}
 }  // namespace
 
 RunningEnergy Interactions::computeEwaldFourierHessian(
@@ -92,14 +305,14 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
   if (!forceField.useCharge) return energySum;
   if (!forceField.usesEwaldFourier())
   {
-    if (!forceField.omitInterInteractions)
+    // Finite-cutoff shifted methods (Wolf, DSF, mDSF, zero-dipole) have no reciprocal space. Add the
+    // position-independent self-energy and the intra-molecular exclusion / completion Hessian so the
+    // assembled second derivative is consistent with the gradient for multi-site molecules. Plain Coulomb
+    // and the Ewald real-space-only debugging mode (omitted Fourier) require no such corrections.
+    if (forceField.usesRealSpaceChargeCorrections())
     {
-      const double prefactor = Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(forceField);
-      for (const Atom& atom : moleculeAtoms)
-      {
-        const double scaledCharge = atom.scalingCoulomb * atom.charge;
-        energySum.ewald_self += prefactor * scaledCharge * scaledCharge;
-      }
+      addShiftedExclusionHessian(energySum, forceField, simulationBox, framework, moleculeData, layout, hessian,
+                                 frameworkAtoms, moleculeAtoms, moleculeDynamics, frameworkDynamics, cellLayout);
     }
     return energySum;
   }

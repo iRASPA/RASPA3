@@ -123,6 +123,17 @@ export struct ForceField
     return useCharge && chargeMethod == ChargeMethod::Ewald && !omitEwaldFourier;
   }
 
+  /// Finite-cutoff shifted-potential charge methods (Wolf, damped-shifted-force, modified-shifted-force,
+  /// zero-dipole) require the real-space per-atom self-energy and the intra-molecular exclusion / completion
+  /// of the shifted pair sum. Plain Coulomb and the Ewald method (including the real-space-only debugging mode
+  /// with omitted Fourier part) must NOT receive these corrections.
+  [[nodiscard]] bool usesRealSpaceChargeCorrections() const
+  {
+    return useCharge && (chargeMethod == ChargeMethod::Wolf || chargeMethod == ChargeMethod::DampedShiftedForce ||
+                         chargeMethod == ChargeMethod::ModifiedShiftedForce ||
+                         chargeMethod == ChargeMethod::ZeroDipole);
+  }
+
   double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
 
   std::size_t numberOfTrialDirections{ 10 };
