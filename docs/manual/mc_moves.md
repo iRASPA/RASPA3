@@ -1162,16 +1162,21 @@ Keyword: `"HybridMCProbability"` (system move), with
 `"HybridMCMoveNumberOfSteps"` for the trajectory length
 
 Performs a short molecular-dynamics trajectory as a single collective Monte
-Carlo move: all molecules move simultaneously, giving efficient collective
-relaxation while the Metropolis step removes integration errors.
+Carlo move: all molecules (and, when present, flexible-framework atoms) move
+simultaneously, giving efficient collective relaxation while the Metropolis
+step removes integration errors. Rigid and flexible adsorbates are both
+supported, in a rigid framework, a flexible framework, or with no framework.
 
 Steps:
 
 - select a random box,
-- reject immediately when `moleculeData.size() <= 1`; this count includes
-  reserved fractional molecule records,
-- draw fresh velocities for all molecules from the Maxwell-Boltzmann
-  distribution at the system temperature,
+- reject immediately when there is nothing movable: `moleculeData.size() <= 1`
+  and no flexible-framework atoms (the molecule count includes reserved
+  fractional molecule records),
+- draw fresh velocities for all movable degrees of freedom from the
+  Maxwell-Boltzmann distribution at the system temperature,
+- remove center-of-mass velocity drift for bulk fluids and flexible frameworks
+  (a rigid framework pins the lab frame, so adsorbate COM momentum is kept),
 - integrate Newton's equations of motion (velocity Verlet, NVE) for the chosen
   number of MD steps,
 - measure the drift of the conserved (total) energy

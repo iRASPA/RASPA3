@@ -443,7 +443,8 @@ reported separately at the end of the simulation.
 -   `"HybridMCProbability" : floating-point-number`\
     The probability per cycle of attempting a hybrid MC move. This move
     propagates the Hamiltonian through a short Molecular Dynamics trajectory and
-    accepts or rejects the new state based on the energy drift. Use
+    accepts or rejects the new state based on the energy drift. Rigid and
+    flexible adsorbates are supported in a rigid or flexible framework. Use
     `"HybridMCMoveNumberOfSteps"` to set the number of MD steps.
 
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\

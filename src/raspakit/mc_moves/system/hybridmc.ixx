@@ -13,15 +13,10 @@ export namespace MC_Moves
 /**
  * \brief Performs a hybrid Monte Carlo move on the system.
  *
- * This function executes a hybrid Monte Carlo (MC) move by performing the following steps:
- * - Copies necessary data such as molecule positions and thermostat settings.
- * - Initializes velocities according to the Boltzmann distribution and removes the center of mass velocity.
- * - Computes translational and rotational kinetic energies and scales velocities to match the system temperature.
- * - Updates gradients and computes the reference energy.
- * - Integrates the system's equations of motion for a specified number of hybrid MC steps.
- * - Measures the CPU time taken for integration.
- * - Calculates the energy drift and decides whether to accept or reject the move based on the energy difference.
- * - If accepted, updates the system's state with the new positions and velocities.
+ * Short NVE Velocity-Verlet trajectory used as a collective Monte Carlo proposal.
+ * Supports rigid and flexible molecules in a rigid framework, a flexible framework,
+ * or no framework. Flexible-framework atom positions and velocities are included in
+ * the trial state and restored only on acceptance.
  *
  * \param random A reference to the random number generator.
  * \param system A reference to the system on which the move is performed.
