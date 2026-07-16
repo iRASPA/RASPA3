@@ -13,6 +13,7 @@ import component;
 import double3;
 import cbmc;
 import cbmc_chain_data;
+import cbmc_interactions;
 import forcefield;
 import simulationbox;
 import interactions_framework_molecule;
@@ -55,9 +56,13 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   data.oldMoleculeAtoms = system.spanOfMolecule(oldComponent, data.selectedMoleculeOld);
   const Atom& oldStartingBead = data.oldMoleculeAtoms[oldComponentData.startingBead];
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
   const Component::GrowType newGrowType = newComponentData.growType;
   const Component::GrowType oldGrowType = oldComponentData.growType;
 
@@ -66,15 +71,15 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
 
+  const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                      system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                      system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
-      newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false, false,
-      skipBackgroundMolecule);
+      random, growContext, newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false,
+      false, skipBackgroundMolecule);
   std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -82,6 +87,21 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   if (!growData)
   {
     return false;
+  }
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+    // cut-offs, using the same background (the old molecule excluded) as the growth.
+    std::optional<RunningEnergy> correctionNew = CBMC::computeDualCutOffCorrection(
+        growContext, newComponentData, growData->atoms, skipBackgroundMolecule);
+    if (!correctionNew.has_value())
+    {
+      return false;
+    }
+
+    growData->energies += correctionNew.value();
+    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
   }
 
   data.growData = std::move(*growData);
@@ -99,16 +119,26 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::steady_clock::now();
-  data.retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
-      oldComponentData, oldGrowType, data.oldMoleculeAtoms);
+  data.retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(random, growContext, oldComponentData, oldGrowType,
+                                                                 data.oldMoleculeAtoms);
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+    // cut-offs (the old molecule excludes itself from the background through its molecule id).
+    std::optional<RunningEnergy> correctionOld =
+        CBMC::computeDualCutOffCorrection(growContext, oldComponentData, data.oldMoleculeCopy);
+    if (!correctionOld.has_value())
+    {
+      return false;
+    }
+
+    data.retraceData.energies += correctionOld.value();
+    data.retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+  }
 
   time_begin = std::chrono::steady_clock::now();
   data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(

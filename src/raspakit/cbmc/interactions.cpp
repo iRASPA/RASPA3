@@ -243,3 +243,46 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDualCutOff
 
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();
 }
+
+std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext &context, const Component &component,
+                                                               std::vector<Atom> &trialPositionSet,
+                                                               std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+{
+  const ForceField &forceField = context.forceField;
+
+  const GrowContext fullCutOffContext{context.hasExternalField,
+                                      forceField,
+                                      context.simulationBox,
+                                      context.interpolationGrids,
+                                      context.externalFieldInterpolationGrid,
+                                      context.framework,
+                                      context.frameworkAtoms,
+                                      context.moleculeAtoms,
+                                      context.beta,
+                                      forceField.cutOffFrameworkVDW,
+                                      forceField.cutOffMoleculeVDW,
+                                      forceField.cutOffCoulomb};
+
+  const GrowContext innerCutOffContext{context.hasExternalField,
+                                       forceField,
+                                       context.simulationBox,
+                                       context.interpolationGrids,
+                                       context.externalFieldInterpolationGrid,
+                                       context.framework,
+                                       context.frameworkAtoms,
+                                       context.moleculeAtoms,
+                                       context.beta,
+                                       forceField.dualCutOff,
+                                       forceField.dualCutOff,
+                                       forceField.dualCutOff};
+
+  std::optional<RunningEnergy> fullCutOffEnergy = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
+      fullCutOffContext, component, trialPositionSet, skipBackgroundMolecule);
+  if (!fullCutOffEnergy.has_value()) return std::nullopt;
+
+  std::optional<RunningEnergy> innerCutOffEnergy = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
+      innerCutOffContext, component, trialPositionSet, skipBackgroundMolecule);
+  if (!innerCutOffEnergy.has_value()) return std::nullopt;
+
+  return fullCutOffEnergy.value() - innerCutOffEnergy.value();
+}

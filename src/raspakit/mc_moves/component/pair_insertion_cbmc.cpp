@@ -11,6 +11,7 @@ import atom;
 import simulationbox;
 import cbmc;
 import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import energy_status;
@@ -81,21 +82,25 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   componentA.mc_moves_statistics.addTrial(Move::Types::PairSwapCBMC, 0);
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
+  const CBMC::GrowContext growContextA{system.hasExternalField, system.forceField, system.simulationBox,
+                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
-      componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
+      random, growContextA, componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -107,6 +112,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
+    std::optional<RunningEnergy> correctionA =
+        CBMC::computeDualCutOffCorrection(growContextA, componentA, growDataA->atoms);
+    if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    growDataA->energies += correctionA.value();
+    growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+  }
+
   const double r = R_max * random.uniform();
   const double3 direction = random.UnitSphere();
   const double3 firstBeadPositionA = growDataA->atoms[componentA.startingBead].position;
@@ -116,13 +132,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
+  const CBMC::GrowContext growContextB{system.hasExternalField, system.forceField, system.simulationBox,
+                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                       system.framework, system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA,
+                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        moleculeAtomDataWithTrialA, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentB, componentBRef.growType, selectedMoleculeB, fixedFirstBeadPositionB, 1.0, false, false);
+      random, growContextB, componentBRef, componentB, componentBRef.growType, selectedMoleculeB,
+      fixedFirstBeadPositionB, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -132,6 +150,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   if (system.insideBlockedPockets(componentBRef, std::span<const Atom>(growDataB->atoms)))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using
+    // the same background (existing molecules plus trial molecule A) as the growth.
+    std::optional<RunningEnergy> correctionB =
+        CBMC::computeDualCutOffCorrection(growContextB, componentBRef, growDataB->atoms);
+    if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    growDataB->energies += correctionB.value();
+    growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 0);
@@ -328,21 +358,25 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   componentA.mc_moves_statistics.addTrial(Move::Types::PairSwap, 0);
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
+  const CBMC::GrowContext growContextA{system.hasExternalField, system.forceField, system.simulationBox,
+                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
-      componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
+      random, growContextA, componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -354,6 +388,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
+    std::optional<RunningEnergy> correctionA =
+        CBMC::computeDualCutOffCorrection(growContextA, componentA, growDataA->atoms);
+    if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    growDataA->energies += correctionA.value();
+    growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+  }
+
   const double r = R_max * std::cbrt(random.uniform());
   const double3 direction = random.UnitSphere();
   const double3 firstBeadPositionA = growDataA->atoms[componentA.startingBead].position;
@@ -363,13 +408,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
+  const CBMC::GrowContext growContextB{system.hasExternalField, system.forceField, system.simulationBox,
+                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                       system.framework, system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA,
+                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        moleculeAtomDataWithTrialA, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentB, componentBRef.growType, selectedMoleculeB, fixedFirstBeadPositionB, 1.0, false, false);
+      random, growContextB, componentBRef, componentB, componentBRef.growType, selectedMoleculeB,
+      fixedFirstBeadPositionB, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -379,6 +426,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   if (system.insideBlockedPockets(componentBRef, std::span<const Atom>(growDataB->atoms)))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using
+    // the same background (existing molecules plus trial molecule A) as the growth.
+    std::optional<RunningEnergy> correctionB =
+        CBMC::computeDualCutOffCorrection(growContextB, componentBRef, growDataB->atoms);
+    if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    growDataB->energies += correctionB.value();
+    growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 0);

@@ -13,6 +13,7 @@ import simd_quatd;
 import simulationbox;
 import cbmc;
 import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import energy_status;
@@ -44,21 +45,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Update move counts statistics for swap insertion move
   component.mc_moves_statistics.addTrial(move, 0);
 
-  // Extract cutoff distances and growth type for the selected component
-  double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
   Component::GrowType growType = component.growType;
+
+  const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                      system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                      system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
-      component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
+      random, growContext, component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
@@ -67,6 +71,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+    // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
+    std::optional<RunningEnergy> correctionNew =
+        CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
+    if (!correctionNew.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    growData->energies += correctionNew.value();
+    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+  }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<double3> new_electric_field = std::vector<double3>(newMolecule.size());

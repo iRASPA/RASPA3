@@ -9,6 +9,7 @@ import component;
 import atom;
 import cbmc;
 import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import running_energy;
@@ -168,9 +169,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   std::vector<Atom> backgroundWithoutPair;
   backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
@@ -193,26 +198,47 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
+  const CBMC::GrowContext retraceContextB{system.hasExternalField, system.forceField, system.simulationBox,
+                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                          system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
+                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
+  const CBMC::GrowContext retraceContextA{system.hasExternalField, system.forceField, system.simulationBox,
+                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                          system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
+                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentBRef.growType, moleculeB);
+      retraceContextB, componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentA, componentA.growType, moleculeA);
+  ChainRetraceData retraceDataA =
+      CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, componentA.growType, moleculeA);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
+    // cut-offs, using the same backgrounds as the retraces.
+    std::vector<Atom> moleculeBCopy(moleculeB.begin(), moleculeB.end());
+    std::optional<RunningEnergy> correctionB =
+        CBMC::computeDualCutOffCorrection(retraceContextB, componentBRef, moleculeBCopy);
+    std::vector<Atom> moleculeACopy(moleculeA.begin(), moleculeA.end());
+    std::optional<RunningEnergy> correctionA =
+        CBMC::computeDualCutOffCorrection(retraceContextA, componentA, moleculeACopy);
+    if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    retraceDataB.energies += correctionB.value();
+    retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    retraceDataA.energies += correctionA.value();
+    retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+  }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());
@@ -396,9 +422,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used.
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   std::vector<Atom> backgroundWithoutPair;
   backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
@@ -421,26 +451,47 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
+  const CBMC::GrowContext retraceContextB{system.hasExternalField, system.forceField, system.simulationBox,
+                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                          system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
+                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
+  const CBMC::GrowContext retraceContextA{system.hasExternalField, system.forceField, system.simulationBox,
+                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                          system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
+                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundForB, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentBRef, componentBRef.growType, moleculeB);
+      retraceContextB, componentBRef, componentBRef.growType, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(
-      random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        backgroundWithoutPair, system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb},
-      componentA, componentA.growType, moleculeA);
+  ChainRetraceData retraceDataA =
+      CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, componentA.growType, moleculeA);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
+    // cut-offs, using the same backgrounds as the retraces.
+    std::vector<Atom> moleculeBCopy(moleculeB.begin(), moleculeB.end());
+    std::optional<RunningEnergy> correctionB =
+        CBMC::computeDualCutOffCorrection(retraceContextB, componentBRef, moleculeBCopy);
+    std::vector<Atom> moleculeACopy(moleculeA.begin(), moleculeA.end());
+    std::optional<RunningEnergy> correctionA =
+        CBMC::computeDualCutOffCorrection(retraceContextA, componentA, moleculeACopy);
+    if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
+    retraceDataB.energies += correctionB.value();
+    retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    retraceDataA.energies += correctionA.value();
+    retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+  }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());

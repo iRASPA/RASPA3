@@ -79,4 +79,16 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(
     const GrowContext &context, const Component &component, std::vector<Atom> &trialPositionSet,
     std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+
+/// Dual cut-off correction of a grown or retraced configuration: the external (external-field,
+/// framework-molecule, and inter-molecular) energy of 'trialPositionSet' evaluated at the full
+/// cut-offs minus the same energy evaluated at the inner cut-off used during growth. The passed
+/// context supplies the background (framework and molecule atoms); its cut-offs are ignored.
+/// Folding the correction into the growth or retrace results (energies += correction,
+/// RosenbluthWeight *= exp(-beta * correction)) makes the configuration behave as if it had been
+/// grown at the full cut-offs. Returns std::nullopt when the configuration overlaps at the full
+/// cut-offs.
+[[nodiscard]] std::optional<RunningEnergy> computeDualCutOffCorrection(
+    const GrowContext &context, const Component &component, std::vector<Atom> &trialPositionSet,
+    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 }  // namespace CBMC

@@ -13,6 +13,7 @@ import simd_quatd;
 import simulationbox;
 import cbmc;
 import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import energy_status;
@@ -74,10 +75,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // computed
     // (2) Biased: a new fractional molecule is grown with lambda_new = epsilon
 
-    // Retrieve cutoff distances for interactions
-    double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-    double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-    double cutOffCoulomb = system.forceField.cutOffCoulomb;
+    // Determine cutoff distances based on whether dual cutoff is used.
+    double cutOffFrameworkVDW =
+        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+    double cutOffMoleculeVDW =
+        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+    double cutOffCoulomb =
+        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
     // Get the grow type for the component
     Component::GrowType growType = component.growType;
 
@@ -193,14 +197,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Grow molecule with newLambda (trial global molecule id, not a storage index)
     std::size_t newMolecule = system.numberOfMolecules();
 
+    const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                        system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                        system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random,
-        CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                          system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                          system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                          cutOffCoulomb},
-        component, selectedComponent, growType, newMolecule, newLambda,
+        random, growContext, component, selectedComponent, growType, newMolecule, newLambda,
         system.components[selectedComponent].lambdaGC.dUdlambdaGroupId, true);
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -212,6 +216,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
+
+    if (system.forceField.useDualCutOff)
+    {
+      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+      // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
+      std::optional<RunningEnergy> correctionNew =
+          CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
+      if (!correctionNew.has_value())
+      {
+        // Reject move and restore the fractional molecule
+        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
+      }
+
+      growData->energies += correctionNew.value();
+      growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
     }
 
     // Check if the new molecule is inside blocked pockets
@@ -390,10 +412,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
     {
-      // Retrieve cutoff distances for interactions
-      double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-      double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-      double cutOffCoulomb = system.forceField.cutOffCoulomb;
+      // Determine cutoff distances based on whether dual cutoff is used.
+      double cutOffFrameworkVDW =
+          system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+      double cutOffMoleculeVDW =
+          system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+      double cutOffCoulomb =
+          system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
       Component::GrowType growType = component.growType;
 
       // Select a random integer molecule to be fractional
@@ -407,18 +432,34 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       std::vector<Atom> oldFractionalMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
       std::vector<Atom> oldNewFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
 
+      const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                             system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                             system.framework, system.spanOfFrameworkAtoms(),
+                                             system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW,
+                                             cutOffMoleculeVDW, cutOffCoulomb};
+
       // Retrace the existing fractional molecule
       time_begin = std::chrono::steady_clock::now();
-      ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-          random,
-          CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                            system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                            system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                            cutOffCoulomb},
-          component, growType, fractionalMolecule);
+      ChainRetraceData retraceData =
+          CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, growType, fractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+
+      if (system.forceField.useDualCutOff)
+      {
+        // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+        // cut-offs, so that Rosenbluth weight and energies behave as if retraced at the full cut-offs.
+        std::optional<RunningEnergy> correctionOld =
+            CBMC::computeDualCutOffCorrection(retraceContext, component, oldFractionalMolecule);
+        if (!correctionOld.has_value())
+        {
+          return {std::nullopt, double3(0.0, 1.0, 0.0)};
+        }
+
+        retraceData.energies += correctionOld.value();
+        retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+      }
 
       // Compute Ewald energy difference for the retraced molecule
       time_begin = std::chrono::steady_clock::now();

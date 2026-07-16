@@ -164,8 +164,20 @@ explicitly say “integer” use only whole molecules.
 CBMC group growth is in ascending component index and stoichiometric occurrence,
 adding every grown molecule to the next background. Group retracing uses the
 matching nested reverse background: member \f$k\f$ sees earlier members but not
-later members. Ewald, tail, polarization, and (for reinsertion) dual-cutoff
-terms that are outside growth are explicit multiplicative corrections.
+later members. Ewald, tail, and polarization terms that are outside growth are
+explicit multiplicative corrections.
+
+When the dual cut-off scheme is enabled, **every** CBMC growth and retrace uses
+the (shorter) dual cut-off, and each grown or retraced configuration is then
+corrected to the full cut-offs: the external (external-field, framework, and
+inter-molecular) energy difference between the full and the growth cut-offs,
+\f$\Delta U_\mathrm{dual}=U_\mathrm{full}-U_\mathrm{growth}\f$, is added to the
+configuration's energy and its Rosenbluth weight is multiplied by
+\f$e^{-\beta\,\Delta U_\mathrm{dual}}\f$ (using the same background as the
+growth/retrace). A configuration that overlaps at the full cut-offs rejects the
+move. All acceptance rules below are therefore written in terms of these
+full-cut-off-equivalent Rosenbluth weights and energies; no separate dual-cutoff
+factor appears.
 
 ----------------------------------------------------------------------------------
 
@@ -390,8 +402,7 @@ Steps:
 - retrace the old configuration with the same procedure (using the actual old
   positions as one of the trial sets) to obtain the old Rosenbluth weight
   \f$W(\mathbf{o})\f$,
-- compute reciprocal-Ewald and enabled polarization changes, plus the
-  non-overlapping real-space correction when dual-cutoff growth is enabled,
+- compute reciprocal-Ewald and enabled polarization changes,
 - accept or reject based on the ratio of Rosenbluth weights.
 
 Acceptance rule:
@@ -399,14 +410,10 @@ Acceptance rule:
 \f[
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
 \frac{W(\mathbf{n})}{W(\mathbf{o})}
-e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol}
-                 +\Delta U_\mathrm{dual})}\right)
+e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol})}\right)
 \f]
 
-Here \f$\Delta U_\mathrm{dual}=[U_\mathrm{full}(\mathbf n)-
-U_\mathrm{growth}(\mathbf n)]-[U_\mathrm{full}(\mathbf o)-
-U_\mathrm{growth}(\mathbf o)]\f$ when dual cutoff is enabled, and zero
-otherwise. There is no separate tail factor on this move. The old molecule is
+There is no separate tail factor on this move. The old molecule is
 excluded from the new-growth background; the new molecule is excluded while
 retracing the old. Coordinates, Ewald sums, and polarization fields commit
 only after acceptance.
@@ -441,16 +448,15 @@ Steps:
 - regrow all non-fixed atoms with CBMC starting from the fixed atoms,
   accumulating the new Rosenbluth weight \f$W(\mathbf{n})\f$,
 - retrace the old positions of the regrown atoms to obtain \f$W(\mathbf{o})\f$,
-- apply the same reciprocal-Ewald, polarization, and optional dual-cutoff
-  corrections as full reinsertion and accept or reject.
+- apply the same reciprocal-Ewald and polarization corrections as full
+  reinsertion and accept or reject.
 
 Acceptance rule:
 
 \f[
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
 \frac{W(\mathbf{n})}{W(\mathbf{o})}
-e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol}
-                 +\Delta U_\mathrm{dual})}\right)
+e^{-\beta(\Delta U_\mathrm{Ewald}+\Delta U_\mathrm{pol})}\right)
 \f]
 
 The definitions and commit timing of these correction terms are identical to

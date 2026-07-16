@@ -12,6 +12,7 @@ import simulationbox;
 import cbmc;
 import molecule;
 import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import forcefield;
@@ -235,9 +236,13 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     }
   }
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC growth).
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   for (std::size_t componentId = 0; componentId < stoichiometry.size(); ++componentId)
   {
@@ -253,13 +258,27 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       std::optional<ChainGrowData> growData;
       if (useCBMC)
       {
-        growData = CBMC::growMoleculeSwapInsertion(
-            random,
-            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                              system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
-                              cutOffMoleculeVDW, cutOffCoulomb},
-            component, componentId, component.growType, selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
+        const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                            system.framework, system.spanOfFrameworkAtoms(), background, system.beta,
+                                            cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+        growData = CBMC::growMoleculeSwapInsertion(random, growContext, component, componentId, component.growType,
+                                                   selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
+
+        if (growData && system.forceField.useDualCutOff)
+        {
+          // Dual cut-off scheme: correct the grown molecule from the inner cut-off to the full
+          // cut-offs, using the same background (previously grown group members included) as the growth.
+          std::optional<RunningEnergy> correctionNew =
+              CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
+          if (!correctionNew.has_value())
+          {
+            return std::nullopt;
+          }
+
+          growData->energies += correctionNew.value();
+          growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+        }
       }
       else
       {
@@ -319,9 +338,13 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     extraExcludedGlobalMoleculeIds.insert(system.moleculeIndexOfComponent(componentId, moleculeId));
   }
 
-  const double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC retrace).
+  const double cutOffFrameworkVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+  const double cutOffMoleculeVDW =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+  const double cutOffCoulomb =
+      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
   // Detailed balance: the reverse move grows the group sequentially in the order of 'selectedMolecules'
   // (growMoleculeGroupInsertion), where molecule k only sees the group members 0..k-1. The retrace must
@@ -353,19 +376,34 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     ChainRetraceData retraceData{RunningEnergy{}, 1.0, 0.0};
     if (useCBMC)
     {
+      const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
+                                             system.interpolationGrids, system.externalFieldInterpolationGrid,
+                                             system.framework, system.spanOfFrameworkAtoms(), background, system.beta,
+                                             cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
       try
       {
-        retraceData = CBMC::retraceMoleculeSwapDeletion(
-            random,
-            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                              system.spanOfFrameworkAtoms(), background, system.beta, cutOffFrameworkVDW,
-                              cutOffMoleculeVDW, cutOffCoulomb},
-            component, component.growType, moleculeAtoms);
+        retraceData =
+            CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, component.growType, moleculeAtoms);
       }
       catch (const std::runtime_error&)
       {
         return std::nullopt;
+      }
+
+      if (system.forceField.useDualCutOff)
+      {
+        // Dual cut-off scheme: correct the retraced molecule from the inner cut-off to the full
+        // cut-offs, using the same nested background as the retrace.
+        std::vector<Atom> moleculeCopy(moleculeAtoms.begin(), moleculeAtoms.end());
+        std::optional<RunningEnergy> correctionOld =
+            CBMC::computeDualCutOffCorrection(retraceContext, component, moleculeCopy);
+        if (!correctionOld.has_value())
+        {
+          return std::nullopt;
+        }
+
+        retraceData.energies += correctionOld.value();
+        retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
       }
     }
 

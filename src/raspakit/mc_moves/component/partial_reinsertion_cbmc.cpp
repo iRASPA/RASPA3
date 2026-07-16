@@ -130,30 +130,25 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
-  double correctionFactorDualCutOff = 1.0;
-  std::optional<RunningEnergy> energyNew;
-  std::optional<RunningEnergy> energyOld;
   if (system.forceField.useDualCutOff)
   {
-    // If dual cutoff is used, compute correction factor due to non-overlapping energies.
-    const CBMC::GrowContext context{system.hasExternalField,
-                                    system.forceField,
-                                    system.simulationBox,
-                                    system.interpolationGrids,
-                                    system.externalFieldInterpolationGrid,
-                                    system.framework,
-                                    system.spanOfFrameworkAtoms(),
-                                    system.spanOfMoleculeAtoms(),
-                                    system.beta,
-                                    system.forceField.cutOffFrameworkVDW,
-                                    system.forceField.cutOffMoleculeVDW,
-                                    system.forceField.cutOffCoulomb};
+    // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to
+    // the full cut-offs, so that Rosenbluth weights and energies behave as if grown at the full
+    // cut-offs.
+    const CBMC::GrowContext context{system.hasExternalField, system.forceField, system.simulationBox,
+                                    system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                    cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
-    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(context, component, growData->atoms);
-    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(context, component, old_molecule);
-    correctionFactorDualCutOff =
-        std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
-                                 (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
+    std::optional<RunningEnergy> correctionNew =
+        CBMC::computeDualCutOffCorrection(context, component, growData->atoms);
+    std::optional<RunningEnergy> correctionOld = CBMC::computeDualCutOffCorrection(context, component, old_molecule);
+    if (!correctionNew.has_value() || !correctionOld.has_value()) return std::nullopt;
+
+    growData->energies += correctionNew.value();
+    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    retraceData.energies += correctionOld.value();
+    retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
   }
 
   std::vector<double3> electricFieldNeighborDelta;
@@ -196,8 +191,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
 
   // Apply Metropolis acceptance criterion.
-  if (random.uniform() <
-      correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
+  if (random.uniform() < correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
@@ -218,11 +212,6 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
 
     molecule = growData->molecule;
-
-    if (system.forceField.useDualCutOff)
-    {
-      return (energyNew.value() - energyOld.value()) + energyFourierDifference + polarizationDifference;
-    }
 
     return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
   };
