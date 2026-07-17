@@ -349,7 +349,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
+  double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
@@ -678,7 +678,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
+  double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 

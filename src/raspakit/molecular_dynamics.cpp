@@ -815,7 +815,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
-          std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+          std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
 
       if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
       {
@@ -1004,7 +1004,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
-          std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+          std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
     }
 
     for (System& system : systems)
