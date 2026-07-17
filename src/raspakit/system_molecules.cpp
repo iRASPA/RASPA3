@@ -660,7 +660,10 @@ std::pair<Molecule, std::vector<Atom>> System::equilibratedIdealGasMoleculeRando
 std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
 {
   std::vector<Molecule> scaledMolecules(moleculeData);
-  std::vector<Atom> scaledAtoms(atomData);
+  // Molecule atoms only (framework atoms are not scaled by center-of-mass volume moves); this matches the
+  // local Molecule::atomIndex convention and the molecule-atom spans expected by the energy routines.
+  const std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+  std::vector<Atom> scaledAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
 
   for (Molecule& molecule : scaledMolecules)
   {
@@ -692,7 +695,10 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
                                                                                         const SimulationBox& newBox) const
 {
   std::vector<Molecule> scaledMolecules(moleculeData);
-  std::vector<Atom> scaledAtoms(atomData);
+  // Molecule atoms only (framework atoms are not scaled by center-of-mass volume moves); this matches the
+  // local Molecule::atomIndex convention and the molecule-atom spans expected by the energy routines.
+  const std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+  std::vector<Atom> scaledAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
 
   for (Molecule& molecule : scaledMolecules)
   {

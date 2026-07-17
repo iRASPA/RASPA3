@@ -93,4 +93,24 @@ PolarizationDerivatives computePolarizationDerivatives(const System& system, std
                                                        std::span<const double3x3> strainBases = {},
                                                        bool computeHessian = true,
                                                        bool molecularCenterOfMassStrain = false);
+
+/**
+ * Completes the molecular-pressure polarization contribution from the field/strain accumulators that the
+ * real-space Coulomb strain loops gathered (see Interactions::PolarizationFieldStrain in the pair kernel):
+ * adds the Ewald reciprocal field of the rigid fixed framework (and its cell-strain response) and contracts
+ * the per-atom field E_A and field-strain tensor dE_A/dF into
+ *   energy         = -1/2 sum_A alpha_A |E_A|^2,
+ *   strain[j][m]   = dU/dF[j][m] = -sum_A alpha_A E_A . dE_A/dF[j][m]     (unsymmetrized),
+ * with the deformation gradient F acting through molecular center-of-mass scaling, matching the COM-scaling
+ * volume move and System::computeMolecularPressure (which symmetrizes the returned tensor at the end).
+ *
+ * All spans are per molecule atom: `field` and `fieldStrain` are the accumulators (mutated by the reciprocal
+ * pass), `centerOfMassOffset` holds sigma_A = r_A - COM(molecule of A), and `polarizability` the per-atom
+ * polarizability in internal units (zero entries are skipped as field points).
+ */
+std::pair<double, double3x3> computePolarizationMolecularPressureStrain(const System& system,
+                                                                        std::span<double3> field,
+                                                                        std::span<std::array<double3, 9>> fieldStrain,
+                                                                        std::span<const double3> centerOfMassOffset,
+                                                                        std::span<const double> polarizability);
 }  // namespace Interactions

@@ -22,6 +22,7 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 import interactions_polarization_derivatives;
+import minimization_cell_layout;
 import mc_moves_translation;
 import connectivity_table;
 import intra_molecular_potentials;
@@ -341,4 +342,69 @@ TEST(wolf_polarization, molecular_pressure_includes_polarization_strain)
 
   EXPECT_NEAR(analyticExcessPressure, -dUdV, tolerance)
       << "Polarizable molecular excess pressure disagrees with -dU/dV";
+}
+
+// The fused molecular-pressure polarization path (field and field-strain gathered inside the real-space
+// Coulomb strain loops, completed with the Ewald reciprocal framework field) must reproduce the reference
+// implementation computePolarizationDerivatives with molecular COM-scaling strain bases. Exercises the
+// framework real-space gather and the reciprocal strain response (including the rigid-molecule phase
+// terms), which the Wolf-based tests above cannot reach.
+TEST(ewald_polarization, molecular_pressure_polarization_matches_reference_derivatives)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.useCharge = true;
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {10}, 5);
+  system.precomputeTotalRigidEnergy();
+
+  // Reference polarization energy and Voigt cellGradient (molecular COM scaling, first order only).
+  const std::size_t numberOfFrameworkAtoms = system.spanOfFrameworkAtoms().size();
+  const std::size_t numberOfMoleculeAtoms = system.spanOfMoleculeAtoms().size();
+  std::vector<std::uint8_t> movable(numberOfFrameworkAtoms + numberOfMoleculeAtoms, 0);
+  for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom) movable[numberOfFrameworkAtoms + atom] = 1;
+  const CellMinimizationLayout cellLayout =
+      makeCellMinimizationLayout(CellMinimizationType::Regular, MonoclinicAngleType::Beta);
+  const Interactions::PolarizationDerivatives reference = Interactions::computePolarizationDerivatives(
+      system, movable, cellLayout.bases, /*computeHessian=*/false, /*molecularCenterOfMassStrain=*/true);
+  EXPECT_NE(reference.energy, 0.0);
+
+  // Regular Voigt order: xx, xy, xz, yy, yz, zz; shear bases carry the conventional 1/2 factor.
+  double3x3 referenceStrain{};
+  referenceStrain.ax = reference.cellGradient[0];
+  referenceStrain.ay = referenceStrain.bx = reference.cellGradient[1];
+  referenceStrain.az = referenceStrain.cx = reference.cellGradient[2];
+  referenceStrain.by = reference.cellGradient[3];
+  referenceStrain.bz = referenceStrain.cy = reference.cellGradient[4];
+  referenceStrain.cz = reference.cellGradient[5];
+
+  const std::pair<EnergyStatus, double3x3> withPolarization = system.computeMolecularPressure();
+  EXPECT_NEAR(withPolarization.first.polarizationEnergy.energy, reference.energy,
+              1e-10 * std::max(1.0, std::abs(reference.energy)));
+
+  // Isolate the polarization strain as the difference with a polarization-free run; computeMolecularPressure
+  // negates the accumulated strain tensor, so the difference must equal -referenceStrain (already symmetric).
+  System systemWithoutPolarization = system;
+  systemWithoutPolarization.forceField.computePolarization = false;
+  const std::pair<EnergyStatus, double3x3> withoutPolarization = systemWithoutPolarization.computeMolecularPressure();
+
+  const std::array<std::pair<double, double>, 9> entries{
+      std::pair{withPolarization.second.ax - withoutPolarization.second.ax, -referenceStrain.ax},
+      std::pair{withPolarization.second.ay - withoutPolarization.second.ay, -referenceStrain.ay},
+      std::pair{withPolarization.second.az - withoutPolarization.second.az, -referenceStrain.az},
+      std::pair{withPolarization.second.bx - withoutPolarization.second.bx, -referenceStrain.bx},
+      std::pair{withPolarization.second.by - withoutPolarization.second.by, -referenceStrain.by},
+      std::pair{withPolarization.second.bz - withoutPolarization.second.bz, -referenceStrain.bz},
+      std::pair{withPolarization.second.cx - withoutPolarization.second.cx, -referenceStrain.cx},
+      std::pair{withPolarization.second.cy - withoutPolarization.second.cy, -referenceStrain.cy},
+      std::pair{withPolarization.second.cz - withoutPolarization.second.cz, -referenceStrain.cz}};
+  for (const auto& [fused, expected] : entries)
+  {
+    EXPECT_NEAR(fused, expected, 1e-8 * std::max({1.0, std::abs(fused), std::abs(expected)}))
+        << "Fused polarization pressure strain disagrees with computePolarizationDerivatives";
+  }
 }

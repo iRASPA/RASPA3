@@ -13,6 +13,7 @@ import energy_status;
 import simulationbox;
 import forcefield;
 import component;
+import interactions_pair_kernel;
 
 export namespace Interactions
 {
@@ -200,11 +201,15 @@ void computeInterMolecularGradientMolecule(const ForceField& forceField, const S
  * \param components The list of components in the system.
  * \param simulationBox The simulation box containing the atoms.
  * \param moleculeAtoms A span of atoms for which to compute energies, forces, and strain derivatives.
+ * \param polarizationGather Optional accumulator: when non-null the Coulomb pair loop additionally
+ *        gathers the polarization field and its strain response (see PolarizationFieldStrain); the
+ *        caller must only pass it when inter-molecular polarization is active.
  * \return A pair containing the energy status and the strain derivative tensor.
  */
 std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
     const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
-    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept;
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+    const PolarizationFieldStrain* polarizationGather = nullptr) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric potential for each atom.

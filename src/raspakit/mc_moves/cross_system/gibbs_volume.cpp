@@ -203,14 +203,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculeData.begin());
-    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomData.begin());
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.spanOfMoleculeAtoms().begin());
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
 
     systemB.mc_moves_statistics.addAccepted(move);
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculeData.begin());
-    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomData.begin());
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.spanOfMoleculeAtoms().begin());
     Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
     return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);

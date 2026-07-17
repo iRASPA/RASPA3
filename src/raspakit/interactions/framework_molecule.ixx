@@ -16,6 +16,7 @@ import forcefield;
 import framework;
 import component;
 import interpolation_energy_grid;
+import interactions_pair_kernel;
 
 export namespace Interactions
 {
@@ -174,6 +175,10 @@ RunningEnergy computeFrameworkMoleculeGradient(
  * \param simulationBox The simulation box containing periodic boundary conditions.
  * \param frameworkAtoms A span of atoms representing the framework; their gradients will be updated.
  * \param moleculeAtoms A span of atoms representing the molecule; their gradients will be updated.
+ * \param polarizationGather Optional accumulator: when non-null the real-space Coulomb pair loop additionally
+ *        gathers the polarization field of the framework charges and its strain response (see
+ *        PolarizationFieldStrain). Molecule atoms whose energy comes from an interpolation grid still gather
+ *        the field through an explicit framework walk, since the field is never grid-interpolated.
  * \return A pair consisting of EnergyStatus containing the interaction energies, and a double3x3 tensor representing
  * the strain derivative.
  */
@@ -181,7 +186,8 @@ RunningEnergy computeFrameworkMoleculeGradient(
     const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics) noexcept;
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+    const PolarizationFieldStrain *polarizationGather = nullptr) noexcept;
 
 /**
  * \brief Computes the electric potential at molecule atom positions due to the framework atoms.

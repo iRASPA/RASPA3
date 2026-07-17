@@ -117,7 +117,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     system.simulationBox = newBox;
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
-    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositions.second.begin(), newPositions.second.end(), system.spanOfMoleculeAtoms().begin());
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
@@ -225,7 +226,8 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
 
     system.simulationBox = newBox;
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
-    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositions.second.begin(), newPositions.second.end(), system.spanOfMoleculeAtoms().begin());
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 

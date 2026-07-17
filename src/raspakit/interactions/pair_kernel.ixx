@@ -119,6 +119,62 @@ inline void forEachFrameworkMoleculePair(const ForceField& forceField, const Sim
 }
 
 /**
+ * \brief Optional side-channel that lets the real-space Coulomb strain loops also gather the
+ * polarization electric field and its cell-strain response for the molecular pressure.
+ *
+ * All spans are indexed by molecule atom (framework atoms act as field sources, never as field
+ * points). For every real-space Coulomb pair the strain loops add the source contribution to the
+ * field E_A and to the tensor
+ *   fieldStrain_A[3*i + j][m] = dE_A[i] / dF[j][m],
+ * the derivative of the field with respect to the cell deformation gradient F under molecular
+ * center-of-mass scaling: separations deform with the COM-COM arm delta = d - sigma_A + sigma_source
+ * (sigma = position - mass-weighted COM of the owning molecule; zero for framework sources). Atoms
+ * with zero polarizability are skipped as field points.
+ *
+ * The caller completes the field with the Ewald reciprocal fixed-framework contribution and
+ * contracts field and fieldStrain into the polarization energy -1/2 sum_A alpha_A |E_A|^2 and its
+ * strain derivative -sum_A alpha_A E_A . dE_A/dF (Interactions::computePolarizationMolecularPressureStrain).
+ */
+struct PolarizationFieldStrain
+{
+  std::span<double3> field;                       ///< E_A per molecule atom.
+  std::span<std::array<double3, 9>> fieldStrain;  ///< dE_A[i]/dF[j][m] stored at [3*i+j][m].
+  std::span<const double3> centerOfMassOffset;    ///< sigma_A = r_A - COM(molecule of A), per molecule atom.
+  std::span<const double> polarizability;         ///< Internal units; zero skips the field point.
+};
+
+/**
+ * \brief Adds one real-space Coulomb source contribution to the gathered polarization field.
+ *
+ * d = fieldPoint - source (minimum image), delta = d - sigma_fieldPoint + sigma_source, and the
+ * derivative factors are the *unit-charge* Coulomb factors of the pair; sourceCharge is the scaled
+ * charge (scalingCoulomb * charge) of the source atom.
+ */
+inline void accumulatePolarizationFieldStrain(const PolarizationFieldStrain& gather, std::size_t index,
+                                              double sourceCharge, const double3& d, const double3& delta,
+                                              double firstDerivativeFactor, double secondDerivativeFactor)
+{
+  if (gather.polarizability[index] == 0.0) return;
+
+  // E_A += -q_source * firstDerivativeFactor * d.
+  gather.field[index] -= sourceCharge * firstDerivativeFactor * d;
+
+  // M[i][j] = -q (f1 delta_ij + f2 d_i d_j) is dE_A/dd of this source; under strain the separation
+  // moves with the COM arm, dd/dF[j][m] = e_j delta_m, so dE_A[i]/dF[j][m] += M[i][j] delta_m.
+  std::array<double3, 9>& tensor = gather.fieldStrain[index];
+  const std::array<double, 3> dComponents = {d.x, d.y, d.z};
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    for (std::size_t j = 0; j < 3; ++j)
+    {
+      const double entry = -sourceCharge * (secondDerivativeFactor * dComponents[i] * dComponents[j] +
+                                            (i == j ? firstDerivativeFactor : 0.0));
+      tensor[3 * i + j] += entry * delta;
+    }
+  }
+}
+
+/**
  * \brief Accumulates the strain-derivative contribution gradient (x) displacement into the tensor.
  *
  * Column layout matches the existing strain conventions: tensor.{a,b,c}{x,y,z} +=

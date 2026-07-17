@@ -80,6 +80,69 @@ double3 unitAxis(std::size_t axis)
   e[axis] = 1.0;
   return e;
 }
+
+// Reciprocal-space data that does not depend on the field point: a surviving wave vector, its Gaussian
+// weight, and the fixed-framework structure factor S(k) = sum_f q_f exp(i k.r_f).
+struct PrecomputedReciprocal
+{
+  double3 k{};
+  double weight{};  // 2 * temp
+  double structureReal{};
+  double structureImaginary{};
+};
+
+// Enumerates the Ewald wave vectors and precomputes S(k) once; the per-field-point loops then only
+// evaluate their own phase against the cached structure factor.
+std::vector<PrecomputedReciprocal> precomputeFixedFrameworkReciprocal(const ForceField& forceField,
+                                                                      const SimulationBox& box,
+                                                                      std::span<const Atom> frameworkAtoms)
+{
+  const double alphaSquared = forceField.EwaldAlpha * forceField.EwaldAlpha;
+  const std::size_t reciprocalIntegerCutOffSquared = forceField.reciprocalIntegerCutOffSquared;
+  const double reciprocalCutOffSquared = forceField.reciprocalCutOffSquared;
+  const double3x3 inverseCell = box.inverseCell;
+  const double3 aStar(inverseCell.ax, inverseCell.bx, inverseCell.cx);
+  const double3 bStar(inverseCell.ay, inverseCell.by, inverseCell.cy);
+  const double3 cStar(inverseCell.az, inverseCell.bz, inverseCell.cz);
+  constexpr double twoPi = 2.0 * std::numbers::pi;
+  const double prefactor = Units::CoulombicConversionFactor * (twoPi / box.volume);
+  const int kxMax = static_cast<int>(forceField.numberOfWaveVectors.x);
+  const int kyMax = static_cast<int>(forceField.numberOfWaveVectors.y);
+  const int kzMax = static_cast<int>(forceField.numberOfWaveVectors.z);
+
+  std::vector<PrecomputedReciprocal> precomputedReciprocal;
+  for (int kx = 0; kx <= kxMax; ++kx)
+  {
+    const double factor = (kx == 0) ? prefactor : 2.0 * prefactor;
+    for (int ky = -kyMax; ky <= kyMax; ++ky)
+    {
+      for (int kz = -kzMax; kz <= kzMax; ++kz)
+      {
+        const std::size_t integerSquared = static_cast<std::size_t>(kx * kx + ky * ky + kz * kz);
+        if (integerSquared == 0uz || integerSquared > reciprocalIntegerCutOffSquared) continue;
+        const double3 kVector = twoPi * (static_cast<double>(kx) * aStar + static_cast<double>(ky) * bStar +
+                                         static_cast<double>(kz) * cStar);
+        const double kSquared = double3::dot(kVector, kVector);
+        if (kSquared >= reciprocalCutOffSquared) continue;
+        const double temp = factor * std::exp(-0.25 * kSquared / alphaSquared) / kSquared;
+
+        double structureReal = 0.0;
+        double structureImaginary = 0.0;
+        for (std::size_t f = 0; f < frameworkAtoms.size(); ++f)
+        {
+          const double charge = frameworkAtoms[f].scalingCoulomb * frameworkAtoms[f].charge;
+          const double argument = double3::dot(kVector, frameworkAtoms[f].position);
+          structureReal += charge * std::cos(argument);
+          structureImaginary += charge * std::sin(argument);
+        }
+
+        precomputedReciprocal.push_back(PrecomputedReciprocal{
+            .k = kVector, .weight = 2.0 * temp, .structureReal = structureReal, .structureImaginary = structureImaginary});
+      }
+    }
+  }
+  return precomputedReciprocal;
+}
 }  // namespace
 
 Interactions::PolarizationDerivatives Interactions::computePolarizationDerivatives(
@@ -189,17 +252,6 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
 
   const double alpha = forceField.EwaldAlpha;
   const double alphaSquared = alpha * alpha;
-  const std::size_t reciprocalIntegerCutOffSquared = forceField.reciprocalIntegerCutOffSquared;
-  const double reciprocalCutOffSquared = forceField.reciprocalCutOffSquared;
-  const double3x3 inverseCell = box.inverseCell;
-  const double3 aStar(inverseCell.ax, inverseCell.bx, inverseCell.cx);
-  const double3 bStar(inverseCell.ay, inverseCell.by, inverseCell.cy);
-  const double3 cStar(inverseCell.az, inverseCell.bz, inverseCell.cz);
-  constexpr double twoPi = 2.0 * std::numbers::pi;
-  const double prefactor = Units::CoulombicConversionFactor * (twoPi / box.volume);
-  const int kxMax = static_cast<int>(forceField.numberOfWaveVectors.x);
-  const int kyMax = static_cast<int>(forceField.numberOfWaveVectors.y);
-  const int kzMax = static_cast<int>(forceField.numberOfWaveVectors.z);
 
   // Accumulate a Cartesian block into both the minimum-image-folded Hessian (Gamma / normal modes) and
   // the image-resolved Hessian (phonon force constants). The field point sits in the home cell, so the
@@ -213,6 +265,10 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
     Mat3& imageDestination = result.imageHessianBlocks[latticeVector][{i, j}];
     for (std::size_t index = 0; index < 9; ++index) imageDestination[index] += contribution[index];
   };
+
+  const std::vector<PrecomputedReciprocal> precomputedReciprocal =
+      useReciprocal ? precomputeFixedFrameworkReciprocal(forceField, box, frameworkAtoms)
+                    : std::vector<PrecomputedReciprocal>{};
 
   std::vector<RealSource> sources;
   std::vector<ReciprocalTerm> reciprocalTerms;
@@ -245,7 +301,27 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
       const double rr = double3::dot(d, d);
       if (rr >= cutOffChargeSquared) return;
       const double r = std::sqrt(rr);
-      const Potentials::PairDerivatives<3> factors = Potentials::potentialCoulomb<3>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+      // The third-derivative factor is only consumed by the Hessian / second-strain blocks; the
+      // molecular-pressure path (computeHessian == false) needs derivative orders <= 2 only.
+      double firstDerivativeFactor;
+      double secondDerivativeFactor;
+      double thirdDerivativeFactor;
+      if (wantHessian)
+      {
+        const Potentials::PairDerivatives<3> factors =
+            Potentials::potentialCoulomb<3>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        firstDerivativeFactor = factors.firstDerivativeFactor;
+        secondDerivativeFactor = factors.secondDerivativeFactor;
+        thirdDerivativeFactor = factors.thirdDerivativeFactor;
+      }
+      else
+      {
+        const Potentials::PairDerivatives<2> factors =
+            Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        firstDerivativeFactor = factors.firstDerivativeFactor;
+        secondDerivativeFactor = factors.secondDerivativeFactor;
+        thirdDerivativeFactor = 0.0;
+      }
 
       // Lattice vector of the source image nearest the (home-cell) field point: R = round((raw - d) / cell).
       const double3 latticeCartesian = rawSeparation - d;
@@ -255,15 +331,15 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
                                static_cast<std::int32_t>(std::llround(fractional.z)));
 
       // E_A += -q_source * firstDerivativeFactor * d.
-      field -= sourceCharge * factors.firstDerivativeFactor * d;
+      field -= sourceCharge * firstDerivativeFactor * d;
 
       // T = q_source * (firstDerivativeFactor * I + secondDerivativeFactor * d (x) d) = q_source * H_phi.
       if (wantHessian || wantGradient)
       {
-        Mat3 tensor = identityScaled(sourceCharge * factors.firstDerivativeFactor);
+        Mat3 tensor = identityScaled(sourceCharge * firstDerivativeFactor);
         const Mat3 dd = outer(d, d);
         for (std::size_t index = 0; index < 9; ++index)
-          tensor[index] += sourceCharge * factors.secondDerivativeFactor * dd[index];
+          tensor[index] += sourceCharge * secondDerivativeFactor * dd[index];
 
         // dE_A/dr_A gets -T from every source.
         for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] -= tensor[index];
@@ -278,9 +354,9 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
                                    .latticeVector = latticeVector,
                                    .offset = sourceOffset,
                                    .charge = sourceCharge,
-                                   .firstDerivativeFactor = factors.firstDerivativeFactor,
-                                   .secondDerivativeFactor = factors.secondDerivativeFactor,
-                                   .thirdDerivativeFactor = factors.thirdDerivativeFactor});
+                                   .firstDerivativeFactor = firstDerivativeFactor,
+                                   .secondDerivativeFactor = secondDerivativeFactor,
+                                   .thirdDerivativeFactor = thirdDerivativeFactor});
     };
 
     if (includeInter)
@@ -300,50 +376,22 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
 
     if (useReciprocal)
     {
-      for (int kx = 0; kx <= kxMax; ++kx)
+      for (const PrecomputedReciprocal& entry : precomputedReciprocal)
       {
-        const double factor = (kx == 0) ? prefactor : 2.0 * prefactor;
-        for (int ky = -kyMax; ky <= kyMax; ++ky)
+        const double argumentA = double3::dot(entry.k, positionA);
+        const double cosA = std::cos(argumentA);
+        const double sinA = std::sin(argumentA);
+        const double fValue = sinA * entry.structureReal - cosA * entry.structureImaginary;
+        const double hValue = cosA * entry.structureReal + sinA * entry.structureImaginary;
+
+        field += entry.weight * fValue * entry.k;
+        if (wantHessian || wantGradient)
         {
-          for (int kz = -kzMax; kz <= kzMax; ++kz)
-          {
-            const std::size_t integerSquared = static_cast<std::size_t>(kx * kx + ky * ky + kz * kz);
-            if (integerSquared == 0uz || integerSquared > reciprocalIntegerCutOffSquared) continue;
-            const double3 kVector = twoPi * (static_cast<double>(kx) * aStar + static_cast<double>(ky) * bStar +
-                                             static_cast<double>(kz) * cStar);
-            const double kSquared = double3::dot(kVector, kVector);
-            if (kSquared >= reciprocalCutOffSquared) continue;
-            const double temp = factor * std::exp(-0.25 * kSquared / alphaSquared) / kSquared;
-
-            // Fixed framework structure factor S(k) = sum_f q_f exp(i k.r_f).
-            double structureReal = 0.0;
-            double structureImaginary = 0.0;
-            for (std::size_t f = 0; f < numberOfFrameworkAtoms; ++f)
-            {
-              const double charge = frameworkAtoms[f].scalingCoulomb * frameworkAtoms[f].charge;
-              const double argument = double3::dot(kVector, frameworkAtoms[f].position);
-              structureReal += charge * std::cos(argument);
-              structureImaginary += charge * std::sin(argument);
-            }
-
-            const double argumentA = double3::dot(kVector, positionA);
-            const double cosA = std::cos(argumentA);
-            const double sinA = std::sin(argumentA);
-            const double fValue = sinA * structureReal - cosA * structureImaginary;
-            const double hValue = cosA * structureReal + sinA * structureImaginary;
-            const double weight = 2.0 * temp;
-
-            field += weight * fValue * kVector;
-            if (wantHessian || wantGradient)
-            {
-              const Mat3 kk = outer(kVector, kVector);
-              for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] += weight * hValue * kk[index];
-            }
-
-            reciprocalTerms.push_back(
-                ReciprocalTerm{.k = kVector, .weight = weight, .f = fValue, .hValue = hValue});
-          }
+          const Mat3 kk = outer(entry.k, entry.k);
+          for (std::size_t index = 0; index < 9; ++index) fieldGradientAA[index] += entry.weight * hValue * kk[index];
         }
+
+        reciprocalTerms.push_back(ReciprocalTerm{.k = entry.k, .weight = entry.weight, .f = fValue, .hValue = hValue});
       }
     }
 
@@ -644,4 +692,108 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
   }
 
   return result;
+}
+
+std::pair<double, double3x3> Interactions::computePolarizationMolecularPressureStrain(
+    const System& system, std::span<double3> field, std::span<std::array<double3, 9>> fieldStrain,
+    std::span<const double3> centerOfMassOffset, std::span<const double> polarizability)
+{
+  const ForceField& forceField = system.forceField;
+  const SimulationBox& box = system.simulationBox;
+  const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+  const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  const std::size_t numberOfFrameworkAtoms = frameworkAtoms.size();
+  const std::size_t numberOfMoleculeAtoms = moleculeAtoms.size();
+
+  double energy = 0.0;
+  double3x3 strainDerivative{};
+
+  if (!forceField.computePolarization || !forceField.useCharge || numberOfMoleculeAtoms == 0)
+  {
+    return {energy, strainDerivative};
+  }
+
+  // Ewald reciprocal field of the rigid fixed framework (matching computeEwaldFourierElectricField and the
+  // reciprocal part of computePolarizationDerivatives). The real-space contributions were already gathered
+  // by the Coulomb strain loops.
+  const bool useReciprocal = forceField.usesEwaldFourier() && system.framework.has_value() &&
+                             system.framework->rigid && numberOfFrameworkAtoms > 0;
+  if (useReciprocal)
+  {
+    const double alphaSquared = forceField.EwaldAlpha * forceField.EwaldAlpha;
+    const std::vector<PrecomputedReciprocal> precomputedReciprocal =
+        precomputeFixedFrameworkReciprocal(forceField, box, frameworkAtoms);
+
+    for (std::size_t a = 0; a < numberOfMoleculeAtoms; ++a)
+    {
+      if (polarizability[a] == 0.0) continue;
+      const double3 positionA = moleculeAtoms[a].position;
+      const double3 sigmaA = centerOfMassOffset[a];
+      const std::array<double, 3> sigmaComponents = {sigmaA.x, sigmaA.y, sigmaA.z};
+      std::array<double3, 9>& tensor = fieldStrain[a];
+
+      for (const PrecomputedReciprocal& entry : precomputedReciprocal)
+      {
+        const double argumentA = double3::dot(entry.k, positionA);
+        const double cosA = std::cos(argumentA);
+        const double sinA = std::sin(argumentA);
+        const double fValue = sinA * entry.structureReal - cosA * entry.structureImaginary;
+        const double hValue = cosA * entry.structureReal + sinA * entry.structureImaginary;
+
+        field[a] += entry.weight * fValue * entry.k;
+
+        // Strain response of the reciprocal field under F = exp(s B): the weight carries
+        // beta = -tr B + (1/(4 alpha^2) + 1/k^2) 2 k.Bk, the wave vector deforms as -Bk, and the phase of
+        // a COM-scaled field point moves by -(Bk).sigma_A. Linearized in B this gives
+        //   dE_A[i]/dF[j][m] += w [ f (2 phi k_j k_m - delta_jm) k_i - h k_i sigma_j k_m - f delta_ij k_m ].
+        const double kSquared = double3::dot(entry.k, entry.k);
+        const double twoPhi = 2.0 * (0.25 / alphaSquared + 1.0 / kSquared);
+        const std::array<double, 3> kComponents = {entry.k.x, entry.k.y, entry.k.z};
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+          for (std::size_t j = 0; j < 3; ++j)
+          {
+            const double scalar = fValue * twoPhi * kComponents[i] * kComponents[j] -
+                                  hValue * kComponents[i] * sigmaComponents[j] - (i == j ? fValue : 0.0);
+            double3 contribution = scalar * entry.k;
+            contribution[j] -= fValue * kComponents[i];
+            tensor[3 * i + j] += entry.weight * contribution;
+          }
+        }
+      }
+    }
+  }
+
+  // Contract the completed field and its strain response:
+  //   U = -1/2 sum_A alpha_A |E_A|^2,   dU/dF[j][m] = -sum_A alpha_A sum_i E_A[i] dE_A[i]/dF[j][m].
+  for (std::size_t a = 0; a < numberOfMoleculeAtoms; ++a)
+  {
+    const double alphaA = polarizability[a];
+    if (alphaA == 0.0) continue;
+
+    const double3 electricField = field[a];
+    energy -= 0.5 * alphaA * double3::dot(electricField, electricField);
+
+    const std::array<double3, 9>& tensor = fieldStrain[a];
+    const double3 row0 =
+        -alphaA * (electricField.x * tensor[0] + electricField.y * tensor[3] + electricField.z * tensor[6]);
+    const double3 row1 =
+        -alphaA * (electricField.x * tensor[1] + electricField.y * tensor[4] + electricField.z * tensor[7]);
+    const double3 row2 =
+        -alphaA * (electricField.x * tensor[2] + electricField.y * tensor[5] + electricField.z * tensor[8]);
+
+    strainDerivative.ax += row0.x;
+    strainDerivative.ay += row0.y;
+    strainDerivative.az += row0.z;
+
+    strainDerivative.bx += row1.x;
+    strainDerivative.by += row1.y;
+    strainDerivative.bz += row1.z;
+
+    strainDerivative.cx += row2.x;
+    strainDerivative.cy += row2.y;
+    strainDerivative.cz += row2.z;
+  }
+
+  return {energy, strainDerivative};
 }

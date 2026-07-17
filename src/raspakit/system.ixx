@@ -577,6 +577,11 @@ export struct System
    */
   void sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock);
 
+  /**
+   * Rigidly translate every molecule so its center of mass scales with the box, keeping internal geometry
+   * fixed. Returns the scaled molecules and the scaled *molecule* atoms only (framework atoms excluded),
+   * matching the molecule-atom spans expected by the inter-molecular and Ewald energy routines.
+   */
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(const SimulationBox& oldBox,

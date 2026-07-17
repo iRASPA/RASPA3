@@ -59,6 +59,7 @@ import cbmc_chain_data;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
+import interactions_pair_kernel;
 import interactions_ewald;
 import interactions_internal;
 import interactions_external_field;
@@ -764,9 +765,68 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   std::vector<AtomDynamics> pressureMoleculeDynamics(spanOfMoleculeAtoms().size());
   std::span<AtomDynamics> pressureDynamics(pressureMoleculeDynamics);
 
+  const std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+
+  // Polarization rides along with the real-space Coulomb strain loops: they gather the per-atom electric
+  // field and its cell-strain response (molecular COM scaling) in one pass, so the pair walk is not
+  // repeated. The Ewald reciprocal framework field and the final contraction into the polarization energy
+  // and strain tensor happen afterwards in computePolarizationMolecularPressureStrain. The polarization
+  // forces are intentionally kept out of 'pressureDynamics': the polarization strain below already uses
+  // COM arms, so it must not participate in the atomic-to-molecular virial correction.
+  const bool gatherPolarization = forceField.computePolarization && forceField.useCharge && !moleculeAtoms.empty();
+  std::vector<double3> polarizationField;
+  std::vector<std::array<double3, 9>> polarizationFieldStrain;
+  std::vector<double3> polarizationComOffset;
+  std::vector<double> polarizationPolarizability;
+  Interactions::PolarizationFieldStrain polarizationGather{};
+  const Interactions::PolarizationFieldStrain* frameworkGather = nullptr;
+  const Interactions::PolarizationFieldStrain* interGather = nullptr;
+  if (gatherPolarization)
+  {
+    polarizationField.assign(moleculeAtoms.size(), double3(0.0, 0.0, 0.0));
+    polarizationFieldStrain.assign(moleculeAtoms.size(), {});
+    polarizationComOffset.assign(moleculeAtoms.size(), double3(0.0, 0.0, 0.0));
+    polarizationPolarizability.resize(moleculeAtoms.size());
+    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+    {
+      polarizationPolarizability[i] =
+          forceField.pseudoAtoms[static_cast<std::size_t>(moleculeAtoms[i].type)].polarizability /
+          Units::CoulombicConversionFactor;
+    }
+
+    // Mass-weighted COM offsets from the current atom positions for every molecule (rigid and flexible),
+    // matching the COM-scaling volume move.
+    for (const Molecule& molecule : moleculeData)
+    {
+      double totalMass = 0.0;
+      double3 com(0.0, 0.0, 0.0);
+      for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
+      {
+        const Atom& atom = moleculeAtoms[molecule.atomIndex + k];
+        const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+        com += mass * atom.position;
+        totalMass += mass;
+      }
+      com = com / totalMass;
+      for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
+      {
+        polarizationComOffset[molecule.atomIndex + k] = moleculeAtoms[molecule.atomIndex + k].position - com;
+      }
+    }
+
+    polarizationGather = {std::span<double3>(polarizationField),
+                          std::span<std::array<double3, 9>>(polarizationFieldStrain),
+                          std::span<const double3>(polarizationComOffset),
+                          std::span<const double>(polarizationPolarizability)};
+    frameworkGather = &polarizationGather;
+    // The inter-molecular field obeys the omit flags of the polarization model; the routine's own
+    // omitInterInteractions early-out covers the remaining case.
+    if (!forceField.omitInterPolarization) interGather = &polarizationGather;
+  }
+
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
-      spanOfMoleculeAtoms(), pressureDynamics);
+      spanOfMoleculeAtoms(), pressureDynamics, frameworkGather);
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
@@ -774,7 +834,8 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeInterMolecularEnergyStrainDerivative(
-                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics));
+                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics,
+                             interGather));
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeEwaldFourierEnergyStrainDerivative(
@@ -816,34 +877,15 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     molecule_index += numberOfMoleculesPerComponent[i];
   }
 
-  if (forceField.computePolarization)
+  if (gatherPolarization)
   {
-    // Molecular (COM-scaling) polarization strain: first-order cellGradient only, no Hessian.
-    // The strain already uses mass-weighted COM arms for every molecule, so the atomic-to-molecular
-    // virial correction below must NOT see polarization forces (they are intentionally omitted).
-    const std::size_t numberOfFrameworkAtoms = spanOfFrameworkAtoms().size();
-    const std::size_t numberOfMoleculeAtoms = spanOfMoleculeAtoms().size();
-    std::vector<std::uint8_t> movable(numberOfFrameworkAtoms + numberOfMoleculeAtoms, 0);
-    for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom) movable[numberOfFrameworkAtoms + atom] = 1;
+    // Complete the gathered real-space field with the Ewald reciprocal framework contribution and contract
+    // into the polarization energy and its (unsymmetrized) strain-derivative tensor; the symmetrization at
+    // the end of this function averages the off-diagonal pairs, matching the symmetric strain generators.
+    const auto [polarizationEnergy, polarizationStrain] = Interactions::computePolarizationMolecularPressureStrain(
+        *this, polarizationField, polarizationFieldStrain, polarizationComOffset, polarizationPolarizability);
 
-    const CellMinimizationLayout cellLayout =
-        makeCellMinimizationLayout(CellMinimizationType::Regular, monoclinicAngleType);
-    const Interactions::PolarizationDerivatives polarization =
-        Interactions::computePolarizationDerivatives(*this, movable, cellLayout.bases,
-                                                     /*computeHessian=*/false,
-                                                     /*molecularCenterOfMassStrain=*/true);
-
-    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(polarization.energy, 0.0);
-
-    // Regular Voigt order: xx, xy, xz, yy, yz, zz. Shear bases carry the conventional 1/2 factor, so
-    // each shear cellGradient equals the corresponding symmetrized off-diagonal strain derivative.
-    double3x3 polarizationStrain{};
-    polarizationStrain.ax = polarization.cellGradient[0];
-    polarizationStrain.ay = polarizationStrain.bx = polarization.cellGradient[1];
-    polarizationStrain.az = polarizationStrain.cx = polarization.cellGradient[2];
-    polarizationStrain.by = polarization.cellGradient[3];
-    polarizationStrain.bz = polarizationStrain.cy = polarization.cellGradient[4];
-    polarizationStrain.cz = polarization.cellGradient[5];
+    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(polarizationEnergy, 0.0);
     pressureInfo.second += polarizationStrain;
   }
 
@@ -877,13 +919,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
 
-  // Correct rigid molecule contribution using the constraints forces
+  // Correct rigid molecule contribution using the constraints forces.
+  // Molecule::atomIndex indexes the molecule-atom span (framework atoms excluded).
   double3x3 correctionTerm{};
   for (Molecule& molecule : moleculeData)
   {
-    const std::size_t localAtomIndex = molecule.atomIndex - numberOfFrameworkAtoms;
-    const std::span<Atom> span = {&atomData[molecule.atomIndex], molecule.numberOfAtoms};
-    const std::span<AtomDynamics> spanDynamics = {&pressureMoleculeDynamics[localAtomIndex], molecule.numberOfAtoms};
+    const std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    const std::span<AtomDynamics> spanDynamics = {&pressureMoleculeDynamics[molecule.atomIndex],
+                                                  molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
