@@ -77,13 +77,16 @@ export std::string readFileContent(const std::string &fileName, const std::strin
   std::filesystem::path path = std::filesystem::path(file_name_string);
   if (!std::filesystem::exists(path))
   {
-    const char* env_p = std::getenv("RASPA_DIR");
-    path = std::filesystem::path(env_p) / file_name_string;
+    if (const char* env_p = std::getenv("RASPA_DIR"))
+    {
+      path = std::filesystem::path(env_p) / file_name_string;
+    }
   }
 
   if (!std::filesystem::exists(path))
   {
-    throw std::runtime_error(std::format("File '{}' not found\n", file_name_string));
+    throw std::runtime_error(
+        std::format("File '{}' not found (also not in 'RASPA_DIR')\n", file_name_string));
   }
 
   std::ifstream t(path);

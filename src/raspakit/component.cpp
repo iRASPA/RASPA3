@@ -404,6 +404,7 @@ void Component::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &pars
     }
 
     bool groupRigid = true;
+    bool groupCyclic = false;
     if (item.contains("Type"))
     {
       std::string typeString = item["Type"].get<std::string>();
@@ -415,10 +416,17 @@ void Component::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &pars
       {
         groupRigid = true;
       }
+      else if (caseInSensStringCompare(typeString, "Cycle"))
+      {
+        // A cyclic group is a fully flexible ring: its internal geometry is sampled (never treated as
+        // a rigid body), and it is grown with ring-closure CBMC.
+        groupRigid = false;
+        groupCyclic = true;
+      }
       else
       {
-        throw std::runtime_error(
-            std::format("[Component reader]: group 'Type' must be 'Rigid' or 'Flexible', got {}\n", typeString));
+        throw std::runtime_error(std::format(
+            "[Component reader]: group 'Type' must be 'Rigid', 'Flexible', or 'Cycle', got {}\n", typeString));
       }
     }
 
@@ -449,7 +457,7 @@ void Component::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &pars
       assigned[atom] = static_cast<std::make_signed_t<std::size_t>>(groupIndex);
     }
 
-    groups.emplace_back(groupRigid, groupAtoms);
+    groups.emplace_back(groupRigid, groupCyclic, groupAtoms);
   }
 
   // groups must partition all atoms
@@ -478,6 +486,39 @@ void Component::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &pars
       std::copy(group.atoms.begin(), group.atoms.end(), std::ostream_iterator<std::size_t>(result, " "));
       throw std::runtime_error(
           std::format("[Component reader]: group ({}) is not a connected subgraph\n", result.str()));
+    }
+  }
+
+  // A cyclic group must be a single simple cycle: every atom of the group has exactly two neighbors
+  // that also belong to the group. (Fused/bridged polycyclic systems are not supported.)
+  for (const MoleculeGroup &group : groups)
+  {
+    if (!group.cyclic) continue;
+
+    if (group.atoms.size() < 3)
+    {
+      std::stringstream result{};
+      std::copy(group.atoms.begin(), group.atoms.end(), std::ostream_iterator<std::size_t>(result, " "));
+      throw std::runtime_error(std::format(
+          "[Component reader]: cyclic group ({}) must contain at least three atoms\n", result.str()));
+    }
+
+    for (std::size_t atom : group.atoms)
+    {
+      std::size_t inGroupNeighbors = 0;
+      for (std::size_t other : group.atoms)
+      {
+        if (other != atom && connectivityTable[atom, other]) ++inGroupNeighbors;
+      }
+      if (inGroupNeighbors != 2)
+      {
+        std::stringstream result{};
+        std::copy(group.atoms.begin(), group.atoms.end(), std::ostream_iterator<std::size_t>(result, " "));
+        throw std::runtime_error(std::format(
+            "[Component reader]: cyclic group ({}) is not a simple cycle: atom {} has {} in-group neighbors "
+            "(expected 2). Fused or bridged rings are not supported.\n",
+            result.str(), atom, inGroupNeighbors));
+      }
     }
   }
 }
@@ -658,6 +699,32 @@ std::optional<std::vector<std::size_t>> Component::checkValidityNextBeadsGroupAw
     return {nextBeads};
   }
 
+  std::optional<std::size_t> cyclicGroup = cyclicGroupContaining(nextBead);
+  if (cyclicGroup.has_value())
+  {
+    bool anchorInGroup = cyclicGroupContaining(currentBead) == cyclicGroup;
+    if (!anchorInGroup)
+    {
+      // Entering the ring from outside: the connecting atom is peeled off as a single flexible bead.
+      return {{nextBead}};
+    }
+
+    // The ring is hinged on 'currentBead': every other ring atom must still be unplaced (the whole
+    // ring is grown as a single ring-closure segment).
+    const MoleculeGroup &group = groups[cyclicGroup.value()];
+    std::vector<std::size_t> nextBeads{};
+    nextBeads.reserve(group.atoms.size());
+    for (std::size_t atom : group.atoms)
+    {
+      if (!placed[atom]) nextBeads.push_back(atom);
+    }
+    if (nextBeads.size() != group.atoms.size() - 1)
+    {
+      return std::nullopt;
+    }
+    return {nextBeads};
+  }
+
   // Flexible segment: grow all unplaced flexible neighbors of 'currentBead' together (branch point).
   std::vector<std::size_t> nextBeads{};
   std::size_t numberOfPreviousBeads{};
@@ -667,8 +734,8 @@ std::optional<std::vector<std::size_t>> Component::checkValidityNextBeadsGroupAw
 
     if (!placed[i])
     {
-      // Rigid-group neighbors are grown as their own segment, never mixed into a flexible branch.
-      if (!rigidGroupContaining(i).has_value())
+      // Rigid- or cyclic-group neighbors are grown as their own segment, never in a flexible branch.
+      if (!rigidGroupContaining(i).has_value() && !cyclicGroupContaining(i).has_value())
       {
         nextBeads.push_back(i);
       }
@@ -684,9 +751,10 @@ std::optional<std::vector<std::size_t>> Component::checkValidityNextBeadsGroupAw
     return {{nextBead}};
   }
 
-  // Multiple placed neighbors are only allowed when the anchor is part of an already-placed rigid
-  // group (e.g. a flexible tail growing off a ring atom).
-  if (numberOfPreviousBeads > 1 && !rigidGroupContaining(currentBead).has_value())
+  // Multiple placed neighbors are only allowed when the anchor is part of an already-placed rigid or
+  // cyclic group (e.g. a flexible tail growing off a ring atom).
+  if (numberOfPreviousBeads > 1 && !rigidGroupContaining(currentBead).has_value() &&
+      !cyclicGroupContaining(currentBead).has_value())
   {
     return std::nullopt;
   }
@@ -702,6 +770,20 @@ std::optional<std::size_t> Component::rigidGroupContaining(std::size_t bead) con
   }
   std::size_t g = atomGroupIds[bead];
   if (g < groups.size() && groups[g].rigid)
+  {
+    return g;
+  }
+  return std::nullopt;
+}
+
+std::optional<std::size_t> Component::cyclicGroupContaining(std::size_t bead) const
+{
+  if (atomGroupIds.empty() || bead >= atomGroupIds.size())
+  {
+    return std::nullopt;
+  }
+  std::size_t g = atomGroupIds[bead];
+  if (g < groups.size() && groups[g].cyclic)
   {
     return g;
   }
@@ -1032,6 +1114,64 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
 
   if (growType == GrowType::Flexible)
   {
+    if (!groups.empty())
+    {
+      std::size_t numberOfRigidGroups{};
+      std::size_t numberOfFlexibleGroups{};
+      std::size_t numberOfCycleGroups{};
+      for (const MoleculeGroup &group : groups)
+      {
+        if (group.cyclic)
+        {
+          ++numberOfCycleGroups;
+        }
+        else if (group.rigid)
+        {
+          ++numberOfRigidGroups;
+        }
+        else
+        {
+          ++numberOfFlexibleGroups;
+        }
+      }
+
+      std::print(stream, "    Groups:\n");
+      std::print(stream, "        number of groups:            {}\n", groups.size());
+      std::print(stream, "        rigid groups:                {}\n", numberOfRigidGroups);
+      std::print(stream, "        flexible groups:             {}\n", numberOfFlexibleGroups);
+      std::print(stream, "        cycle groups:                {}\n", numberOfCycleGroups);
+      std::print(stream << std::boolalpha, "        semi-flexible molecule:      {}\n", isSemiFlexible());
+      for (std::size_t i = 0; i < groups.size(); ++i)
+      {
+        const MoleculeGroup &group = groups[i];
+        const std::string groupType = group.cyclic ? "Cycle" : (group.rigid ? "Rigid" : "Flexible");
+
+        std::ostringstream atomList;
+        std::ostringstream atomTypeList;
+        for (std::size_t j = 0; j < group.atoms.size(); ++j)
+        {
+          if (j != 0)
+          {
+            std::print(atomList, " ");
+            std::print(atomTypeList, " ");
+          }
+          const std::size_t atomIndex = group.atoms[j];
+          std::print(atomList, "{}", atomIndex);
+          const std::size_t atomType = static_cast<std::size_t>(atoms[atomIndex].type);
+          std::print(atomTypeList, "{}", forceField.pseudoAtoms[atomType].name);
+        }
+
+        std::print(stream, "        group {:3d}: {:8}  atoms: [{}]  types: [{}]\n", i, groupType, atomList.str(),
+                   atomTypeList.str());
+        if (group.rigid)
+        {
+          std::print(stream, "                   mass: {:10.5f}  rotational DOF: {}\n", group.mass,
+                     group.rotationalDegreesOfFreedom);
+        }
+      }
+      std::print(stream, "\n");
+    }
+
     std::print(stream, "    connectivity:\n");
     std::print(stream, "{}\n", connectivityTable.print("        "));
 
@@ -2066,6 +2206,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecu
 {
   archive << g.versionNumber;
   archive << g.rigid;
+  archive << g.cyclic;
   archive << g.atoms;
   archive << g.mass;
   archive << g.centerOfMassReferencePosition;
@@ -2088,6 +2229,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoleculeGrou
                                          location.line(), location.file_name()));
   }
   archive >> g.rigid;
+  if (versionNumber >= 3)
+  {
+    archive >> g.cyclic;
+  }
   archive >> g.atoms;
   archive >> g.mass;
   archive >> g.centerOfMassReferencePosition;

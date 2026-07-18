@@ -28,6 +28,7 @@ import cbmc_interactions;
 import cbmc_growth_context;
 import cbmc_generate_trialorientations_mc;
 import cbmc_segments;
+import cbmc_ring_closure;
 
 // A single growth step ('segment') of the chain. Shared with CBMC insertion/deletion: a set of
 // 'nextBeads' grown from 'currentBead' (a whole rigid group when 'rigidUnit'), optionally with a
@@ -128,6 +129,42 @@ std::vector<Trial> generateSegmentTrials(RandomNumber &random, const RecoilConte
       {
         // Seed group: no junction terms exist yet, every orientation is equally likely.
         trials.push_back({base_orientation, 1.0});
+      }
+    }
+    return trials;
+  }
+
+  if (segment.ringUnit)
+  {
+    // Flexible ring grown with ring-closure CBMC, mirroring the CBMC insertion: the internal ring
+    // conformation is sampled by an internal Monte-Carlo (no weight, kept closed by the closure bond)
+    // and the spin about the junction bond is biased by the junction-crossing torsions and bends.
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      std::vector<Atom> base_conformation = CBMC::generateRingConformationMonteCarloScheme(
+          random, ctx.env.forceField.numberOfTrialMovesPerOpenBead, ctx.env.beta, ctx.component, contextAtoms,
+          segment.previousBead, segment.currentBead, segment.nextBeads, segment.intra);
+
+      if (segment.previousBead.has_value())
+      {
+        Potentials::IntraMolecularPotentials spinPotentials =
+            CBMC::ringSpinPotentials(segment.intra, segment.currentBead, segment.nextBeads);
+
+        double3 last_bond_vector =
+            (contextAtoms[segment.previousBead.value()].position - contextAtoms[segment.currentBead].position)
+                .normalized();
+
+        CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+            random, ctx.env.forceField.numberOfTorsionTrialDirections, ctx.env.beta, contextAtoms, base_conformation,
+            segment.previousBead.value(), segment.currentBead, segment.nextBeads, last_bond_vector, spinPotentials,
+            false);
+
+        trials.push_back({torsion.positions, torsion.rosenbluthWeight});
+      }
+      else
+      {
+        // Seed ring: no junction terms exist yet, every orientation is equally likely.
+        trials.push_back({base_conformation, 1.0});
       }
     }
     return trials;
@@ -298,7 +335,9 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   std::size_t current_bead = segment.currentBead;
 
   // Rigid units need no special case here: their bend MC carries no weight, so the old-orientation
-  // weight is the same pinned torsion selection as for flexible segments.
+  // weight is the same pinned torsion selection as for flexible segments. Ring units must restrict
+  // the torsion selection to the junction-crossing terms (as on growth), since their internal ring
+  // torsions are sampled by the conformational Monte-Carlo and must not be weighted here.
   double3 last_bond_vector = (oldAtoms[previous_bead].position - oldAtoms[current_bead].position).normalized();
 
   std::vector<Atom> old_orientation(segment.nextBeads.size());
@@ -307,11 +346,14 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
     old_orientation[k] = oldAtoms[segment.nextBeads[k]];
   }
 
+  Potentials::IntraMolecularPotentials torsionPotentials =
+      segment.ringUnit ? CBMC::ringSpinPotentials(segment.intra, current_bead, segment.nextBeads) : segment.intra;
+
   // Mirror the CBMC deletion torsion scheme: the real orientation is trial 0 (angle 0) and the
   // remaining torsion trials are random rotations. Only the Rosenbluth weight is needed here.
   CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
       random, ctx.env.forceField.numberOfTorsionTrialDirections, ctx.env.beta, oldAtoms, old_orientation,
-      previous_bead, current_bead, segment.nextBeads, last_bond_vector, segment.intra, true);
+      previous_bead, current_bead, segment.nextBeads, last_bond_vector, torsionPotentials, true);
 
   return torsion.rosenbluthWeight;
 }

@@ -1,0 +1,62 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 200000,
+  "NumberOfInitializationCycles" : 50000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "BEA",
+      "NumberOfUnitCells" : [2, 2, 1],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "12-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 6.515902e-03,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [1, 2],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "13-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 2.307550e-02,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 2],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "14-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.687411e-02,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 1],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

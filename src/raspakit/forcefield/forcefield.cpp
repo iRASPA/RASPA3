@@ -1056,6 +1056,10 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
   {
     // if not found, try the install directory and directory 'directoryName' in 'share/raspa3/forcefields'
     const char* env_p = std::getenv("RASPA_DIR");
+    if (!env_p)
+    {
+      return std::nullopt;
+    }
     forceFieldPathfile = std::filesystem::path(std::string(env_p) + "/share/raspa3/forcefields/" + filePath);
     if (!std::filesystem::exists(forceFieldPathfile))
     {

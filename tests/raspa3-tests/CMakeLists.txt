@@ -11,6 +11,7 @@ add_executable(unit_tests_raspa3
   mc_nvt_grids_drift.cpp
   mc_reaction_drift.cpp
   mc_semi_flexible_cbmc.cpp
+  mc_cyclic_cbmc.cpp
   transition_matrix.cpp
   input_reader_tmmc.cpp
   main.cpp)

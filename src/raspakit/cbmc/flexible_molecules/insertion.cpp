@@ -30,6 +30,7 @@ import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
 import cbmc_segments;
+import cbmc_ring_closure;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
@@ -91,6 +92,52 @@ import cbmc_segments;
           trialPositions[i] = CBMC::generateRigidUnitOrientationMonteCarloScheme(
               random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead,
               current_bead, nextBeads, intraMolecularPotentials);
+        }
+      }
+    }
+    else if (segment.ringUnit)
+    {
+      // Case: growing a flexible ring with ring-closure CBMC. The internal ring conformation is
+      // sampled from its Boltzmann distribution by an internal Monte-Carlo (no Rosenbluth weight, the
+      // ring is kept closed by the closure bond); the ring is then placed with the same
+      // coupled-decoupled orientational bias as a rigid unit: the junction (tilt) bends are sampled by
+      // the conformational Monte-Carlo, and the spin about the junction bond is biased by the
+      // junction-crossing torsions and bends through the torsion Rosenbluth step.
+      std::vector<Atom> base_conformation = CBMC::generateRingConformationMonteCarloScheme(
+          random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead, current_bead,
+          nextBeads, intraMolecularPotentials);
+
+      if (previous_bead.has_value())
+      {
+        // Restrict the torsion step to the junction-crossing terms so the internal ring torsions
+        // (already sampled by the conformational Monte-Carlo) are not weighted a second time.
+        Potentials::IntraMolecularPotentials spinPotentials =
+            CBMC::ringSpinPotentials(intraMolecularPotentials, current_bead, nextBeads);
+
+        double3 last_bond_vector =
+            (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
+
+        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
+        {
+          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, base_conformation,
+              previous_bead.value(), current_bead, nextBeads, last_bond_vector, spinPotentials, false);
+
+          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
+          trialPositions[i] = torsion.positions;
+        }
+      }
+      else
+      {
+        // Seed ring: no junction terms exist yet, every orientation is equally likely. One internal
+        // conformation is sampled from the Boltzmann distribution and the trial directions are random
+        // rigid rotations of it (a rigid rotation preserves the internal ring geometry), exactly the
+        // orientational bias used for a rigid fragment.
+        trialPositions[0] = base_conformation;
+        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
+        {
+          trialPositions[i] =
+              CBMC::randomlyOrientRing(random, base_conformation, chain_atoms[current_bead].position);
         }
       }
     }

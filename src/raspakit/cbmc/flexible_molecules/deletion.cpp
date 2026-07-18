@@ -30,6 +30,7 @@ import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
 import cbmc_segments;
+import cbmc_ring_closure;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
@@ -98,6 +99,42 @@ import cbmc_segments;
           trialPositions[i] = CBMC::generateRigidUnitOrientationMonteCarloScheme(
               random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead,
               current_bead, nextBeads, intraMolecularPotentials);
+        }
+      }
+    }
+    else if (segment.ringUnit)
+    {
+      // Case: flexible ring retraced with ring-closure CBMC, mirroring the insertion. The old ring
+      // conformation is the shared torsion base for every trial direction; the old configuration is
+      // pinned as torsion trial 0 of the first trial direction.
+      if (previous_bead.has_value())
+      {
+        Potentials::IntraMolecularPotentials spinPotentials =
+            CBMC::ringSpinPotentials(intraMolecularPotentials, current_bead, nextBeads);
+
+        double3 last_bond_vector =
+            (molecule_atoms[previous_bead.value()].position - molecule_atoms[current_bead].position).normalized();
+
+        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
+        {
+          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, trial_orientations,
+              previous_bead.value(), current_bead, nextBeads, last_bond_vector, spinPotentials, i == 0);
+
+          trialPositions[i] = (i == 0) ? trial_orientations : torsion.positions;
+          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
+        }
+      }
+      else
+      {
+        // Seed ring: no junction terms, every orientation equally likely, all torsion weights 1. The
+        // old conformation is pinned as trial 0 and the remaining trials are random rigid rotations
+        // of it (mirroring the insertion, which rotates one sampled conformation rigidly).
+        trialPositions[0] = trial_orientations;
+        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
+        {
+          trialPositions[i] =
+              CBMC::randomlyOrientRing(random, trial_orientations, molecule_atoms[current_bead].position);
         }
       }
     }

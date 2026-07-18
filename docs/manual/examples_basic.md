@@ -21,6 +21,8 @@
 16. [Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_16)
 17. [Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_17)
 19. [Minimization: CO₂ in IRMOF-1](#Example_basic_19)
+20. [Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)](#Example_basic_20)
+21. [Molecular Dynamics: flexible cyclohexane in box](#Example_basic_21)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -1762,6 +1764,105 @@ The molecule definition is identical to example 16: the two aromatic 6-rings are
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 32
+    }
+  ]
+}
+```
+
+#### Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)<a name="Example_basic_20"></a>
+
+This example samples 30 fully flexible united-atom cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K. It demonstrates the `"Cycle"` group type, which grows a ring with Towhee-style ring-closure configurational-bias Monte Carlo.
+
+The molecule file declares the six ring beads as one cyclic group. A cyclic group is a fully flexible ring: unlike a rigid group, its internal bonds, bends, and torsions are kept and sampled during growth. During CBMC insertion, deletion, and reinsertion the whole ring is grown as a single ring-closure segment: the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo (which keeps the ring closed through the closure bond and carries no Rosenbluth weight, exactly like the flexible bond/bend Monte-Carlo), and the ring is then placed with the same coupled-decoupled orientational bias used for a rigid fragment. When a ring carries flexible tails, they are grown off the closed ring with the existing coupled-decoupled scheme.
+
+```json
+  "Groups" : [
+    { "Type" : "Cycle", "Atoms" : [0, 1, 2, 3, 4, 5] }
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ]
+```
+
+A cyclic group must be a single simple cycle (every ring atom has exactly two neighbors inside the group); fused or bridged polycyclic systems are rejected with a clear error. Because a cyclic group requires its internal bonds, bends, and torsions to be sampled, use flexible (harmonic) bond and bend potentials rather than fixed lengths.
+
+Run from `examples/basic/20_mc_flexible_cyclohexane_in_box`:
+
+```bash
+raspa3
+```
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true,
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: flexible cyclohexane in box<a name="Example_basic_21"></a>
+
+This example is the molecular-dynamics counterpart of example 20: 30 fully flexible cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K, integrated with NVT dynamics. Because the molecule has no rigid group, every ring atom is integrated as a Cartesian atom under the ring bond, bend, and torsion potentials. Comparing the intra-molecular geometry histograms in `molecule_properties` against those of example 20 verifies that the ring-closure CBMC sampling and the MD integration produce the same ring conformational distributions.
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
     }
   ]
 }

@@ -49,12 +49,17 @@ import cbmc_move_statistics;
  * rigid units (placed as one body during CBMC growth) connected by flexible bonds, and
  * flexible groups (grown bead by bead). The atoms of a rigid group keep the body-fixed
  * geometry taken from the component's reference atoms.
+ *
+ * A cyclic group ('cyclic == true', always 'rigid == false') is a fully flexible ring: its
+ * internal bonds, bends, and torsions are sampled during growth, and the ring is grown with
+ * Towhee-style ring-closure (fixed-endpoint) coupled-decoupled CBMC.
  */
 export struct MoleculeGroup
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   bool rigid{true};                 ///< Whether the atoms of this group move as a single rigid body.
+  bool cyclic{false};  ///< Whether the atoms of this group form a flexible ring grown with ring-closure CBMC.
   std::vector<std::size_t> atoms{};  ///< Indices (into the component's atoms) that make up this group.
 
   /// Rigid-body reference data, computed by 'Component::computeGroupRigidProperties'. Only meaningful
@@ -73,6 +78,10 @@ export struct MoleculeGroup
 
   MoleculeGroup() = default;
   MoleculeGroup(bool rigid, std::vector<std::size_t> atoms) : rigid(rigid), atoms(std::move(atoms)) {}
+  MoleculeGroup(bool rigid, bool cyclic, std::vector<std::size_t> atoms)
+      : rigid(rigid), cyclic(cyclic), atoms(std::move(atoms))
+  {
+  }
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoleculeGroup &g);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoleculeGroup &g);
@@ -477,6 +486,13 @@ export struct Component
    * Returns nullopt when no groups are defined or when the bead belongs to a flexible group.
    */
   std::optional<std::size_t> rigidGroupContaining(std::size_t bead) const;
+
+  /**
+   * \brief Returns the index of the cyclic (flexible ring) group that 'bead' belongs to, or nullopt.
+   *
+   * Returns nullopt when no groups are defined or when the bead does not belong to a cyclic group.
+   */
+  std::optional<std::size_t> cyclicGroupContaining(std::size_t bead) const;
 
   /**
    * \brief Returns whether this component is semi-flexible: it defines at least one rigid group.

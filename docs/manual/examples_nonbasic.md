@@ -11,6 +11,7 @@
 6. [Monte Carlo: adsorption CO₂ in LTA-4A sodium](#Example_nonbasic_6)
 7. [Molecular Dynamics: diffusion of CO₂ in LTA-4A sodium](#Example_nonbasic_7)
 8. [Monte Carlo: adsorption of C6-isomers in MFI](#Example_nonbasic_8)
+17. [Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)](#Example_nonbasic_17)
 
 
 
@@ -906,4 +907,89 @@ Component 4 [23-methylbutane]
     Enthalpy of adsorption: -5.305267e+03 +/-  3.077719e+02 [K]
                             -4.411045e+01 +/-  2.558958e+00 [kJ/mol]
     Note: need to subtract the ideal-gas energy.
+```
+
+#### Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)<a name="Example_nonbasic_17"></a>
+
+This example computes the competitive adsorption of an equimolar mixture of 1,2-, 1,3-, and 1,4-dimethylcyclohexane in siliceous zeolite Beta (`BEA`) at 433 K and a total pressure of 1 bar. The simulation uses a \f$2 \times 2 \times 1\f$ supercell of the polymorphic Beta framework. Each isomer is a fully flexible molecule built from a `"Cycle"` group (the six-membered ring, with two `CH_c` methine beads carrying the methyls) and two flexible `CH3` tails. During grand-canonical insertion, deletion, reinsertion, and identity-change moves the ring is grown with ring-closure configurational-bias Monte Carlo (the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo that keeps the ring closed) and the two methyl groups are then grown off the closed ring with the standard coupled-decoupled CBMC scheme.
+
+The 1,2-isomer molecule file (the 1,3- and 1,4-isomers differ only in the position of the second methine and methyl):
+
+```json
+  "Groups" : [
+    { "Type" : "Cycle",    "Atoms" : [0, 1, 2, 3, 4, 5] },
+    { "Type" : "Flexible", "Atoms" : [6] },
+    { "Type" : "Flexible", "Atoms" : [7] }
+  ]
+```
+
+The ring bonds and the methyl junction bonds are harmonic (TraPPE-style, 96500 K/&Aring;², 1.54 &Aring;), the bends are harmonic (62500 K/rad², 114&deg; at `CH2_c` and 112&deg; at `CH_c`), and the ring and junction torsions use the TraPPE forms: `X-CH2-CH2-Y` [0, 355.03, -68.19, 791.32], `X-CH2-CH-Y` [-251.06, 428.73, -111.85, 441.27], and `X-CH-CH-Y` [0, 0, 0, 461.29] (for the adjacent methines of the 1,2-isomer). The guest beads are TraPPE united atoms (`CH3` 98.0 K / 3.75 &Aring;, cyclic `CH2_c` 52.5 K / 3.91 &Aring;, `CH_c` 10.0 K / 4.68 &Aring;) combined with the TraPPE-zeo framework parameters via Lorentz-Berthelot mixing.
+
+Because the isomers are flexible, converting the imposed fugacities to the chemical potential requires the ideal-gas Rosenbluth weight of each isolated chain. These were pre-computed at 433 K with Widom insertions in an empty box (the auxiliary ideal-gas Rosenbluth workflow) and entered as `IdealGasRosenbluthWeight`. Identity-change moves between the three isomers speed up the equilibration of the mixture composition considerably.
+
+Run from `examples/non_basic/17_mc_adsorption_dimethylcyclohexane_isomers_in_beta`:
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 200000,
+  "NumberOfInitializationCycles" : 50000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "BEA",
+      "NumberOfUnitCells" : [2, 2, 1],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "12-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 6.515902e-03,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [1, 2],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "13-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 2.307550e-02,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 2],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "14-dimethylcyclohexane",
+      "MolFraction" : 0.33333333,
+      "FugacityCoefficient" : 1.0,
+      "IdealGasRosenbluthWeight" : 1.687411e-02,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "IdentityChangeProbability" : 0.5,
+      "IdentityChanges" : [0, 1],
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
 ```
