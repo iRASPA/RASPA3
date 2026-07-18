@@ -301,11 +301,14 @@ std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::po
               (Rbd.z * rbc2 - Rbc.z * dot) * term};
   }
 
+  // Combined e- and rab-dependent parts of dcos(chi)/datom (validated against finite differences
+  // of the energy; the cross-product operand order fixes a sign error in the original RASPA2
+  // transcription that produced gradients inconsistent with calculateEnergy).
   term = e / rab2;
-  deed_a = {Rbd.y * Rbc.z - Rbd.z * Rbc.y + Rab.x * term, Rbd.z * Rbc.x - Rbd.x * Rbc.z + Rab.y * term,
-            Rbd.x * Rbc.y - Rbd.y * Rbc.x + Rab.z * term};
-  deed_c = {Rab.y * Rbd.z - Rab.z * Rbd.y, Rab.z * Rbd.x - Rab.x * Rbd.z, Rab.x * Rbd.y - Rab.y * Rbd.x};
-  deed_d = {Rbc.y * Rab.z - Rbc.z * Rab.y, Rbc.z * Rab.x - Rbc.x * Rab.z, Rbc.x * Rab.y - Rbc.y * Rab.x};
+  deed_a = {Rbc.y * Rbd.z - Rbc.z * Rbd.y + Rab.x * term, Rbc.z * Rbd.x - Rbc.x * Rbd.z + Rab.y * term,
+            Rbc.x * Rbd.y - Rbc.y * Rbd.x + Rab.z * term};
+  deed_c = {Rbd.y * Rab.z - Rbd.z * Rab.y, Rbd.z * Rab.x - Rbd.x * Rab.z, Rbd.x * Rab.y - Rbd.y * Rab.x};
+  deed_d = {Rab.y * Rbc.z - Rab.z * Rbc.y, Rab.z * Rbc.x - Rab.x * Rbc.z, Rab.x * Rbc.y - Rab.y * Rbc.x};
 
   du_da = dedcos * (dccd_a + deed_a);
   du_dc = dedcos * (dccd_c + deed_c);

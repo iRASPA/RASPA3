@@ -10,21 +10,21 @@ mcmoves = raspalib.MCMoveProbabilities(
     partialReinsertionCBMCProbability=1.0,
 )
 
-methylbutane = raspalib.Component(
+biphenyl = raspalib.Component(
     componentId=0,
     forceField=ff,
-    componentName="2-methylbutane",
-    fileName="2-methylbutane.json",
+    componentName="diethyl-biphenyl",
+    fileName="diethyl-biphenyl.json",
     particleProbabilities=mcmoves,
 )
 
-box = raspalib.SimulationBox(25.0, 25.0, 25.0)
+box = raspalib.SimulationBox(30.0, 30.0, 30.0)
 
 system = raspalib.System(
     systemId=0,
     externalTemperature=298.0,
     forceField=ff,
-    components=[methylbutane],
+    components=[biphenyl],
     initialNumberOfMolecules=[32],
     simulationBox=box,
 )

@@ -26,14 +26,42 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
                                                       const std::optional<Framework>& framework,
                                                       std::span<const Atom> frameworkAtomPositions,
                                                       std::span<const AtomDynamics> frameworkDynamics,
-                                                      const ForceField* forceField)
+                                                      const ForceField* forceField,
+                                                      std::span<const GroupState> groupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double energy{};
   std::size_t index{};
+  std::size_t groupIndex{};
   for (const Molecule& molecule : moleculeData)
   {
-    if (components[molecule.componentId].rigid)
+    const Component& component = components[molecule.componentId];
+    if (component.isSemiFlexible() && !groupData.empty())
+    {
+      // Center-of-mass kinetic energy of each rigid group plus per-atom kinetic energy of the
+      // flexible atoms.
+      std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      std::size_t rigidRank{};
+      for (const MoleculeGroup& group : component.groups)
+      {
+        if (group.rigid)
+        {
+          const GroupState& state = groupData[groupIndex + rigidRank];
+          energy += 0.5 * group.mass * double3::dot(state.velocity, state.velocity);
+          ++rigidRank;
+        }
+      }
+      for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+      {
+        if (!component.rigidGroupContaining(i).has_value())
+        {
+          double mass = component.definedAtoms[i].second;
+          energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
+        }
+      }
+      groupIndex += component.numberOfRigidGroups();
+    }
+    else if (component.rigid)
     {
       // Accumulate kinetic energy: 0.5 * mass * velocity squared
       energy += 0.5 * molecule.mass * double3::dot(molecule.velocity, molecule.velocity);
@@ -44,7 +72,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
-        double mass = components[molecule.componentId].definedAtoms[i].second;
+        double mass = component.definedAtoms[i].second;
         energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
       }
     }
@@ -69,31 +97,57 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
 }
 
 double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculeData,
-                                                   const std::vector<Component> components)
+                                                   const std::vector<Component> components,
+                                                   std::span<const GroupState> groupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double3 ang_vel;
   double energy{};
 
+  auto rotationalEnergy = [&](const simd_quatd& orientationMomentum, const simd_quatd& orientation,
+                              const double3& inertiaVector, const double3& inverseInertiaVector)
+  {
+    simd_quatd p = orientationMomentum;
+    p.r = -p.r;
+    simd_quatd pq = p * orientation;
+    double3 omega = 0.5 * double3(pq.ix, pq.iy, pq.iz) * inverseInertiaVector;
+    return 0.5 * double3::dot(inertiaVector, omega * omega);
+  };
+
+  std::size_t groupIndex{};
   for (const Molecule& molecule : moleculeData)
   {
+    const Component& component = components[molecule.componentId];
+
+    if (component.isSemiFlexible())
+    {
+      if (!groupData.empty())
+      {
+        std::size_t rigidRank{};
+        for (const MoleculeGroup& group : component.groups)
+        {
+          if (group.rigid)
+          {
+            const GroupState& state = groupData[groupIndex + rigidRank];
+            energy += rotationalEnergy(state.orientationMomentum, state.orientation, group.inertiaVector,
+                                       group.inverseInertiaVector);
+            ++rigidRank;
+          }
+        }
+        groupIndex += component.numberOfRigidGroups();
+      }
+      continue;
+    }
+
     // Flexible molecules carry no rigid-body orientation momentum
-    if (!components[molecule.componentId].rigid) continue;
+    if (!component.rigid) continue;
 
     // Get inertia and inverse inertia vectors for the molecule's component
-    double3 inertiaVector = components[molecule.componentId].inertiaVector;
-    double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
-    // Retrieve orientation momentum and orientation
-    simd_quatd p = molecule.orientationMomentum;
-    p.r = -p.r;
-    simd_quatd q = molecule.orientation;
-    simd_quatd pq = p * q;
+    double3 inertiaVector = component.inertiaVector;
+    double3 inverseInertiaVector = component.inverseInertiaVector;
 
-    // Calculate angular velocity
-    ang_vel = 0.5 * double3(pq.ix, pq.iy, pq.iz) * inverseInertiaVector;
-
-    // Accumulate rotational kinetic energy: 0.5 * inertia * angular velocity squared
-    energy += 0.5 * double3::dot(inertiaVector, ang_vel * ang_vel);
+    energy += rotationalEnergy(molecule.orientationMomentum, molecule.orientation, inertiaVector, inverseInertiaVector);
+    (void)ang_vel;
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function

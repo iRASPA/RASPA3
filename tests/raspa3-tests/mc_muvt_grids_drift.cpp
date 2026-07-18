@@ -85,7 +85,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -172,7 +172,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -259,7 +259,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -346,7 +346,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();

@@ -30,10 +30,23 @@ export struct MolDofInfo
 };
 
 /**
+ * A rigid body carrying six degrees of freedom (center of mass + orientation tangent). It is
+ * either a whole rigid molecule or a rigid group inside a semi-flexible molecule.
+ */
+export struct RigidBodyDofInfo
+{
+  std::size_t moleculeIndex{};
+  std::size_t groupIndex{};   ///< Rigid-group index within the component (unused for whole molecules).
+  bool wholeMolecule{false};  ///< True for a fully rigid molecule, false for a rigid group.
+  std::size_t base{};         ///< Center-of-mass DOF base; orientation base is 'base + 3'.
+};
+
+/**
  * Unordered minimization degree-of-freedom layout.
  *
  * Molecules keep simulation order. Each flexible atom contributes three Cartesian DOFs;
- * each rigid molecule contributes six (center of mass and orientation tangent components).
+ * each rigid body (a rigid molecule, or a rigid group inside a semi-flexible molecule)
+ * contributes six (center of mass and orientation tangent components).
  */
 export class MinimizationDofLayout
 {
@@ -52,6 +65,18 @@ export class MinimizationDofLayout
                                              MinimizationDofAxis axis) const noexcept;
 
   std::optional<std::size_t> rigidMoleculeDof(std::size_t moleculeIndex, RigidDof dof) const noexcept;
+
+  /**
+   * Center-of-mass DOF base of the rigid body driving this atom (whole rigid molecule or rigid
+   * group of a semi-flexible molecule); nullopt when the atom carries Cartesian DOFs instead.
+   */
+  std::optional<std::size_t> atomRigidComDof(std::size_t moleculeIndex, std::size_t localAtom) const noexcept;
+
+  /** Orientation DOF base of the rigid body driving this atom (com base + 3), if any. */
+  std::optional<std::size_t> atomRigidOrientationDof(std::size_t moleculeIndex, std::size_t localAtom) const noexcept;
+
+  /** All rigid bodies (rigid molecules and rigid groups) in DOF order. */
+  std::span<const RigidBodyDofInfo> rigidBodies() const noexcept { return _rigidBodies; }
 
   std::size_t flexibleAtomDofBase(std::size_t moleculeIndex, std::size_t localAtom) const;
 
@@ -72,6 +97,8 @@ export class MinimizationDofLayout
   std::vector<MolDofInfo> _molecules;
   std::vector<std::int32_t> _flexibleAtomDof;
   std::vector<std::int32_t> _rigidMoleculeDof;
+  std::vector<std::int32_t> _atomRigidBodyDof;
+  std::vector<RigidBodyDofInfo> _rigidBodies;
 };
 
 export MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,

@@ -428,13 +428,14 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
-      spanOfFrameworkDynamics(), &forceField);
+      spanOfFrameworkDynamics(), &forceField, spanOfGroupData());
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
+  double rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(moleculeData, components, spanOfGroupData());
   double rotationalTemperature =
       rotationalDegreesOfFreedom > 0
           ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))

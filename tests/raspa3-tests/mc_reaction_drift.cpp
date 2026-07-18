@@ -323,7 +323,7 @@ void runReactionDriftTest(std::vector<System> systems)
   const bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -347,7 +347,7 @@ void runReactionBoundaryDriftTest(std::vector<System> systems)
   const bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -630,7 +630,7 @@ void runSerialReactionBoundaryDriftTest(std::vector<System> systems)
   const bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();

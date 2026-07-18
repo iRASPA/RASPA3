@@ -352,71 +352,44 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
   du_dc += DCos * dtC;
   du_dd += DCos * dtD;
 
-  strain_derivative.ax += Dab_vec.x * du_da.x + Dbc_vec.x * rbc * (du_dc.x + du_dd.x) + Dcd_vec.x * du_dd.x;
-  strain_derivative.bx += Dab_vec.y * du_da.x + Dbc_vec.y * rbc * (du_dc.x + du_dd.x) + Dcd_vec.y * du_dd.x;
-  strain_derivative.cx += Dab_vec.z * du_da.x + Dbc_vec.z * rbc * (du_dc.x + du_dd.x) + Dcd_vec.z * du_dd.x;
-  strain_derivative.ay += Dab_vec.x * du_da.y + Dbc_vec.x * rbc * (du_dc.y + du_dd.y) + Dcd_vec.x * du_dd.y;
-  strain_derivative.by += Dab_vec.y * du_da.y + Dbc_vec.y * rbc * (du_dc.y + du_dd.y) + Dcd_vec.y * du_dd.y;
-  strain_derivative.cy += Dab_vec.z * du_da.y + Dbc_vec.z * rbc * (du_dc.y + du_dd.y) + Dcd_vec.z * du_dd.y;
-  strain_derivative.az += Dab_vec.x * du_da.z + Dbc_vec.x * rbc * (du_dc.z + du_dd.z) + Dcd_vec.x * du_dd.z;
-  strain_derivative.bz += Dab_vec.y * du_da.z + Dbc_vec.y * rbc * (du_dc.z + du_dd.z) + Dcd_vec.y * du_dd.z;
-  strain_derivative.cz += Dab_vec.z * du_da.z + Dbc_vec.z * rbc * (du_dc.z + du_dd.z) + Dcd_vec.z * du_dd.z;
-
   double3 Dab = Dab_vec / rab;
   double3 Dcd = Dcd_vec / rcd;
 
-  auto add_bend_forces = [&](double d_theta, double cos_theta, const double3 &dir_ab, const double3 &dir_bc_or_cd,
-                             double r_ab, double r_other, const double3 &vec_ab, const double3 &vec_other, bool second_bend)
-  {
-    double3 fa, fb_part, fo;
-    if (!second_bend)
-    {
-      fa = {-d_theta * (dir_bc_or_cd.x - cos_theta * dir_ab.x) / r_ab,
-            -d_theta * (dir_bc_or_cd.y - cos_theta * dir_ab.y) / r_ab,
-            -d_theta * (dir_bc_or_cd.z - cos_theta * dir_ab.z) / r_ab};
-      fo = {-d_theta * (dir_ab.x - cos_theta * dir_bc_or_cd.x) / r_other,
-            -d_theta * (dir_ab.y - cos_theta * dir_bc_or_cd.y) / r_other,
-            -d_theta * (dir_ab.z - cos_theta * dir_bc_or_cd.z) / r_other};
-      fb_part = -(fa + fo);
-      du_da += fa;
-      du_db += fb_part;
-      du_dc += fo;
-    }
-    else
-    {
-      fa = {-d_theta * (dir_bc_or_cd.x - cos_theta * dir_ab.x) / r_ab,
-            -d_theta * (dir_bc_or_cd.y - cos_theta * dir_ab.y) / r_ab,
-            -d_theta * (dir_bc_or_cd.z - cos_theta * dir_ab.z) / r_ab};
-      fo = {-d_theta * (-dir_bc_or_cd.x - cos_theta * Dcd.x) / r_other,
-            -d_theta * (-dir_bc_or_cd.y - cos_theta * Dcd.y) / r_other,
-            -d_theta * (-dir_bc_or_cd.z - cos_theta * Dcd.z) / r_other};
-      fb_part = {d_theta * (Dcd.x + Dbc.x * cos_theta2) / rbc, d_theta * (Dcd.y + Dbc.y * cos_theta2) / rbc,
-                 d_theta * (Dcd.z + Dbc.z * cos_theta2) / rbc};
-      du_da += fa;
-      du_db += fb_part - fa - fo;
-      du_dc += -fb_part - fo;
-      du_dd += fo;
-    }
-
-    strain_derivative.ax += r_ab * vec_ab.x * fa.x + r_other * vec_other.x * fo.x;
-    strain_derivative.bx += r_ab * vec_ab.y * fa.x + r_other * vec_other.y * fo.x;
-    strain_derivative.cx += r_ab * vec_ab.z * fa.x + r_other * vec_other.z * fo.x;
-    strain_derivative.ay += r_ab * vec_ab.x * fa.y + r_other * vec_other.x * fo.y;
-    strain_derivative.by += r_ab * vec_ab.y * fa.y + r_other * vec_other.y * fo.y;
-    strain_derivative.cy += r_ab * vec_ab.z * fa.y + r_other * vec_other.y * fo.y;
-    strain_derivative.az += r_ab * vec_ab.x * fa.z + r_other * vec_other.x * fo.z;
-    strain_derivative.bz += r_ab * vec_ab.y * fa.z + r_other * vec_other.y * fo.z;
-    strain_derivative.cz += r_ab * vec_ab.z * fa.z + r_other * vec_other.z * fo.z;
-  };
-
+  // Bend theta1 (A-B-C, vertex B), unit arms Dab (towards A) and Dbc (towards C);
+  // DTheta already carries the (dU/dtheta)/sin(theta) factor, so dU/dcos(theta) = -DTheta.
   if (DTheta1 != 0.0)
   {
-    add_bend_forces(DTheta1, cos_theta1, Dab, Dbc, rab, rbc, Dab_vec, Dbc_vec, false);
+    const double3 fa = (-DTheta1 / rab) * (Dbc - cos_theta1 * Dab);
+    const double3 fc = (-DTheta1 / rbc) * (Dab - cos_theta1 * Dbc);
+    du_da += fa;
+    du_db -= fa + fc;
+    du_dc += fc;
   }
+
+  // Bend theta2 (B-C-D, vertex C), unit arms -Dbc (towards B) and Dcd (towards D).
   if (DTheta2 != 0.0)
   {
-    add_bend_forces(DTheta2, cos_theta2, Dab, Dcd, rab, rcd, Dab_vec, Dcd_vec, true);
+    const double3 fb = (-DTheta2 / rbc) * (Dcd + cos_theta2 * Dbc);
+    const double3 fd = (-DTheta2 / rcd) * (-1.0 * Dbc - cos_theta2 * Dcd);
+    du_db += fb;
+    du_dc -= fb + fd;
+    du_dd += fd;
   }
+
+  // Molecular virial: the total gradient is translation invariant, so the strain derivative is
+  // sum_i (x_i - x_B) (x) g_i with arms A-B, C-B, and D-B = (C-B) + (D-C).
+  const double3 armA = Dab_vec;
+  const double3 armC = Dbc_vec;
+  const double3 armD = Dbc_vec + Dcd_vec;
+  strain_derivative.ax = armA.x * du_da.x + armC.x * du_dc.x + armD.x * du_dd.x;
+  strain_derivative.bx = armA.y * du_da.x + armC.y * du_dc.x + armD.y * du_dd.x;
+  strain_derivative.cx = armA.z * du_da.x + armC.z * du_dc.x + armD.z * du_dd.x;
+  strain_derivative.ay = armA.x * du_da.y + armC.x * du_dc.y + armD.x * du_dd.y;
+  strain_derivative.by = armA.y * du_da.y + armC.y * du_dc.y + armD.y * du_dd.y;
+  strain_derivative.cy = armA.z * du_da.y + armC.z * du_dc.y + armD.z * du_dd.y;
+  strain_derivative.az = armA.x * du_da.z + armC.x * du_dc.z + armD.x * du_dd.z;
+  strain_derivative.bz = armA.y * du_da.z + armC.y * du_dc.z + armD.y * du_dd.z;
+  strain_derivative.cz = armA.z * du_da.z + armC.z * du_dc.z + armD.z * du_dd.z;
 
   return {U, {du_da, du_db, du_dc, du_dd}, strain_derivative};
 }

@@ -38,7 +38,8 @@ double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
                                          const std::optional<Framework>& framework = std::nullopt,
                                          std::span<const Atom> frameworkAtomPositions = {},
                                          std::span<const AtomDynamics> frameworkDynamics = {},
-                                         const ForceField* forceField = nullptr);
+                                         const ForceField* forceField = nullptr,
+                                         std::span<const GroupState> groupData = {});
 
 /**
  * \brief Computes the total rotational kinetic energy of molecules.
@@ -50,7 +51,8 @@ double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
  * \param components A vector of components containing inertia information.
  * \return The total rotational kinetic energy.
  */
-double computeRotationalKineticEnergy(std::span<const Molecule> moleculeData, const std::vector<Component> components);
+double computeRotationalKineticEnergy(std::span<const Molecule> moleculeData, const std::vector<Component> components,
+                                      std::span<const GroupState> groupData = {});
 
 /**
  * \brief Computes the center of mass position of the system.

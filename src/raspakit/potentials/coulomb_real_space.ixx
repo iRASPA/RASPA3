@@ -16,6 +16,54 @@ struct CoulombRealSpaceFactors
   double thirdDerivativeFactor;
 };
 
+// Distance offset used in the scaled (CFCMC fractional) Ewald real-space and exclusion terms:
+// the pair separation r is replaced by r + Q with Q = delta * (1 - scalingA * scalingB) and
+// delta = 0.01 Angstrom. For full interactions (scaling 1) the offset vanishes and plain Ewald is
+// recovered; for scaled interactions the potential remains finite even at r = 0, removing the
+// erfc(alpha r)/r divergence that otherwise produces 0 * inf = NaN for zero Coulomb scaling.
+// See Hens et al., J. Chem. Inf. Model. 2020 (Brick-CFCMC), SI Eqs. (S13)-(S15) and (S19)-(S21).
+inline constexpr double EwaldChargeOffsetDelta = 0.01;
+
+/**
+ * \brief Offset-form factors of the intramolecular Ewald exclusion term for scaled interactions.
+ *
+ * The exclusion energy of an intramolecular pair is U = -lambda_t * C q_A q_B * erf(alpha s)/s
+ * with s = r + Q and Q = EwaldChargeOffsetDelta * (1 - lambda_t), lambda_t = scalingA * scalingB
+ * (Eq. (S15) with erf = 1 - erfc). All fields are per Coulomb prefactor C q_A q_B:
+ *   - potential: erf(alpha s)/s, so the exclusion energy is -lambda_t * C q_A q_B * potential.
+ *   - dUdlambda: symmetric lambda-derivative factor, d(-U)/d(scalingA) = -scalingB * C q_A q_B * dUdlambda,
+ *     including the chain-rule contribution of Q (Eq. (S21)).
+ *   - firstDerivativeFactor: (1/r) d/dr [erf(alpha s)/s], so the gradient of U on atom A is
+ *     -lambda_t * C q_A q_B * firstDerivativeFactor * dr with dr = posA - posB.
+ *   - secondDerivativeFactor: (phi'' - phi'/r)/r^2 with phi(s) = erf(alpha s)/s, the RASPA Hessian
+ *     factor of the (positive-erf) exclusion kernel; the Hessian factors of U carry a minus sign.
+ */
+struct EwaldExclusionFactors
+{
+  double potential;
+  double dUdlambda;
+  double firstDerivativeFactor;
+  double secondDerivativeFactor;
+};
+
+[[clang::always_inline]] inline EwaldExclusionFactors ewaldExclusionFactors(double alpha, double scalingTotal,
+                                                                            double r)
+{
+  const double offset = EwaldChargeOffsetDelta * (1.0 - scalingTotal);
+  const double s = r + offset;
+  const double inverseS = 1.0 / s;
+  const double inverseR = 1.0 / r;
+  const double potential = std::erf(alpha * s) * inverseS;
+  const double gaussianTerm =
+      2.0 * alpha * std::numbers::inv_sqrtpi_v<double> * std::exp(-alpha * alpha * s * s);
+  // phi'(s) and phi''(s) of phi(s) = erf(alpha s)/s
+  const double firstDerivative = (gaussianTerm - potential) * inverseS;
+  const double secondDerivative =
+      -2.0 * alpha * alpha * gaussianTerm - 2.0 * (gaussianTerm - potential) * inverseS * inverseS;
+  return {potential, potential - scalingTotal * EwaldChargeOffsetDelta * firstDerivative,
+          firstDerivative * inverseR, (secondDerivative - firstDerivative * inverseR) * inverseR * inverseR};
+}
+
 inline double coulombSelfEnergyPrefactor(const ForceField& forceField)
 {
   const double alpha = forceField.EwaldAlpha;

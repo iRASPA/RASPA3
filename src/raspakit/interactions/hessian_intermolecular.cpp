@@ -54,8 +54,9 @@ void addPeriodicCellCorrection(GeneralizedHessian& hessian, const MinimizationDo
     const std::size_t cellA = *layout.cellDof(a);
     const auto scatterSite = [&](std::size_t molecule, std::size_t localAtom, bool rigid, double sign)
     {
+      // atomRigidComDof covers both whole rigid molecules and rigid groups of semi-flexible molecules.
       const std::size_t positionBase =
-          rigid ? *layout.rigidMoleculeDof(molecule, RigidDof::ComX) : layout.flexibleAtomDofBase(molecule, localAtom);
+          rigid ? *layout.atomRigidComDof(molecule, localAtom) : layout.flexibleAtomDofBase(molecule, localAtom);
       for (std::size_t axis = 0; axis < 3; ++axis)
       {
         hessian.add(positionBase + axis, cellA, sign * (&mixedCorrection.x)[axis]);
@@ -63,7 +64,7 @@ void addPeriodicCellCorrection(GeneralizedHessian& hessian, const MinimizationDo
       }
       if (rigid)
       {
-        const std::size_t orientationBase = *layout.rigidMoleculeDof(molecule, RigidDof::OriX);
+        const std::size_t orientationBase = *layout.atomRigidOrientationDof(molecule, localAtom);
         const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(molecule, localAtom);
         const std::array<double3, 3> directions = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
         for (std::size_t axis = 0; axis < 3; ++axis)
@@ -131,8 +132,10 @@ RunningEnergy Interactions::computeInterMolecularHessian(
   for (std::span<const Atom>::iterator it1 = atoms.begin(); it1 != atoms.end() - 1; ++it1)
   {
     const std::size_t moleculeA = static_cast<std::size_t>(it1->moleculeId);
-    const bool rigidA = layout.molecules()[moleculeA].rigid;
-    const double3 comA = rigidA ? moleculeData[moleculeA].centerOfMassPosition : it1->position;
+    const Molecule& molA = moleculeData[moleculeA];
+    const std::size_t localAtomA = localAtomIndex(atoms, molA, *it1);
+    const bool rigidA = layout.atomRigidComDof(moleculeA, localAtomA).has_value();
+    const double3 comA = rigidA ? rigidCache.bodyCenterOfMass(moleculeA, localAtomA) : it1->position;
 
     for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != atoms.end(); ++it2)
     {
@@ -142,13 +145,10 @@ RunningEnergy Interactions::computeInterMolecularHessian(
         continue;
       }
 
-      const bool rigidB = layout.molecules()[moleculeB].rigid;
-      const double3 comB = rigidB ? moleculeData[moleculeB].centerOfMassPosition : it2->position;
-
-      const Molecule& molA = moleculeData[moleculeA];
       const Molecule& molB = moleculeData[moleculeB];
-      const std::size_t localAtomA = localAtomIndex(atoms, molA, *it1);
       const std::size_t localAtomB = localAtomIndex(atoms, molB, *it2);
+      const bool rigidB = layout.atomRigidComDof(moleculeB, localAtomB).has_value();
+      const double3 comB = rigidB ? rigidCache.bodyCenterOfMass(moleculeB, localAtomB) : it2->position;
 
       // Shared gradient/Hessian scatter for both the VDW and Coulomb contributions of this pair.
       const auto applyPairHessian = [&](const Potentials::PairDerivatives<2>& factors, const double3& dr)

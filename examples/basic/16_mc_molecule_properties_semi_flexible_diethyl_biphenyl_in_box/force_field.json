@@ -1,0 +1,76 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "CutOffVDW" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 15.03452,
+      "charge" : 0.0,
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.0,
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "C_ar",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.011,
+      "charge" : 0.0,
+      "source" : "C. D. Wick, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 2000, 104, 8008-8016"
+    },
+    {
+      "name" : "CH_ar",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.0,
+      "source" : "C. D. Wick, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 2000, 104, 8008-8016"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH3",
+      "type" : "lennard-jones",
+      "parameters" : [98.0, 3.75],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "C_ar",
+      "type" : "lennard-jones",
+      "parameters" : [21.0, 3.88],
+      "source" : "C. D. Wick, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 2000, 104, 8008-8016"
+    },
+    {
+      "name" : "CH_ar",
+      "type" : "lennard-jones",
+      "parameters" : [50.5, 3.695],
+      "source" : "C. D. Wick, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 2000, 104, 8008-8016"
+    }
+  ]
+}

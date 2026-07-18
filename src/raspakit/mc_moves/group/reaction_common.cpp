@@ -17,6 +17,7 @@ import randomnumbers;
 import system;
 import forcefield;
 import units;
+import potential_coulomb_real_space;
 import running_energy;
 import interactions_framework_molecule;
 import interactions_intermolecular;
@@ -84,11 +85,13 @@ void acceptChargedEwaldMove(System& system) noexcept
         double3 dr = atoms[i].position - atoms[j].position;
         dr = system.simulationBox.applyPeriodicBoundaryConditions(dr);
         const double r = std::sqrt(double3::dot(dr, dr));
-        const double temp =
-            sign * Units::CoulombicConversionFactor * atoms[i].charge * atoms[j].charge * std::erf(alpha * r) / r;
-        accumulator.ewald_exclusion += atoms[i].scalingCoulomb * atoms[j].scalingCoulomb * temp;
+        const double scalingTotal = atoms[i].scalingCoulomb * atoms[j].scalingCoulomb;
+        const Potentials::EwaldExclusionFactors exclusion =
+            Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
+        const double prefactor = sign * Units::CoulombicConversionFactor * atoms[i].charge * atoms[j].charge;
+        accumulator.ewald_exclusion += scalingTotal * prefactor * exclusion.potential;
         accumulator.addDudlambdaEwald(atoms[i].groupId, atoms[j].groupId, atoms[i].scalingCoulomb,
-                                      atoms[j].scalingCoulomb, temp);
+                                      atoms[j].scalingCoulomb, prefactor * exclusion.dUdlambda);
       }
     }
   };
@@ -408,6 +411,15 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     result.RosenbluthWeight *= retraceData.RosenbluthWeight;
     result.energies += retraceData.energies;
     result.molecules.push_back(std::move(retraceData));
+  }
+
+  // A vanishing retrace weight means the current configuration itself is in (near-)overlap: the
+  // acceptance ratio would divide by zero and force-accept a move whose retrace energy does not
+  // describe the actual state (overlapping trials are discarded), corrupting the running energies.
+  // Reject instead, mirroring the minimumRosenbluthFactor guard of the insertion paths.
+  if (!(result.RosenbluthWeight >= system.forceField.minimumRosenbluthFactor))
+  {
+    return std::nullopt;
   }
 
   return result;

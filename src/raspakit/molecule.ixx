@@ -10,6 +10,35 @@ import simd_quatd;
 import stringutils;
 import json;
 
+/**
+ * \brief Authoritative rigid-body state of one rigid group inside a semi-flexible molecule.
+ *
+ * A semi-flexible molecule (a component that defines rigid/flexible 'Groups') carries one
+ * GroupState per rigid group. The state mirrors the rigid-body fields of 'Molecule': the group's
+ * center of mass and its orientation quaternion are authoritative, and the group's atom positions
+ * are regenerated as 'centerOfMassPosition + q * bodyFixedPositions[k]' (see
+ * 'MoleculeGroup::bodyFixedPositions'). This keeps the internal geometry of a rigid group exact to
+ * machine precision across long molecular-dynamics runs and hybrid Monte-Carlo/MD moves, and lets
+ * the group be integrated by the same NO_SQUISH free-rotor scheme used for rigid molecules.
+ *
+ * The flexible atoms of a semi-flexible molecule are not covered by any GroupState; they keep the
+ * per-atom Cartesian dynamics stored in the parallel 'AtomDynamics' array.
+ */
+export struct GroupState
+{
+  double3 centerOfMassPosition{};   ///< Center of mass of the group in the laboratory frame.
+  double3 velocity{};               ///< Center-of-mass velocity of the group.
+  double3 gradient{};               ///< Net force gradient on the group center of mass.
+  simd_quatd orientation{0.0, 0.0, 0.0, 1.0};  ///< Orientation mapping body-fixed to lab frame.
+  simd_quatd orientationMomentum{};            ///< Conjugate momentum of the orientation quaternion.
+  simd_quatd orientationGradient{};            ///< Torque acting on the orientation quaternion.
+
+  GroupState() = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const GroupState &g);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, GroupState &g);
+};
+
 // Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Molecule
 {

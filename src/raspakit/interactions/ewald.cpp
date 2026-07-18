@@ -511,9 +511,11 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
             dr = simulationBox.applyPeriodicBoundaryConditions(dr);
             double r = std::sqrt(double3::dot(dr, dr));
 
-            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-            energySum.ewald_exclusion -= scalingA * scalingB * temp;
-            energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
+            const Potentials::EwaldExclusionFactors exclusion =
+                Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+            double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+            energySum.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+            energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
           }
         }
         index += size;
@@ -828,17 +830,15 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             double rr = double3::dot(dr, dr);
             double r = std::sqrt(rr);
 
-            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-            energySum.ewald_exclusion -= scalingA * scalingB * temp;
-            energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
+            const Potentials::EwaldExclusionFactors exclusion =
+                Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+            double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+            energySum.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+            energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
 
-            temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
-                   std::exp(-(alpha * alpha * r * r)) / rr;
-            double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
-            double Bt1 = temp + Bt0 / rr;
-            temp = chargeA * chargeB * Bt1;
-            spanDynamics[i].gradient -= temp * dr;
-            spanDynamics[j].gradient += temp * dr;
+            double gradientFactor = scalingA * scalingB * prefactor * exclusion.firstDerivativeFactor;
+            spanDynamics[i].gradient -= gradientFactor * dr;
+            spanDynamics[j].gradient += gradientFactor * dr;
           }
         }
         index += size;
@@ -1151,9 +1151,11 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-      energy.ewald_exclusion += scalingA * scalingB * temp;
-      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, temp);
+      const Potentials::EwaldExclusionFactors exclusion =
+          Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+      double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      energy.ewald_exclusion += scalingA * scalingB * prefactor * exclusion.potential;
+      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, prefactor * exclusion.dUdlambda);
     }
   }
 
@@ -1174,9 +1176,11 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-      energy.ewald_exclusion -= scalingA * scalingB * temp;
-      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
+      const Potentials::EwaldExclusionFactors exclusion =
+          Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+      double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      energy.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
     }
   }
 
@@ -1356,9 +1360,11 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
       double rr = double3::dot(dr, dr);
       double r = std::sqrt(rr);
 
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-      energy.ewald_exclusion += scalingA * scalingB * temp;
-      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, temp);
+      const Potentials::EwaldExclusionFactors exclusion =
+          Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+      double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      energy.ewald_exclusion += scalingA * scalingB * prefactor * exclusion.potential;
+      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, prefactor * exclusion.dUdlambda);
     }
   }
 
@@ -1380,9 +1386,11 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
       double rr = double3::dot(dr, dr);
       double r = std::sqrt(rr);
 
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-      energy.ewald_exclusion -= scalingA * scalingB * temp;
-      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
+      const Potentials::EwaldExclusionFactors exclusion =
+          Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+      double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      energy.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+      energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
     }
   }
 
@@ -1787,15 +1795,13 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           double rr = double3::dot(dr, dr);
           double r = std::sqrt(rr);
 
-          energy.componentEnergy(l, l).CoulombicFourier -= EnergyDuDlambda(
-              Units::CoulombicConversionFactor * scalingA * chargeA * scalingB * chargeB * std::erf(alpha * r) / r,
-              0.0);
+          const Potentials::EwaldExclusionFactors exclusion =
+              Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+          double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+          energy.componentEnergy(l, l).CoulombicFourier -=
+              EnergyDuDlambda(scalingA * scalingB * prefactor * exclusion.potential, 0.0);
 
-          double temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
-                        std::exp(-(alpha * alpha * r * r)) / rr;
-          double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
-          double Bt1 = temp + Bt0 / rr;
-          temp = chargeA * chargeB * Bt1;
+          double temp = scalingA * scalingB * prefactor * exclusion.firstDerivativeFactor;
           spanDynamics[i].gradient -= temp * dr;
           spanDynamics[j].gradient += temp * dr;
 
@@ -2160,9 +2166,12 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
               if (!omitInterInteractions)
               {
-                double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-                energySum.ewald_exclusion -= scalingA * scalingB * temp;
-                energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -temp);
+                const Potentials::EwaldExclusionFactors exclusion =
+                    Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+                double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+                energySum.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+                energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB,
+                                            -prefactor * exclusion.dUdlambda);
               }
 
               // NOTE: the intra-molecular Ewald reciprocal-space exclusion does NOT contribute to the

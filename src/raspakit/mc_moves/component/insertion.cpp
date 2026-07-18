@@ -29,6 +29,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber& random, System& system,
                                                                          std::size_t selectedComponent)
@@ -162,6 +163,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                    energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
+  // The intra-molecular energy of the inserted conformation enters the running energies but not the
+  // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution
+  // exp(-beta * U_intra), so its intra energy cancels against the generation probability (zero for
+  // rigid molecules).
+  RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(trialMolecule.second);
+
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
@@ -197,7 +204,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second,
                                       electricFieldMoleculeNew);
 
-    return {energyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
+    return {energyDifference + internalEnergyNew, double3(0.0, 1.0 - Pacc, Pacc)};
   };
 
   return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};

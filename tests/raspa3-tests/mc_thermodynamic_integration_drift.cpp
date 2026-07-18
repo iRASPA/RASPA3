@@ -65,7 +65,7 @@ void runShortMonteCarlo(std::vector<System>& systems, size_t numberOfProductionC
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
   mc.run();
 
@@ -88,7 +88,7 @@ void runGibbsMonteCarlo(std::vector<System>& systems)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
   mc.run();
 

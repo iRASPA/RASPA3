@@ -9,8 +9,14 @@ import thermobarostat;
 namespace
 {
 
-const std::filesystem::path tmmcExample = "examples/advanced/5_tmmc_methane_in_tobacco_667/0/simulation.json";
-const std::filesystem::path nvtExample = "examples/basic/5_md_methane_in_box_msd/simulation.json";
+std::filesystem::path repositoryRoot()
+{
+  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+}
+
+const std::filesystem::path tmmcExample =
+    repositoryRoot() / "examples/advanced/5_tmmc_methane_in_tobacco_667/0/simulation.json";
+const std::filesystem::path nvtExample = repositoryRoot() / "examples/basic/5_md_methane_in_box_msd/simulation.json";
 
 class TemporaryInput
 {
@@ -191,9 +197,9 @@ TEST(INPUT_READER_MD, rejects_grand_canonical_md_without_reservoir_or_swap)
 TEST(INPUT_READER_MD, reads_grand_canonical_md_examples)
 {
   const std::array examples{
-      std::filesystem::path{"examples/non_basic/14_md_muvt_methane_box/simulation.json"},
-      std::filesystem::path{"examples/non_basic/15_md_mupt_methane_box/simulation.json"},
-      std::filesystem::path{"examples/non_basic/16_md_muptpr_methane_box/simulation.json"},
+      repositoryRoot() / "examples/non_basic/14_md_muvt_methane_box/simulation.json",
+      repositoryRoot() / "examples/non_basic/15_md_mupt_methane_box/simulation.json",
+      repositoryRoot() / "examples/non_basic/16_md_muptpr_methane_box/simulation.json",
   };
   for (const std::filesystem::path& example : examples)
   {

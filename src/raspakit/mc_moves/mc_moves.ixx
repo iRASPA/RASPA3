@@ -25,8 +25,13 @@ enum class ParticleExchangeResult : std::uint8_t
   Deleted
 };
 
+// On return 'exchangedMolecule' holds the molecule index (within the component) of the inserted or
+// deleted molecule; it is unspecified when the move was rejected. The caller needs it to keep
+// per-molecule bookkeeping such as the rigid-group states (GroupState) of semi-flexible molecules
+// aligned with the molecule layout.
 ParticleExchangeResult performMolecularDynamicsSwap(RandomNumber& random, System& system,
-                                                     std::size_t selectedComponent);
+                                                     std::size_t selectedComponent,
+                                                     std::size_t& exchangedMolecule);
 
 /**
  * \brief Performs a random Monte Carlo move on the selected system.

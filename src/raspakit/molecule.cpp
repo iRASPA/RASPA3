@@ -9,6 +9,28 @@ import double3;
 import simd_quatd;
 import stringutils;
 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const GroupState &g)
+{
+  archive << g.centerOfMassPosition;
+  archive << g.velocity;
+  archive << g.gradient;
+  archive << g.orientation;
+  archive << g.orientationMomentum;
+  archive << g.orientationGradient;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, GroupState &g)
+{
+  archive >> g.centerOfMassPosition;
+  archive >> g.velocity;
+  archive >> g.gradient;
+  archive >> g.orientation;
+  archive >> g.orientationMomentum;
+  archive >> g.orientationGradient;
+  return archive;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &atom)
 {
   archive << atom.centerOfMassPosition;

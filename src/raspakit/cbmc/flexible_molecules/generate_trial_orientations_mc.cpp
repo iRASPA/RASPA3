@@ -25,8 +25,29 @@ import framework;
 import component;
 import interpolation_energy_grid;
 import bond_potential;
+import bend_potential;
 import intra_molecular_potentials;
 import cbmc_move_statistics;
+import connectivity_table;
+
+// A bend is 'spin-variant' when it involves a placed atom other than the previous or current bead.
+// Rotating the next-beads about the previous-current axis (the torsion spin) changes such bends --
+// e.g. the bend to the second ring neighbor when growing off an aromatic ring atom -- while bends
+// among {previous, current, next-beads} transform rigidly (previous and current lie on the axis).
+// Spin-variant bends are therefore excluded from the internal bend MC (which carries no Rosenbluth
+// weight) and weighted exactly in the torsion selection instead.
+static bool isSpinVariantBend(const BendPotential &bend, std::optional<std::size_t> previousBead,
+                              std::size_t currentBead, const std::vector<std::size_t> &nextBeads)
+{
+  for (std::size_t id : bend.identifiers)
+  {
+    if (id == currentBead) continue;
+    if (previousBead.has_value() && id == previousBead.value()) continue;
+    if (std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end()) continue;
+    return true;
+  }
+  return false;
+}
 
 std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
     RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta, 
@@ -102,6 +123,38 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
     }
   }
 
+  // With more than one bend the azimuth of a bead on its cone around the last bond vector is
+  // constrained as well: e.g. a CH2 growing off an aromatic ring atom has bends to both ring
+  // neighbors, which together force it towards the ring plane. Neither initialization above fixes
+  // the azimuth: the from-scratch cone draw samples it uniformly, and the restore from the stored
+  // configuration preserves only the bend to the previous bead (the positions of the other placed
+  // neighbors differ from the stored ones). An azimuth that starts far off against stiff bends
+  // cannot reliably be recovered by the local Metropolis refinement below, so Boltzmann-select each
+  // bead's azimuth from the total bend energy on a fine grid first (a Gibbs sweep over the beads);
+  // the Metropolis walk afterwards only needs to sample local fluctuations.
+  if (intraMolecularInteractions.bends.size() > 1)
+  {
+    constexpr std::size_t numberOfAzimuthAngles = 72;
+    std::vector<double> logAzimuthBoltzmannFactors(numberOfAzimuthAngles);
+
+    for (std::size_t next_bead : nextBeads)
+    {
+      double3 bond_vector = chain_atoms[next_bead].position - chain_atoms[currentBead].position;
+
+      for (std::size_t r = 0; r != numberOfAzimuthAngles; ++r)
+      {
+        double azimuth = 2.0 * std::numbers::pi * static_cast<double>(r) / numberOfAzimuthAngles;
+        chain_atoms[next_bead].position =
+            chain_atoms[currentBead].position + last_bond_vector.rotateAroundAxis(bond_vector, azimuth);
+        logAzimuthBoltzmannFactors[r] = -beta * intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
+      }
+
+      std::size_t selected = CBMC::selectTrialPosition(random, logAzimuthBoltzmannFactors);
+      double azimuth = 2.0 * std::numbers::pi * static_cast<double>(selected) / numberOfAzimuthAngles;
+      chain_atoms[next_bead].position =
+          chain_atoms[currentBead].position + last_bond_vector.rotateAroundAxis(bond_vector, azimuth);
+    }
+  }
 
   double current_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
   double current_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
@@ -343,14 +396,175 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(
   return next_bead_atoms;
 }
 
+std::vector<Atom> CBMC::generateRigidUnitOrientationMonteCarloScheme(
+    RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta, const Component &component,
+    const std::vector<Atom> &chainAtoms, std::optional<std::size_t> previousBead, std::size_t currentBead,
+    const std::vector<std::size_t> &nextBeads, const Potentials::IntraMolecularPotentials &intra)
+{
+  double3 anchor_reference = component.atoms[currentBead].position;
+  double3 anchor_position = chainAtoms[currentBead].position;
+
+  std::vector<Atom> chain_atoms(chainAtoms.begin(), chainAtoms.end());
+
+  auto placeWithRotation = [&](const double3x3 &rotation)
+  {
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      double3 offset = component.atoms[nextBeads[k]].position - anchor_reference;
+      chain_atoms[nextBeads[k]].position = anchor_position + rotation * offset;
+    }
+  };
+
+  // Without a previous bead (seed group) or without junction bends every tilt is equally likely:
+  // return a uniformly random orientation.
+  if (!previousBead.has_value() || intra.bends.empty())
+  {
+    placeWithRotation(random.randomRotationMatrix());
+
+    std::vector<Atom> result(nextBeads.size());
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      result[k] = chain_atoms[nextBeads[k]];
+    }
+    return result;
+  }
+
+  double3 last_bond_vector = (chainAtoms[previousBead.value()].position - anchor_position).normalized();
+
+  // Initial orientation: align the body-fixed anchor->inner direction (inner: the group atom bonded
+  // to the anchor) on a cone around the previous-anchor bond whose opening angle is drawn from the
+  // primary junction bend potential, with a uniform roll. This starts the Metropolis walk close to
+  // the bend minimum; the walk then equilibrates all junction bends simultaneously.
+  std::size_t inner = nextBeads[0];
+  for (std::size_t atom : nextBeads)
+  {
+    if (component.connectivityTable[atom, currentBead])
+    {
+      inner = atom;
+      break;
+    }
+  }
+
+  double bend_angle = 120.0 * Units::DegreesToRadians;
+  for (const BendPotential &bend : intra.bends)
+  {
+    if (bend.identifiers[1] != currentBead) continue;
+    if ((bend.identifiers[0] == previousBead.value() && bend.identifiers[2] == inner) ||
+        (bend.identifiers[0] == inner && bend.identifiers[2] == previousBead.value()))
+    {
+      bend_angle = bend.generateBendAngle(random, beta);
+      break;
+    }
+  }
+
+  double3 target_direction = random.randomVectorOnCone(last_bond_vector, bend_angle);
+  double3 body_inner = (component.atoms[inner].position - anchor_reference).normalized();
+  double3x3 alignment = double3x3::computeRotationMatrix(body_inner, target_direction);
+
+  std::vector<double3> aligned_offsets(nextBeads.size());
+  for (std::size_t k = 0; k != nextBeads.size(); ++k)
+  {
+    aligned_offsets[k] = alignment * (component.atoms[nextBeads[k]].position - anchor_reference);
+  }
+
+  // The roll about the anchor->inner axis leaves the primary bend (previous-anchor-inner) unchanged
+  // but controls every other junction bend (e.g. the second ipso bend of an aromatic ring, which
+  // forces the exocyclic bond into the ring plane). A uniform roll can start up to ~60 degrees off
+  // against stiff bends, which the local Metropolis refinement cannot reliably recover. Instead,
+  // Boltzmann-select the initial roll from the full junction bend energy on a fine grid; the
+  // Metropolis walk afterwards only needs to sample local fluctuations.
+  constexpr std::size_t numberOfRollAngles = 72;
+  std::vector<double> logRollBoltzmannFactors(numberOfRollAngles);
+  double roll_offset = 2.0 * std::numbers::pi * random.uniform();
+  for (std::size_t r = 0; r != numberOfRollAngles; ++r)
+  {
+    double roll_angle = roll_offset + 2.0 * std::numbers::pi * static_cast<double>(r) / numberOfRollAngles;
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      chain_atoms[nextBeads[k]].position =
+          anchor_position + target_direction.rotateAroundAxis(aligned_offsets[k], roll_angle);
+    }
+    logRollBoltzmannFactors[r] = -beta * intra.calculateBendSmallMCEnergies(chain_atoms);
+  }
+
+  std::size_t selected_roll = CBMC::selectTrialPosition(random, logRollBoltzmannFactors);
+  double roll_angle =
+      roll_offset + 2.0 * std::numbers::pi * static_cast<double>(selected_roll) / numberOfRollAngles;
+  for (std::size_t k = 0; k != nextBeads.size(); ++k)
+  {
+    chain_atoms[nextBeads[k]].position =
+        anchor_position + target_direction.rotateAroundAxis(aligned_offsets[k], roll_angle);
+  }
+
+  double current_bend_energy = intra.calculateBendSmallMCEnergies(chain_atoms);
+
+  // Metropolis MC over rigid-body rotations about the anchor. Proposals rotate the whole body by a
+  // small angle about a uniformly random axis through the anchor; this is symmetric with respect to
+  // the Haar (uniform rotation) measure, so plain Metropolis acceptance on the junction bend
+  // energies samples the tilt from its Boltzmann distribution. No Rosenbluth weight is accumulated:
+  // as with the flexible bend MC, the bend bias cancels between growth and retrace.
+  constexpr double maximumRotationAngle = 0.15;
+  std::size_t number_of_trials = 2 * numberOfTrialMovesPerOpenBead * nextBeads.size();
+
+  std::vector<double3> saved_positions(nextBeads.size());
+
+  for (std::size_t trial = 0; trial != number_of_trials; ++trial)
+  {
+    double3 axis = random.randomVectorOnUnitSphere();
+    double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;
+
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      saved_positions[k] = chain_atoms[nextBeads[k]].position;
+      chain_atoms[nextBeads[k]].position =
+          anchor_position + axis.rotateAroundAxis(saved_positions[k] - anchor_position, angle);
+    }
+
+    double trial_bend_energy = intra.calculateBendSmallMCEnergies(chain_atoms);
+
+    if (random.uniform() < std::exp(-beta * (trial_bend_energy - current_bend_energy)))
+    {
+      current_bend_energy = trial_bend_energy;
+    }
+    else
+    {
+      for (std::size_t k = 0; k != nextBeads.size(); ++k)
+      {
+        chain_atoms[nextBeads[k]].position = saved_positions[k];
+      }
+    }
+  }
+
+  std::vector<Atom> result(nextBeads.size());
+  for (std::size_t k = 0; k != nextBeads.size(); ++k)
+  {
+    result[k] = chain_atoms[nextBeads[k]];
+  }
+  return result;
+}
+
 CBMC::TorsionOrientation CBMC::selectTorsionOrientation(
     RandomNumber &random, std::size_t numberOfTorsionTrials, double beta, const std::vector<Atom> &chainAtoms,
-    const std::vector<Atom> &baseOrientation, [[maybe_unused]] std::size_t previousBead, std::size_t currentBead,
+    const std::vector<Atom> &baseOrientation, std::size_t previousBead, std::size_t currentBead,
     const std::vector<std::size_t> &nextBeads, double3 lastBondVector,
     const Potentials::IntraMolecularPotentials &intra, bool pinFirstToBase)
 {
   std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrials);
   std::vector<Atom> chain_atoms(chainAtoms.begin(), chainAtoms.end());
+
+  // Bends to placed atoms other than the previous bead (e.g. the second ring neighbor when growing
+  // off an aromatic ring atom) are NOT invariant under the spin about the previous-current axis:
+  // that atom does not lie on the rotation axis. Such spin-variant bends must enter the selection
+  // energy here, where they are Rosenbluth-weighted identically on growth and retrace; otherwise
+  // the spin would silently randomize a bend the internal bend MC just equilibrated.
+  std::vector<const BendPotential *> spin_variant_bends{};
+  for (const BendPotential &bend : intra.bends)
+  {
+    if (isSpinVariantBend(bend, previousBead, currentBead, nextBeads))
+    {
+      spin_variant_bends.push_back(&bend);
+    }
+  }
 
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
@@ -370,6 +584,12 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(
     }
 
     double torsion_energy = intra.calculateTorsionEnergies(chain_atoms);
+    for (const BendPotential *bend : spin_variant_bends)
+    {
+      torsion_energy += bend->calculateEnergy(chain_atoms[bend->identifiers[0]].position,
+                                              chain_atoms[bend->identifiers[1]].position,
+                                              chain_atoms[bend->identifiers[2]].position, std::nullopt);
+    }
     torsion_orientations[j] = {rotated_atoms, torsion_energy};
 
 #if defined(DEBUG)

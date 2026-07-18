@@ -353,6 +353,11 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   connectivityTable = readConnectivityTable(definedAtoms.size(), parsed_data);
   if (growType == GrowType::Flexible)
   {
+    // Parse the rigid/flexible groups first: the bond/bend/torsion readers use them to skip
+    // interactions that lie entirely inside a rigid group (their geometry is fixed).
+    readGroups(parsed_data);
+    computeGroupRigidProperties();
+
     intraMolecularPotentials.bonds = readBondPotentials(forceField, parsed_data);
     intraMolecularPotentials.bends = readBendPotentials(forceField, parsed_data);
     intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
@@ -370,6 +375,403 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
   }
+}
+
+void Component::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  groups.clear();
+  atomGroupIds.clear();
+
+  if (!parsed_data.contains("Groups"))
+  {
+    return;
+  }
+
+  if (!parsed_data["Groups"].is_array())
+  {
+    throw std::runtime_error(std::format("[Component reader]: 'Groups' must be an array\n"));
+  }
+
+  std::size_t numberOfBeads = definedAtoms.size();
+  std::vector<std::make_signed_t<std::size_t>> assigned(numberOfBeads, -1);
+
+  for (auto &[_, item] : parsed_data["Groups"].items())
+  {
+    if (!item.is_object())
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: each entry of 'Groups' must be an object with keys 'Type' and 'Atoms'\n"));
+    }
+
+    bool groupRigid = true;
+    if (item.contains("Type"))
+    {
+      std::string typeString = item["Type"].get<std::string>();
+      if (caseInSensStringCompare(typeString, "Flexible"))
+      {
+        groupRigid = false;
+      }
+      else if (caseInSensStringCompare(typeString, "Rigid"))
+      {
+        groupRigid = true;
+      }
+      else
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: group 'Type' must be 'Rigid' or 'Flexible', got {}\n", typeString));
+      }
+    }
+
+    if (!item.contains("Atoms") || !item["Atoms"].is_array())
+    {
+      throw std::runtime_error(std::format("[Component reader]: each group must contain an 'Atoms' array\n"));
+    }
+
+    std::vector<std::size_t> groupAtoms = item["Atoms"].get<std::vector<std::size_t>>();
+    if (groupAtoms.empty())
+    {
+      throw std::runtime_error(std::format("[Component reader]: a group must contain at least one atom\n"));
+    }
+
+    std::size_t groupIndex = groups.size();
+    for (std::size_t atom : groupAtoms)
+    {
+      if (atom >= numberOfBeads)
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: group atom index {} out of range (molecule has {} atoms)\n", atom, numberOfBeads));
+      }
+      if (assigned[atom] != -1)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: atom {} is listed in more than one group\n", atom));
+      }
+      assigned[atom] = static_cast<std::make_signed_t<std::size_t>>(groupIndex);
+    }
+
+    groups.emplace_back(groupRigid, groupAtoms);
+  }
+
+  // groups must partition all atoms
+  for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+  {
+    if (assigned[atom] == -1)
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: atom {} is not assigned to any group; 'Groups' must cover all atoms\n",
+                      atom));
+    }
+  }
+
+  atomGroupIds.resize(numberOfBeads);
+  for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+  {
+    atomGroupIds[atom] = static_cast<std::size_t>(assigned[atom]);
+  }
+
+  // each group must be a connected subgraph of the connectivity table
+  for (const MoleculeGroup &group : groups)
+  {
+    if (!connectivityTable.checkIsConnectedSubgraph(group.atoms))
+    {
+      std::stringstream result{};
+      std::copy(group.atoms.begin(), group.atoms.end(), std::ostream_iterator<std::size_t>(result, " "));
+      throw std::runtime_error(
+          std::format("[Component reader]: group ({}) is not a connected subgraph\n", result.str()));
+    }
+  }
+}
+
+void Component::computeGroupRigidProperties()
+{
+  finalizeGroupCache();
+
+  for (MoleculeGroup &group : groups)
+  {
+    group.mass = 0.0;
+    group.centerOfMassReferencePosition = double3{};
+    group.inertiaVector = double3{};
+    group.inverseInertiaVector = double3{};
+    group.bodyFixedPositions.clear();
+    group.rotationalDegreesOfFreedom = 0;
+    group.shapeType = 2;  // point
+
+    if (!group.rigid) continue;
+
+    // Group center of mass in the component reference frame ('atoms' is the reference geometry the
+    // CBMC growth places rigid groups from, already in the whole-molecule principal frame).
+    double3 com{};
+    double total_mass{};
+    for (std::size_t atom : group.atoms)
+    {
+      double mass = definedAtoms[atom].second;
+      com += mass * atoms[atom].position;
+      total_mass += mass;
+    }
+    com = com / total_mass;
+    group.mass = total_mass;
+    group.centerOfMassReferencePosition = com;
+
+    // Inertia tensor about the group center of mass.
+    double3x3 inertiaTensor{};
+    for (std::size_t atom : group.atoms)
+    {
+      double mass = definedAtoms[atom].second;
+      double3 dr = atoms[atom].position - com;
+      inertiaTensor.ax += mass * dr.x * dr.x;
+      inertiaTensor.bx += mass * dr.y * dr.x;
+      inertiaTensor.cx += mass * dr.z * dr.x;
+      inertiaTensor.ay += mass * dr.x * dr.y;
+      inertiaTensor.by += mass * dr.y * dr.y;
+      inertiaTensor.cy += mass * dr.z * dr.y;
+      inertiaTensor.az += mass * dr.x * dr.z;
+      inertiaTensor.bz += mass * dr.y * dr.z;
+      inertiaTensor.cz += mass * dr.z * dr.z;
+    }
+
+    // The body frame is the frame in which the inertia tensor is diagonal.
+    double3 eigenvalues{};
+    double3x3 eigenvectors{};
+    inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
+
+    group.bodyFixedPositions.reserve(group.atoms.size());
+    for (std::size_t atom : group.atoms)
+    {
+      double3 dr = atoms[atom].position - com;
+      double3 pos = eigenvectors.transpose() * dr;
+      if (std::abs(pos.x) < 1e-8) pos.x = 0.0;
+      if (std::abs(pos.y) < 1e-8) pos.y = 0.0;
+      if (std::abs(pos.z) < 1e-8) pos.z = 0.0;
+      group.bodyFixedPositions.push_back(pos);
+
+      group.inertiaVector.x += definedAtoms[atom].second * (pos.y * pos.y + pos.z * pos.z);
+      group.inertiaVector.y += definedAtoms[atom].second * (pos.x * pos.x + pos.z * pos.z);
+      group.inertiaVector.z += definedAtoms[atom].second * (pos.x * pos.x + pos.y * pos.y);
+    }
+
+    double rotlim =
+        std::max(1.0e-2, group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z) * 1.0e-5;
+    group.inverseInertiaVector.x = (group.inertiaVector.x < rotlim) ? 0.0 : 1.0 / group.inertiaVector.x;
+    group.inverseInertiaVector.y = (group.inertiaVector.y < rotlim) ? 0.0 : 1.0 / group.inertiaVector.y;
+    group.inverseInertiaVector.z = (group.inertiaVector.z < rotlim) ? 0.0 : 1.0 / group.inertiaVector.z;
+
+    double rotall = group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z > 1.0e-5
+                        ? group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z
+                        : 1.0;
+    std::size_t zeroModes = 0;
+    if (group.inertiaVector.x / rotall < 1.0e-5) ++zeroModes;
+    if (group.inertiaVector.y / rotall < 1.0e-5) ++zeroModes;
+    if (group.inertiaVector.z / rotall < 1.0e-5) ++zeroModes;
+
+    // zeroModes: 0 -> nonlinear (3 rot DOF), 1 -> linear (2 rot DOF), 3 -> single point (0 rot DOF).
+    group.rotationalDegreesOfFreedom = 3 - std::min<std::size_t>(zeroModes, 3);
+    group.shapeType = (zeroModes == 0) ? 0 : (zeroModes >= 3 ? 2 : 1);
+  }
+
+  // A semi-flexible molecule is integrated as a set of rigid-body groups (each contributing three
+  // center-of-mass translations plus its rotational degrees of freedom) together with per-atom
+  // Cartesian degrees of freedom for every atom outside a rigid group.
+  if (isSemiFlexible())
+  {
+    std::size_t rigidGroupAtoms{};
+    std::size_t rotationalDof{};
+    for (const MoleculeGroup &group : groups)
+    {
+      if (!group.rigid) continue;
+      rigidGroupAtoms += group.atoms.size();
+      rotationalDof += group.rotationalDegreesOfFreedom;
+    }
+    std::size_t flexibleAtoms = definedAtoms.size() - rigidGroupAtoms;
+    translationalDegreesOfFreedom = 3 * flexibleAtoms + 3 * numberOfRigidGroups();
+    rotationalDegreesOfFreedom = rotationalDof;
+  }
+}
+
+bool Component::isInsideRigidGroup(std::span<const std::size_t> ids) const
+{
+  if (atomGroupIds.empty()) return false;
+
+  std::size_t g = atomGroupIds[ids[0]];
+  if (!groups[g].rigid) return false;
+  for (std::size_t id : ids)
+  {
+    if (atomGroupIds[id] != g) return false;
+  }
+  return true;
+}
+
+std::optional<std::vector<std::size_t>> Component::checkValidityNextBeadsGroupAware(
+    const std::vector<std::size_t> &placedBeads) const
+{
+  std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+
+  std::vector<bool> placed(numberOfBeads, false);
+  for (std::size_t bead : placedBeads) placed[bead] = true;
+
+  // First frontier bond (identical ordering to 'CBMC::buildGrowSegments').
+  std::optional<std::size_t> currentBeadOpt{};
+  std::optional<std::size_t> firstNextBead{};
+  for (std::size_t k : placedBeads)
+  {
+    for (std::size_t j = 0; j != numberOfBeads; ++j)
+    {
+      if (connectivityTable[j, k] && !placed[j])
+      {
+        currentBeadOpt = k;
+        firstNextBead = j;
+        break;
+      }
+    }
+    if (currentBeadOpt.has_value()) break;
+  }
+  if (!currentBeadOpt.has_value())
+  {
+    return std::nullopt;
+  }
+
+  std::size_t currentBead = currentBeadOpt.value();
+  std::size_t nextBead = firstNextBead.value();
+
+  std::optional<std::size_t> rigidGroup = rigidGroupContaining(nextBead);
+  if (rigidGroup.has_value())
+  {
+    bool anchorInGroup = rigidGroupContaining(currentBead) == rigidGroup;
+    if (!anchorInGroup)
+    {
+      // Entering the group from outside: the connecting atom is peeled off as a single flexible bead.
+      return {{nextBead}};
+    }
+
+    // The group is hinged on 'currentBead': every other group atom must still be unplaced, otherwise
+    // the rigid-body rotation about the anchor cannot reproduce the already-placed atom positions.
+    const MoleculeGroup &group = groups[rigidGroup.value()];
+    std::vector<std::size_t> nextBeads{};
+    nextBeads.reserve(group.atoms.size());
+    for (std::size_t atom : group.atoms)
+    {
+      if (!placed[atom]) nextBeads.push_back(atom);
+    }
+    if (nextBeads.size() != group.atoms.size() - 1)
+    {
+      return std::nullopt;
+    }
+    return {nextBeads};
+  }
+
+  // Flexible segment: grow all unplaced flexible neighbors of 'currentBead' together (branch point).
+  std::vector<std::size_t> nextBeads{};
+  std::size_t numberOfPreviousBeads{};
+  for (std::size_t i = 0; i != numberOfBeads; ++i)
+  {
+    if (!connectivityTable[i, currentBead]) continue;
+
+    if (!placed[i])
+    {
+      // Rigid-group neighbors are grown as their own segment, never mixed into a flexible branch.
+      if (!rigidGroupContaining(i).has_value())
+      {
+        nextBeads.push_back(i);
+      }
+    }
+    else
+    {
+      ++numberOfPreviousBeads;
+    }
+  }
+
+  if (numberOfPreviousBeads == 0)
+  {
+    return {{nextBead}};
+  }
+
+  // Multiple placed neighbors are only allowed when the anchor is part of an already-placed rigid
+  // group (e.g. a flexible tail growing off a ring atom).
+  if (numberOfPreviousBeads > 1 && !rigidGroupContaining(currentBead).has_value())
+  {
+    return std::nullopt;
+  }
+
+  return {nextBeads};
+}
+
+std::optional<std::size_t> Component::rigidGroupContaining(std::size_t bead) const
+{
+  if (atomGroupIds.empty() || bead >= atomGroupIds.size())
+  {
+    return std::nullopt;
+  }
+  std::size_t g = atomGroupIds[bead];
+  if (g < groups.size() && groups[g].rigid)
+  {
+    return g;
+  }
+  return std::nullopt;
+}
+
+bool Component::isSemiFlexible() const { return semiFlexible; }
+
+std::size_t Component::numberOfRigidGroups() const { return rigidGroupCount; }
+
+void Component::finalizeGroupCache()
+{
+  rigidGroupCount = 0;
+  for (const MoleculeGroup &group : groups)
+  {
+    if (group.rigid) ++rigidGroupCount;
+  }
+  semiFlexible = rigidGroupCount > 0;
+}
+
+void Component::regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex,
+                                     std::span<Atom> moleculeAtoms) const
+{
+  const MoleculeGroup &group = groups[groupIndex];
+  double3x3 rotation = double3x3::buildRotationMatrixInverse(state.orientation);
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    moleculeAtoms[group.atoms[k]].position =
+        state.centerOfMassPosition + rotation * group.bodyFixedPositions[k];
+  }
+}
+
+GroupState Component::deriveGroupState(std::size_t groupIndex, std::span<const Atom> moleculeAtoms) const
+{
+  const MoleculeGroup &group = groups[groupIndex];
+
+  GroupState state{};
+
+  // Center of mass from the current laboratory atom positions.
+  double3 com{};
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    com += definedAtoms[group.atoms[k]].second * moleculeAtoms[group.atoms[k]].position;
+  }
+  state.centerOfMassPosition = com / group.mass;
+
+  // Orientation by an orthogonal Procrustes fit of the body-fixed positions onto the laboratory
+  // positions: 'computeRotationMatrix' returns the rotation R mapping the body frame onto the lab
+  // frame, i.e. p_k - com = R * bodyFixed_k. The stored quaternion follows the same convention as
+  // the fully rigid molecule path, where p = com + buildRotationMatrixInverse(q) * bodyFixed, so
+  // buildRotationMatrixInverse(q) = R and hence buildRotationMatrix(q) = R^T.
+  std::vector<double3> bodyPositions(group.bodyFixedPositions.begin(), group.bodyFixedPositions.end());
+  std::vector<double3> labPositions(group.atoms.size());
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    labPositions[k] = moleculeAtoms[group.atoms[k]].position;
+  }
+
+  if (group.atoms.size() == 1)
+  {
+    // A single-atom group has no orientation; keep the identity quaternion.
+    state.orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+    return state;
+  }
+
+  double3x3 rotation = double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), bodyPositions,
+                                                        state.centerOfMassPosition, labPositions);
+  double3x3 rotationTranspose = rotation.transpose();
+  state.orientation = rotationTranspose.quaternion().normalized();
+  return state;
 }
 
 void Component::computeRigidProperties()
@@ -984,6 +1386,10 @@ std::vector<BondPotential> Component::readBondPotentials(const ForceField &force
 
   std::vector<std::array<std::size_t, 2>> found_bonds = connectivityTable.findAllBonds();
 
+  // Connectivity edges entirely inside a rigid group carry no bond potential: the geometry of a
+  // rigid group is fixed by its reference atoms and is never sampled.
+  std::erase_if(found_bonds, [&](const std::array<std::size_t, 2> &ids) { return isInsideRigidGroup(ids); });
+
   if (parsed_data.contains("Bonds"))
   {
     intraMolecularPotentials.bonds.reserve(found_bonds.size());
@@ -1101,6 +1507,9 @@ std::vector<BendPotential> Component::readBendPotentials(const ForceField &force
   std::vector<BendPotential> bend_potentials{};
 
   std::vector<std::array<std::size_t, 3>> found_bends = connectivityTable.findAllBends();
+
+  // Bends entirely inside a rigid group are never sampled; their angle is fixed by the rigid geometry.
+  std::erase_if(found_bends, [&](const std::array<std::size_t, 3> &ids) { return isInsideRigidGroup(ids); });
 
   if (parsed_data.contains("Bends"))
   {
@@ -1221,6 +1630,9 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(
   std::vector<TorsionPotential> torsion_potentials{};
 
   std::vector<std::array<std::size_t, 4>> found_torsions = connectivityTable.findAllTorsions();
+
+  // Torsions entirely inside a rigid group are never sampled; their angle is fixed by the rigid geometry.
+  std::erase_if(found_torsions, [&](const std::array<std::size_t, 4> &ids) { return isInsideRigidGroup(ids); });
 
   if (parsed_data.contains("Torsions"))
   {
@@ -1479,6 +1891,10 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
         {
           std::size_t A = found_14_van_der_waal[0];
           std::size_t B = found_14_van_der_waal[3];
+
+          // pairs inside the same rigid group have a fixed distance; their energy is a constant
+          if (isInsideRigidGroup(std::array<std::size_t, 2>{A, B})) continue;
+
           std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
           std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
           
@@ -1503,6 +1919,10 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
   {
     std::size_t A = found_van_der_waal[0];
     std::size_t B = found_van_der_waal[1];
+
+    // pairs inside the same rigid group have a fixed distance; their energy is a constant
+    if (isInsideRigidGroup(found_van_der_waal)) continue;
+
     std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
     std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
 
@@ -1540,6 +1960,9 @@ std::vector<CoulombPotential> Component::readCoulombPotentials(
         {
           std::size_t A = found_14_coulomb[0];
           std::size_t B = found_14_coulomb[3];
+
+          if (isInsideRigidGroup(std::array<std::size_t, 2>{A, B})) continue;
+
           double chargeA = atoms[A].charge;
           double chargeB = atoms[B].charge;
           
@@ -1557,6 +1980,9 @@ std::vector<CoulombPotential> Component::readCoulombPotentials(
   {
     std::size_t A = found_coulomb[0];
     std::size_t B = found_coulomb[1];
+
+    if (isInsideRigidGroup(found_coulomb)) continue;
+
     double chargeA = atoms[A].charge;
     double chargeB = atoms[B].charge;
 
@@ -1609,8 +2035,12 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
 
     do
     {
+      // For semi-flexible molecules the growth is group-aware: rigid groups are grown as single
+      // rigid-body segments (hinged on exactly one placed atom) and flexible tails may grow off
+      // ring atoms with multiple placed neighbors.
       std::optional<std::vector<std::size_t>> nextBeads =
-          connectivityTable.checkValidityNextBeads(beads_already_placed);
+          groups.empty() ? connectivityTable.checkValidityNextBeads(beads_already_placed)
+                         : checkValidityNextBeadsGroupAware(beads_already_placed);
       if (nextBeads.has_value())
       {
         beads_already_placed.insert(beads_already_placed.end(), nextBeads->begin(), nextBeads->end());
@@ -1630,6 +2060,43 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
   }
 
   return config_moves;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoleculeGroup &g)
+{
+  archive << g.versionNumber;
+  archive << g.rigid;
+  archive << g.atoms;
+  archive << g.mass;
+  archive << g.centerOfMassReferencePosition;
+  archive << g.inertiaVector;
+  archive << g.inverseInertiaVector;
+  archive << g.bodyFixedPositions;
+  archive << g.rotationalDegreesOfFreedom;
+  archive << g.shapeType;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoleculeGroup &g)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > g.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'MoleculeGroup' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+  archive >> g.rigid;
+  archive >> g.atoms;
+  archive >> g.mass;
+  archive >> g.centerOfMassReferencePosition;
+  archive >> g.inertiaVector;
+  archive >> g.inverseInertiaVector;
+  archive >> g.bodyFixedPositions;
+  archive >> g.rotationalDegreesOfFreedom;
+  archive >> g.shapeType;
+  return archive;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c)
@@ -1676,6 +2143,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
+  archive << c.groups;
+  archive << c.atomGroupIds;
   archive << c.grownAtoms;
   archive << c.grownIdealGasAtoms;
   archive << c.partialReinsertionFixedAtoms;
@@ -1765,6 +2234,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
+  archive >> c.groups;
+  archive >> c.atomGroupIds;
+  c.finalizeGroupCache();
   archive >> c.grownAtoms;
   archive >> c.grownIdealGasAtoms;
   archive >> c.partialReinsertionFixedAtoms;

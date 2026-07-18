@@ -28,6 +28,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import scaling;
+import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(RandomNumber& random, System& system,
                                                                           std::size_t selectedComponent,
@@ -266,6 +267,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                           moleculeDifferenceStep2.value() + EwaldEnergyDifferenceStep2 +
                                           tailEnergyDifference2;
 
+    // The intra-molecular energy of the inserted conformation enters the running energies but not the
+    // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution
+    // exp(-beta * U_intra), so its intra energy cancels against the generation probability (zero for
+    // rigid molecules).
+    RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(trialMolecule.second);
+
     // Polarization: (step 1) making the fractional molecule integer only changes the field it produces on the other
     // molecules (its own field is position-independent, so its self-polarization is unchanged); (step 2) inserting the
     // new fractional molecule adds its own polarization energy and again changes the field on the other molecules.
@@ -377,7 +384,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
       component.mc_moves_statistics.addAccepted(move, 0);
 
-      return {energyDifferenceStep1 + energyDifferenceStep2 + polarizationDifference,
+      return {energyDifferenceStep1 + energyDifferenceStep2 + internalEnergyNew + polarizationDifference,
               double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     };
 
@@ -592,6 +599,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                             moleculeDifferenceStep2.value() + EwaldEnergyDifferenceStep2 +
                                             tailEnergyDifferenceStep2;
 
+      // Upon acceptance the conformation of the (former) fractional molecule leaves the system, so its
+      // intra-molecular energy is removed from the running energies. It does not enter the acceptance
+      // rule: the reverse (insertion) move draws the conformation from the ideal-gas Boltzmann
+      // distribution, so the intra energy cancels against that generation probability.
+      RunningEnergy internalEnergyOld =
+          component.intraMolecularPotentials.computeInternalEnergies(oldFractionalMolecule);
+
       component.mc_moves_statistics.addConstructed(move, 1);
 
       // Polarization: the removed fractional molecule loses its own polarization energy (evaluated with its stored
@@ -692,7 +706,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
         component.mc_moves_statistics.addAccepted(move, 1);
 
-        return {energyDifferenceStep1 + energyDifferenceStep2 + polarizationDifference,
+        return {energyDifferenceStep1 + energyDifferenceStep2 - internalEnergyOld + polarizationDifference,
                 double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       };
 

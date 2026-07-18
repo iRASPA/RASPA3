@@ -107,12 +107,46 @@ void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, 
     atom.position = deformation * atom.position;
   }
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  const bool authoritativeGroups = !system.groupData.empty();
+  std::span<GroupState> groupData = system.spanOfGroupData();
+  std::size_t globalRigidGroupIndex{};
   for (Molecule& molecule : system.moleculeData)
   {
     const Component& component = system.components[molecule.componentId];
     if (component.rigid)
     {
       molecule.centerOfMassPosition = deformation * molecule.centerOfMassPosition;
+    }
+    else if (component.isSemiFlexible())
+    {
+      // The cell drives each rigid group's center of mass (the internal group geometry does not
+      // scale) and the flexible atoms individually.
+      std::span<Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      std::size_t rigidRank{};
+      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      {
+        if (!component.groups[groupIndex].rigid)
+        {
+          continue;
+        }
+        const std::size_t rigidSlot = rigidRank++;
+        GroupState localState;
+        if (!authoritativeGroups)
+        {
+          localState = component.deriveGroupState(groupIndex, span);
+        }
+        GroupState& state = authoritativeGroups ? groupData[globalRigidGroupIndex + rigidSlot] : localState;
+        state.centerOfMassPosition = deformation * state.centerOfMassPosition;
+        component.regenerateGroupAtoms(state, groupIndex, span);
+      }
+      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+      {
+        if (!component.rigidGroupContaining(localAtom).has_value())
+        {
+          span[localAtom].position = deformation * span[localAtom].position;
+        }
+      }
+      globalRigidGroupIndex += component.numberOfRigidGroups();
     }
     else
     {
@@ -147,10 +181,83 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
     }
   }
 
+  // Authoritative rigid-group state: when 'System::groupData' is populated (minimization keeps it so
+  // via 'System::initializeGroupData'), each rigid group's orientation quaternion is carried across
+  // steps instead of being re-fitted from the atom positions with an orthogonal Procrustes solve on
+  // every displacement. This is both cheaper and free of the small chart noise the repeated fit
+  // introduces. Callers that do not maintain 'groupData' (empty span) still get the exact same result
+  // through the derive-from-atoms fallback below.
+  const bool authoritativeGroups = !system.groupData.empty();
+  std::span<GroupState> groupData = system.spanOfGroupData();
+  std::size_t globalRigidGroupIndex{};
+
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     Molecule& molecule = system.moleculeData[moleculeIndex];
+    const Component& component = system.components[molecule.componentId];
+    if (component.isSemiFlexible())
+    {
+      std::span<Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      // Flexible atoms move along their Cartesian degrees of freedom.
+      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+      {
+        double3 delta{};
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          if (const auto dof = layout.flexibleAtomDof(moleculeIndex, localAtom, static_cast<MinimizationDofAxis>(axis)))
+          {
+            (&delta.x)[axis] = displacement[*dof];
+          }
+        }
+        moleculeAtoms[localAtom].position += delta;
+      }
+      // Each rigid group advances its center of mass and orientation, then rebuilds its atoms.
+      std::size_t rigidRank{};
+      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      {
+        if (!component.groups[groupIndex].rigid)
+        {
+          continue;
+        }
+        const std::size_t rigidSlot = rigidRank++;
+        const auto comBase = layout.atomRigidComDof(moleculeIndex, component.groups[groupIndex].atoms.front());
+        if (!comBase)
+        {
+          continue;
+        }
+        // Advance the authoritative group state in place, or derive it from the atoms as a fallback.
+        GroupState localState;
+        if (!authoritativeGroups)
+        {
+          localState = component.deriveGroupState(groupIndex, moleculeAtoms);
+        }
+        GroupState& state = authoritativeGroups ? groupData[globalRigidGroupIndex + rigidSlot] : localState;
+        state.centerOfMassPosition +=
+            double3(displacement[*comBase + 0], displacement[*comBase + 1], displacement[*comBase + 2]);
+        const double3 omega(displacement[*comBase + 3], displacement[*comBase + 4], displacement[*comBase + 5]);
+        state.orientation = (quaternionFromRotationVector(omega) * state.orientation).normalized();
+        component.regenerateGroupAtoms(state, groupIndex, moleculeAtoms);
+      }
+      // Wrap the molecule into the primary cell. In authoritative mode the same rigid shift must be
+      // folded into the stored group centers of mass so the next regeneration does not undo it.
+      const double3 com = component.computeCenterOfMass(moleculeAtoms);
+      const double3 comPbc = system.simulationBox.mapToBox(com);
+      const double3 shift = comPbc - com;
+      if (double3::dot(shift, shift) >= 1.0e-30)
+      {
+        for (Atom& atom : moleculeAtoms) atom.position += shift;
+        if (authoritativeGroups)
+        {
+          for (std::size_t r = 0; r < component.numberOfRigidGroups(); ++r)
+          {
+            groupData[globalRigidGroupIndex + r].centerOfMassPosition += shift;
+          }
+        }
+      }
+      globalRigidGroupIndex += component.numberOfRigidGroups();
+      continue;
+    }
     if (!layout.molecules()[moleculeIndex].rigid)
     {
       for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
@@ -190,11 +297,36 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
   if (layout.numberOfCellDofs() != 0)
   {
     applyCellDisplacement(system, layout, displacement);
+    std::size_t wrapRigidGroupIndex{};
     for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
     {
       if (layout.molecules()[moleculeIndex].rigid)
       {
         regenerateRigidAtoms(system, moleculeIndex);
+      }
+      const Component& component = system.components[system.moleculeData[moleculeIndex].componentId];
+      if (component.isSemiFlexible())
+      {
+        // Wrap group-aware: the rigid shift must also be folded into the stored group centers of
+        // mass so the next regeneration does not undo it.
+        Molecule& molecule = system.moleculeData[moleculeIndex];
+        std::span<Atom> moleculeAtoms =
+            system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+        const double3 com = component.computeCenterOfMass(moleculeAtoms);
+        const double3 shift = system.simulationBox.mapToBox(com) - com;
+        if (double3::dot(shift, shift) >= 1.0e-30)
+        {
+          for (Atom& atom : moleculeAtoms) atom.position += shift;
+          if (authoritativeGroups)
+          {
+            for (std::size_t r = 0; r < component.numberOfRigidGroups(); ++r)
+            {
+              groupData[wrapRigidGroupIndex + r].centerOfMassPosition += shift;
+            }
+          }
+        }
+        wrapRigidGroupIndex += component.numberOfRigidGroups();
+        continue;
       }
       wrapMoleculeToPrimaryCell(system, moleculeIndex);
     }

@@ -46,8 +46,9 @@ void addFrameworkMoleculeCellCorrection(GeneralizedHessian& hessian, const Minim
     const std::size_t cellA = *layout.cellDof(a);
     const double3 deltaV = cellLayout.bases[a] * baseCorrection;
     const double3 mixedCorrection = f1 * deltaV + f2 * double3::dot(dr, deltaV) * dr;
+    // atomRigidComDof covers both whole rigid molecules and rigid groups of semi-flexible molecules.
     const std::size_t moleculeBase =
-        rigid ? *layout.rigidMoleculeDof(molecule, RigidDof::ComX) : layout.flexibleAtomDofBase(molecule, localAtom);
+        rigid ? *layout.atomRigidComDof(molecule, localAtom) : layout.flexibleAtomDofBase(molecule, localAtom);
     for (std::size_t axis = 0; axis < 3; ++axis)
     {
       hessian.add(moleculeBase + axis, cellA, (&mixedCorrection.x)[axis]);
@@ -61,7 +62,7 @@ void addFrameworkMoleculeCellCorrection(GeneralizedHessian& hessian, const Minim
     }
     if (rigid)
     {
-      const std::size_t orientationBase = *layout.rigidMoleculeDof(molecule, RigidDof::OriX);
+      const std::size_t orientationBase = *layout.atomRigidOrientationDof(molecule, localAtom);
       const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(molecule, localAtom);
       const std::array<double3, 3> directions = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
       for (std::size_t axis = 0; axis < 3; ++axis)
@@ -114,13 +115,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     const std::size_t moleculeIndex = static_cast<std::size_t>(it1->moleculeId);
-    const bool rigid = layout.molecules()[moleculeIndex].rigid;
     const Molecule& molecule = moleculeData[moleculeIndex];
     const std::size_t localAtom = static_cast<std::size_t>(it1 - moleculeAtoms.begin()) - molecule.atomIndex;
+    const bool rigid = layout.atomRigidComDof(moleculeIndex, localAtom).has_value();
     // Framework atoms scale affinely with the cell under strain (consistent with the Ewald
     // Fourier treatment), so the strain derivative of dr only loses the rigid internal offset
-    // pos - com of the molecule side.
-    const double3 comA = rigid ? molecule.centerOfMassPosition : it1->position;
+    // pos - com of the molecule (or rigid group) side.
+    const double3 comA = rigid ? rigidCache.bodyCenterOfMass(moleculeIndex, localAtom) : it1->position;
 
     for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
     {

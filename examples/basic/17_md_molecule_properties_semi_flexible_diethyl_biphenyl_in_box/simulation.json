@@ -1,15 +1,17 @@
 {
-  "SimulationType" : "MonteCarlo",
+  "SimulationType" : "MolecularDynamics",
   "NumberOfProductionCycles" : 1000000,
-  "NumberOfInitializationCycles" : 10000,
-  "PrintEvery" : 50000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 10000,
 
   "Systems" :
   [
     {
       "Type" : "Box",
-      "BoxLengths" : [25.0, 25.0, 25.0],
+      "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 298.0,
+      "Ensemble" : "NVT",
       "ChargeMethod" : "None",
       "ComputeMoleculeProperties" : true
     }
@@ -18,11 +20,10 @@
   "Components" :
   [
     {
-      "Name" : "2-methylbutane",
+      "Name" : "diethyl-biphenyl",
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
-      "PartialReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 32
     }
   ]

@@ -59,7 +59,7 @@ static void runAndCheckDrift(MCMoveProbabilities probabilities, double pressure 
   bool outputToFiles{false};
 
   MonteCarlo mc({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                 writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {}, numberOfBlocks,
+                 writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 1200uz, numberOfBlocks,
                 outputToFiles);
 
   mc.run();

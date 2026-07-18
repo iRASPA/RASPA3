@@ -82,7 +82,66 @@ MassMetric buildMassMetric(const System& system, const MinimizationDofLayout& la
     const Molecule& molecule = system.moleculeData[moleculeIndex];
     const Component& component = system.components[molecule.componentId];
 
-    if (component.rigid)
+    if (component.isSemiFlexible())
+    {
+      const std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      // Flexible atoms carry the usual scalar 1/sqrt(mass) weight.
+      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+      {
+        if (component.rigidGroupContaining(localAtom).has_value())
+        {
+          continue;
+        }
+        const std::size_t type = static_cast<std::size_t>(span[localAtom].type);
+        const double weight = checkedInverseSqrtMass(
+            system.forceField.pseudoAtoms[type].mass,
+            std::format("atom {} of molecule {} ({})", localAtom, moleculeIndex, component.name));
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          metric.scalarInverseSqrt[*layout.flexibleAtomDof(moleculeIndex, localAtom,
+                                                           static_cast<MinimizationDofAxis>(axis))] = weight;
+        }
+      }
+      // Each rigid group contributes a center-of-mass scalar block and an orientation inertia block.
+      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      {
+        const MoleculeGroup& group = component.groups[groupIndex];
+        if (!group.rigid)
+        {
+          continue;
+        }
+        const std::size_t comBase = *layout.atomRigidComDof(moleculeIndex, group.atoms.front());
+        const double weight = checkedInverseSqrtMass(
+            group.mass, std::format("rigid group {} of molecule {} ({})", groupIndex, moleculeIndex, component.name));
+        metric.scalarInverseSqrt[comBase + 0] = weight;
+        metric.scalarInverseSqrt[comBase + 1] = weight;
+        metric.scalarInverseSqrt[comBase + 2] = weight;
+
+        double3 centerOfMass{};
+        for (const std::size_t localAtom : group.atoms)
+        {
+          centerOfMass += component.definedAtoms[localAtom].second * span[localAtom].position;
+        }
+        centerOfMass = centerOfMass / group.mass;
+        double3x3 inertia{};
+        for (const std::size_t localAtom : group.atoms)
+        {
+          const double mass = system.forceField.pseudoAtoms[static_cast<std::size_t>(span[localAtom].type)].mass;
+          const double3 s = span[localAtom].position - centerOfMass;
+          inertia.ax += mass * (s.y * s.y + s.z * s.z);
+          inertia.by += mass * (s.x * s.x + s.z * s.z);
+          inertia.cz += mass * (s.x * s.x + s.y * s.y);
+          inertia.bx -= mass * s.x * s.y;
+          inertia.ay -= mass * s.x * s.y;
+          inertia.cx -= mass * s.x * s.z;
+          inertia.az -= mass * s.x * s.z;
+          inertia.cy -= mass * s.y * s.z;
+          inertia.bz -= mass * s.y * s.z;
+        }
+        metric.blocks.emplace_back(comBase + 3, inverseSqrtInertia(inertia, metric.discardedRotationalDofs));
+      }
+    }
+    else if (component.rigid)
     {
       const double weight =
           checkedInverseSqrtMass(molecule.mass, std::format("rigid molecule {} ({})", moleculeIndex, component.name));

@@ -10,6 +10,7 @@ import system;
 import atom;
 import atom_dynamics;
 import molecule;
+import component;
 import integrators;
 import integrators_update;
 import integrators_compute;
@@ -46,6 +47,30 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   std::vector<Molecule> moleculeData(system.moleculeData);
 
+  // Rigid-body state for every rigid group of every semi-flexible molecule, derived from the current
+  // (authoritative) atom positions. Integrated on this local copy and committed on acceptance.
+  std::vector<GroupState> groupData;
+  {
+    std::size_t atomIndex{};
+    for (const Molecule& molecule : moleculeData)
+    {
+      const Component& component = system.components[molecule.componentId];
+      if (component.isSemiFlexible())
+      {
+        std::span<const Atom> span = std::span(&moleculeAtomPositions[atomIndex], molecule.numberOfAtoms);
+        for (std::size_t g = 0; g != component.groups.size(); ++g)
+        {
+          if (component.groups[g].rigid)
+          {
+            groupData.push_back(component.deriveGroupState(g, span));
+          }
+        }
+      }
+      atomIndex += molecule.numberOfAtoms;
+    }
+  }
+  std::span<GroupState> groupDataSpan(groupData);
+
   std::span<Atom> frameworkAtomData = system.spanOfFrameworkAtoms();
   std::vector<Atom> frameworkAtomPositions;
   std::span<AtomDynamics> frameworkDynamicsData = system.spanOfFrameworkDynamics();
@@ -71,7 +96,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // NOTE: it is important that the reference energy has the initial kinetic energies
   Integrators::initializeVelocities(random, moleculeData, moleculeAtomPositions, moleculeDynamics, system.components,
                                     system.temperature, system.framework, trialFrameworkAtoms, trialFrameworkDynamics,
-                                    &system.forceField);
+                                    &system.forceField, groupDataSpan);
 
   // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free).
   // A rigid framework pins the lab frame, so adsorbate COM momentum is left intact.
@@ -79,7 +104,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     Integrators::removeCenterOfMassVelocityDrift(moleculeData, moleculeAtomPositions, moleculeDynamics,
                                                  system.components, system.framework, trialFrameworkAtoms,
-                                                 trialFrameworkDynamics, &system.forceField);
+                                                 trialFrameworkDynamics, &system.forceField, groupDataSpan);
   }
 
   // Gradients must live on the trial copies: Velocity Verlet's first half-kick uses them.
@@ -89,12 +114,12 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
       trialFrameworkDynamics);
   Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics,
-                                                        system.components);
+                                                        system.components, groupDataSpan);
   referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, system.framework, trialFrameworkAtoms,
-      trialFrameworkDynamics, &system.forceField);
+      trialFrameworkDynamics, &system.forceField, groupDataSpan);
   referenceEnergy.rotationalKineticEnergy =
-      Integrators::computeRotationalKineticEnergy(moleculeData, system.components);
+      Integrators::computeRotationalKineticEnergy(moleculeData, system.components, groupDataSpan);
   RunningEnergy currentEnergy = referenceEnergy;
 
   // integrate for N steps
@@ -105,7 +130,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
         moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, dt, thermostat, trialFrameworkAtoms,
         system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
         system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
-        system.framework, trialFrameworkDynamics);
+        system.framework, trialFrameworkDynamics, groupDataSpan);
   }
   time_end = std::chrono::steady_clock::now();
 
@@ -120,6 +145,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     system.mc_moves_statistics.addAccepted(move);
 
     system.moleculeData = moleculeData;
+    system.groupData = groupData;
     system.timeStep = dt;
 
     std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
@@ -130,7 +156,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       std::copy(frameworkDynamics.begin(), frameworkDynamics.end(), frameworkDynamicsData.begin());
     }
 
-    Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+    Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
+                                          system.spanOfGroupData());
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     return currentEnergy;
   }

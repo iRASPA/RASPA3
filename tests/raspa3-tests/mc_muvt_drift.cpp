@@ -84,7 +84,7 @@ TEST(MC_MUVT_DRIFT, insertion)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -170,7 +170,7 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -256,7 +256,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -342,7 +342,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();
@@ -716,7 +716,7 @@ TEST(MC_MUVT_DRIFT, identity_change_propane_butane_tail_corrections)
   bool outputToFiles{false};
 
   MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
-                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, {},
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
                              numberOfBlocks, outputToFiles);
 
   mc.run();

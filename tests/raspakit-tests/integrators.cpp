@@ -216,18 +216,21 @@ TEST(molecular_dynamics, gcmd_swap_reports_accepted_insertion_and_deletion_witho
   const double3x3 initialCell = system.simulationBox.cell;
   RandomNumber random(1879);
 
+  std::size_t exchangedMolecule{};
   MC_Moves::ParticleExchangeResult result = MC_Moves::ParticleExchangeResult::Rejected;
   for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Inserted; ++attempt)
-    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0);
+    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0, exchangedMolecule);
   ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Inserted);
+  EXPECT_EQ(exchangedMolecule, system.numberOfMoleculesPerComponent[0] - 1);
   const std::size_t countAfterInsertion = system.numberOfIntegerMoleculesPerComponent[0];
 
   system.pressure = 1.0e-12;
   system.components[0].fugacityCoefficient = 1.0;
   result = MC_Moves::ParticleExchangeResult::Rejected;
   for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Deleted; ++attempt)
-    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0);
+    result = MC_Moves::performMolecularDynamicsSwap(random, system, 0, exchangedMolecule);
   EXPECT_EQ(result, MC_Moves::ParticleExchangeResult::Deleted);
+  EXPECT_LT(exchangedMolecule, countAfterInsertion);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], countAfterInsertion - 1);
   EXPECT_EQ(system.simulationBox.cell, initialCell);
 }

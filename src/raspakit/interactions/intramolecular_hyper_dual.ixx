@@ -372,16 +372,17 @@ inline void scatterCrossStrain(GeneralizedHessian& hessian, const MinimizationDo
  * When the generalized Hessian carries an isotropic strain degree of freedom, the position-strain
  * and strain-strain blocks are scattered as well.
  */
-inline void scatterCrossHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
-                                std::size_t moleculeIndex, const std::vector<std::size_t>& termAtoms,
-                                const std::vector<InternalCoordinate>& coords,
-                                const std::vector<std::array<std::size_t, 4>>& slotMaps,
-                                const std::array<double3, 4>& termPositions, const std::array<double, 3>& dUdq,
-                                const std::array<std::array<double, 3>, 3>& d2Udq2)
+/**
+ * Assemble the dense Cartesian per-term Hessian of a cross term U(q_0, ..., q_{K-1}) from the
+ * coordinate-space partials and the analytic Cartesian derivatives of each coordinate:
+ *   d²U/dx dy = sum_k (dU/dq_k) d²q_k/dx dy + sum_{k,l} (d²U/dq_k dq_l)(dq_k/dx)(dq_l/dy).
+ * Returned as a 4x4 array of 3x3 blocks indexed by term-atom slot.
+ */
+inline std::array<std::array<CoordinateBlock, 4>, 4> assembleCrossCartesianHessian(
+    const std::vector<InternalCoordinate>& coords, const std::vector<std::array<std::size_t, 4>>& slotMaps,
+    const std::array<double, 3>& dUdq, const std::array<std::array<double, 3>, 3>& d2Udq2)
 {
-  const std::size_t M = termAtoms.size();
   const std::size_t K = coords.size();
-
   std::array<std::array<CoordinateBlock, 4>, 4> full{};
 
   for (std::size_t k = 0; k < K; ++k)
@@ -432,6 +433,21 @@ inline void scatterCrossHessian(GeneralizedHessian& hessian, const MinimizationD
       }
     }
   }
+
+  return full;
+}
+
+inline void scatterCrossHessian(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                std::size_t moleculeIndex, const std::vector<std::size_t>& termAtoms,
+                                const std::vector<InternalCoordinate>& coords,
+                                const std::vector<std::array<std::size_t, 4>>& slotMaps,
+                                const std::array<double3, 4>& termPositions, const std::array<double, 3>& dUdq,
+                                const std::array<std::array<double, 3>, 3>& d2Udq2)
+{
+  const std::size_t M = termAtoms.size();
+
+  const std::array<std::array<CoordinateBlock, 4>, 4> full =
+      assembleCrossCartesianHessian(coords, slotMaps, dUdq, d2Udq2);
 
   for (std::size_t ti = 0; ti < M; ++ti)
   {

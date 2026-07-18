@@ -29,6 +29,7 @@ import interpolation_energy_grid;
 import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
+import cbmc_segments;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
@@ -37,24 +38,63 @@ import bond_potential;
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
 
-  std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
-
-  std::vector<std::size_t> beads_already_placed(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
 
   double chain_rosenbluth_weight = 1.0;
   std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
   RunningEnergy chain_external_energies{};
 
-  do
+  // Deterministic, group-aware growth sequence (rigid groups are grown as one rigid-body segment).
+  std::vector<CBMC::GrowSegment> segments = CBMC::buildGrowSegments(component, beadsAlreadyPlaced);
+
+  for (const CBMC::GrowSegment &segment : segments)
   {
-    auto [previous_bead, current_bead, nextBeads] = component.connectivityTable.nextBeads(beads_already_placed);
+    const std::optional<std::size_t> previous_bead = segment.previousBead;
+    const std::size_t current_bead = segment.currentBead;
+    const std::vector<std::size_t> &nextBeads = segment.nextBeads;
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials = segment.intra;
 
-    Potentials::IntraMolecularPotentials intraMolecularPotentials =
-        component.intraMolecularPotentials.filteredInteractions(numberOfBeads, beads_already_placed, nextBeads);
+    std::fill(RosenBluthWeightTorsion.begin(), RosenBluthWeightTorsion.end(), 1.0);
 
-    if (!previous_bead.has_value())
+    if (segment.rigidUnit)
+    {
+      // Case: growing a rigid group as a single rigid body hinged on the (already-placed) anchor,
+      // with the same coupled-decoupled scheme as flexible beads: the junction bends are sampled by
+      // a small Metropolis MC over the body tilt (no weight), the spin about the junction bond is
+      // biased by the crossing torsions with a Rosenbluth selection (torsion weight).
+      std::vector<Atom> trial_orientations = CBMC::generateRigidUnitOrientationMonteCarloScheme(
+          random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead, current_bead,
+          nextBeads, intraMolecularPotentials);
+
+      if (previous_bead.has_value())
+      {
+        double3 last_bond_vector =
+            (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
+
+        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
+        {
+          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, trial_orientations,
+              previous_bead.value(), current_bead, nextBeads, last_bond_vector, intraMolecularPotentials, false);
+
+          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
+          trialPositions[i] = torsion.positions;
+        }
+      }
+      else
+      {
+        // Seed group: no junction terms exist yet, every orientation is equally likely.
+        trialPositions[0] = trial_orientations;
+        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
+        {
+          trialPositions[i] = CBMC::generateRigidUnitOrientationMonteCarloScheme(
+              random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead,
+              current_bead, nextBeads, intraMolecularPotentials);
+        }
+      }
+    }
+    else if (!previous_bead.has_value())
     {
       // Case: growing a single bond with no previous beads
       //       for example: dimer, or starting in the middle of a linear chain
@@ -142,17 +182,13 @@ import bond_potential;
 
     chain_external_energies += selectedTrial.energy;
 
-    // Add 'nextBeads' to 'beads_already_placed'
-    beads_already_placed.insert(beads_already_placed.end(), nextBeads.begin(), nextBeads.end());
-
     // Add the selected atoms
     for (std::size_t i = 0; i != nextBeads.size(); ++i)
     {
       std::size_t index = nextBeads[i];
       chain_atoms[index] = selectedTrial.positions[i];
     }
-
-  } while (beads_already_placed.size() < component.connectivityTable.numberOfBeads);
+  }
 
   // Recompute all the internal interactions (including the cross-terms) for the returned energy
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);

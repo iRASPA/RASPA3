@@ -270,6 +270,118 @@ System makeChargedRigidMoleculeChainSystem()
   }
   return system;
 }
+
+// Pin a semi-flexible molecule to its component reference geometry translated by `offset` (identity
+// orientation). The rigid-group geometry is then exactly rigid, consistent with the rigid-body
+// regeneration used by the group-aware derivative machinery.
+void setSemiFlexibleMoleculePositions(System& system, std::size_t moleculeIndex, double3 offset)
+{
+  Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
+  for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+  {
+    system.spanOfMoleculeAtoms()[molecule.atomIndex + localAtom].position =
+        offset + component.atoms[localAtom].position;
+  }
+  molecule.centerOfMassPosition = offset;
+  molecule.orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+}
+
+// Turn a four-site flexible component into a semi-flexible one: a rigid bent three-site core
+// (nonlinear, so all three rotations carry inertia) plus one flexible tail atom attached through the
+// harmonic junction bond 2-3. Each molecule carries 9 generalized DOFs (6 rigid-body + 3 Cartesian).
+void makeComponentSemiFlexible(Component& component)
+{
+  component.groups = {MoleculeGroup(true, {0, 1, 2}), MoleculeGroup(false, {3})};
+  component.atomGroupIds = {0, 0, 0, 1};
+  component.computeGroupRigidProperties();
+}
+
+// Three semi-flexible molecules (rigid bent three-site core + flexible tail atom, uncharged
+// Lennard-Jones) in a periodic chain along x. The nearest-neighbor coupling loop wraps the x boundary
+// of the 9 A box, so a single periodic image cannot be gauged away and the bands genuinely disperse.
+System makeSemiFlexibleMoleculeChainSystem()
+{
+  ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 4.0, 4.0, 4.0, false, false, false);
+  const SimulationBox box(9.0, 9.0, 9.0);
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+
+  ConnectivityTable connectivityTable(4);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  connectivityTable[1, 2] = true;
+  connectivityTable[2, 1] = true;
+  connectivityTable[2, 3] = true;
+  connectivityTable[3, 2] = true;
+
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds.emplace_back(std::array<std::size_t, 2>{2, 3}, BondType::Harmonic,
+                                std::vector<double>{1500.0, 0.85});
+
+  Component semiFlexible(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
+                         {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                          Atom({0.0, -0.35, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                          Atom({0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                          Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
+                         connectivityTable, potentials, 0, 0);
+  makeComponentSemiFlexible(semiFlexible);
+
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {}, {semiFlexible}, {}, {3}, 5);
+  const std::array<double3, 3> centersOfMass = {double3(1.5, 4.5, 4.5), double3(4.5, 5.3, 4.0),
+                                                double3(7.5, 3.8, 5.0)};
+  for (std::size_t moleculeIndex = 0; moleculeIndex < 3; ++moleculeIndex)
+  {
+    setSemiFlexibleMoleculePositions(system, moleculeIndex, centersOfMass[moleculeIndex]);
+  }
+  return system;
+}
+
+// Charged variant of the semi-flexible chain: the rigid core carries -0.3/+0.6/-0.3 (net neutral, the
+// tail is uncharged) with Ewald summation enabled. The intramolecular exclusion pairs inside the rigid
+// core are constants of the motion; their Cartesian force-constant blocks must cancel against the
+// gradient-curvature term after projection onto the group degrees of freedom.
+System makeChargedSemiFlexibleMoleculeChainSystem()
+{
+  ForceField forceField({{"N", false, 16.0, -0.3, 0.0, 8, false},
+                         {"P", false, 16.0, 0.6, 0.0, 8, false},
+                         {"T", false, 16.0, 0.0, 0.0, 8, false}},
+                        {{80.0, 3.0}, {80.0, 3.0}, {80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 4.0, 4.0,
+                        4.0, false, false, true);
+  const SimulationBox box(9.0, 9.0, 9.0);
+  const std::uint16_t typeN = static_cast<std::uint16_t>(*forceField.findPseudoAtom("N"));
+  const std::uint16_t typeP = static_cast<std::uint16_t>(*forceField.findPseudoAtom("P"));
+  const std::uint16_t typeT = static_cast<std::uint16_t>(*forceField.findPseudoAtom("T"));
+
+  ConnectivityTable connectivityTable(4);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  connectivityTable[1, 2] = true;
+  connectivityTable[2, 1] = true;
+  connectivityTable[2, 3] = true;
+  connectivityTable[3, 2] = true;
+
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds.emplace_back(std::array<std::size_t, 2>{2, 3}, BondType::Harmonic,
+                                std::vector<double>{1500.0, 0.85});
+
+  Component semiFlexible(forceField, "semi-flexible-charged", 64.0, 1.0e6, 0.02,
+                         {Atom({-0.6, 0.25, 0.0}, -0.3, 1.0, 0, typeN, 0, false, false),
+                          Atom({0.0, -0.35, 0.0}, 0.6, 1.0, 0, typeP, 0, false, false),
+                          Atom({0.6, 0.25, 0.0}, -0.3, 1.0, 0, typeN, 0, false, false),
+                          Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, typeT, 0, false, false)},
+                         connectivityTable, potentials, 0, 0);
+  makeComponentSemiFlexible(semiFlexible);
+
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {}, {semiFlexible}, {}, {3}, 5);
+  const std::array<double3, 3> centersOfMass = {double3(1.5, 4.5, 4.5), double3(4.5, 5.3, 4.0),
+                                                double3(7.5, 3.8, 5.0)};
+  for (std::size_t moleculeIndex = 0; moleculeIndex < 3; ++moleculeIndex)
+  {
+    setSemiFlexibleMoleculePositions(system, moleculeIndex, centersOfMass[moleculeIndex]);
+  }
+  return system;
+}
 }  // namespace
 
 TEST(phonon_dispersion, gamma_point_matches_normal_modes)
@@ -606,6 +718,87 @@ TEST(phonon_dispersion, charged_rigid_molecule_dispersion_is_time_reversal_symme
   for (std::size_t mode = 0; mode < 18u; ++mode)
   {
     EXPECT_NEAR(dispersion[1].eigenvalues[mode], dispersion[2].eigenvalues[mode], 1e-9 * scale + 1e-12) << "mode=" << mode;
+  }
+}
+
+TEST(phonon_dispersion, gamma_point_matches_normal_modes_semi_flexible_molecules)
+{
+  System system = makeSemiFlexibleMoleculeChainSystem();
+
+  // Three semi-flexible molecules -> 27 generalized DOFs (per molecule: rigid-group center of mass +
+  // orientation and one Cartesian tail atom). computeNormalModes mass-weights the group-aware analytic
+  // generalized Hessian directly; the phonon route must reproduce the same Gamma-point squared
+  // frequencies by projecting the Cartesian force constants of the de-grouped copy (which keeps the
+  // junction bond stiffness) onto the group DOFs and adding the gradient-curvature term.
+  const NormalModesResult modes = computeNormalModes(system);
+  ASSERT_EQ(modes.numberOfModes, 27u);
+  EXPECT_EQ(modes.discardedRotationalDofs, 0u);
+
+  const std::vector<PhononModes> dispersion = computePhononDispersion(system, std::array<double3, 1>{double3(0, 0, 0)});
+  ASSERT_EQ(dispersion.size(), 1u);
+  ASSERT_EQ(dispersion[0].eigenvalues.size(), 27u);
+
+  double scale = 0.0;
+  for (const double value : modes.eigenvalues) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+
+  for (std::size_t mode = 0; mode < modes.numberOfModes; ++mode)
+  {
+    EXPECT_NEAR(dispersion[0].eigenvalues[mode], modes.eigenvalues[mode], 1e-6 * scale + 1e-10) << "mode=" << mode;
+  }
+}
+
+TEST(phonon_dispersion, semi_flexible_dispersion_is_time_reversal_symmetric_and_k_dependent)
+{
+  System system = makeSemiFlexibleMoleculeChainSystem();
+
+  const std::array<double3, 3> kPath = {double3(0.0, 0.0, 0.0), double3(0.3, 0.0, 0.0), double3(-0.3, 0.0, 0.0)};
+  const std::vector<PhononModes> dispersion = computePhononDispersion(system, kPath);
+  ASSERT_EQ(dispersion.size(), 3u);
+  for (const PhononModes& modes : dispersion) ASSERT_EQ(modes.eigenvalues.size(), 27u);
+
+  double scale = 0.0;
+  for (const double value : dispersion[1].eigenvalues) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+
+  // The coupling loop encloses a nonzero lattice vector, so k must move at least one squared frequency.
+  double maxShift = 0.0;
+  for (std::size_t mode = 0; mode < 27u; ++mode)
+  {
+    maxShift = std::max(maxShift, std::abs(dispersion[1].eigenvalues[mode] - dispersion[0].eigenvalues[mode]));
+  }
+  EXPECT_GT(maxShift, 1e-6 * scale);
+
+  // Time-reversal symmetry: omega^2(k) = omega^2(-k).
+  for (std::size_t mode = 0; mode < 27u; ++mode)
+  {
+    EXPECT_NEAR(dispersion[1].eigenvalues[mode], dispersion[2].eigenvalues[mode], 1e-9 * scale + 1e-12) << "mode=" << mode;
+  }
+}
+
+TEST(phonon_dispersion, gamma_point_matches_normal_modes_charged_semi_flexible_molecules)
+{
+  System system = makeChargedSemiFlexibleMoleculeChainSystem();
+
+  // Charged semi-flexible molecules: the reciprocal-space Ewald matrix is added to the Cartesian force
+  // constants before the projection onto the group DOFs. The intramolecular exclusion pairs inside the
+  // rigid core are constants of the motion; their projected force-constant blocks must cancel against
+  // the gradient-curvature term, reproducing the group-aware analytic Hessian of computeNormalModes.
+  const NormalModesResult modes = computeNormalModes(system);
+  ASSERT_EQ(modes.numberOfModes, 27u);
+  EXPECT_EQ(modes.discardedRotationalDofs, 0u);
+
+  const std::vector<PhononModes> dispersion = computePhononDispersion(system, std::array<double3, 1>{double3(0, 0, 0)});
+  ASSERT_EQ(dispersion.size(), 1u);
+  ASSERT_EQ(dispersion[0].eigenvalues.size(), 27u);
+
+  double scale = 0.0;
+  for (const double value : modes.eigenvalues) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+
+  for (std::size_t mode = 0; mode < modes.numberOfModes; ++mode)
+  {
+    EXPECT_NEAR(dispersion[0].eigenvalues[mode], modes.eigenvalues[mode], 1e-6 * scale + 1e-10) << "mode=" << mode;
   }
 }
 

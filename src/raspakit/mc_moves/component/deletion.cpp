@@ -28,6 +28,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber& random, System& system,
                                                                         std::size_t selectedComponent,
@@ -142,6 +143,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                      energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
+    // Upon acceptance the conformation of the deleted molecule leaves the system, so its intra-molecular
+    // energy is removed from the running energies. It does not enter the acceptance rule: the reverse
+    // (insertion) move draws the conformation from the ideal-gas Boltzmann distribution, so the intra
+    // energy cancels against that generation probability (zero for rigid molecules).
+    RunningEnergy internalEnergyOld = component.intraMolecularPotentials.computeInternalEnergies(molecule);
+
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);
 
@@ -182,7 +189,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
-      return {-energyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
+      // The caller subtracts the returned energy from the running energies.
+      return {-(energyDifference - internalEnergyOld), double3(Pacc, 1.0 - Pacc, 0.0)};
     };
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }

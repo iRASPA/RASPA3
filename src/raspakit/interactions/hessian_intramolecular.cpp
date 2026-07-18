@@ -18,10 +18,12 @@ import urey_bradley_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import torsion_potential;
+import component;
 import bend_potential_gradient_hessian_strain;
 import torsion_potential_gradient_hessian_strain;
 import distance_potential_gradient_hessian_strain;
 import minimization_hessian_scatter;
+import minimization_rigid_kinematics;
 import minimization_cell_layout;
 import potential_pair_derivatives;
 import potential_pair_vdw;
@@ -33,6 +35,38 @@ namespace
 BondType bondTypeFromUreyBradley(UreyBradleyType type)
 {
   return static_cast<BondType>(static_cast<std::size_t>(type) + 1);
+}
+
+// Under the molecular (rigid-body) strain convention, atoms inside a rigid group move with the
+// group's center of mass: their internal offset (position - group CoM) does not scale with the
+// cell. The intramolecular kernels accumulate the atomic virial (arm = atom position), so for
+// semi-flexible molecules the non-scaling offset contribution g_i (x) (pos_i - com_i) of every
+// rigid-group atom of the term has to be removed from the strain gradient.
+template <std::size_t N>
+void removeRigidOffsetStrainGradient(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                     const Minimization::RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
+                                     std::span<const Atom> moleculeAtoms, const std::array<std::size_t, N>& atomIds,
+                                     const std::array<double3, N>& gradients)
+{
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    const std::size_t localAtom = atomIds[i];
+    if (!layout.atomRigidComDof(moleculeIndex, localAtom).has_value())
+    {
+      continue;
+    }
+    const double3 offset = moleculeAtoms[localAtom].position - rigidCache.bodyCenterOfMass(moleculeIndex, localAtom);
+    const double3& gradient = gradients[i];
+    hessian.strainGradient().ax -= offset.x * gradient.x;
+    hessian.strainGradient().bx -= offset.y * gradient.x;
+    hessian.strainGradient().cx -= offset.z * gradient.x;
+    hessian.strainGradient().ay -= offset.x * gradient.y;
+    hessian.strainGradient().by -= offset.y * gradient.y;
+    hessian.strainGradient().cy -= offset.z * gradient.y;
+    hessian.strainGradient().az -= offset.x * gradient.z;
+    hessian.strainGradient().bz -= offset.y * gradient.z;
+    hessian.strainGradient().cz -= offset.z * gradient.z;
+  }
 }
 
 template <std::size_t N>
@@ -317,6 +351,9 @@ RunningEnergy Interactions::computeIntraMolecularBondHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -324,6 +361,7 @@ RunningEnergy Interactions::computeIntraMolecularBondHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -341,6 +379,16 @@ RunningEnergy Interactions::computeIntraMolecularBondHessian(
       hessian.strainGradient() += strain;
 
       const double3 dr = atom_molecule_span[A].position - atom_molecule_span[B].position;
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
+                                           {gradient[0], gradient[1]});
+        Minimization::scatterRadialHessianSites(
+            hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+                      Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
+            {gradient[0], gradient[1]}, f1, f2, dr);
+        continue;
+      }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
       {
@@ -362,6 +410,9 @@ RunningEnergy Interactions::computeIntraMolecularBendHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -369,6 +420,7 @@ RunningEnergy Interactions::computeIntraMolecularBendHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -387,6 +439,18 @@ RunningEnergy Interactions::computeIntraMolecularBendHessian(
       dynamics_molecule_span[B].gradient += gradient[1];
       dynamics_molecule_span[C].gradient += gradient[2];
       hessian.strainGradient() += strain;
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<3>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B, C},
+                                           {gradient[0], gradient[1], gradient[2]});
+        Minimization::scatterBendHessianSites(
+            hessian,
+            {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+             Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B),
+             Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, C)},
+            {gradient[0], gradient[1], gradient[2]}, geometry);
+        continue;
+      }
       Minimization::scatterBendHessian(hessian, layout, moleculeIndex, A, B, C, geometry);
     }
   }
@@ -400,6 +464,9 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -407,6 +474,7 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -425,6 +493,16 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
       hessian.strainGradient() += strain;
 
       const double3 dr = atom_molecule_span[A].position - atom_molecule_span[B].position;
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
+                                           {gradient[0], gradient[1]});
+        Minimization::scatterRadialHessianSites(
+            hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+                      Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
+            {gradient[0], gradient[1]}, f1, f2, dr);
+        continue;
+      }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
       {
@@ -446,6 +524,9 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -453,6 +534,7 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -490,6 +572,16 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
       strain.cz = dr.z * gradientA.z;
       hessian.strainGradient() += strain;
 
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
+                                           {gradientA, -1.0 * gradientA});
+        Minimization::scatterRadialHessianSites(
+            hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+                      Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
+            {gradientA, -1.0 * gradientA}, f1, f2, dr);
+        continue;
+      }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
       {
@@ -511,6 +603,9 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -518,6 +613,7 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -554,6 +650,16 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
       strain.cz = dr.z * gradientA.z;
       hessian.strainGradient() += strain;
 
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
+                                           {gradientA, -1.0 * gradientA});
+        Minimization::scatterRadialHessianSites(
+            hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+                      Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
+            {gradientA, -1.0 * gradientA}, f1, f2, dr);
+        continue;
+      }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
       {
@@ -575,6 +681,9 @@ RunningEnergy Interactions::computeIntraMolecularTorsionHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -582,6 +691,7 @@ RunningEnergy Interactions::computeIntraMolecularTorsionHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -602,6 +712,19 @@ RunningEnergy Interactions::computeIntraMolecularTorsionHessian(
       dynamics_molecule_span[C].gradient += gradient[2];
       dynamics_molecule_span[D].gradient += gradient[3];
       hessian.strainGradient() += strain;
+      if (semiFlexible)
+      {
+        removeRigidOffsetStrainGradient<4>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span,
+                                           {A, B, C, D}, {gradient[0], gradient[1], gradient[2], gradient[3]});
+        Minimization::scatterTorsionHessianSites(
+            hessian,
+            {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
+             Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B),
+             Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, C),
+             Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, D)},
+            {gradient[0], gradient[1], gradient[2], gradient[3]}, geometry);
+        return;
+      }
       Minimization::scatterTorsionHessian(hessian, layout, moleculeIndex, A, B, C, D, geometry);
     };
 

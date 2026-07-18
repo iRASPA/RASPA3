@@ -29,6 +29,7 @@ import interpolation_energy_grid;
 import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
+import cbmc_segments;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
@@ -37,23 +38,70 @@ import bond_potential;
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
 
-  std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
-
-  std::vector<std::size_t> beads_already_placed(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
 
   double chain_rosenbluth_weight = 1.0;
   std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
   RunningEnergy chain_external_energies{};
 
-  do
+  std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
+
+  // Same deterministic, group-aware growth sequence as the insertion so that grow and retrace are
+  // exactly reversible.
+  std::vector<CBMC::GrowSegment> segments = CBMC::buildGrowSegments(component, beadsAlreadyPlaced);
+
+  for (const CBMC::GrowSegment &segment : segments)
   {
-    auto [previous_bead, current_bead, nextBeads] = component.connectivityTable.nextBeads(beads_already_placed);
+    const std::optional<std::size_t> previous_bead = segment.previousBead;
+    const std::size_t current_bead = segment.currentBead;
+    const std::vector<std::size_t> &nextBeads = segment.nextBeads;
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials = segment.intra;
 
-    Potentials::IntraMolecularPotentials intraMolecularPotentials =
-        component.intraMolecularPotentials.filteredInteractions(numberOfBeads, beads_already_placed, nextBeads);
+    std::fill(RosenBluthWeightTorsion.begin(), RosenBluthWeightTorsion.end(), 1.0);
 
-    if (!previous_bead.has_value())
+    // Old positions of the beads grown in this segment.
+    std::vector<Atom> trial_orientations(nextBeads.size());
+    for (std::size_t k = 0; k < nextBeads.size(); ++k)
+    {
+      trial_orientations[k] = molecule_atoms[nextBeads[k]];
+    }
+
+    if (segment.rigidUnit)
+    {
+      // Case: rigid group retraced as a single rigid body hinged on the anchor, mirroring the
+      // insertion's coupled-decoupled scheme: the bend MC contributes no weight, and the torsion
+      // Rosenbluth weight is computed with the old configuration pinned as torsion trial 0 of the
+      // first trial direction.
+      if (previous_bead.has_value())
+      {
+        double3 last_bond_vector =
+            (molecule_atoms[previous_bead.value()].position - molecule_atoms[current_bead].position).normalized();
+
+        // As in the flexible retrace, the old orientation is the shared torsion base for every trial
+        // direction (the insertion shares one freshly MC-sampled base among its directions).
+        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
+        {
+          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, trial_orientations,
+              previous_bead.value(), current_bead, nextBeads, last_bond_vector, intraMolecularPotentials, i == 0);
+
+          trialPositions[i] = (i == 0) ? trial_orientations : torsion.positions;
+          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
+        }
+      }
+      else
+      {
+        // Seed group: no junction terms, every orientation equally likely, all torsion weights 1.
+        trialPositions[0] = trial_orientations;
+        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
+        {
+          trialPositions[i] = CBMC::generateRigidUnitOrientationMonteCarloScheme(
+              random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead,
+              current_bead, nextBeads, intraMolecularPotentials);
+        }
+      }
+    }
+    else if (!previous_bead.has_value())
     {
       // Case: growing a single bond with no previous beads
       //       for example: dimer, or starting in the middle of a linear chain
@@ -76,19 +124,10 @@ import bond_potential;
     {
       // Case: growing a single or multiple bonds with a previous bead present
 
-      // Get old positions
-      std::vector<Atom> trial_orientations(nextBeads.size());
-      for (std::size_t k = 0; k < nextBeads.size(); ++k)
-      {
-        std::size_t index = nextBeads[k];
-        trial_orientations[k] = molecule_atoms[index];
-      }
-
       // Rotate around to obtain the other trial-orientations
       double3 last_bond_vector =
           (molecule_atoms[previous_bead.value()].position - molecule_atoms[current_bead].position).normalized();
 
-      std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
       for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
       {
         // The first trial direction is the old configuration itself (its first torsion angle is 0
@@ -107,7 +146,6 @@ import bond_potential;
         CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, RosenBluthWeightTorsion, -1);
 
     // add the intramolecular van der Waals and Coulomb energy for the bead selection
-    std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
     std::vector<CBMC::ChainTrialTorsion> totalExternalEnergies = externalEnergies;
     for (auto &[external_positions, external_energy, external_torsion] : totalExternalEnergies)
     {
@@ -137,10 +175,12 @@ import bond_potential;
 
     chain_external_energies += selectedTrial.energy;
 
-    // Add 'nextBeads' to 'beads_already_placed'
-    beads_already_placed.insert(beads_already_placed.end(), nextBeads.begin(), nextBeads.end());
-
-  } while (beads_already_placed.size() < component.connectivityTable.numberOfBeads);
+    // Restore the old positions of this segment before growing the next one.
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      chain_atoms[nextBeads[k]] = molecule_atoms[nextBeads[k]];
+    }
+  }
 
   // Recompute all the internal interactions (including the terms not sampled during growth,
   // so that the returned energies contain the cross-terms)

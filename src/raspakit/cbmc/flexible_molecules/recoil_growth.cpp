@@ -27,17 +27,13 @@ import cbmc_util;
 import cbmc_interactions;
 import cbmc_growth_context;
 import cbmc_generate_trialorientations_mc;
+import cbmc_segments;
 
-// A single growth step ('segment') of the chain: a set of 'nextBeads' grown from 'currentBead',
-// optionally with a 'previousBead' defining the bend/torsion reference. The topology of the growth
-// sequence is deterministic (it only depends on the connectivity table), so it is precomputed once.
-struct Segment
-{
-  std::optional<std::size_t> previousBead;
-  std::size_t currentBead;
-  std::vector<std::size_t> nextBeads;
-  Potentials::IntraMolecularPotentials intra;
-};
+// A single growth step ('segment') of the chain. Shared with CBMC insertion/deletion: a set of
+// 'nextBeads' grown from 'currentBead' (a whole rigid group when 'rigidUnit'), optionally with a
+// 'previousBead' defining the bend/torsion reference. The growth sequence is deterministic (it only
+// depends on the connectivity table and the group definition), so it is precomputed once.
+using Segment = CBMC::GrowSegment;
 
 // A generated trial direction: candidate positions of the 'nextBeads' plus the torsion Rosenbluth
 // weight accumulated while selecting the torsion rotation.
@@ -59,29 +55,6 @@ struct RecoilContext
   std::size_t recoilLength;             // l
   std::vector<Segment> segments;
 };
-
-// Precompute the deterministic sequence of growth steps starting from 'beadsAlreadyPlaced'.
-std::vector<Segment> buildSegments(const Component &component, const std::vector<std::size_t> &beadsAlreadyPlaced)
-{
-  std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
-
-  std::vector<Segment> segments;
-  std::vector<std::size_t> placed(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
-
-  while (placed.size() < numberOfBeads)
-  {
-    auto [previous_bead, current_bead, nextBeads] = component.connectivityTable.nextBeads(placed);
-
-    Potentials::IntraMolecularPotentials intra =
-        component.intraMolecularPotentials.filteredInteractions(numberOfBeads, placed, nextBeads);
-
-    segments.push_back({previous_bead, current_bead, nextBeads, intra});
-
-    placed.insert(placed.end(), nextBeads.begin(), nextBeads.end());
-  }
-
-  return segments;
-}
 
 // Energy of a trial placement, split into the external (non-bonded) part and the intramolecular
 // van-der-Waals and Coulomb contributions with the already-placed beads. The sum of the two is
@@ -125,6 +98,40 @@ std::vector<Trial> generateSegmentTrials(RandomNumber &random, const RecoilConte
 {
   std::vector<Trial> trials;
   trials.reserve(numberOfTrials);
+
+  if (segment.rigidUnit)
+  {
+    // Rigid group grown as a single rigid body hinged on the (already-placed) anchor, with the same
+    // coupled-decoupled scheme as flexible beads: the junction bends are sampled by a small
+    // Metropolis MC over the body tilt (no weight), the spin about the junction bond is biased by
+    // the crossing torsions (torsion weight, shared 'selectTorsionOrientation').
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      std::vector<Atom> base_orientation = CBMC::generateRigidUnitOrientationMonteCarloScheme(
+          random, ctx.env.forceField.numberOfTrialMovesPerOpenBead, ctx.env.beta, ctx.component, contextAtoms,
+          segment.previousBead, segment.currentBead, segment.nextBeads, segment.intra);
+
+      if (segment.previousBead.has_value())
+      {
+        double3 last_bond_vector =
+            (contextAtoms[segment.previousBead.value()].position - contextAtoms[segment.currentBead].position)
+                .normalized();
+
+        CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+            random, ctx.env.forceField.numberOfTorsionTrialDirections, ctx.env.beta, contextAtoms, base_orientation,
+            segment.previousBead.value(), segment.currentBead, segment.nextBeads, last_bond_vector, segment.intra,
+            false);
+
+        trials.push_back({torsion.positions, torsion.rosenbluthWeight});
+      }
+      else
+      {
+        // Seed group: no junction terms exist yet, every orientation is equally likely.
+        trials.push_back({base_orientation, 1.0});
+      }
+    }
+    return trials;
+  }
 
   if (!segment.previousBead.has_value())
   {
@@ -290,6 +297,8 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
   std::size_t previous_bead = segment.previousBead.value();
   std::size_t current_bead = segment.currentBead;
 
+  // Rigid units need no special case here: their bend MC carries no weight, so the old-orientation
+  // weight is the same pinned torsion selection as for flexible segments.
   double3 last_bond_vector = (oldAtoms[previous_bead].position - oldAtoms[current_bead].position).normalized();
 
   std::vector<Atom> old_orientation(segment.nextBeads.size());
@@ -318,7 +327,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
                     skipBackgroundMolecule,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
-                    buildSegments(component, beadsAlreadyPlaced)};
+                    CBMC::buildGrowSegments(component, beadsAlreadyPlaced)};
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<GrowRecord> records(ctx.segments.size());
@@ -414,7 +423,7 @@ double computeOldTorsionWeight(RandomNumber &random, const RecoilContext &ctx, c
                     -1,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
-                    buildSegments(component, beadsAlreadyPlaced)};
+                    CBMC::buildGrowSegments(component, beadsAlreadyPlaced)};
 
   std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
 

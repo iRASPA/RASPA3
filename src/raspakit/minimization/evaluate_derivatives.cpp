@@ -6,6 +6,7 @@ import std;
 
 import double3;
 import double3x3;
+import component;
 import forcefield;
 import running_energy;
 import minimization_cell_layout;
@@ -31,44 +32,66 @@ void assemblePositionGradient(const System& system, const MinimizationDofLayout&
 
   const Minimization::RigidDerivativeCache rigidCache =
       Minimization::RigidDerivativeCache::build(system.moleculeData, system.components, moleculeAtomPositions);
+
+  // Multiple atoms accumulate into the six DOFs of each rigid body (a whole rigid molecule or a
+  // rigid group of a semi-flexible molecule), so zero those blocks before summing.
+  for (const RigidBodyDofInfo& body : layout.rigidBodies())
+  {
+    for (std::size_t k = 0; k < 6; ++k)
+    {
+      gradient[body.base + k] = 0.0;
+    }
+  }
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    const Component& component = system.components[molecule.componentId];
-    if (!component.rigid)
+    for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
-      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+      const AtomDynamics& dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
+      if (const auto comBase = layout.atomRigidComDof(moleculeIndex, localAtom))
       {
-        const AtomDynamics& dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
+        const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
+        gradient[*comBase + 0] += dynamics.gradient.x;
+        gradient[*comBase + 1] += dynamics.gradient.y;
+        gradient[*comBase + 2] += dynamics.gradient.z;
+        const std::size_t orientationBase = *comBase + 3;
+        gradient[orientationBase + 0] += double3::dot(dynamics.gradient, derivatives.dVecX);
+        gradient[orientationBase + 1] += double3::dot(dynamics.gradient, derivatives.dVecY);
+        gradient[orientationBase + 2] += double3::dot(dynamics.gradient, derivatives.dVecZ);
+      }
+      else
+      {
         const std::size_t base = layout.flexibleAtomDofBase(moleculeIndex, localAtom);
         gradient[base + 0] = dynamics.gradient.x;
         gradient[base + 1] = dynamics.gradient.y;
         gradient[base + 2] = dynamics.gradient.z;
       }
     }
-    else
-    {
-      double3 centerOfMassGradient{};
-      double3 orientationGradient{};
-      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
-      {
-        const AtomDynamics& dynamics = moleculeDynamics[molecule.atomIndex + localAtom];
-        const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
-        centerOfMassGradient += dynamics.gradient;
-        orientationGradient.x += double3::dot(dynamics.gradient, derivatives.dVecX);
-        orientationGradient.y += double3::dot(dynamics.gradient, derivatives.dVecY);
-        orientationGradient.z += double3::dot(dynamics.gradient, derivatives.dVecZ);
-      }
-      const std::size_t centerBase = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-      gradient[centerBase + 0] = centerOfMassGradient.x;
-      gradient[centerBase + 1] = centerOfMassGradient.y;
-      gradient[centerBase + 2] = centerOfMassGradient.z;
-      const std::size_t orientationBase = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
-      gradient[orientationBase + 0] = orientationGradient.x;
-      gradient[orientationBase + 1] = orientationGradient.y;
-      gradient[orientationBase + 2] = orientationGradient.z;
-    }
   }
+}
+
+// Mass-weighted center of mass of a rigid body (a whole rigid molecule or a rigid group of a
+// semi-flexible molecule) from the current atom positions.
+double3 rigidBodyCenterOfMass(const System& system, const RigidBodyDofInfo& body)
+{
+  const Molecule& molecule = system.moleculeData[body.moleculeIndex];
+  if (body.wholeMolecule)
+  {
+    return molecule.centerOfMassPosition;
+  }
+  const Component& component = system.components[molecule.componentId];
+  const MoleculeGroup& group = component.groups[body.groupIndex];
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  double3 weighted{};
+  double mass{};
+  for (const std::size_t atom : group.atoms)
+  {
+    const double atomMass = component.definedAtoms[atom].second;
+    weighted += atomMass * atoms[atom].position;
+    mass += atomMass;
+  }
+  return weighted / mass;
 }
 
 std::vector<double> affinePositionDirection(const System& system, const MinimizationDofLayout& layout,
@@ -85,29 +108,30 @@ std::vector<double> affinePositionDirection(const System& system, const Minimiza
     direction[base + 2] = value.z;
   }
 
+  // Flexible atoms scale affinely with the cell; rigid bodies (whole rigid molecules and rigid
+  // groups of semi-flexible molecules) scale through their center of mass only, with the
+  // orientation degrees of freedom left invariant.
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    if (layout.molecules()[moleculeIndex].rigid)
+    for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
     {
-      const double3 value = basis * molecule.centerOfMassPosition;
-      const std::size_t base = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-      direction[base + 0] = value.x;
-      direction[base + 1] = value.y;
-      direction[base + 2] = value.z;
-    }
-    else
-    {
-      for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
+      if (const auto dof = layout.flexibleAtomDof(moleculeIndex, atom, MinimizationDofAxis::X))
       {
         const double3 value = basis * atoms[molecule.atomIndex + atom].position;
-        const std::size_t base = layout.flexibleAtomDofBase(moleculeIndex, atom);
-        direction[base + 0] = value.x;
-        direction[base + 1] = value.y;
-        direction[base + 2] = value.z;
+        direction[*dof + 0] = value.x;
+        direction[*dof + 1] = value.y;
+        direction[*dof + 2] = value.z;
       }
     }
+  }
+  for (const RigidBodyDofInfo& body : layout.rigidBodies())
+  {
+    const double3 value = basis * rigidBodyCenterOfMass(system, body);
+    direction[body.base + 0] = value.x;
+    direction[body.base + 1] = value.y;
+    direction[body.base + 2] = value.z;
   }
   return direction;
 }
@@ -127,25 +151,24 @@ std::vector<double> affineGradientDirection(const System& system, const Minimiza
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    if (layout.molecules()[moleculeIndex].rigid)
+    for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
     {
-      const std::size_t base = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-      const double3 value = basis * double3(gradient[base + 0], gradient[base + 1], gradient[base + 2]);
-      direction[base + 0] = value.x;
-      direction[base + 1] = value.y;
-      direction[base + 2] = value.z;
-    }
-    else
-    {
-      for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
+      if (const auto dof = layout.flexibleAtomDof(moleculeIndex, atom, MinimizationDofAxis::X))
       {
-        const std::size_t base = layout.flexibleAtomDofBase(moleculeIndex, atom);
-        const double3 value = basis * double3(gradient[base + 0], gradient[base + 1], gradient[base + 2]);
-        direction[base + 0] = value.x;
-        direction[base + 1] = value.y;
-        direction[base + 2] = value.z;
+        const double3 value = basis * double3(gradient[*dof + 0], gradient[*dof + 1], gradient[*dof + 2]);
+        direction[*dof + 0] = value.x;
+        direction[*dof + 1] = value.y;
+        direction[*dof + 2] = value.z;
       }
     }
+  }
+  for (const RigidBodyDofInfo& body : layout.rigidBodies())
+  {
+    const std::size_t base = body.base;
+    const double3 value = basis * double3(gradient[base + 0], gradient[base + 1], gradient[base + 2]);
+    direction[base + 0] = value.x;
+    direction[base + 1] = value.y;
+    direction[base + 2] = value.z;
   }
   return direction;
 }
@@ -295,19 +318,17 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    const bool rigid = system.components[molecule.componentId].rigid;
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
       const std::size_t global = numberOfFrameworkAtoms + molecule.atomIndex + localAtom;
       movable[global] = 1;
-      if (rigid)
+      if (const auto comBase = layout.atomRigidComDof(moleculeIndex, localAtom))
       {
-        const std::size_t comBase = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-        const std::size_t orientationBase = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
+        const std::size_t orientationBase = *comBase + 3;
         const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
         sites[global] = PolarizationSiteDof{.hasDof = true,
                                             .rigid = true,
-                                            .base = comBase,
+                                            .base = *comBase,
                                             .orientationBase = orientationBase,
                                             .dVec = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ}};
       }

@@ -18,8 +18,8 @@
 13. [Monte Carlo: radial distribution function of water](#Example_basic_13)
 14. [Molecular Dynamics: radial distribution function of water](#Example_basic_14)
 15. [Molecular Dynamics: butane and isobutane in FAU](#Example_basic_15)
-16. [Monte Carlo: molecule properties of 2-methylbutane in box](#Example_basic_16)
-17. [Molecular Dynamics: molecule properties of 2-methylbutane in box](#Example_basic_17)
+16. [Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_16)
+17. [Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_17)
 19. [Minimization: CO₂ in IRMOF-1](#Example_basic_19)
 
 
@@ -1661,9 +1661,13 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Monte Carlo: molecule properties of 2-methylbutane in box<a name="Example_basic_16"></a>
+#### Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box<a name="Example_basic_16"></a>
 
-This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It computes probability histograms of the intra-molecular geometry (bond lengths, bend angles, and torsion angles) for 32 flexible 2-methylbutane molecules in a \f$25 \times 25 \times 25\f$ &Aring; box at 298 K. The histograms are written to the `molecule_properties` directory.
+This example computes probability histograms of the intra-molecular geometry (bond lengths, bend angles, and torsion angles) for 32 united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K. The histograms are written to the `molecule_properties` directory.
+
+The molecule is semi-flexible: the two aromatic 6-rings are defined as rigid groups (`"Groups"` in the molecule file), connected to each other by a flexible biphenyl bond that carries a twist torsion, and to the flexible ethyl tails by flexible junction bonds. Interactions entirely inside a rigid group are omitted (the ring geometry is fixed); only the junction bonds, bends, and torsions crossing a group boundary are defined and sampled during the CBMC growth. The rigid rings are grown as single rigid bodies hinged on their connecting atoms, with the junction bends sampled by an internal Monte-Carlo scheme and the spin about the junction bond biased by the crossing torsions.
+
+The partial-reinsertion move regrows either an ethyl tail or a whole ring plus the far tail; the fixed-atom sets must always contain each rigid group either entirely or not at all.
 
 ```json
 {
@@ -1676,7 +1680,7 @@ This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It compu
   [
     {
       "Type" : "Box",
-      "BoxLengths" : [25.0, 25.0, 25.0],
+      "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 298.0,
       "ChargeMethod" : "None",
       "ComputeMoleculeProperties" : true
@@ -1686,7 +1690,7 @@ This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It compu
   "Components" :
   [
     {
-      "Name" : "2-methylbutane",
+      "Name" : "diethyl-biphenyl",
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
@@ -1695,6 +1699,17 @@ This example mirrors RASPA2 `examples/Basic/13_Molecule_Properties_MC`. It compu
     }
   ]
 }
+```
+
+The rigid and flexible sub-units are declared in the molecule file `diethyl-biphenyl.json`:
+
+```json
+  "Groups" : [
+    { "Type" : "Flexible", "Atoms" : [0, 1] },
+    { "Type" : "Rigid",    "Atoms" : [2, 3, 4, 5, 6, 7] },
+    { "Type" : "Rigid",    "Atoms" : [8, 9, 10, 11, 12, 13] },
+    { "Type" : "Flexible", "Atoms" : [14, 15] }
+  ]
 ```
 
 #### Minimization: CO₂ in IRMOF-1 <a name="Example_basic_19"></a>
@@ -1713,14 +1728,16 @@ Progress is written to `output/minimization.s0.txt`, and the final energy, conve
 coordinates are written to `output/minimization.s0.json`. A successful run ends with
 `Final minimization status: converged=true`.
 
-#### Molecular Dynamics: molecule properties of 2-methylbutane in box<a name="Example_basic_17"></a>
+#### Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box<a name="Example_basic_17"></a>
 
-This example mirrors RASPA2 `examples/Basic/14_Molecule_Properties_MD`. It computes the same intra-molecular geometry histograms using an NVT molecular dynamics simulation of 32 flexible 2-methylbutane molecules in a \f$25 \times 25 \times 25\f$ &Aring; box at 298 K.
+This example is the molecular-dynamics counterpart of example 16. It computes the same intra-molecular geometry histograms (bond lengths, bend angles, and torsion angles) using an NVT molecular dynamics simulation of 32 semi-flexible united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K.
+
+The molecule definition is identical to example 16: the two aromatic 6-rings are rigid groups, propagated in MD as rigid bodies (center-of-mass translation plus quaternion rotation), while the ethyl tails and the biphenyl bond are flexible and are integrated as Cartesian atoms. Only the junction bonds, bends, and torsions crossing a group boundary contribute to the intra-molecular forces; interactions entirely inside a rigid group are omitted. Comparing the histograms in `molecule_properties` against those of example 16 verifies that the CBMC sampling and the MD integration produce the same conformational distributions.
 
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfProductionCycles" : 5000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 10000,
@@ -1729,7 +1746,7 @@ This example mirrors RASPA2 `examples/Basic/14_Molecule_Properties_MD`. It compu
   [
     {
       "Type" : "Box",
-      "BoxLengths" : [25.0, 25.0, 25.0],
+      "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 298.0,
       "Ensemble" : "NVT",
       "ChargeMethod" : "None",
@@ -1740,7 +1757,7 @@ This example mirrors RASPA2 `examples/Basic/14_Molecule_Properties_MD`. It compu
   "Components" :
   [
     {
-      "Name" : "2-methylbutane",
+      "Name" : "diethyl-biphenyl",
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,

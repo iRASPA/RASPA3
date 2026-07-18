@@ -34,6 +34,7 @@ import interactions_polarization_derivatives;
 import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
+import potential_coulomb_real_space;
 
 namespace
 {
@@ -288,7 +289,6 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   const double alpha = forceField.EwaldAlpha;
-  const double alphaSquared = alpha * alpha;
 
   for (const Molecule& molecule : system.moleculeData)
   {
@@ -303,16 +303,16 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
         const double rr = double3::dot(dr, dr);
         const double r = std::sqrt(rr);
 
-        const double chargeProduct = Units::CoulombicConversionFactor * atoms[i].scalingCoulomb *
-                                     atoms[j].scalingCoulomb * atoms[i].charge * atoms[j].charge;
+        const double scalingTotal = atoms[i].scalingCoulomb * atoms[j].scalingCoulomb;
+        const double chargeProduct =
+            Units::CoulombicConversionFactor * scalingTotal * atoms[i].charge * atoms[j].charge;
         if (chargeProduct == 0.0) continue;
 
-        const double erfTerm = std::erf(alpha * r);
-        const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alphaSquared * rr);
-        // U(r) = -chargeProduct erf(alpha r)/r; RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
-        const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-        const double f2 = chargeProduct * (2.0 * alphaSquared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
-                                           3.0 * erfTerm / (r * rr * rr));
+        // U(r) = -chargeProduct erf(alpha s)/s with s = r + Q (offset form);
+        // RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
+        const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
+        const double f1 = -chargeProduct * exclusion.firstDerivativeFactor;
+        const double f2 = -chargeProduct * exclusion.secondDerivativeFactor;
 
         const std::array<double, 9> block = pairBlock(f1, f2, dr);
         std::array<double, 9> negativeBlock{};
@@ -455,6 +455,12 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
     {
       throw std::runtime_error(
           "computeRealSpaceForceConstants: rigid molecules are not supported in this increment (flexible atoms only)");
+    }
+    if (component.isSemiFlexible())
+    {
+      throw std::runtime_error(
+          "computeRealSpaceForceConstants: semi-flexible molecules (rigid groups) carry generalized degrees of "
+          "freedom; use computePhononDispersion, which projects a fully-flexible copy onto them");
     }
   }
   const bool flexibleFramework = system.framework.has_value() && !system.framework->rigid;

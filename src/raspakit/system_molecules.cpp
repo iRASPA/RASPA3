@@ -355,7 +355,7 @@ void System::checkMoleculeIds()
 void System::createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions)
 {
   // keep a fixed seed
-  RandomNumber random(std::time(0l));
+  RandomNumber random(1200);
 
   for (std::size_t componentId = 0; const Component& component : components)
   {

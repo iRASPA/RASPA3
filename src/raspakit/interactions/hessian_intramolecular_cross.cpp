@@ -7,6 +7,8 @@ import std;
 import double3;
 import double3x3;
 import units;
+import atom;
+import component;
 import intra_molecular_potentials;
 import bond_bond_potential;
 import bond_bend_potential;
@@ -15,17 +17,67 @@ import bond_torsion_potential;
 import bend_torsion_potential;
 import inversion_bend_potential;
 import out_of_plane_bend_potential;
+import generalized_hessian;
 import minimization_dof_layout;
 import minimization_internal_coordinate_hessian;
+import minimization_hessian_scatter;
+import minimization_rigid_kinematics;
 import interactions_intramolecular_hyper_dual;
 
 using namespace Interactions::HyperDual;
+
+namespace
+{
+// Group-aware scatter of a dense Cartesian per-term Hessian (M-body, M = 3 or 4) for a
+// semi-flexible molecule: flexible atoms keep their Cartesian degrees of freedom, atoms driven by
+// a rigid group couple through the group's center of mass and orientation. The dense 4x4 block of
+// 3x3 sub-blocks is projected onto the generalized degrees of freedom (J^T H J plus the
+// gradient-curvature term on rigid orientations), and the strain gradient is corrected to the
+// molecular (rigid-body) convention by removing the non-scaling internal-offset virial of every
+// rigid-group atom.
+void scatterSemiFlexibleCrossTerm(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                  const Minimization::RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
+                                  std::span<const std::size_t> termAtoms, std::span<const double3> positions,
+                                  std::span<const double3> gradients,
+                                  const std::array<std::array<CoordinateBlock, 4>, 4>& full)
+{
+  const std::size_t M = termAtoms.size();
+
+  GeneralizedHessian local(3 * M, 0);
+  for (std::size_t ti = 0; ti < M; ++ti)
+  {
+    for (std::size_t tj = 0; tj < M; ++tj)
+    {
+      for (std::size_t a = 0; a < 3; ++a)
+      {
+        for (std::size_t b = 0; b < 3; ++b)
+        {
+          local.add(3 * ti + a, 3 * tj + b, full[ti][tj][a][b]);
+        }
+      }
+    }
+  }
+
+  std::vector<Minimization::HessianSite> sites(M);
+  for (std::size_t t = 0; t < M; ++t)
+  {
+    sites[t] = Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, termAtoms[t]);
+  }
+
+  Minimization::scatterCartesianTermSites(hessian, sites, gradients, local);
+  Minimization::removeRigidOffsetStrainGradientSites(hessian, layout, rigidCache, moleculeIndex, termAtoms, positions,
+                                                     gradients);
+}
+}  // namespace
 
 RunningEnergy Interactions::computeIntraMolecularBondBondHessian(
     std::span<const Molecule> moleculeData, std::span<const Atom> atoms, std::span<const Component> components,
     const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
 {
   RunningEnergy energies{};
+
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
 
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
@@ -34,6 +86,7 @@ RunningEnergy Interactions::computeIntraMolecularBondBondHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -73,6 +126,16 @@ RunningEnergy Interactions::computeIntraMolecularBondBondHessian(
       std::array<std::array<double, 3>, 3> d2{};
       extractDerivatives(U, dUdq, d2);
 
+      if (semiFlexible)
+      {
+        const auto full = assembleCrossCartesianHessian({rab, rbc}, {{{0, 1}}, {{2, 1}}}, dUdq, d2);
+        const std::array<std::size_t, 3> ids{A, B, C};
+        const std::array<double3, 3> positions{atom_span[A].position, atom_span[B].position, atom_span[C].position};
+        const std::array<double3, 3> grads{gradient[0], gradient[1], gradient[2]};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, grads, full);
+        continue;
+      }
+
       scatterCrossHessian(hessian, layout, moleculeIndex, {A, B, C}, {rab, rbc}, {{{0, 1}}, {{2, 1}}},
                           {atom_span[A].position, atom_span[B].position, atom_span[C].position, double3{}}, dUdq, d2);
     }
@@ -87,6 +150,9 @@ RunningEnergy Interactions::computeIntraMolecularBondBendHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -94,6 +160,7 @@ RunningEnergy Interactions::computeIntraMolecularBondBendHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -176,6 +243,17 @@ RunningEnergy Interactions::computeIntraMolecularBondBendHessian(
       std::array<std::array<double, 3>, 3> d2{};
       extractDerivatives(U, dUdq, d2);
 
+      if (semiFlexible)
+      {
+        const auto full =
+            assembleCrossCartesianHessian({rab, rbc, theta}, {{{0, 1}}, {{2, 1}}, {{0, 1, 2}}}, dUdq, d2);
+        const std::array<std::size_t, 3> ids{A, B, C};
+        const std::array<double3, 3> positions{atom_span[A].position, atom_span[B].position, atom_span[C].position};
+        const std::array<double3, 3> grads{gradient[0], gradient[1], gradient[2]};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, grads, full);
+        continue;
+      }
+
       scatterCrossHessian(hessian, layout, moleculeIndex, {A, B, C}, {rab, rbc, theta},
                           {{{0, 1}}, {{2, 1}}, {{0, 1, 2}}},
                           {atom_span[A].position, atom_span[B].position, atom_span[C].position, double3{}}, dUdq, d2);
@@ -191,6 +269,9 @@ RunningEnergy Interactions::computeIntraMolecularBendBendHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -198,6 +279,7 @@ RunningEnergy Interactions::computeIntraMolecularBendBendHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -243,6 +325,18 @@ RunningEnergy Interactions::computeIntraMolecularBendBendHessian(
       std::array<std::array<double, 3>, 3> d2{};
       extractDerivatives(U, dUdq, d2);
 
+      if (semiFlexible)
+      {
+        const auto full =
+            assembleCrossCartesianHessian({theta1, theta2}, {{{0, 1, 2}}, {{0, 1, 3}}}, dUdq, d2);
+        const std::array<std::size_t, 4> ids{A, B, C, D};
+        const std::array<double3, 4> positions{atom_span[A].position, atom_span[B].position, atom_span[C].position,
+                                               atom_span[D].position};
+        const std::array<double3, 4> grads{gradient[0], gradient[1], gradient[2], gradient[3]};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, grads, full);
+        continue;
+      }
+
       scatterCrossHessian(hessian, layout, moleculeIndex, {A, B, C, D}, {theta1, theta2}, {{{0, 1, 2}}, {{0, 1, 3}}},
                           {atom_span[A].position, atom_span[B].position, atom_span[C].position, atom_span[D].position},
                           dUdq, d2);
@@ -258,6 +352,9 @@ RunningEnergy Interactions::computeIntraMolecularBondTorsionHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -265,6 +362,7 @@ RunningEnergy Interactions::computeIntraMolecularBondTorsionHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -310,6 +408,18 @@ RunningEnergy Interactions::computeIntraMolecularBondTorsionHessian(
       std::array<std::array<double, 3>, 3> d2{};
       extractDerivatives(U, dUdq, d2);
 
+      if (semiFlexible)
+      {
+        const auto full =
+            assembleCrossCartesianHessian({rbc, cphi}, {{{1, 2}}, {{0, 1, 2, 3}}}, dUdq, d2);
+        const std::array<std::size_t, 4> ids{A, B, C, D};
+        const std::array<double3, 4> positions{atom_span[A].position, atom_span[B].position, atom_span[C].position,
+                                               atom_span[D].position};
+        const std::array<double3, 4> grads{gradient[0], gradient[1], gradient[2], gradient[3]};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, grads, full);
+        continue;
+      }
+
       scatterCrossHessian(hessian, layout, moleculeIndex, {A, B, C, D}, {rbc, cphi}, {{{1, 2}}, {{0, 1, 2, 3}}},
                           {atom_span[A].position, atom_span[B].position, atom_span[C].position, atom_span[D].position},
                           dUdq, d2);
@@ -325,6 +435,9 @@ RunningEnergy Interactions::computeIntraMolecularBendTorsionHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -332,6 +445,7 @@ RunningEnergy Interactions::computeIntraMolecularBendTorsionHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -414,6 +528,18 @@ RunningEnergy Interactions::computeIntraMolecularBendTorsionHessian(
       std::array<std::array<double, 3>, 3> d2{};
       extractDerivatives(U, dUdq, d2);
 
+      if (semiFlexible)
+      {
+        const auto full = assembleCrossCartesianHessian(
+            {theta1, theta2, torsion}, {{{0, 1, 2}}, {{1, 2, 3}}, {{0, 1, 2, 3}}}, dUdq, d2);
+        const std::array<std::size_t, 4> ids{A, B, C, D};
+        const std::array<double3, 4> positions{atom_span[A].position, atom_span[B].position, atom_span[C].position,
+                                               atom_span[D].position};
+        const std::array<double3, 4> grads{gradient[0], gradient[1], gradient[2], gradient[3]};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, grads, full);
+        continue;
+      }
+
       scatterCrossHessian(hessian, layout, moleculeIndex, {A, B, C, D}, {theta1, theta2, torsion},
                           {{{0, 1, 2}}, {{1, 2, 3}}, {{0, 1, 2, 3}}},
                           {atom_span[A].position, atom_span[B].position, atom_span[C].position, atom_span[D].position},
@@ -430,6 +556,9 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -437,6 +566,7 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -547,6 +677,14 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
         }
       }
 
+      if (semiFlexible)
+      {
+        const std::array<std::size_t, 4> ids{A, B, C, D};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, analyticGradient,
+                                     analyticHessian);
+        continue;
+      }
+
       scatterCartesianFourBody(hessian, layout, moleculeIndex, {A, B, C, D}, positions, analyticGradient,
                                analyticHessian);
     }
@@ -561,6 +699,9 @@ RunningEnergy Interactions::computeIntraMolecularOutOfPlaneBendHessian(
 {
   RunningEnergy energies{};
 
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
@@ -568,6 +709,7 @@ RunningEnergy Interactions::computeIntraMolecularOutOfPlaneBendHessian(
     {
       continue;
     }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
 
     const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
     std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
@@ -630,6 +772,14 @@ RunningEnergy Interactions::computeIntraMolecularOutOfPlaneBendHessian(
             }
           }
         }
+      }
+
+      if (semiFlexible)
+      {
+        const std::array<std::size_t, 4> ids{A, B, C, D};
+        scatterSemiFlexibleCrossTerm(hessian, layout, rigidCache, moleculeIndex, ids, positions, analyticGradient,
+                                     analyticHessian);
+        continue;
       }
 
       scatterCartesianFourBody(hessian, layout, moleculeIndex, {A, B, C, D}, positions, analyticGradient,

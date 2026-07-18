@@ -1,0 +1,31 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 1000,
+  "NumberOfInitializationCycles" : 100,
+  "PrintEvery" : 50000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true,
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 1
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "diethyl-biphenyl",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 4
+    }
+  ]
+}

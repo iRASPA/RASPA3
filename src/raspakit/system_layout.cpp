@@ -7,8 +7,10 @@ import std;
 import randomnumbers;
 import atom;
 import atom_dynamics;
+import molecule;
 import component;
 import double3;
+import simd_quatd;
 
 // System layout: spans, iterators, and molecule indexing over contiguous storage.
 
@@ -125,6 +127,76 @@ std::span<AtomDynamics> System::spanOfMoleculeDynamics()
       atomDynamics.begin() + static_cast<std::vector<AtomDynamics>::difference_type>(numberOfFrameworkAtoms),
       atomDynamics.end());
 }
+
+void System::initializeGroupData()
+{
+  std::size_t totalRigidGroups{};
+  for (const Molecule& molecule : moleculeData)
+  {
+    totalRigidGroups += components[molecule.componentId].numberOfRigidGroups();
+  }
+  // When the layout is unchanged (e.g. entering production after equilibration, where the group states
+  // are kept aligned across particle exchanges) the velocities and orientation momenta are preserved;
+  // only the kinematic state is re-derived from the (authoritative) atom positions. A fresh or
+  // resized groupData starts with zero dynamic state.
+  const bool preserveDynamics = groupData.size() == totalRigidGroups;
+  if (!preserveDynamics)
+  {
+    groupData.assign(totalRigidGroups, GroupState{});
+  }
+  if (totalRigidGroups == 0) return;
+
+  std::span<const Atom> atoms = spanOfMoleculeAtoms();
+  std::size_t atomIndex{};
+  std::size_t groupIndex{};
+  for (const Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    if (component.isSemiFlexible())
+    {
+      std::span<const Atom> span = atoms.subspan(atomIndex, molecule.numberOfAtoms);
+      std::size_t rigidRank{};
+      for (std::size_t g = 0; g != component.groups.size(); ++g)
+      {
+        if (component.groups[g].rigid)
+        {
+          GroupState& state = groupData[groupIndex + rigidRank];
+          GroupState derived = component.deriveGroupState(g, span);
+          if (preserveDynamics)
+          {
+            // q and -q describe the same rotation; keep the sign continuous with the stored
+            // orientation because the preserved orientation momentum is paired with it
+            const double overlap = derived.orientation.r * state.orientation.r +
+                                   derived.orientation.ix * state.orientation.ix +
+                                   derived.orientation.iy * state.orientation.iy +
+                                   derived.orientation.iz * state.orientation.iz;
+            if (overlap < 0.0)
+            {
+              derived.orientation = simd_quatd(-derived.orientation.ix, -derived.orientation.iy,
+                                               -derived.orientation.iz, -derived.orientation.r);
+            }
+          }
+          state.centerOfMassPosition = derived.centerOfMassPosition;
+          state.orientation = derived.orientation;
+          state.gradient = derived.gradient;
+          state.orientationGradient = derived.orientationGradient;
+          if (!preserveDynamics)
+          {
+            state.velocity = derived.velocity;
+            state.orientationMomentum = derived.orientationMomentum;
+          }
+          ++rigidRank;
+        }
+      }
+      groupIndex += component.numberOfRigidGroups();
+    }
+    atomIndex += molecule.numberOfAtoms;
+  }
+}
+
+std::span<GroupState> System::spanOfGroupData() { return std::span(groupData); }
+
+std::span<const GroupState> System::spanOfGroupData() const { return std::span(groupData); }
 
 std::span<double> System::spanOfMoleculeElectrostaticPotential()
 {

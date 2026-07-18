@@ -16,14 +16,15 @@ std::optional<std::size_t> positionDofBase(const MinimizationDofLayout& layout, 
 {
   if (rigid)
   {
-    return layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
+    return layout.atomRigidComDof(moleculeIndex, localAtomIndex);
   }
   return layout.flexibleAtomDof(moleculeIndex, localAtomIndex, MinimizationDofAxis::X);
 }
 
-std::optional<std::size_t> orientationDofBase(const MinimizationDofLayout& layout, std::size_t moleculeIndex)
+std::optional<std::size_t> orientationDofBase(const MinimizationDofLayout& layout, std::size_t moleculeIndex,
+                                              std::size_t localAtomIndex)
 {
-  return layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
+  return layout.atomRigidOrientationDof(moleculeIndex, localAtomIndex);
 }
 
 void addMatrixBlock(GeneralizedHessian& hessian, std::optional<std::size_t> rowBase,
@@ -307,10 +308,12 @@ void Minimization::scatterInteractionHessian(GeneralizedHessian& hessian, const 
   const Minimization::RigidAtomDerivatives* derivativesA = rigidA ? &rigidCache.atom(moleculeA, localAtomA) : nullptr;
   const Minimization::RigidAtomDerivatives* derivativesB = rigidB ? &rigidCache.atom(moleculeB, localAtomB) : nullptr;
 
-  scatterCenterOfMassOrientation(hessian, positionBaseA, orientationDofBase(layout, moleculeA), positionBaseB,
-                                 orientationDofBase(layout, moleculeB), derivativesA, derivativesB, f1, f2, dr);
-  scatterOrientationOrientation(hessian, orientationDofBase(layout, moleculeA), orientationDofBase(layout, moleculeB),
-                                derivativesA, derivativesB, f1, f2, dr);
+  scatterCenterOfMassOrientation(hessian, positionBaseA, orientationDofBase(layout, moleculeA, localAtomA),
+                                 positionBaseB, orientationDofBase(layout, moleculeB, localAtomB), derivativesA,
+                                 derivativesB, f1, f2, dr);
+  scatterOrientationOrientation(hessian, orientationDofBase(layout, moleculeA, localAtomA),
+                                orientationDofBase(layout, moleculeB, localAtomB), derivativesA, derivativesB, f1, f2,
+                                dr);
 
   (void)posA;
   (void)comA;
@@ -334,7 +337,7 @@ void Minimization::scatterFrameworkMoleculeHessian(GeneralizedHessian& hessian, 
   if (rigid)
   {
     const Minimization::RigidAtomDerivatives* derivatives = &rigidCache.atom(moleculeIndex, localAtom);
-    const auto orientationBase = orientationDofBase(layout, moleculeIndex);
+    const auto orientationBase = orientationDofBase(layout, moleculeIndex, localAtom);
     scatterCenterOfMassOrientation(hessian, positionBase, orientationBase, std::nullopt, std::nullopt, derivatives,
                                    nullptr, f1, f2, dr);
     scatterOrientationOrientation(hessian, orientationBase, std::nullopt, derivatives, nullptr, f1, f2, dr);
@@ -359,7 +362,7 @@ void Minimization::scatterFlexibleFrameworkMoleculeHessian(GeneralizedHessian& h
   if (moleculeRigid)
   {
     const RigidAtomDerivatives* derivatives = &rigidCache.atom(moleculeIndex, localAtom);
-    const auto orientationBase = orientationDofBase(layout, moleculeIndex);
+    const auto orientationBase = orientationDofBase(layout, moleculeIndex, localAtom);
     scatterCenterOfMassOrientation(hessian, moleculePositionBase, orientationBase, frameworkPositionBase, std::nullopt,
                                    derivatives, nullptr, f1, f2, dr);
     scatterOrientationOrientation(hessian, orientationBase, std::nullopt, derivatives, nullptr, f1, f2, dr);
@@ -658,6 +661,221 @@ void Minimization::scatterTorsionHessianByDof(GeneralizedHessian& hessian, const
   addBendOffDiagonalBlock(hessian, baseC, baseD, dtC, dtD, DDF, d2KL);
 }
 
+namespace
+{
+// (generalized DOF index, dp/dq column) contributions mapping a Cartesian site displacement of one
+// atom onto its generalized degrees of freedom. Flexible atoms carry three Cartesian columns; atoms
+// driven by a rigid body carry three center-of-mass columns plus three orientation columns (dVec).
+std::vector<std::pair<std::size_t, double3>> siteEntries(const Minimization::HessianSite& site)
+{
+  std::vector<std::pair<std::size_t, double3>> entries;
+  if (!site.positionBase)
+  {
+    return entries;
+  }
+  entries.reserve(site.orientationBase ? 6 : 3);
+  entries.emplace_back(*site.positionBase + 0, double3(1.0, 0.0, 0.0));
+  entries.emplace_back(*site.positionBase + 1, double3(0.0, 1.0, 0.0));
+  entries.emplace_back(*site.positionBase + 2, double3(0.0, 0.0, 1.0));
+  if (site.orientationBase && site.derivatives != nullptr)
+  {
+    entries.emplace_back(*site.orientationBase + 0, site.derivatives->dVecX);
+    entries.emplace_back(*site.orientationBase + 1, site.derivatives->dVecY);
+    entries.emplace_back(*site.orientationBase + 2, site.derivatives->dVecZ);
+  }
+  return entries;
+}
+
+// Project a Cartesian per-term Hessian (a dense 3N x 3N matrix, atom-major) onto the generalized
+// DOFs of the participating sites and add the gradient-curvature term on rigid orientation blocks.
+template <std::size_t N>
+void projectCartesianTerm(GeneralizedHessian& hessian, const std::array<Minimization::HessianSite, N>& sites,
+                          const std::array<double3, N>& gradients, const GeneralizedHessian& local)
+{
+  std::array<std::vector<std::pair<std::size_t, double3>>, N> entries;
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    entries[i] = siteEntries(sites[i]);
+  }
+
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    for (std::size_t j = 0; j < N; ++j)
+    {
+      for (const auto& [dofI, weightI] : entries[i])
+      {
+        for (const auto& [dofJ, weightJ] : entries[j])
+        {
+          double value = 0.0;
+          const std::array<double, 3> wi = {weightI.x, weightI.y, weightI.z};
+          const std::array<double, 3> wj = {weightJ.x, weightJ.y, weightJ.z};
+          for (std::size_t r = 0; r < 3; ++r)
+          {
+            for (std::size_t c = 0; c < 3; ++c)
+            {
+              value += wi[r] * local(3 * i + r, 3 * j + c) * wj[c];
+            }
+          }
+          hessian.add(dofI, dofJ, value);
+        }
+      }
+    }
+  }
+
+  // Gradient curvature: sum_i g_i . d2p_i/domega_a domega_b on each rigid orientation block.
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    if (!sites[i].orientationBase || sites[i].derivatives == nullptr)
+    {
+      continue;
+    }
+    const Minimization::RigidAtomDerivatives& d = *sites[i].derivatives;
+    const std::array<std::array<double3, 3>, 3> ddVec = {{{d.ddVecAX, d.ddVecAY, d.ddVecAZ},
+                                                          {d.ddVecAY, d.ddVecBY, d.ddVecBZ},
+                                                          {d.ddVecAZ, d.ddVecBZ, d.ddVecCZ}}};
+    const std::size_t base = *sites[i].orientationBase;
+    for (std::size_t a = 0; a < 3; ++a)
+    {
+      for (std::size_t b = 0; b < 3; ++b)
+      {
+        hessian.add(base + a, base + b, double3::dot(gradients[i], ddVec[a][b]));
+      }
+    }
+  }
+}
+}  // namespace
+
+Minimization::HessianSite Minimization::makeHessianSite(const MinimizationDofLayout& layout,
+                                                        const RigidDerivativeCache& rigidCache,
+                                                        std::size_t moleculeIndex, std::size_t localAtom)
+{
+  HessianSite site{};
+  if (const auto comBase = layout.atomRigidComDof(moleculeIndex, localAtom))
+  {
+    site.positionBase = comBase;
+    site.orientationBase = layout.atomRigidOrientationDof(moleculeIndex, localAtom);
+    site.derivatives = &rigidCache.atom(moleculeIndex, localAtom);
+  }
+  else
+  {
+    site.positionBase = layout.flexibleAtomDof(moleculeIndex, localAtom, MinimizationDofAxis::X);
+  }
+  return site;
+}
+
+void Minimization::scatterRadialHessianSites(GeneralizedHessian& hessian, const std::array<HessianSite, 2>& sites,
+                                             const std::array<double3, 2>& gradients, double f1, double f2,
+                                             const double3& dr)
+{
+  GeneralizedHessian local(6, 0);
+  scatterAtomicPositionPositionByDof(local, 0, 3, f1, f2, dr);
+  projectCartesianTerm<2>(hessian, sites, gradients, local);
+}
+
+void Minimization::scatterBendHessianSites(GeneralizedHessian& hessian, const std::array<HessianSite, 3>& sites,
+                                           const std::array<double3, 3>& gradients, const BendHessianGeometry& geometry)
+{
+  GeneralizedHessian local(9, 0);
+  scatterBendHessianByDof(local, {0, 3, 6}, geometry);
+  projectCartesianTerm<3>(hessian, sites, gradients, local);
+}
+
+void Minimization::scatterTorsionHessianSites(GeneralizedHessian& hessian, const std::array<HessianSite, 4>& sites,
+                                              const std::array<double3, 4>& gradients,
+                                              const TorsionHessianGeometry& geometry)
+{
+  GeneralizedHessian local(12, 0);
+  scatterTorsionHessianByDof(local, {0, 3, 6, 9}, geometry);
+  projectCartesianTerm<4>(hessian, sites, gradients, local);
+}
+
+void Minimization::scatterCartesianTermSites(GeneralizedHessian& hessian, std::span<const HessianSite> sites,
+                                             std::span<const double3> gradients,
+                                             const GeneralizedHessian& localCartesian)
+{
+  const std::size_t n = sites.size();
+
+  std::vector<std::vector<std::pair<std::size_t, double3>>> entries(n);
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    entries[i] = siteEntries(sites[i]);
+  }
+
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    for (std::size_t j = 0; j < n; ++j)
+    {
+      for (const auto& [dofI, weightI] : entries[i])
+      {
+        const std::array<double, 3> wi = {weightI.x, weightI.y, weightI.z};
+        for (const auto& [dofJ, weightJ] : entries[j])
+        {
+          const std::array<double, 3> wj = {weightJ.x, weightJ.y, weightJ.z};
+          double value = 0.0;
+          for (std::size_t r = 0; r < 3; ++r)
+          {
+            for (std::size_t c = 0; c < 3; ++c)
+            {
+              value += wi[r] * localCartesian(3 * i + r, 3 * j + c) * wj[c];
+            }
+          }
+          hessian.add(dofI, dofJ, value);
+        }
+      }
+    }
+  }
+
+  // Gradient curvature: sum_i g_i . d2p_i/domega_a domega_b on each rigid orientation block.
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    if (!sites[i].orientationBase || sites[i].derivatives == nullptr)
+    {
+      continue;
+    }
+    const RigidAtomDerivatives& d = *sites[i].derivatives;
+    const std::array<std::array<double3, 3>, 3> ddVec = {{{d.ddVecAX, d.ddVecAY, d.ddVecAZ},
+                                                          {d.ddVecAY, d.ddVecBY, d.ddVecBZ},
+                                                          {d.ddVecAZ, d.ddVecBZ, d.ddVecCZ}}};
+    const std::size_t base = *sites[i].orientationBase;
+    for (std::size_t a = 0; a < 3; ++a)
+    {
+      for (std::size_t b = 0; b < 3; ++b)
+      {
+        hessian.add(base + a, base + b, double3::dot(gradients[i], ddVec[a][b]));
+      }
+    }
+  }
+}
+
+void Minimization::removeRigidOffsetStrainGradientSites(GeneralizedHessian& hessian,
+                                                        const MinimizationDofLayout& layout,
+                                                        const RigidDerivativeCache& rigidCache,
+                                                        std::size_t moleculeIndex,
+                                                        std::span<const std::size_t> localAtoms,
+                                                        std::span<const double3> positions,
+                                                        std::span<const double3> gradients)
+{
+  for (std::size_t i = 0; i < localAtoms.size(); ++i)
+  {
+    const std::size_t localAtom = localAtoms[i];
+    if (!layout.atomRigidComDof(moleculeIndex, localAtom).has_value())
+    {
+      continue;
+    }
+    const double3 offset = positions[i] - rigidCache.bodyCenterOfMass(moleculeIndex, localAtom);
+    const double3& gradient = gradients[i];
+    hessian.strainGradient().ax -= offset.x * gradient.x;
+    hessian.strainGradient().bx -= offset.y * gradient.x;
+    hessian.strainGradient().cx -= offset.z * gradient.x;
+    hessian.strainGradient().ay -= offset.x * gradient.y;
+    hessian.strainGradient().by -= offset.y * gradient.y;
+    hessian.strainGradient().cy -= offset.z * gradient.y;
+    hessian.strainGradient().az -= offset.x * gradient.z;
+    hessian.strainGradient().bz -= offset.y * gradient.z;
+    hessian.strainGradient().cz -= offset.z * gradient.z;
+  }
+}
+
 void Minimization::scatterAtomicPositionStrainIsotropic(GeneralizedHessian& hessian,
                                                         const MinimizationDofLayout& layout, std::size_t moleculeA,
                                                         std::size_t localAtomA, std::size_t moleculeB,
@@ -715,13 +933,13 @@ void Minimization::scatterSitePositionStrainIsotropic(GeneralizedHessian& hessia
 
   if (rigid)
   {
-    if (const auto positionBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX))
+    if (const auto positionBase = layout.atomRigidComDof(moleculeIndex, localAtom))
     {
       hessian.addPositionStrain(*positionBase + 0, 0, sign * positionValue.x);
       hessian.addPositionStrain(*positionBase + 1, 0, sign * positionValue.y);
       hessian.addPositionStrain(*positionBase + 2, 0, sign * positionValue.z);
     }
-    if (const auto orientationBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX))
+    if (const auto orientationBase = layout.atomRigidOrientationDof(moleculeIndex, localAtom))
     {
       const RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
       const std::array<double3, 3> dVec = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};

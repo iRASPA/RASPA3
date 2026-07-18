@@ -43,6 +43,42 @@ import json;
 import cbmc_move_statistics;
 
 /**
+ * \brief A group of atoms within a component that is either rigid or flexible.
+ *
+ * Ported from RASPA2's molecule 'groups': a molecule can be built from a combination of
+ * rigid units (placed as one body during CBMC growth) connected by flexible bonds, and
+ * flexible groups (grown bead by bead). The atoms of a rigid group keep the body-fixed
+ * geometry taken from the component's reference atoms.
+ */
+export struct MoleculeGroup
+{
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+
+  bool rigid{true};                 ///< Whether the atoms of this group move as a single rigid body.
+  std::vector<std::size_t> atoms{};  ///< Indices (into the component's atoms) that make up this group.
+
+  /// Rigid-body reference data, computed by 'Component::computeGroupRigidProperties'. Only meaningful
+  /// for a rigid group; a flexible group carries no orientation. A rigid group is integrated in
+  /// molecular dynamics and parametrized in minimization exactly like a fully rigid molecule: the
+  /// authoritative state is a center-of-mass position and an orientation quaternion, and the atom
+  /// positions are regenerated as 'centerOfMass + q * bodyFixedPositions[k]'. The body frame is the
+  /// group's principal-axis frame, so the inertia tensor is diagonal ('inertiaVector').
+  double mass{0.0};                            ///< Total mass of the group.
+  double3 centerOfMassReferencePosition{};     ///< Group center of mass in the component reference frame.
+  double3 inertiaVector{};                     ///< Principal moments of inertia.
+  double3 inverseInertiaVector{};              ///< 1/I with (near-)zero principal axes set to zero.
+  std::vector<double3> bodyFixedPositions{};   ///< Per group-atom offset in the group principal-axis frame.
+  std::size_t rotationalDegreesOfFreedom{3};   ///< Rotational DOF of the group (3 nonlinear, 2 linear, 0 point).
+  std::size_t shapeType{0};                    ///< 0 = nonlinear, 1 = linear, 2 = point (single atom).
+
+  MoleculeGroup() = default;
+  MoleculeGroup(bool rigid, std::vector<std::size_t> atoms) : rigid(rigid), atoms(std::move(atoms)) {}
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoleculeGroup &g);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoleculeGroup &g);
+};
+
+/**
  * \brief Represents a component within the simulation system.
  *
  * The Component struct encapsulates all properties and behaviors associated with a
@@ -147,7 +183,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
@@ -193,6 +229,19 @@ export struct Component
 
   ConnectivityTable connectivityTable{};                            ///< Connectivity table for the component.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
+
+  /// Rigid/flexible groups making up a semi-flexible molecule (RASPA2-style). Empty means the
+  /// molecule has no rigid sub-units: it is grown fully flexibly (or fully rigidly for a rigid
+  /// component through the dedicated rigid-body CBMC path).
+  std::vector<MoleculeGroup> groups{};
+  /// Maps each atom (bead) to the index of the group it belongs to in 'groups'. Empty when no
+  /// groups are defined.
+  std::vector<std::size_t> atomGroupIds{};
+  /// Cached 'groups' summary, refreshed by 'finalizeGroupCache' after the groups are read (parsing)
+  /// or deserialized. 'groups' is not mutated afterwards, so these stay valid and let the hot
+  /// integrator/CBMC paths avoid rescanning 'groups' on every call.
+  bool semiFlexible{false};
+  std::size_t rigidGroupCount{0};
   // Scratch buffer holding the atoms of the most recently grown chain; used as a reference geometry
   // by the internal-Monte-Carlo trial-orientation scheme. Marked 'mutable' so the scheme can run on
   // a 'const Component&'.
@@ -377,6 +426,85 @@ export struct Component
 
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /**
+   * \brief Reads the rigid/flexible 'Groups' of a semi-flexible molecule and validates them.
+   *
+   * Populates 'groups' and 'atomGroupIds'. When no 'Groups' key is present the molecule is left
+   * without rigid sub-units (empty 'groups'). Throws when the groups do not partition the atoms,
+   * or when a group is not a connected subgraph.
+   */
+  void readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /**
+   * \brief Computes the rigid-body reference data of every rigid group (mass, principal-axis body
+   *        frame, inertia, rotational degrees of freedom, shape).
+   *
+   * Called after 'readGroups' and 'computeRigidProperties'. Uses the component reference geometry
+   * ('atoms') so that a rigid group's body-fixed positions are consistent with the offsets the CBMC
+   * growth places, and diagonalizes each group's inertia tensor so molecular dynamics can integrate
+   * it as a free rigid rotor.
+   */
+  void computeGroupRigidProperties();
+
+  /// Refreshes the cached 'groups' summary ('semiFlexible', 'rigidGroupCount'). Must be called
+  /// whenever 'groups' changes (after parsing and after deserialization).
+  void finalizeGroupCache();
+
+  /**
+   * \brief Returns whether all given atom indices lie inside one and the same rigid group.
+   *
+   * Used to skip bond/bend/torsion potentials whose atoms all belong to a single rigid group:
+   * the geometry of a rigid group is fixed and must not be sampled.
+   */
+  bool isInsideRigidGroup(std::span<const std::size_t> ids) const;
+
+  /**
+   * \brief Group-aware counterpart of 'ConnectivityTable::checkValidityNextBeads'.
+   *
+   * Returns the next set of beads the group-aware CBMC growth ('CBMC::buildGrowSegments') would
+   * grow from 'placedBeads', or std::nullopt when growth cannot proceed: no frontier bond exists,
+   * a flexible anchor has multiple placed neighbors (unsupported flexible ring), or a rigid group
+   * would be regrown while more than one of its atoms is already placed (a rigid group must be
+   * hinged on exactly one placed atom).
+   */
+  std::optional<std::vector<std::size_t>> checkValidityNextBeadsGroupAware(
+      const std::vector<std::size_t> &placedBeads) const;
+
+  /**
+   * \brief Returns the index of the rigid group that 'bead' belongs to, or nullopt.
+   *
+   * Returns nullopt when no groups are defined or when the bead belongs to a flexible group.
+   */
+  std::optional<std::size_t> rigidGroupContaining(std::size_t bead) const;
+
+  /**
+   * \brief Returns whether this component is semi-flexible: it defines at least one rigid group.
+   *
+   * A semi-flexible molecule is integrated with a hybrid scheme: each rigid group as a rigid body
+   * (GroupState), the remaining atoms per-atom. It is distinct from a fully rigid component
+   * ('rigid == true', no 'groups') and a fully flexible component (no rigid group).
+   */
+  bool isSemiFlexible() const;
+
+  /// Number of rigid groups (groups with 'rigid == true'). Zero for non-semi-flexible components.
+  std::size_t numberOfRigidGroups() const;
+
+  /**
+   * \brief Regenerates the laboratory positions of the atoms of rigid group 'groupIndex' from its
+   *        rigid-body state, writing into 'moleculeAtoms' (local molecule atom order).
+   */
+  void regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex,
+                            std::span<Atom> moleculeAtoms) const;
+
+  /**
+   * \brief Recovers the rigid-body state (center of mass and orientation) of rigid group
+   *        'groupIndex' from the current laboratory atom positions.
+   *
+   * Exact for perfectly rigid geometry (orthogonal Procrustes fit); used to initialize GroupState
+   * from atom positions after CBMC growth, on restart, or in any path that only maintains atoms.
+   */
+  GroupState deriveGroupState(std::size_t groupIndex, std::span<const Atom> moleculeAtoms) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);

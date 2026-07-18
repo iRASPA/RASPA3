@@ -11,6 +11,7 @@ import randomnumbers;
 import mc_moves;
 import property_lambda_probability_histogram;
 import component;
+import intra_molecular_potentials;
 import int3;
 import double3;
 import double3x3;
@@ -581,6 +582,9 @@ void Minimization::runPhase()
     }
     const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components,
                                                                     numberOfFlexibleFrameworkAtoms, cellLayout.size());
+    // Seed the authoritative rigid-group state once (single Procrustes fit); afterwards
+    // applyGeneralizedDisplacement advances the stored quaternions directly.
+    system.initializeGroupData();
     GeneralizedHessian hessian(layout.numDofs(), 0);
     std::vector<double> gradient(layout.numDofs(), 0.0);
 
@@ -712,6 +716,15 @@ void Minimization::runPhase()
 
 void Minimization::run()
 {
+  // Semi-flexible molecules built from rigid/flexible 'Groups' are minimized with per-group rigid-body
+  // degrees of freedom (six per rigid group) plus Cartesian degrees of freedom for the flexible atoms.
+  // Variable-cell minimization is supported: the cell strain drives the rigid-group centers of mass
+  // (the internal group geometry does not scale) and the flexible atoms individually. Electrostatics
+  // is supported: the Ewald reciprocal-space and exclusion Hessians resolve rigid bodies per atom
+  // (whole molecules and rigid groups alike). Higher-order cross terms (bond-bond, bond-bend,
+  // bend-bend, bond/bend-torsion, inversion and out-of-plane bends) are supported as well: their
+  // dense Cartesian per-term Hessian is projected onto the generalized (flexible Cartesian +
+  // rigid-body) degrees of freedom.
   switch (simulationStage)
   {
     case SimulationStage::Uninitialized:

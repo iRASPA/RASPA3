@@ -1077,6 +1077,9 @@ void System::createSerialReactionFractionalMolecules()
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
+          // grow at full coupling so that the overlap check below is meaningful: at the actual initial
+          // coupling (lambda = 0) the molecule is invisible and could be placed on top of another
+          // molecule, which produces an astronomically high energy as soon as lambda is raised
           if (useCBMC)
           {
             growData = CBMC::growMoleculeSwapInsertion(
@@ -1085,7 +1088,7 @@ void System::createSerialReactionFractionalMolecules()
                                   externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                   spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                   forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-                components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 0.0,
+                components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 1.0,
                 reaction.lambda.dUdlambdaGroupId, true);
           }
           else
@@ -1095,7 +1098,7 @@ void System::createSerialReactionFractionalMolecules()
             {
               atom.moleculeId = static_cast<std::uint32_t>(numberOfMolecules());
               atom.componentId = static_cast<std::uint8_t>(componentId);
-              atom.setScalingToFractional(0.0, reaction.lambda.dUdlambdaGroupId);
+              atom.setScalingToFractional(1.0, reaction.lambda.dUdlambdaGroupId);
             }
             if (std::optional<RunningEnergy> energy =
                     conventionalReactionInitializationEnergy(*this, componentId, atoms))

@@ -78,6 +78,83 @@ double realInner(const std::complex<double>& lhs, const std::complex<double>& rh
   return lhs.real() * rhs.real() + lhs.imag() * rhs.imag();
 }
 
+// Cell derivatives of an intramolecular exclusion / completion pair with mixed rigid-body /
+// Cartesian sites. Under the molecular strain convention dr(epsilon) = exp(epsilon) * arm + const
+// with the center-of-mass arm = dr - offsetI + offsetJ (offset = pos - body CoM, zero for flexible
+// sites). The center-of-mass / Cartesian rows carry the geometric term B_a * g (position
+// displacements are applied before the cell scaling); the orientation rows do not (rigid internal
+// offsets do not scale with the cell).
+void addExclusionPairCellDerivatives(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                     const CellMinimizationLayout& cellLayout, const EwaldSite& siteI,
+                                     const EwaldSite& siteJ, double f1, double f2, const double3& dr,
+                                     const double3& arm)
+{
+  const std::size_t numberOfCellDofs = layout.numberOfCellDofs();
+  const double3 gradient = f1 * dr;
+  for (std::size_t a = 0; a < numberOfCellDofs; ++a)
+  {
+    const std::size_t cellA = *layout.cellDof(a);
+    const double3 displacementA = cellLayout.bases[a] * arm;
+    const double3 curvature = f1 * displacementA + f2 * double3::dot(dr, displacementA) * dr;
+    const double3 geometric = cellLayout.bases[a] * gradient;
+    const auto scatterSite = [&](const EwaldSite& site, double sign)
+    {
+      if (site.positionBase)
+      {
+        const double3 mixed = curvature + geometric;
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          hessian.add(*site.positionBase + axis, cellA, sign * (&mixed.x)[axis]);
+          hessian.add(cellA, *site.positionBase + axis, sign * (&mixed.x)[axis]);
+        }
+      }
+      if (site.orientationBase && site.derivatives != nullptr)
+      {
+        const std::array<double3, 3> dVec = {site.derivatives->dVecX, site.derivatives->dVecY, site.derivatives->dVecZ};
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          const double value = sign * double3::dot(dVec[axis], curvature);
+          hessian.add(*site.orientationBase + axis, cellA, value);
+          hessian.add(cellA, *site.orientationBase + axis, value);
+        }
+      }
+    };
+    scatterSite(siteI, 1.0);
+    scatterSite(siteJ, -1.0);
+
+    for (std::size_t b = 0; b < numberOfCellDofs; ++b)
+    {
+      const double3 displacementB = cellLayout.bases[b] * arm;
+      const double3 secondDisplacement = cellStrainSecondDerivative(cellLayout, a, b) * arm;
+      const double value = f1 * double3::dot(displacementA, displacementB) +
+                           f2 * double3::dot(dr, displacementA) * double3::dot(dr, displacementB) +
+                           double3::dot(gradient, secondDisplacement);
+      hessian.add(cellA, *layout.cellDof(b), value);
+    }
+  }
+}
+
+// Per-atom exclusion-pair site (rigid flag, DOF bases, orientation Jacobian) for one molecule.
+EwaldSite makeExclusionSite(const MinimizationDofLayout& layout, const Minimization::RigidDerivativeCache& rigidCache,
+                            std::size_t moleculeIndex, std::size_t localAtom)
+{
+  EwaldSite site{};
+  site.moleculeIndex = moleculeIndex;
+  site.localAtom = localAtom;
+  site.rigid = layout.atomRigidComDof(moleculeIndex, localAtom).has_value();
+  if (site.rigid)
+  {
+    site.positionBase = layout.atomRigidComDof(moleculeIndex, localAtom);
+    site.orientationBase = layout.atomRigidOrientationDof(moleculeIndex, localAtom);
+    site.derivatives = &rigidCache.atom(moleculeIndex, localAtom);
+  }
+  else
+  {
+    site.positionBase = layout.flexibleAtomDof(moleculeIndex, localAtom, MinimizationDofAxis::X);
+  }
+  return site;
+}
+
 // Intra-molecular exclusion / completion Hessian for the finite-cutoff shifted charge methods (Wolf,
 // damped-shifted-force, modified-shifted-force, zero-dipole). These have no reciprocal space, so this mirrors
 // the erf-based Ewald exclusion block but uses the shifted real-space potential completion
@@ -88,10 +165,11 @@ double realInner(const std::complex<double>& lhs, const std::complex<double>& rh
 // under their center-of-mass and orientation degrees of freedom. The self-energy is position independent.
 void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forceField,
                                 const SimulationBox& simulationBox, const std::optional<Framework>& framework,
-                                std::span<const Molecule> moleculeData, const MinimizationDofLayout& layout,
-                                GeneralizedHessian& hessian, std::span<const Atom> frameworkAtoms,
-                                std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-                                std::span<AtomDynamics> frameworkDynamics, const CellMinimizationLayout& cellLayout)
+                                std::span<const Molecule> moleculeData, std::span<const Component> components,
+                                const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+                                std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                                std::span<AtomDynamics> moleculeDynamics, std::span<AtomDynamics> frameworkDynamics,
+                                const CellMinimizationLayout& cellLayout)
 {
   if (forceField.omitInterInteractions) return;
 
@@ -148,11 +226,16 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
     }
   };
 
+  // The cache provides the rigid-group centers of mass and orientation Jacobians for
+  // semi-flexible molecules; whole rigid molecules contribute energy only below.
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, moleculeAtoms);
+
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
     if (molecule.numberOfAtoms < 2) continue;
-    const bool rigid = layout.molecules()[moleculeIndex].rigid;
+    const bool wholeRigid = layout.molecules()[moleculeIndex].rigid;
     std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
     std::span<AtomDynamics> dynamicsSpan = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
 
@@ -171,7 +254,14 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
 
         energySum.ewald_exclusion += chargeProduct * (factors.potential - 1.0 / r);
 
-        if (rigid) continue;
+        if (wholeRigid) continue;
+        const EwaldSite siteI = makeExclusionSite(layout, rigidCache, moleculeIndex, i);
+        const EwaldSite siteJ = makeExclusionSite(layout, rigidCache, moleculeIndex, j);
+        if (siteI.rigid && siteJ.rigid && siteI.positionBase == siteJ.positionBase)
+        {
+          // Same rigid group: fixed separation, energy only.
+          continue;
+        }
 
         const double f1 = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
         const double f2 = chargeProduct * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
@@ -180,30 +270,54 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
         dynamicsSpan[i].gradient += gradientA;
         dynamicsSpan[j].gradient -= gradientA;
 
+        // Molecular strain convention: rigid-body atoms follow their body's center of mass, so the
+        // virial arm is dr - offsetI + offsetJ with offset = pos - body CoM.
+        const double3 comI = siteI.rigid ? rigidCache.bodyCenterOfMass(moleculeIndex, i) : span[i].position;
+        const double3 comJ = siteJ.rigid ? rigidCache.bodyCenterOfMass(moleculeIndex, j) : span[j].position;
+        const double3 arm = dr - (span[i].position - comI) + (span[j].position - comJ);
+
         double3x3 strain{};
-        strain.ax = dr.x * gradientA.x;
-        strain.bx = dr.y * gradientA.x;
-        strain.cx = dr.z * gradientA.x;
-        strain.ay = dr.x * gradientA.y;
-        strain.by = dr.y * gradientA.y;
-        strain.cy = dr.z * gradientA.y;
-        strain.az = dr.x * gradientA.z;
-        strain.bz = dr.y * gradientA.z;
-        strain.cz = dr.z * gradientA.z;
+        strain.ax = arm.x * gradientA.x;
+        strain.bx = arm.y * gradientA.x;
+        strain.cx = arm.z * gradientA.x;
+        strain.ay = arm.x * gradientA.y;
+        strain.by = arm.y * gradientA.y;
+        strain.cy = arm.z * gradientA.y;
+        strain.az = arm.x * gradientA.z;
+        strain.bz = arm.y * gradientA.z;
+        strain.cz = arm.z * gradientA.z;
         hessian.strainGradient() += strain;
 
-        Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2, dr);
+        if (siteI.rigid || siteJ.rigid)
+        {
+          Minimization::scatterInteractionHessian(hessian, layout, rigidCache, moleculeIndex, i, siteI.rigid,
+                                                  span[i].position, comI, moleculeIndex, j, siteJ.rigid,
+                                                  span[j].position, comJ, f1, f2, dr);
+        }
+        else
+        {
+          Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2, dr);
+        }
         if (numberOfCellDofs != 0)
         {
-          addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
-                                         layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+          if (siteI.rigid || siteJ.rigid)
+          {
+            addExclusionPairCellDerivatives(hessian, layout, cellLayout, siteI, siteJ, f1, f2, dr, arm);
+          }
+          else
+          {
+            addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
+                                           layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+          }
         }
         if (computeStrain)
         {
-          Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2,
-                                                             dr);
-          Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, span[i].position, span[i].position,
-                                                           span[j].position, span[j].position, false, false);
+          Minimization::scatterSitePositionStrainIsotropic(hessian, layout, rigidCache, moleculeIndex, i, siteI.rigid,
+                                                           1.0, f1, f2, dr, arm);
+          Minimization::scatterSitePositionStrainIsotropic(hessian, layout, rigidCache, moleculeIndex, j, siteJ.rigid,
+                                                           -1.0, f1, f2, dr, arm);
+          Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, span[i].position, comI,
+                                                           span[j].position, comJ, siteI.rigid, siteJ.rigid);
         }
       }
     }
@@ -311,8 +425,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
     // and the Ewald real-space-only debugging mode (omitted Fourier) require no such corrections.
     if (forceField.usesRealSpaceChargeCorrections())
     {
-      addShiftedExclusionHessian(energySum, forceField, simulationBox, framework, moleculeData, layout, hessian,
-                                 frameworkAtoms, moleculeAtoms, moleculeDynamics, frameworkDynamics, cellLayout);
+      addShiftedExclusionHessian(energySum, forceField, simulationBox, framework, moleculeData, components, layout,
+                                 hessian, frameworkAtoms, moleculeAtoms, moleculeDynamics, frameworkDynamics,
+                                 cellLayout);
     }
     return energySum;
   }
@@ -350,10 +465,14 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
   const double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   const double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
+  // The cache reads molecule atom positions for the rigid-group centers of mass, so pass the
+  // molecule span (not the combined framework + molecule view).
   const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+      Minimization::RigidDerivativeCache::build(moleculeData, components, moleculeAtoms);
 
-  // Per-atom site metadata in global atom order.
+  // Per-atom site metadata in global atom order. Rigid-body detection is per atom: it covers whole
+  // rigid molecules and rigid groups of semi-flexible molecules alike; the internal offset is taken
+  // relative to the driving body's center of mass (molecule or group).
   std::vector<EwaldSite> sites(numberOfAtoms);
   if (flexibleFramework)
   {
@@ -365,19 +484,19 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = moleculeData[moleculeIndex];
-    const bool rigid = layout.molecules()[moleculeIndex].rigid;
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
       EwaldSite& site = sites[frameworkOffset + molecule.atomIndex + localAtom];
       site.moleculeIndex = moleculeIndex;
       site.localAtom = localAtom;
+      const bool rigid = layout.atomRigidComDof(moleculeIndex, localAtom).has_value();
       site.rigid = rigid;
       if (rigid)
       {
-        site.internalOffset =
-            atoms[frameworkOffset + molecule.atomIndex + localAtom].position - molecule.centerOfMassPosition;
-        site.positionBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-        site.orientationBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
+        site.internalOffset = atoms[frameworkOffset + molecule.atomIndex + localAtom].position -
+                              rigidCache.bodyCenterOfMass(moleculeIndex, localAtom);
+        site.positionBase = layout.atomRigidComDof(moleculeIndex, localAtom);
+        site.orientationBase = layout.atomRigidOrientationDof(moleculeIndex, localAtom);
         site.derivatives = &rigidCache.atom(moleculeIndex, localAtom);
       }
       else
@@ -784,7 +903,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
     }
 
     // Subtract exclusion-energy U = -C q_i q_j erf(alpha r)/r within each molecule. For rigid
-    // molecules the internal distances are constant, so only the energy contributes.
+    // molecules -- and for pairs inside the same rigid group of a semi-flexible molecule -- the
+    // internal distance is constant, so only the energy contributes. Pairs crossing a rigid-group
+    // boundary couple to the mixed rigid-body / Cartesian degrees of freedom.
     for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
     {
       const Molecule& molecule = moleculeData[moleculeIndex];
@@ -792,7 +913,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
       {
         continue;
       }
-      const bool rigid = layout.molecules()[moleculeIndex].rigid;
+      const bool wholeRigid = layout.molecules()[moleculeIndex].rigid;
       std::span<const Atom> span = atoms.subspan(frameworkOffset + molecule.atomIndex, molecule.numberOfAtoms);
       std::span<AtomDynamics> dynamicsSpan = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
 
@@ -805,51 +926,84 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
           const double rr = double3::dot(dr, dr);
           const double r = std::sqrt(rr);
 
-          const double chargeProduct = Units::CoulombicConversionFactor * span[i].scalingCoulomb *
-                                       span[j].scalingCoulomb * span[i].charge * span[j].charge;
-          const double erfTerm = std::erf(alpha * r);
-          const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
+          const double scalingTotal = span[i].scalingCoulomb * span[j].scalingCoulomb;
+          const double chargeProduct =
+              Units::CoulombicConversionFactor * scalingTotal * span[i].charge * span[j].charge;
+          const Potentials::EwaldExclusionFactors exclusion =
+              Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
 
-          energySum.ewald_exclusion -= chargeProduct * erfTerm / r;
+          energySum.ewald_exclusion -= chargeProduct * exclusion.potential;
 
-          if (rigid)
+          if (wholeRigid)
           {
             continue;
           }
+          const EwaldSite& siteI = sites[frameworkOffset + molecule.atomIndex + i];
+          const EwaldSite& siteJ = sites[frameworkOffset + molecule.atomIndex + j];
+          if (siteI.rigid && siteJ.rigid && siteI.positionBase == siteJ.positionBase)
+          {
+            // Same rigid group: fixed separation, energy only.
+            continue;
+          }
 
-          // U(r) = -chargeProduct erf(alpha r)/r; RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
-          const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-          const double f2 = chargeProduct * (2.0 * alpha_squared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
-                                             3.0 * erfTerm / (r * rr * rr));
+          // U(r) = -chargeProduct erf(alpha s)/s with s = r + Q (offset form);
+          // RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
+          const double f1 = -chargeProduct * exclusion.firstDerivativeFactor;
+          const double f2 = -chargeProduct * exclusion.secondDerivativeFactor;
 
           const double3 gradientA = f1 * dr;
           dynamicsSpan[i].gradient += gradientA;
           dynamicsSpan[j].gradient -= gradientA;
 
+          // Molecular strain convention: rigid-body atoms follow their body's center of mass, so
+          // the virial arm is dr - offsetI + offsetJ with offset = pos - body CoM.
+          const double3 comI = siteI.rigid ? rigidCache.bodyCenterOfMass(moleculeIndex, i) : span[i].position;
+          const double3 comJ = siteJ.rigid ? rigidCache.bodyCenterOfMass(moleculeIndex, j) : span[j].position;
+          const double3 arm = dr - (span[i].position - comI) + (span[j].position - comJ);
+
           double3x3 strain{};
-          strain.ax = dr.x * gradientA.x;
-          strain.bx = dr.y * gradientA.x;
-          strain.cx = dr.z * gradientA.x;
-          strain.ay = dr.x * gradientA.y;
-          strain.by = dr.y * gradientA.y;
-          strain.cy = dr.z * gradientA.y;
-          strain.az = dr.x * gradientA.z;
-          strain.bz = dr.y * gradientA.z;
-          strain.cz = dr.z * gradientA.z;
+          strain.ax = arm.x * gradientA.x;
+          strain.bx = arm.y * gradientA.x;
+          strain.cx = arm.z * gradientA.x;
+          strain.ay = arm.x * gradientA.y;
+          strain.by = arm.y * gradientA.y;
+          strain.cy = arm.z * gradientA.y;
+          strain.az = arm.x * gradientA.z;
+          strain.bz = arm.y * gradientA.z;
+          strain.cz = arm.z * gradientA.z;
           hessian.strainGradient() += strain;
 
-          Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2, dr);
+          if (siteI.rigid || siteJ.rigid)
+          {
+            Minimization::scatterInteractionHessian(hessian, layout, rigidCache, moleculeIndex, i, siteI.rigid,
+                                                    span[i].position, comI, moleculeIndex, j, siteJ.rigid,
+                                                    span[j].position, comJ, f1, f2, dr);
+          }
+          else
+          {
+            Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1, f2,
+                                                        dr);
+          }
           if (numberOfCellDofs != 0)
           {
-            addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
-                                           layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+            if (siteI.rigid || siteJ.rigid)
+            {
+              addExclusionPairCellDerivatives(hessian, layout, cellLayout, siteI, siteJ, f1, f2, dr, arm);
+            }
+            else
+            {
+              addFlexiblePairCellDerivatives(layout.flexibleAtomDofBase(moleculeIndex, i),
+                                             layout.flexibleAtomDofBase(moleculeIndex, j), f1, f2, dr);
+            }
           }
           if (computeStrain)
           {
-            Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, i, moleculeIndex, j, f1,
-                                                               f2, dr);
-            Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, span[i].position, span[i].position,
-                                                             span[j].position, span[j].position, false, false);
+            Minimization::scatterSitePositionStrainIsotropic(hessian, layout, rigidCache, moleculeIndex, i, siteI.rigid,
+                                                             1.0, f1, f2, dr, arm);
+            Minimization::scatterSitePositionStrainIsotropic(hessian, layout, rigidCache, moleculeIndex, j, siteJ.rigid,
+                                                             -1.0, f1, f2, dr, arm);
+            Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, span[i].position, comI,
+                                                             span[j].position, comJ, siteI.rigid, siteJ.rigid);
           }
         }
       }

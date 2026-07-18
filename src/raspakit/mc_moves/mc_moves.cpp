@@ -123,7 +123,8 @@ void recordOtherwiseMissingNeutralTMMCTrial(Move::Types moveType, System& system
 }  // namespace
 
 MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNumber& random, System& system,
-                                                                        std::size_t selectedComponent)
+                                                                        std::size_t selectedComponent,
+                                                                        std::size_t& exchangedMolecule)
 {
   const Move::Types move = Move::Types::SwapCBMC;
   const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -137,6 +138,7 @@ MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNu
     {
       system.runningEnergies += *energyDifference;
       result = ParticleExchangeResult::Inserted;
+      exchangedMolecule = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
     }
     const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     system.components[selectedComponent].mc_moves_cputime[move][Move::Timing::InsertionTotal] += end - begin;
@@ -155,6 +157,7 @@ MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNu
     {
       system.runningEnergies -= *energyDifference;
       result = ParticleExchangeResult::Deleted;
+      exchangedMolecule = selectedMolecule;
     }
     const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     system.components[selectedComponent].mc_moves_cputime[move][Move::Timing::DeletionTotal] += end - begin;

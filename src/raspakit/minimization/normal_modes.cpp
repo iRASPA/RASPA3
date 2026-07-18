@@ -19,6 +19,7 @@ import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 import minimization_generalized_coordinates;
 import minimization_mass_metric;
+import minimization_rigid_kinematics;
 import symmetric_eigensolver;
 
 namespace
@@ -199,6 +200,8 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
   const MassMetric metric = buildMassMetric(referenceSystem, layout);
   const std::vector<double> frequencies = normalModeFrequencies(result);
   const std::span<const Atom> moleculeAtoms = referenceSystem.spanOfMoleculeAtoms();
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      referenceSystem.moleculeData, referenceSystem.components, moleculeAtoms);
 
   std::filesystem::create_directories(directory);
 
@@ -230,29 +233,25 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
     for (std::size_t moleculeIndex = 0; moleculeIndex < referenceSystem.moleculeData.size(); ++moleculeIndex)
     {
       const Molecule& molecule = referenceSystem.moleculeData[moleculeIndex];
-      if (layout.molecules()[moleculeIndex].rigid)
+      for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
       {
-        const auto comBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-        const auto orientationBase = layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
-        const double3 comDisplacement =
-            comBase ? double3(generalized[*comBase + 0], generalized[*comBase + 1], generalized[*comBase + 2])
-                    : double3();
-        const double3 omega = orientationBase ? double3(generalized[*orientationBase + 0],
-                                                        generalized[*orientationBase + 1],
-                                                        generalized[*orientationBase + 2])
-                                              : double3();
-        for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+        double3 displacement{};
+        // Atoms driven by a rigid body (a rigid molecule or a rigid group of a semi-flexible
+        // molecule) move as comDisplacement + omega x (r - r_bodyCom); other atoms carry their own
+        // Cartesian DOFs.
+        if (const auto comBase = layout.atomRigidComDof(moleculeIndex, localAtom))
         {
-          const double3 offset = moleculeAtoms[molecule.atomIndex + localAtom].position - molecule.centerOfMassPosition;
-          const double3 displacement = comDisplacement + double3::cross(omega, offset);
-          maxDisplacementSquared = std::max(maxDisplacementSquared, double3::dot(displacement, displacement));
+          const std::size_t orientationBase = *layout.atomRigidOrientationDof(moleculeIndex, localAtom);
+          const double3 comDisplacement(generalized[*comBase + 0], generalized[*comBase + 1],
+                                        generalized[*comBase + 2]);
+          const double3 omega(generalized[orientationBase + 0], generalized[orientationBase + 1],
+                              generalized[orientationBase + 2]);
+          const double3 offset = moleculeAtoms[molecule.atomIndex + localAtom].position -
+                                 rigidCache.bodyCenterOfMass(moleculeIndex, localAtom);
+          displacement = comDisplacement + double3::cross(omega, offset);
         }
-      }
-      else
-      {
-        for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
+        else
         {
-          double3 displacement{};
           for (std::size_t axis = 0; axis < 3; ++axis)
           {
             if (const auto dof = layout.flexibleAtomDof(moleculeIndex, localAtom, static_cast<MinimizationDofAxis>(axis)))
@@ -260,8 +259,8 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
               (&displacement.x)[axis] = generalized[*dof];
             }
           }
-          maxDisplacementSquared = std::max(maxDisplacementSquared, double3::dot(displacement, displacement));
         }
+        maxDisplacementSquared = std::max(maxDisplacementSquared, double3::dot(displacement, displacement));
       }
     }
 

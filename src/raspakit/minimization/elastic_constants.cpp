@@ -16,6 +16,7 @@ import elastic_tensor;
 import atom;
 import atom_dynamics;
 import molecule;
+import component;
 
 namespace
 {
@@ -121,15 +122,43 @@ double3x3 computeMolecularKineticVirial(const System& system)
   };
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   const std::span<const AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  const std::span<const GroupState> groupData = system.spanOfGroupData();
   std::size_t atomIndex = 0;
+  std::size_t groupIndex = 0;
   for (const Molecule& molecule : system.moleculeData)
   {
-    if (system.components[molecule.componentId].rigid)
+    const Component& component = system.components[molecule.componentId];
+    if (component.rigid)
+    {
       add(molecule.mass, molecule.velocity);
+    }
+    else if (component.isSemiFlexible() && !groupData.empty())
+    {
+      // Semi-flexible molecule: rigid groups contribute their center-of-mass momentum flux,
+      // flexible atoms contribute individually (matching the barostat coupling).
+      std::size_t rigidRank = 0;
+      for (const MoleculeGroup& group : component.groups)
+      {
+        if (group.rigid)
+        {
+          add(group.mass, groupData[groupIndex + rigidRank].velocity);
+          ++rigidRank;
+        }
+      }
+      for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i)
+      {
+        if (!component.rigidGroupContaining(i).has_value())
+          add(system.forceField.pseudoAtoms[moleculeAtoms[atomIndex + i].type].mass,
+              moleculeDynamics[atomIndex + i].velocity);
+      }
+      groupIndex += component.numberOfRigidGroups();
+    }
     else
+    {
       for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i)
         add(system.forceField.pseudoAtoms[moleculeAtoms[atomIndex + i].type].mass,
             moleculeDynamics[atomIndex + i].velocity);
+    }
     atomIndex += molecule.numberOfAtoms;
   }
   if (system.framework && !system.framework->rigid)

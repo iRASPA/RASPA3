@@ -157,9 +157,11 @@ std::vector<ChargedSite> gatherReciprocalSites(const System& system)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
     const Component& component = system.components[molecule.componentId];
-    if (component.rigid)
+    if (component.rigid || component.isSemiFlexible())
     {
-      throw std::runtime_error("computeEwaldReciprocalDynamicalMatrix: rigid molecules are not supported");
+      throw std::runtime_error(
+          "computeEwaldReciprocalDynamicalMatrix: rigid molecules and rigid groups are not Cartesian sites; use "
+          "computePhononDispersion (generalized route)");
     }
 
     // Charged multi-atom molecules are handled: the intramolecular exclusion correction is folded into
@@ -190,10 +192,16 @@ std::vector<ChargedSite> gatherStaticFrameworkCharges(const System& system)
   return staticCharges;
 }
 
-bool systemHasRigidMolecules(const System& system)
+// True when any molecule carries rigid-body degrees of freedom: a fully rigid molecule or a
+// semi-flexible molecule (rigid groups). Both are handled by the generalized (projected) route.
+bool systemHasRigidBodies(const System& system)
 {
   return std::ranges::any_of(system.moleculeData,
-                             [&](const Molecule& molecule) { return system.components[molecule.componentId].rigid; });
+                             [&](const Molecule& molecule)
+                             {
+                               const Component& component = system.components[molecule.componentId];
+                               return component.rigid || component.isSemiFlexible();
+                             });
 }
 
 /**
@@ -356,12 +364,14 @@ struct SiteDofContribution
 };
 
 /**
- * Generalized dynamical matrix along a k-path for systems containing rigid molecules.
+ * Generalized dynamical matrix along a k-path for systems containing rigid bodies: fully rigid
+ * molecules and/or rigid groups inside semi-flexible molecules. Each rigid body contributes six
+ * generalized DOFs (center of mass + orientation); flexible atoms keep their Cartesian DOFs.
  *
  * The energy Hessian in generalized (center-of-mass + orientation) coordinates is H_gen = J^T H_cart J +
  * Sum_i grad_i . ddVec_i, where J is the rigid-body kinematic Jacobian (columns dVec) and the second term
  * is the geometric (gradient-curvature) contribution that RASPA's orientation-orientation scatter folds
- * into each molecule's own block. Applying this relation image by image gives
+ * into each rigid body's own block. Applying this relation image by image gives
  *
  *   D_gen(k) = J^T [ Sum_R Phi_cart(R) e^{2 pi i k.R} + D_recip_cart(k) ] J + Xi,
  *
@@ -377,16 +387,27 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   // Cartesian gradient of the fully-flexible copy already include the polarization contribution, so the
   // rigid-body identity D_gen(k) = J^T D_cart(k) J + Xi carries it through the projection unchanged.
 
-  // Fully-flexible copy: rigid molecule atoms become independent Cartesian sites (no intramolecular
-  // stiffness, since rigid internal geometry is a constraint), which is what the Cartesian force
-  // constants and Cartesian gradients require.
+  // Fully-flexible copy: rigid-body atoms become independent Cartesian sites, which is what the
+  // Cartesian force constants and Cartesian gradients require. Rigid internal geometry is a
+  // constraint, not a stiffness, so fully rigid molecules lose their (inactive) intramolecular
+  // potentials. Semi-flexible molecules keep theirs: the junction bonds/bends/torsions between the
+  // groups are real stiffness (the intra-rigid-group terms were already dropped at parse time); only
+  // the group structure is removed so that every atom carries Cartesian DOFs. Flexible components
+  // are left untouched.
   System cartesianSystem = system;
   cartesianSystem.cellMinimizationType = CellMinimizationType::Fixed;
   for (Component& component : cartesianSystem.components)
   {
-    component.rigid = false;
-    component.intraMolecularPotentials = {};
+    if (component.rigid)
+    {
+      component.rigid = false;
+      component.intraMolecularPotentials = {};
+    }
+    component.groups.clear();
+    component.atomGroupIds.clear();
+    component.finalizeGroupCache();
   }
+  cartesianSystem.groupData.clear();
 
   const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem);
   const std::size_t numberOfSites = forceConstants.numberOfAtoms();
@@ -437,15 +458,16 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    const bool rigid = system.components[molecule.componentId].rigid;
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
       const std::size_t site = numberOfFlexibleFrameworkAtoms + molecule.atomIndex + localAtom;
-      if (rigid)
+      // An atom driven by a rigid body (whole rigid molecule or rigid group of a semi-flexible
+      // molecule) maps to that body's center-of-mass and orientation DOFs; other atoms carry their
+      // own Cartesian DOFs.
+      if (const auto comBase = generalizedLayout.atomRigidComDof(moleculeIndex, localAtom))
       {
-        const std::size_t comBase = *generalizedLayout.rigidMoleculeDof(moleculeIndex, RigidDof::ComX);
-        for (std::size_t axis = 0; axis < 3; ++axis) siteContributions[site].push_back({comBase + axis, unit[axis]});
-        const std::size_t orientationBase = *generalizedLayout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
+        for (std::size_t axis = 0; axis < 3; ++axis) siteContributions[site].push_back({*comBase + axis, unit[axis]});
+        const std::size_t orientationBase = *generalizedLayout.atomRigidOrientationDof(moleculeIndex, localAtom);
         const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
         siteContributions[site].push_back({orientationBase + 0, derivatives.dVecX});
         siteContributions[site].push_back({orientationBase + 1, derivatives.dVecY});
@@ -463,15 +485,17 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
     }
   }
 
-  // Gradient-curvature term Xi (real, k-independent): only rigid orientation blocks receive it.
+  // Gradient-curvature term Xi (real, k-independent): only rigid-body orientation blocks receive it,
+  // one block per body (whole rigid molecule or rigid group of a semi-flexible molecule).
   std::vector<double> gradientCurvature(numberOfGeneralizedDofs * numberOfGeneralizedDofs, 0.0);
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    if (!system.components[molecule.componentId].rigid) continue;
-    const std::size_t orientationBase = *generalizedLayout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
+      const auto orientationDof = generalizedLayout.atomRigidOrientationDof(moleculeIndex, localAtom);
+      if (!orientationDof) continue;
+      const std::size_t orientationBase = *orientationDof;
       const std::size_t site = numberOfFlexibleFrameworkAtoms + molecule.atomIndex + localAtom;
       const double3 gradient(cartesianGradient[3 * site + 0], cartesianGradient[3 * site + 1],
                              cartesianGradient[3 * site + 2]);
@@ -614,9 +638,11 @@ std::vector<double> phononInverseSqrtMasses(const System& system)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
     const Component& component = system.components[molecule.componentId];
-    if (component.rigid)
+    if (component.rigid || component.isSemiFlexible())
     {
-      throw std::runtime_error("phononInverseSqrtMasses: rigid molecules are not supported");
+      throw std::runtime_error(
+          "phononInverseSqrtMasses: rigid molecules and rigid groups carry generalized (not per-atom Cartesian) "
+          "degrees of freedom; use computePhononDispersion (generalized route)");
     }
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
@@ -723,7 +749,7 @@ PhononModes computePhononModes(const System& system, const ForceConstants& force
 
 std::vector<PhononModes> computePhononDispersion(const System& system, std::span<const double3> kPath)
 {
-  if (systemHasRigidMolecules(system))
+  if (systemHasRigidBodies(system))
   {
     return computeGeneralizedDispersion(system, kPath);
   }

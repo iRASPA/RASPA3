@@ -50,51 +50,64 @@ export template <std::size_t Order>
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
+      // Offset form of the scaled Ewald real-space term (Brick-CFCMC, SI Eqs. (S13) and (S19)-(S20)):
+      // U = lambda_t * C q_A q_B * erfc(alpha s)/s with s = r + Q, Q = delta * (1 - lambda_t) and
+      // lambda_t = scalingA * scalingB. For full interactions Q = 0 and plain Ewald is recovered; for
+      // scaled (fractional) interactions the potential stays finite even at r = 0, so no divergence
+      // and no 0 * inf = NaN for zero Coulomb scaling. Spatial derivatives are taken at fixed lambda
+      // (Q constant), so d^n U/dr^n = lambda_t * C q q * phi^(n)(s) with phi(s) = erfc(alpha s)/s.
       double alpha = forcefield.EwaldAlpha;
-      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
+      double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      double s = r + EwaldChargeOffsetDelta * (1.0 - scaling);
+      double inverseS = 1.0 / s;
+      double inverseSS = inverseS * inverseS;
+      double erfcTerm = std::erfc(alpha * s);
+      double gaussian = std::exp(-alpha * alpha * s * s) * std::numbers::inv_sqrtpi_v<double>;
+
+      double phi = erfcTerm * inverseS;
+      double phiPrime = -(erfcTerm * inverseSS + 2.0 * alpha * gaussian * inverseS);
+
+      // dU/d(scalingA) = scalingB * dUdlambda with the chain rule through Q (Eq. (S19)):
+      // dUdlambda = C q q [ phi(s) - lambda_t * delta * phi'(s) ].
+      double dUdlambda = prefactor * (phi - scaling * EwaldChargeOffsetDelta * phiPrime);
 
       if constexpr (Order == 0)
       {
-        return {scaling * temp, temp};
+        return {scaling * prefactor * phi, dUdlambda};
       }
       else
       {
-        double firstDerivativeFactor = -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                       ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) *
-                                                                    std::numbers::inv_sqrtpi_v<double>) /
-                                        (r * r * r));
+        double inverseR = 1.0 / r;
+        double firstDerivativeFactor = scaling * prefactor * phiPrime * inverseR;
 
         if constexpr (Order == 1)
         {
-          return {scaling * temp, temp, firstDerivativeFactor};
+          return {scaling * prefactor * phi, dUdlambda, firstDerivativeFactor};
         }
         else
         {
-          double rr = r * r;
-          double gaussian = std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>;
+          double alphaSquared = alpha * alpha;
+          double phiSecond = 2.0 * erfcTerm * inverseSS * inverseS +
+                             4.0 * alpha * gaussian * (inverseSS + alphaSquared);
           double secondDerivativeFactor =
-              Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-              (3.0 * std::erfc(alpha * r) / (rr * rr * r) + 4.0 * alpha * alpha * alpha * gaussian / rr +
-               6.0 * alpha * gaussian / (rr * rr));
+              scaling * prefactor * (phiSecond - phiPrime * inverseR) * inverseR * inverseR;
 
           if constexpr (Order == 2)
           {
-            return {scaling * temp, temp, firstDerivativeFactor, secondDerivativeFactor};
+            return {scaling * prefactor * phi, dUdlambda, firstDerivativeFactor, secondDerivativeFactor};
           }
           else
           {
-            // thirdDerivativeFactor = (1/r) d(secondDerivativeFactor)/dr for U = C q_A q_B erfc(alpha r)/r,
-            // giving -C q_A q_B [ 15 erfc/r^7 + (2 alpha/sqrt(pi)) e^{-alpha^2 r^2} (4 alpha^4/r^2 + 10 alpha^2/r^4
-            //                                                                      + 15/r^6) ].
-            double thirdDerivativeFactor =
-                -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                (15.0 * std::erfc(alpha * r) / (rr * rr * rr * r) +
-                 2.0 * alpha *
-                     (4.0 * alpha * alpha * alpha * alpha / rr + 10.0 * alpha * alpha / (rr * rr) +
-                      15.0 / (rr * rr * rr)) *
-                     gaussian);
+            double phiThird = -6.0 * erfcTerm * inverseSS * inverseSS -
+                              2.0 * alpha * gaussian *
+                                  (4.0 * alphaSquared * alphaSquared * s + 4.0 * alphaSquared * inverseS +
+                                   6.0 * inverseS * inverseSS);
+            double thirdDerivativeFactor = scaling * prefactor *
+                                           (phiThird - 3.0 * phiSecond * inverseR + 3.0 * phiPrime * inverseR * inverseR) *
+                                           inverseR * inverseR * inverseR;
 
-            return {scaling * temp, temp, firstDerivativeFactor, secondDerivativeFactor, thirdDerivativeFactor};
+            return {scaling * prefactor * phi, dUdlambda, firstDerivativeFactor, secondDerivativeFactor,
+                    thirdDerivativeFactor};
           }
         }
       }

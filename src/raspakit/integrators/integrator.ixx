@@ -59,5 +59,5 @@ RunningEnergy velocityVerlet(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     const std::optional<Framework>& framework = std::nullopt,
-    std::span<AtomDynamics> frameworkDynamics = {});
+    std::span<AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {});
 }  // namespace Integrators

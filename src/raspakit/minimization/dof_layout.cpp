@@ -21,6 +21,7 @@ MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> molec
 
   layout._flexibleAtomDof.assign(moleculeData.size() * layout._maxAtomsPerMolecule * 3, -1);
   layout._rigidMoleculeDof.assign(moleculeData.size() * 6, -1);
+  layout._atomRigidBodyDof.assign(moleculeData.size() * layout._maxAtomsPerMolecule, -1);
   layout._frameworkAtomDof.assign(numberOfFlexibleFrameworkAtoms * 3, -1);
 
   std::size_t nextDof{};
@@ -42,9 +43,49 @@ MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> molec
 
     if (component.rigid)
     {
+      const std::size_t base = nextDof;
       for (std::size_t dof = 0; dof < 6; ++dof)
       {
         layout._rigidMoleculeDof[moleculeIndex * 6 + dof] = static_cast<std::int32_t>(nextDof++);
+      }
+      layout._rigidBodies.push_back(
+          RigidBodyDofInfo{.moleculeIndex = moleculeIndex, .groupIndex = 0, .wholeMolecule = true, .base = base});
+      for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
+      {
+        layout._atomRigidBodyDof[moleculeIndex * layout._maxAtomsPerMolecule + atom] = static_cast<std::int32_t>(base);
+      }
+    }
+    else if (component.isSemiFlexible())
+    {
+      // Flexible atoms carry Cartesian DOFs; each rigid group carries a single six-DOF block.
+      for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
+      {
+        if (component.rigidGroupContaining(atom).has_value())
+        {
+          continue;
+        }
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          const std::size_t offset = (moleculeIndex * layout._maxAtomsPerMolecule + atom) * 3 + axis;
+          layout._flexibleAtomDof[offset] = static_cast<std::int32_t>(nextDof++);
+        }
+      }
+      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      {
+        const MoleculeGroup& group = component.groups[groupIndex];
+        if (!group.rigid)
+        {
+          continue;
+        }
+        const std::size_t base = nextDof;
+        nextDof += 6;
+        layout._rigidBodies.push_back(RigidBodyDofInfo{
+            .moleculeIndex = moleculeIndex, .groupIndex = groupIndex, .wholeMolecule = false, .base = base});
+        for (const std::size_t atom : group.atoms)
+        {
+          layout._atomRigidBodyDof[moleculeIndex * layout._maxAtomsPerMolecule + atom] =
+              static_cast<std::int32_t>(base);
+        }
       }
     }
     else
@@ -112,6 +153,32 @@ std::optional<std::size_t> MinimizationDofLayout::rigidMoleculeDof(std::size_t m
     return std::nullopt;
   }
   return static_cast<std::size_t>(index);
+}
+
+std::optional<std::size_t> MinimizationDofLayout::atomRigidComDof(std::size_t moleculeIndex,
+                                                                  std::size_t localAtom) const noexcept
+{
+  if (moleculeIndex >= _molecules.size() || localAtom >= _molecules[moleculeIndex].nAtoms)
+  {
+    return std::nullopt;
+  }
+  const std::int32_t index = _atomRigidBodyDof[moleculeIndex * _maxAtomsPerMolecule + localAtom];
+  if (index < 0)
+  {
+    return std::nullopt;
+  }
+  return static_cast<std::size_t>(index);
+}
+
+std::optional<std::size_t> MinimizationDofLayout::atomRigidOrientationDof(std::size_t moleculeIndex,
+                                                                          std::size_t localAtom) const noexcept
+{
+  const std::optional<std::size_t> base = atomRigidComDof(moleculeIndex, localAtom);
+  if (!base)
+  {
+    return std::nullopt;
+  }
+  return *base + 3;
 }
 
 std::size_t MinimizationDofLayout::flexibleAtomDofBase(std::size_t moleculeIndex, std::size_t localAtom) const
