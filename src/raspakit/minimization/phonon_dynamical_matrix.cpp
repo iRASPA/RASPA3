@@ -405,9 +405,9 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
       component.rigid = false;
       component.intraMolecularPotentials = {};
     }
-    component.groups.clear();
-    component.atomGroupIds.clear();
-    component.finalizeGroupCache();
+    // Flatten to a fully-flexible Cartesian molecule: every atom becomes its own single-atom
+    // fragment (no rigid bodies), so there is no rigid-body constraint left to project out here.
+    component.buildFragmentGraph({});
   }
   cartesianSystem.groupData.clear();
 

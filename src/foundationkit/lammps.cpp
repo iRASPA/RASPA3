@@ -184,7 +184,7 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
   for (std::size_t i = 0; i < atomData.size(); ++i)
   {
     const Atom& atom = atomData[i];
-    if (components[atom.componentId].growType == Component::GrowType::Flexible)
+    if (!components[atom.componentId].rigid)
     {
       const double3 velocity = atomDynamics[i].velocity;
       std::print(out, "  {} {} {} {}\n", idx++, velocity.x, velocity.y, velocity.z);

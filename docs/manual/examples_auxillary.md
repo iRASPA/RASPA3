@@ -43,7 +43,6 @@ Note that the ideal-gas Rosenbluth weight depends on the temperatures _and_ on t
   "CriticalTemperature" : 425.125,
   "CriticalPressure" : 3796000.0,
   "AcentricFactor" : 0.201,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],

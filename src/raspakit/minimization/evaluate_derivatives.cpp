@@ -120,7 +120,7 @@ double3 rigidBodyCenterOfMass(const System& system, const RigidBodyDofInfo& body
     return molecule.centerOfMassPosition;
   }
   const Component& component = system.components[molecule.componentId];
-  const MoleculeGroup& group = component.groups[body.groupIndex];
+  const Fragment& group = component.fragmentGraph.fragments[body.groupIndex];
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
   double3 weighted{};
   double mass{};

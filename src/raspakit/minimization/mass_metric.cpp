@@ -131,7 +131,7 @@ MassMetric buildMassMetric(const System& system, const MinimizationDofLayout& la
       // Flexible atoms carry the usual scalar 1/sqrt(mass) weight.
       for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
       {
-        if (component.rigidGroupContaining(localAtom).has_value())
+        if (component.rigidFragmentContaining(localAtom).has_value())
         {
           continue;
         }
@@ -146,10 +146,10 @@ MassMetric buildMassMetric(const System& system, const MinimizationDofLayout& la
         }
       }
       // Each rigid group contributes a center-of-mass scalar block and an orientation inertia block.
-      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      for (std::size_t groupIndex = 0; groupIndex < component.fragmentGraph.fragments.size(); ++groupIndex)
       {
-        const MoleculeGroup& group = component.groups[groupIndex];
-        if (!group.rigid)
+        const Fragment& group = component.fragmentGraph.fragments[groupIndex];
+        if (!group.isRigidBody())
         {
           continue;
         }

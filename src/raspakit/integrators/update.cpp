@@ -47,9 +47,9 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
     {
       // Semi-flexible molecule: scale each rigid group's rigid-body state and the flexible atoms.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
           state.velocity *= scaling.first;
@@ -60,12 +60,12 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
       std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           span[i].velocity *= scaling.first;
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else if (!component.rigid)
     {
@@ -134,9 +134,9 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
       {
         std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
         std::size_t rigidRank{};
-        for (const MoleculeGroup& group : component.groups)
+        for (const Fragment& group : component.fragmentGraph.fragments)
         {
-          if (group.rigid)
+          if (group.isRigidBody())
           {
             const GroupState& state = groupData[groupIndex + rigidRank];
             totalMass += group.mass;
@@ -146,14 +146,14 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
         }
         for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
         {
-          if (!component.rigidGroupContaining(i).has_value())
+          if (!component.rigidFragmentContaining(i).has_value())
           {
             double mass = component.definedAtoms[i].second;
             totalMass += mass;
             totalMomentum += mass * span[i].velocity;
           }
         }
-        groupIndex += component.numberOfRigidGroups();
+        groupIndex += component.numberOfRigidFragments();
       }
       else
       {
@@ -198,9 +198,9 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
     {
       std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           groupData[groupIndex + rigidRank].velocity -= totalVelocity;
           ++rigidRank;
@@ -208,12 +208,12 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
       }
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           span[i].velocity -= totalVelocity;
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else if (!component.rigid)
     {
@@ -264,9 +264,9 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
       // Drift the center of mass of each rigid group; the atoms are rebuilt later from the group
       // state (after the free-rotor step) in 'createCartesianPositions'.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
           state.centerOfMassPosition += dt * state.velocity;
@@ -278,12 +278,12 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
       std::span<const AtomDynamics> spanDynamics = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           span[i].position += dt * spanDynamics[i].velocity;
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
     }
@@ -344,9 +344,9 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
       // Half-kick each rigid group's center-of-mass velocity and orientation momentum, and the
       // flexible atoms' velocities.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
           state.velocity -= 0.5 * dt * state.gradient / group.mass;
@@ -357,13 +357,13 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
       std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           double mass = component.definedAtoms[i].second;
           span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
     }
@@ -450,7 +450,7 @@ void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& mol
   }
 }
 
-void Integrators::initializeGroupVelocity(RandomNumber& random, GroupState& state, const MoleculeGroup& group,
+void Integrators::initializeGroupVelocity(RandomNumber& random, GroupState& state, const Fragment& group,
                                           double temperature)
 {
   state.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
@@ -515,9 +515,9 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
       // Rigid groups get a center-of-mass velocity and an orientation momentum; flexible atoms get
       // per-atom velocities. Rigid-group atoms carry no independent velocity.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           initializeGroupVelocity(random, groupData[groupIndex + rigidRank], group, temperature);
           ++rigidRank;
@@ -525,7 +525,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
       }
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (component.rigidGroupContaining(i).has_value())
+        if (component.rigidFragmentContaining(i).has_value())
         {
           dynamics[i].velocity = double3(0.0, 0.0, 0.0);
           continue;
@@ -534,7 +534,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
         dynamics[i].velocity =
             double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
     }
@@ -594,11 +594,11 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
       if (!groupData.empty())
       {
         std::size_t rigidRank{};
-        for (std::size_t g = 0; g != component.groups.size(); ++g)
+        for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
         {
-          if (component.groups[g].rigid)
+          if (component.fragmentGraph.fragments[g].isRigidBody())
           {
-            component.regenerateGroupAtoms(groupData[groupIndex + rigidRank], g, span);
+            component.regenerateFragmentAtoms(groupData[groupIndex + rigidRank], g, span);
             ++rigidRank;
           }
         }
@@ -609,7 +609,7 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
         com += component.definedAtoms[i].second * span[i].position;
       }
       molecule.centerOfMassPosition = com * molecule.invMass;
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
     }
@@ -667,9 +667,9 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
     {
       // Free-rotor step for each rigid group about its own principal-axis inertia.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (!group.rigid) continue;
+        if (!group.isRigidBody()) continue;
         GroupState& state = groupData[groupIndex + rigidRank];
         std::pair<simd_quatd, simd_quatd> pq = std::make_pair(state.orientationMomentum, state.orientation);
         pq = Rigid::NoSquishFreeRotorOrderTwo(dt, pq, group.inverseInertiaVector);
@@ -677,7 +677,7 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
         state.orientation = pq.second;
         ++rigidRank;
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       continue;
     }
 
@@ -784,10 +784,10 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
       // Gather the net force and torque on each rigid group from its atoms' gradients. The flexible
       // atoms keep their per-atom gradients (used directly by 'updateVelocities').
       std::size_t rigidRank{};
-      for (std::size_t g = 0; g != component.groups.size(); ++g)
+      for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
       {
-        const MoleculeGroup& group = component.groups[g];
-        if (!group.rigid) continue;
+        const Fragment& group = component.fragmentGraph.fragments[g];
+        if (!group.isRigidBody()) continue;
 
         GroupState& state = groupData[groupIndex + rigidRank];
         double3 com_gradient{};
@@ -810,7 +810,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
         state.orientationGradient = -2.0 * q * simd_quatd(0.0, torque);
         ++rigidRank;
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
     }

@@ -2,7 +2,6 @@
   "CriticalTemperature" : 587.7,
   "CriticalPressure" : 2980000.0,
   "AcentricFactor" : 0.234,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH_c",  [1.465493, 0.000000, 0.236606]],
@@ -23,11 +22,6 @@
     [5, 0],
     [0, 6],
     [3, 7]
-  ],
-  "Groups" : [
-    { "Type" : "Cycle",    "Atoms" : [0, 1, 2, 3, 4, 5] },
-    { "Type" : "Flexible", "Atoms" : [6] },
-    { "Type" : "Flexible", "Atoms" : [7] }
   ],
   "Bonds" : [
     [[0, 1], "HARMONIC", [96500.0, 1.54]],

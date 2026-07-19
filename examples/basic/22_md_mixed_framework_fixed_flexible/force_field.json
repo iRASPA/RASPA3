@@ -1,0 +1,52 @@
+{
+  "MixingRule": "Lorentz-Berthelot",
+  "TruncationMethod": "shifted",
+  "TailCorrections": false,
+  "CutOffVDW": 10.0,
+  "PseudoAtoms": [
+    {
+      "name": "C1",
+      "framework": true,
+      "print_to_output": true,
+      "element": "C",
+      "print_as": "C",
+      "mass": 12.0,
+      "charge": 0.0
+    },
+    {
+      "name": "C2",
+      "framework": true,
+      "print_to_output": true,
+      "element": "C",
+      "print_as": "C",
+      "mass": 12.0,
+      "charge": 0.0
+    },
+    {
+      "name": "C3",
+      "framework": true,
+      "print_to_output": true,
+      "element": "C",
+      "print_as": "C",
+      "mass": 12.0,
+      "charge": 0.0
+    }
+  ],
+  "SelfInteractions": [
+    {
+      "name": "C1",
+      "type": "lennard-jones",
+      "parameters": [50.0, 3.0]
+    },
+    {
+      "name": "C2",
+      "type": "lennard-jones",
+      "parameters": [50.0, 3.0]
+    },
+    {
+      "name": "C3",
+      "type": "lennard-jones",
+      "parameters": [50.0, 3.0]
+    }
+  ]
+}

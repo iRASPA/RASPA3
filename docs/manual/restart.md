@@ -93,7 +93,6 @@ CO<sub>2</sub> molecules are usually modeled as `rigid` and implemented using qu
   "CriticalTemperature": 304.1282,
   "CriticalPressure": 7377300.0,
   "AcentricFactor": 0.22394,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["O_co2", [0.0, 0.0, 1.149]],
     ["C_co2", [0.0, 0.0, 0.0]],

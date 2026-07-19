@@ -2,7 +2,6 @@
   "CriticalTemperature" : 800.0,
   "CriticalPressure" : 3000000.0,
   "AcentricFactor" : 0.4,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3",   [0.0, 0.0, 0.0]],
@@ -41,11 +40,9 @@
     [11, 14],
     [14, 15]
   ],
-  "Groups" : [
-    { "Type" : "Flexible", "Atoms" : [0, 1] },
-    { "Type" : "Rigid",    "Atoms" : [2, 3, 4, 5, 6, 7] },
-    { "Type" : "Rigid",    "Atoms" : [8, 9, 10, 11, 12, 13] },
-    { "Type" : "Flexible", "Atoms" : [14, 15] }
+  "RigidBodies" : [
+    [2, 3, 4, 5, 6, 7],
+    [8, 9, 10, 11, 12, 13]
   ],
   "Bonds" : [
     [["CH3", "CH2"],  "HARMONIC", [96500.0, 1.54]],

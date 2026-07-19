@@ -1,7 +1,7 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfProductionCycles" : 200000,
-  "NumberOfInitializationCycles" : 50000,
+  "NumberOfProductionCycles" : 200,
+  "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
 
   "Systems" : [
@@ -11,7 +11,9 @@
       "NumberOfUnitCells" : [2, 2, 1],
       "ExternalTemperature" : 433.0,
       "ExternalPressure" : 1.0e5,
-      "ChargeMethod" : "None"
+      "ChargeMethod" : "None",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     }
   ],
 

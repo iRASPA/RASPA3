@@ -58,8 +58,6 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType growType = component.growType;
-
   time_begin = std::chrono::steady_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
@@ -68,7 +66,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
-      component, selectedComponent, growType, molecule, molecule_atoms);
+      component, selectedComponent, molecule, molecule_atoms);
   time_end = std::chrono::steady_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -101,7 +99,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
-      component, growType, molecule, molecule_atoms, growData->storedR);
+      component, molecule, molecule_atoms, growData->storedR);
   time_end = std::chrono::steady_clock::now();
 
   if (!retraceData)

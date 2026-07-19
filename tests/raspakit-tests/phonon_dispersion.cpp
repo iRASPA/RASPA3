@@ -292,9 +292,7 @@ void setSemiFlexibleMoleculePositions(System& system, std::size_t moleculeIndex,
 // harmonic junction bond 2-3. Each molecule carries 9 generalized DOFs (6 rigid-body + 3 Cartesian).
 void makeComponentSemiFlexible(Component& component)
 {
-  component.groups = {MoleculeGroup(true, {0, 1, 2}), MoleculeGroup(false, {3})};
-  component.atomGroupIds = {0, 0, 0, 1};
-  component.computeGroupRigidProperties();
+  component.buildFragmentGraph({{0, 1, 2}});
 }
 
 // Three semi-flexible molecules (rigid bent three-site core + flexible tail atom, uncharged

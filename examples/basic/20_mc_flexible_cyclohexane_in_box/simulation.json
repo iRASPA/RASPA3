@@ -1,0 +1,30 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true,
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
+    }
+  ]
+}

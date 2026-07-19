@@ -274,7 +274,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-        random, growContextA, componentA, selectedComponent, componentA.growType, newMoleculeA, newLambda,
+        random, growContextA, componentA, selectedComponent, newMoleculeA, newLambda,
         componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -321,7 +321,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growDataB = CBMC::growMoleculeSwapInsertion(
-        random, growContextB, componentBRef, componentB, componentBRef.growType, newMoleculeB, newLambda,
+        random, growContextB, componentBRef, componentB, newMoleculeB, newLambda,
         componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -612,10 +612,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                             cutOffMoleculeVDW, cutOffCoulomb};
 
     time_begin = std::chrono::steady_clock::now();
-    ChainRetraceData retraceDataB = CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentBRef,
-                                                                      componentBRef.growType, fractionalMoleculeB);
-    ChainRetraceData retraceDataA = CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA,
-                                                                      componentA.growType, fractionalMoleculeA);
+    ChainRetraceData retraceDataB =
+        CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentBRef, fractionalMoleculeB);
+    ChainRetraceData retraceDataA =
+        CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, fractionalMoleculeA);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);

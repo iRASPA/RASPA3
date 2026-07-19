@@ -21,7 +21,9 @@ import mc_moves_probabilities;
 import mc_moves_statistics;
 import move_statistics;
 import property_widom;
-import cbmc_segments;
+import fragment;
+import fragment_graph;
+import cbmc_growth_plan;
 import generalized_hessian;
 import minimization_cell_layout;
 import minimization_dof_layout;
@@ -39,8 +41,8 @@ import bond_torsion_potential;
 import bend_torsion_potential;
 import inversion_bend_potential;
 
-// Tests for semi-flexible molecules: molecules built from rigid and flexible groups
-// ('Groups' in the molecule JSON), grown with CBMC or recoil growth.
+// Tests for semi-flexible molecules: molecules mixing rigid bodies ('RigidBodies' in the molecule
+// JSON) with flexible beads, grown with CBMC or recoil growth.
 
 namespace
 {
@@ -221,61 +223,65 @@ MolecularDynamics makeShortMolecularDynamics(std::vector<System> systems)
 
 }  // namespace
 
-TEST(MC_SEMI_FLEXIBLE_CBMC, component_groups_parsing)
+TEST(MC_SEMI_FLEXIBLE_CBMC, component_fragment_graph_parsing)
 {
   const ForceField forceField = makeAlkaneForceField();
   Component pentane = makeSemiFlexiblePentane(forceField, 0, MCMoveProbabilities());
 
-  // three groups: flexible {0}, rigid {1,2,3}, flexible {4}
-  ASSERT_EQ(pentane.groups.size(), 3uz);
-  EXPECT_FALSE(pentane.groups[0].rigid);
-  EXPECT_TRUE(pentane.groups[1].rigid);
-  EXPECT_FALSE(pentane.groups[2].rigid);
-  EXPECT_EQ(pentane.groups[1].atoms, (std::vector<std::size_t>{1, 2, 3}));
+  const FragmentGraph& graph = pentane.fragmentGraph;
 
-  ASSERT_EQ(pentane.atomGroupIds.size(), 5uz);
-  EXPECT_EQ(pentane.atomGroupIds, (std::vector<std::size_t>{0, 1, 1, 1, 2}));
+  // three fragments (ordered by lowest atom index): flexible {0}, rigid {1,2,3}, flexible {4}
+  ASSERT_EQ(graph.fragments.size(), 3uz);
+  EXPECT_FALSE(graph.fragments[0].isRigidBody());
+  EXPECT_TRUE(graph.fragments[1].isRigidBody());
+  EXPECT_FALSE(graph.fragments[2].isRigidBody());
+  EXPECT_EQ(graph.fragments[1].atoms, (std::vector<std::size_t>{1, 2, 3}));
 
-  EXPECT_FALSE(pentane.rigidGroupContaining(0).has_value());
-  EXPECT_EQ(pentane.rigidGroupContaining(1), std::optional<std::size_t>{1});
-  EXPECT_EQ(pentane.rigidGroupContaining(2), std::optional<std::size_t>{1});
-  EXPECT_EQ(pentane.rigidGroupContaining(3), std::optional<std::size_t>{1});
-  EXPECT_FALSE(pentane.rigidGroupContaining(4).has_value());
+  ASSERT_EQ(graph.atomFragmentIds.size(), 5uz);
+  EXPECT_EQ(graph.atomFragmentIds, (std::vector<std::size_t>{0, 1, 1, 1, 2}));
 
-  // interactions entirely inside the rigid group are dropped: only the two junction bonds
+  EXPECT_FALSE(pentane.rigidFragmentContaining(0).has_value());
+  EXPECT_EQ(pentane.rigidFragmentContaining(1), std::optional<std::size_t>{1});
+  EXPECT_EQ(pentane.rigidFragmentContaining(2), std::optional<std::size_t>{1});
+  EXPECT_EQ(pentane.rigidFragmentContaining(3), std::optional<std::size_t>{1});
+  EXPECT_FALSE(pentane.rigidFragmentContaining(4).has_value());
+
+  // interactions entirely inside the rigid body are dropped: only the two junction bonds
   // (0-1, 3-4), the two junction bends (0-1-2, 2-3-4), and the two junction torsions remain.
   EXPECT_EQ(pentane.intraMolecularPotentials.bonds.size(), 2uz);
   EXPECT_EQ(pentane.intraMolecularPotentials.bends.size(), 2uz);
   EXPECT_EQ(pentane.intraMolecularPotentials.torsions.size(), 2uz);
 }
 
-TEST(MC_SEMI_FLEXIBLE_CBMC, grow_segments)
+TEST(MC_SEMI_FLEXIBLE_CBMC, growth_plan)
 {
   const ForceField forceField = makeAlkaneForceField();
   Component pentane = makeSemiFlexiblePentane(forceField, 0, MCMoveProbabilities());
 
-  std::vector<CBMC::GrowSegment> segments = CBMC::buildGrowSegments(pentane, {pentane.startingBead});
+  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(pentane, {pentane.startingBead});
 
   // Starting from flexible bead 0, the rigid core is entered from outside, so its connecting atom
   // (bead 1) is peeled off as an ordinary flexible bond first; then the rest of the rigid core
   // {2,3} is grown as one rigid body hinged on bead 1; finally the other CH3 end (bead 4) is grown.
-  ASSERT_EQ(segments.size(), 3uz);
+  ASSERT_EQ(plan.size(), 3uz);
 
-  EXPECT_FALSE(segments[0].rigidUnit);
-  EXPECT_EQ(segments[0].currentBead, 0uz);
-  EXPECT_FALSE(segments[0].previousBead.has_value());
-  EXPECT_EQ(segments[0].nextBeads, (std::vector<std::size_t>{1}));
+  EXPECT_FALSE(plan[0].rigidBody);
+  EXPECT_EQ(plan[0].kind, CBMC::GrowStep::Kind::PlaceSeedFragment);
+  EXPECT_EQ(plan[0].currentBead, 0uz);
+  EXPECT_FALSE(plan[0].previousBead.has_value());
+  EXPECT_EQ(plan[0].nextBeads, (std::vector<std::size_t>{1}));
 
-  EXPECT_TRUE(segments[1].rigidUnit);
-  EXPECT_EQ(segments[1].rigidGroup, std::optional<std::size_t>{1});
-  EXPECT_EQ(segments[1].currentBead, 1uz);
-  EXPECT_EQ(segments[1].previousBead, std::optional<std::size_t>{0});
-  EXPECT_EQ(segments[1].nextBeads, (std::vector<std::size_t>{2, 3}));
+  EXPECT_TRUE(plan[1].rigidBody);
+  EXPECT_EQ(plan[1].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[1].currentBead, 1uz);
+  EXPECT_EQ(plan[1].previousBead, std::optional<std::size_t>{0});
+  EXPECT_EQ(plan[1].nextBeads, (std::vector<std::size_t>{2, 3}));
 
-  EXPECT_FALSE(segments[2].rigidUnit);
-  EXPECT_EQ(segments[2].currentBead, 3uz);
-  EXPECT_EQ(segments[2].previousBead, std::optional<std::size_t>{2});
-  EXPECT_EQ(segments[2].nextBeads, (std::vector<std::size_t>{4}));
+  EXPECT_FALSE(plan[2].rigidBody);
+  EXPECT_EQ(plan[2].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[2].currentBead, 3uz);
+  EXPECT_EQ(plan[2].previousBead, std::optional<std::size_t>{2});
+  EXPECT_EQ(plan[2].nextBeads, (std::vector<std::size_t>{4}));
 }
 
 TEST(MC_SEMI_FLEXIBLE_CBMC, nvt_drift_and_rigid_geometry_cbmc)
@@ -307,12 +313,18 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_component_parsing)
   const ForceField forceField = makeBiphenylForceField();
   Component biphenyl = makeDiethylBiphenyl(forceField, 0, MCMoveProbabilities());
 
-  // four groups: flexible {0,1}, rigid ring A {2..7}, rigid ring B {8..13}, flexible {14,15}
-  ASSERT_EQ(biphenyl.groups.size(), 4uz);
-  EXPECT_FALSE(biphenyl.groups[0].rigid);
-  EXPECT_TRUE(biphenyl.groups[1].rigid);
-  EXPECT_TRUE(biphenyl.groups[2].rigid);
-  EXPECT_FALSE(biphenyl.groups[3].rigid);
+  // six fragments (ordered by lowest atom index): flexible {0}, {1}, rigid ring A {2..7},
+  // rigid ring B {8..13}, flexible {14}, {15}
+  const FragmentGraph& graph = biphenyl.fragmentGraph;
+  ASSERT_EQ(graph.fragments.size(), 6uz);
+  EXPECT_FALSE(graph.fragments[0].isRigidBody());
+  EXPECT_FALSE(graph.fragments[1].isRigidBody());
+  EXPECT_TRUE(graph.fragments[2].isRigidBody());
+  EXPECT_TRUE(graph.fragments[3].isRigidBody());
+  EXPECT_FALSE(graph.fragments[4].isRigidBody());
+  EXPECT_FALSE(graph.fragments[5].isRigidBody());
+  EXPECT_EQ(graph.fragments[2].atoms, (std::vector<std::size_t>{2, 3, 4, 5, 6, 7}));
+  EXPECT_EQ(graph.fragments[3].atoms, (std::vector<std::size_t>{8, 9, 10, 11, 12, 13}));
 
   // interactions entirely inside a ring are dropped; only the junction terms remain:
   // bonds 0-1, 1-2, 5-8 (biphenyl), 11-14, 14-15
@@ -323,52 +335,57 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_component_parsing)
   EXPECT_EQ(biphenyl.intraMolecularPotentials.torsions.size(), 16uz);
 }
 
-TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_grow_segments)
+TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_growth_plan)
 {
   const ForceField forceField = makeBiphenylForceField();
   Component biphenyl = makeDiethylBiphenyl(forceField, 0, MCMoveProbabilities());
 
-  std::vector<CBMC::GrowSegment> segments = CBMC::buildGrowSegments(biphenyl, {biphenyl.startingBead});
+  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(biphenyl, {biphenyl.startingBead});
 
   // CH3(0) -> CH2(1) -> peel ipso(2) -> ring A {3,4,5,6,7} hinged on 2 -> peel ipso(8) across the
   // biphenyl bond -> ring B {9,10,11,12,13} hinged on 8 -> CH2(14) -> CH3(15)
-  ASSERT_EQ(segments.size(), 7uz);
+  ASSERT_EQ(plan.size(), 7uz);
 
-  EXPECT_FALSE(segments[0].rigidUnit);
-  EXPECT_EQ(segments[0].currentBead, 0uz);
-  EXPECT_EQ(segments[0].nextBeads, (std::vector<std::size_t>{1}));
+  EXPECT_FALSE(plan[0].rigidBody);
+  EXPECT_EQ(plan[0].kind, CBMC::GrowStep::Kind::PlaceSeedFragment);
+  EXPECT_EQ(plan[0].currentBead, 0uz);
+  EXPECT_EQ(plan[0].nextBeads, (std::vector<std::size_t>{1}));
 
-  EXPECT_FALSE(segments[1].rigidUnit);
-  EXPECT_EQ(segments[1].currentBead, 1uz);
-  EXPECT_EQ(segments[1].previousBead, std::optional<std::size_t>{0});
-  EXPECT_EQ(segments[1].nextBeads, (std::vector<std::size_t>{2}));
+  EXPECT_FALSE(plan[1].rigidBody);
+  EXPECT_EQ(plan[1].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[1].currentBead, 1uz);
+  EXPECT_EQ(plan[1].previousBead, std::optional<std::size_t>{0});
+  EXPECT_EQ(plan[1].nextBeads, (std::vector<std::size_t>{2}));
 
-  EXPECT_TRUE(segments[2].rigidUnit);
-  EXPECT_EQ(segments[2].rigidGroup, std::optional<std::size_t>{1});
-  EXPECT_EQ(segments[2].currentBead, 2uz);
-  EXPECT_EQ(segments[2].previousBead, std::optional<std::size_t>{1});
-  EXPECT_EQ(segments[2].nextBeads, (std::vector<std::size_t>{3, 4, 5, 6, 7}));
+  EXPECT_TRUE(plan[2].rigidBody);
+  EXPECT_EQ(plan[2].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[2].currentBead, 2uz);
+  EXPECT_EQ(plan[2].previousBead, std::optional<std::size_t>{1});
+  EXPECT_EQ(plan[2].nextBeads, (std::vector<std::size_t>{3, 4, 5, 6, 7}));
 
-  EXPECT_FALSE(segments[3].rigidUnit);
-  EXPECT_EQ(segments[3].currentBead, 5uz);
-  EXPECT_EQ(segments[3].previousBead, std::optional<std::size_t>{4});
-  EXPECT_EQ(segments[3].nextBeads, (std::vector<std::size_t>{8}));
+  EXPECT_FALSE(plan[3].rigidBody);
+  EXPECT_EQ(plan[3].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[3].currentBead, 5uz);
+  EXPECT_EQ(plan[3].previousBead, std::optional<std::size_t>{4});
+  EXPECT_EQ(plan[3].nextBeads, (std::vector<std::size_t>{8}));
 
-  EXPECT_TRUE(segments[4].rigidUnit);
-  EXPECT_EQ(segments[4].rigidGroup, std::optional<std::size_t>{2});
-  EXPECT_EQ(segments[4].currentBead, 8uz);
-  EXPECT_EQ(segments[4].previousBead, std::optional<std::size_t>{5});
-  EXPECT_EQ(segments[4].nextBeads, (std::vector<std::size_t>{9, 10, 11, 12, 13}));
+  EXPECT_TRUE(plan[4].rigidBody);
+  EXPECT_EQ(plan[4].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[4].currentBead, 8uz);
+  EXPECT_EQ(plan[4].previousBead, std::optional<std::size_t>{5});
+  EXPECT_EQ(plan[4].nextBeads, (std::vector<std::size_t>{9, 10, 11, 12, 13}));
 
-  EXPECT_FALSE(segments[5].rigidUnit);
-  EXPECT_EQ(segments[5].currentBead, 11uz);
-  EXPECT_EQ(segments[5].previousBead, std::optional<std::size_t>{10});
-  EXPECT_EQ(segments[5].nextBeads, (std::vector<std::size_t>{14}));
+  EXPECT_FALSE(plan[5].rigidBody);
+  EXPECT_EQ(plan[5].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[5].currentBead, 11uz);
+  EXPECT_EQ(plan[5].previousBead, std::optional<std::size_t>{10});
+  EXPECT_EQ(plan[5].nextBeads, (std::vector<std::size_t>{14}));
 
-  EXPECT_FALSE(segments[6].rigidUnit);
-  EXPECT_EQ(segments[6].currentBead, 14uz);
-  EXPECT_EQ(segments[6].previousBead, std::optional<std::size_t>{11});
-  EXPECT_EQ(segments[6].nextBeads, (std::vector<std::size_t>{15}));
+  EXPECT_FALSE(plan[6].rigidBody);
+  EXPECT_EQ(plan[6].kind, CBMC::GrowStep::Kind::AttachFragment);
+  EXPECT_EQ(plan[6].currentBead, 14uz);
+  EXPECT_EQ(plan[6].previousBead, std::optional<std::size_t>{11});
+  EXPECT_EQ(plan[6].nextBeads, (std::vector<std::size_t>{15}));
 }
 
 TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_nvt_drift_and_ring_geometry_cbmc)
@@ -517,19 +534,19 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, nvt_drift_and_rigid_geometry_recoil_growth)
   }
 }
 
-TEST(MC_SEMI_FLEXIBLE_CBMC, group_rigid_properties)
+TEST(MC_SEMI_FLEXIBLE_CBMC, fragment_rigid_properties)
 {
   const ForceField forceField = makeBiphenylForceField();
   Component biphenyl = makeDiethylBiphenyl(forceField, 0, MCMoveProbabilities());
 
-  ASSERT_EQ(biphenyl.groups.size(), 4uz);
-  EXPECT_EQ(biphenyl.numberOfRigidGroups(), 2uz);
+  ASSERT_EQ(biphenyl.fragmentGraph.fragments.size(), 6uz);
+  EXPECT_EQ(biphenyl.numberOfRigidFragments(), 2uz);
   EXPECT_TRUE(biphenyl.isSemiFlexible());
 
-  for (std::size_t g : {1uz, 2uz})
+  for (std::size_t g : {2uz, 3uz})
   {
-    const MoleculeGroup& ring = biphenyl.groups[g];
-    EXPECT_TRUE(ring.rigid);
+    const Fragment& ring = biphenyl.fragmentGraph.fragments[g];
+    EXPECT_TRUE(ring.isRigidBody());
     EXPECT_EQ(ring.bodyFixedPositions.size(), 6uz);
     EXPECT_EQ(ring.rotationalDegreesOfFreedom, 3uz);
     EXPECT_EQ(ring.shapeType, 0uz);
@@ -540,12 +557,12 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, group_rigid_properties)
   }
 
   // Semi-flexible degree-of-freedom count: four flexible atoms (0,1,14,15) contribute 3 each, plus
-  // three center-of-mass translations per rigid group; rotational DOF is 3 per ring.
+  // three center-of-mass translations per rigid fragment; rotational DOF is 3 per ring.
   EXPECT_EQ(biphenyl.translationalDegreesOfFreedom, 3uz * 4uz + 3uz * 2uz);
   EXPECT_EQ(biphenyl.rotationalDegreesOfFreedom, 6uz);
 }
 
-TEST(MC_SEMI_FLEXIBLE_CBMC, derive_and_regenerate_group_state_round_trip)
+TEST(MC_SEMI_FLEXIBLE_CBMC, derive_and_regenerate_fragment_state_round_trip)
 {
   const ForceField forceField = makeBiphenylForceField();
   Component biphenyl = makeDiethylBiphenyl(forceField, 0, MCMoveProbabilities());
@@ -558,16 +575,16 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, derive_and_regenerate_group_state_round_trip)
     atoms.push_back(atom);
   }
 
-  for (std::size_t g = 0; g != biphenyl.groups.size(); ++g)
+  for (std::size_t g = 0; g != biphenyl.fragmentGraph.fragments.size(); ++g)
   {
-    if (!biphenyl.groups[g].rigid) continue;
+    if (!biphenyl.fragmentGraph.fragments[g].isRigidBody()) continue;
 
-    GroupState state = biphenyl.deriveGroupState(g, atoms);
+    GroupState state = biphenyl.deriveFragmentState(g, atoms);
 
     std::vector<Atom> rebuilt = atoms;
-    biphenyl.regenerateGroupAtoms(state, g, rebuilt);
+    biphenyl.regenerateFragmentAtoms(state, g, rebuilt);
 
-    for (std::size_t atomIndex : biphenyl.groups[g].atoms)
+    for (std::size_t atomIndex : biphenyl.fragmentGraph.fragments[g].atoms)
     {
       double3 delta = rebuilt[atomIndex].position - atoms[atomIndex].position;
       EXPECT_NEAR(delta.length(), 0.0, 1e-9);
@@ -788,14 +805,14 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_npt_geometry_molecular_dynamics)
 namespace
 {
 // The stored group states must stay aligned with the molecule layout: one GroupState per rigid
-// group, in molecule order, and regenerating the rigid-group atoms from each stored state must
-// reproduce the current atom positions of that molecule.
+// fragment, in molecule order, and regenerating the rigid-fragment atoms from each stored state
+// must reproduce the current atom positions of that molecule.
 void expectGroupStatesAligned(const System& system)
 {
   std::size_t expectedGroups{};
   for (const Molecule& molecule : system.moleculeData)
   {
-    expectedGroups += system.components[molecule.componentId].numberOfRigidGroups();
+    expectedGroups += system.components[molecule.componentId].numberOfRigidFragments();
   }
   ASSERT_EQ(system.groupData.size(), expectedGroups);
 
@@ -810,11 +827,11 @@ void expectGroupStatesAligned(const System& system)
       std::vector<Atom> regenerated(atoms.begin() + static_cast<std::ptrdiff_t>(atomIndex),
                                     atoms.begin() + static_cast<std::ptrdiff_t>(atomIndex + molecule.numberOfAtoms));
       std::size_t rigidRank{};
-      for (std::size_t g = 0; g != component.groups.size(); ++g)
+      for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
       {
-        if (component.groups[g].rigid)
+        if (component.fragmentGraph.fragments[g].isRigidBody())
         {
-          component.regenerateGroupAtoms(system.groupData[groupIndex + rigidRank], g, regenerated);
+          component.regenerateFragmentAtoms(system.groupData[groupIndex + rigidRank], g, regenerated);
           ++rigidRank;
         }
       }
@@ -822,7 +839,7 @@ void expectGroupStatesAligned(const System& system)
       {
         EXPECT_NEAR((regenerated[i].position - atoms[atomIndex + i].position).length(), 0.0, 1e-8);
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     atomIndex += molecule.numberOfAtoms;
   }

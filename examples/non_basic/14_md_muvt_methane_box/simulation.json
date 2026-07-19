@@ -1,0 +1,28 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e6,
+      "ChargeMethod" : "None",
+      "Ensemble" : "MuVT"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "methane",
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 50
+    }
+  ]
+}

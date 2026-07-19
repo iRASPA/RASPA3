@@ -2,7 +2,6 @@
   "CriticalTemperature" : 594.55,
   "CriticalPressure" : 2281000.0,
   "AcentricFactor" : 0.443,
-  "Type" : "flexible",
   "pseudoAtoms" : 
     [
       ["CH3", [0.0, 0.0, 0.0]],

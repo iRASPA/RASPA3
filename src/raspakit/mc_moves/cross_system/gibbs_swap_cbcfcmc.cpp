@@ -328,7 +328,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffMoleculeVDW;
   double cutOffCoulombB =
       systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffCoulomb;
-  Component::GrowType growType = componentA.growType;
 
   if (!systemA.containsTheFractionalMolecule || systemB.containsTheFractionalMolecule)
   {
@@ -404,7 +403,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                          cutOffMoleculeVDWA, cutOffCoulombA};
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, growContextA, componentA, selectedComponent, growType, newMoleculeIndex, 1.0, false, false);
+        random, growContextA, componentA, selectedComponent, newMoleculeIndex, 1.0, false, false);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
@@ -470,7 +469,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                             cutOffMoleculeVDWB, cutOffCoulombB};
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceData =
-        CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentB, growType, selectedIntegerMoleculeB);
+        CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentB, selectedIntegerMoleculeB);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
@@ -752,7 +751,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                          cutOffMoleculeVDWB, cutOffCoulombB};
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, growContextB, componentB, selectedComponent, growType, globalFractionalMoleculeIndexB, oldLambda,
+        random, growContextB, componentB, selectedComponent, globalFractionalMoleculeIndexB, oldLambda,
         componentB.lambdaGC.dUdlambdaGroupId, true);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);

@@ -387,7 +387,7 @@ export struct System
   std::span<AtomDynamics> spanOfMoleculeDynamics();
 
   /// Rebuilds 'groupData' from the current molecule atom positions: one rigid-body state per rigid
-  /// group of every semi-flexible molecule, recovered exactly via 'Component::deriveGroupState'.
+  /// fragment of every semi-flexible molecule, recovered exactly via 'Component::deriveFragmentState'.
   void initializeGroupData();
   void initializeFrameworkGroupData();
   std::span<GroupState> spanOfGroupData();

@@ -368,14 +368,13 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          const Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
               random,
               CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
                                 externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                 spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                 forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-              components[componentId], componentId, growType, numberOfMolecules(), 0.0, groupId, true);
+              components[componentId], componentId, numberOfMolecules(), 0.0, groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
         return growData;
       };
@@ -495,14 +494,13 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         do
         {
-          Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
               random,
               CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
                                 externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                 spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                 forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-              components[componentId], componentId, growType, numberOfMolecules(), 1.0, false, false);
+              components[componentId], componentId, numberOfMolecules(), 1.0, false, false);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
@@ -600,12 +598,12 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   constexpr std::size_t numberOfReinsertionMoves = 20;
   for (std::size_t move = 0; move != numberOfReinsertionMoves; ++move)
   {
-    std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-        random, context, component, selectedComponent, component.growType, scratchMolecule, scratchAtoms);
+    std::optional<ChainGrowData> growData =
+        CBMC::growMoleculeReinsertion(random, context, component, selectedComponent, scratchMolecule, scratchAtoms);
     if (!growData) continue;
 
     const std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
-        random, context, component, component.growType, scratchMolecule, scratchAtoms, growData->storedR);
+        random, context, component, scratchMolecule, scratchAtoms, growData->storedR);
     if (!retraceData) continue;
 
     // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail

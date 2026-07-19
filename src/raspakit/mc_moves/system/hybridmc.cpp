@@ -58,11 +58,11 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       if (component.isSemiFlexible())
       {
         std::span<const Atom> span = std::span(&moleculeAtomPositions[atomIndex], molecule.numberOfAtoms);
-        for (std::size_t g = 0; g != component.groups.size(); ++g)
+        for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
         {
-          if (component.groups[g].rigid)
+          if (component.fragmentGraph.fragments[g].isRigidBody())
           {
-            groupData.push_back(component.deriveGroupState(g, span));
+            groupData.push_back(component.deriveFragmentState(g, span));
           }
         }
       }

@@ -261,8 +261,8 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
                                             system.interpolationGrids, system.externalFieldInterpolationGrid,
                                             system.framework, system.spanOfFrameworkAtoms(), background, system.beta,
                                             cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
-        growData = CBMC::growMoleculeSwapInsertion(random, growContext, component, componentId, component.growType,
-                                                   selectedMolecule, scaling, dUdlambdaGroupId, isFractional);
+        growData = CBMC::growMoleculeSwapInsertion(random, growContext, component, componentId, selectedMolecule,
+                                                   scaling, dUdlambdaGroupId, isFractional);
 
         if (growData && system.forceField.useDualCutOff)
         {
@@ -383,8 +383,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
                                              cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
       try
       {
-        retraceData =
-            CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, component.growType, moleculeAtoms);
+        retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, moleculeAtoms);
       }
       catch (const std::runtime_error&)
       {

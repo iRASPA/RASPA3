@@ -26,6 +26,15 @@ import component;
 import cbmc_chain_data;
 import interpolation_energy_grid;
 
+// Whether a component is grown as one rigid whole molecule: its fragment graph is a single rigid-body
+// fragment covering every atom (the common adsorbate case). Everything else -- fully flexible and
+// semi-flexible molecules -- is grown with the fragment-at-a-time operator engine. Single-atom
+// molecules are handled by the callers before dispatch.
+static bool growsAsRigidWholeMolecule(const Component &component)
+{
+  return component.fragmentGraph.fragments.size() == 1 && component.fragmentGraph.fragments.front().isRigidBody();
+}
+
 // Insertion:
 // Insertion means growing a new molecule, and therefore the atrributes of the atoms are
 // taken from 'component.atoms'. The parameters 'scaling', 'groupId',
@@ -33,8 +42,7 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeSwapInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    Component::GrowType growType, std::size_t selectedMolecule, double scaling, std::uint8_t groupId,
-    bool isFractional) noexcept
+    std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];
@@ -67,21 +75,17 @@ import interpolation_energy_grid;
   }
 
   std::optional<ChainGrowData> chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData =
-          CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                     {component.startingBead})
-                      : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                 {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                                   {component.startingBead})
+                    : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                               {component.startingBead});
   }
 
   if (!chainData) return std::nullopt;
@@ -92,7 +96,6 @@ import interpolation_energy_grid;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculeSwapDeletion(RandomNumber &random, const GrowContext &context,
                                                                  const Component &component,
-                                                                 Component::GrowType growType,
                                                                  std::span<Atom> molecule_atoms) noexcept
 {
   std::size_t startingBead = component.startingBead;
@@ -106,29 +109,29 @@ import interpolation_energy_grid;
   }
 
   ChainRetraceData chainData;
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                       {component.startingBead})
-                      : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                   {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                     {component.startingBead})
+                    : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                 {component.startingBead});
   }
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
                           firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeReinsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    Component::GrowType growType, Molecule &molecule, std::span<Atom> molecule_atoms) noexcept
+[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeReinsertion(RandomNumber &random,
+                                                                         const GrowContext &context,
+                                                                         Component &component,
+                                                                         std::size_t selectedComponent,
+                                                                         Molecule &molecule,
+                                                                         std::span<Atom> molecule_atoms) noexcept
 {
   std::size_t startingBead = component.startingBead;
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
@@ -165,21 +168,18 @@ import interpolation_energy_grid;
   }
 
   std::optional<ChainGrowData> chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, atoms,
-                                                        skipBackgroundMolecule);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::growRecoilGrowthMoleculeChainInsertion(
-                            random, context, component, atoms, {component.startingBead}, skipBackgroundMolecule)
-                      : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, atoms,
-                                                                 {component.startingBead}, skipBackgroundMolecule);
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, atoms,
+                                                      skipBackgroundMolecule);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, atoms,
+                                                                   {component.startingBead}, skipBackgroundMolecule)
+                    : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, atoms,
+                                                               {component.startingBead}, skipBackgroundMolecule);
   }
   if (!chainData) return std::nullopt;
 
@@ -192,8 +192,8 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] std::optional<ChainRetraceData> CBMC::retraceMoleculeReinsertion(
-    RandomNumber &random, const GrowContext &context, const Component &component, Component::GrowType growType,
-    [[maybe_unused]] Molecule &molecule, std::span<Atom> molecule_atoms, double storedR) noexcept
+    RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
+    std::span<Atom> molecule_atoms, double storedR) noexcept
 {
   std::size_t startingBead = component.startingBead;
 
@@ -211,20 +211,17 @@ import interpolation_energy_grid;
   }
 
   ChainRetraceData chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                       {component.startingBead})
-                      : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                   {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                     {component.startingBead})
+                    : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                 {component.startingBead});
   }
 
   return ChainRetraceData(firstBeadData->energies + chainData.energies,
@@ -233,28 +230,24 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePartialReinsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    Component::GrowType growType, Molecule &molecule, std::span<Atom> moleculeAtoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+    Molecule &molecule, std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
 {
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(moleculeAtoms.front().moleculeId);
 
   std::optional<ChainGrowData> chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, moleculeAtoms,
-                                                        skipBackgroundMolecule);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::growRecoilGrowthMoleculeChainInsertion(
-                            random, context, component, moleculeAtoms, beadsAlreadyPlaced, skipBackgroundMolecule)
-                      : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, moleculeAtoms,
-                                                                 beadsAlreadyPlaced, skipBackgroundMolecule);
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, moleculeAtoms,
+                                                      skipBackgroundMolecule);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, moleculeAtoms,
+                                                                   beadsAlreadyPlaced, skipBackgroundMolecule)
+                    : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, moleculeAtoms,
+                                                               beadsAlreadyPlaced, skipBackgroundMolecule);
   }
 
   if (!chainData) return std::nullopt;
@@ -267,25 +260,21 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculePartialReinsertion(
-    RandomNumber &random, const GrowContext &context, const Component &component, Component::GrowType growType,
-    [[maybe_unused]] Molecule &molecule, std::span<Atom> moleculeAtoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+    RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
+    std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
 {
   ChainRetraceData chainData;
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, moleculeAtoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, moleculeAtoms,
-                                                                       beadsAlreadyPlaced)
-                      : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, moleculeAtoms,
-                                                                   beadsAlreadyPlaced);
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, moleculeAtoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, moleculeAtoms,
+                                                                     beadsAlreadyPlaced)
+                    : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, moleculeAtoms,
+                                                                 beadsAlreadyPlaced);
   }
 
   return ChainRetraceData(chainData.energies, chainData.RosenbluthWeight, 0.0);
@@ -293,8 +282,8 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    Component::GrowType growType, std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling,
-    std::uint8_t groupId, bool isFractional, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling, std::uint8_t groupId, bool isFractional,
+    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];
@@ -329,21 +318,18 @@ import interpolation_energy_grid;
   }
 
   std::optional<ChainGrowData> chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms,
-                                                        skipBackgroundMolecule);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                     {component.startingBead}, skipBackgroundMolecule)
-                      : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                 {component.startingBead}, skipBackgroundMolecule);
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms,
+                                                      skipBackgroundMolecule);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                                   {component.startingBead}, skipBackgroundMolecule)
+                    : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                               {component.startingBead}, skipBackgroundMolecule);
   }
 
   if (!chainData) return std::nullopt;
@@ -354,7 +340,7 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculeIdentityChangeDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component, Component::GrowType growType,
+    RandomNumber &random, const GrowContext &context, const Component &component,
     std::span<Atom> molecule_atoms) noexcept
 {
   std::size_t startingBead = component.startingBead;
@@ -369,20 +355,17 @@ import interpolation_energy_grid;
   }
 
   ChainRetraceData chainData;
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                       {component.startingBead})
-                      : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                   {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                     {component.startingBead})
+                    : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                 {component.startingBead});
   }
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
@@ -391,8 +374,8 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePairSecondSwapInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    Component::GrowType growType, std::size_t selectedMolecule, double3 fixedFirstBeadPosition, double scaling,
-    std::uint8_t groupId, bool isFractional) noexcept
+    std::size_t selectedMolecule, double3 fixedFirstBeadPosition, double scaling, std::uint8_t groupId,
+    bool isFractional) noexcept
 {
   std::size_t startingBead = component.startingBead;
   Atom firstBead = component.atoms[startingBead];
@@ -425,21 +408,17 @@ import interpolation_energy_grid;
   }
 
   std::optional<ChainGrowData> chainData{};
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData =
-          CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                     {component.startingBead})
-                      : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                                 {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::growRigidMoleculeChainInsertion(random, context, component, selectedComponent, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                                   {component.startingBead})
+                    : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
+                                                               {component.startingBead});
   }
 
   if (!chainData) return std::nullopt;
@@ -450,7 +429,6 @@ import interpolation_energy_grid;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculePairSecondSwapDeletion(const GrowContext &context,
                                                                            const Component &component,
-                                                                           Component::GrowType growType,
                                                                            std::span<Atom> molecule_atoms) noexcept
 {
   std::size_t startingBead = component.startingBead;
@@ -465,20 +443,17 @@ import interpolation_energy_grid;
 
   RandomNumber random{std::nullopt};
   ChainRetraceData chainData;
-  switch (growType)
+  if (growsAsRigidWholeMolecule(component))
   {
-    case Component::GrowType::Rigid:
-      chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
-      break;
-    case Component::GrowType::Flexible:
-      chainData = context.forceField.useRecoilGrowth
-                      ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                       {component.startingBead})
-                      : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                                   {component.startingBead});
-      break;
-    default:
-      std::unreachable();
+    chainData = CBMC::retraceRigidMoleculeChainDeletion(random, context, component, molecule_atoms);
+  }
+  else
+  {
+    chainData = context.forceField.useRecoilGrowth
+                    ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                     {component.startingBead})
+                    : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
+                                                                 {component.startingBead});
   }
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,

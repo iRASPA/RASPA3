@@ -2,7 +2,6 @@
   "CriticalTemperature" : 33.19,
   "CriticalPressure" : 1315000.0,
   "AcentricFactor" : -0.214,
-  "Type" : "rigid",
   "pseudoAtoms" :
     [
       ["H_h2", [0.0, 0.0, 0.0]]

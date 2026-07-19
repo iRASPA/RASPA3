@@ -111,6 +111,16 @@ bool usesConventionalReactionGrowth(const MCMoveProbabilities& probabilities)
          probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0;
 }
 
+// Turn a flexible component into a whole-molecule rigid body: the fragment graph collapses to a
+// single rigid fragment, which makes the CBMC engine use the rigid whole-molecule growth path.
+void makeComponentRigid(Component& component)
+{
+  component.rigid = true;
+  std::vector<std::size_t> wholeMolecule(component.definedAtoms.size());
+  std::iota(wholeMolecule.begin(), wholeMolecule.end(), std::size_t{0});
+  component.buildFragmentGraph({wholeMolecule});
+}
+
 void checkEnergyDrift(System& s)
 {
   constexpr double tolerance = 1e-6;
@@ -154,10 +164,8 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
   if (usesConventionalReactionGrowth(systemProbabilities))
   {
-    propane.growType = Component::GrowType::Rigid;
-    propane.rigid = true;
-    butane.growType = Component::GrowType::Rigid;
-    butane.rigid = true;
+    makeComponentRigid(propane);
+    makeComponentRigid(butane);
   }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
@@ -241,10 +249,8 @@ System makeMixedParallelSerialReactionSystem(const MCMoveProbabilities& systemPr
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
   if (usesConventionalReactionGrowth(systemProbabilities))
   {
-    propane.growType = Component::GrowType::Rigid;
-    propane.rigid = true;
-    butane.growType = Component::GrowType::Rigid;
-    butane.rigid = true;
+    makeComponentRigid(propane);
+    makeComponentRigid(butane);
   }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
@@ -289,10 +295,8 @@ System makeZeoliteMultiComponentReactionSystem(const MCMoveProbabilities& system
   Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
   if (usesConventionalReactionGrowth(systemProbabilities))
   {
-    propane.growType = Component::GrowType::Rigid;
-    propane.rigid = true;
-    butane.growType = Component::GrowType::Rigid;
-    butane.rigid = true;
+    makeComponentRigid(propane);
+    makeComponentRigid(butane);
   }
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
@@ -374,7 +378,7 @@ TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_allows_conventional_ideal
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
   systemProbabilities.setProbability(Move::Types::ReactionCBCFCMC, 1.0);
   System system = makePropaneButaneReactionSystem(systemProbabilities);
-  ASSERT_EQ(system.components[0].growType, Component::GrowType::Flexible);
+  ASSERT_FALSE(system.components[0].rigid);
 
   RandomNumber conventionalRandom(42);
   RandomNumber cbmcRandom(42);

@@ -1,0 +1,30 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
+    }
+  ]
+}

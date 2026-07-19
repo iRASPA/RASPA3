@@ -137,9 +137,9 @@ double3x3 computeMolecularKineticVirial(const System& system)
       // Semi-flexible molecule: rigid groups contribute their center-of-mass momentum flux,
       // flexible atoms contribute individually (matching the barostat coupling).
       std::size_t rigidRank = 0;
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           add(group.mass, groupData[groupIndex + rigidRank].velocity);
           ++rigidRank;
@@ -147,11 +147,11 @@ double3x3 computeMolecularKineticVirial(const System& system)
       }
       for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
           add(system.forceField.pseudoAtoms[moleculeAtoms[atomIndex + i].type].mass,
               moleculeDynamics[atomIndex + i].velocity);
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else
     {

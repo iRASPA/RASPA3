@@ -52,8 +52,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType growType = component.growType;
-
   const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
@@ -62,7 +60,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
+      random, growContext, component, selectedComponent, selectedMolecule, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move

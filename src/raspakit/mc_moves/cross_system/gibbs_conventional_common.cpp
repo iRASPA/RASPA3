@@ -484,7 +484,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       if (useCBMC)
       {
         trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(random, context, component, selectedComponent,
-                                                           component.growType, system.numberOfMolecules(), lambdaNew,
+                                                           system.numberOfMolecules(), lambdaNew,
                                                            component.lambdaGibbs.dUdlambdaGroupId, true);
         if (!trial.cbmcInsert.has_value() || system.insideBlockedPockets(component, trial.cbmcInsert->atoms))
         {
@@ -541,8 +541,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     if (useCBMC)
     {
       std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
-      ChainRetraceData retraceData =
-          CBMC::retraceMoleculeSwapDeletion(random, context, component, component.growType, selectedMolecule);
+      ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(random, context, component, selectedMolecule);
 
       if (useDualCutOff)
       {

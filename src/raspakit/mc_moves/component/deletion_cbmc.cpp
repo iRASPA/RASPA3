@@ -56,8 +56,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
     double cutOffCoulomb =
         system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-    Component::GrowType growType = component.growType;
-
     const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
                                            system.framework, system.spanOfFrameworkAtoms(),
@@ -67,7 +65,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Retrace the molecule for the swap deletion using CBMC algorithm
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-        random, retraceContext, system.components[selectedComponent], growType, molecule);
+        random, retraceContext, system.components[selectedComponent], molecule);
     time_end = std::chrono::steady_clock::now();
 
     // Update the CPU time statistics for the non-Ewald part of the move

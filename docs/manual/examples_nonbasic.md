@@ -911,15 +911,20 @@ Component 4 [23-methylbutane]
 
 #### Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)<a name="Example_nonbasic_17"></a>
 
-This example computes the competitive adsorption of an equimolar mixture of 1,2-, 1,3-, and 1,4-dimethylcyclohexane in siliceous zeolite Beta (`BEA`) at 433 K and a total pressure of 1 bar. The simulation uses a \f$2 \times 2 \times 1\f$ supercell of the polymorphic Beta framework. Each isomer is a fully flexible molecule built from a `"Cycle"` group (the six-membered ring, with two `CH_c` methine beads carrying the methyls) and two flexible `CH3` tails. During grand-canonical insertion, deletion, reinsertion, and identity-change moves the ring is grown with ring-closure configurational-bias Monte Carlo (the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo that keeps the ring closed) and the two methyl groups are then grown off the closed ring with the standard coupled-decoupled CBMC scheme.
+This example computes the competitive adsorption of an equimolar mixture of 1,2-, 1,3-, and 1,4-dimethylcyclohexane in siliceous zeolite Beta (`BEA`) at 433 K and a total pressure of 1 bar. The simulation uses a \f$2 \times 2 \times 1\f$ supercell of the polymorphic Beta framework. Each isomer is a fully flexible molecule: a six-membered ring (with two `CH_c` methine beads carrying the methyls) and two flexible `CH3` tails. The ring needs no declaration — it is inferred from the cycle in the `"Connectivity"` bond graph. During grand-canonical insertion, deletion, reinsertion, and identity-change moves the ring is grown with ring-closure configurational-bias Monte Carlo (the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo that keeps the ring closed) and the two methyl groups are then grown off the closed ring with the standard coupled-decoupled CBMC scheme.
 
-The 1,2-isomer molecule file (the 1,3- and 1,4-isomers differ only in the position of the second methine and methyl):
+The 1,2-isomer connectivity (the 1,3- and 1,4-isomers differ only in the position of the second methine and methyl):
 
 ```json
-  "Groups" : [
-    { "Type" : "Cycle",    "Atoms" : [0, 1, 2, 3, 4, 5] },
-    { "Type" : "Flexible", "Atoms" : [6] },
-    { "Type" : "Flexible", "Atoms" : [7] }
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0],
+    [0, 6],
+    [1, 7]
   ]
 ```
 

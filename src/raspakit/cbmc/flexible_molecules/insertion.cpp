@@ -17,20 +17,17 @@ import energy_status;
 import cbmc_first_bead_data;
 import cbmc_chain_data;
 import cbmc_util;
-import cbmc_multiple_first_bead;
 import cbmc_interactions;
 import cbmc_growth_context;
-import cbmc_generate_trialorientations_mc;
 import forcefield;
 import running_energy;
 import framework;
-import component;
 import interpolation_energy_grid;
 import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
-import cbmc_segments;
-import cbmc_ring_closure;
+import cbmc_growth_plan;
+import cbmc_operators;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
@@ -39,154 +36,31 @@ import cbmc_ring_closure;
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
 
-  std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
   double chain_rosenbluth_weight = 1.0;
-  std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
   RunningEnergy chain_external_energies{};
 
-  // Deterministic, group-aware growth sequence (rigid groups are grown as one rigid-body segment).
-  std::vector<CBMC::GrowSegment> segments = CBMC::buildGrowSegments(component, beadsAlreadyPlaced);
+  // Deterministic growth plan over the fragment graph (flexible beads, hinged rigid bodies, and
+  // ring-closure of cyclic clusters), shared with the retrace so grow and retrace are reversible.
+  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(component, beadsAlreadyPlaced);
 
-  for (const CBMC::GrowSegment &segment : segments)
+  for (const CBMC::GrowStep &step : plan)
   {
-    const std::optional<std::size_t> previous_bead = segment.previousBead;
-    const std::size_t current_bead = segment.currentBead;
-    const std::vector<std::size_t> &nextBeads = segment.nextBeads;
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials = segment.intra;
+    const std::vector<std::size_t> &nextBeads = step.nextBeads;
+    const Potentials::IntraMolecularPotentials &intra = step.intra;
 
-    std::fill(RosenBluthWeightTorsion.begin(), RosenBluthWeightTorsion.end(), 1.0);
+    // Generate all trial directions for this step (the operator engine handles the seed / attach /
+    // ring-closure cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
+    std::vector<CBMC::StepTrial> stepTrials =
+        CBMC::generateGrowTrials(random, forceField, beta, component, chain_atoms, step, forceField.numberOfTrialDirections);
 
-    if (segment.rigidUnit)
+    std::vector<std::vector<Atom>> trialPositions(forceField.numberOfTrialDirections);
+    std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
+    for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
     {
-      // Case: growing a rigid group as a single rigid body hinged on the (already-placed) anchor,
-      // with the same coupled-decoupled scheme as flexible beads: the junction bends are sampled by
-      // a small Metropolis MC over the body tilt (no weight), the spin about the junction bond is
-      // biased by the crossing torsions with a Rosenbluth selection (torsion weight).
-      std::vector<Atom> trial_orientations = CBMC::generateRigidUnitOrientationMonteCarloScheme(
-          random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead, current_bead,
-          nextBeads, intraMolecularPotentials);
-
-      if (previous_bead.has_value())
-      {
-        double3 last_bond_vector =
-            (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
-
-        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
-        {
-          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, trial_orientations,
-              previous_bead.value(), current_bead, nextBeads, last_bond_vector, intraMolecularPotentials, false);
-
-          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
-          trialPositions[i] = torsion.positions;
-        }
-      }
-      else
-      {
-        // Seed group: no junction terms exist yet, every orientation is equally likely.
-        trialPositions[0] = trial_orientations;
-        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
-        {
-          trialPositions[i] = CBMC::generateRigidUnitOrientationMonteCarloScheme(
-              random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead,
-              current_bead, nextBeads, intraMolecularPotentials);
-        }
-      }
-    }
-    else if (segment.ringUnit)
-    {
-      // Case: growing a flexible ring with ring-closure CBMC. The internal ring conformation is
-      // sampled from its Boltzmann distribution by an internal Monte-Carlo (no Rosenbluth weight, the
-      // ring is kept closed by the closure bond); the ring is then placed with the same
-      // coupled-decoupled orientational bias as a rigid unit: the junction (tilt) bends are sampled by
-      // the conformational Monte-Carlo, and the spin about the junction bond is biased by the
-      // junction-crossing torsions and bends through the torsion Rosenbluth step.
-      std::vector<Atom> base_conformation = CBMC::generateRingConformationMonteCarloScheme(
-          random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chain_atoms, previous_bead, current_bead,
-          nextBeads, intraMolecularPotentials);
-
-      if (previous_bead.has_value())
-      {
-        // Restrict the torsion step to the junction-crossing terms so the internal ring torsions
-        // (already sampled by the conformational Monte-Carlo) are not weighted a second time.
-        Potentials::IntraMolecularPotentials spinPotentials =
-            CBMC::ringSpinPotentials(intraMolecularPotentials, current_bead, nextBeads);
-
-        double3 last_bond_vector =
-            (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
-
-        for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
-        {
-          CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-              random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, base_conformation,
-              previous_bead.value(), current_bead, nextBeads, last_bond_vector, spinPotentials, false);
-
-          RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
-          trialPositions[i] = torsion.positions;
-        }
-      }
-      else
-      {
-        // Seed ring: no junction terms exist yet, every orientation is equally likely. One internal
-        // conformation is sampled from the Boltzmann distribution and the trial directions are random
-        // rigid rotations of it (a rigid rotation preserves the internal ring geometry), exactly the
-        // orientational bias used for a rigid fragment.
-        trialPositions[0] = base_conformation;
-        for (std::size_t i = 1; i != forceField.numberOfTrialDirections; ++i)
-        {
-          trialPositions[i] =
-              CBMC::randomlyOrientRing(random, base_conformation, chain_atoms[current_bead].position);
-        }
-      }
-    }
-    else if (!previous_bead.has_value())
-    {
-      // Case: growing a single bond with no previous beads
-      //       for example: dimer, or starting in the middle of a linear chain
-
-      if (intraMolecularPotentials.bonds.size() != 1)
-      {
-        throw std::runtime_error(
-            std::format("[CBMC]: multiple bonds detected in 'growFlexibleMoleculeChainInsertion'\n"));
-      }
-
-      const BondPotential bond = intraMolecularPotentials.bonds.front();
-
-      for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
-      {
-        double bond_length = bond.generateBondLength(random, beta);
-        double3 unit_vector = random.randomVectorOnUnitSphere();
-
-        Atom trial_atom = chain_atoms[nextBeads[0]];
-        trial_atom.position = chain_atoms[current_bead].position + bond_length * unit_vector;
-
-        trialPositions[i] = {trial_atom};
-      }
-    }
-    else
-    {
-      // Case: growing a single or multiple bonds with a previous bead present
-
-      std::vector<Atom> trial_orientations =
-          generateTrialOrientationsMonteCarloScheme(random, forceField.numberOfTrialMovesPerOpenBead, beta, 
-                                                    component, chain_atoms, previous_bead.value(),
-                                                    current_bead, nextBeads, intraMolecularPotentials);
-
-      // Rotate around the last bond-vector to obtain the other trial-orientations
-      double3 last_bond_vector =
-          (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
-
-      for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
-      {
-        CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-            random, forceField.numberOfTorsionTrialDirections, beta, chain_atoms, trial_orientations,
-            previous_bead.value(), current_bead, nextBeads, last_bond_vector, intraMolecularPotentials, false);
-
-        RosenBluthWeightTorsion[i] = torsion.rosenbluthWeight;
-        trialPositions[i] = torsion.positions;
-      }
+      trialPositions[i] = stepTrials[i].positions;
+      RosenBluthWeightTorsion[i] = stepTrials[i].torsionWeight;
     }
 
     // Compute the external-energies for the next-beads
@@ -201,11 +75,9 @@ import cbmc_ring_closure;
     {
       for (std::size_t k = 0; k != external_positions.size(); ++k)
       {
-        std::size_t index = nextBeads[k];
-        chain_atoms[index] = external_positions[k];
+        chain_atoms[nextBeads[k]] = external_positions[k];
       }
-
-      external_energy += intraMolecularPotentials.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
+      external_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
     }
 
     // Select based on the external energy plus the intramolecular non-bonded energy
@@ -229,24 +101,20 @@ import cbmc_ring_closure;
 
     chain_external_energies += selectedTrial.energy;
 
-    // Add the selected atoms
+    // Fold the internal terms whose atoms are all placed by this step, but which are not sampled by
+    // the growth scheme (Urey-Bradley, inversion/out-of-plane bend, improper torsion, cross-terms),
+    // into this step's Rosenbluth weight instead of a single end-of-growth correction.
     for (std::size_t i = 0; i != nextBeads.size(); ++i)
     {
-      std::size_t index = nextBeads[i];
-      chain_atoms[index] = selectedTrial.positions[i];
+      chain_atoms[nextBeads[i]] = selectedTrial.positions[i];
     }
+    RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
+    chain_rosenbluth_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+    if (chain_rosenbluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
   }
 
-  // Recompute all the internal interactions (including the cross-terms) for the returned energy
+  // Recompute all the internal interactions (including the cross-terms) for the returned energy.
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
-
-  // Only bond, bend, and torsion are taken into account during the growth (intra van der Waals and
-  // Coulomb enter through the selection of the beads). Correct the Rosenbluth weight with the
-  // Boltzmann factor of the remaining internal interactions (Urey-Bradley, inversion-bend,
-  // out-of-plane-bend, improper torsion, and the cross-terms).
-  RunningEnergy unsampled_internal_energies =
-      component.intraMolecularPotentials.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-  chain_rosenbluth_weight *= std::exp(-beta * unsampled_internal_energies.potentialEnergy());
 
   // Copy this configuration so that it can be used as a starting point
   component.grownAtoms = chain_atoms;

@@ -43,9 +43,9 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       // flexible atoms.
       std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           const GroupState& state = groupData[groupIndex + rigidRank];
           energy += 0.5 * group.mass * double3::dot(state.velocity, state.velocity);
@@ -54,13 +54,13 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       }
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           double mass = component.definedAtoms[i].second;
           energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else if (component.rigid)
     {
@@ -136,9 +136,9 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
       if (!groupData.empty())
       {
         std::size_t rigidRank{};
-        for (const MoleculeGroup& group : component.groups)
+        for (const Fragment& group : component.fragmentGraph.fragments)
         {
-          if (group.rigid)
+          if (group.isRigidBody())
           {
             const GroupState& state = groupData[groupIndex + rigidRank];
             energy += rotationalEnergy(state.orientationMomentum, state.orientation, group.inertiaVector,
@@ -146,7 +146,7 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
             ++rigidRank;
           }
         }
-        groupIndex += component.numberOfRigidGroups();
+        groupIndex += component.numberOfRigidFragments();
       }
       continue;
     }

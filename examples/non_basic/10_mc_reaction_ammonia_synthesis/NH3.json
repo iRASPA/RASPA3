@@ -2,7 +2,6 @@
   "CriticalTemperature" : 405.5,
   "CriticalPressure" : 11280000.0,
   "AcentricFactor" : 0.253,
-  "Type" : "rigid",
   "pseudoAtoms" :
     [
       ["N_NH3", [-3.1570495795, 0.3138892474, 0.0071127582]],

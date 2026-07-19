@@ -100,7 +100,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random, growContextA, componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
+      random, growContextA, componentA, selectedComponent, selectedMoleculeA, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -139,7 +139,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random, growContextB, componentBRef, componentB, componentBRef.growType, selectedMoleculeB,
+      random, growContextB, componentBRef, componentB, selectedMoleculeB,
       fixedFirstBeadPositionB, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -376,7 +376,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random, growContextA, componentA, selectedComponent, componentA.growType, selectedMoleculeA, 1.0, false, false);
+      random, growContextA, componentA, selectedComponent, selectedMoleculeA, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -415,7 +415,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random, growContextB, componentBRef, componentB, componentBRef.growType, selectedMoleculeB,
+      random, growContextB, componentBRef, componentB, selectedMoleculeB,
       fixedFirstBeadPositionB, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);

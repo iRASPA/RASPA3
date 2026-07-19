@@ -1,0 +1,16 @@
+{
+  "Type": "Flexible",
+  "Groups": [
+    { "Type": "Fixed", "Atoms": [0] },
+    { "Type": "Flexible", "Atoms": [1, 2] }
+  ],
+  "ExcludeIntra12Interactions": true,
+  "ExcludeIntra13Interactions": true,
+  "Bonds": [
+    [["C1", "C2"], "HARMONIC", [50000.0, 1.5]],
+    [["C2", "C3"], "HARMONIC", [50000.0, 1.5]]
+  ],
+  "Bends": [
+    [["C1", "C2", "C3"], "HARMONIC", [20000.0, 180.0]]
+  ]
+}

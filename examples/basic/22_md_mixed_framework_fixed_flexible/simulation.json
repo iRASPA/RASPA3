@@ -1,0 +1,21 @@
+{
+  "SimulationType": "MolecularDynamics",
+  "NumberOfProductionCycles": 1000,
+  "NumberOfInitializationCycles": 0,
+  "NumberOfEquilibrationCycles": 200,
+  "PrintEvery": 100,
+
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "chain",
+      "FrameworkDefinition": "framework",
+      "FrameworkType": "Flexible",
+      "NumberOfUnitCells": [1, 1, 1],
+      "ChargeMethod": "None",
+      "Ensemble": "NVT",
+      "TimeStep": 0.0005,
+      "ExternalTemperature": 300.0
+    }
+  ]
+}

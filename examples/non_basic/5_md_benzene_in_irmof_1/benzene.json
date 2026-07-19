@@ -2,7 +2,6 @@
   "CriticalTemperature" : 562.05,
   "CriticalPressure" : 4894000.0,
   "AcentricFactor" : 0.2092,
-  "Type" : "rigid",
   "pseudoAtoms" : 
     [
       ["C_benz", [ 0.00000000,   0.00000000,   0.00000000]],

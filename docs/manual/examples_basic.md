@@ -105,7 +105,6 @@ The methane molecule is defined in `methane.json`
   "CriticalTemperature" : 190.564,
   "CriticalPressure" : 4599200.0,
   "AcentricFactor" : 0.01142,
-  "Type" : "rigid",
   "pseudoAtoms" :
     [
       ["CH4",[0.0, 0.0, 0.0]]
@@ -211,7 +210,6 @@ with the N₂ defined as
   "CriticalTemperature": 126.192,
   "CriticalPressure": 3395800.0,
   "AcentricFactor": 0.0372,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["N_n2", [0.0, 0.0, 0.55]],
     ["N_com", [0.0, 0.0, 0.0]],
@@ -225,7 +223,6 @@ and CO₂ defined as
   "CriticalTemperature": 304.1282,
   "CriticalPressure": 7377300.0,
   "AcentricFactor": 0.22394,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["O_co2", [0.0, 0.0, 1.149]],
     ["C_co2", [0.0, 0.0, 0.0]],
@@ -451,7 +448,6 @@ The intra-molecular force field contains bond and bend terms for `propane.json`
   "CriticalTemperature" : 369.825,
   "CriticalPressure" : 4247660.0,
   "AcentricFactor" : 0.1524,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -482,7 +478,6 @@ and bond, bend, and torsion terms for `butane.json`
   "CriticalTemperature" : 425.125,
   "CriticalPressure" : 3796000.0,
   "AcentricFactor" : 0.201,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -1667,9 +1662,9 @@ H1   H      0.3802     0.228      0.8802      0.156
 
 This example computes probability histograms of the intra-molecular geometry (bond lengths, bend angles, and torsion angles) for 32 united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K. The histograms are written to the `molecule_properties` directory.
 
-The molecule is semi-flexible: the two aromatic 6-rings are defined as rigid groups (`"Groups"` in the molecule file), connected to each other by a flexible biphenyl bond that carries a twist torsion, and to the flexible ethyl tails by flexible junction bonds. Interactions entirely inside a rigid group are omitted (the ring geometry is fixed); only the junction bonds, bends, and torsions crossing a group boundary are defined and sampled during the CBMC growth. The rigid rings are grown as single rigid bodies hinged on their connecting atoms, with the junction bends sampled by an internal Monte-Carlo scheme and the spin about the junction bond biased by the crossing torsions.
+The molecule is semi-flexible: the two aromatic 6-rings are declared as rigid bodies (`"RigidBodies"` in the molecule file), connected to each other by a flexible biphenyl bond that carries a twist torsion, and to the flexible ethyl tails by flexible junction bonds. Interactions entirely inside a rigid body are omitted (the geometry of a rigid body is fixed); only the junction bonds, bends, and torsions crossing a rigid-body boundary are defined and sampled during the CBMC growth. The rigid rings are grown as single rigid bodies hinged on their connecting atoms, with the junction bends sampled by an internal Monte-Carlo scheme and the spin about the junction bond biased by the crossing torsions.
 
-The partial-reinsertion move regrows either an ethyl tail or a whole ring plus the far tail; the fixed-atom sets must always contain each rigid group either entirely or not at all.
+The partial-reinsertion move regrows either an ethyl tail or a whole ring plus the far tail; the fixed-atom sets must always contain each rigid body either entirely or not at all.
 
 ```json
 {
@@ -1703,14 +1698,12 @@ The partial-reinsertion move regrows either an ethyl tail or a whole ring plus t
 }
 ```
 
-The rigid and flexible sub-units are declared in the molecule file `diethyl-biphenyl.json`:
+The rigid sub-units are declared in the molecule file `diethyl-biphenyl.json`; every atom not listed in a rigid body is flexible:
 
 ```json
-  "Groups" : [
-    { "Type" : "Flexible", "Atoms" : [0, 1] },
-    { "Type" : "Rigid",    "Atoms" : [2, 3, 4, 5, 6, 7] },
-    { "Type" : "Rigid",    "Atoms" : [8, 9, 10, 11, 12, 13] },
-    { "Type" : "Flexible", "Atoms" : [14, 15] }
+  "RigidBodies" : [
+    [2, 3, 4, 5, 6, 7],
+    [8, 9, 10, 11, 12, 13]
   ]
 ```
 
@@ -1734,7 +1727,7 @@ coordinates are written to `output/minimization.s0.json`. A successful run ends 
 
 This example is the molecular-dynamics counterpart of example 16. It computes the same intra-molecular geometry histograms (bond lengths, bend angles, and torsion angles) using an NVT molecular dynamics simulation of 32 semi-flexible united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K.
 
-The molecule definition is identical to example 16: the two aromatic 6-rings are rigid groups, propagated in MD as rigid bodies (center-of-mass translation plus quaternion rotation), while the ethyl tails and the biphenyl bond are flexible and are integrated as Cartesian atoms. Only the junction bonds, bends, and torsions crossing a group boundary contribute to the intra-molecular forces; interactions entirely inside a rigid group are omitted. Comparing the histograms in `molecule_properties` against those of example 16 verifies that the CBMC sampling and the MD integration produce the same conformational distributions.
+The molecule definition is identical to example 16: the two aromatic 6-rings are rigid bodies, propagated in MD as rigid bodies (center-of-mass translation plus quaternion rotation), while the ethyl tails and the biphenyl bond are flexible and are integrated as Cartesian atoms. Only the junction bonds, bends, and torsions crossing a rigid-body boundary contribute to the intra-molecular forces; interactions entirely inside a rigid body are omitted. Comparing the histograms in `molecule_properties` against those of example 16 verifies that the CBMC sampling and the MD integration produce the same conformational distributions.
 
 ```json
 {
@@ -1771,13 +1764,18 @@ The molecule definition is identical to example 16: the two aromatic 6-rings are
 
 #### Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)<a name="Example_basic_20"></a>
 
-This example samples 30 fully flexible united-atom cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K. It demonstrates the `"Cycle"` group type, which grows a ring with Towhee-style ring-closure configurational-bias Monte Carlo.
+This example samples 30 fully flexible united-atom cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K. It demonstrates growing a flexible ring with ring-closure configurational-bias Monte Carlo.
 
-The molecule file declares the six ring beads as one cyclic group. A cyclic group is a fully flexible ring: unlike a rigid group, its internal bonds, bends, and torsions are kept and sampled during growth. During CBMC insertion, deletion, and reinsertion the whole ring is grown as a single ring-closure segment: the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo (which keeps the ring closed through the closure bond and carries no Rosenbluth weight, exactly like the flexible bond/bend Monte-Carlo), and the ring is then placed with the same coupled-decoupled orientational bias used for a rigid fragment. When a ring carries flexible tails, they are grown off the closed ring with the existing coupled-decoupled scheme.
+Rings need no declaration in the molecule file: they are inferred from cycles in the `"Connectivity"` bond graph. The internal bonds, bends, and torsions of a flexible ring are kept and sampled during growth. During CBMC insertion, deletion, and reinsertion the whole ring is grown as a single ring-closure step: the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo (which keeps the ring closed through the closure bond and carries no Rosenbluth weight, exactly like the flexible bond/bend Monte-Carlo), and the ring is then placed with the same coupled-decoupled orientational bias used for a rigid fragment. When a ring carries flexible tails, they are grown off the closed ring with the existing coupled-decoupled scheme.
 
 ```json
-  "Groups" : [
-    { "Type" : "Cycle", "Atoms" : [0, 1, 2, 3, 4, 5] }
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0]
   ],
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
@@ -1790,7 +1788,7 @@ The molecule file declares the six ring beads as one cyclic group. A cyclic grou
   ]
 ```
 
-A cyclic group must be a single simple cycle (every ring atom has exactly two neighbors inside the group); fused or bridged polycyclic systems are rejected with a clear error. Because a cyclic group requires its internal bonds, bends, and torsions to be sampled, use flexible (harmonic) bond and bend potentials rather than fixed lengths.
+Fused and bridged polycyclic systems are supported: all rings of a fused or bridged cluster are grown together as one unit, with every closure bond maintained during the internal Monte-Carlo sampling. Because ring bonds and bends are sampled during growth, use flexible (harmonic) bond and bend potentials rather than fixed lengths.
 
 Run from `examples/basic/20_mc_flexible_cyclohexane_in_box`:
 
@@ -1833,7 +1831,7 @@ raspa3
 
 #### Molecular Dynamics: flexible cyclohexane in box<a name="Example_basic_21"></a>
 
-This example is the molecular-dynamics counterpart of example 20: 30 fully flexible cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K, integrated with NVT dynamics. Because the molecule has no rigid group, every ring atom is integrated as a Cartesian atom under the ring bond, bend, and torsion potentials. Comparing the intra-molecular geometry histograms in `molecule_properties` against those of example 20 verifies that the ring-closure CBMC sampling and the MD integration produce the same ring conformational distributions.
+This example is the molecular-dynamics counterpart of example 20: 30 fully flexible cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K, integrated with NVT dynamics. Because the molecule has no rigid body, every ring atom is integrated as a Cartesian atom under the ring bond, bend, and torsion potentials. Comparing the intra-molecular geometry histograms in `molecule_properties` against those of example 20 verifies that the ring-closure CBMC sampling and the MD integration produce the same ring conformational distributions.
 
 ```json
 {

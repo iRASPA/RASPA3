@@ -10,7 +10,6 @@ R"({
   "CriticalTemperature" : 369.825,
   "CriticalPressure" : 4247660.0,
   "AcentricFactor" : 0.1524,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -41,7 +40,6 @@ R"({
   "CriticalTemperature" : 425.125,
   "CriticalPressure" : 3796000.0,
   "AcentricFactor" : 0.201,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -79,7 +77,6 @@ R"({
   "CriticalTemperature" : 305.32,
   "CriticalPressure" : 4872000.0,
   "AcentricFactor" : 0.099,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -103,7 +100,6 @@ R"({
   "CriticalTemperature": 304.1282,
   "CriticalPressure": 7377300.0,
   "AcentricFactor": 0.22394,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["O_co2", [0.0, 0.0, 1.149]],
     ["C_co2", [0.0, 0.0, 0.0]],
@@ -117,7 +113,6 @@ R"({
   "CriticalTemperature": 126.192,
   "CriticalPressure": 3395800.0,
   "AcentricFactor": 0.0372,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["N_n2", [0.0, 0.0, 0.55]],
     ["N_com", [0.0, 0.0, 0.0]],
@@ -209,7 +204,6 @@ R"({
   "CriticalTemperature" : 553.6,
   "CriticalPressure" : 4073000.0,
   "AcentricFactor" : 0.211,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH2_c", [1.465493, 0.000000, 0.236606]],
@@ -226,9 +220,6 @@ R"({
     [3, 4],
     [4, 5],
     [5, 0]
-  ],
-  "Groups" : [
-    { "Type" : "Cycle", "Atoms" : [0, 1, 2, 3, 4, 5] }
   ],
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
@@ -248,7 +239,6 @@ R"({
   "CriticalTemperature" : 469.7,
   "CriticalPressure" : 3370000.0,
   "AcentricFactor" : 0.251,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -263,10 +253,8 @@ R"({
     [2, 3],
     [3, 4]
   ],
-  "Groups" : [
-    { "Type" : "Flexible", "Atoms" : [0] },
-    { "Type" : "Rigid",    "Atoms" : [1, 2, 3] },
-    { "Type" : "Flexible", "Atoms" : [4] }
+  "RigidBodies" : [
+    [1, 2, 3]
   ],
   "Bonds" : [
     [["CH3", "CH2"], "HARMONIC", [96500.0, 1.54]],
@@ -289,7 +277,6 @@ R"({
   "CriticalTemperature" : 800.0,
   "CriticalPressure" : 3000000.0,
   "AcentricFactor" : 0.4,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3",   [0.0, 0.0, 0.0]],
@@ -328,11 +315,9 @@ R"({
     [11, 14],
     [14, 15]
   ],
-  "Groups" : [
-    { "Type" : "Flexible", "Atoms" : [0, 1] },
-    { "Type" : "Rigid",    "Atoms" : [2, 3, 4, 5, 6, 7] },
-    { "Type" : "Rigid",    "Atoms" : [8, 9, 10, 11, 12, 13] },
-    { "Type" : "Flexible", "Atoms" : [14, 15] }
+  "RigidBodies" : [
+    [2, 3, 4, 5, 6, 7],
+    [8, 9, 10, 11, 12, 13]
   ],
   "Bonds" : [
     [["CH3", "CH2"],  "HARMONIC", [96500.0, 1.54]],
@@ -360,12 +345,62 @@ R"({
 }
 )";
 
-inline constexpr std::string_view kBadFusedRingJson =
+// United-atom trans-decalin: two fused six-membered rings sharing the 0-1 bridgehead bond. The
+// reference geometry lies on a diamond lattice (all bonds 1.54 Angstrom, all bends 109.47 degrees),
+// so every ring starts in a perfect chair. One cyclic cluster of all ten beads with two closure
+// bonds; rings are inferred from the connectivity, no declaration needed.
+inline constexpr std::string_view kDecalinJson =
+R"({
+  "CriticalTemperature" : 687.0,
+  "CriticalPressure" : 3200000.0,
+  "AcentricFactor" : 0.286,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [0.978020, -0.088910, -0.444560]],
+      ["CH2_c", [0.088920, -0.978010, 0.444540]],
+      ["CH2_c", [-0.800180, -1.867110, -0.444560]],
+      ["CH2_c", [-1.689380, -0.978010, -1.333660]],
+      ["CH2_c", [-0.800180, -0.088910, -2.222760]],
+      ["CH2_c", [0.088920, 0.800190, -1.333660]],
+      ["CH2_c", [-0.800180, -0.088910, 1.333640]],
+      ["CH2_c", [0.088920, 0.800190, 2.222840]],
+      ["CH2_c", [0.978020, 1.689290, 1.333640]],
+      ["CH2_c", [1.867120, 0.800190, 0.444540]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [0, 5],
+    [0, 9],
+    [1, 2],
+    [1, 6],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [6, 7],
+    [7, 8],
+    [8, 9]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+// A fused pair of three-membered rings (bicyclobutane-like connectivity): two cycles sharing the
+// 0-2 edge. Under the fragment-graph model this is a valid molecule (one cyclic cluster with two
+// closure bonds) instead of a parse error.
+inline constexpr std::string_view kFusedRingJson =
 R"({
   "CriticalTemperature" : 553.6,
   "CriticalPressure" : 4073000.0,
   "AcentricFactor" : 0.211,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH2_c", [0.0, 0.0, 0.0]],
@@ -380,11 +415,102 @@ R"({
     [2, 3],
     [3, 0]
   ],
-  "Groups" : [
-    { "Type" : "Cycle", "Atoms" : [0, 1, 2, 3] }
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 60.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+// United-atom norbornane (bicyclo[2.2.1]heptane): two bridgehead beads (0 and 3) joined by three
+// bridges of two, two, and one bead. A bridged bicyclic is one cyclic cluster of all seven beads
+// with two closure bonds; like fused rings it needs no declaration.
+inline constexpr std::string_view kNorbornaneJson =
+R"({
+  "CriticalTemperature" : 638.0,
+  "CriticalPressure" : 3900000.0,
+  "AcentricFactor" : 0.195,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [1.116, 0.000, 0.325]],
+      ["CH2_c", [0.749, 1.250, -0.470]],
+      ["CH2_c", [-0.749, 1.250, -0.470]],
+      ["CH2_c", [-1.116, 0.000, 0.325]],
+      ["CH2_c", [-0.749, -1.250, -0.470]],
+      ["CH2_c", [0.749, -1.250, -0.470]],
+      ["CH2_c", [0.000, 0.000, 1.253]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0],
+    [0, 6],
+    [3, 6]
   ],
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+// United-atom methylcyclohexane: a six-membered flexible ring with one CH3 tail on bead 0. Grown as
+// a ring-closure step for the ring followed by an ordinary flexible attachment for the tail.
+inline constexpr std::string_view kMethylcyclohexaneJson =
+R"({
+  "CriticalTemperature" : 572.2,
+  "CriticalPressure" : 3470000.0,
+  "AcentricFactor" : 0.235,
+  "pseudoAtoms" :
+    [
+      ["CH_c",  [1.465493, 0.000000, 0.236606]],
+      ["CH2_c", [0.732747, 1.269154, -0.236606]],
+      ["CH2_c", [-0.732747, 1.269154, 0.236606]],
+      ["CH2_c", [-1.465493, 0.000000, -0.236606]],
+      ["CH2_c", [-0.732747, -1.269154, 0.236606]],
+      ["CH2_c", [0.732747, -1.269154, -0.236606]],
+      ["CH3",   [2.905493, 0.000000, 0.786606]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0],
+    [0, 6]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]],
+    [["CH_c", "CH2_c"],  "HARMONIC", [96500.0, 1.54]],
+    [["CH_c", "CH3"],    "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]],
+    [["CH2_c", "CH_c", "CH2_c"],  "HARMONIC", [62500.0, 114.0]],
+    [["CH_c", "CH2_c", "CH2_c"],  "HARMONIC", [62500.0, 114.0]],
+    [["CH3", "CH_c", "CH2_c"],    "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH_c", "CH2_c", "CH2_c", "CH2_c"],  "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH2_c", "CH_c", "CH2_c", "CH2_c"],  "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH3", "CH_c", "CH2_c", "CH2_c"],    "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
   ],
   "VanDerWaals" : "auto"
 }
@@ -395,7 +521,6 @@ R"({
   "CriticalTemperature" : 190.564,
   "CriticalPressure" : 4599200.0,
   "AcentricFactor" : 0.01142,
-  "Type" : "rigid",
   "pseudoAtoms" : 
     [
       ["CH4",[0.0, 0.0, 1.0]]

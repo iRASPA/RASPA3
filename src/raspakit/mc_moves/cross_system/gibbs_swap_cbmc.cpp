@@ -104,7 +104,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffMoleculeVDW;
   double cutOffCoulombA =
       systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffCoulomb;
-  Component::GrowType growType = componentA.growType;
 
   const CBMC::GrowContext growContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
                                       systemA.interpolationGrids, systemA.externalFieldInterpolationGrid,
@@ -114,7 +113,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, componentA, selectedComponent, growType, newMoleculeIndex, 1.0, false, false);
+      random, growContext, componentA, selectedComponent, newMoleculeIndex, 1.0, false, false);
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)
@@ -189,8 +188,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, componentB, growType,
-                                                                   molecule);
+  ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, componentB, molecule);
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for CBMC deletion (non-Ewald part)

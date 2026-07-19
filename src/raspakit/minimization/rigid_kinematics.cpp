@@ -126,9 +126,9 @@ Minimization::RigidDerivativeCache Minimization::RigidDerivativeCache::build(std
       cache._molecules[moleculeIndex].resize(molecule.numberOfAtoms);
       cache._bodyCentersOfMass[moleculeIndex].assign(molecule.numberOfAtoms, double3{});
       const std::span<const Atom> atoms = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-      for (const MoleculeGroup &group : component.groups)
+      for (const Fragment &group : component.fragmentGraph.fragments)
       {
-        if (!group.rigid)
+        if (!group.isRigidBody())
         {
           continue;
         }

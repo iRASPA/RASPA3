@@ -133,7 +133,7 @@ void System::initializeGroupData()
   std::size_t totalRigidGroups{};
   for (const Molecule& molecule : moleculeData)
   {
-    totalRigidGroups += components[molecule.componentId].numberOfRigidGroups();
+    totalRigidGroups += components[molecule.componentId].numberOfRigidFragments();
   }
   // When the layout is unchanged (e.g. entering production after equilibration, where the group states
   // are kept aligned across particle exchanges) the velocities and orientation momenta are preserved;
@@ -156,12 +156,12 @@ void System::initializeGroupData()
     {
       std::span<const Atom> span = atoms.subspan(atomIndex, molecule.numberOfAtoms);
       std::size_t rigidRank{};
-      for (std::size_t g = 0; g != component.groups.size(); ++g)
+      for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
       {
-        if (component.groups[g].rigid)
+        if (component.fragmentGraph.fragments[g].isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
-          GroupState derived = component.deriveGroupState(g, span);
+          GroupState derived = component.deriveFragmentState(g, span);
           if (preserveDynamics)
           {
             // q and -q describe the same rotation; keep the sign continuous with the stored
@@ -188,7 +188,7 @@ void System::initializeGroupData()
           ++rigidRank;
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     atomIndex += molecule.numberOfAtoms;
   }

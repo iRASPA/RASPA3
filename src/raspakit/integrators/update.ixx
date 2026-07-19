@@ -123,7 +123,7 @@ void initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule, std::s
  * \brief Initializes one rigid group's center-of-mass velocity and orientation momentum from the
  *        Boltzmann distribution at the given temperature.
  */
-void initializeGroupVelocity(RandomNumber& random, GroupState& state, const MoleculeGroup& group,
+void initializeGroupVelocity(RandomNumber& random, GroupState& state, const Fragment& group,
                              double temperature);
 
 void initializeFrameworkGroupVelocity(RandomNumber& random, GroupState& state, const FrameworkGroup& group,

@@ -972,8 +972,8 @@ void System::createParallelReactionFractionalMolecules()
                                   externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                   spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                   forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-                components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
-                reactantScaling, reaction.dUdlambdaGroup(true), true);
+                components[componentId], componentId, numberOfMolecules(), reactantScaling,
+                reaction.dUdlambdaGroup(true), true);
           }
           else
           {
@@ -1013,8 +1013,8 @@ void System::createParallelReactionFractionalMolecules()
                                   externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                   spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                   forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-                components[componentId], componentId, components[componentId].growType, numberOfMolecules(),
-                productScaling, reaction.dUdlambdaGroup(false), true);
+                components[componentId], componentId, numberOfMolecules(), productScaling,
+                reaction.dUdlambdaGroup(false), true);
           }
           else
           {
@@ -1088,8 +1088,8 @@ void System::createSerialReactionFractionalMolecules()
                                   externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
                                   spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
                                   forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
-                components[componentId], componentId, components[componentId].growType, numberOfMolecules(), 1.0,
-                reaction.lambda.dUdlambdaGroupId, true);
+                components[componentId], componentId, numberOfMolecules(), 1.0, reaction.lambda.dUdlambdaGroupId,
+                true);
           }
           else
           {

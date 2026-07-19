@@ -88,9 +88,6 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType newGrowType = newComponentData.growType;
-  Component::GrowType oldGrowType = oldComponentData.growType;
-
   const std::size_t oldGlobalMoleculeId =
       system.moleculeIndexOfComponent(oldComponent, selectedMoleculeOld);
   const std::size_t trialMoleculeId = system.numberOfMolecules();
@@ -104,7 +101,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random, growContext, newComponentData, newComponent, newGrowType, trialMoleculeId, oldStartingBead, 1.0, false,
+      random, growContext, newComponentData, newComponent, trialMoleculeId, oldStartingBead, 1.0, false,
       false, skipBackgroundMolecule);
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -144,7 +141,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
-      random, growContext, oldComponentData, oldGrowType, oldMoleculeAtoms);
+      random, growContext, oldComponentData, oldMoleculeAtoms);
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);

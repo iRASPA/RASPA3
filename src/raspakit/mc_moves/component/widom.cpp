@@ -48,8 +48,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType growType = component.growType;
-
   const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
@@ -58,7 +56,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, component, selectedComponent, growType, selectedMolecule, 1.0, false, false);
+      random, growContext, component, selectedComponent, selectedMolecule, 1.0, false, false);
   t2 = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);

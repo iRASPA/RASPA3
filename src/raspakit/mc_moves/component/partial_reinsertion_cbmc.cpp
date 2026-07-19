@@ -64,8 +64,6 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType growType = component.growType;
-
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
 
   const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
@@ -78,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
-      component, selectedComponent, growType, molecule, molecule_atoms, beads_already_placed);
+      component, selectedComponent, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::steady_clock::now();
 
   // Record CPU time taken for the non-Ewald part of the move.
@@ -112,7 +110,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
                         system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
                         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                         cutOffCoulomb},
-      component, growType, molecule, molecule_atoms, beads_already_placed);
+      component, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::steady_clock::now();
 
   // Record CPU time taken for the retracing step.

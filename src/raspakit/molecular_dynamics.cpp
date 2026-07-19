@@ -81,9 +81,9 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
       // Semi-flexible molecule: the barostat couples to the rigid-group center-of-mass velocities and
       // to the flexible-atom velocities; orientation momenta are not coupled to the cell.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
           state.velocity = matrix * state.velocity;
@@ -92,10 +92,10 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
       }
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
           moleculeDynamics[atomIndex + i].velocity = matrix * moleculeDynamics[atomIndex + i].velocity;
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else if (!component.rigid)
     {
@@ -148,9 +148,9 @@ void propagateCell(System& system, const double3x3& cellVelocity)
       // internal group geometry; the atoms are rebuilt from the GroupState afterwards) and the
       // flexible atoms individually.
       std::size_t rigidRank{};
-      for (const MoleculeGroup& group : component.groups)
+      for (const Fragment& group : component.fragmentGraph.fragments)
       {
-        if (group.rigid)
+        if (group.isRigidBody())
         {
           GroupState& state = groupData[groupIndex + rigidRank];
           positions.push_back(state.centerOfMassPosition);
@@ -161,14 +161,14 @@ void propagateCell(System& system, const double3x3& cellVelocity)
       }
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (!component.rigidGroupContaining(i).has_value())
+        if (!component.rigidFragmentContaining(i).has_value())
         {
           positions.push_back(moleculeAtoms[atomIndex + i].position);
           velocities.push_back(moleculeDynamics[atomIndex + i].velocity);
           targets.push_back(&moleculeAtoms[atomIndex + i].position);
         }
       }
-      groupIndex += component.numberOfRigidGroups();
+      groupIndex += component.numberOfRigidFragments();
     }
     else
     {
@@ -247,9 +247,9 @@ std::size_t groupDataOffsetOfMolecule(const System& system, std::size_t componen
   std::size_t offset{};
   for (std::size_t c = 0; c < componentId; ++c)
   {
-    offset += system.numberOfMoleculesPerComponent[c] * system.components[c].numberOfRigidGroups();
+    offset += system.numberOfMoleculesPerComponent[c] * system.components[c].numberOfRigidFragments();
   }
-  return offset + moleculeId * system.components[componentId].numberOfRigidGroups();
+  return offset + moleculeId * system.components[componentId].numberOfRigidFragments();
 }
 
 void refreshParticleNumberDependentState(RandomNumber& random, System& system, std::size_t selectedComponent,
@@ -259,13 +259,13 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 
   const Component& component = system.components[selectedComponent];
 
-  if (result == MC_Moves::ParticleExchangeResult::Deleted && component.numberOfRigidGroups() > 0)
+  if (result == MC_Moves::ParticleExchangeResult::Deleted && component.numberOfRigidFragments() > 0)
   {
     // drop the rigid-group states of the deleted molecule; the entries of the molecules behind it
     // shift down so that groupData stays aligned with the molecule layout
     const std::size_t offset = groupDataOffsetOfMolecule(system, selectedComponent, exchangedMolecule);
     const auto first = system.groupData.begin() + static_cast<std::ptrdiff_t>(offset);
-    system.groupData.erase(first, first + static_cast<std::ptrdiff_t>(component.numberOfRigidGroups()));
+    system.groupData.erase(first, first + static_cast<std::ptrdiff_t>(component.numberOfRigidFragments()));
   }
 
   if (result == MC_Moves::ParticleExchangeResult::Inserted)
@@ -283,13 +283,13 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
       // atoms carry no independent velocity (mirrors Integrators::initializeVelocities).
       std::span<Atom> atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
       std::vector<GroupState> states;
-      states.reserve(component.numberOfRigidGroups());
-      for (std::size_t g = 0; g != component.groups.size(); ++g)
+      states.reserve(component.numberOfRigidFragments());
+      for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
       {
-        if (component.groups[g].rigid)
+        if (component.fragmentGraph.fragments[g].isRigidBody())
         {
-          GroupState state = component.deriveGroupState(g, atoms);
-          Integrators::initializeGroupVelocity(random, state, component.groups[g], system.temperature);
+          GroupState state = component.deriveFragmentState(g, atoms);
+          Integrators::initializeGroupVelocity(random, state, component.fragmentGraph.fragments[g], system.temperature);
           states.push_back(state);
         }
       }
@@ -299,7 +299,7 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
-        if (component.rigidGroupContaining(i).has_value())
+        if (component.rigidFragmentContaining(i).has_value())
         {
           dynamics[i].velocity = double3(0.0, 0.0, 0.0);
           continue;

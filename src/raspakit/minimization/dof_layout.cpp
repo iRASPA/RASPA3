@@ -102,7 +102,7 @@ MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> molec
       // Flexible atoms carry Cartesian DOFs; each rigid group carries a single six-DOF block.
       for (std::size_t atom = 0; atom < molecule.numberOfAtoms; ++atom)
       {
-        if (component.rigidGroupContaining(atom).has_value())
+        if (component.rigidFragmentContaining(atom).has_value())
         {
           continue;
         }
@@ -112,10 +112,10 @@ MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> molec
           layout._flexibleAtomDof[offset] = static_cast<std::int32_t>(nextDof++);
         }
       }
-      for (std::size_t groupIndex = 0; groupIndex < component.groups.size(); ++groupIndex)
+      for (std::size_t groupIndex = 0; groupIndex < component.fragmentGraph.fragments.size(); ++groupIndex)
       {
-        const MoleculeGroup& group = component.groups[groupIndex];
-        if (!group.rigid)
+        const Fragment& group = component.fragmentGraph.fragments[groupIndex];
+        if (!group.isRigidBody())
         {
           continue;
         }
