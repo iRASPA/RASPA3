@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "irmof_fixtures.hpp"
+
 import std;
 
 import int3;
@@ -30,20 +33,6 @@ import mc_moves_probabilities;
 
 namespace
 {
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
-
-std::string readLocalFile(const std::filesystem::path &path)
-{
-  std::ifstream stream(path);
-  if (!stream)
-  {
-    throw std::runtime_error(std::format("Could not read '{}'", path.string()));
-  }
-  return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-}
 
 void printEnergyDecomposition(const RunningEnergy &energy, const std::string &label)
 {
@@ -73,23 +62,24 @@ void printEnergyDecomposition(const RunningEnergy &energy, const std::string &la
 
 TEST(energy_decomposition, CO2_in_IRMOF1_OMS_geometry)
 {
-  const std::filesystem::path exampleDir =
-      repositoryRoot() / "examples/basic/19_minimization_co2_in_irmof_1";
+  TemporaryDirectory fixtureDir;
+  fixtureDir.write("force_field.json", irmof_fixtures::kMinimizationForceFieldJson);
+  fixtureDir.write("CO2.json", irmof_fixtures::kCO2Json);
 
-  ForceField forceField = ForceField::readForceField(exampleDir.string(), "force_field.json").value();
+  ForceField forceField = ForceField::readForceField(fixtureDir.path().string(), "force_field.json").value();
   forceField.chargeMethod = ForceField::ChargeMethod::Ewald;
   forceField.useCharge = true;
 
-  const std::string cifContent = readLocalFile(exampleDir / "IRMOF-1.cif");
-  const auto cif = CIFReader::readCIFString(cifContent, forceField, CIFReader::UseChargesFrom::PseudoAtoms);
+  const auto cif = CIFReader::readCIFString(std::string(irmof_fixtures::kIrmof1Cif), forceField,
+                                            CIFReader::UseChargesFrom::PseudoAtoms);
   ASSERT_TRUE(cif.has_value());
   auto [simulationBox, spaceGroupHallNumber, definedAtoms, fractionalAtomsUnitCell] = cif.value();
   Framework framework = Framework(forceField, "IRMOF-1", simulationBox, spaceGroupHallNumber, definedAtoms,
                                   fractionalAtomsUnitCell, int3(1, 1, 1));
 
   MCMoveProbabilities probabilities;
-  Component co2(Component::Type::Adsorbate, 0, forceField, "CO2", (exampleDir / "CO2").string(), 5, 21, probabilities,
-                std::nullopt, false);
+  Component co2(Component::Type::Adsorbate, 0, forceField, "CO2", (fixtureDir.path() / "CO2").string(), 5, 21,
+                probabilities, std::nullopt, false);
 
   auto evaluateAtPositions = [&](const std::string &label, const std::array<double3, 3> &positions)
   {

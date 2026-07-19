@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import double3;
@@ -31,11 +34,6 @@ constexpr size_t kReactionDriftCycles = 20;
 constexpr size_t kReactionDriftInitializationCycles = 5;
 constexpr size_t kReactionDriftEquilibrationCycles = 5;
 constexpr size_t kReactionDriftSingleMoveAttempts = 250;
-
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
 
 ForceField makeAlkaneForceField()
 {
@@ -89,10 +87,9 @@ ForceField makeZeoliteAlkaneForceField()
 Component makeAlkaneFromExample(const ForceField& forceField, std::size_t componentId, std::string_view name,
                                 const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/basic/4_mc_binary_mixture_propane_butane_in_box" / name;
-  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), moleculePath.string(), 5, 21,
-                   probabilities, std::nullopt, false);
+  TemporaryFile file(std::string(name) + ".json", molecule_fixtures::alkaneJson(name));
+  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), file.stemPath().string(), 5,
+                   21, probabilities, std::nullopt, false);
 }
 
 Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities& probabilities)
@@ -184,8 +181,12 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
                                      std::vector<std::size_t> productStoichiometry,
                                      std::vector<std::size_t> initialCounts)
 {
-  const std::filesystem::path exampleDir = repositoryRoot() / "examples/basic/2_mc_co2_n2_in_two_independent_boxes";
-  ForceField forceField = ForceField::readForceField(exampleDir.string(), "force_field.json").value();
+  TemporaryDirectory fixtureDir;
+  fixtureDir.write("force_field.json", molecule_fixtures::kCo2N2ForceFieldJson);
+  fixtureDir.write("CO2.json", molecule_fixtures::kCO2Json);
+  fixtureDir.write("N2.json", molecule_fixtures::kN2Json);
+
+  ForceField forceField = ForceField::readForceField(fixtureDir.path().string(), "force_field.json").value();
   forceField.chargeMethod = ForceField::ChargeMethod::Ewald;
   forceField.useCharge = true;
   forceField.cutOffFrameworkVDW = kReactionDriftVDWCutoff;
@@ -198,9 +199,9 @@ System makeCO2N2SerialReactionSystem(const MCMoveProbabilities& systemProbabilit
   componentProbabilities.setProbability(Move::Types::Rotation, 1.0);
   componentProbabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
-  Component co2(Component::Type::Adsorbate, 0, forceField, "CO2", (exampleDir / "CO2").string(), 5, 21,
+  Component co2(Component::Type::Adsorbate, 0, forceField, "CO2", (fixtureDir.path() / "CO2").string(), 5, 21,
                 componentProbabilities, std::nullopt, false);
-  Component n2(Component::Type::Adsorbate, 1, forceField, "N2", (exampleDir / "N2").string(), 5, 21,
+  Component n2(Component::Type::Adsorbate, 1, forceField, "N2", (fixtureDir.path() / "N2").string(), 5, 21,
                componentProbabilities, std::nullopt, false);
   co2.lnPartitionFunction = 55.0;
   n2.lnPartitionFunction = 53.0;

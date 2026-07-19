@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import int3;
@@ -533,11 +536,6 @@ TEST(MC_MUVT_DRIFT, identity_change_cfcmc)
 
 namespace {
 
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
-
 ForceField makeZeoliteAlkaneForceField()
 {
   return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
@@ -590,9 +588,8 @@ ForceField makeAlkaneForceField()
 Component makeAlkaneFromExample(const ForceField &forceField, std::size_t componentId, std::string_view name,
                                 const MCMoveProbabilities &probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/basic/4_mc_binary_mixture_propane_butane_in_box" / name;
-  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), moleculePath.string(), 5,
+  TemporaryFile file(std::string(name) + ".json", molecule_fixtures::alkaneJson(name));
+  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), file.stemPath().string(), 5,
                    21, probabilities, std::nullopt, false);
 }
 

@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import double3;
@@ -42,11 +45,6 @@ import inversion_bend_potential;
 namespace
 {
 
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
-
 ForceField makeAlkaneForceField()
 {
   return ForceField({{"CH3", false, 15.04, 0.0, 0.0, 6, false}, {"CH2", false, 14.03, 0.0, 0.0, 6, false}},
@@ -59,11 +57,9 @@ ForceField makeAlkaneForceField()
 Component makeSemiFlexiblePentane(const ForceField& forceField, std::size_t componentId,
                                   const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/auxiliary/6_mc_ideal_gas_rosenbluth_weight_semi_flexible_pentane" /
-      "semi-flexible-pentane";
+  TemporaryFile file("semi-flexible-pentane.json", molecule_fixtures::kSemiFlexiblePentaneJson);
   return Component(Component::Type::Adsorbate, componentId, forceField, "semi-flexible-pentane",
-                   moleculePath.string(), 5, 21, probabilities, std::nullopt, false);
+                   file.stemPath().string(), 5, 21, probabilities, std::nullopt, false);
 }
 
 // United-atom 4,4'-diethyl-biphenyl: flexible ethyl tails (beads 0-1 and 14-15), two rigid aromatic
@@ -81,23 +77,17 @@ ForceField makeBiphenylForceField()
 Component makeDiethylBiphenyl(const ForceField& forceField, std::size_t componentId,
                               const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/auxiliary/7_mc_semi_flexible_diethyl_biphenyl" / "diethyl-biphenyl";
-  return Component(Component::Type::Adsorbate, componentId, forceField, "diethyl-biphenyl", moleculePath.string(), 5,
+  TemporaryFile file("diethyl-biphenyl.json", molecule_fixtures::kDiethylBiphenylJson);
+  return Component(Component::Type::Adsorbate, componentId, forceField, "diethyl-biphenyl", file.stemPath().string(), 5,
                    21, probabilities, std::nullopt, false);
 }
 
-// The diethyl-biphenyl of the basic example: same molecule as above, but its JSON additionally
-// defines four 'Partial-reinsertion' fixed-atom sets, so it exercises the group-aware partial
-// reinsertion (regrow one tail, regrow the other, regrow half the molecule from the biphenyl bond).
+// Same diethyl-biphenyl fixture, including the four 'Partial-reinsertion' fixed-atom sets that
+// exercise group-aware partial reinsertion (regrow one tail, the other, or half the molecule).
 Component makeDiethylBiphenylFromBasicExample(const ForceField& forceField, std::size_t componentId,
                                               const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/basic/16_mc_molecule_properties_semi_flexible_diethyl_biphenyl_in_box" /
-      "diethyl-biphenyl";
-  return Component(Component::Type::Adsorbate, componentId, forceField, "diethyl-biphenyl", moleculePath.string(), 5,
-                   21, probabilities, std::nullopt, false);
+  return makeDiethylBiphenyl(forceField, componentId, probabilities);
 }
 
 // Fixed distances inside a rigid aromatic ring (regular hexagon, side 1.40).
@@ -448,8 +438,8 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_partial_reinsertion_parsing)
 }
 
 // Full basic-example move set (translation, rotation, reinsertion, partial reinsertion) with the
-// group-aware CBMC growth. Mirrors examples/basic/16_...: box only, 298 K, no charges. The rigid
-// aromatic rings must stay exactly rigid and the running energy must not drift.
+// group-aware CBMC growth (box only, 298 K, no charges). The rigid aromatic rings must stay
+// exactly rigid and the running energy must not drift.
 TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_cbmc)
 {
   const ForceField forceField = makeBiphenylForceField();

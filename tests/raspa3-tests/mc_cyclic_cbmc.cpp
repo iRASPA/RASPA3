@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import double3;
@@ -25,11 +28,6 @@ import intra_molecular_potentials;
 namespace
 {
 
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
-
 ForceField makeCyclohexaneForceField()
 {
   return ForceField({{"CH2_c", false, 14.02658, 0.0, 0.0, 6, false}}, {{52.5, 3.91}},
@@ -39,9 +37,8 @@ ForceField makeCyclohexaneForceField()
 Component makeCyclohexane(const ForceField& forceField, std::size_t componentId,
                           const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/basic/20_mc_flexible_cyclohexane_in_box" / "cyclohexane";
-  return Component(Component::Type::Adsorbate, componentId, forceField, "cyclohexane", moleculePath.string(), 5, 21,
+  TemporaryFile file("cyclohexane.json", molecule_fixtures::kCyclohexaneJson);
+  return Component(Component::Type::Adsorbate, componentId, forceField, "cyclohexane", file.stemPath().string(), 5, 21,
                    probabilities, std::nullopt, false);
 }
 
@@ -189,12 +186,9 @@ TEST(MC_CYCLIC_CBMC, grow_segments)
 TEST(MC_CYCLIC_CBMC, fused_ring_rejected)
 {
   const ForceField forceField = makeCyclohexaneForceField();
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "tests/raspa3-tests/fixtures" / "bad-fused-ring";
-  // The fixture is created on the fly below; if it is missing this test is skipped.
-  if (!std::filesystem::exists(moleculePath.string() + ".json")) GTEST_SKIP();
+  TemporaryFile file("bad-fused-ring.json", molecule_fixtures::kBadFusedRingJson);
   EXPECT_ANY_THROW(
-      Component(Component::Type::Adsorbate, 0, forceField, "bad-fused-ring", moleculePath.string(), 5, 21,
+      Component(Component::Type::Adsorbate, 0, forceField, "bad-fused-ring", file.stemPath().string(), 5, 21,
                 MCMoveProbabilities(), std::nullopt, false));
 }
 

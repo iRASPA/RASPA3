@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import int3;
@@ -23,11 +26,6 @@ import mc_moves_move_types;
 
 namespace
 {
-
-std::filesystem::path repositoryRoot()
-{
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
 
 void expectNoThermodynamicIntegrationDrift(System& system)
 {
@@ -147,10 +145,9 @@ ForceField makeZeoliteAlkaneForceField()
 Component makeAlkaneFromExample(const ForceField& forceField, std::size_t componentId, std::string_view name,
                                 const MCMoveProbabilities& probabilities)
 {
-  const std::filesystem::path moleculePath =
-      repositoryRoot() / "examples/basic/4_mc_binary_mixture_propane_butane_in_box" / name;
+  TemporaryFile file(std::string(name) + ".json", molecule_fixtures::alkaneJson(name));
   Component component = Component(Component::Type::Adsorbate, componentId, forceField, std::string(name),
-                                  moleculePath.string(), 5, 21, probabilities, std::nullopt, true);
+                                  file.stemPath().string(), 5, 21, probabilities, std::nullopt, true);
   component.idealGasRosenbluthWeight = 1.0;
   enableThermodynamicIntegration(component);
   return component;

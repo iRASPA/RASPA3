@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+#include "irmof_fixtures.hpp"
+
 import std;
 
 import archive;
@@ -22,36 +25,13 @@ import vdwparameters;
 
 namespace
 {
-std::filesystem::path repositoryRoot()
+
+ForceField makeFlexibleIrmofForceField()
 {
-  return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+  TemporaryDirectory dir;
+  dir.write("force_field.json", irmof_fixtures::kFlexibleIrmofForceFieldJson);
+  return ForceField::readForceField(dir.path().string(), "force_field.json").value();
 }
-
-std::string readLocalFile(const std::filesystem::path& path)
-{
-  std::ifstream stream(path);
-  if (!stream) throw std::runtime_error(std::format("Could not read '{}'", path.string()));
-  return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-}
-
-class TemporaryFile
-{
- public:
-  TemporaryFile(std::string name, std::string_view contents)
-      : path(std::filesystem::temp_directory_path() / std::move(name))
-  {
-    std::ofstream stream(path);
-    stream << contents;
-  }
-
-  ~TemporaryFile()
-  {
-    std::error_code ignored;
-    std::filesystem::remove(path, ignored);
-  }
-
-  std::filesystem::path path;
-};
 
 ForceField makeTestForceField(double cutoff = 12.0)
 {
@@ -98,7 +78,7 @@ TEST(framework_intramolecular_reader, periodic_connectivity_and_reversed_type_ma
                            R"({"Type": "Flexible",
                                "Bonds": [[["C2", "C1"], "HARMONIC", [100.0, 1.0]]]})");
 
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   ASSERT_EQ(framework.connectivityTable.findAllBonds().size(), 1);
   ASSERT_EQ(framework.intraMolecularPotentials.bonds.size(), 1);
@@ -124,7 +104,7 @@ TEST(framework_intramolecular_reader, rigid_framework_skips_internal_derivatives
   TemporaryFile definition("raspa3-framework-rigid-definition.json",
                            R"({"Type": "Rigid",
                                "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
   ASSERT_TRUE(framework.rigid);
   ASSERT_FALSE(framework.intraMolecularPotentials.bonds.empty());
   EXPECT_NE(framework.printStatus(forceField).find("framework type: Rigid\n    number of bonds: 1"), std::string::npos);
@@ -150,7 +130,7 @@ TEST(framework_intramolecular_reader, periodic_bond_gradient_and_hessian_match_f
   TemporaryFile definition("raspa3-framework-periodic-derivatives.json",
                            R"({"Type": "Flexible",
                                "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   const SimulationBox box(10.0, 10.0, 10.0);
   std::vector<Atom> atoms = framework.atoms;
@@ -270,7 +250,7 @@ TEST(framework_intramolecular_reader, periodic_bend_and_torsion_hessian_match_fi
           "Torsions": [
             [["C1", "C2", "C3", "H1"], "TRAPPE", [10.0, 20.0, 30.0, 40.0]]
           ]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
   ASSERT_EQ(framework.intraMolecularImageShifts.bends.size(), 2);
   ASSERT_EQ(framework.intraMolecularImageShifts.torsions.size(), 1);
   EXPECT_EQ(framework.intraMolecularImageShifts.torsions[0][2], int3(1, 0, 0));
@@ -314,20 +294,19 @@ TEST(framework_intramolecular_reader, periodic_bend_and_torsion_hessian_match_fi
 
 TEST(framework_intramolecular_reader, converted_irmof_definition_expands_all_templates)
 {
-  const std::filesystem::path root = repositoryRoot();
-  const std::filesystem::path forceFieldDirectory =
-      root / "examples/non_basic/11_flexible_irmof_1_variable_cell_minimization";
-  ForceField forceField = ForceField::readForceField(forceFieldDirectory.string(), "force_field.json").value();
+  TemporaryDirectory fixtureDir;
+  fixtureDir.write("force_field.json", irmof_fixtures::kFlexibleIrmofForceFieldJson);
+  fixtureDir.write("framework.json", irmof_fixtures::kFlexibleIrmofFrameworkJson);
 
-  const std::filesystem::path cifPath = root / "examples/basic/19_minimization_co2_in_irmof_1/IRMOF-1.cif";
-  const auto cif = CIFReader::readCIFString(readLocalFile(cifPath), forceField, CIFReader::UseChargesFrom::PseudoAtoms);
+  ForceField forceField = ForceField::readForceField(fixtureDir.path().string(), "force_field.json").value();
+
+  const auto cif = CIFReader::readCIFString(std::string(irmof_fixtures::kIrmof1Cif), forceField,
+                                            CIFReader::UseChargesFrom::PseudoAtoms);
   ASSERT_TRUE(cif.has_value());
   auto [box, hallNumber, definedAtoms, fractionalAtoms] = *cif;
   Framework framework(forceField, "IRMOF-1", box, hallNumber, definedAtoms, fractionalAtoms, {1, 1, 1});
 
-  framework.readFrameworkDefinition(
-      forceField,
-      (root / "examples/non_basic/11_flexible_irmof_1_variable_cell_minimization/framework.json").string());
+  framework.readFrameworkDefinition(forceField, (fixtureDir.path() / "framework.json").string());
   forceField.initializeEwaldParameters(framework.simulationBox.scaled(framework.numberOfUnitCells));
 
   const MinimizationDofLayout diagnosticLayout = buildMinimizationDofLayout({}, {}, framework.atoms.size());
@@ -394,11 +373,7 @@ TEST(framework_intramolecular_reader, converted_irmof_definition_expands_all_tem
 
 TEST(framework_intramolecular_reader, applies_independent_14_scaling_factors)
 {
-  const std::filesystem::path root = repositoryRoot();
-  ForceField forceField =
-      ForceField::readForceField((root / "examples/non_basic/11_flexible_irmof_1_variable_cell_minimization").string(),
-                                 "force_field.json")
-          .value();
+  ForceField forceField = makeFlexibleIrmofForceField();
 
   const std::size_t carbon = *forceField.findPseudoAtom("C3");
   const std::size_t hydrogen = *forceField.findPseudoAtom("H1");
@@ -410,7 +385,7 @@ TEST(framework_intramolecular_reader, applies_independent_14_scaling_factors)
           "Intra14ChargeChargeScalingValue": 0.75,
           "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]]})");
 
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   ASSERT_EQ(framework.connectivityTable.findAllTorsions().size(), 1);
   ASSERT_EQ(framework.intraMolecularPotentials.vanDerWaals.size(), 1);
@@ -427,11 +402,7 @@ TEST(framework_intramolecular_reader, applies_independent_14_scaling_factors)
 
 TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independently)
 {
-  const std::filesystem::path root = repositoryRoot();
-  ForceField forceField =
-      ForceField::readForceField((root / "examples/non_basic/11_flexible_irmof_1_variable_cell_minimization").string(),
-                                 "force_field.json")
-          .value();
+  ForceField forceField = makeFlexibleIrmofForceField();
 
   const std::size_t carbon = *forceField.findPseudoAtom("C3");
   const std::size_t hydrogen = *forceField.findPseudoAtom("H1");
@@ -442,7 +413,7 @@ TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independentl
   TemporaryFile include12Definition("raspa3-framework-include-12.json",
                                     R"({"ExcludeIntra12Interactions": false,
           "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]]})");
-  include12.readFrameworkDefinition(forceField, include12Definition.path.string());
+  include12.readFrameworkDefinition(forceField, include12Definition.path().string());
   EXPECT_EQ(include12.intraMolecularPotentials.vanDerWaals.size(), 3);
   EXPECT_EQ(include12.intraMolecularPotentials.coulombs.size(), 3);
 
@@ -451,7 +422,7 @@ TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independentl
                                        R"({"ExcludeIntra12Interactions": false,
           "ExcludeIntraBondInteractions": true,
           "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]]})");
-  excludeBonds.readFrameworkDefinition(forceField, excludeBondsDefinition.path.string());
+  excludeBonds.readFrameworkDefinition(forceField, excludeBondsDefinition.path().string());
   EXPECT_TRUE(excludeBonds.intraMolecularPotentials.vanDerWaals.empty());
   EXPECT_TRUE(excludeBonds.intraMolecularPotentials.coulombs.empty());
 
@@ -459,7 +430,7 @@ TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independentl
   TemporaryFile include13Definition("raspa3-framework-include-13.json",
                                     R"({"ExcludeIntra13Interactions": false,
           "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]]})");
-  include13.readFrameworkDefinition(forceField, include13Definition.path.string());
+  include13.readFrameworkDefinition(forceField, include13Definition.path().string());
   EXPECT_EQ(include13.intraMolecularPotentials.vanDerWaals.size(), 2);
   EXPECT_EQ(include13.intraMolecularPotentials.coulombs.size(), 2);
 
@@ -471,7 +442,7 @@ TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independentl
           "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]],
           "Bends": [[["C3", "H1", "C3"], "HARMONIC", [100.0, 120.0]],
                     [["H1", "C3", "H1"], "HARMONIC", [100.0, 120.0]]]})");
-  excludeBends.readFrameworkDefinition(forceField, excludeBendsDefinition.path.string());
+  excludeBends.readFrameworkDefinition(forceField, excludeBendsDefinition.path().string());
   EXPECT_TRUE(excludeBends.intraMolecularPotentials.vanDerWaals.empty());
   EXPECT_TRUE(excludeBends.intraMolecularPotentials.coulombs.empty());
 }
@@ -483,25 +454,25 @@ TEST(framework_intramolecular_reader, rejects_unknown_ambiguous_and_malformed_de
 
   TemporaryFile unknown("raspa3-framework-unknown-definition.json",
                         R"({"Bonds": [[["missing", "C1"], "HARMONIC", [100.0, 1.0]]]})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, unknown.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, unknown.path().string()), std::runtime_error);
 
   TemporaryFile ambiguous("raspa3-framework-ambiguous-definition.json",
                           R"({"Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]],
                     [["C2", "C1"], "HARMONIC", [100.0, 1.0]]]})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, ambiguous.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, ambiguous.path().string()), std::runtime_error);
 
   TemporaryFile malformed("raspa3-framework-malformed-definition.json",
                           R"({"Bonds": [[["C1", "C2"], "HARMONIC", [100.0]]]})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, malformed.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, malformed.path().string()), std::runtime_error);
 
   TemporaryFile invalidScaling("raspa3-framework-invalid-scaling.json", R"({"Intra14VanDerWaalsScalingValue": -0.5})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidScaling.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidScaling.path().string()), std::runtime_error);
 
   TemporaryFile invalidExclusion("raspa3-framework-invalid-exclusion.json", R"({"ExcludeIntra12Interactions": 1})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidExclusion.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidExclusion.path().string()), std::runtime_error);
 
   TemporaryFile invalidType("raspa3-framework-invalid-type.json", R"({"Type": "deformable"})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidType.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidType.path().string()), std::runtime_error);
 }
 
 TEST(framework_intramolecular_reader, mixed_groups_reorder_fixed_first_and_skip_internal_bonds)
@@ -523,7 +494,7 @@ TEST(framework_intramolecular_reader, mixed_groups_reorder_fixed_first_and_skip_
                                  [["C1", "C2"], "HARMONIC", [100.0, 1.5]],
                                  [["C2", "C3"], "HARMONIC", [100.0, 1.5]]
                                ]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   ASSERT_TRUE(framework.isMixed());
   EXPECT_FALSE(framework.rigid);
@@ -562,7 +533,7 @@ TEST(framework_intramolecular_reader, mixed_rigid_group_skips_internal_bond)
                                  [["C1", "C2"], "HARMONIC", [100.0, 1.5]],
                                  [["C2", "C3"], "HARMONIC", [100.0, 1.5]]
                                ]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   ASSERT_TRUE(framework.isMixed());
   EXPECT_EQ(framework.numberOfRigidGroups(), 1);
@@ -587,13 +558,13 @@ TEST(framework_intramolecular_reader, groups_rejected_for_rigid_type_and_cycle)
   TemporaryFile rigidGroups("raspa3-framework-rigid-groups.json",
                             R"({"Type": "Rigid",
                                 "Groups": [{"Type": "Fixed", "Atoms": [0, 1]}]})");
-  EXPECT_THROW(framework.readFrameworkDefinition(forceField, rigidGroups.path.string()), std::runtime_error);
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, rigidGroups.path().string()), std::runtime_error);
 
   Framework flexible = makePeriodicPairFramework(forceField);
   TemporaryFile cycle("raspa3-framework-cycle-group.json",
                       R"({"Type": "Flexible",
                           "Groups": [{"Type": "Cycle", "Atoms": [0, 1]}]})");
-  EXPECT_THROW(flexible.readFrameworkDefinition(forceField, cycle.path.string()), std::runtime_error);
+  EXPECT_THROW(flexible.readFrameworkDefinition(forceField, cycle.path().string()), std::runtime_error);
 }
 
 TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_potentials)
@@ -603,7 +574,7 @@ TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_
   TemporaryFile definition("raspa3-framework-archive-definition.json",
                            R"({"Type": "Flexible",
                                "Bonds": [[["C1", "C2"], "HARMONIC", [100.0, 1.0]]]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   const std::filesystem::path archivePath =
       std::filesystem::temp_directory_path() / "raspa3-framework-intramolecular-reader.bin";
