@@ -9,6 +9,7 @@ import double3x3;
 import atom;
 import molecule;
 import component;
+import framework;
 import forcefield;
 import minimization_dof_layout;
 import symmetric_eigensolver;
@@ -63,16 +64,58 @@ MassMetric buildMassMetric(const System& system, const MinimizationDofLayout& la
   MassMetric metric{};
   metric.scalarInverseSqrt.assign(layout.numDofs(), 0.0);
 
+  // Flexible framework atoms carry the scalar 1/sqrt(mass); mixed-framework fixed atoms carry no
+  // DOFs, and rigid groups get a center-of-mass scalar block plus an orientation inertia block.
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
   {
+    const auto base = layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
+    if (!base) continue;
     const std::size_t type = static_cast<std::size_t>(frameworkAtoms[atom].type);
     const double weight = checkedInverseSqrtMass(system.forceField.pseudoAtoms[type].mass,
                                                  std::format("framework atom {} ({})", atom,
                                                              system.forceField.pseudoAtoms[type].name));
     for (std::size_t axis = 0; axis < 3; ++axis)
     {
-      metric.scalarInverseSqrt[*layout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis))] = weight;
+      metric.scalarInverseSqrt[*base + axis] = weight;
+    }
+  }
+
+  if (system.framework && system.framework->isMixed())
+  {
+    for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
+    {
+      const FrameworkGroup& group = system.framework->groups[groupIndex];
+      if (!group.isRigidBody()) continue;
+      const std::size_t comBase = *layout.frameworkAtomRigidComDof(group.atoms.front());
+      const double weight =
+          checkedInverseSqrtMass(group.mass, std::format("framework rigid group {}", groupIndex));
+      metric.scalarInverseSqrt[comBase + 0] = weight;
+      metric.scalarInverseSqrt[comBase + 1] = weight;
+      metric.scalarInverseSqrt[comBase + 2] = weight;
+
+      double3 centerOfMass{};
+      for (std::size_t k = 0; k != group.atoms.size(); ++k)
+      {
+        centerOfMass += group.atomMasses[k] * frameworkAtoms[group.atoms[k]].position;
+      }
+      centerOfMass = centerOfMass / group.mass;
+      double3x3 inertia{};
+      for (std::size_t k = 0; k != group.atoms.size(); ++k)
+      {
+        const double mass = group.atomMasses[k];
+        const double3 s = frameworkAtoms[group.atoms[k]].position - centerOfMass;
+        inertia.ax += mass * (s.y * s.y + s.z * s.z);
+        inertia.by += mass * (s.x * s.x + s.z * s.z);
+        inertia.cz += mass * (s.x * s.x + s.y * s.y);
+        inertia.bx -= mass * s.x * s.y;
+        inertia.ay -= mass * s.x * s.y;
+        inertia.cx -= mass * s.x * s.z;
+        inertia.az -= mass * s.x * s.z;
+        inertia.cy -= mass * s.y * s.z;
+        inertia.bz -= mass * s.y * s.z;
+      }
+      metric.blocks.emplace_back(comBase + 3, inverseSqrtInertia(inertia, metric.discardedRotationalDofs));
     }
   }
 

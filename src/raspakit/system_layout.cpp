@@ -198,6 +198,57 @@ std::span<GroupState> System::spanOfGroupData() { return std::span(groupData); }
 
 std::span<const GroupState> System::spanOfGroupData() const { return std::span(groupData); }
 
+void System::initializeFrameworkGroupData()
+{
+  if (!framework.has_value() || framework->numberOfRigidGroups() == 0)
+  {
+    frameworkGroupData.clear();
+    return;
+  }
+
+  const std::size_t totalRigidGroups = framework->numberOfRigidGroups();
+  const bool preserveDynamics = frameworkGroupData.size() == totalRigidGroups;
+  if (!preserveDynamics)
+  {
+    frameworkGroupData.assign(totalRigidGroups, GroupState{});
+  }
+
+  std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+  std::size_t rigidRank{};
+  for (std::size_t g = 0; g != framework->groups.size(); ++g)
+  {
+    if (!framework->groups[g].isRigidBody()) continue;
+    GroupState& state = frameworkGroupData[rigidRank];
+    GroupState derived = framework->deriveGroupState(g, frameworkAtoms, forceField);
+    if (preserveDynamics)
+    {
+      const double overlap = derived.orientation.r * state.orientation.r +
+                             derived.orientation.ix * state.orientation.ix +
+                             derived.orientation.iy * state.orientation.iy +
+                             derived.orientation.iz * state.orientation.iz;
+      if (overlap < 0.0)
+      {
+        derived.orientation = simd_quatd(-derived.orientation.ix, -derived.orientation.iy,
+                                         -derived.orientation.iz, -derived.orientation.r);
+      }
+    }
+    state.centerOfMassPosition = derived.centerOfMassPosition;
+    state.orientation = derived.orientation;
+    state.gradient = derived.gradient;
+    state.orientationGradient = derived.orientationGradient;
+    if (!preserveDynamics)
+    {
+      state.velocity = derived.velocity;
+      state.orientationMomentum = derived.orientationMomentum;
+    }
+    ++rigidRank;
+  }
+}
+
+std::span<GroupState> System::spanOfFrameworkGroupData() { return std::span(frameworkGroupData); }
+
+std::span<const GroupState> System::spanOfFrameworkGroupData() const { return std::span(frameworkGroupData); }
+
 std::span<double> System::spanOfMoleculeElectrostaticPotential()
 {
   return std::span(

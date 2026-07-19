@@ -4,6 +4,7 @@ module minimization_rigid_kinematics;
 
 import std;
 import component;
+import framework;
 
 namespace
 {
@@ -50,13 +51,58 @@ const double3 &Minimization::RigidDerivativeCache::bodyCenterOfMass(std::size_t 
   return _bodyCentersOfMass[moleculeIndex][localAtomIndex];
 }
 
+bool Minimization::RigidDerivativeCache::frameworkAtomIsRigid(std::size_t frameworkAtom) const noexcept
+{
+  return frameworkAtom < _frameworkAtomRigid.size() && _frameworkAtomRigid[frameworkAtom] != 0;
+}
+
+const Minimization::RigidAtomDerivatives &Minimization::RigidDerivativeCache::frameworkAtom(
+    std::size_t frameworkAtom) const noexcept
+{
+  return _framework[frameworkAtom];
+}
+
+const double3 &Minimization::RigidDerivativeCache::frameworkBodyCenterOfMass(std::size_t frameworkAtom) const noexcept
+{
+  return _frameworkBodyCentersOfMass[frameworkAtom];
+}
+
 Minimization::RigidDerivativeCache Minimization::RigidDerivativeCache::build(std::span<const Molecule> moleculeData,
                                                                              std::span<const Component> components,
-                                                                             std::span<const Atom> moleculeAtoms)
+                                                                             std::span<const Atom> moleculeAtoms,
+                                                                             const Framework *framework,
+                                                                             std::span<const Atom> frameworkAtoms)
 {
   RigidDerivativeCache cache{};
   cache._molecules.resize(moleculeData.size());
   cache._bodyCentersOfMass.resize(moleculeData.size());
+
+  // Framework rigid groups (mixed Fixed/Rigid/Flexible host): the space-frame offsets follow directly
+  // from the current laboratory positions relative to each group's mass-weighted center of mass.
+  if (framework && framework->isMixed() && !frameworkAtoms.empty())
+  {
+    cache._framework.resize(frameworkAtoms.size());
+    cache._frameworkBodyCentersOfMass.assign(frameworkAtoms.size(), double3{});
+    cache._frameworkAtomRigid.assign(frameworkAtoms.size(), 0);
+    for (const FrameworkGroup &group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      double3 centerOfMass{};
+      double totalMass{};
+      for (std::size_t k = 0; k != group.atoms.size(); ++k)
+      {
+        centerOfMass += group.atomMasses[k] * frameworkAtoms[group.atoms[k]].position;
+        totalMass += group.atomMasses[k];
+      }
+      centerOfMass = centerOfMass / totalMass;
+      for (const std::size_t atom : group.atoms)
+      {
+        cache._frameworkBodyCentersOfMass[atom] = centerOfMass;
+        cache._frameworkAtomRigid[atom] = 1;
+        fillDerivativesFromOffset(cache._framework[atom], frameworkAtoms[atom].position - centerOfMass);
+      }
+    }
+  }
 
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {

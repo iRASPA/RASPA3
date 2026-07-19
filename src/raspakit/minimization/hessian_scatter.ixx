@@ -76,6 +76,14 @@ HessianSite makeHessianSite(const MinimizationDofLayout& layout, const RigidDeri
                             std::size_t moleculeIndex, std::size_t localAtom);
 
 /**
+ * Build the site descriptor for a (global) framework atom of a mixed framework: flexible atoms
+ * carry three Cartesian DOFs, atoms driven by a rigid group carry the group's center-of-mass and
+ * orientation DOFs, and fixed atoms carry none (empty site: all contributions drop out).
+ */
+HessianSite makeFrameworkHessianSite(const MinimizationDofLayout& layout, const RigidDerivativeCache& rigidCache,
+                                     std::size_t frameworkAtom);
+
+/**
  * Scatter a radial (two-atom) Hessian where either atom may be driven by a rigid body. 'dr' is
  * posA - posB, and the RASPA2 factors are f1 = (1/r) dU/dr and f2 = d2U/dr2 assembled as
  * f2 dr dr^T + f1 I on the diagonal blocks and the negative cross block; 'gradients' are the

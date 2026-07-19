@@ -104,8 +104,23 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
     }
     atomIndex += molecule.numberOfAtoms;
   }
-  if (system.framework && !system.framework->rigid)
-    for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.velocity = matrix * dynamics.velocity;
+  if (system.framework && system.framework->hasMobileAtoms())
+  {
+    std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : system.framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      frameworkGroups[rigidRank].velocity = matrix * frameworkGroups[rigidRank].velocity;
+      ++rigidRank;
+    }
+    std::span<AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
+    for (std::size_t i = 0; i != frameworkDynamics.size(); ++i)
+    {
+      if (system.framework->isFlexibleAtom(i))
+        frameworkDynamics[i].velocity = matrix * frameworkDynamics[i].velocity;
+    }
+  }
 }
 
 void propagateCell(System& system, const double3x3& cellVelocity)
@@ -166,15 +181,41 @@ void propagateCell(System& system, const double3x3& cellVelocity)
     }
     atomIndex += molecule.numberOfAtoms;
   }
-  if (system.framework && !system.framework->rigid)
+  if (system.framework)
   {
     std::span<Atom> atoms = system.spanOfFrameworkAtoms();
     std::span<AtomDynamics> dynamics = system.spanOfFrameworkDynamics();
-    for (std::size_t i = 0; i != atoms.size(); ++i)
+    std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+    if (system.framework->isMixed())
     {
-      positions.push_back(atoms[i].position);
-      velocities.push_back(dynamics[i].velocity);
-      targets.push_back(&atoms[i].position);
+      // Fixed atoms and flexible atoms move with the cell; rigid groups through their COM.
+      for (std::size_t i = 0; i != atoms.size(); ++i)
+      {
+        if (system.framework->isFlexibleAtom(i) || system.framework->isFixedAtom(i))
+        {
+          positions.push_back(atoms[i].position);
+          velocities.push_back(dynamics[i].velocity);
+          targets.push_back(&atoms[i].position);
+        }
+      }
+      std::size_t rigidRank{};
+      for (std::size_t g = 0; g != system.framework->groups.size(); ++g)
+      {
+        if (!system.framework->groups[g].isRigidBody()) continue;
+        positions.push_back(frameworkGroups[rigidRank].centerOfMassPosition);
+        velocities.push_back(frameworkGroups[rigidRank].velocity);
+        targets.push_back(&frameworkGroups[rigidRank].centerOfMassPosition);
+        ++rigidRank;
+      }
+    }
+    else if (!system.framework->rigid)
+    {
+      for (std::size_t i = 0; i != atoms.size(); ++i)
+      {
+        positions.push_back(atoms[i].position);
+        velocities.push_back(dynamics[i].velocity);
+        targets.push_back(&atoms[i].position);
+      }
     }
   }
 
@@ -296,7 +337,9 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
   system.precomputeTotalGradients();
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components,
-                                                        system.spanOfGroupData());
+                                                        system.spanOfGroupData(), system.framework,
+                                                        system.spanOfFrameworkDynamics(),
+                                                        system.spanOfFrameworkGroupData());
 }
 
 void attemptParticleExchange(RandomNumber& random, System& system)
@@ -337,12 +380,12 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
         Integrators::computeTranslationalKineticEnergy(
             system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
             system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-            system.spanOfGroupData()),
-        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components,
-                                                    system.spanOfGroupData()));
+            system.spanOfGroupData(), system.spanOfFrameworkGroupData()),
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                    system.framework, system.spanOfFrameworkGroupData()));
     Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                  system.components, scaling, system.framework, system.spanOfFrameworkDynamics(),
-                                 system.spanOfGroupData());
+                                 system.spanOfGroupData(), system.spanOfFrameworkGroupData());
   }
 
   double3x3 cellRate{};
@@ -377,14 +420,17 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                       velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
   Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
-                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData());
+                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
+                                system.spanOfFrameworkGroupData());
   propagateCell(system, cellRate);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
     barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
   Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep,
-                                         system.spanOfGroupData());
+                                         system.spanOfGroupData(), system.framework,
+                                         system.spanOfFrameworkGroupData());
   Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                        system.spanOfGroupData());
+                                        system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                        system.spanOfFrameworkGroupData());
   RunningEnergy energies = Integrators::updateGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
       system.forceField, system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
@@ -392,19 +438,23 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
       system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components,
-                                                        system.spanOfGroupData());
+                                                        system.spanOfGroupData(), system.framework,
+                                                        system.spanOfFrameworkDynamics(),
+                                                        system.spanOfFrameworkGroupData());
   Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
-                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData());
+                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
+                                system.spanOfFrameworkGroupData());
   applyVelocityMatrix(system,
                       velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
 
   energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
       system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-      system.spanOfGroupData());
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
   energies.rotationalKineticEnergy =
-      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData());
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                  system.framework, system.spanOfFrameworkGroupData());
   const auto pressureAfter = system.computeMolecularPressure();
   const double3x3 kineticAfter = computeMolecularKineticVirial(system);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
@@ -437,7 +487,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
         system.thermostat->NoseHooverNVT(energies.translationalKineticEnergy, energies.rotationalKineticEnergy);
     Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                  system.components, scaling, system.framework, system.spanOfFrameworkDynamics(),
-                                 system.spanOfGroupData());
+                                 system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   const double finalBarostatKinetic =
@@ -462,7 +512,7 @@ RunningEnergy molecularDynamicsStep(System& system)
       system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
-      system.spanOfFrameworkDynamics(), system.spanOfGroupData());
+      system.spanOfFrameworkDynamics(), system.spanOfGroupData(), system.spanOfFrameworkGroupData());
 }
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
@@ -630,16 +680,19 @@ void MolecularDynamics::setup()
   for (std::size_t system_id{0}; System& system : systems)
   {
     system.initializeGroupData();
+    system.initializeFrameworkGroupData();
     system.precomputeTotalRigidEnergy();
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                          system.spanOfGroupData());
+                                          system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                          system.spanOfFrameworkGroupData());
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
         system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-        system.spanOfGroupData());
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData());
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                    system.framework, system.spanOfFrameworkGroupData());
 
     if (outputToFiles)
     {
@@ -881,21 +934,24 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
   for (std::size_t system_id{0}; System& system : systems)
   {
     system.initializeGroupData();
+    system.initializeFrameworkGroupData();
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                          system.spanOfGroupData());
+                                          system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                          system.spanOfFrameworkGroupData());
     Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
                                       system.spanOfMoleculeDynamics(), system.components, system.temperature,
                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
-                                      &system.forceField, system.spanOfGroupData());
+                                      &system.forceField, system.spanOfGroupData(),
+                                      system.spanOfFrameworkGroupData());
 
     Integrators::removeCenterOfMassVelocityDrift(
         system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-        system.spanOfGroupData());
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     if (system.thermostat.has_value())
     {
       const bool flexibleFrameworkConstraint =
-          system.framework && !system.framework->rigid &&
+          system.framework && system.framework->hasMobileAtoms() &&
           system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
       if (flexibleFrameworkConstraint || (!system.framework.has_value() && system.numberOfMolecules() > 1uz))
       {
@@ -916,9 +972,10 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
         system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-        system.spanOfGroupData());
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData());
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                    system.framework, system.spanOfFrameworkGroupData());
     if (system.thermostat.has_value())
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
@@ -1055,15 +1112,18 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   for (std::size_t system_id{0}; System& system : systems)
   {
     system.initializeGroupData();
+    system.initializeFrameworkGroupData();
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                          system.spanOfGroupData());
+                                          system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                          system.spanOfFrameworkGroupData());
     system.precomputeTotalGradients();
     system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
         system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-        system.spanOfGroupData());
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData());
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                    system.framework, system.spanOfFrameworkGroupData());
     if (system.thermostat.has_value())
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();

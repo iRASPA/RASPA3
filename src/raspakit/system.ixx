@@ -208,6 +208,8 @@ export struct System
   // no semi-flexible molecules are present. Maintained during molecular dynamics; derived from the
   // atom positions at the molecular-dynamics/hybrid-Monte-Carlo boundary via 'initializeGroupData'.
   std::vector<GroupState> groupData;
+  // Rigid-body state of every Rigid framework group (separate from molecule groupData).
+  std::vector<GroupState> frameworkGroupData;
   std::vector<double> electricPotential;
   std::vector<double3> electricField;
   std::vector<double3> electricFieldNew;
@@ -387,8 +389,11 @@ export struct System
   /// Rebuilds 'groupData' from the current molecule atom positions: one rigid-body state per rigid
   /// group of every semi-flexible molecule, recovered exactly via 'Component::deriveGroupState'.
   void initializeGroupData();
+  void initializeFrameworkGroupData();
   std::span<GroupState> spanOfGroupData();
   std::span<const GroupState> spanOfGroupData() const;
+  std::span<GroupState> spanOfFrameworkGroupData();
+  std::span<const GroupState> spanOfFrameworkGroupData() const;
   std::span<double> spanOfMoleculeElectrostaticPotential();
   std::span<double3> spanOfMoleculeElectricField();
   std::span<double3> spanOfMoleculeElectricFieldNew();

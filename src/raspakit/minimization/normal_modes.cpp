@@ -64,9 +64,9 @@ NormalModesResult computeNormalModes(const System& system, double relativeZeroTo
   const std::size_t numberOfFlexibleFrameworkAtoms = derivativeSystem.framework && !derivativeSystem.framework->rigid
                                                          ? derivativeSystem.spanOfFrameworkAtoms().size()
                                                          : 0;
-  const MinimizationDofLayout layout =
-      buildMinimizationDofLayout(derivativeSystem.moleculeData, derivativeSystem.components,
-                                 numberOfFlexibleFrameworkAtoms, 0);
+  const MinimizationDofLayout layout = buildMinimizationDofLayout(
+      derivativeSystem.moleculeData, derivativeSystem.components, numberOfFlexibleFrameworkAtoms, 0,
+      derivativeSystem.framework.has_value() ? &*derivativeSystem.framework : nullptr);
   const std::size_t numberOfDofs = layout.numDofs();
 
   NormalModesResult result{};
@@ -189,7 +189,8 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
                                                          ? referenceSystem.spanOfFrameworkAtoms().size()
                                                          : 0;
   const MinimizationDofLayout layout = buildMinimizationDofLayout(
-      referenceSystem.moleculeData, referenceSystem.components, numberOfFlexibleFrameworkAtoms, 0);
+      referenceSystem.moleculeData, referenceSystem.components, numberOfFlexibleFrameworkAtoms, 0,
+      referenceSystem.framework.has_value() ? &*referenceSystem.framework : nullptr);
   const std::size_t numberOfDofs = layout.numDofs();
   if (numberOfDofs == 0) return;
   if (result.eigenvectors.size() != numberOfDofs * numberOfDofs)
@@ -200,8 +201,11 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
   const MassMetric metric = buildMassMetric(referenceSystem, layout);
   const std::vector<double> frequencies = normalModeFrequencies(result);
   const std::span<const Atom> moleculeAtoms = referenceSystem.spanOfMoleculeAtoms();
+  const std::span<const Atom> frameworkAtoms = referenceSystem.spanOfFrameworkAtoms();
+  const bool mixedFramework = referenceSystem.framework.has_value() && referenceSystem.framework->isMixed();
   const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
-      referenceSystem.moleculeData, referenceSystem.components, moleculeAtoms);
+      referenceSystem.moleculeData, referenceSystem.components, moleculeAtoms,
+      mixedFramework ? &*referenceSystem.framework : nullptr, frameworkAtoms);
 
   std::filesystem::create_directories(directory);
 
@@ -216,16 +220,30 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
     // Mass-weighted eigenvector xi maps to a generalized displacement q = W xi.
     const std::vector<double> generalized = metricTimesVector(metric, eigenvector, numberOfDofs);
 
-    // Largest atomic Cartesian displacement produced by the mode pattern.
+    // Largest atomic Cartesian displacement produced by the mode pattern. Framework atoms are
+    // Flexible (Cartesian DOFs), Fixed (no displacement) or driven by a Rigid group (center of
+    // mass + orientation, moving as comDisplacement + omega x (r - r_bodyCom)).
     double maxDisplacementSquared = 0.0;
     for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
     {
       double3 displacement{};
-      for (std::size_t axis = 0; axis < 3; ++axis)
+      if (const auto comBase = layout.frameworkAtomRigidComDof(atom))
       {
-        if (const auto dof = layout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis)))
+        const std::size_t orientationBase = *comBase + 3;
+        const double3 comDisplacement(generalized[*comBase + 0], generalized[*comBase + 1], generalized[*comBase + 2]);
+        const double3 omega(generalized[orientationBase + 0], generalized[orientationBase + 1],
+                            generalized[orientationBase + 2]);
+        const double3 offset = frameworkAtoms[atom].position - rigidCache.frameworkBodyCenterOfMass(atom);
+        displacement = comDisplacement + double3::cross(omega, offset);
+      }
+      else
+      {
+        for (std::size_t axis = 0; axis < 3; ++axis)
         {
-          (&displacement.x)[axis] = generalized[*dof];
+          if (const auto dof = layout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis)))
+          {
+            (&displacement.x)[axis] = generalized[*dof];
+          }
         }
       }
       maxDisplacementSquared = std::max(maxDisplacementSquared, double3::dot(displacement, displacement));

@@ -181,9 +181,20 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   translationalCenterOfMassConstraint = 0;
   translationalDegreesOfFreedom = 0;
   rotationalDegreesOfFreedom = 0;
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
-    translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+    if (framework->isMixed())
+    {
+      translationalDegreesOfFreedom += 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups();
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (group.isRigidBody()) rotationalDegreesOfFreedom += group.rotationalDegreesOfFreedom;
+      }
+    }
+    else
+    {
+      translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+    }
   }
 
   createInitialMolecules(initialpositions);
@@ -211,7 +222,8 @@ void System::createFrameworks()
       electricFieldNew.push_back(double3(0.0, 0.0, 0.0));
     }
     numberOfFrameworkAtoms += atoms.size();
-    numberOfRigidFrameworkAtoms += framework->rigid ? atoms.size() : 0;
+    // Lab-fixed prefix for Ewald: all atoms when fully rigid, Fixed groups when mixed, else none.
+    numberOfRigidFrameworkAtoms += framework->numberOfFixedAtoms();
     netChargeFramework += framework->netCharge;
     netCharge += framework->netCharge;
   }
@@ -219,7 +231,19 @@ void System::createFrameworks()
 
 void System::rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox)
 {
-  const bool previousFrameworkFlexible = framework.has_value() && !framework->rigid;
+  const std::size_t previousTranslationalFrameworkDof =
+      (framework.has_value() && framework->hasMobileAtoms())
+          ? (framework->isMixed() ? 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups()
+                                  : 3 * numberOfFrameworkAtoms)
+          : 0;
+  std::size_t previousRotationalFrameworkDof = 0;
+  if (framework.has_value() && framework->isMixed())
+  {
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (group.isRigidBody()) previousRotationalFrameworkDof += group.rotationalDegreesOfFreedom;
+    }
+  }
   const std::size_t previousFrameworkAtoms = numberOfFrameworkAtoms;
 
   // Detach any guest-molecule storage (the suffix after the framework prefix) so it can be re-appended once
@@ -233,7 +257,7 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
 
   const std::vector<Atom>& frameworkAtoms = framework->atoms;
   numberOfFrameworkAtoms = frameworkAtoms.size();
-  numberOfRigidFrameworkAtoms = framework->rigid ? frameworkAtoms.size() : 0;
+  numberOfRigidFrameworkAtoms = framework->numberOfFixedAtoms();
 
   // Rebuild the per-atom storage as [new framework atoms] ++ [preserved molecule atoms]; the field/potential
   // buffers are reset to the new size (they are recomputed on the next energy/field evaluation).
@@ -250,9 +274,24 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
   netChargeFramework = framework->netCharge;
   netCharge += netChargeFramework;
 
-  // A flexible framework contributes 3 Cartesian degrees of freedom per atom; adjust for the new atom count.
-  if (previousFrameworkFlexible) translationalDegreesOfFreedom -= 3 * previousFrameworkAtoms;
-  if (!framework->rigid) translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+  // Adjust framework degrees of freedom for the replacement host.
+  translationalDegreesOfFreedom -= previousTranslationalFrameworkDof;
+  rotationalDegreesOfFreedom -= previousRotationalFrameworkDof;
+  if (framework->hasMobileAtoms())
+  {
+    if (framework->isMixed())
+    {
+      translationalDegreesOfFreedom += 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups();
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (group.isRigidBody()) rotationalDegreesOfFreedom += group.rotationalDegreesOfFreedom;
+      }
+    }
+    else
+    {
+      translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+    }
+  }
 
   // Note: pseudo-atom counts intentionally track only component (guest) atoms, matching the constructor which
   // computes them before the framework atoms are appended; the preserved guest counts stay valid, so framework
@@ -618,7 +657,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     index += numberOfMoleculesPerComponent[i];
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
     runningIntraEnergy += Interactions::computeFrameworkIntraMolecularEnergy(forceField, *framework, simulationBox,
                                                                              frameworkAtomPositions);

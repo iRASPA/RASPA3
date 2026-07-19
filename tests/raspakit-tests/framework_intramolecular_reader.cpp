@@ -504,6 +504,98 @@ TEST(framework_intramolecular_reader, rejects_unknown_ambiguous_and_malformed_de
   EXPECT_THROW(framework.readFrameworkDefinition(forceField, invalidType.path.string()), std::runtime_error);
 }
 
+TEST(framework_intramolecular_reader, mixed_groups_reorder_fixed_first_and_skip_internal_bonds)
+{
+  ForceField forceField = makeTestForceField();
+  // Linear chain with ~1.5 Å bonds (within covalent-radius detection in a 20 Å box).
+  std::vector<Atom> atoms{fractionalAtom({0.40, 0.5, 0.5}, *forceField.findPseudoAtom("C1")),
+                          fractionalAtom({0.475, 0.5, 0.5}, *forceField.findPseudoAtom("C2")),
+                          fractionalAtom({0.55, 0.5, 0.5}, *forceField.findPseudoAtom("C3"))};
+  Framework framework(forceField, "mixed-chain", SimulationBox(20.0, 20.0, 20.0), 1, atoms, atoms, {1, 1, 1});
+
+  TemporaryFile definition("raspa3-framework-mixed-groups.json",
+                           R"({"Type": "Flexible",
+                               "Groups": [
+                                 {"Type": "Fixed", "Atoms": [0]},
+                                 {"Type": "Flexible", "Atoms": [1, 2]}
+                               ],
+                               "Bonds": [
+                                 [["C1", "C2"], "HARMONIC", [100.0, 1.5]],
+                                 [["C2", "C3"], "HARMONIC", [100.0, 1.5]]
+                               ]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+
+  ASSERT_TRUE(framework.isMixed());
+  EXPECT_FALSE(framework.rigid);
+  EXPECT_EQ(framework.numberOfFixedAtoms(), 1);
+  EXPECT_EQ(framework.numberOfMobileAtoms(), 2);
+  EXPECT_TRUE(framework.isFixedAtom(0));
+  EXPECT_TRUE(framework.isFlexibleAtom(1));
+  EXPECT_TRUE(framework.isFlexibleAtom(2));
+
+  // After Fixed-first reorder: Fixed–Flexible and Flexible–Flexible bonds are both kept.
+  ASSERT_EQ(framework.intraMolecularPotentials.bonds.size(), 2);
+
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout({}, {}, framework.atoms.size(), 0, &framework);
+  EXPECT_FALSE(layout.frameworkAtomDof(0, MinimizationDofAxis::X).has_value());
+  EXPECT_TRUE(layout.frameworkAtomDof(1, MinimizationDofAxis::X).has_value());
+  EXPECT_TRUE(layout.frameworkAtomDof(2, MinimizationDofAxis::X).has_value());
+  EXPECT_EQ(layout.numDofs(), 6);
+}
+
+TEST(framework_intramolecular_reader, mixed_rigid_group_skips_internal_bond)
+{
+  ForceField forceField = makeTestForceField();
+  std::vector<Atom> atoms{fractionalAtom({0.40, 0.5, 0.5}, *forceField.findPseudoAtom("C1")),
+                          fractionalAtom({0.475, 0.5, 0.5}, *forceField.findPseudoAtom("C2")),
+                          fractionalAtom({0.55, 0.5, 0.5}, *forceField.findPseudoAtom("C3"))};
+  Framework framework(forceField, "mixed-rigid", SimulationBox(20.0, 20.0, 20.0), 1, atoms, atoms, {1, 1, 1});
+
+  TemporaryFile definition("raspa3-framework-mixed-rigid.json",
+                           R"({"Type": "Flexible",
+                               "Groups": [
+                                 {"Type": "Rigid", "Atoms": [0, 1]},
+                                 {"Type": "Flexible", "Atoms": [2]}
+                               ],
+                               "Bonds": [
+                                 [["C1", "C2"], "HARMONIC", [100.0, 1.5]],
+                                 [["C2", "C3"], "HARMONIC", [100.0, 1.5]]
+                               ]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+
+  ASSERT_TRUE(framework.isMixed());
+  EXPECT_EQ(framework.numberOfRigidGroups(), 1);
+  EXPECT_EQ(framework.numberOfFixedAtoms(), 0);
+  // Internal C1–C2 bond inside the Rigid group is skipped; only the bridging C2–C3 remains.
+  ASSERT_EQ(framework.intraMolecularPotentials.bonds.size(), 1);
+
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout({}, {}, framework.atoms.size(), 0, &framework);
+  // Rigid group: 6 DOF, flexible atom: 3 DOF
+  EXPECT_EQ(layout.numDofs(), 9);
+  EXPECT_TRUE(layout.frameworkAtomRigidComDof(0).has_value());
+  EXPECT_FALSE(layout.frameworkAtomDof(0, MinimizationDofAxis::X).has_value());
+  EXPECT_TRUE(layout.frameworkAtomDof(2, MinimizationDofAxis::X).has_value());
+}
+
+TEST(framework_intramolecular_reader, groups_rejected_for_rigid_type_and_cycle)
+{
+  ForceField forceField = makeTestForceField();
+  Framework framework = makePeriodicPairFramework(forceField);
+
+  TemporaryFile rigidGroups("raspa3-framework-rigid-groups.json",
+                            R"({"Type": "Rigid",
+                                "Groups": [{"Type": "Fixed", "Atoms": [0, 1]}]})");
+  EXPECT_THROW(framework.readFrameworkDefinition(forceField, rigidGroups.path.string()), std::runtime_error);
+
+  Framework flexible = makePeriodicPairFramework(forceField);
+  TemporaryFile cycle("raspa3-framework-cycle-group.json",
+                      R"({"Type": "Flexible",
+                          "Groups": [{"Type": "Cycle", "Atoms": [0, 1]}]})");
+  EXPECT_THROW(flexible.readFrameworkDefinition(forceField, cycle.path.string()), std::runtime_error);
+}
+
 TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_potentials)
 {
   ForceField forceField = makeTestForceField();

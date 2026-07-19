@@ -27,7 +27,8 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
                                                       std::span<const Atom> frameworkAtomPositions,
                                                       std::span<const AtomDynamics> frameworkDynamics,
                                                       const ForceField* forceField,
-                                                      std::span<const GroupState> groupData)
+                                                      std::span<const GroupState> groupData,
+                                                      std::span<const GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double energy{};
@@ -78,14 +79,23 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
     }
     index += molecule.numberOfAtoms;
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
     if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
     {
       throw std::runtime_error("Flexible-framework kinetic energy requires force-field and dynamics data");
     }
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      const GroupState& state = frameworkGroupData[rigidRank];
+      energy += 0.5 * group.mass * double3::dot(state.velocity, state.velocity);
+      ++rigidRank;
+    }
     for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
     {
+      if (!framework->isFlexibleAtom(i)) continue;
       double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
       energy += 0.5 * mass * double3::dot(frameworkDynamics[i].velocity, frameworkDynamics[i].velocity);
     }
@@ -98,7 +108,9 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
 
 double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculeData,
                                                    const std::vector<Component> components,
-                                                   std::span<const GroupState> groupData)
+                                                   std::span<const GroupState> groupData,
+                                                   const std::optional<Framework>& framework,
+                                                   std::span<const GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   double3 ang_vel;
@@ -148,6 +160,18 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
 
     energy += rotationalEnergy(molecule.orientationMomentum, molecule.orientation, inertiaVector, inverseInertiaVector);
     (void)ang_vel;
+  }
+  if (framework && !frameworkGroupData.empty())
+  {
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      const GroupState& state = frameworkGroupData[rigidRank];
+      energy += rotationalEnergy(state.orientationMomentum, state.orientation, group.inertiaVector,
+                                 group.inverseInertiaVector);
+      ++rigidRank;
+    }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function

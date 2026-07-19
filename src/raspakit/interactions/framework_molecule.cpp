@@ -462,7 +462,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   RunningEnergy energySum{};
 
   bool useCharge = forceField.useCharge;
-  const bool flexibleFramework = framework && !framework->rigid && frameworkDynamics.size() == frameworkAtoms.size();
+  // Any mobile host atom disables energy grids and receives Newton's-third-law gradients.
+  const bool mobileFramework =
+      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
 
   if (moleculeAtoms.empty()) return energySum;
 
@@ -473,7 +475,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     std::size_t typeA = static_cast<std::size_t>(moleculeAtom.type);
     bool isFractional = static_cast<bool>(moleculeAtom.isFractional);
 
-    if (!flexibleFramework && interpolationGrids[typeA].has_value() && !isFractional &&
+    if (!mobileFramework && interpolationGrids[typeA].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(moleculeAtom.position);
@@ -501,7 +503,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
             const double3 f = factors.firstDerivativeFactor * dr;
 
             moleculeDynamics[indexA].gradient += f;
-            if (flexibleFramework) frameworkDynamics[indexB].gradient -= f;
+            if (mobileFramework && !framework->isFixedAtom(indexB)) frameworkDynamics[indexB].gradient -= f;
           },
           [&](std::size_t indexB, const Atom& frameworkAtom, const Potentials::PairDerivatives<1>& factors,
               const double3& dr)
@@ -513,7 +515,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
             const double3 g = factors.firstDerivativeFactor * dr;
 
             moleculeDynamics[indexA].gradient += g;
-            if (flexibleFramework) frameworkDynamics[indexB].gradient -= g;
+            if (mobileFramework && !framework->isFixedAtom(indexB)) frameworkDynamics[indexB].gradient -= g;
           });
     }
   }

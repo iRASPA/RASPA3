@@ -8,6 +8,7 @@ import atom;
 import atom_dynamics;
 import molecule;
 import component;
+import framework;
 import forcefield;
 import simulationbox;
 import generalized_hessian;
@@ -21,6 +22,7 @@ RunningEnergy computeFrameworkMoleculeHessian(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
     std::span<const Component> components, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics = {},
-    std::span<AtomDynamics> frameworkDynamics = {}, const CellMinimizationLayout& cellLayout = {});
+    std::span<AtomDynamics> frameworkDynamics = {}, const CellMinimizationLayout& cellLayout = {},
+    const Framework* framework = nullptr);
 
 }  // namespace Interactions

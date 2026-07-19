@@ -34,7 +34,8 @@ export namespace Integrators
 void scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                      std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                      std::pair<double, double> scaling, const std::optional<Framework>& framework = std::nullopt,
-                     std::span<AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {});
+                     std::span<AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {},
+                     std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Removes total movable-system center-of-mass velocity.
@@ -53,7 +54,8 @@ void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span
                                      const std::optional<Framework>& framework = std::nullopt,
                                      std::span<const Atom> frameworkAtomPositions = {},
                                      std::span<AtomDynamics> frameworkDynamics = {},
-                                     const ForceField* forceField = nullptr, std::span<GroupState> groupData = {});
+                                     const ForceField* forceField = nullptr, std::span<GroupState> groupData = {},
+                                     std::span<GroupState> frameworkGroupData = {});
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *
@@ -72,7 +74,8 @@ void updatePositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeA
                      std::span<const AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                      double dt, const std::optional<Framework>& framework = std::nullopt,
                      std::span<Atom> frameworkAtomPositions = {},
-                     std::span<const AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {});
+                     std::span<const AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {},
+                     std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Updates the velocities and orientation momenta of molecules based on gradients.
@@ -94,7 +97,7 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
                       const std::optional<Framework>& framework = std::nullopt,
                       std::span<const Atom> frameworkAtomPositions = {},
                       std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr,
-                      std::span<GroupState> groupData = {});
+                      std::span<GroupState> groupData = {}, std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Initializes the velocities according to the Boltzmann distribution
@@ -123,13 +126,16 @@ void initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule, std::s
 void initializeGroupVelocity(RandomNumber& random, GroupState& state, const MoleculeGroup& group,
                              double temperature);
 
+void initializeFrameworkGroupVelocity(RandomNumber& random, GroupState& state, const FrameworkGroup& group,
+                                      double temperature);
+
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                           std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
                           const std::vector<Component> components, double temperature,
                           const std::optional<Framework>& framework = std::nullopt,
                           std::span<const Atom> frameworkAtomPositions = {},
                           std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr,
-                          std::span<GroupState> groupData = {});
+                          std::span<GroupState> groupData = {}, std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.
@@ -143,7 +149,10 @@ void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData
  * \param components Vector of component definitions.
  */
 void createCartesianPositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                              std::vector<Component> components, std::span<const GroupState> groupData = {});
+                              std::vector<Component> components, std::span<const GroupState> groupData = {},
+                              const std::optional<Framework>& framework = std::nullopt,
+                              std::span<Atom> frameworkAtomPositions = {},
+                              std::span<const GroupState> frameworkGroupData = {});
 
 /**
  * \brief Performs second-order NoSquish free rotor integration.
@@ -153,7 +162,8 @@ void createCartesianPositions(std::span<Molecule> moleculeData, std::span<Atom> 
  * \param dt Time step for the integration.
  */
 void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components, double dt,
-                               std::span<GroupState> groupData = {});
+                               std::span<GroupState> groupData = {}, const std::optional<Framework>& framework = std::nullopt,
+                               std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Updates center of mass velocities and orientation momenta of molecules.
@@ -177,7 +187,10 @@ void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
 void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                               std::span<const AtomDynamics> moleculeDynamics,
                                               std::vector<Component> components,
-                                              std::span<GroupState> groupData = {});
+                                              std::span<GroupState> groupData = {},
+                                              const std::optional<Framework>& framework = std::nullopt,
+                                              std::span<const AtomDynamics> frameworkDynamics = {},
+                                              std::span<GroupState> frameworkGroupData = {});
 
 /**
  * \brief Updates gradients and computes energies due to interactions.

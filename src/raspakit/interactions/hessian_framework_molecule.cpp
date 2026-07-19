@@ -8,6 +8,7 @@ import double3;
 import double3x3;
 import atom;
 import molecule;
+import framework;
 import forcefield;
 import simulationbox;
 import interactions_pair_kernel;
@@ -94,7 +95,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
     std::span<const Component> components, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics,
-    std::span<AtomDynamics> frameworkDynamics, const CellMinimizationLayout& cellLayout)
+    std::span<AtomDynamics> frameworkDynamics, const CellMinimizationLayout& cellLayout, const Framework* framework)
 {
   RunningEnergy energies{};
 
@@ -103,14 +104,15 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
     return energies;
   }
 
-  const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(moleculeData, components, moleculeAtoms);
+  const bool mixed = framework != nullptr && framework->isMixed();
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      moleculeData, components, moleculeAtoms, mixed ? framework : nullptr, frameworkAtoms);
 
   const SimulationBox& box = simulationBox;
   const bool useCharge = forceField.useCharge;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const bool flexibleFramework = layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  const bool flexibleFramework = !mixed && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
@@ -138,6 +140,19 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
         if (frameworkDynamics.size() == frameworkAtoms.size())
         {
           frameworkDynamics[frameworkAtom].gradient -= factors.firstDerivativeFactor * dr;
+        }
+        if (mixed)
+        {
+          // Mixed frameworks: project both sides onto their generalized DOFs (fixed framework
+          // atoms carry an empty site and drop out; rigid-group atoms couple through the group's
+          // center-of-mass and orientation DOFs). Variable-cell terms are not supported here.
+          const double3 gradientA = factors.firstDerivativeFactor * dr;
+          Minimization::scatterRadialHessianSites(
+              hessian,
+              {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, localAtom),
+               Minimization::makeFrameworkHessianSite(layout, rigidCache, frameworkAtom)},
+              {gradientA, -gradientA}, factors.firstDerivativeFactor, factors.secondDerivativeFactor, dr);
+          return;
         }
         if (flexibleFramework)
         {

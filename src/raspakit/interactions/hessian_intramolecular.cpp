@@ -160,6 +160,17 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
   RunningEnergy energies{};
   if (framework.rigid) return energies;
 
+  // Mixed frameworks (Fixed / Rigid / Flexible groups) scatter every term through generalized
+  // HessianSites: fixed atoms carry no DOFs and drop out, rigid-group atoms project onto the
+  // group's center-of-mass and orientation DOFs (terms entirely inside one rigid or fixed group
+  // contribute energy but cancel exactly in the derivatives).
+  const bool mixed = framework.isMixed();
+  const Minimization::RigidDerivativeCache rigidCache =
+      mixed ? Minimization::RigidDerivativeCache::build({}, {}, {}, &framework, atoms)
+            : Minimization::RigidDerivativeCache{};
+  const auto frameworkSite = [&](std::size_t atom)
+  { return Minimization::makeFrameworkHessianSite(layout, rigidCache, atom); };
+
   const auto shiftedPosition = [&](std::size_t atom, const int3& shift)
   {
     return atoms[atom].position + simulationBox.cell * double3(static_cast<double>(shift.x),
@@ -187,6 +198,12 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     hessian.strainGradient().az += dr.x * gradientA.z;
     hessian.strainGradient().bz += dr.y * gradientA.z;
     hessian.strainGradient().cz += dr.z * gradientA.z;
+    if (mixed)
+    {
+      Minimization::scatterRadialHessianSites(hessian, {frameworkSite(A), frameworkSite(B)}, {gradientA, -gradientA},
+                                              f1, f2, dr);
+      return;
+    }
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, dr);
     if (!cellLayout.empty() && hasPeriodicShift(shifts))
     {
@@ -231,6 +248,12 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     dynamics[A].gradient += gradient[0];
     dynamics[B].gradient += gradient[1];
     hessian.strainGradient() += strain;
+    if (mixed)
+    {
+      Minimization::scatterRadialHessianSites(hessian, {frameworkSite(A), frameworkSite(B)},
+                                              {gradient[0], gradient[1]}, f1, f2, positionA - positionB);
+      continue;
+    }
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, positionA - positionB);
     if (!cellLayout.empty() && hasPeriodicShift(images.bonds[index]))
     {
@@ -254,6 +277,13 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     energies.bend += energy;
     for (std::size_t i = 0; i < 3; ++i) dynamics[ids[i]].gradient += gradient[i];
     hessian.strainGradient() += strain;
+    if (mixed)
+    {
+      Minimization::scatterBendHessianSites(hessian, {frameworkSite(ids[0]), frameworkSite(ids[1]),
+                                                      frameworkSite(ids[2])},
+                                            gradient, geometry);
+      continue;
+    }
     Minimization::scatterBendHessianByDof(hessian, {dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2])}, geometry);
     if (!cellLayout.empty() && hasPeriodicShift(shifts))
     {
@@ -282,6 +312,14 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       energies.*energyMember += energy;
       for (std::size_t i = 0; i < 4; ++i) dynamics[ids[i]].gradient += gradient[i];
       hessian.strainGradient() += strain;
+      if (mixed)
+      {
+        Minimization::scatterTorsionHessianSites(hessian,
+                                                 {frameworkSite(ids[0]), frameworkSite(ids[1]), frameworkSite(ids[2]),
+                                                  frameworkSite(ids[3])},
+                                                 gradient, geometry);
+        continue;
+      }
       Minimization::scatterTorsionHessianByDof(
           hessian, {dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2]), dofBase(ids[3])}, geometry);
       if (!cellLayout.empty() && hasPeriodicShift(shifts))

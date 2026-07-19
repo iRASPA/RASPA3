@@ -151,6 +151,10 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
                                                                static_cast<double>(shift.y),
                                                                static_cast<double>(shift.z));
   };
+  const auto addMobileGradient = [&](std::size_t atom, const double3& gradient)
+  {
+    if (!framework.isFixedAtom(atom)) dynamics[atom].gradient += gradient;
+  };
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
   std::set<std::array<std::size_t, 2>> pairs12And13;
@@ -180,8 +184,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
         potential.potentialEnergyGradientStrain(shiftedPosition(ids[0], images.bonds[index][0]),
                                                shiftedPosition(ids[1], images.bonds[index][1]));
     energy.bond += termEnergy;
-    dynamics[ids[0]].gradient += gradient[0];
-    dynamics[ids[1]].gradient += gradient[1];
+    addMobileGradient(ids[0], gradient[0]);
+    addMobileGradient(ids[1], gradient[1]);
   }
   for (std::size_t index = 0; index < potentials.bends.size(); ++index)
   {
@@ -193,7 +197,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
                                                 shiftedPosition(ids[1], shifts[1]),
                                                 shiftedPosition(ids[2], shifts[2]));
     energy.bend += termEnergy;
-    for (std::size_t i = 0; i < 3; ++i) dynamics[ids[i]].gradient += gradient[i];
+    for (std::size_t i = 0; i < 3; ++i) addMobileGradient(ids[i], gradient[i]);
   }
   const auto accumulateTorsions = [&](const std::vector<TorsionPotential>& torsions,
                                       const std::vector<std::array<int3, 4>>& termImages,
@@ -210,7 +214,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
                                                   shiftedPosition(ids[2], shifts[2]),
                                                   shiftedPosition(ids[3], shifts[3]));
       energy.*member += termEnergy;
-      for (std::size_t i = 0; i < 4; ++i) dynamics[ids[i]].gradient += gradient[i];
+      for (std::size_t i = 0; i < 4; ++i) addMobileGradient(ids[i], gradient[i]);
     }
   };
   accumulateTorsions(potentials.torsions, images.torsions, &RunningEnergy::torsion);
@@ -222,8 +226,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
   {
     energyAccumulator += scaling * factor.energy;
     const double3 gradient = scaling * factor.firstDerivativeFactor * dr;
-    dynamics[A].gradient += gradient;
-    dynamics[B].gradient -= gradient;
+    addMobileGradient(A, gradient);
+    addMobileGradient(B, -gradient);
   };
   for (std::size_t index = 0; index < potentials.vanDerWaals.size(); ++index)
   {
@@ -255,8 +259,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
       const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
       energy.intraCoul += k / r;
       const double3 gradient = (-k / (r * rr)) * dr;
-      dynamics[A].gradient += gradient;
-      dynamics[B].gradient -= gradient;
+      addMobileGradient(A, gradient);
+      addMobileGradient(B, -gradient);
     }
     else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
     {
@@ -264,8 +268,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
           forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
       energy.intraCoul += factor.energy;
       const double3 gradient = factor.firstDerivativeFactor * dr;
-      dynamics[A].gradient += gradient;
-      dynamics[B].gradient -= gradient;
+      addMobileGradient(A, gradient);
+      addMobileGradient(B, -gradient);
     }
   }
   return energy;

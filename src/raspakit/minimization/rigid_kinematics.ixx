@@ -10,6 +10,7 @@ import simd_quatd;
 import atom;
 import molecule;
 import component;
+import framework;
 
 export namespace Minimization
 {
@@ -41,12 +42,25 @@ class RigidDerivativeCache
   /** Laboratory-frame center of mass of the rigid body driving this atom (molecule or group). */
   const double3 &bodyCenterOfMass(std::size_t moleculeIndex, std::size_t localAtomIndex) const noexcept;
 
+  /** True when the (global) framework atom is driven by a mixed-framework rigid group. */
+  bool frameworkAtomIsRigid(std::size_t frameworkAtom) const noexcept;
+
+  /** Orientation Jacobian of the framework rigid group driving this (global) framework atom. */
+  const RigidAtomDerivatives &frameworkAtom(std::size_t frameworkAtom) const noexcept;
+
+  /** Laboratory-frame center of mass of the framework rigid group driving this atom. */
+  const double3 &frameworkBodyCenterOfMass(std::size_t frameworkAtom) const noexcept;
+
   static RigidDerivativeCache build(std::span<const Molecule> moleculeData, std::span<const Component> components,
-                                    std::span<const Atom> moleculeAtoms);
+                                    std::span<const Atom> moleculeAtoms, const Framework *framework = nullptr,
+                                    std::span<const Atom> frameworkAtoms = {});
 
  private:
   std::vector<std::vector<RigidAtomDerivatives>> _molecules;
   std::vector<std::vector<double3>> _bodyCentersOfMass;
+  std::vector<RigidAtomDerivatives> _framework;        ///< Per (global) framework atom; only rigid-group atoms set.
+  std::vector<double3> _frameworkBodyCentersOfMass;    ///< Group center of mass per rigid-group framework atom.
+  std::vector<std::uint8_t> _frameworkAtomRigid;       ///< 1 when the framework atom is driven by a rigid group.
 };
 
 }  // namespace Minimization

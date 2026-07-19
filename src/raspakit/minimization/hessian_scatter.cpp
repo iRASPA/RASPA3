@@ -763,6 +763,24 @@ Minimization::HessianSite Minimization::makeHessianSite(const MinimizationDofLay
   return site;
 }
 
+Minimization::HessianSite Minimization::makeFrameworkHessianSite(const MinimizationDofLayout& layout,
+                                                                 const RigidDerivativeCache& rigidCache,
+                                                                 std::size_t frameworkAtom)
+{
+  HessianSite site{};
+  if (const auto comBase = layout.frameworkAtomRigidComDof(frameworkAtom))
+  {
+    site.positionBase = comBase;
+    site.orientationBase = *comBase + 3;
+    site.derivatives = &rigidCache.frameworkAtom(frameworkAtom);
+  }
+  else
+  {
+    site.positionBase = layout.frameworkAtomDof(frameworkAtom, MinimizationDofAxis::X);
+  }
+  return site;
+}
+
 void Minimization::scatterRadialHessianSites(GeneralizedHessian& hessian, const std::array<HessianSite, 2>& sites,
                                              const std::array<double3, 2>& gradients, double f1, double f2,
                                              const double3& dr)

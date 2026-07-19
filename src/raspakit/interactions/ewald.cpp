@@ -605,9 +605,9 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       // Flexible-framework counterpart: the framework charges carry a self term and the bonded (1-2, 1-3, 1-4)
       // framework pairs excluded from the real-space pair sum need the shifted completion q_i q_j (V(r) - 1/r),
       // with the resulting force on the framework atoms. Mirrors the erf-based Ewald framework exclusion block.
-      const bool flexibleFramework =
-          framework && !framework->rigid && frameworkDynamics.size() == frameworkAtoms.size();
-      if (flexibleFramework)
+      const bool liveFramework =
+          framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+      if (liveFramework)
       {
         addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms);
 
@@ -666,22 +666,29 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     return energySum;
   }
 
-  const bool flexibleFramework = framework && !framework->rigid && frameworkDynamics.size() == frameworkAtoms.size();
-  const std::size_t frameworkOffset = flexibleFramework ? frameworkAtoms.size() : 0;
+  // Live Fourier hosts are mobile framework atoms only; lab-fixed atoms contribute via fixedFrameworkStoredEik.
+  const bool liveFramework =
+      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+  const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
+  const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
+  const bool useFixedFrameworkEik = fixedFrameworkAtomCount > 0;
+  const std::size_t frameworkOffset = liveFramework ? mobileFrameworkAtomCount : 0;
   std::vector<Atom> liveAtoms;
-  if (flexibleFramework)
+  if (liveFramework)
   {
-    liveAtoms.reserve(frameworkAtoms.size() + atomData.size());
-    liveAtoms.insert(liveAtoms.end(), frameworkAtoms.begin(), frameworkAtoms.end());
+    liveAtoms.reserve(mobileFrameworkAtomCount + atomData.size());
+    liveAtoms.insert(liveAtoms.end(),
+                     frameworkAtoms.begin() + static_cast<std::ptrdiff_t>(fixedFrameworkAtomCount),
+                     frameworkAtoms.end());
     liveAtoms.insert(liveAtoms.end(), atomData.begin(), atomData.end());
   }
-  const std::span<const Atom> atoms = flexibleFramework ? std::span<const Atom>(liveAtoms) : atomData;
+  const std::span<const Atom> atoms = liveFramework ? std::span<const Atom>(liveAtoms) : atomData;
   const std::size_t numberOfAtoms = atoms.size();
   const auto addGradient = [&](std::size_t atom, const double3& gradient)
   {
-    if (flexibleFramework && atom < frameworkOffset)
+    if (liveFramework && atom < frameworkOffset)
     {
-      frameworkDynamics[atom].gradient += gradient;
+      frameworkDynamics[fixedFrameworkAtomCount + atom].gradient += gradient;
     }
     else
     {
@@ -742,7 +749,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
           }
 
           std::pair<std::complex<double>, std::array<std::complex<double>, 4>> rigid{};
-          if (!flexibleFramework) rigid = fixedFrameworkStoredEik[nvec];
+          if (useFixedFrameworkEik) rigid = fixedFrameworkStoredEik[nvec];
 
           std::pair<std::complex<double>, std::array<std::complex<double>, 4>> total;
           total.first = rigid.first + cksum.first;
@@ -845,7 +852,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       }
     }
 
-    if (flexibleFramework)
+    if (liveFramework)
     {
       std::set<std::array<std::size_t, 2>> excludedPairs;
       std::map<std::array<std::size_t, 2>, double> coulombScaling;
@@ -907,7 +914,21 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       netChargeAdsorbates += atoms[i].scalingCoulomb * atoms[i].charge;
       if (atoms[i].groupId != 0) netChargeDerivative[atoms[i].groupId - 1] += atoms[i].charge;
     }
-    const double rigidFrameworkCharge = flexibleFramework ? 0.0 : netChargeFramework;
+    double rigidFrameworkCharge = 0.0;
+    if (useFixedFrameworkEik)
+    {
+      if (!liveFramework)
+      {
+        rigidFrameworkCharge = netChargeFramework;
+      }
+      else
+      {
+        for (std::size_t i = 0; i < fixedFrameworkAtomCount; ++i)
+        {
+          rigidFrameworkCharge += frameworkAtoms[i].scalingCoulomb * frameworkAtoms[i].charge;
+        }
+      }
+    }
     double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
     if (omitInterInteractions)
     {

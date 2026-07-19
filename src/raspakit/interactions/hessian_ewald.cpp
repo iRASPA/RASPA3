@@ -173,9 +173,12 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
 {
   if (forceField.omitInterInteractions) return;
 
-  const bool flexibleFramework =
-      framework.has_value() && !framework->rigid && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
-  if (moleculeAtoms.empty() && !flexibleFramework) return;
+  const bool mixed = framework.has_value() && framework->isMixed();
+  const bool flexibleFramework = framework.has_value() && !framework->rigid && !mixed &&
+                                 layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  const bool liveFramework =
+      (flexibleFramework || mixed) && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  if (moleculeAtoms.empty() && !liveFramework) return;
 
   // Per-atom self-energy (position and strain independent). For a flexible framework the framework charges also
   // carry a self term, mirroring the Ewald self loop over the combined framework + molecule atom list.
@@ -185,7 +188,7 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
     const double scaledCharge = atom.scalingCoulomb * atom.charge;
     energySum.ewald_self += selfPrefactor * scaledCharge * scaledCharge;
   }
-  if (flexibleFramework)
+  if (liveFramework)
   {
     for (const Atom& atom : frameworkAtoms)
     {
@@ -227,9 +230,10 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
   };
 
   // The cache provides the rigid-group centers of mass and orientation Jacobians for
-  // semi-flexible molecules; whole rigid molecules contribute energy only below.
-  const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(moleculeData, components, moleculeAtoms);
+  // semi-flexible molecules (and mixed-framework rigid groups); whole rigid molecules
+  // contribute energy only below.
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      moleculeData, components, moleculeAtoms, mixed ? &*framework : nullptr, frameworkAtoms);
 
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
   {
@@ -326,7 +330,7 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
   // Flexible-framework intra-molecular exclusion / completion (bonded 1-2, 1-3, 1-4 pairs excluded from the
   // real-space shifted pair sum). Only the framework atomic degrees of freedom couple; mirrors the erf-based
   // Ewald framework exclusion block but uses the shifted completion q_i q_j (V(r) - 1/r).
-  if (flexibleFramework)
+  if (liveFramework)
   {
     std::set<std::array<std::size_t, 2>> excludedPairs;
     std::map<std::array<std::size_t, 2>, double> coulombScaling;
@@ -394,6 +398,16 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
       strain.cz = dr.z * gradientI.z;
       hessian.strainGradient() += strain;
 
+      if (mixed)
+      {
+        const Minimization::HessianSite siteI = Minimization::makeFrameworkHessianSite(layout, rigidCache, i);
+        const Minimization::HessianSite siteJ = Minimization::makeFrameworkHessianSite(layout, rigidCache, j);
+        // Both fixed, or the same rigid group: fixed separation, energy only.
+        if (!siteI.positionBase && !siteJ.positionBase) continue;
+        if (siteI.orientationBase && siteJ.orientationBase && siteI.positionBase == siteJ.positionBase) continue;
+        Minimization::scatterRadialHessianSites(hessian, {siteI, siteJ}, {gradientI, -gradientI}, f1, f2, dr);
+        continue;
+      }
       Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
                                                        *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
       if (numberOfCellDofs != 0)
@@ -432,21 +446,33 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
     return energySum;
   }
 
+  // Live Fourier hosts: all framework atoms for a fully flexible framework, the mobile suffix
+  // (rigid-group + flexible atoms) for a mixed framework; lab-fixed atoms contribute through
+  // fixedFrameworkStoredEik, mirroring computeEwaldFourierGradient.
+  const bool mixed = framework && framework->isMixed();
   const bool flexibleFramework =
-      framework && !framework->rigid && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
-  const std::size_t frameworkOffset = flexibleFramework ? frameworkAtoms.size() : 0;
-  // For a flexible framework the Fourier sums run over the framework and molecule atoms as one
-  // indexed array; assemble that view locally so the spans need not be contiguous in memory.
+      framework && !framework->rigid && !mixed && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  const std::size_t fixedFrameworkAtomCount = mixed ? framework->numberOfFixedAtoms() : 0;
+  const std::size_t frameworkOffset =
+      flexibleFramework ? frameworkAtoms.size() : (mixed ? framework->numberOfMobileAtoms() : 0);
+  const bool liveFramework = frameworkOffset > 0;
+  // The Fourier sums run over the live framework and molecule atoms as one indexed array;
+  // assemble that view locally so the spans need not be contiguous in memory.
   std::vector<Atom> combinedAtoms{};
-  if (flexibleFramework)
+  if (liveFramework)
   {
-    combinedAtoms.reserve(frameworkAtoms.size() + moleculeAtoms.size());
-    combinedAtoms.insert(combinedAtoms.end(), frameworkAtoms.begin(), frameworkAtoms.end());
+    combinedAtoms.reserve(frameworkOffset + moleculeAtoms.size());
+    combinedAtoms.insert(combinedAtoms.end(),
+                         frameworkAtoms.begin() + static_cast<std::ptrdiff_t>(fixedFrameworkAtomCount),
+                         frameworkAtoms.end());
     combinedAtoms.insert(combinedAtoms.end(), moleculeAtoms.begin(), moleculeAtoms.end());
   }
-  std::span<const Atom> atoms = flexibleFramework ? std::span<const Atom>(combinedAtoms) : moleculeAtoms;
+  std::span<const Atom> atoms = liveFramework ? std::span<const Atom>(combinedAtoms) : moleculeAtoms;
   const std::size_t numberOfAtoms = atoms.size();
   if (numberOfAtoms == 0) return energySum;
+  // Lab-fixed charges enter the structure factor through the precomputed store: the whole
+  // framework when it is rigid, the Fixed prefix when mixed.
+  const bool useStoredEik = !flexibleFramework && (!mixed || fixedFrameworkAtomCount > 0);
 
   const double alpha = forceField.EwaldAlpha;
   const double alpha_squared = alpha * alpha;
@@ -467,8 +493,8 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
 
   // The cache reads molecule atom positions for the rigid-group centers of mass, so pass the
   // molecule span (not the combined framework + molecule view).
-  const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(moleculeData, components, moleculeAtoms);
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      moleculeData, components, moleculeAtoms, mixed ? &*framework : nullptr, frameworkAtoms);
 
   // Per-atom site metadata in global atom order. Rigid-body detection is per atom: it covers whole
   // rigid molecules and rigid groups of semi-flexible molecules alike; the internal offset is taken
@@ -479,6 +505,30 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
     for (std::size_t atom = 0; atom < frameworkOffset; ++atom)
     {
       sites[atom].positionBase = layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
+    }
+  }
+  else if (mixed)
+  {
+    // Live framework atom 'atom' is global framework atom 'fixedFrameworkAtomCount + atom'
+    // (Fixed atoms form the array prefix). Flexible atoms carry Cartesian DOFs; rigid-group
+    // atoms couple through the group's center-of-mass and orientation DOFs.
+    for (std::size_t atom = 0; atom < frameworkOffset; ++atom)
+    {
+      const std::size_t globalAtom = fixedFrameworkAtomCount + atom;
+      EwaldSite& site = sites[atom];
+      if (const auto comBase = layout.frameworkAtomRigidComDof(globalAtom))
+      {
+        site.rigid = true;
+        site.internalOffset =
+            frameworkAtoms[globalAtom].position - rigidCache.frameworkBodyCenterOfMass(globalAtom);
+        site.positionBase = comBase;
+        site.orientationBase = *comBase + 3;
+        site.derivatives = &rigidCache.frameworkAtom(globalAtom);
+      }
+      else
+      {
+        site.positionBase = layout.frameworkAtomDof(globalAtom, MinimizationDofAxis::X);
+      }
     }
   }
   for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
@@ -507,9 +557,12 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
   }
   const auto addGradient = [&](std::size_t atom, const double3& gradient)
   {
-    if (flexibleFramework && atom < frameworkOffset)
+    if (liveFramework && atom < frameworkOffset)
     {
-      if (frameworkDynamics.size() == frameworkOffset) frameworkDynamics[atom].gradient += gradient;
+      if (frameworkDynamics.size() == frameworkAtoms.size())
+      {
+        frameworkDynamics[fixedFrameworkAtomCount + atom].gradient += gradient;
+      }
     }
     else
     {
@@ -612,7 +665,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
             cksum += eikr[i];
           }
 
-          const std::complex<double> rigidSF = (!flexibleFramework && nvec < fixedFrameworkStoredEik.size())
+          const std::complex<double> rigidSF = (useStoredEik && nvec < fixedFrameworkStoredEik.size())
                                                    ? fixedFrameworkStoredEik[nvec].first
                                                    : std::complex<double>(0.0, 0.0);
 
@@ -1009,9 +1062,8 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
       }
     }
 
-    if (flexibleFramework)
+    if (flexibleFramework || mixed)
     {
-      const std::span<const Atom> frameworkAtoms = atoms.first(frameworkOffset);
       std::set<std::array<std::size_t, 2>> excludedPairs;
       std::map<std::array<std::size_t, 2>, double> coulombScaling;
       for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
@@ -1058,8 +1110,11 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
         const double f2 = chargeProduct * (2.0 * alpha_squared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
                                            3.0 * erfTerm / (r * rr * rr));
         const double3 gradientI = f1 * dr;
-        addGradient(i, gradientI);
-        addGradient(j, -gradientI);
+        if (frameworkDynamics.size() == frameworkAtoms.size())
+        {
+          frameworkDynamics[i].gradient += gradientI;
+          frameworkDynamics[j].gradient -= gradientI;
+        }
         double3x3 strain{};
         strain.ax = dr.x * gradientI.x;
         strain.bx = dr.y * gradientI.x;
@@ -1071,6 +1126,16 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
         strain.bz = dr.y * gradientI.z;
         strain.cz = dr.z * gradientI.z;
         hessian.strainGradient() += strain;
+        if (mixed)
+        {
+          const Minimization::HessianSite siteI = Minimization::makeFrameworkHessianSite(layout, rigidCache, i);
+          const Minimization::HessianSite siteJ = Minimization::makeFrameworkHessianSite(layout, rigidCache, j);
+          // Both fixed, or the same rigid group: fixed separation, energy only.
+          if (!siteI.positionBase && !siteJ.positionBase) continue;
+          if (siteI.orientationBase && siteJ.orientationBase && siteI.positionBase == siteJ.positionBase) continue;
+          Minimization::scatterRadialHessianSites(hessian, {siteI, siteJ}, {gradientI, -gradientI}, f1, f2, dr);
+          continue;
+        }
         Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
                                                          *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2,
                                                          dr);
@@ -1094,7 +1159,23 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
     }
     const double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
     double netChargeFactor = 0.0;
-    const double rigidFrameworkCharge = flexibleFramework ? 0.0 : netChargeFramework;
+    // Only the lab-fixed charges (whole framework when rigid, Fixed prefix when mixed) sit outside
+    // the live sum and enter through the net-charge cross term.
+    double rigidFrameworkCharge = 0.0;
+    if (!flexibleFramework)
+    {
+      if (mixed)
+      {
+        for (std::size_t i = 0; i < fixedFrameworkAtomCount; ++i)
+        {
+          rigidFrameworkCharge += frameworkAtoms[i].scalingCoulomb * frameworkAtoms[i].charge;
+        }
+      }
+      else
+      {
+        rigidFrameworkCharge = netChargeFramework;
+      }
+    }
     if (omitInterInteractions)
     {
       netChargeFactor = 2.0 * rigidFrameworkCharge * netChargeAdsorbates;

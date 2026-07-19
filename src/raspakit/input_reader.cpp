@@ -1714,6 +1714,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             else if (caseInSensStringCompare(frameworkType, "Rigid"))
             {
+              if (framework.isMixed())
+              {
+                throw std::runtime_error(
+                    "[Input reader]: 'FrameworkType' 'Rigid' cannot override a framework definition that uses "
+                    "'Groups'\n");
+              }
               framework.rigid = true;
             }
             else

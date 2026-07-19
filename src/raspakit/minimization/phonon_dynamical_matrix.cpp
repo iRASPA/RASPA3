@@ -192,10 +192,12 @@ std::vector<ChargedSite> gatherStaticFrameworkCharges(const System& system)
   return staticCharges;
 }
 
-// True when any molecule carries rigid-body degrees of freedom: a fully rigid molecule or a
-// semi-flexible molecule (rigid groups). Both are handled by the generalized (projected) route.
+// True when the system carries any generalized (non-Cartesian) degrees of freedom that require the
+// projected route: a fully rigid molecule, a semi-flexible molecule (rigid groups), or a mixed
+// Fixed/Rigid/Flexible framework (fixed atoms carry no DOFs, rigid groups carry six).
 bool systemHasRigidBodies(const System& system)
 {
+  if (system.framework && system.framework->isMixed()) return true;
   return std::ranges::any_of(system.moleculeData,
                              [&](const Molecule& molecule)
                              {
@@ -409,10 +411,26 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   }
   cartesianSystem.groupData.clear();
 
+  // Mixed Fixed/Rigid/Flexible framework: flatten it to a fully-flexible framework so every atom
+  // becomes an independent Cartesian site. The reduced framework potentials already omit intra-
+  // rigid-group terms (rigid internal geometry is a constraint, not a stiffness); the junction and
+  // flexible terms are kept. The generalized projection below maps the Fixed/Rigid atoms back onto
+  // their true degrees of freedom (none for Fixed, six for each Rigid group).
+  const bool mixedFramework = system.framework && system.framework->isMixed();
+  if (mixedFramework)
+  {
+    cartesianSystem.framework->groups.clear();
+    cartesianSystem.framework->mixed = false;
+    cartesianSystem.framework->fixedAtomCount = 0;
+    cartesianSystem.frameworkGroupData.clear();
+    cartesianSystem.numberOfRigidFrameworkAtoms = 0;
+  }
+
   const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem);
   const std::size_t numberOfSites = forceConstants.numberOfAtoms();
   const std::size_t cartesianDimension = forceConstants.dimension();
 
+  // For a mixed framework this counts every framework atom (all become Cartesian sites in the copy).
   const std::size_t numberOfFlexibleFrameworkAtoms =
       (system.framework && !system.framework->rigid) ? system.spanOfFrameworkAtoms().size() : 0;
 
@@ -435,25 +453,37 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
     evaluateDerivatives(cartesianSystem, cartesianLayout, capabilities, results);
   }
 
-  // Generalized (rigid-aware) layout and rigid-body kinematics for the projection.
-  const MinimizationDofLayout generalizedLayout =
-      buildMinimizationDofLayout(system.moleculeData, system.components, numberOfFlexibleFrameworkAtoms, 0);
+  // Generalized (rigid-aware) layout and rigid-body kinematics for the projection. The framework
+  // pointer is required so a mixed framework's Fixed atoms get zero DOFs and Rigid groups get six.
+  const MinimizationDofLayout generalizedLayout = buildMinimizationDofLayout(
+      system.moleculeData, system.components, numberOfFlexibleFrameworkAtoms, 0,
+      system.framework.has_value() ? &*system.framework : nullptr);
   const std::size_t numberOfGeneralizedDofs = generalizedLayout.numDofs();
 
-  const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(system.moleculeData, system.components, system.spanOfMoleculeAtoms());
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      system.moleculeData, system.components, system.spanOfMoleculeAtoms(),
+      mixedFramework ? &*system.framework : nullptr, system.spanOfFrameworkAtoms());
 
   const std::array<double3, 3> unit = {double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
 
   // Columns of the kinematic Jacobian J: per Cartesian site, the generalized DOFs that move it.
+  // Framework atoms: Fixed -> no columns, Flexible -> Cartesian, Rigid -> center-of-mass + orientation.
   std::vector<std::vector<SiteDofContribution>> siteContributions(numberOfSites);
   for (std::size_t atom = 0; atom < numberOfFlexibleFrameworkAtoms; ++atom)
   {
-    for (std::size_t axis = 0; axis < 3; ++axis)
+    if (const auto comBase = generalizedLayout.frameworkAtomRigidComDof(atom))
     {
-      siteContributions[atom].push_back(
-          {*generalizedLayout.frameworkAtomDof(atom, static_cast<MinimizationDofAxis>(axis)), unit[axis]});
+      for (std::size_t axis = 0; axis < 3; ++axis) siteContributions[atom].push_back({*comBase + axis, unit[axis]});
+      const Minimization::RigidAtomDerivatives& derivatives = rigidCache.frameworkAtom(atom);
+      siteContributions[atom].push_back({*comBase + 3, derivatives.dVecX});
+      siteContributions[atom].push_back({*comBase + 4, derivatives.dVecY});
+      siteContributions[atom].push_back({*comBase + 5, derivatives.dVecZ});
     }
+    else if (const auto base = generalizedLayout.frameworkAtomDof(atom, MinimizationDofAxis::X))
+    {
+      for (std::size_t axis = 0; axis < 3; ++axis) siteContributions[atom].push_back({*base + axis, unit[axis]});
+    }
+    // Fixed framework atoms have no generalized DOFs: leave the contribution list empty.
   }
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
@@ -486,8 +516,30 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   }
 
   // Gradient-curvature term Xi (real, k-independent): only rigid-body orientation blocks receive it,
-  // one block per body (whole rigid molecule or rigid group of a semi-flexible molecule).
+  // one block per body (whole rigid molecule, rigid group of a semi-flexible molecule, or rigid
+  // group of a mixed framework).
   std::vector<double> gradientCurvature(numberOfGeneralizedDofs * numberOfGeneralizedDofs, 0.0);
+  for (std::size_t atom = 0; atom < numberOfFlexibleFrameworkAtoms; ++atom)
+  {
+    const auto comBase = generalizedLayout.frameworkAtomRigidComDof(atom);
+    if (!comBase) continue;
+    const std::size_t orientationBase = *comBase + 3;
+    const double3 gradient(cartesianGradient[3 * atom + 0], cartesianGradient[3 * atom + 1],
+                           cartesianGradient[3 * atom + 2]);
+    const Minimization::RigidAtomDerivatives& derivatives = rigidCache.frameworkAtom(atom);
+    const std::array<std::array<double3, 3>, 3> ddVec = {
+        {{derivatives.ddVecAX, derivatives.ddVecAY, derivatives.ddVecAZ},
+         {derivatives.ddVecAY, derivatives.ddVecBY, derivatives.ddVecBZ},
+         {derivatives.ddVecAZ, derivatives.ddVecBZ, derivatives.ddVecCZ}}};
+    for (std::size_t alpha = 0; alpha < 3; ++alpha)
+    {
+      for (std::size_t beta = 0; beta < 3; ++beta)
+      {
+        gradientCurvature[(orientationBase + alpha) * numberOfGeneralizedDofs + (orientationBase + beta)] +=
+            double3::dot(gradient, ddVec[alpha][beta]);
+      }
+    }
+  }
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];

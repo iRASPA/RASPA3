@@ -6,6 +6,7 @@ import std;
 
 import molecule;
 import component;
+import framework;
 
 export enum class MinimizationDofAxis : std::size_t {
   X = 0,
@@ -38,6 +39,7 @@ export struct RigidBodyDofInfo
   std::size_t moleculeIndex{};
   std::size_t groupIndex{};   ///< Rigid-group index within the component (unused for whole molecules).
   bool wholeMolecule{false};  ///< True for a fully rigid molecule, false for a rigid group.
+  bool isFramework{false};    ///< True for a rigid group of a mixed framework.
   std::size_t base{};         ///< Center-of-mass DOF base; orientation base is 'base + 3'.
 };
 
@@ -60,6 +62,9 @@ export class MinimizationDofLayout
 
   std::size_t numberOfFrameworkAtoms() const noexcept { return _numberOfFrameworkAtoms; }
   std::optional<std::size_t> frameworkAtomDof(std::size_t atom, MinimizationDofAxis axis) const noexcept;
+
+  /** COM DOF base of the framework rigid group driving this atom, if any. */
+  std::optional<std::size_t> frameworkAtomRigidComDof(std::size_t atom) const noexcept;
 
   std::optional<std::size_t> flexibleAtomDof(std::size_t moleculeIndex, std::size_t localAtom,
                                              MinimizationDofAxis axis) const noexcept;
@@ -85,8 +90,9 @@ export class MinimizationDofLayout
  private:
   friend MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
                                                           std::span<const Component> components,
-                                                          std::size_t numberOfFlexibleFrameworkAtoms,
-                                                          std::size_t numberOfCellDofs);
+                                                          std::size_t numberOfFrameworkAtoms,
+                                                          std::size_t numberOfCellDofs,
+                                                          const Framework* framework);
 
   std::size_t _numDofs{};
   std::size_t _numberOfPositionDofs{};
@@ -94,6 +100,7 @@ export class MinimizationDofLayout
   std::size_t _numberOfFrameworkAtoms{};
   std::size_t _maxAtomsPerMolecule{};
   std::vector<std::int32_t> _frameworkAtomDof;
+  std::vector<std::int32_t> _frameworkAtomRigidBodyDof;
   std::vector<MolDofInfo> _molecules;
   std::vector<std::int32_t> _flexibleAtomDof;
   std::vector<std::int32_t> _rigidMoleculeDof;
@@ -103,5 +110,6 @@ export class MinimizationDofLayout
 
 export MinimizationDofLayout buildMinimizationDofLayout(std::span<const Molecule> moleculeData,
                                                         std::span<const Component> components,
-                                                        std::size_t numberOfFlexibleFrameworkAtoms = 0,
-                                                        std::size_t numberOfCellDofs = 0);
+                                                        std::size_t numberOfFrameworkAtoms = 0,
+                                                        std::size_t numberOfCellDofs = 0,
+                                                        const Framework* framework = nullptr);

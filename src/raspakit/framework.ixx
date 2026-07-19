@@ -17,7 +17,55 @@ import simulationbox;
 import property_widom;
 import connectivity_table;
 import intra_molecular_potentials;
+import molecule;
 import json;
+
+/**
+ * \brief Kind of framework group for mixed rigid/flexible frameworks.
+ *
+ * Fixed atoms stay frozen in the laboratory (crystal) frame and contribute to the precomputed
+ * Ewald structure factor. Rigid groups move as free rigid bodies (COM + quaternion). Flexible
+ * atoms are integrated in Cartesian coordinates.
+ */
+export enum class FrameworkGroupType : std::uint8_t {
+  Fixed = 0,
+  Rigid = 1,
+  Flexible = 2,
+};
+
+/**
+ * \brief A subset of framework atoms that is Fixed, Rigid, or Flexible.
+ *
+ * Analogous to MoleculeGroup, with an additional Fixed type for lab-frozen host atoms.
+ * When Groups are present they must partition every supercell atom exactly once.
+ */
+export struct FrameworkGroup
+{
+  std::uint64_t versionNumber{1};
+
+  FrameworkGroupType type{FrameworkGroupType::Flexible};
+  std::vector<std::size_t> atoms{};
+
+  /// Rigid-body reference data (meaningful only when type == Rigid).
+  double mass{0.0};
+  double3 centerOfMassReferencePosition{};
+  double3 inertiaVector{};
+  double3 inverseInertiaVector{};
+  std::vector<double3> bodyFixedPositions{};
+  std::vector<double> atomMasses{};  ///< Per group-atom mass (parallel to atoms / bodyFixedPositions).
+  std::size_t rotationalDegreesOfFreedom{3};
+  std::size_t shapeType{0};  ///< 0 = nonlinear, 1 = linear, 2 = point
+
+  FrameworkGroup() = default;
+  FrameworkGroup(FrameworkGroupType type, std::vector<std::size_t> atoms) : type(type), atoms(std::move(atoms)) {}
+
+  bool isFixed() const { return type == FrameworkGroupType::Fixed; }
+  bool isRigidBody() const { return type == FrameworkGroupType::Rigid; }
+  bool isFlexible() const { return type == FrameworkGroupType::Flexible; }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const FrameworkGroup &g);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, FrameworkGroup &g);
+};
 
 export struct FrameworkIntraMolecularImageShifts
 {
@@ -101,7 +149,7 @@ export struct Framework
             std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
             int3 numberOfUnitCells) noexcept(false);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{4};  ///< Version number for serialization purposes.
 
   SimulationBox simulationBox;          ///< Simulation box defining the unit cell dimensions.
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
@@ -111,7 +159,7 @@ export struct Framework
   std::string filename{};  ///< File name of the framework.
   std::size_t numberOfComponents{1};
 
-  bool rigid{true};  ///< Flag indicating if the framework is rigid.
+  bool rigid{true};  ///< Flag indicating if the framework is fully lab-frozen (legacy all-or-nothing).
 
   double mass{0.0};          ///< Total mass of the framework.
   double unitCellMass{0.0};  ///< Mass of the unit cell.
@@ -124,7 +172,16 @@ export struct Framework
   std::vector<Atom> fractionalUnitCellAtoms;  ///< Fractional atoms in the unit cell after applying symmetry operations.
   std::vector<Atom> unitCellAtoms;            ///< Cartesian atoms in the unit cell after applying symmetry operations.
   std::vector<Atom> atoms{};  ///< All Cartesian atoms in the framework after constructing the supercell.
+  /// Atom order when Groups are present: [Fixed | Rigid-group atoms | Flexible atoms].
   std::unordered_set<std::size_t> uniqueAtomTypes{};
+
+  std::vector<FrameworkGroup> groups{};
+  std::vector<std::size_t> atomGroupIds{};  ///< Per-atom index into groups (empty when no Groups).
+  std::size_t fixedAtomCount{0};
+  std::size_t rigidGroupAtomCount{0};
+  std::size_t flexibleAtomCount{0};
+  std::size_t rigidGroupCount{0};
+  bool mixed{false};  ///< True when Groups are defined (mixed Fixed/Rigid/Flexible layout).
 
   ConnectivityTable connectivityTable{};                            ///< Periodic framework bond connectivity.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< Indexed internal framework potentials.
@@ -190,6 +247,41 @@ export struct Framework
    * Reads type-based intramolecular definitions and expands them over the framework supercell.
    */
   void readFrameworkDefinition(const ForceField& forceField, const std::string& definitionName);
+
+  /**
+   * \brief Reads Fixed/Rigid/Flexible Groups from a framework definition and reorders atoms Fixed-first.
+   */
+  void readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /// Computes rigid-body mass/inertia/body frame for every Rigid group from current atom positions.
+  void computeGroupRigidProperties(const ForceField& forceField);
+
+  void finalizeGroupCache();
+
+  /// True when Groups are present (mixed Fixed/Rigid/Flexible host).
+  bool isMixed() const { return mixed; }
+
+  /// Lab-fixed atom count for Ewald (all atoms when fully rigid, Fixed prefix when mixed, else 0).
+  std::size_t numberOfFixedAtoms() const;
+
+  /// Atoms that are not lab-fixed (Rigid-group members + Flexible atoms).
+  std::size_t numberOfMobileAtoms() const;
+
+  bool hasMobileAtoms() const { return numberOfMobileAtoms() > 0; }
+
+  std::size_t numberOfRigidGroups() const { return rigidGroupCount; }
+
+  /// True when every listed atom lies in the same Fixed or Rigid group (skip internal potentials).
+  bool isInsideFixedOrRigidGroup(std::span<const std::size_t> ids) const;
+
+  std::optional<std::size_t> rigidGroupContaining(std::size_t atom) const;
+  std::optional<std::size_t> fixedGroupContaining(std::size_t atom) const;
+  bool isFixedAtom(std::size_t atom) const;
+  bool isFlexibleAtom(std::size_t atom) const;
+
+  void regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex, std::span<Atom> frameworkAtoms) const;
+  GroupState deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms,
+                              const ForceField& forceField) const;
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.

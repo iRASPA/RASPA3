@@ -7,6 +7,7 @@ import std;
 import double3;
 import double3x3;
 import component;
+import framework;
 import forcefield;
 import running_energy;
 import minimization_cell_layout;
@@ -24,14 +25,17 @@ void assemblePositionGradient(const System& system, const MinimizationDofLayout&
 {
   for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
   {
-    const std::size_t base = *layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
-    gradient[base + 0] = frameworkDynamics[atom].gradient.x;
-    gradient[base + 1] = frameworkDynamics[atom].gradient.y;
-    gradient[base + 2] = frameworkDynamics[atom].gradient.z;
+    if (const auto base = layout.frameworkAtomDof(atom, MinimizationDofAxis::X))
+    {
+      gradient[*base + 0] = frameworkDynamics[atom].gradient.x;
+      gradient[*base + 1] = frameworkDynamics[atom].gradient.y;
+      gradient[*base + 2] = frameworkDynamics[atom].gradient.z;
+    }
   }
 
-  const Minimization::RigidDerivativeCache rigidCache =
-      Minimization::RigidDerivativeCache::build(system.moleculeData, system.components, moleculeAtomPositions);
+  const Minimization::RigidDerivativeCache rigidCache = Minimization::RigidDerivativeCache::build(
+      system.moleculeData, system.components, moleculeAtomPositions,
+      system.framework.has_value() ? &*system.framework : nullptr, system.spanOfFrameworkAtoms());
 
   // Multiple atoms accumulate into the six DOFs of each rigid body (a whole rigid molecule or a
   // rigid group of a semi-flexible molecule), so zero those blocks before summing.
@@ -40,6 +44,26 @@ void assemblePositionGradient(const System& system, const MinimizationDofLayout&
     for (std::size_t k = 0; k < 6; ++k)
     {
       gradient[body.base + k] = 0.0;
+    }
+  }
+
+  // Framework rigid groups: gather atom gradients into the six-DOF blocks (force on the center of
+  // mass plus the orientation-tangent torque via the per-atom orientation Jacobian).
+  if (system.framework && system.framework->isMixed())
+  {
+    for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
+    {
+      if (const auto comBase = layout.frameworkAtomRigidComDof(atom))
+      {
+        const Minimization::RigidAtomDerivatives& derivatives = rigidCache.frameworkAtom(atom);
+        const double3 g = frameworkDynamics[atom].gradient;
+        gradient[*comBase + 0] += g.x;
+        gradient[*comBase + 1] += g.y;
+        gradient[*comBase + 2] += g.z;
+        gradient[*comBase + 3] += double3::dot(g, derivatives.dVecX);
+        gradient[*comBase + 4] += double3::dot(g, derivatives.dVecY);
+        gradient[*comBase + 5] += double3::dot(g, derivatives.dVecZ);
+      }
     }
   }
 
@@ -75,6 +99,21 @@ void assemblePositionGradient(const System& system, const MinimizationDofLayout&
 // semi-flexible molecule) from the current atom positions.
 double3 rigidBodyCenterOfMass(const System& system, const RigidBodyDofInfo& body)
 {
+  if (body.isFramework)
+  {
+    const Framework& framework = *system.framework;
+    const FrameworkGroup& group = framework.groups[body.groupIndex];
+    const std::span<const Atom> atoms = system.spanOfFrameworkAtoms();
+    double3 weighted{};
+    double mass{};
+    for (std::size_t k = 0; k != group.atoms.size(); ++k)
+    {
+      weighted += group.atomMasses[k] * atoms[group.atoms[k]].position;
+      mass += group.atomMasses[k];
+    }
+    return weighted / mass;
+  }
+
   const Molecule& molecule = system.moleculeData[body.moleculeIndex];
   if (body.wholeMolecule)
   {
@@ -101,11 +140,13 @@ std::vector<double> affinePositionDirection(const System& system, const Minimiza
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
   {
-    const double3 value = basis * frameworkAtoms[atom].position;
-    const std::size_t base = *layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
-    direction[base + 0] = value.x;
-    direction[base + 1] = value.y;
-    direction[base + 2] = value.z;
+    if (const auto base = layout.frameworkAtomDof(atom, MinimizationDofAxis::X))
+    {
+      const double3 value = basis * frameworkAtoms[atom].position;
+      direction[*base + 0] = value.x;
+      direction[*base + 1] = value.y;
+      direction[*base + 2] = value.z;
+    }
   }
 
   // Flexible atoms scale affinely with the cell; rigid bodies (whole rigid molecules and rigid
@@ -142,11 +183,13 @@ std::vector<double> affineGradientDirection(const System& system, const Minimiza
   std::vector<double> direction(layout.numberOfPositionDofs(), 0.0);
   for (std::size_t atom = 0; atom < layout.numberOfFrameworkAtoms(); ++atom)
   {
-    const std::size_t base = *layout.frameworkAtomDof(atom, MinimizationDofAxis::X);
-    const double3 value = basis * double3(gradient[base + 0], gradient[base + 1], gradient[base + 2]);
-    direction[base + 0] = value.x;
-    direction[base + 1] = value.y;
-    direction[base + 2] = value.z;
+    if (const auto base = layout.frameworkAtomDof(atom, MinimizationDofAxis::X))
+    {
+      const double3 value = basis * double3(gradient[*base + 0], gradient[*base + 1], gradient[*base + 2]);
+      direction[*base + 0] = value.x;
+      direction[*base + 1] = value.y;
+      direction[*base + 2] = value.z;
+    }
   }
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
@@ -290,6 +333,15 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
 {
   const ForceField& forceField = system.forceField;
   if (!forceField.computePolarization) return;
+
+  // Fixed atoms of a mixed framework simply drop out below (no DOFs), but rigid framework groups
+  // would need their polarization blocks projected onto center-of-mass/orientation DOFs.
+  if (system.framework && system.framework->isMixed() &&
+      std::ranges::any_of(system.framework->groups, [](const FrameworkGroup& g) { return g.isRigidBody(); }))
+  {
+    throw std::runtime_error(
+        "polarization derivatives are not implemented for frameworks with rigid groups");
+  }
 
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
@@ -480,6 +532,16 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
 {
   results.energy = 0.0;
 
+  // Cell-coupled second derivatives (affine scaling of rigid-group centers, periodic-image strain
+  // corrections) are not implemented for mixed Fixed/Rigid/Flexible frameworks.
+  if ((layout.numberOfCellDofs() != 0 || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain) &&
+      system.framework && system.framework->isMixed())
+  {
+    throw std::runtime_error(
+        "evaluateDerivatives: variable-cell / strain derivatives are not supported for mixed "
+        "fixed/rigid/flexible frameworks; use a fixed cell");
+  }
+
   const std::size_t nStrain = (capabilities.hessianPositionStrain || capabilities.hessianStrainStrain) ? 1 : 0;
   if (results.hessian.numDofs() != layout.numDofs() || results.hessian.numStrain() != nStrain)
   {
@@ -580,7 +642,8 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
 
       RunningEnergy frameworkEnergy = Interactions::computeFrameworkMoleculeHessian(
           system.forceField, system.simulationBox, system.moleculeData, system.components, frameworkAtomPositions,
-          moleculeAtomPositions, layout, results.hessian, moleculeDynamics, frameworkDynamics, cellLayout);
+          moleculeAtomPositions, layout, results.hessian, moleculeDynamics, frameworkDynamics, cellLayout,
+          system.framework.has_value() ? &*system.framework : nullptr);
       results.energy += frameworkEnergy.frameworkMoleculeVDW + frameworkEnergy.frameworkMoleculeCharge;
 
       if (layout.numberOfCellDofs() != cellLayout.size())

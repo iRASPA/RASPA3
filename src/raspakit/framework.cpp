@@ -38,6 +38,8 @@ import connectivity_table;
 import intra_molecular_potentials;
 import units;
 import json;
+import molecule;
+import simd_quatd;
 
 namespace
 {
@@ -420,7 +422,372 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
   intra14VanDerWaalsScaling = readScalingFactor(data, "Intra14VanDerWaalsScalingValue");
   intra14ChargeChargeScaling = readScalingFactor(data, "Intra14ChargeChargeScalingValue");
 
+  readGroups(data);
+  if (mixed && rigid)
+  {
+    throw std::runtime_error(
+        "[Framework reader]: 'Groups' require Type 'Flexible'; cannot combine Groups with a rigid framework\n");
+  }
+  computeGroupRigidProperties(forceField);
+
   generateIntraMolecularPotentials(forceField);
+}
+
+void Framework::readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  groups.clear();
+  atomGroupIds.clear();
+  mixed = false;
+  fixedAtomCount = 0;
+  rigidGroupAtomCount = 0;
+  flexibleAtomCount = 0;
+  rigidGroupCount = 0;
+
+  if (!parsed_data.contains("Groups"))
+  {
+    return;
+  }
+
+  if (rigid)
+  {
+    throw std::runtime_error(
+        "[Framework reader]: 'Groups' require Type 'Flexible'; cannot combine Groups with Type 'Rigid'\n");
+  }
+
+  if (!parsed_data["Groups"].is_array())
+  {
+    throw std::runtime_error("[Framework reader]: 'Groups' must be an array\n");
+  }
+
+  const std::size_t numberOfAtoms = atoms.size();
+  std::vector<std::make_signed_t<std::size_t>> assigned(numberOfAtoms, -1);
+
+  for (auto &[_, item] : parsed_data["Groups"].items())
+  {
+    if (!item.is_object())
+    {
+      throw std::runtime_error(
+          "[Framework reader]: each entry of 'Groups' must be an object with keys 'Type' and 'Atoms'\n");
+    }
+
+    if (!item.contains("Type") || !item["Type"].is_string())
+    {
+      throw std::runtime_error("[Framework reader]: each group must contain a string 'Type'\n");
+    }
+    const std::string typeString = item["Type"].get<std::string>();
+    FrameworkGroupType groupType = FrameworkGroupType::Flexible;
+    if (caseInSensStringCompare(typeString, "Fixed"))
+    {
+      groupType = FrameworkGroupType::Fixed;
+    }
+    else if (caseInSensStringCompare(typeString, "Rigid"))
+    {
+      groupType = FrameworkGroupType::Rigid;
+    }
+    else if (caseInSensStringCompare(typeString, "Flexible"))
+    {
+      groupType = FrameworkGroupType::Flexible;
+    }
+    else if (caseInSensStringCompare(typeString, "Cycle"))
+    {
+      throw std::runtime_error("[Framework reader]: group Type 'Cycle' is not supported for frameworks\n");
+    }
+    else
+    {
+      throw std::runtime_error(std::format(
+          "[Framework reader]: group 'Type' must be 'Fixed', 'Rigid', or 'Flexible', got {}\n", typeString));
+    }
+
+    if (!item.contains("Atoms") || !item["Atoms"].is_array())
+    {
+      throw std::runtime_error("[Framework reader]: each group must contain an 'Atoms' array\n");
+    }
+
+    std::vector<std::size_t> groupAtoms = item["Atoms"].get<std::vector<std::size_t>>();
+    if (groupAtoms.empty())
+    {
+      throw std::runtime_error("[Framework reader]: a group must contain at least one atom\n");
+    }
+
+    const std::size_t groupIndex = groups.size();
+    for (std::size_t atom : groupAtoms)
+    {
+      if (atom >= numberOfAtoms)
+      {
+        throw std::runtime_error(std::format(
+            "[Framework reader]: group atom index {} out of range (framework has {} atoms)\n", atom, numberOfAtoms));
+      }
+      if (assigned[atom] != -1)
+      {
+        throw std::runtime_error(
+            std::format("[Framework reader]: atom {} is listed in more than one group\n", atom));
+      }
+      assigned[atom] = static_cast<std::make_signed_t<std::size_t>>(groupIndex);
+    }
+
+    groups.emplace_back(groupType, std::move(groupAtoms));
+  }
+
+  for (std::size_t atom = 0; atom != numberOfAtoms; ++atom)
+  {
+    if (assigned[atom] == -1)
+    {
+      throw std::runtime_error(std::format(
+          "[Framework reader]: atom {} is not assigned to any group; 'Groups' must cover all atoms\n", atom));
+    }
+  }
+
+  // Reorder atoms to [Fixed | Rigid-group atoms | Flexible] and remap group atom indices.
+  std::vector<Atom> reordered;
+  reordered.reserve(numberOfAtoms);
+
+  const auto appendByType = [&](FrameworkGroupType type)
+  {
+    for (FrameworkGroup &group : groups)
+    {
+      if (group.type != type) continue;
+      std::vector<std::size_t> remapped;
+      remapped.reserve(group.atoms.size());
+      for (std::size_t oldIndex : group.atoms)
+      {
+        remapped.push_back(reordered.size());
+        reordered.push_back(atoms[oldIndex]);
+      }
+      group.atoms = std::move(remapped);
+    }
+  };
+  appendByType(FrameworkGroupType::Fixed);
+  appendByType(FrameworkGroupType::Rigid);
+  appendByType(FrameworkGroupType::Flexible);
+  atoms = std::move(reordered);
+
+  atomGroupIds.assign(numberOfAtoms, 0);
+  for (std::size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex)
+  {
+    for (std::size_t atom : groups[groupIndex].atoms)
+    {
+      atomGroupIds[atom] = groupIndex;
+    }
+  }
+
+  finalizeGroupCache();
+}
+
+void Framework::finalizeGroupCache()
+{
+  fixedAtomCount = 0;
+  rigidGroupAtomCount = 0;
+  flexibleAtomCount = 0;
+  rigidGroupCount = 0;
+  for (const FrameworkGroup &group : groups)
+  {
+    if (group.isFixed())
+    {
+      fixedAtomCount += group.atoms.size();
+    }
+    else if (group.isRigidBody())
+    {
+      ++rigidGroupCount;
+      rigidGroupAtomCount += group.atoms.size();
+    }
+    else
+    {
+      flexibleAtomCount += group.atoms.size();
+    }
+  }
+  mixed = !groups.empty();
+}
+
+void Framework::computeGroupRigidProperties(const ForceField& forceField)
+{
+  finalizeGroupCache();
+
+  for (FrameworkGroup &group : groups)
+  {
+    group.mass = 0.0;
+    group.centerOfMassReferencePosition = double3{};
+    group.inertiaVector = double3{};
+    group.inverseInertiaVector = double3{};
+    group.bodyFixedPositions.clear();
+    group.atomMasses.clear();
+    group.rotationalDegreesOfFreedom = 0;
+    group.shapeType = 2;
+
+    if (!group.isRigidBody()) continue;
+
+    double3 com{};
+    double totalMass{};
+    group.atomMasses.reserve(group.atoms.size());
+    for (std::size_t atom : group.atoms)
+    {
+      const double atomMass = forceField.pseudoAtoms[atoms[atom].type].mass;
+      group.atomMasses.push_back(atomMass);
+      com += atomMass * atoms[atom].position;
+      totalMass += atomMass;
+    }
+    com = com / totalMass;
+    group.mass = totalMass;
+    group.centerOfMassReferencePosition = com;
+
+    double3x3 inertiaTensor{};
+    for (std::size_t k = 0; k != group.atoms.size(); ++k)
+    {
+      const std::size_t atom = group.atoms[k];
+      const double atomMass = group.atomMasses[k];
+      const double3 dr = atoms[atom].position - com;
+      inertiaTensor.ax += atomMass * dr.x * dr.x;
+      inertiaTensor.bx += atomMass * dr.y * dr.x;
+      inertiaTensor.cx += atomMass * dr.z * dr.x;
+      inertiaTensor.ay += atomMass * dr.x * dr.y;
+      inertiaTensor.by += atomMass * dr.y * dr.y;
+      inertiaTensor.cy += atomMass * dr.z * dr.y;
+      inertiaTensor.az += atomMass * dr.x * dr.z;
+      inertiaTensor.bz += atomMass * dr.y * dr.z;
+      inertiaTensor.cz += atomMass * dr.z * dr.z;
+    }
+
+    double3 eigenvalues{};
+    double3x3 eigenvectors{};
+    inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
+
+    group.bodyFixedPositions.reserve(group.atoms.size());
+    for (std::size_t k = 0; k != group.atoms.size(); ++k)
+    {
+      const std::size_t atom = group.atoms[k];
+      double3 dr = atoms[atom].position - com;
+      double3 pos = eigenvectors.transpose() * dr;
+      if (std::abs(pos.x) < 1e-8) pos.x = 0.0;
+      if (std::abs(pos.y) < 1e-8) pos.y = 0.0;
+      if (std::abs(pos.z) < 1e-8) pos.z = 0.0;
+      group.bodyFixedPositions.push_back(pos);
+
+      const double atomMass = group.atomMasses[k];
+      group.inertiaVector.x += atomMass * (pos.y * pos.y + pos.z * pos.z);
+      group.inertiaVector.y += atomMass * (pos.x * pos.x + pos.z * pos.z);
+      group.inertiaVector.z += atomMass * (pos.x * pos.x + pos.y * pos.y);
+    }
+
+    const double rotlim =
+        std::max(1.0e-2, group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z) * 1.0e-5;
+    group.inverseInertiaVector.x = (group.inertiaVector.x < rotlim) ? 0.0 : 1.0 / group.inertiaVector.x;
+    group.inverseInertiaVector.y = (group.inertiaVector.y < rotlim) ? 0.0 : 1.0 / group.inertiaVector.y;
+    group.inverseInertiaVector.z = (group.inertiaVector.z < rotlim) ? 0.0 : 1.0 / group.inertiaVector.z;
+
+    const double rotall = group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z > 1.0e-5
+                              ? group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z
+                              : 1.0;
+    std::size_t zeroModes = 0;
+    if (group.inertiaVector.x / rotall < 1.0e-5) ++zeroModes;
+    if (group.inertiaVector.y / rotall < 1.0e-5) ++zeroModes;
+    if (group.inertiaVector.z / rotall < 1.0e-5) ++zeroModes;
+
+    group.rotationalDegreesOfFreedom = 3 - std::min<std::size_t>(zeroModes, 3);
+    group.shapeType = (zeroModes == 0) ? 0 : (zeroModes >= 3 ? 2 : 1);
+  }
+}
+
+std::size_t Framework::numberOfFixedAtoms() const
+{
+  if (rigid) return atoms.size();
+  if (mixed) return fixedAtomCount;
+  return 0;
+}
+
+std::size_t Framework::numberOfMobileAtoms() const
+{
+  if (rigid) return 0;
+  if (mixed) return rigidGroupAtomCount + flexibleAtomCount;
+  return atoms.size();
+}
+
+bool Framework::isInsideFixedOrRigidGroup(std::span<const std::size_t> ids) const
+{
+  if (atomGroupIds.empty() || ids.empty()) return false;
+
+  const std::size_t g = atomGroupIds[ids[0]];
+  if (!groups[g].isFixed() && !groups[g].isRigidBody()) return false;
+  for (std::size_t id : ids)
+  {
+    if (atomGroupIds[id] != g) return false;
+  }
+  return true;
+}
+
+std::optional<std::size_t> Framework::rigidGroupContaining(std::size_t atom) const
+{
+  if (atomGroupIds.empty() || atom >= atomGroupIds.size()) return std::nullopt;
+  const std::size_t g = atomGroupIds[atom];
+  if (!groups[g].isRigidBody()) return std::nullopt;
+  return g;
+}
+
+std::optional<std::size_t> Framework::fixedGroupContaining(std::size_t atom) const
+{
+  if (atomGroupIds.empty() || atom >= atomGroupIds.size()) return std::nullopt;
+  const std::size_t g = atomGroupIds[atom];
+  if (!groups[g].isFixed()) return std::nullopt;
+  return g;
+}
+
+bool Framework::isFixedAtom(std::size_t atom) const
+{
+  if (rigid) return true;
+  if (!mixed) return false;
+  return fixedGroupContaining(atom).has_value();
+}
+
+bool Framework::isFlexibleAtom(std::size_t atom) const
+{
+  if (rigid) return false;
+  if (!mixed) return true;
+  if (atomGroupIds.empty() || atom >= atomGroupIds.size()) return false;
+  return groups[atomGroupIds[atom]].isFlexible();
+}
+
+void Framework::regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex,
+                                     std::span<Atom> frameworkAtoms) const
+{
+  const FrameworkGroup &group = groups[groupIndex];
+  const double3x3 rotation = double3x3::buildRotationMatrixInverse(state.orientation);
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    frameworkAtoms[group.atoms[k]].position =
+        state.centerOfMassPosition + rotation * group.bodyFixedPositions[k];
+  }
+}
+
+GroupState Framework::deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms,
+                                       const ForceField& forceField) const
+{
+  const FrameworkGroup &group = groups[groupIndex];
+  GroupState state{};
+
+  double3 com{};
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    com += group.atomMasses[k] * frameworkAtoms[group.atoms[k]].position;
+  }
+  state.centerOfMassPosition = com / group.mass;
+  (void)forceField;
+
+  if (group.atoms.size() == 1)
+  {
+    state.orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+    return state;
+  }
+
+  std::vector<double3> bodyPositions(group.bodyFixedPositions.begin(), group.bodyFixedPositions.end());
+  std::vector<double3> labPositions(group.atoms.size());
+  for (std::size_t k = 0; k != group.atoms.size(); ++k)
+  {
+    labPositions[k] = frameworkAtoms[group.atoms[k]].position;
+  }
+
+  const double3x3 rotation =
+      double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), bodyPositions, state.centerOfMassPosition, labPositions);
+  double3x3 rotationTranspose = rotation.transpose();
+  state.orientation = rotationTranspose.quaternion().normalized();
+  return state;
 }
 
 void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
@@ -464,9 +831,23 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
     }
   }
 
+  // Rigid groups must form a connected subgraph so they can be integrated as a single rigid body.
+  for (const FrameworkGroup& group : groups)
+  {
+    if (!group.isRigidBody()) continue;
+    if (!connectivity.checkIsConnectedSubgraph(group.atoms))
+    {
+      std::stringstream result{};
+      std::copy(group.atoms.begin(), group.atoms.end(), std::ostream_iterator<std::size_t>(result, " "));
+      throw std::runtime_error(
+          std::format("[Framework reader]: Rigid group ({}) is not a connected subgraph\n", result.str()));
+    }
+  }
+
   Potentials::IntraMolecularPotentials potentials;
   for (const std::array<std::size_t, 2>& indices : connectivity.findAllBonds())
   {
+    if (isInsideFixedOrRigidGroup(indices)) continue;
     if (const std::optional<std::size_t> match = matchingDefinition(indices, bondDefinitions, atoms, "Bonds"))
     {
       potentials.bonds.emplace_back(indices, bondTypes[*match], bondDefinitions[*match].parameters);
@@ -474,6 +855,7 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
   }
   for (const std::array<std::size_t, 3>& indices : connectivity.findAllBends())
   {
+    if (isInsideFixedOrRigidGroup(indices)) continue;
     if (const std::optional<std::size_t> match = matchingDefinition(indices, bendDefinitions, atoms, "Bends"))
     {
       potentials.bends.emplace_back(indices, bendTypes[*match], bendDefinitions[*match].parameters);
@@ -481,6 +863,7 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
   }
   for (const std::array<std::size_t, 4>& indices : connectivity.findAllTorsions())
   {
+    if (isInsideFixedOrRigidGroup(indices)) continue;
     if (const std::optional<std::size_t> match = matchingDefinition(indices, torsionDefinitions, atoms, "Torsions"))
     {
       potentials.torsions.emplace_back(indices, torsionTypes[*match], torsionDefinitions[*match].parameters);
@@ -521,9 +904,10 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
               continue;
             }
 
+            const std::array<std::size_t, 4> improperIds{atomA, center, atomC, atomD};
             improperOwners.emplace(key, definitionIndex);
-            potentials.improperTorsions.emplace_back(std::array<std::size_t, 4>{atomA, center, atomC, atomD},
-                                                     improperTypes[definitionIndex], definition.parameters);
+            if (isInsideFixedOrRigidGroup(improperIds)) continue;
+            potentials.improperTorsions.emplace_back(improperIds, improperTypes[definitionIndex], definition.parameters);
           }
         }
       }
@@ -585,6 +969,7 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
     for (std::size_t j = i + 1; j < atoms.size(); ++j)
     {
       const std::array<std::size_t, 2> pair{i, j};
+      if (isInsideFixedOrRigidGroup(pair)) continue;
       if ((excludeIntra12Interactions && pairs12.contains(pair)) ||
           (excludeIntraBondInteractions && definedBondPairs.contains(pair)) ||
           (excludeIntra13Interactions && pairs13.contains(pair)) ||
@@ -1005,7 +1390,19 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::print(stream, "    smallest charge:            {:>12.5f} [e]\n", smallestCharge);
   std::print(stream, "    largest charge:             {:>12.5f} [e]\n\n", largestCharge);
 
-  std::print(stream, "    framework type: {}\n", rigid ? "Rigid" : "Flexible");
+  if (rigid)
+  {
+    std::print(stream, "    framework type: Rigid\n");
+  }
+  else if (mixed)
+  {
+    std::print(stream, "    framework type: Mixed (Fixed {}, Rigid groups {}, Flexible {})\n", fixedAtomCount,
+               rigidGroupCount, flexibleAtomCount);
+  }
+  else
+  {
+    std::print(stream, "    framework type: Flexible\n");
+  }
   std::print(stream, "    number of bonds: {}\n", intraMolecularPotentials.bonds.size());
   printPotentialSummaries(stream, intraMolecularPotentials.bonds, atoms, forceField);
   std::print(stream, "\n");
@@ -1063,6 +1460,47 @@ nlohmann::json Framework::jsonStatus() const
   return status;
 }
 
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const FrameworkGroup& g)
+{
+  archive << g.versionNumber;
+  archive << static_cast<std::uint8_t>(g.type);
+  archive << g.atoms;
+  archive << g.mass;
+  archive << g.centerOfMassReferencePosition;
+  archive << g.inertiaVector;
+  archive << g.inverseInertiaVector;
+  archive << g.bodyFixedPositions;
+  archive << g.atomMasses;
+  archive << g.rotationalDegreesOfFreedom;
+  archive << g.shapeType;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, FrameworkGroup& g)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > g.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'FrameworkGroup' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+  std::uint8_t typeValue{};
+  archive >> typeValue;
+  g.type = static_cast<FrameworkGroupType>(typeValue);
+  archive >> g.atoms;
+  archive >> g.mass;
+  archive >> g.centerOfMassReferencePosition;
+  archive >> g.inertiaVector;
+  archive >> g.inverseInertiaVector;
+  archive >> g.bodyFixedPositions;
+  archive >> g.atomMasses;
+  archive >> g.rotationalDegreesOfFreedom;
+  archive >> g.shapeType;
+  return archive;
+}
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c)
 {
   archive << c.versionNumber;
@@ -1094,6 +1532,14 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.intraMolecularImageShifts.improperTorsions;
   archive << c.intraMolecularImageShifts.vanDerWaals;
   archive << c.intraMolecularImageShifts.coulombs;
+
+  archive << c.groups;
+  archive << c.atomGroupIds;
+  archive << c.fixedAtomCount;
+  archive << c.rigidGroupAtomCount;
+  archive << c.flexibleAtomCount;
+  archive << c.rigidGroupCount;
+  archive << c.mixed;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1153,6 +1599,27 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
       archive >> c.intraMolecularImageShifts.vanDerWaals;
       archive >> c.intraMolecularImageShifts.coulombs;
     }
+  }
+
+  if (versionNumber >= 4)
+  {
+    archive >> c.groups;
+    archive >> c.atomGroupIds;
+    archive >> c.fixedAtomCount;
+    archive >> c.rigidGroupAtomCount;
+    archive >> c.flexibleAtomCount;
+    archive >> c.rigidGroupCount;
+    archive >> c.mixed;
+  }
+  else
+  {
+    c.groups.clear();
+    c.atomGroupIds.clear();
+    c.fixedAtomCount = 0;
+    c.rigidGroupAtomCount = 0;
+    c.flexibleAtomCount = 0;
+    c.rigidGroupCount = 0;
+    c.mixed = false;
   }
 
 #if DEBUG_ARCHIVE

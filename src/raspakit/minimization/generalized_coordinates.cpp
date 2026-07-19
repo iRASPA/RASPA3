@@ -102,9 +102,36 @@ void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, 
   }
   const double3x3 deformation = matrixExponential(logarithmicStrain);
 
-  for (Atom& atom : system.spanOfFrameworkAtoms())
+  std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+  if (system.framework && system.framework->isMixed())
   {
-    atom.position = deformation * atom.position;
+    for (std::size_t atom = 0; atom < frameworkAtoms.size(); ++atom)
+    {
+      if (system.framework->isFlexibleAtom(atom) || system.framework->isFixedAtom(atom))
+      {
+        frameworkAtoms[atom].position = deformation * frameworkAtoms[atom].position;
+      }
+    }
+    if (!system.frameworkGroupData.empty())
+    {
+      std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+      std::size_t rigidRank{};
+      for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
+      {
+        if (!system.framework->groups[groupIndex].isRigidBody()) continue;
+        frameworkGroups[rigidRank].centerOfMassPosition =
+            deformation * frameworkGroups[rigidRank].centerOfMassPosition;
+        system.framework->regenerateGroupAtoms(frameworkGroups[rigidRank], groupIndex, frameworkAtoms);
+        ++rigidRank;
+      }
+    }
+  }
+  else
+  {
+    for (Atom& atom : frameworkAtoms)
+    {
+      atom.position = deformation * atom.position;
+    }
   }
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   const bool authoritativeGroups = !system.groupData.empty();
@@ -178,6 +205,31 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
       {
         (&frameworkAtoms[atom].position.x)[axis] += displacement[*dof];
       }
+    }
+  }
+
+  // Mixed-framework rigid groups: advance COM + orientation, then regenerate atom positions.
+  if (system.framework && system.framework->isMixed() && !system.frameworkGroupData.empty())
+  {
+    std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+    std::size_t rigidRank{};
+    for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
+    {
+      if (!system.framework->groups[groupIndex].isRigidBody()) continue;
+      const auto comBase =
+          layout.frameworkAtomRigidComDof(system.framework->groups[groupIndex].atoms.front());
+      if (!comBase)
+      {
+        ++rigidRank;
+        continue;
+      }
+      GroupState& state = frameworkGroups[rigidRank];
+      state.centerOfMassPosition +=
+          double3(displacement[*comBase + 0], displacement[*comBase + 1], displacement[*comBase + 2]);
+      const double3 omega(displacement[*comBase + 3], displacement[*comBase + 4], displacement[*comBase + 5]);
+      state.orientation = (quaternionFromRotationVector(omega) * state.orientation).normalized();
+      system.framework->regenerateGroupAtoms(state, groupIndex, frameworkAtoms);
+      ++rigidRank;
     }
   }
 

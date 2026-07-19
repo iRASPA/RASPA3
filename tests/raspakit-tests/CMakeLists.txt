@@ -40,6 +40,7 @@ add_executable(unit_tests_raspakit
   minimization_hessian_intermolecular.cpp
   minimization_hessian_intermolecular_rigid.cpp
   minimization_hessian_framework.cpp
+  minimization_hessian_mixed_framework.cpp
   minimization_hessian_ewald.cpp
   minimization_hessian_wolf.cpp
   minimization_driver.cpp

@@ -30,7 +30,8 @@ import framework;
 void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                                   std::pair<double, double> scaling, const std::optional<Framework>& framework,
-                                  std::span<AtomDynamics> frameworkDynamics, std::span<GroupState> groupData)
+                                  std::span<AtomDynamics> frameworkDynamics, std::span<GroupState> groupData,
+                                  std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Scale velocities and orientation momenta of each molecule
@@ -77,11 +78,19 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
-    for (AtomDynamics& dynamics : frameworkDynamics)
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
     {
-      dynamics.velocity *= scaling.first;
+      if (!group.isRigidBody()) continue;
+      frameworkGroupData[rigidRank].velocity *= scaling.first;
+      frameworkGroupData[rigidRank].orientationMomentum *= scaling.second;
+      ++rigidRank;
+    }
+    for (std::size_t i = 0; i != frameworkDynamics.size(); ++i)
+    {
+      if (framework->isFlexibleAtom(i)) frameworkDynamics[i].velocity *= scaling.first;
     }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -95,11 +104,12 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
                                                   const std::optional<Framework>& framework,
                                                   std::span<const Atom> frameworkAtomPositions,
                                                   std::span<AtomDynamics> frameworkDynamics,
-                                                  const ForceField* forceField, std::span<GroupState> groupData)
+                                                  const ForceField* forceField, std::span<GroupState> groupData,
+                                                  std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-  const bool flexibleFramework = framework && !framework->rigid;
+  const bool flexibleFramework = framework && framework->hasMobileAtoms();
   const bool hasSemiFlexible = std::ranges::any_of(
       moleculeData, [&](const Molecule& m) { return components[m.componentId].isSemiFlexible(); });
 
@@ -154,8 +164,17 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
     }
     if (flexibleFramework)
     {
+      std::size_t rigidRank{};
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (!group.isRigidBody()) continue;
+        totalMass += group.mass;
+        totalMomentum += group.mass * frameworkGroupData[rigidRank].velocity;
+        ++rigidRank;
+      }
       for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
       {
+        if (!framework->isFlexibleAtom(i)) continue;
         double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
         totalMass += mass;
         totalMomentum += mass * frameworkDynamics[i].velocity;
@@ -208,9 +227,16 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
   }
   if (flexibleFramework)
   {
-    for (AtomDynamics& dynamics : frameworkDynamics)
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
     {
-      dynamics.velocity -= totalVelocity;
+      if (!group.isRigidBody()) continue;
+      frameworkGroupData[rigidRank].velocity -= totalVelocity;
+      ++rigidRank;
+    }
+    for (std::size_t i = 0; i != frameworkDynamics.size(); ++i)
+    {
+      if (framework->isFlexibleAtom(i)) frameworkDynamics[i].velocity -= totalVelocity;
     }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -222,7 +248,8 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
                                   const std::vector<Component>& components, double dt,
                                   const std::optional<Framework>& framework,
                                   std::span<Atom> frameworkAtomPositions,
-                                  std::span<const AtomDynamics> frameworkDynamics, std::span<GroupState> groupData)
+                                  std::span<const AtomDynamics> frameworkDynamics, std::span<GroupState> groupData,
+                                  std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   // Update the center of mass positions for each molecule
@@ -275,11 +302,21 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
     }
     index += molecule.numberOfAtoms;
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      frameworkGroupData[rigidRank].centerOfMassPosition += dt * frameworkGroupData[rigidRank].velocity;
+      ++rigidRank;
+    }
     for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
     {
-      frameworkAtomPositions[i].position += dt * frameworkDynamics[i].velocity;
+      if (framework->isFlexibleAtom(i))
+      {
+        frameworkAtomPositions[i].position += dt * frameworkDynamics[i].velocity;
+      }
     }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -291,7 +328,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
                                    double dt, const std::optional<Framework>& framework,
                                    std::span<const Atom> frameworkAtomPositions,
                                    std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField,
-                                   std::span<GroupState> groupData)
+                                   std::span<GroupState> groupData, std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -346,14 +383,24 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     }
     index += molecule.numberOfAtoms;
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
     if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
     {
       throw std::runtime_error("Flexible-framework velocity update requires force-field and dynamics data");
     }
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      GroupState& state = frameworkGroupData[rigidRank];
+      state.velocity -= 0.5 * dt * state.gradient / group.mass;
+      state.orientationMomentum -= 0.5 * dt * state.orientationGradient;
+      ++rigidRank;
+    }
     for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
     {
+      if (!framework->isFlexibleAtom(i)) continue;
       double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
       frameworkDynamics[i].velocity -= 0.5 * dt * frameworkDynamics[i].gradient / mass;
     }
@@ -425,6 +472,28 @@ void Integrators::initializeGroupVelocity(RandomNumber& random, GroupState& stat
       2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
 }
 
+void Integrators::initializeFrameworkGroupVelocity(RandomNumber& random, GroupState& state,
+                                                   const FrameworkGroup& group, double temperature)
+{
+  state.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                   std::sqrt(Units::KB * temperature / group.mass);
+
+  const double3 I = group.inertiaVector;
+  const double3 invI = group.inverseInertiaVector;
+  const double3 angularVelocity =
+      double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
+
+  const simd_quatd q = state.orientation;
+  state.orientationMomentum.ix =
+      2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+  state.orientationMomentum.iy =
+      2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+  state.orientationMomentum.iz =
+      2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+  state.orientationMomentum.r =
+      2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+}
+
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                                        [[maybe_unused]] std::span<Atom> moleculeAtomPositions,
                                        std::span<AtomDynamics> moleculeDynamics,
@@ -432,7 +501,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
                                        const std::optional<Framework>& framework,
                                        std::span<const Atom> frameworkAtomPositions,
                                        std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField,
-                                       std::span<GroupState> groupData)
+                                       std::span<GroupState> groupData, std::span<GroupState> frameworkGroupData)
 {
   std::size_t index{};
   std::size_t groupIndex{};
@@ -473,14 +542,26 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
     initializeMoleculeVelocity(random, molecule, dynamics, component, temperature);
     index += molecule.numberOfAtoms;
   }
-  if (framework && !framework->rigid)
+  if (framework && framework->hasMobileAtoms())
   {
     if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
     {
       throw std::runtime_error("Flexible-framework velocity initialization requires force-field and dynamics data");
     }
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      initializeFrameworkGroupVelocity(random, frameworkGroupData[rigidRank], group, temperature);
+      ++rigidRank;
+    }
     for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
     {
+      if (framework->isFixedAtom(i) || framework->rigidGroupContaining(i).has_value())
+      {
+        frameworkDynamics[i].velocity = double3(0.0, 0.0, 0.0);
+        continue;
+      }
       double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
       frameworkDynamics[i].velocity =
           double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
@@ -490,7 +571,10 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 
 void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
                                            std::span<Atom> moleculeAtomPositions, std::vector<Component> components,
-                                           std::span<const GroupState> groupData)
+                                           std::span<const GroupState> groupData,
+                                           const std::optional<Framework>& framework,
+                                           std::span<Atom> frameworkAtomPositions,
+                                           std::span<const GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
@@ -554,12 +638,24 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
     }
     index += molecule.numberOfAtoms;
   }
+  if (framework && !frameworkGroupData.empty())
+  {
+    std::size_t rigidRank{};
+    for (std::size_t g = 0; g != framework->groups.size(); ++g)
+    {
+      if (!framework->groups[g].isRigidBody()) continue;
+      framework->regenerateGroupAtoms(frameworkGroupData[rigidRank], g, frameworkAtomPositions);
+      ++rigidRank;
+    }
+  }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.createCartesianPositions += end - begin;
 }
 
 void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components,
-                                            double dt, std::span<GroupState> groupData)
+                                            double dt, std::span<GroupState> groupData,
+                                            const std::optional<Framework>& framework,
+                                            std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t groupIndex{};
@@ -593,6 +689,20 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
     pq = Rigid::NoSquishFreeRotorOrderTwo(dt, pq, inverseInertiaVector);
     molecule.orientationMomentum = pq.first;
     molecule.orientation = pq.second;
+  }
+  if (framework && !frameworkGroupData.empty())
+  {
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      GroupState& state = frameworkGroupData[rigidRank];
+      std::pair<simd_quatd, simd_quatd> pq = std::make_pair(state.orientationMomentum, state.orientation);
+      pq = Rigid::NoSquishFreeRotorOrderTwo(dt, pq, group.inverseInertiaVector);
+      state.orientationMomentum = pq.first;
+      state.orientation = pq.second;
+      ++rigidRank;
+    }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.noSquishFreeRotorOrderTwo += end - begin;
@@ -647,7 +757,10 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
                                                            std::span<Atom> moleculeAtomPositions,
                                                            std::span<const AtomDynamics> moleculeDynamics,
                                                            std::vector<Component> components,
-                                                           std::span<GroupState> groupData)
+                                                           std::span<GroupState> groupData,
+                                                           const std::optional<Framework>& framework,
+                                                           std::span<const AtomDynamics> frameworkDynamics,
+                                                           std::span<GroupState> frameworkGroupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
@@ -733,6 +846,38 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 
     index += molecule.numberOfAtoms;
   }
+
+  if (framework && !frameworkGroupData.empty() && frameworkDynamics.size() == framework->atoms.size())
+  {
+    std::size_t rigidRank{};
+    for (std::size_t g = 0; g != framework->groups.size(); ++g)
+    {
+      const FrameworkGroup& group = framework->groups[g];
+      if (!group.isRigidBody()) continue;
+
+      GroupState& state = frameworkGroupData[rigidRank];
+      double3 com_gradient{};
+      for (std::size_t atom : group.atoms)
+      {
+        com_gradient += frameworkDynamics[atom].gradient;
+      }
+      state.gradient = com_gradient;
+
+      double3 torque{};
+      const simd_quatd q = state.orientation;
+      const double3x3 M = double3x3::buildRotationMatrix(q);
+      for (std::size_t k = 0; k != group.atoms.size(); ++k)
+      {
+        const std::size_t atom = group.atoms[k];
+        const double atomMass = group.atomMasses[k];
+        const double3 F = M * (frameworkDynamics[atom].gradient - com_gradient * atomMass / group.mass);
+        torque += double3::cross(F, group.bodyFixedPositions[k]);
+      }
+      state.orientationGradient = -2.0 * q * simd_quatd(0.0, torque);
+      ++rigidRank;
+    }
+  }
+
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateCenterOfMassAndQuaternionGradients += end - begin;
 }
@@ -757,7 +902,7 @@ RunningEnergy Integrators::updateGradients(
     dynamics.gradient = double3(0.0, 0.0, 0.0);
   }
   const bool flexibleFramework =
-      framework && !framework->rigid && frameworkDynamics.size() == frameworkAtomPositions.size();
+      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtomPositions.size();
   if (flexibleFramework)
   {
     for (AtomDynamics& dynamics : frameworkDynamics)

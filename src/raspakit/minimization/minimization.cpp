@@ -572,19 +572,21 @@ void Minimization::runPhase()
   {
     System& system = systems[systemIndex];
     MinimizationSystemResult& systemResult = results[systemIndex];
-    const std::size_t numberOfFlexibleFrameworkAtoms =
-        system.framework && !system.framework->rigid ? system.spanOfFrameworkAtoms().size() : 0;
+    const std::size_t numberOfFrameworkAtoms =
+        system.framework ? system.spanOfFrameworkAtoms().size() : 0;
+    const Framework* frameworkPtr = system.framework ? &*system.framework : nullptr;
     const CellMinimizationLayout cellLayout =
         makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
     if (!cellLayout.empty() && system.hasExternalField)
     {
       throw std::runtime_error("Variable-cell minimization does not support an external field");
     }
-    const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components,
-                                                                    numberOfFlexibleFrameworkAtoms, cellLayout.size());
+    const MinimizationDofLayout layout = buildMinimizationDofLayout(
+        system.moleculeData, system.components, numberOfFrameworkAtoms, cellLayout.size(), frameworkPtr);
     // Seed the authoritative rigid-group state once (single Procrustes fit); afterwards
     // applyGeneralizedDisplacement advances the stored quaternions directly.
     system.initializeGroupData();
+    system.initializeFrameworkGroupData();
     GeneralizedHessian hessian(layout.numDofs(), 0);
     std::vector<double> gradient(layout.numDofs(), 0.0);
 
