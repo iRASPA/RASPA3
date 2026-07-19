@@ -83,6 +83,12 @@ export struct MCMoveStatistics
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.001, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::RotationSmartMCAll)] =
         MoveStatistics<double>{.maxChange = 0.05, .lowerLimit = 0.001, .upperLimit = 1.5};
+    // Combined translation-rotation smart MC: component 0 is the translational standard deviation
+    // (Angstrom), component 1 the angular standard deviation (radians); component 2 is unused.
+    // Each drift follows b = beta * sigma^2 / 2 with its own sigma.
+    stats[std::to_underlying(Move::Types::TranslationRotationSmartMC)] = MoveStatistics<double3>{
+        .maxChange = double3(0.1, 0.1, 0.0), .lowerLimit = double3(0.001, 0.001, 0.0),
+        .upperLimit = double3(1.5, 1.5, 0.0)};
     stats[std::to_underlying(Move::Types::ReactionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::ReactionConventionalCFCMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::ReactionConventionalCBCFCMC)] = MoveStatistics<double>{};

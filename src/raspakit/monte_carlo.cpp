@@ -153,7 +153,8 @@ void MonteCarlo::setup()
     {
       usesGradientMove |=
           component.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0;
+          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
     }
     if (usesGradientMove &&
         system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)

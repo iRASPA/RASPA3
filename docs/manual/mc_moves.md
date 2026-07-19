@@ -21,6 +21,7 @@ the [Commands](\ref commands) page for the full input documentation.
   * [Random rotation](#random-rotation)
   * [Translation smart MC](#translation-smart-mc)
   * [Rotation smart MC](#rotation-smart-mc)
+  * [Translation-rotation smart MC](#translation-rotation-smart-mc)
 * [Configurational-bias moves](#configurational-bias-moves)
   * [Reinsertion (CBMC)](#reinsertion-cbmc)
   * [Partial reinsertion (CBMC)](#partial-reinsertion-cbmc)
@@ -158,7 +159,8 @@ probability accumulated in the collection matrix.
 Trial construction/energy overlap failures and blocked-pocket placements reject
 immediately. “Integer molecule” always excludes reserved fractional slots.
 Translation, random translation, rotation, random rotation, translation smart MC,
-rotation smart MC, reinsertion, and partial reinsertion first guard
+rotation smart MC, translation-rotation smart MC, reinsertion, and partial
+reinsertion first guard
 that the selected component has at least one molecule and then sample uniformly
 from **all** its molecule slots, including fractional slots. Deletion,
 identity-change, pair-deletion, transfer-donor, and reaction selections that
@@ -426,6 +428,76 @@ where unbiased random rotations have low acceptance.
 
 References: same as [translation smart MC](#translation-smart-mc); see also
 R. Hens et al., Brick-CFCMC supporting information (smart rotations).
+
+### Translation-rotation smart MC <a name="translation-rotation-smart-mc"></a>
+
+Keyword: `"TranslationRotationSmartMCProbability"` (component move)
+
+A combined move that performs [translation smart MC](#translation-smart-mc) and
+[rotation smart MC](#rotation-smart-mc) in a single trial: the center-of-mass
+displacement is biased along the force and the orientation change along the
+torque acting on the selected molecule. This is equivalent to one Euler step of
+overdamped rigid-body Brownian dynamics wrapped in an exact Metropolis-Hastings
+acceptance rule. Both the force and the torque are obtained from a single
+per-atom gradient evaluation per endpoint, so the combined move is cheaper than
+performing the two separate smart MC moves.
+
+Steps:
+
+- select a random box,
+- select a random component,
+- select a random molecule of that component in the chosen box (reject immediately
+  if the molecule is monoatomic),
+- compute the per-atom gradients once; contract them into the net force
+  \f$F_\mathbf{o}\f$ and the torque \f$\boldsymbol{\tau}_\mathbf{o}\f$ about the
+  pivot (center of mass for rigid molecules, starting bead for flexible ones),
+- draw two independent Gaussian random vectors and form
+  \f[
+  \Delta \mathbf{r} = b_t\,F_\mathbf{o} + \sigma_t\,\boldsymbol{\xi}_t,
+  \qquad
+  \Delta\boldsymbol{\phi} = b_r\,\boldsymbol{\tau}_\mathbf{o} + \sigma_r\,\boldsymbol{\xi}_r,
+  \qquad b_t = \tfrac{1}{2}\beta\sigma_t^2, \quad b_r = \tfrac{1}{2}\beta\sigma_r^2 ,
+  \f]
+  where \f$\sigma_t\f$ (Angstrom) and \f$\sigma_r\f$ (radians) are two
+  independently tuned step sizes,
+- translate the molecule by \f$\Delta \mathbf{r}\f$ and then rotate it by the
+  quaternion formed from \f$\Delta\boldsymbol{\phi}\f$ about the moved pivot
+  (the pivot is a material point of the molecule, so the two operations commute
+  and the reverse proposal \f$(-\Delta \mathbf{r}, -\Delta\boldsymbol{\phi})\f$
+  maps the trial state exactly back onto the old state),
+- compute the energy difference \f$\Delta U\f$ and the force
+  \f$F_\mathbf{n}\f$ and torque \f$\boldsymbol{\tau}_\mathbf{n}\f$ in the trial
+  configuration,
+- accept or reject including the Hastings correction for the asymmetric proposal.
+
+Because the translational and rotational noises are independent, the proposal
+ratio factorizes and the log-bias is simply the sum of the translational and
+rotational terms. Polarization forces and torques are omitted from the drift
+(as for the separate smart MC moves); polarization energy still enters
+\f$\Delta U\f$.
+
+Acceptance rule:
+
+\f[
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+   e^{-\beta \Delta U}\,
+   \exp\left[\frac{\left|\Delta\mathbf{r} - b_t F_\mathbf{o}\right|^2
+                 - \left|\Delta\mathbf{r} + b_t F_\mathbf{n}\right|^2}{2\sigma_t^2}
+           + \frac{\left|\Delta\boldsymbol{\phi} - b_r\boldsymbol{\tau}_\mathbf{o}\right|^2
+                 - \left|\Delta\boldsymbol{\phi} + b_r\boldsymbol{\tau}_\mathbf{n}\right|^2}{2\sigma_r^2}\right]
+   \right)
+\f]
+
+Useful for: dense molecular liquids and high loadings of anisotropic adsorbates;
+combines the translational and rotational relaxation of the two separate smart
+moves at roughly the cost of one.
+
+References: C. Pangali, M. Rao, and B.J. Berne, *On a novel Monte Carlo scheme
+for simulating water and aqueous solutions*, Chem. Phys. Lett. **55**, 413-417
+(1978). <https://doi.org/10.1016/0009-2614(78)84003-2>;
+P.J. Rossky, J.D. Doll, and H.L. Friedman, *Brownian dynamics as smart Monte
+Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
+<https://doi.org/10.1063/1.436415>
 
 ----------------------------------------------------------------------------------
 

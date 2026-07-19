@@ -3,6 +3,7 @@ add_executable(unit_tests_raspakit
   energy_decomposition.cpp
   gradients.cpp
   translation_smart_mc.cpp
+  translation_rotation_smart_mc.cpp
   integrators.cpp
   pbc.cpp
   spacegroup.cpp

@@ -973,6 +973,13 @@ and `"BinaryInteractions"` are read from the force field file
     The relative probability of a rotation smart-MC (torque-biased) move of a
     single molecule. The trial orientation is updated with a quaternion.
 
+-   `"TranslationRotationSmartMCProbability" : floating-point-number`\
+    The relative probability of a combined translation-rotation smart-MC move of
+    a single molecule: the displacement is biased along the force and the
+    rotation along the torque in a single trial move, using one shared gradient
+    evaluation. The two step sizes (Angstrom and radians) are optimized
+    independently.
+
 -   `"ReinsertionProbability" : floating-point-number`\
     The relative probability of a full `CBMC` reinsertion move. Several first
     beads are trial-placed and one is chosen from its Boltzmann weight; the rest

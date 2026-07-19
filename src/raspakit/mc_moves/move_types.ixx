@@ -42,11 +42,12 @@ export struct Move
     PairSwapCBMC = 31,
     PairSwapCFCMC = 32,
     PairSwapCBCFCMC = 33,
-    TranslationSmartMC = 34,     // force-biased (smart MC) translation of a single molecule
-    TranslationSmartMCAll = 35,  // force-biased (smart MC) translation of all molecules simultaneously
-    RotationSmartMC = 36,        // torque-biased (smart MC) rotation of a single molecule
-    RotationSmartMCAll = 37,     // torque-biased (smart MC) rotation of all molecules simultaneously
-    Count = 38
+    TranslationSmartMC = 34,          // force-biased (smart MC) translation of a single molecule
+    TranslationSmartMCAll = 35,       // force-biased (smart MC) translation of all molecules simultaneously
+    RotationSmartMC = 36,             // torque-biased (smart MC) rotation of a single molecule
+    RotationSmartMCAll = 37,          // torque-biased (smart MC) rotation of all molecules simultaneously
+    TranslationRotationSmartMC = 38,  // combined force- and torque-biased (smart MC) move of a single molecule
+    Count = 39
   };
 
   /**
@@ -117,6 +118,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::Rotation,           Move::Types::RandomRotation,
                                                                 Move::Types::TranslationSmartMC,
                                                                 Move::Types::RotationSmartMC,
+                                                                Move::Types::TranslationRotationSmartMC,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
                                                                 Move::Types::IdentityChangeCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,

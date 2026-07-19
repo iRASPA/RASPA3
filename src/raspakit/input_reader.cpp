@@ -674,6 +674,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("TranslationRotationSmartMCProbability") &&
+          item["TranslationRotationSmartMCProbability"].is_number_float())
+      {
+        double translationRotationSmartMCProbability = item["TranslationRotationSmartMCProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::TranslationRotationSmartMC,
+                                               translationRotationSmartMCProbability);
+        }
+      }
+
       if (item.contains("RotationProbability") && item["RotationProbability"].is_number_float())
       {
         double rotationProbability = item["RotationProbability"].get<double>();
@@ -2765,6 +2776,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "TranslationSmartMCProbability",
     "ForceBiasTranslationProbability",
     "RotationSmartMCProbability",
+    "TranslationRotationSmartMCProbability",
     "RotationProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",

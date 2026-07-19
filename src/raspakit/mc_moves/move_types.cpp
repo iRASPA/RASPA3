@@ -42,7 +42,8 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Translation smart MC",
   "Translation smart MC (all)",
   "Rotation smart MC",
-  "Rotation smart MC (all)"
+  "Rotation smart MC (all)",
+  "Trans/rot smart MC"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -203,6 +204,8 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // RotationSmartMC
   std::vector<Move::Timing>{Move::Timing::Integration},
   // RotationSmartMCAll
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // TranslationRotationSmartMC
   std::vector<Move::Timing>{Move::Timing::Integration}
 };
 

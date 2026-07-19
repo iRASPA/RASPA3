@@ -667,11 +667,13 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   }
 
   // Live Fourier hosts are mobile framework atoms only; lab-fixed atoms contribute via fixedFrameworkStoredEik.
+  // When no Framework is passed (legacy callers), treat the host as fixed and use the precomputed eik.
+  // When the framework is fully flexible, fixedFrameworkAtomCount is zero and the eik is omitted.
   const bool liveFramework =
       framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
   const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
-  const bool useFixedFrameworkEik = fixedFrameworkAtomCount > 0;
+  const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
   const std::size_t frameworkOffset = liveFramework ? mobileFrameworkAtomCount : 0;
   std::vector<Atom> liveAtoms;
   if (liveFramework)

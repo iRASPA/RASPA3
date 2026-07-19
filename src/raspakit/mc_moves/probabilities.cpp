@@ -116,6 +116,7 @@ std::string MCMoveProbabilities::repr()
   std::print(stream, "randomRotationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RandomRotation)]);
   std::print(stream, "rotationSmartMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RotationSmartMC)]);
   std::print(stream, "rotationSmartMCAllProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::RotationSmartMCAll)]);
+  std::print(stream, "translationRotationSmartMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::TranslationRotationSmartMC)]);
   std::print(stream, "volumeChangeProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::VolumeChange)]);
   std::print(stream, "reinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ReinsertionCBMC)]);
   std::print(stream, "partialReinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::PartialReinsertionCBMC)]);
