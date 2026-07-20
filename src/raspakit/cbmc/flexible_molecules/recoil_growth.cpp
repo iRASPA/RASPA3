@@ -42,7 +42,7 @@ struct RecoilContext
   std::make_signed_t<std::size_t> skipBackgroundMolecule;
   std::size_t numberOfTrialDirections;  // k
   std::size_t recoilLength;             // l
-  std::vector<Step> steps;
+  const std::vector<Step> &steps;
 };
 
 // Energy of a trial placement, split into external (non-bonded) and intramolecular vdW/Coulomb.
@@ -173,7 +173,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
                     skipBackgroundMolecule,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
-                    CBMC::buildGrowthPlan(component, beadsAlreadyPlaced)};
+                    component.growthPlan(beadsAlreadyPlaced)};
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<GrowRecord> records(ctx.steps.size());
@@ -230,16 +230,12 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
-  component.grownAtoms = chain_atoms;
+  // Keep this thermalized, non-overlapping conformation as the warm start for the next grow.
+  component.warmStartConformation = chain_atoms;
 
-  double3 com{};
-  for (std::size_t i = 0; i != chain_atoms.size(); ++i)
-  {
-    com += component.definedAtoms[i].second * chain_atoms[i].position;
-  }
-  com = com / component.totalMass;
-  Molecule molecule = Molecule(com, simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
-                               static_cast<std::size_t>(chain_atoms.front().componentId), chain_atoms.size());
+  // Center of mass, and for a fully rigid component the orientation quaternion recovered from the
+  // grown positions (used downstream to regenerate the atoms of rigid molecules).
+  Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
   return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
                        0.0);
@@ -256,7 +252,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
                     -1,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
-                    CBMC::buildGrowthPlan(component, beadsAlreadyPlaced)};
+                    component.growthPlan(beadsAlreadyPlaced)};
 
   std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
 

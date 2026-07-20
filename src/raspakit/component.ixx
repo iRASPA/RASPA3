@@ -38,9 +38,11 @@ import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
+import chiral_center;
 import connectivity_table;
 export import fragment;
 export import fragment_graph;
+export import cbmc_growth_plan;
 import json;
 import cbmc_move_statistics;
 
@@ -140,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{4};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -192,15 +194,26 @@ export struct Component
   /// with single-atom (flexible) fragments. Flexible rings (simple, fused, or bridged) appear as the
   /// closure bonds of the graph. Replaces RASPA2's 'MoleculeGroup'/'atomGroupIds'.
   FragmentGraph fragmentGraph{};
-  // Scratch buffer holding the atoms of the most recently grown chain; used as a reference geometry
-  // by the internal-Monte-Carlo trial-orientation scheme. Marked 'mutable' so the scheme can run on
-  // a 'const Component&'.
-  mutable std::vector<Atom> grownAtoms{};
+  // Warm-start reference geometry for the CBMC internal Monte-Carlo: the most recently grown,
+  // thermalized, non-overlapping conformation of this component. The internal MC that samples a
+  // step's base conformation only sees the bonded energy, so it cannot relax a self-overlapping
+  // cold seed; reusing the previous accepted conformation (rigidly re-oriented per step) gives a
+  // good non-overlapping starting point. Persistent per-component scratch: written by the grow entry
+  // points (on a non-const Component) and read by the operators; not serialized (a restart simply
+  // cold-starts the first grow) and not thread-shared (one grow of a given component at a time).
+  std::vector<Atom> warmStartConformation{};
   // Persistent scratch conformation of a flexible molecule grown in isolation (ideal-gas), i.e. drawn
   // from exp(-beta * U_intra). Kept between calls so the CBMC reinsertion Markov chain that produces
   // equilibrated ideal-gas conformations (System::equilibratedIdealGasConformation) stays warm.
   mutable std::vector<Atom> grownIdealGasAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
+  // Cache of CBMC growth plans keyed by the set of already-placed beads. A plan is deterministic
+  // (it depends only on the molecule's topology and the placed set), and building one filters the
+  // intramolecular potentials per step, so the plans for the common placed sets (the starting bead
+  // and the partial-reinsertion fixed sets) are built once and reused for every grow and retrace.
+  // Derived data: rebuilt on demand, never serialized. Marked 'mutable' so retraces on a
+  // 'const Component&' can populate it.
+  mutable std::map<std::vector<std::size_t>, std::vector<CBMC::GrowStep>> growthPlanCache{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
 
@@ -298,6 +311,21 @@ export struct Component
   double3 computeCenterOfMass(std::span<Atom> atom_list) const;
 
   /**
+   * \brief Builds the 'Molecule' record for freshly grown atom positions.
+   *
+   * Computes the mass-weighted center of mass. For a fully rigid component the orientation
+   * quaternion is recovered by an orthogonal Procrustes fit of the body-frame reference geometry
+   * ('atoms', COM-centered in the principal frame) onto the laboratory positions, following the
+   * rigid-molecule convention p = com + buildRotationMatrixInverse(q) * atoms[i].position. For a
+   * flexible or semi-flexible component the orientation is the identity (per-fragment rigid-body
+   * states are tracked separately).
+   *
+   * \param moleculeAtoms The grown laboratory-frame atom positions of one molecule.
+   * \return The molecule record (center of mass, orientation, mass, component id, atom count).
+   */
+  Molecule createMoleculeRecord(std::span<const Atom> moleculeAtoms) const;
+
+  /**
    * \brief Rotates the positions of all atoms using a given quaternion.
    *
    * Applies a rotation to the atom positions based on the provided quaternion.
@@ -378,6 +406,18 @@ export struct Component
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   /**
+   * \brief Reads the optional 'ChiralCenters' of a molecule: a list of atom-index quadruples
+   *        [center, neighbor1, neighbor2, neighbor3].
+   *
+   * The handedness of each center is taken from the reference geometry: the sign of the signed
+   * volume of the tetrahedron (neighbor1 - center, neighbor2 - center, neighbor3 - center). CBMC
+   * growth preserves this parity: branch swaps and ring-conformation moves that would invert a
+   * declared center are rejected. Throws when an index is out of range, the four indices are not
+   * distinct, or the reference geometry of the center is (near-)planar so its parity is undefined.
+   */
+  std::vector<ChiralCenter> readChiralCenters(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /**
    * \brief Reads the optional 'RigidBodies' of a molecule: a list of atom-index lists, each a rigid
    *        unit. Every atom not listed becomes a single-atom (flexible) fragment.
    *
@@ -397,6 +437,15 @@ export struct Component
    * bonds, and updates the component translational/rotational degrees of freedom.
    */
   void buildFragmentGraph(const std::vector<std::vector<std::size_t>> &rigidBodies);
+
+  /**
+   * \brief Returns the (cached) deterministic CBMC growth plan starting from 'beadsAlreadyPlaced'.
+   *
+   * The plan is built once per distinct placed set and reused afterwards; grow and retrace of the
+   * same move obtain the identical plan, as required for detailed balance. The returned reference
+   * stays valid for the lifetime of the component (the cache never erases entries).
+   */
+  const std::vector<CBMC::GrowStep> &growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
 
   /**
    * \brief Returns whether all given atom indices lie inside one and the same rigid-body fragment.

@@ -5,7 +5,8 @@ export module cbmc_growth_plan;
 import std;
 
 import atom;
-import component;
+import connectivity_table;
+import fragment_graph;
 import intra_molecular_potentials;
 
 export namespace CBMC
@@ -58,7 +59,11 @@ struct GrowStep
  * 'ConnectivityTable::nextBeads'; rigid-body fragments are emitted as a single hinged step (their
  * connecting atom is grown first as an ordinary flexible bead, so the junction bond and bend/torsion
  * are sampled); cyclic clusters are emitted as a single CloseRing step.
+ *
+ * Building a plan filters the intramolecular potentials per step, which is not cheap: simulation
+ * code should use the cached plans through 'Component::growthPlan' instead of calling this directly.
  */
-std::vector<GrowStep> buildGrowthPlan(const Component &component,
+std::vector<GrowStep> buildGrowthPlan(const ConnectivityTable &connectivity, const FragmentGraph &fragmentGraph,
+                                      const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
                                       const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

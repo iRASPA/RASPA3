@@ -11,33 +11,6 @@ import simd_quatd;
 import randomnumbers;
 import stringutils;
 
-std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::span<Atom> atoms, std::size_t startingBead)
-{
-  double3x3 randomRotationMatrix = random.randomRotationMatrix();
-  std::vector<Atom> randomlyRotatedAtoms{};
-  randomlyRotatedAtoms.reserve(atoms.size());
-  for (std::size_t i = 0; i < atoms.size(); ++i)
-  {
-    Atom b = atoms[i];
-    b.position = atoms[startingBead].position + randomRotationMatrix * (b.position - atoms[startingBead].position);
-    randomlyRotatedAtoms.push_back(b);
-  }
-  return randomlyRotatedAtoms;
-}
-
-std::vector<Atom> CBMC::rotateRandomlyAround(simd_quatd &q, std::span<Atom> atoms, std::size_t startingBead)
-{
-  double3x3 randomRotationMatrix = double3x3::buildRotationMatrixInverse(q);
-  std::vector<Atom> randomlyRotatedAtoms{};
-  for (std::size_t i = 0; i < atoms.size(); ++i)
-  {
-    Atom b = atoms[i];
-    b.position = atoms[startingBead].position + randomRotationMatrix * (b.position - atoms[startingBead].position);
-    randomlyRotatedAtoms.push_back(b);
-  }
-  return randomlyRotatedAtoms;
-}
-
 // LogBoltzmannFactors are (-Beta U)
 std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector<double> LogBoltzmannFactors)
 {

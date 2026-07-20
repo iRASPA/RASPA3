@@ -47,14 +47,6 @@ struct ChainTrialTorsion
   double torsionWeight;
 };
 
-/// External energy of a trial rigid-molecule orientation (molecule record + its atoms).
-struct MoleculeTrial
-{
-  Molecule molecule;
-  std::vector<Atom> positions;
-  RunningEnergy energy;
-};
-
 bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Component &component,
                           std::span<const Atom> molecule_atoms);
 
@@ -69,11 +61,6 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
 [[nodiscard]] std::vector<ChainTrialTorsion> computeExternalNonOverlappingEnergies(
     const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
     const std::vector<double> &RosenbluthWeightsTorsion, std::make_signed_t<std::size_t> skip = -1,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
-
-[[nodiscard]] std::vector<MoleculeTrial> computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component,
-    std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets, std::make_signed_t<std::size_t> skip = -1,
     std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(

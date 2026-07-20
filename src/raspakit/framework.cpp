@@ -602,87 +602,24 @@ void Framework::computeGroupRigidProperties(const ForceField& forceField)
 {
   finalizeGroupCache();
 
+  std::vector<double3> referencePositions(atoms.size());
+  std::vector<double> masses(atoms.size());
+  for (std::size_t i = 0; i != atoms.size(); ++i)
+  {
+    referencePositions[i] = atoms[i].position;
+    masses[i] = forceField.pseudoAtoms[atoms[i].type].mass;
+  }
+
   for (FrameworkGroup &group : groups)
   {
-    group.mass = 0.0;
-    group.centerOfMassReferencePosition = double3{};
-    group.inertiaVector = double3{};
-    group.inverseInertiaVector = double3{};
-    group.bodyFixedPositions.clear();
-    group.atomMasses.clear();
-    group.rotationalDegreesOfFreedom = 0;
-    group.shapeType = 2;
-
-    if (!group.isRigidBody()) continue;
-
-    double3 com{};
-    double totalMass{};
-    group.atomMasses.reserve(group.atoms.size());
-    for (std::size_t atom : group.atoms)
+    if (!group.isRigidBody())
     {
-      const double atomMass = forceField.pseudoAtoms[atoms[atom].type].mass;
-      group.atomMasses.push_back(atomMass);
-      com += atomMass * atoms[atom].position;
-      totalMass += atomMass;
+      // Fixed/Flexible groups carry no rigid-body data; reset the Fragment part to its point-mass
+      // defaults (keeping only the atom subset).
+      static_cast<Fragment &>(group) = Fragment(std::move(group.atoms));
+      continue;
     }
-    com = com / totalMass;
-    group.mass = totalMass;
-    group.centerOfMassReferencePosition = com;
-
-    double3x3 inertiaTensor{};
-    for (std::size_t k = 0; k != group.atoms.size(); ++k)
-    {
-      const std::size_t atom = group.atoms[k];
-      const double atomMass = group.atomMasses[k];
-      const double3 dr = atoms[atom].position - com;
-      inertiaTensor.ax += atomMass * dr.x * dr.x;
-      inertiaTensor.bx += atomMass * dr.y * dr.x;
-      inertiaTensor.cx += atomMass * dr.z * dr.x;
-      inertiaTensor.ay += atomMass * dr.x * dr.y;
-      inertiaTensor.by += atomMass * dr.y * dr.y;
-      inertiaTensor.cy += atomMass * dr.z * dr.y;
-      inertiaTensor.az += atomMass * dr.x * dr.z;
-      inertiaTensor.bz += atomMass * dr.y * dr.z;
-      inertiaTensor.cz += atomMass * dr.z * dr.z;
-    }
-
-    double3 eigenvalues{};
-    double3x3 eigenvectors{};
-    inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
-
-    group.bodyFixedPositions.reserve(group.atoms.size());
-    for (std::size_t k = 0; k != group.atoms.size(); ++k)
-    {
-      const std::size_t atom = group.atoms[k];
-      double3 dr = atoms[atom].position - com;
-      double3 pos = eigenvectors.transpose() * dr;
-      if (std::abs(pos.x) < 1e-8) pos.x = 0.0;
-      if (std::abs(pos.y) < 1e-8) pos.y = 0.0;
-      if (std::abs(pos.z) < 1e-8) pos.z = 0.0;
-      group.bodyFixedPositions.push_back(pos);
-
-      const double atomMass = group.atomMasses[k];
-      group.inertiaVector.x += atomMass * (pos.y * pos.y + pos.z * pos.z);
-      group.inertiaVector.y += atomMass * (pos.x * pos.x + pos.z * pos.z);
-      group.inertiaVector.z += atomMass * (pos.x * pos.x + pos.y * pos.y);
-    }
-
-    const double rotlim =
-        std::max(1.0e-2, group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z) * 1.0e-5;
-    group.inverseInertiaVector.x = (group.inertiaVector.x < rotlim) ? 0.0 : 1.0 / group.inertiaVector.x;
-    group.inverseInertiaVector.y = (group.inertiaVector.y < rotlim) ? 0.0 : 1.0 / group.inertiaVector.y;
-    group.inverseInertiaVector.z = (group.inertiaVector.z < rotlim) ? 0.0 : 1.0 / group.inertiaVector.z;
-
-    const double rotall = group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z > 1.0e-5
-                              ? group.inertiaVector.x + group.inertiaVector.y + group.inertiaVector.z
-                              : 1.0;
-    std::size_t zeroModes = 0;
-    if (group.inertiaVector.x / rotall < 1.0e-5) ++zeroModes;
-    if (group.inertiaVector.y / rotall < 1.0e-5) ++zeroModes;
-    if (group.inertiaVector.z / rotall < 1.0e-5) ++zeroModes;
-
-    group.rotationalDegreesOfFreedom = 3 - std::min<std::size_t>(zeroModes, 3);
-    group.shapeType = (zeroModes == 0) ? 0 : (zeroModes >= 3 ? 2 : 1);
+    group.computeRigidProperties(referencePositions, masses);
   }
 }
 
@@ -747,47 +684,12 @@ bool Framework::isFlexibleAtom(std::size_t atom) const
 void Framework::regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex,
                                      std::span<Atom> frameworkAtoms) const
 {
-  const FrameworkGroup &group = groups[groupIndex];
-  const double3x3 rotation = double3x3::buildRotationMatrixInverse(state.orientation);
-  for (std::size_t k = 0; k != group.atoms.size(); ++k)
-  {
-    frameworkAtoms[group.atoms[k]].position =
-        state.centerOfMassPosition + rotation * group.bodyFixedPositions[k];
-  }
+  groups[groupIndex].regenerateAtoms(state, frameworkAtoms);
 }
 
-GroupState Framework::deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms,
-                                       const ForceField& forceField) const
+GroupState Framework::deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms) const
 {
-  const FrameworkGroup &group = groups[groupIndex];
-  GroupState state{};
-
-  double3 com{};
-  for (std::size_t k = 0; k != group.atoms.size(); ++k)
-  {
-    com += group.atomMasses[k] * frameworkAtoms[group.atoms[k]].position;
-  }
-  state.centerOfMassPosition = com / group.mass;
-  (void)forceField;
-
-  if (group.atoms.size() == 1)
-  {
-    state.orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
-    return state;
-  }
-
-  std::vector<double3> bodyPositions(group.bodyFixedPositions.begin(), group.bodyFixedPositions.end());
-  std::vector<double3> labPositions(group.atoms.size());
-  for (std::size_t k = 0; k != group.atoms.size(); ++k)
-  {
-    labPositions[k] = frameworkAtoms[group.atoms[k]].position;
-  }
-
-  const double3x3 rotation =
-      double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), bodyPositions, state.centerOfMassPosition, labPositions);
-  double3x3 rotationTranspose = rotation.transpose();
-  state.orientation = rotationTranspose.quaternion().normalized();
-  return state;
+  return groups[groupIndex].deriveState(frameworkAtoms);
 }
 
 void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
@@ -1460,19 +1362,14 @@ nlohmann::json Framework::jsonStatus() const
   return status;
 }
 
+// Version 2: the rigid-body reference data moved into the Fragment base class.
+static constexpr std::uint64_t frameworkGroupVersionNumber{2};
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const FrameworkGroup& g)
 {
-  archive << g.versionNumber;
+  archive << frameworkGroupVersionNumber;
   archive << static_cast<std::uint8_t>(g.type);
-  archive << g.atoms;
-  archive << g.mass;
-  archive << g.centerOfMassReferencePosition;
-  archive << g.inertiaVector;
-  archive << g.inverseInertiaVector;
-  archive << g.bodyFixedPositions;
-  archive << g.atomMasses;
-  archive << g.rotationalDegreesOfFreedom;
-  archive << g.shapeType;
+  archive << static_cast<const Fragment&>(g);
   return archive;
 }
 
@@ -1480,7 +1377,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, FrameworkGro
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > g.versionNumber)
+  if (versionNumber != frameworkGroupVersionNumber)
   {
     const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'FrameworkGroup' at line {} in file {}\n",
@@ -1489,15 +1386,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, FrameworkGro
   std::uint8_t typeValue{};
   archive >> typeValue;
   g.type = static_cast<FrameworkGroupType>(typeValue);
-  archive >> g.atoms;
-  archive >> g.mass;
-  archive >> g.centerOfMassReferencePosition;
-  archive >> g.inertiaVector;
-  archive >> g.inverseInertiaVector;
-  archive >> g.bodyFixedPositions;
-  archive >> g.atomMasses;
-  archive >> g.rotationalDegreesOfFreedom;
-  archive >> g.shapeType;
+  archive >> static_cast<Fragment&>(g);
   return archive;
 }
 

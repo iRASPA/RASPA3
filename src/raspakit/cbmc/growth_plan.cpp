@@ -5,7 +5,6 @@ module cbmc_growth_plan;
 import std;
 
 import atom;
-import component;
 import connectivity_table;
 import fragment;
 import fragment_graph;
@@ -32,10 +31,10 @@ static std::optional<std::size_t> firstPlacedNeighbor(const ConnectivityTable &c
 // Mirrors 'ConnectivityTable::nextBeads' for the fully flexible case, but rigid-body fragments are
 // hinged as one rigid body once their connecting atom is placed, and cyclic clusters (all rings:
 // simple, fused, bridged) are grown as one ring-closure step.
-static CBMC::GrowStep nextGrowthStep(const Component &component, const std::vector<std::size_t> &placedBeads)
+static CBMC::GrowStep nextGrowthStep(const ConnectivityTable &connectivity, const FragmentGraph &graph,
+                                     const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+                                     const std::vector<std::size_t> &placedBeads)
 {
-  const ConnectivityTable &connectivity = component.connectivityTable;
-  const FragmentGraph &graph = component.fragmentGraph;
   std::size_t numberOfBeads = connectivity.numberOfBeads;
 
   std::vector<bool> placed(numberOfBeads, false);
@@ -48,7 +47,7 @@ static CBMC::GrowStep nextGrowthStep(const Component &component, const std::vect
                       std::vector<std::size_t> nextBeads, bool rigidBody) -> CBMC::GrowStep
   {
     Potentials::IntraMolecularPotentials intra =
-        component.intraMolecularPotentials.filteredInteractions(numberOfBeads, placedVec, nextBeads);
+        intraMolecularPotentials.filteredInteractions(numberOfBeads, placedVec, nextBeads);
     return {kind, previousBead, currentBead, std::move(nextBeads), rigidBody, std::move(intra)};
   };
 
@@ -200,17 +199,19 @@ static CBMC::GrowStep nextGrowthStep(const Component &component, const std::vect
   return makeStep(CBMC::GrowStep::Kind::AttachFragment, previousBead, currentBead, std::move(nextBeads), false);
 }
 
-std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(const Component &component,
-                                                  const std::vector<std::size_t> &beadsAlreadyPlaced)
+std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
+    const ConnectivityTable &connectivity, const FragmentGraph &fragmentGraph,
+    const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+    const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
+  std::size_t numberOfBeads = connectivity.numberOfBeads;
 
   std::vector<GrowStep> plan{};
   std::vector<std::size_t> placed(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
 
   while (placed.size() < numberOfBeads)
   {
-    GrowStep step = nextGrowthStep(component, placed);
+    GrowStep step = nextGrowthStep(connectivity, fragmentGraph, intraMolecularPotentials, placed);
     placed.insert(placed.end(), step.nextBeads.begin(), step.nextBeads.end());
     plan.push_back(std::move(step));
   }

@@ -50,6 +50,7 @@ import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
+import chiral_center;
 import vdwparameters;
 import json;
 
@@ -387,12 +388,24 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.bendTorsions = readBendTorsionPotentials(parsed_data);
     intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
     intraMolecularPotentials.coulombs = readCoulombPotentials(forceField, parsed_data);
+    intraMolecularPotentials.chiralCenters = readChiralCenters(parsed_data);
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
   }
   else
   {
     buildFragmentGraph(rigidBodies);
+  }
+
+  // Warm the growth-plan cache for the placed sets used during the simulation: full growth from the
+  // starting bead and every partial-reinsertion fixed set.
+  if (definedAtoms.size() > 1)
+  {
+    growthPlan({startingBead});
+    for (const std::vector<std::size_t> &fixedAtoms : partialReinsertionFixedAtoms)
+    {
+      growthPlan(fixedAtoms);
+    }
   }
 }
 
@@ -455,6 +468,9 @@ std::vector<std::vector<std::size_t>> Component::readRigidBodies(
 
 void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &rigidBodies)
 {
+  // The topology changes, so any cached growth plans are stale.
+  growthPlanCache.clear();
+
   std::size_t numberOfBeads = definedAtoms.size();
 
   std::vector<std::vector<std::size_t>> partition = FragmentGraph::partitionAtoms(numberOfBeads, rigidBodies);
@@ -489,6 +505,19 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
     translationalDegreesOfFreedom = 3 * flexibleAtoms + 3 * fragmentGraph.numberOfRigidFragments();
     rotationalDegreesOfFreedom = rotationalDof;
   }
+}
+
+const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const
+{
+  auto it = growthPlanCache.find(beadsAlreadyPlaced);
+  if (it == growthPlanCache.end())
+  {
+    it = growthPlanCache
+             .emplace(beadsAlreadyPlaced, CBMC::buildGrowthPlan(connectivityTable, fragmentGraph,
+                                                                intraMolecularPotentials, beadsAlreadyPlaced))
+             .first;
+  }
+  return it->second;
 }
 
 bool Component::isInsideRigidFragment(std::span<const std::size_t> ids) const
@@ -659,6 +688,39 @@ std::vector<Atom> Component::rotatePositions(const simd_quatd &q) const
     rotatedAtoms.push_back(a);
   }
   return rotatedAtoms;
+}
+
+Molecule Component::createMoleculeRecord(std::span<const Atom> moleculeAtoms) const
+{
+  double3 com{};
+  for (std::size_t i = 0; i != moleculeAtoms.size(); ++i)
+  {
+    com += definedAtoms[i].second * moleculeAtoms[i].position;
+  }
+  com = com / totalMass;
+
+  simd_quatd orientation(0.0, 0.0, 0.0, 1.0);
+  if (rigid && moleculeAtoms.size() > 1)
+  {
+    // 'atoms' is the COM-centered principal-frame reference geometry, so the Procrustes fit returns
+    // R with p_i - com = R * atoms[i].position. The stored quaternion follows the rigid-molecule
+    // convention p = com + buildRotationMatrixInverse(q) * atoms[i].position, so
+    // buildRotationMatrixInverse(q) = R and q is the quaternion of R^T.
+    std::vector<double3> referencePositions(moleculeAtoms.size());
+    std::vector<double3> labPositions(moleculeAtoms.size());
+    for (std::size_t i = 0; i != moleculeAtoms.size(); ++i)
+    {
+      referencePositions[i] = atoms[i].position;
+      labPositions[i] = moleculeAtoms[i].position;
+    }
+    double3x3 rotation =
+        double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), referencePositions, com, labPositions);
+    double3x3 rotationTranspose = rotation.transpose();
+    orientation = rotationTranspose.quaternion().normalized();
+  }
+
+  return Molecule(com, orientation, totalMass, static_cast<std::size_t>(moleculeAtoms.front().componentId),
+                  moleculeAtoms.size());
 }
 
 double3 Component::computeCenterOfMass(std::span<Atom> atom_list) const
@@ -1839,6 +1901,78 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
   return config_moves;
 }
 
+std::vector<ChiralCenter> Component::readChiralCenters(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  std::vector<ChiralCenter> chiral_centers{};
+
+  if (!parsed_data.contains("ChiralCenters"))
+  {
+    return chiral_centers;
+  }
+
+  if (!parsed_data["ChiralCenters"].is_array())
+  {
+    throw std::runtime_error(
+        std::format("[Component reader]: 'ChiralCenters' must be an array of atom-index quadruples\n"));
+  }
+
+  std::size_t numberOfBeads = definedAtoms.size();
+  for (auto &[_, item] : parsed_data["ChiralCenters"].items())
+  {
+    std::array<std::size_t, 4> ids{};
+    try
+    {
+      ids = item.get<std::array<std::size_t, 4>>();
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: each entry of 'ChiralCenters' must be an array of four atom indices "
+          "[center, neighbor1, neighbor2, neighbor3] ({}): {}\n",
+          item.dump(), e.what()));
+    }
+
+    for (std::size_t id : ids)
+    {
+      if (id >= numberOfBeads)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: chiral-center atom index {} out of range (molecule has {} atoms)\n", id,
+                        numberOfBeads));
+      }
+    }
+    std::array<std::size_t, 4> sorted = ids;
+    std::sort(sorted.begin(), sorted.end());
+    if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end())
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: the four atom indices of a chiral center must be distinct ({})\n", item.dump()));
+    }
+
+    // The handedness follows from the reference geometry: the signed volume of the tetrahedron
+    // spanned by the three neighbors relative to the center. A (near-)planar center carries no
+    // handedness and cannot be preserved during growth.
+    double3 p0 = atoms[ids[0]].position;
+    double3 d1 = atoms[ids[1]].position - p0;
+    double3 d2 = atoms[ids[2]].position - p0;
+    double3 d3 = atoms[ids[3]].position - p0;
+    double signedVolume = double3::dot(d1, double3::cross(d2, d3));
+    if (std::abs(signedVolume) < 1e-6)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: chiral center ({}) is planar in the reference geometry, its parity is undefined\n",
+          item.dump()));
+    }
+
+    ChiralCenter center{};
+    center.type = signedVolume > 0.0 ? ChiralCenter::Chirality::R_Chiral : ChiralCenter::Chirality::S_Chiral;
+    center.ids = ids;
+    chiral_centers.push_back(center);
+  }
+
+  return chiral_centers;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c)
 {
   archive << c.versionNumber;
@@ -1883,7 +2017,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
   archive << c.fragmentGraph;
-  archive << c.grownAtoms;
   archive << c.grownIdealGasAtoms;
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
@@ -1972,7 +2105,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
   archive >> c.fragmentGraph;
-  archive >> c.grownAtoms;
   archive >> c.grownIdealGasAtoms;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;

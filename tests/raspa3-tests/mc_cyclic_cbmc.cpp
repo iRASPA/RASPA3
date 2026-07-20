@@ -27,6 +27,7 @@ import cbmc_chain_data;
 import randomnumbers;
 import mc_moves_reinsertion;
 import intra_molecular_potentials;
+import chiral_center;
 
 // Tests for flexible rings grown with ring-closure CBMC. Rings are inferred from cycles in the
 // molecule's connectivity graph. The reference molecules are united-atom cyclohexane (six cyclic
@@ -147,6 +148,36 @@ void expectBondsIntact(const System& system, std::size_t moleculeSize,
 
 void expectDecalinRingsClosed(const System& system) { expectBondsIntact(system, 10, kDecalinBonds); }
 
+// Signed volume of a chiral center's tetrahedron; its sign is the center's parity.
+double chiralSignedVolume(const std::array<std::size_t, 4>& ids, std::span<const Atom> atoms, std::size_t offset)
+{
+  double3 p0 = atoms[offset + ids[0]].position;
+  double3 d1 = atoms[offset + ids[1]].position - p0;
+  double3 d2 = atoms[offset + ids[2]].position - p0;
+  double3 d3 = atoms[offset + ids[3]].position - p0;
+  return double3::dot(d1, double3::cross(d2, d3));
+}
+
+// Every declared chiral center of every molecule must keep the parity it has in the reference
+// geometry: the achiral bond/bend/torsion model gives the mirror image the same energy, so only the
+// chirality guard in the ring sampler prevents e.g. a trans ring fusion from flipping to cis.
+void expectChiralParityPreserved(const System& system, const Component& component, std::size_t moleculeSize)
+{
+  std::span<const Atom> atoms = std::as_const(system).spanOfMoleculeAtoms();
+  ASSERT_EQ(atoms.size() % moleculeSize, 0uz);
+
+  std::span<const Atom> reference(component.atoms);
+  for (std::size_t offset = 0; offset < atoms.size(); offset += moleculeSize)
+  {
+    for (const ChiralCenter& center : component.intraMolecularPotentials.chiralCenters)
+    {
+      double referenceVolume = chiralSignedVolume(center.ids, reference, 0);
+      double actualVolume = chiralSignedVolume(center.ids, atoms, offset);
+      EXPECT_GT(actualVolume * referenceVolume, 0.0);
+    }
+  }
+}
+
 // Mean bond length and bend angle over all listed bonds and all bonded triples derived from them;
 // used to cross-check the geometry distribution sampled by CBMC against molecular dynamics.
 template <std::size_t N>
@@ -255,7 +286,7 @@ TEST(MC_CYCLIC_CBMC, growth_plan)
   const ForceField forceField = makeCyclohexaneForceField();
   Component cyclohexane = makeCyclohexane(forceField, 0, MCMoveProbabilities());
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(cyclohexane, {cyclohexane.startingBead});
+  std::vector<CBMC::GrowStep> plan = cyclohexane.growthPlan({cyclohexane.startingBead});
 
   // The whole ring is grown as one ring-closure step hinged on the seed bead: the remaining five
   // beads are grown together, with the closure bond keeping the ring closed.
@@ -290,13 +321,19 @@ TEST(MC_CYCLIC_CBMC, fused_ring_fragment_graph_and_growth_plan)
   // Two independent cycles: |E| - |V| + 1 = 11 - 10 + 1 = 2 closure bonds.
   EXPECT_EQ(graph.closureBonds.size(), 2uz);
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(decalin, {decalin.startingBead});
+  std::vector<CBMC::GrowStep> plan = decalin.growthPlan({decalin.startingBead});
   ASSERT_EQ(plan.size(), 1uz);
   EXPECT_EQ(plan[0].kind, CBMC::GrowStep::Kind::CloseRing);
   EXPECT_EQ(plan[0].nextBeads.size(), 9uz);
 
   // All eleven bonds (nine tree bonds plus two closure bonds) are sampled during ring closure.
   EXPECT_EQ(plan[0].intra.bonds.size(), 11uz);
+
+  // The two declared bridgehead chiral centers are parsed; their handedness follows from the
+  // reference geometry.
+  ASSERT_EQ(decalin.intraMolecularPotentials.chiralCenters.size(), 2uz);
+  EXPECT_EQ(decalin.intraMolecularPotentials.chiralCenters[0].ids, (std::array<std::size_t, 4>{0, 1, 5, 9}));
+  EXPECT_EQ(decalin.intraMolecularPotentials.chiralCenters[1].ids, (std::array<std::size_t, 4>{1, 0, 2, 6}));
 
   // The minimal fused system (two three-membered rings sharing an edge) was a parse error under the
   // old 'Cycle' group model; under the fragment graph it is a valid molecule.
@@ -333,6 +370,7 @@ TEST(MC_CYCLIC_CBMC, fused_ring_nvt_drift_and_geometry)
   {
     expectNoEnergyDrift(s);
     expectDecalinRingsClosed(s);
+    expectChiralParityPreserved(s, s.components[0], 10);
   }
 }
 
@@ -478,7 +516,7 @@ TEST(MC_CYCLIC_CBMC, norbornane_fragment_graph_and_growth_plan)
   // Two independent cycles: |E| - |V| + 1 = 8 - 7 + 1 = 2 closure bonds.
   EXPECT_EQ(graph.closureBonds.size(), 2uz);
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(norbornane, {norbornane.startingBead});
+  std::vector<CBMC::GrowStep> plan = norbornane.growthPlan({norbornane.startingBead});
   ASSERT_EQ(plan.size(), 1uz);
   EXPECT_EQ(plan[0].kind, CBMC::GrowStep::Kind::CloseRing);
   EXPECT_EQ(plan[0].nextBeads.size(), 6uz);
@@ -515,6 +553,128 @@ TEST(MC_CYCLIC_CBMC, bridged_ring_nvt_drift_and_geometry)
   }
 }
 
+namespace
+{
+Component makeRigidUnitRing(const ForceField& forceField, const MCMoveProbabilities& probabilities)
+{
+  TemporaryFile file("rigid_unit_ring.json", molecule_fixtures::kRigidUnitRingJson);
+  return Component(Component::Type::Adsorbate, 0, forceField, "rigid_unit_ring", file.stemPath().string(), 5, 21,
+                   probabilities, std::nullopt, false);
+}
+
+// The internal geometry of the rigid unit {0,1,2} must match the component reference geometry to
+// high precision for every molecule: the ring-closure sampler moves the unit only as a rigid body.
+void expectRigidUnitGeometryExact(const System& system, const Component& component)
+{
+  static constexpr std::array<std::array<std::size_t, 2>, 3> kUnitPairs{{{0, 1}, {1, 2}, {0, 2}}};
+
+  std::span<const Atom> atoms = std::as_const(system).spanOfMoleculeAtoms();
+  constexpr std::size_t moleculeSize = 6;
+  ASSERT_EQ(atoms.size() % moleculeSize, 0uz);
+
+  for (std::size_t offset = 0; offset < atoms.size(); offset += moleculeSize)
+  {
+    for (const std::array<std::size_t, 2>& pair : kUnitPairs)
+    {
+      double reference = (component.atoms[pair[1]].position - component.atoms[pair[0]].position).length();
+      double actual = (atoms[offset + pair[1]].position - atoms[offset + pair[0]].position).length();
+      EXPECT_NEAR(actual, reference, 1e-8);
+    }
+  }
+}
+}  // namespace
+
+// A flexible ring passing through a rigid body: the cyclic cluster covers the rigid unit {0,1,2}
+// and the flexible bridges {3,4,5}. Seeded from flexible bead 3, the whole cluster (including the
+// rigid unit) is grown in one ring-closure step; seeded from rigid bead 0, the rigid unit is placed
+// first and the flexible remainder closes the ring.
+TEST(MC_CYCLIC_CBMC, rigid_unit_in_ring_fragment_graph_and_growth_plan)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+  Component molecule = makeRigidUnitRing(forceField, MCMoveProbabilities());
+
+  const FragmentGraph& graph = molecule.fragmentGraph;
+  ASSERT_EQ(graph.fragments.size(), 4uz);
+  EXPECT_TRUE(graph.fragments[0].isRigidBody());
+  EXPECT_EQ(graph.fragments[0].atoms, (std::vector<std::size_t>{0, 1, 2}));
+  EXPECT_EQ(graph.numberOfRigidFragments(), 1uz);
+  EXPECT_TRUE(molecule.isSemiFlexible());
+
+  ASSERT_EQ(graph.cyclicClusters.size(), 1uz);
+  EXPECT_EQ(graph.cyclicClusters[0], (std::vector<std::size_t>{0, 1, 2, 3, 4, 5}));
+  EXPECT_EQ(graph.closureBonds.size(), 1uz);
+
+  // Bonds internal to the rigid unit (0-1, 1-2) are dropped; the four junction/bridge bonds remain.
+  EXPECT_EQ(molecule.intraMolecularPotentials.bonds.size(), 4uz);
+
+  // Seeded on the flexible side: one ring-closure step containing the whole rigid unit.
+  std::vector<CBMC::GrowStep> planFromFlexible = molecule.growthPlan({3});
+  ASSERT_EQ(planFromFlexible.size(), 1uz);
+  EXPECT_EQ(planFromFlexible[0].kind, CBMC::GrowStep::Kind::CloseRing);
+  EXPECT_EQ(planFromFlexible[0].currentBead, 3uz);
+  EXPECT_EQ(planFromFlexible[0].nextBeads, (std::vector<std::size_t>{0, 1, 2, 4, 5}));
+
+  // Seeded inside the rigid unit: the unit is placed as the rigid seed, the ring closes afterwards.
+  std::vector<CBMC::GrowStep> planFromRigid = molecule.growthPlan({0});
+  ASSERT_EQ(planFromRigid.size(), 2uz);
+  EXPECT_EQ(planFromRigid[0].kind, CBMC::GrowStep::Kind::PlaceSeedFragment);
+  EXPECT_TRUE(planFromRigid[0].rigidBody);
+  EXPECT_EQ(planFromRigid[0].nextBeads, (std::vector<std::size_t>{1, 2}));
+  EXPECT_EQ(planFromRigid[1].kind, CBMC::GrowStep::Kind::CloseRing);
+  EXPECT_EQ(planFromRigid[1].nextBeads, (std::vector<std::size_t>{3, 4, 5}));
+}
+
+// NVT sampling of the rigid-unit ring with CBMC reinsertion: the running energies must stay
+// consistent with a full recomputation, the ring must stay closed, and the rigid unit's internal
+// geometry must be preserved exactly through every regrowth.
+TEST(MC_CYCLIC_CBMC, rigid_unit_in_ring_nvt_drift_and_geometry)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+
+  Component molecule = makeRigidUnitRing(forceField, probabilities);
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {molecule}, {}, {10}, 5);
+
+  MonteCarlo mc = makeShortMonteCarlo({system});
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    expectNoEnergyDrift(s);
+    expectRingClosedAndReasonable(s);
+    expectRigidUnitGeometryExact(s, s.components[0]);
+  }
+}
+
+// NVE molecular dynamics of the rigid-unit ring: the rigid unit is integrated as a rigid body and
+// its geometry must be preserved; the flexible bridges keep the ring closed through the potentials.
+TEST(MC_CYCLIC_CBMC, rigid_unit_in_ring_nve_molecular_dynamics)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+
+  Component molecule = makeRigidUnitRing(forceField, MCMoveProbabilities());
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {molecule}, {}, {10}, 5);
+  system.timeStep = 1e-4;
+
+  MolecularDynamics md = MolecularDynamics({20, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+  md.run();
+
+  for (System& s : md.systems)
+  {
+    expectRingClosedAndReasonable(s);
+    expectRigidUnitGeometryExact(s, s.components[0]);
+    EXPECT_TRUE(std::isfinite(s.runningEnergies.conservedEnergy()));
+  }
+}
+
 // A ring with a flexible tail: the ring is grown first as a ring-closure step from the seed bead;
 // the tail is then grown off the closed ring as an ordinary flexible attachment whose anchor (the
 // ring atom) has two placed ring neighbors.
@@ -531,7 +691,7 @@ TEST(MC_CYCLIC_CBMC, ring_with_tail_growth_plan)
   EXPECT_EQ(graph.cyclicClusters[0], (std::vector<std::size_t>{0, 1, 2, 3, 4, 5}));
   EXPECT_EQ(graph.closureBonds.size(), 1uz);
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(methylcyclohexane, {methylcyclohexane.startingBead});
+  std::vector<CBMC::GrowStep> plan = methylcyclohexane.growthPlan({methylcyclohexane.startingBead});
   ASSERT_EQ(plan.size(), 2uz);
 
   EXPECT_EQ(plan[0].kind, CBMC::GrowStep::Kind::CloseRing);
@@ -648,6 +808,60 @@ TEST(MC_CYCLIC_CBMC, grow_retrace_weight_symmetry)
   EXPECT_NEAR(growMean / retraceMean, 1.0, 0.15);
 }
 
+// Chirality guard of the ring sampler: the bond/bend/torsion model is achiral (the cis and trans
+// ring fusions are mirror-related basins connected by affordable bend distortions), so without the
+// parity guard the ring-closure MC occasionally inverts a bridgehead. Growing many independent
+// ghost decalins at high temperature, every declared chiral center must keep the trans parity of
+// the reference geometry.
+TEST(MC_CYCLIC_CBMC, fused_ring_chirality_preserved_in_fresh_growth)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+
+  TemporaryFile file("decalin.json", molecule_fixtures::kDecalinJson);
+  Component decalin = Component(Component::Type::Adsorbate, 0, forceField, "decalin", file.stemPath().string(), 5, 21,
+                                MCMoveProbabilities(), std::nullopt, false);
+
+  // One molecule in a huge box at high temperature: bend distortions towards the inversion pathway
+  // are thermally affordable, making an unprotected sampler flip parity within a few hundred grows.
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 2000.0, 1e4, 1.0, {}, {decalin}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  const CBMC::GrowContext context{system.hasExternalField,
+                                  system.forceField,
+                                  system.simulationBox,
+                                  system.interpolationGrids,
+                                  system.externalFieldInterpolationGrid,
+                                  system.framework,
+                                  system.spanOfFrameworkAtoms(),
+                                  system.spanOfMoleculeAtoms(),
+                                  system.beta,
+                                  system.forceField.cutOffFrameworkVDW,
+                                  system.forceField.cutOffMoleculeVDW,
+                                  system.forceField.cutOffCoulomb};
+
+  RandomNumber random(1848);
+  std::span<const Atom> reference(system.components[0].atoms);
+  std::size_t flipped{};
+  constexpr std::size_t samples = 500;
+  for (std::size_t i = 0; i != samples; ++i)
+  {
+    std::optional<ChainGrowData> growData =
+        CBMC::growMoleculeSwapInsertion(random, context, system.components[0], 0, 1, 1.0, std::uint8_t{0}, false);
+    if (!growData.has_value()) continue;
+
+    std::span<const Atom> grown(growData->atoms);
+    for (const ChiralCenter& center : system.components[0].intraMolecularPotentials.chiralCenters)
+    {
+      double referenceVolume = chiralSignedVolume(center.ids, reference, 0);
+      double actualVolume = chiralSignedVolume(center.ids, grown, 0);
+      if (actualVolume * referenceVolume < 0.0) ++flipped;
+    }
+  }
+
+  EXPECT_EQ(flipped, 0uz);
+}
+
 // Same CBMC-vs-MD ensemble comparison for a fused-ring molecule: trans-decalin regrown with
 // ring-closure CBMC must sample the same internal geometry distribution as molecular dynamics.
 TEST(MC_CYCLIC_CBMC, fused_ring_geometry_matches_molecular_dynamics)
@@ -676,6 +890,7 @@ TEST(MC_CYCLIC_CBMC, fused_ring_geometry_matches_molecular_dynamics)
 
   expectDecalinRingsClosed(mc.systems[0]);
   expectDecalinRingsClosed(md.systems[0]);
+  expectChiralParityPreserved(mc.systems[0], mc.systems[0].components[0], 10);
 
   auto [mcBond, mcBend] = meanMoleculeGeometry(mc.systems[0], 10, kDecalinBonds);
   auto [mdBond, mdBend] = meanMoleculeGeometry(md.systems[0], 10, kDecalinBonds);

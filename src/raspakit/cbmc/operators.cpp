@@ -14,6 +14,7 @@ import double3x3;
 import cbmc_util;
 import cbmc_growth_plan;
 import cbmc_move_statistics;
+import move_statistics;
 import intra_molecular_potentials;
 import chiral_center;
 import bond_potential;
@@ -206,7 +207,16 @@ static std::vector<Atom> generateFlexibleBaseConformation(RandomNumber &random, 
 
   double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
 
-  if (component.grownAtoms.empty())
+  // Seed the base conformation. A cold start (no warm-start conformation available yet for this
+  // component) samples each next-bead's bond length from its bond potential and its direction on the
+  // bend cone; a warm start reuses the most recently grown, thermalized (non-overlapping)
+  // conformation of this component, rigidly rotated so its previous-current bond aligns with the
+  // current one. The base conformation carries no Rosenbluth weight -- it is only the starting point
+  // for the internal Metropolis MC below -- but the warm start matters in practice: the internal MC
+  // only sees the bonded energy, so a self-overlapping cold seed of a floppy molecule cannot be
+  // relaxed here and would be rejected downstream by every trial direction.
+  const std::vector<Atom> &warmStart = component.warmStartConformation;
+  if (warmStart.empty())
   {
     for (std::size_t next_bead : nextBeads)
     {
@@ -221,17 +231,17 @@ static std::vector<Atom> generateFlexibleBaseConformation(RandomNumber &random, 
   }
   else
   {
-    double3 v = component.grownAtoms[previousBead].position - component.grownAtoms[currentBead].position;
+    double3 v = warmStart[previousBead].position - warmStart[currentBead].position;
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(v, last_bond_vector);
     for (std::size_t next_bead : nextBeads)
     {
-      double3 va = component.grownAtoms[next_bead].position - component.grownAtoms[currentBead].position;
+      double3 va = warmStart[next_bead].position - warmStart[currentBead].position;
       chain_atoms[next_bead].position = chain_atoms[currentBead].position + rotation_matrix * va;
     }
   }
 
   std::size_t number_of_trials = 2 * numberOfTrialMovesPerOpenBead * nextBeads.size();
-  if (component.grownAtoms.empty()) number_of_trials *= 2;
+  if (warmStart.empty()) number_of_trials *= 2;
 
   // Swap the positions of two branch beads (improves branch-arrangement sampling), but only when the
   // swap preserves the parity of every chiral center that involves a swapped bead.
@@ -552,7 +562,9 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
 // ---------------------------------------------------------------------------------------------------
 // Ring-closure conformation: samples the internal conformation of a cyclic cluster (kept closed by
 // its closure bonds) plus the junction tilt. Carries no Rosenbluth weight. Ported from the former
-// 'generateRingConformationMonteCarloScheme'.
+// 'generateRingConformationMonteCarloScheme'. A cyclic cluster may pass through rigid-body
+// fragments (e.g. a macrocycle of rigid rings linked by flexible bridges); those fragments are
+// moved as whole rigid units so their internal geometry stays exact.
 // ---------------------------------------------------------------------------------------------------
 static bool bendIsSpinVariantRing(const std::array<std::size_t, 3> &identifiers, std::optional<std::size_t> previousBead,
                                   std::size_t currentBead, const std::vector<std::size_t> &nextBeads)
@@ -595,7 +607,66 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
       chain_atoms[atom].position = anchor_position + rotation * offset;
     }
   };
+
+  // Chiral centers whose four atoms all have known positions during this step (the ring body, the
+  // anchor, and the junction's placed neighbor) keep the parity of the reference geometry: the
+  // bond/bend/torsion model is achiral (a mirror image has the same energy), so without this guard
+  // the internal MC could invert a declared stereocenter, e.g. flip a cis ring fusion to trans.
+  std::vector<std::pair<const std::array<std::size_t, 4> *, double>> monitored_centers{};
+  {
+    auto isKnown = [&](std::size_t id)
+    {
+      if (id == currentBead) return true;
+      if (previousBead.has_value() && id == previousBead.value()) return true;
+      return std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end();
+    };
+    for (const ChiralCenter &center : component.intraMolecularPotentials.chiralCenters)
+    {
+      if (std::all_of(center.ids.begin(), center.ids.end(), isKnown))
+      {
+        monitored_centers.push_back({&center.ids, chiralSignedVolume(center.ids, component.atoms)});
+      }
+    }
+  }
+  auto parityPreserved = [&]()
+  {
+    for (const auto &[ids, referenceVolume] : monitored_centers)
+    {
+      if (chiralSignedVolume(*ids, chain_atoms) * referenceVolume < 0.0) return false;
+    }
+    return true;
+  };
+
+  // A proper rotation of the reference geometry preserves the parity of centers that lie entirely
+  // inside the ring body, but a center involving the junction's placed neighbor starts with a random
+  // parity; re-orient until every monitored center matches the reference.
   placeWithRotation(random.randomRotationMatrix());
+  for (std::size_t attempt = 0; attempt != 1000 && !parityPreserved(); ++attempt)
+  {
+    placeWithRotation(random.randomRotationMatrix());
+  }
+
+  // Move units of the conformational MC: a single-atom (flexible) fragment moves by per-atom
+  // displacement, a rigid-body fragment moves as one unit (translation or rotation about its
+  // center) so its internal geometry is preserved exactly. The growth plan places a rigid fragment
+  // either entirely inside this step or entirely before it, never partially.
+  const FragmentGraph &graph = component.fragmentGraph;
+  std::vector<std::vector<std::size_t>> moveUnits{};
+  {
+    std::map<std::size_t, std::size_t> rigidFragmentUnits{};
+    for (std::size_t atom : nextBeads)
+    {
+      std::size_t fragmentIndex = graph.atomFragmentIds[atom];
+      if (!graph.fragments[fragmentIndex].isRigidBody())
+      {
+        moveUnits.push_back({atom});
+        continue;
+      }
+      auto [it, inserted] = rigidFragmentUnits.insert({fragmentIndex, moveUnits.size()});
+      if (inserted) moveUnits.push_back({});
+      moveUnits[it->second].push_back(atom);
+    }
+  }
 
   Potentials::IntraMolecularPotentials baseIntra{};
   baseIntra.bonds = intra.bonds;
@@ -616,11 +687,36 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
 
   double current_energy = baseEnergy(chain_atoms);
 
-  constexpr double maximumDisplacement = 0.1;
-  constexpr double maximumRotationAngle = 0.15;
+  // Adaptive internal-MC step sizes: the maximum displacement and rotation angle are read from the
+  // anchor bead's CBMC statistics and adapted towards the target acceptance ratio between sweeps by
+  // 'System::optimizeMCMoves'. These moves carry no Rosenbluth weight, so their step size affects
+  // only sampling efficiency, not detailed balance.
+  MoveStatistics<double> &displacementStats = component.cbmc_moves_statistics[currentBead].ringDisplacementChange;
+  MoveStatistics<double> &rotationStats = component.cbmc_moves_statistics[currentBead].ringRotationChange;
+  const double maximumDisplacement = displacementStats.maxChange;
+  const double maximumRotationAngle = rotationStats.maxChange;
   const bool haveJunction = previousBead.has_value();
   std::size_t number_of_trials = numberOfTrialMovesPerOpenBead * nextBeads.size();
   std::vector<double3> saved(nextBeads.size());
+
+  auto acceptOrReject = [&](MoveStatistics<double> &stats, std::size_t unitSize, auto restore)
+  {
+    stats.counts += 1.0;
+    stats.totalCounts += 1.0;
+    stats.constructed += 1.0;
+    stats.totalConstructed += 1.0;
+    double trial_energy = baseEnergy(chain_atoms);
+    if (parityPreserved() && random.uniform() < std::exp(-beta * (trial_energy - current_energy)))
+    {
+      current_energy = trial_energy;
+      stats.accepted += 1.0;
+      stats.totalAccepted += 1.0;
+    }
+    else
+    {
+      restore(unitSize);
+    }
+  };
 
   for (std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
@@ -633,32 +729,49 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
         saved[k] = chain_atoms[nextBeads[k]].position;
         chain_atoms[nextBeads[k]].position = anchor_position + axis.rotateAroundAxis(saved[k] - anchor_position, angle);
       }
-      double trial_energy = baseEnergy(chain_atoms);
-      if (random.uniform() < std::exp(-beta * (trial_energy - current_energy)))
-      {
-        current_energy = trial_energy;
-      }
-      else
-      {
-        for (std::size_t k = 0; k != nextBeads.size(); ++k) chain_atoms[nextBeads[k]].position = saved[k];
-      }
+      acceptOrReject(rotationStats, nextBeads.size(),
+                     [&](std::size_t n)
+                     {
+                       for (std::size_t k = 0; k != n; ++k) chain_atoms[nextBeads[k]].position = saved[k];
+                     });
     }
     else
     {
-      std::size_t atom = nextBeads[random.uniform_integer(0, nextBeads.size() - 1)];
-      double3 displacement{(2.0 * random.uniform() - 1.0) * maximumDisplacement,
-                           (2.0 * random.uniform() - 1.0) * maximumDisplacement,
-                           (2.0 * random.uniform() - 1.0) * maximumDisplacement};
-      double3 saved_position = chain_atoms[atom].position;
-      chain_atoms[atom].position = saved_position + displacement;
-      double trial_energy = baseEnergy(chain_atoms);
-      if (random.uniform() < std::exp(-beta * (trial_energy - current_energy)))
+      const std::vector<std::size_t> &unit = moveUnits[random.uniform_integer(0, moveUnits.size() - 1)];
+      for (std::size_t k = 0; k != unit.size(); ++k) saved[k] = chain_atoms[unit[k]].position;
+      auto restore = [&](std::size_t n)
+      { for (std::size_t k = 0; k != n; ++k) chain_atoms[unit[k]].position = saved[k]; };
+
+      if (unit.size() == 1)
       {
-        current_energy = trial_energy;
+        double3 displacement{(2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                             (2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                             (2.0 * random.uniform() - 1.0) * maximumDisplacement};
+        chain_atoms[unit[0]].position += displacement;
+        acceptOrReject(displacementStats, unit.size(), restore);
+      }
+      else if (random.uniform() < 0.5)
+      {
+        // Rigid fragment: symmetric whole-unit translation.
+        double3 displacement{(2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                             (2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                             (2.0 * random.uniform() - 1.0) * maximumDisplacement};
+        for (std::size_t atom : unit) chain_atoms[atom].position += displacement;
+        acceptOrReject(displacementStats, unit.size(), restore);
       }
       else
       {
-        chain_atoms[atom].position = saved_position;
+        // Rigid fragment: symmetric rotation about the unit center.
+        double3 center{};
+        for (std::size_t atom : unit) center += chain_atoms[atom].position;
+        center = center / static_cast<double>(unit.size());
+        double3 axis = random.randomVectorOnUnitSphere();
+        double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;
+        for (std::size_t atom : unit)
+        {
+          chain_atoms[atom].position = center + axis.rotateAroundAxis(chain_atoms[atom].position - center, angle);
+        }
+        acceptOrReject(rotationStats, unit.size(), restore);
       }
     }
   }

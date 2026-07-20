@@ -348,7 +348,10 @@ R"({
 // United-atom trans-decalin: two fused six-membered rings sharing the 0-1 bridgehead bond. The
 // reference geometry lies on a diamond lattice (all bonds 1.54 Angstrom, all bends 109.47 degrees),
 // so every ring starts in a perfect chair. One cyclic cluster of all ten beads with two closure
-// bonds; rings are inferred from the connectivity, no declaration needed.
+// bonds; rings are inferred from the connectivity, no declaration needed. The two bridgeheads are
+// declared as chiral centers, which locks the ring fusion to the trans parity of the reference
+// geometry during CBMC ring sampling (the achiral bond/bend/torsion model would otherwise allow a
+// flip to cis).
 inline constexpr std::string_view kDecalinJson =
 R"({
   "CriticalTemperature" : 687.0,
@@ -379,6 +382,10 @@ R"({
     [6, 7],
     [7, 8],
     [8, 9]
+  ],
+  "ChiralCenters" : [
+    [0, 1, 5, 9],
+    [1, 0, 2, 6]
   ],
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
@@ -456,6 +463,49 @@ R"({
     [0, 6],
     [3, 6]
   ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+// A six-membered ring passing through a rigid body: beads {0,1,2} form one rigid unit, beads
+// {3,4,5} are flexible bridges closing the macrocycle. The cyclic cluster covers all six beads and
+// the ring-closure growth must move the rigid unit as a whole. 'StartingBead' 3 puts the seed on
+// the flexible side, so the rigid unit is placed inside the ring-closure step itself.
+inline constexpr std::string_view kRigidUnitRingJson =
+R"({
+  "CriticalTemperature" : 553.6,
+  "CriticalPressure" : 4073000.0,
+  "AcentricFactor" : 0.211,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [1.54, 0.0, 0.0]],
+      ["CH2_c", [0.77, 1.333679, 0.0]],
+      ["CH2_c", [-0.77, 1.333679, 0.0]],
+      ["CH2_c", [-1.54, 0.0, 0.0]],
+      ["CH2_c", [-0.77, -1.333679, 0.0]],
+      ["CH2_c", [0.77, -1.333679, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0]
+  ],
+  "RigidBodies" : [
+    [0, 1, 2]
+  ],
+  "StartingBead" : 3,
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
   ],

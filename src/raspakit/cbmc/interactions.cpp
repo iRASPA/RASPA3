@@ -178,43 +178,6 @@ std::vector<CBMC::ChainTrialTorsion> CBMC::computeExternalNonOverlappingEnergies
   return energies;
 }
 
-std::vector<CBMC::MoleculeTrial> CBMC::computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component,
-    std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets, std::make_signed_t<std::size_t> skip,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
-{
-  std::vector<CBMC::MoleculeTrial> energies{};
-  energies.reserve(trialPositionSets.size());
-
-  for (auto &[molecule, trialPositionSet] : trialPositionSets)
-  {
-    if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSet))
-    {
-      continue;
-    }
-
-    std::optional<RunningEnergy> externalFieldEnergy =
-        CBMC::computeExternalFieldEnergy(context.hasExternalField, context.forceField, context.simulationBox,
-                                         context.externalFieldInterpolationGrid, context.cutOffFrameworkVDW,
-                                         context.cutOffCoulomb, trialPositionSet, skip);
-    if (!externalFieldEnergy.has_value()) continue;
-
-    std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
-        context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
-        context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSet, skip);
-    if (!frameworkEnergy.has_value()) continue;
-
-    std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        context.forceField, context.simulationBox, context.moleculeAtoms, context.cutOffMoleculeVDW,
-        context.cutOffCoulomb, trialPositionSet, skip, skipBackgroundMolecule);
-    if (!interEnergy.has_value()) continue;
-
-    energies.push_back(
-        {molecule, trialPositionSet, externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value()});
-  }
-  return energies;
-}
-
 std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDualCutOff(
     const GrowContext &context, const Component &component, std::vector<Atom> &trialPositionSet,
     std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept

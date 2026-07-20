@@ -18,6 +18,7 @@ import property_widom;
 import connectivity_table;
 import intra_molecular_potentials;
 import molecule;
+export import fragment;
 import json;
 
 /**
@@ -36,30 +37,24 @@ export enum class FrameworkGroupType : std::uint8_t {
 /**
  * \brief A subset of framework atoms that is Fixed, Rigid, or Flexible.
  *
- * Analogous to MoleculeGroup, with an additional Fixed type for lab-frozen host atoms.
- * When Groups are present they must partition every supercell atom exactly once.
+ * A framework group is a 'Fragment' (atom subset plus rigid-body reference data: mass, principal-axis
+ * body frame, inertia) tagged with a Fixed/Rigid/Flexible kind. The rigid-body data is meaningful
+ * only for Rigid groups; Fixed and Flexible groups use just the atom subset. When Groups are present
+ * they must partition every supercell atom exactly once.
  */
-export struct FrameworkGroup
+export struct FrameworkGroup : Fragment
 {
-  std::uint64_t versionNumber{1};
-
   FrameworkGroupType type{FrameworkGroupType::Flexible};
-  std::vector<std::size_t> atoms{};
-
-  /// Rigid-body reference data (meaningful only when type == Rigid).
-  double mass{0.0};
-  double3 centerOfMassReferencePosition{};
-  double3 inertiaVector{};
-  double3 inverseInertiaVector{};
-  std::vector<double3> bodyFixedPositions{};
-  std::vector<double> atomMasses{};  ///< Per group-atom mass (parallel to atoms / bodyFixedPositions).
-  std::size_t rotationalDegreesOfFreedom{3};
-  std::size_t shapeType{0};  ///< 0 = nonlinear, 1 = linear, 2 = point
 
   FrameworkGroup() = default;
-  FrameworkGroup(FrameworkGroupType type, std::vector<std::size_t> atoms) : type(type), atoms(std::move(atoms)) {}
+  FrameworkGroup(FrameworkGroupType type, std::vector<std::size_t> atoms)
+      : Fragment(std::move(atoms)), type(type)
+  {
+  }
 
   bool isFixed() const { return type == FrameworkGroupType::Fixed; }
+  /// Deliberately shadows 'Fragment::isRigidBody' (atom count): here rigidity is a declared kind,
+  /// and a Flexible framework group may contain many atoms.
   bool isRigidBody() const { return type == FrameworkGroupType::Rigid; }
   bool isFlexible() const { return type == FrameworkGroupType::Flexible; }
 
@@ -280,8 +275,7 @@ export struct Framework
   bool isFlexibleAtom(std::size_t atom) const;
 
   void regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex, std::span<Atom> frameworkAtoms) const;
-  GroupState deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms,
-                              const ForceField& forceField) const;
+  GroupState deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms) const;
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.

@@ -17,6 +17,7 @@ import cubic;
 import atom;
 import framework;
 import component;
+import cbmc_move_statistics;
 import simulationbox;
 import forcefield;
 import units;
@@ -362,6 +363,13 @@ void System::optimizeMCMoves()
   for (Component& component : components)
   {
     component.mc_moves_statistics.optimizeMCMoves();
+
+    // Adapt the internal CBMC / ring-closure Monte-Carlo step sizes (per bead) towards their target
+    // acceptance ratios.
+    for (CBMCMoveStatistics& cbmcStatistics : component.cbmc_moves_statistics)
+    {
+      cbmcStatistics.optimize();
+    }
   }
 }
 

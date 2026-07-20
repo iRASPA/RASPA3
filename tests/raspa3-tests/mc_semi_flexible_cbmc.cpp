@@ -258,7 +258,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, growth_plan)
   const ForceField forceField = makeAlkaneForceField();
   Component pentane = makeSemiFlexiblePentane(forceField, 0, MCMoveProbabilities());
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(pentane, {pentane.startingBead});
+  std::vector<CBMC::GrowStep> plan = pentane.growthPlan({pentane.startingBead});
 
   // Starting from flexible bead 0, the rigid core is entered from outside, so its connecting atom
   // (bead 1) is peeled off as an ordinary flexible bond first; then the rest of the rigid core
@@ -340,7 +340,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_growth_plan)
   const ForceField forceField = makeBiphenylForceField();
   Component biphenyl = makeDiethylBiphenyl(forceField, 0, MCMoveProbabilities());
 
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(biphenyl, {biphenyl.startingBead});
+  std::vector<CBMC::GrowStep> plan = biphenyl.growthPlan({biphenyl.startingBead});
 
   // CH3(0) -> CH2(1) -> peel ipso(2) -> ring A {3,4,5,6,7} hinged on 2 -> peel ipso(8) across the
   // biphenyl bond -> ring B {9,10,11,12,13} hinged on 8 -> CH2(14) -> CH3(15)

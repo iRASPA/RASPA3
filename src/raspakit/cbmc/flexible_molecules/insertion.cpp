@@ -43,7 +43,7 @@ import cbmc_operators;
 
   // Deterministic growth plan over the fragment graph (flexible beads, hinged rigid bodies, and
   // ring-closure of cyclic clusters), shared with the retrace so grow and retrace are reversible.
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(component, beadsAlreadyPlaced);
+  const std::vector<CBMC::GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
 
   for (const CBMC::GrowStep &step : plan)
   {
@@ -116,18 +116,13 @@ import cbmc_operators;
   // Recompute all the internal interactions (including the cross-terms) for the returned energy.
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
-  // Copy this configuration so that it can be used as a starting point
-  component.grownAtoms = chain_atoms;
+  // Keep this thermalized, non-overlapping conformation as the warm start for the next grow.
+  component.warmStartConformation = chain_atoms;
 
-  // Build a valid molecule record (center-of-mass, mass) for the grown flexible chain
-  double3 com{};
-  for (std::size_t i = 0; i != chain_atoms.size(); ++i)
-  {
-    com += component.definedAtoms[i].second * chain_atoms[i].position;
-  }
-  com = com / component.totalMass;
-  Molecule molecule = Molecule(com, simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
-                               static_cast<std::size_t>(chain_atoms.front().componentId), chain_atoms.size());
+  // Build a valid molecule record: center of mass, and for a fully rigid component the orientation
+  // quaternion recovered from the grown positions (used by translation/rotation moves and rigid-body
+  // molecular dynamics to regenerate the atoms).
+  Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
   return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
                        0.0);

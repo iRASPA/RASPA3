@@ -41,7 +41,7 @@ import cbmc_operators;
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
   // Same deterministic growth plan as the insertion so grow and retrace are exactly reversible.
-  std::vector<CBMC::GrowStep> plan = CBMC::buildGrowthPlan(component, beadsAlreadyPlaced);
+  const std::vector<CBMC::GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
 
   for (const CBMC::GrowStep &step : plan)
   {

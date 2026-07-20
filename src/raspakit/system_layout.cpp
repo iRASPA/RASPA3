@@ -219,7 +219,7 @@ void System::initializeFrameworkGroupData()
   {
     if (!framework->groups[g].isRigidBody()) continue;
     GroupState& state = frameworkGroupData[rigidRank];
-    GroupState derived = framework->deriveGroupState(g, frameworkAtoms, forceField);
+    GroupState derived = framework->deriveGroupState(g, frameworkAtoms);
     if (preserveDynamics)
     {
       const double overlap = derived.orientation.r * state.orientation.r +
