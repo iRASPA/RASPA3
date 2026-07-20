@@ -16,6 +16,7 @@ add_executable(unit_tests_raspakit
   mc.cpp
   pressure.cpp
   static_energy.cpp
+  forcefield_options.cpp
   framework_intramolecular_reader.cpp
   framework_vdw_replicas.cpp
   rigid_gradient.cpp

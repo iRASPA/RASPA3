@@ -83,7 +83,7 @@ export struct ForceField
     Triquintic = 27
   };
 
-  std::uint64_t versionNumber{2};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{3};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.
@@ -141,6 +141,14 @@ export struct ForceField
   std::size_t numberOfFirstBeadPositions{ 10 };
   std::size_t numberOfTrialMovesPerOpenBead{ 150 };
   double minimumRosenbluthFactor{ 1e-150 };  ///< Minimum allowed Rosenbluth factor.
+
+  // Internal ring-closure Monte-Carlo tuning (CBMC growth of cyclic clusters). Per internal-MC trial,
+  // the conformer-hopping crankshaft is attempted with probability 'cbmcRingCrankshaftProbability';
+  // otherwise a whole-ring junction tilt is attempted with probability 'cbmcRingTiltProbability' and a
+  // local displacement/rotation with the remainder. These affect sampling efficiency only (the moves
+  // carry no Rosenbluth weight), so any value in [0, 1] is valid.
+  double cbmcRingCrankshaftProbability{0.2};  ///< Attempt probability of the large-angle ring crankshaft.
+  double cbmcRingTiltProbability{0.25};       ///< Attempt probability of the whole-ring junction tilt.
 
   // Recoil-growth (RG) options for flexible molecules (Consta et al., Mol. Phys. 97, 1243 (1999)).
   // When 'useRecoilGrowth' is true, the flexible-molecule chain is grown/retraced with the recoil

@@ -730,6 +730,31 @@ ForceField::ForceField(std::string filePath)
         parsed_data.value("RecoilGrowthNumberOfTrialDirections", recoilGrowthNumberOfTrialDirections);
   }
 
+  if (parsed_data.contains("NumberOfTrialMovesPerOpenBead"))
+  {
+    numberOfTrialMovesPerOpenBead = parsed_data.value("NumberOfTrialMovesPerOpenBead", numberOfTrialMovesPerOpenBead);
+  }
+
+  if (parsed_data.contains("CBMCRingCrankshaftProbability"))
+  {
+    cbmcRingCrankshaftProbability = parsed_data.value("CBMCRingCrankshaftProbability", cbmcRingCrankshaftProbability);
+    if (cbmcRingCrankshaftProbability < 0.0 || cbmcRingCrankshaftProbability > 1.0)
+    {
+      throw std::runtime_error(std::format("[ForceField reader]: 'CBMCRingCrankshaftProbability' {} not in [0, 1]\n",
+                                           cbmcRingCrankshaftProbability));
+    }
+  }
+
+  if (parsed_data.contains("CBMCRingTiltProbability"))
+  {
+    cbmcRingTiltProbability = parsed_data.value("CBMCRingTiltProbability", cbmcRingTiltProbability);
+    if (cbmcRingTiltProbability < 0.0 || cbmcRingTiltProbability > 1.0)
+    {
+      throw std::runtime_error(
+          std::format("[ForceField reader]: 'CBMCRingTiltProbability' {} not in [0, 1]\n", cbmcRingTiltProbability));
+    }
+  }
+
   if (parsed_data.contains("UseExternalFieldGrid"))
   {
     useExternalFieldGrid = parsed_data.value("UseExternalFieldGrid", parsed_data["UseExternalFieldGrid"]);
@@ -1197,6 +1222,10 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
              Units::displayedUnitOfEnergyString);
 
+  std::print(stream, "CBMC trial moves per open bead:      {}\n", numberOfTrialMovesPerOpenBead);
+  std::print(stream, "CBMC ring crankshaft probability:    {:g}\n", cbmcRingCrankshaftProbability);
+  std::print(stream, "CBMC ring tilt probability:          {:g}\n\n", cbmcRingTiltProbability);
+
   switch(mixingRule)
   {
     case ForceField::MixingRule::Lorentz_Berthelot:
@@ -1530,6 +1559,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.numberOfFirstBeadPositions;
   archive << f.numberOfTrialMovesPerOpenBead;
   archive << f.minimumRosenbluthFactor;
+  archive << f.cbmcRingCrankshaftProbability;
+  archive << f.cbmcRingTiltProbability;
 
   archive << f.useRecoilGrowth;
   archive << f.recoilGrowthMaximumRecoilLength;
@@ -1611,6 +1642,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.numberOfFirstBeadPositions;
   archive >> f.numberOfTrialMovesPerOpenBead;
   archive >> f.minimumRosenbluthFactor;
+  if (versionNumber >= 3)
+  {
+    archive >> f.cbmcRingCrankshaftProbability;
+    archive >> f.cbmcRingTiltProbability;
+  }
 
   archive >> f.useRecoilGrowth;
   archive >> f.recoilGrowthMaximumRecoilLength;
@@ -1725,7 +1761,10 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "InterpolationScheme",
     "UseRecoilGrowth",
     "RecoilGrowthMaximumRecoilLength",
-    "RecoilGrowthNumberOfTrialDirections"};
+    "RecoilGrowthNumberOfTrialDirections",
+    "NumberOfTrialMovesPerOpenBead",
+    "CBMCRingCrankshaftProbability",
+    "CBMCRingTiltProbability"};
 
 void ForceField::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {

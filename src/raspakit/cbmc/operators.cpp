@@ -596,9 +596,8 @@ static std::vector<Atom> randomlyOrientRing(RandomNumber &random, const std::vec
   return result;
 }
 
-static std::vector<Atom> generateRingConformation(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead,
-                                                  double beta, const Component &component,
-                                                  const std::vector<Atom> &chainAtoms,
+static std::vector<Atom> generateRingConformation(RandomNumber &random, const ForceField &forceField, double beta,
+                                                  const Component &component, const std::vector<Atom> &chainAtoms,
                                                   std::optional<std::size_t> previousBead, std::size_t currentBead,
                                                   const std::vector<std::size_t> &nextBeads,
                                                   const Potentials::IntraMolecularPotentials &intra)
@@ -789,10 +788,11 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
   // only sampling efficiency, not detailed balance.
   MoveStatistics<double> &displacementStats = component.cbmc_moves_statistics[currentBead].ringDisplacementChange;
   MoveStatistics<double> &rotationStats = component.cbmc_moves_statistics[currentBead].ringRotationChange;
+  MoveStatistics<double> &crankshaftStats = component.cbmc_moves_statistics[currentBead].ringCrankshaftMove;
   const double maximumDisplacement = displacementStats.maxChange;
   const double maximumRotationAngle = rotationStats.maxChange;
   const bool haveJunction = previousBead.has_value();
-  std::size_t number_of_trials = 2 * numberOfTrialMovesPerOpenBead * nextBeads.size();
+  std::size_t number_of_trials = 2 * forceField.numberOfTrialMovesPerOpenBead * nextBeads.size();
   std::vector<double3> saved(nextBeads.size());
 
   auto acceptOrReject = [&](MoveStatistics<double> &stats, std::size_t unitSize, auto restore)
@@ -817,9 +817,12 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
   for (std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
     // Conformer-hopping crankshaft: a large-angle rotation of one flexible ring atom about the line
-    // through two of its neighbours (see 'crankshafts' above). Attempted a fraction of the time so
-    // local relaxation still dominates; it supplies the barrier crossings between ring conformers.
-    if (!crankshafts.empty() && random.uniform() < 0.2)
+    // through two of its neighbours (see 'crankshafts' above). Attempted a fraction of the time
+    // ('CBMCRingCrankshaftProbability') so local relaxation still dominates; it supplies the barrier
+    // crossings between ring conformers. Tracked in its own statistics: the angle is deliberately
+    // full-range and never adapted, and pooling its acceptances into the adaptive rotation statistics
+    // would distort that step-size optimization.
+    if (!crankshafts.empty() && random.uniform() < forceField.cbmcRingCrankshaftProbability)
     {
       const CrankshaftCandidate &c = crankshafts[random.uniform_integer(0, crankshafts.size() - 1)];
       double3 pivot = chain_atoms[c.axisA].position;
@@ -827,11 +830,11 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
       double angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
       double3 savedPosition = chain_atoms[c.atom].position;
       chain_atoms[c.atom].position = pivot + axis.rotateAroundAxis(savedPosition - pivot, angle);
-      acceptOrReject(rotationStats, 1, [&](std::size_t) { chain_atoms[c.atom].position = savedPosition; });
+      acceptOrReject(crankshaftStats, 1, [&](std::size_t) { chain_atoms[c.atom].position = savedPosition; });
       continue;
     }
 
-    if (haveJunction && random.uniform() < 0.25)
+    if (haveJunction && random.uniform() < forceField.cbmcRingTiltProbability)
     {
       double3 axis = random.randomVectorOnUnitSphere();
       double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;
@@ -919,7 +922,7 @@ static std::vector<Atom> sampleBaseConformation(RandomNumber &random, const Forc
 {
   if (step.kind == CBMC::GrowStep::Kind::CloseRing)
   {
-    return generateRingConformation(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
+    return generateRingConformation(random, forceField, beta, component, chainAtoms,
                                     step.previousBead, step.currentBead, step.nextBeads, step.intra);
   }
   if (step.rigidBody)
@@ -969,7 +972,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
     {
       // Ring seed: sample one internal conformation and rigidly rotate it for the other directions.
       std::vector<Atom> base =
-          generateRingConformation(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
+          generateRingConformation(random, forceField, beta, component, chainAtoms,
                                    std::nullopt, step.currentBead, step.nextBeads, step.intra);
       trials[0] = {base, 1.0};
       for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
@@ -1088,7 +1091,7 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
     }
     if (step.kind == GrowStep::Kind::CloseRing)
     {
-      return {generateRingConformation(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, contextAtoms,
+      return {generateRingConformation(random, forceField, beta, component, contextAtoms,
                                        std::nullopt, step.currentBead, step.nextBeads, step.intra),
               1.0};
     }
