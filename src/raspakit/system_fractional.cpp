@@ -22,6 +22,8 @@ import interpolation_energy_grid;
 import interactions_external_field;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_polarization;
+import scaling;
 
 // System fractional molecules: CFCMC slots, lambda histograms, and reaction bookkeeping.
 
@@ -460,11 +462,23 @@ double System::reactionDUdlambda(const Reaction& reaction) const noexcept
   const double lambda = reaction.currentLambda;
   if (reaction.isParallelRxCFC())
   {
-    return runningEnergies.dudlambda(lambda, reaction.dUdlambdaGroup(false)) -
-           runningEnergies.dudlambda(1.0 - lambda, reaction.dUdlambdaGroup(true));
+    return currentDUdlambda(lambda, reaction.dUdlambdaGroup(false)) -
+           currentDUdlambda(1.0 - lambda, reaction.dUdlambdaGroup(true));
   }
   const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
-  return runningEnergies.dudlambda(lambda, histogram.dUdlambdaGroupId);
+  return currentDUdlambda(lambda, histogram.dUdlambdaGroupId);
+}
+
+double System::currentDUdlambda(double lambda, std::size_t groupId) const noexcept
+{
+  double value = runningEnergies.dudlambda(lambda, groupId);
+  if (forceField.computePolarization && groupId != 0)
+  {
+    value += Scaling::scalingCoulombDerivative(lambda) *
+             Interactions::computePolarizationDUdlambda(forceField, simulationBox, spanOfMoleculeAtoms(),
+                                                        spanOfMoleculeElectricField(), groupId);
+  }
+  return value;
 }
 
 void System::initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins)

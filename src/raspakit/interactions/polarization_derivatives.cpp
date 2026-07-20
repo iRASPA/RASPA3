@@ -277,7 +277,9 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
   {
     const std::size_t globalA = numberOfFrameworkAtoms + a;
     const std::size_t typeA = static_cast<std::size_t>(moleculeAtoms[a].type);
-    const double alphaA = forceField.pseudoAtoms[typeA].polarizability / Units::CoulombicConversionFactor;
+    // Scaled by the atom's Coulomb scaling: fractional (CFCMC) molecules decouple from the field.
+    const double alphaA = moleculeAtoms[a].scalingCoulomb * forceField.pseudoAtoms[typeA].polarizability /
+                          Units::CoulombicConversionFactor;
     if (alphaA == 0.0) continue;
     if (!movable[globalA])
     {

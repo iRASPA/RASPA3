@@ -142,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{4};  ///< Version number for serialization.
+  std::uint64_t versionNumber{5};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -194,17 +194,22 @@ export struct Component
   /// with single-atom (flexible) fragments. Flexible rings (simple, fused, or bridged) appear as the
   /// closure bonds of the graph. Replaces RASPA2's 'MoleculeGroup'/'atomGroupIds'.
   FragmentGraph fragmentGraph{};
-  // Warm-start reference geometry for the CBMC internal Monte-Carlo: the most recently grown,
-  // thermalized, non-overlapping conformation of this component. The internal MC that samples a
-  // step's base conformation only sees the bonded energy, so it cannot relax a self-overlapping
-  // cold seed; reusing the previous accepted conformation (rigidly re-oriented per step) gives a
-  // good non-overlapping starting point. Persistent per-component scratch: written by the grow entry
-  // points (on a non-const Component) and read by the operators; not serialized (a restart simply
-  // cold-starts the first grow) and not thread-shared (one grow of a given component at a time).
-  std::vector<Atom> warmStartConformation{};
+  // Reservoir of independent ideal-gas conformations of this component, each an unbiased draw from
+  // exp(-beta * U_intra) produced by 'System::equilibratedIdealGasConformation'. It seeds the CBMC
+  // internal Monte-Carlo that samples a step's base conformation: that MC only sees the bonded
+  // energy, so it cannot relax a self-overlapping cold seed, and a single shared warm start would
+  // couple successive grows and (for rings) get stuck in one pucker basin. Drawing an independent,
+  // well-mixed member per grow removes that correlation and, together with the ring conformer-hopping
+  // move, samples every conformer. The seed only sets the starting point of the internal MC (which
+  // still defines the sampled distribution), so no Rosenbluth bookkeeping depends on it. Built once
+  // per component at the system temperature (see 'System::buildConformationReservoirs'); empty for
+  // fully rigid or single-atom components, and empty during its own construction so the grows that
+  // fill it cold-start. Not serialized (a restart rebuilds it) and not thread-shared.
+  mutable std::vector<std::vector<Atom>> conformationReservoir{};
   // Persistent scratch conformation of a flexible molecule grown in isolation (ideal-gas), i.e. drawn
   // from exp(-beta * U_intra). Kept between calls so the CBMC reinsertion Markov chain that produces
   // equilibrated ideal-gas conformations (System::equilibratedIdealGasConformation) stays warm.
+  // Derived scratch state: not serialized (re-seeded from the reference geometry after a restart).
   mutable std::vector<Atom> grownIdealGasAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
   // Cache of CBMC growth plans keyed by the set of already-placed beads. A plan is deterministic

@@ -112,3 +112,49 @@ TEST(electrostatic_polarization, stored_field_consistency_translation)
   EXPECT_NEAR(running.polarization - recomputed.polarization, 0.0, 1e-6);
   EXPECT_NEAR(running.potentialEnergy() - recomputed.potentialEnergy(), 0.0, 1e-6);
 }
+
+// Thermodynamic integration: the instantaneous dU/dlambda of a fractional molecule must match the
+// numerical lambda-derivative of the total potential energy, including the polarization part (the
+// polarization coupling is scaled by the atom's Coulomb scaling, and the field the fractional
+// molecule produces at other molecules is scaled as well).
+TEST(electrostatic_polarization, dudlambda_matches_finite_difference)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.25;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {6}, 5);
+
+  const double lambda = 0.7;
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    atoms[i].setScalingToFractional(lambda, 1);
+  }
+
+  system.runningEnergies = system.computeTotalEnergies();
+  double analytic = system.currentDUdlambda(lambda, 1) * Units::EnergyToKelvin;
+
+  const double delta = 1e-5;
+  for (std::size_t i = 0; i < 3; ++i) atoms[i].setScaling(lambda + 0.5 * delta);
+  double forward = system.computeTotalEnergies().potentialEnergy();
+  for (std::size_t i = 0; i < 3; ++i) atoms[i].setScaling(lambda - 0.5 * delta);
+  double backward = system.computeTotalEnergies().potentialEnergy();
+
+  double numeric = ((forward - backward) / delta) * Units::EnergyToKelvin;
+
+  EXPECT_NEAR(analytic, numeric, std::max(1e-4, 1e-6 * std::abs(numeric)));
+
+  // The polarization contribution itself must be non-trivial, otherwise this test would not
+  // distinguish the polarization-aware dU/dlambda from the plain VDW/charge/Ewald bookkeeping.
+  for (std::size_t i = 0; i < 3; ++i) atoms[i].setScaling(lambda);
+  system.runningEnergies = system.computeTotalEnergies();
+  double withoutPolarization = system.runningEnergies.dudlambda(lambda, 1) * Units::EnergyToKelvin;
+  EXPECT_GT(std::abs(analytic - withoutPolarization), 0.1);  // ~1.19 K for this configuration
+}

@@ -167,7 +167,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 componentId, c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 componentId, c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -242,7 +242,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -364,7 +364,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -437,7 +437,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -741,7 +741,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
     if (c.lambdaGC.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {

@@ -391,6 +391,62 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.chiralCenters = readChiralCenters(parsed_data);
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
+
+    // Whether an atom lies in a cyclic cluster (a flexible ring): its fragment maps to a cluster id.
+    auto cyclicClusterOf = [&](std::size_t atom) -> std::make_signed_t<std::size_t>
+    { return fragmentGraph.fragmentCyclicClusterIds[fragmentGraph.atomFragmentIds[atom]]; };
+
+    // Parse-time validation: inside a ring, the reference coordinates of a Fixed bond are
+    // load-bearing. Acyclic growth regenerates a fixed bond at its exact length every placement, but
+    // ring-closure growth takes the ring geometry from the reference conformation and afterwards only
+    // applies constraint-preserving rotations -- which preserve whatever length the reference has.
+    // Since a Fixed bond carries no energy, a violated reference length is never corrected and every
+    // sampled configuration silently inherits it, so reject it here instead.
+    for (const BondPotential &bond : intraMolecularPotentials.bonds)
+    {
+      if (bond.type != BondType::Fixed) continue;
+      std::size_t atomA = bond.identifiers[0];
+      std::size_t atomB = bond.identifiers[1];
+      if (cyclicClusterOf(atomA) < 0 || cyclicClusterOf(atomA) != cyclicClusterOf(atomB)) continue;
+      double referenceLength = (atoms[atomA].position - atoms[atomB].position).length();
+      if (std::abs(referenceLength - bond.parameters[0]) > 1e-3)
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: component '{}': FIXED ring bond {}-{} has length {:.6f} Å in the reference "
+            "coordinates but declares a fixed length of {:g} Å. Ring geometry is taken from the reference "
+            "coordinates and a FIXED bond is never re-imposed, so the reference must satisfy it; adjust the "
+            "'pseudoAtoms' coordinates.\n",
+            name, atomA, atomB, referenceLength, bond.parameters[0]));
+      }
+    }
+
+    // Parse-time diagnostic: a flexible ring atom pinned by three or more Fixed bonds. Fixed bonds
+    // are holonomic constraints carrying no energy, so the ring-closure Monte Carlo may only move
+    // such an atom by rotations about its fixed neighbours; with one or two fixed bonds a sphere or
+    // circle of freedom remains, but with three or more no single-atom rotation exists. The
+    // constraints stay satisfied, but the atom is frozen at its as-grown position relative to the
+    // ring and its conformational degree of freedom is never sampled (this typically occurs at
+    // fused-ring junctions where every ring bond is declared FIXED).
+    std::vector<std::size_t> fixedBondCounts(definedAtoms.size(), 0uz);
+    for (const BondPotential &bond : intraMolecularPotentials.bonds)
+    {
+      if (bond.type != BondType::Fixed) continue;
+      ++fixedBondCounts[bond.identifiers[0]];
+      ++fixedBondCounts[bond.identifiers[1]];
+    }
+    for (const std::vector<std::size_t> &cluster : fragmentGraph.cyclicClusters)
+    {
+      for (std::size_t atom : cluster)
+      {
+        if (fragmentGraph.fragments[fragmentGraph.atomFragmentIds[atom]].isRigidBody()) continue;
+        if (fixedBondCounts[atom] < 3) continue;
+        std::print(std::cerr,
+                   "[Component reader]: warning: component '{}': flexible ring atom {} has {} FIXED bonds; its "
+                   "position is fully constrained, so ring Monte-Carlo cannot move it and its conformation is not "
+                   "sampled. Consider stiff HARMONIC bonds or a rigid body instead.\n",
+                   name, atom, fixedBondCounts[atom]);
+      }
+    }
   }
   else
   {
@@ -2017,7 +2073,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
   archive << c.fragmentGraph;
-  archive << c.grownIdealGasAtoms;
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
   archive << c.gibbsIdentityChanges;
@@ -2027,8 +2082,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGC;
   archive << c.lambdaGibbs;
   archive << c.hasFractionalMolecule;
-
-  archive << c.intraMolecularPotentials;
 
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
@@ -2058,11 +2111,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > c.versionNumber)
+  // The version-5 layout is incompatible with older archives (scratch/duplicated fields were
+  // dropped), so a mismatched version cannot be read field-by-field and must be rejected outright.
+  if (versionNumber != c.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Component' at line {} in file {}\n", location.line(),
-                                         location.file_name()));
+    throw std::runtime_error(std::format(
+        "Invalid version {} reading 'Component' (expected {}) at line {} in file {}\n", versionNumber,
+        c.versionNumber, location.line(), location.file_name()));
   }
 
   archive >> c.type;
@@ -2105,7 +2161,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
   archive >> c.fragmentGraph;
-  archive >> c.grownIdealGasAtoms;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
   archive >> c.gibbsIdentityChanges;
@@ -2115,8 +2170,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGC;
   archive >> c.lambdaGibbs;
   archive >> c.hasFractionalMolecule;
-
-  archive >> c.intraMolecularPotentials;
 
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;

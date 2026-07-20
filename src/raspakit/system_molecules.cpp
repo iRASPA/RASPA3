@@ -630,6 +630,38 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   return scratchAtoms;
 }
 
+void System::buildConformationReservoirs()
+{
+  // Number of independent seed conformations kept per component. A few hundred is enough to cover the
+  // ring conformers and decorrelate successive grows; each is a cheap isolated-molecule regrow, so the
+  // whole build is well under a second even for the largest adsorbates and is a one-time cost.
+  constexpr std::size_t reservoirSize = 256;
+
+  // A fixed local generator keeps the reservoir reproducible and independent of the simulation's random
+  // stream (so enabling it does not shift any downstream move sequence).
+  RandomNumber random(1400);
+
+  for (std::size_t componentId = 0; componentId != components.size(); ++componentId)
+  {
+    Component& component = components[componentId];
+
+    // Fully rigid components have no internal conformation to seed (the rigid tilt uses uniform random
+    // orientations); single-atom components have nothing to grow.
+    if (component.atoms.size() < 2 || component.rigid) continue;
+
+    // Build into a temporary so the reservoir stays empty while it is being filled: the ideal-gas grows
+    // that fill it then cold-start (their own Metropolis still targets exp(-beta * U_intra) regardless
+    // of the seed), avoiding any feedback from a half-filled reservoir.
+    std::vector<std::vector<Atom>> reservoir{};
+    reservoir.reserve(reservoirSize);
+    for (std::size_t i = 0; i != reservoirSize; ++i)
+    {
+      reservoir.push_back(equilibratedIdealGasConformation(random, componentId));
+    }
+    component.conformationReservoir = std::move(reservoir);
+  }
+}
+
 std::pair<Molecule, std::vector<Atom>> System::equilibratedIdealGasMoleculeRandomInBox(RandomNumber& random,
                                                                                       std::size_t selectedComponent)
 {

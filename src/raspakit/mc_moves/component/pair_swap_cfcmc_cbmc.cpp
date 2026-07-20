@@ -363,6 +363,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
+      // Step 1: making each fractional molecule integer rescales its own polarization coupling from
+      // scalingCoulomb(lambda_old) to 1 (the field it feels is position-dependent only and unchanged).
+      std::span<double3> storedFieldA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+      std::span<double3> storedFieldB = system.spanElectricFieldOld(componentB, indexFractionalB);
+      polarizationDifference =
+          Interactions::computePolarizationEnergyDifference(system.forceField, storedFieldA, storedFieldA,
+                                                            fractionalMoleculeA, oldFractionalMoleculeA) +
+          Interactions::computePolarizationEnergyDifference(system.forceField, storedFieldB, storedFieldB,
+                                                            fractionalMoleculeB, oldFractionalMoleculeB);
+
       if (!system.forceField.omitInterPolarization)
       {
         electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
@@ -397,13 +407,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         for (std::size_t i = 0; i < grownElectricFieldA.size(); ++i) grownElectricFieldA[i] += fieldOnAfromB[i];
         for (std::size_t i = 0; i < grownElectricFieldB.size(); ++i) grownElectricFieldB[i] += fieldOnBfromA[i];
 
-        polarizationDifference = Interactions::computePolarizationEnergyDifference(
-                                     system.forceField, grownElectricFieldA, {}, growDataA->atoms, {}) +
-                                 Interactions::computePolarizationEnergyDifference(
-                                     system.forceField, grownElectricFieldB, {}, growDataB->atoms, {}) +
-                                 Interactions::computePolarizationEnergyNeighborDifference(
-                                     system.forceField, system.spanOfMoleculeElectricField(),
-                                     electricFieldNeighborDelta, system.spanOfMoleculeAtoms());
+        polarizationDifference += Interactions::computePolarizationEnergyDifference(
+                                      system.forceField, grownElectricFieldA, {}, growDataA->atoms, {}) +
+                                  Interactions::computePolarizationEnergyDifference(
+                                      system.forceField, grownElectricFieldB, {}, growDataB->atoms, {}) +
+                                  Interactions::computePolarizationEnergyNeighborDifference(
+                                      system.forceField, system.spanOfMoleculeElectricField(),
+                                      electricFieldNeighborDelta, system.spanOfMoleculeAtoms());
       }
       else
       {
@@ -421,10 +431,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
             system.trialEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
-        polarizationDifference = Interactions::computePolarizationEnergyDifference(
-                                     system.forceField, grownElectricFieldA, {}, growDataA->atoms, {}) +
-                                 Interactions::computePolarizationEnergyDifference(
-                                     system.forceField, grownElectricFieldB, {}, growDataB->atoms, {});
+        polarizationDifference += Interactions::computePolarizationEnergyDifference(
+                                      system.forceField, grownElectricFieldA, {}, growDataA->atoms, {}) +
+                                  Interactions::computePolarizationEnergyDifference(
+                                      system.forceField, grownElectricFieldB, {}, growDataB->atoms, {});
       }
     }
 
@@ -770,12 +780,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
+      // The removed pair loses its (lambda-scaled) self polarization energy; the newly chosen fractional pair's
+      // polarization coupling is rescaled from 1 to scalingCoulomb(lambda_new) (the fields they feel are unchanged).
       std::span<double3> storedFieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
       std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
       polarizationDifference = Interactions::computePolarizationEnergyDifference(
-                                   system.forceField, {}, storedFieldFractionalA, {}, fractionalMoleculeA) +
+                                   system.forceField, {}, storedFieldFractionalA, {}, oldFractionalMoleculeA) +
                                Interactions::computePolarizationEnergyDifference(
-                                   system.forceField, {}, storedFieldFractionalB, {}, fractionalMoleculeB);
+                                   system.forceField, {}, storedFieldFractionalB, {}, oldFractionalMoleculeB);
+
+      std::span<double3> storedFieldNewA = system.spanElectricFieldOld(selectedComponent, selectedMoleculeA);
+      std::span<double3> storedFieldNewB = system.spanElectricFieldOld(componentB, selectedMoleculeB);
+      polarizationDifference +=
+          Interactions::computePolarizationEnergyDifference(system.forceField, storedFieldNewA, storedFieldNewA,
+                                                            newFractionalMoleculeA, oldNewFractionalMoleculeA) +
+          Interactions::computePolarizationEnergyDifference(system.forceField, storedFieldNewB, storedFieldNewB,
+                                                            newFractionalMoleculeB, oldNewFractionalMoleculeB);
 
       if (!system.forceField.omitInterPolarization)
       {
@@ -983,6 +1003,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     componentA.mc_moves_statistics.addConstructed(move, 2);
 
     std::vector<double3> electricFieldNeighborDelta;
+    if (system.forceField.computePolarization)
+    {
+      // Changing lambda rescales the polarization coupling of both fractional molecules (the fields they feel are
+      // unchanged because their positions do not move).
+      std::span<double3> storedFieldA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+      std::span<double3> storedFieldB = system.spanElectricFieldOld(componentB, indexFractionalB);
+      energyDifference += Interactions::computePolarizationEnergyDifference(
+                              system.forceField, storedFieldA, storedFieldA, fractionalMoleculeA,
+                              oldFractionalMoleculeA) +
+                          Interactions::computePolarizationEnergyDifference(
+                              system.forceField, storedFieldB, storedFieldB, fractionalMoleculeB,
+                              oldFractionalMoleculeB);
+    }
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {
       electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));

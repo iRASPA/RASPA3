@@ -234,6 +234,45 @@ R"({
 }
 )";
 
+// United-atom cyclohexane with FIXED (holonomic) ring bonds and flexible bends/torsions: a
+// fixed-bond-length ring that must still pucker. Every ring atom then has exactly two Fixed bonds, so
+// the ring-closure CBMC can only move it with the constraint-preserving rotations. The reference
+// coordinates are the same 1.54 Å ring as kCyclohexaneJson.
+inline constexpr std::string_view kFixedBondCyclohexaneJson =
+R"({
+  "CriticalTemperature" : 553.6,
+  "CriticalPressure" : 4073000.0,
+  "AcentricFactor" : 0.211,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [1.465493, 0.000000, 0.236606]],
+      ["CH2_c", [0.732747, 1.269154, -0.236606]],
+      ["CH2_c", [-0.732747, 1.269154, 0.236606]],
+      ["CH2_c", [-1.465493, 0.000000, -0.236606]],
+      ["CH2_c", [-0.732747, -1.269154, 0.236606]],
+      ["CH2_c", [0.732747, -1.269154, -0.236606]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "FIXED", [1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
 inline constexpr std::string_view kSemiFlexiblePentaneJson =
 R"({
   "CriticalTemperature" : 469.7,
@@ -465,6 +504,49 @@ R"({
   ],
   "Bonds" : [
     [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+// Norbornane with every ring bond FIXED: the two bridgeheads (atoms 0 and 3) each carry three Fixed
+// bonds, so their positions are fully constrained and no single-atom ring move can displace them.
+// Used to test the parse-time warning for this over-constrained topology. The reference coordinates
+// satisfy all eight fixed 1.54 Å bonds exactly (required: fixed ring-bond lengths are load-bearing
+// reference geometry, validated at parse time).
+inline constexpr std::string_view kFixedBondNorbornaneJson =
+R"({
+  "CriticalTemperature" : 638.0,
+  "CriticalPressure" : 3900000.0,
+  "AcentricFactor" : 0.195,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [1.116, 0.000000000, 0.325]],
+      ["CH2_c", [0.770, 1.272736815, -0.470]],
+      ["CH2_c", [-0.770, 1.272736815, -0.470]],
+      ["CH2_c", [-1.116, 0.000000000, 0.325]],
+      ["CH2_c", [-0.770, -1.272736815, -0.470]],
+      ["CH2_c", [0.770, -1.272736815, -0.470]],
+      ["CH2_c", [0.000, 0.000000000, 1.386199322]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0],
+    [0, 6],
+    [3, 6]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "FIXED", [1.54]]
   ],
   "Bends" : [
     [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]

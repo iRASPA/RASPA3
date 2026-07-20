@@ -262,6 +262,12 @@ std::span<double3> System::spanOfMoleculeElectricField()
                    electricField.end());
 }
 
+std::span<const double3> System::spanOfMoleculeElectricField() const
+{
+  return std::span(electricField.begin() + static_cast<std::vector<double3>::difference_type>(numberOfFrameworkAtoms),
+                   electricField.end());
+}
+
 std::span<double3> System::spanOfMoleculeElectricFieldNew()
 {
   return std::span(

@@ -201,6 +201,11 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   createInitialMolecules(initialpositions);
   computeTailCorrectionCounts();
 
+  // Build the per-component ideal-gas conformation reservoirs used to seed CBMC growth. Done after the
+  // initial molecules are placed so their placement keeps using the cold-start seed (unchanged initial
+  // geometry); the reservoir is only consulted by the production Monte-Carlo moves.
+  buildConformationReservoirs();
+
   equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
                                     P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
@@ -519,13 +524,13 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
         static_cast<double>(numberOfIntegerMoleculesPerComponent[componentId]) / simulationBox.volume;
 
     double lambda = component.lambdaGC.lambdaValue();
-    double dudlambda = runningEnergies.dudlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
+    double dudlambda = currentDUdlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
     if (usesGibbsConventionalCFCMC())
     {
       const double gibbsLambda = component.lambdaGibbs.lambdaValue();
-      const double gibbsDudlambda = runningEnergies.dudlambda(gibbsLambda, component.lambdaGibbs.dUdlambdaGroupId);
+      const double gibbsDudlambda = currentDUdlambda(gibbsLambda, component.lambdaGibbs.dUdlambdaGroupId);
       component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
     }
 
@@ -533,8 +538,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     {
       const double pairLambda = component.lambdaPairSwap.lambdaValue();
       component.lambdaPairSwap.sampleHistogram(
-          currentBlock, componentDensity,
-          runningEnergies.dudlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
+          currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
           containsTheFractionalMolecule, w);
     }
 
@@ -542,8 +546,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     {
       const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
       component.lambdaPairSwapCB.sampleHistogram(
-          currentBlock, componentDensity,
-          runningEnergies.dudlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
+          currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
           containsTheFractionalMolecule, w);
     }
 
@@ -749,7 +752,10 @@ RunningEnergy System::computePolarizationEnergy() noexcept
   for (std::size_t i = 0; i < moleculeAtomPositions.size(); ++i)
   {
     std::size_t type = moleculeAtomPositions[i].type;
-    double polarizability = forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
+    // The polarization coupling is scaled by the atom's Coulomb scaling so that a fractional (CFCMC)
+    // molecule decouples from the field as lambda decreases (matching the incremental moves).
+    double polarizability = moleculeAtomPositions[i].scalingCoulomb *
+                            forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
     energy.polarization -= 0.5 * polarizability * double3::dot(moleculeElectricField[i], moleculeElectricField[i]);
   }
 
@@ -837,7 +843,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     polarizationPolarizability.resize(moleculeAtoms.size());
     for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
     {
+      // Scaled by the atom's Coulomb scaling: fractional (CFCMC) molecules decouple from the field.
       polarizationPolarizability[i] =
+          moleculeAtoms[i].scalingCoulomb *
           forceField.pseudoAtoms[static_cast<std::size_t>(moleculeAtoms[i].type)].polarizability /
           Units::CoulombicConversionFactor;
     }

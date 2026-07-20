@@ -186,16 +186,13 @@ static CBMC::GrowStep nextGrowthStep(const ConnectivityTable &connectivity, cons
     return makeStep(CBMC::GrowStep::Kind::PlaceSeedFragment, std::nullopt, currentBead, {nextBead}, false);
   }
 
-  // More than one placed neighbor is only allowed when 'currentBead' is part of an already-placed
-  // rigid fragment or cyclic cluster (e.g. a flexible tail growing off a ring atom): pick the first
-  // placed neighbor as the reference. For a purely flexible acyclic anchor this signals an
-  // inconsistent fragment graph.
-  if (numberOfPreviousBeads > 1 && !graph.fragments[graph.atomFragmentIds[currentBead]].isRigidBody() &&
-      clusterOf(currentBead) < 0)
-  {
-    throw std::runtime_error(std::format("Error in CBMC: Multiple previous beads\n"));
-  }
-
+  // 'currentBead' with more than one placed neighbor is expected when it belongs to an already-placed
+  // rigid fragment or cyclic cluster (e.g. a flexible tail growing off a ring atom). It can also
+  // happen at a purely flexible acyclic branch point. Both cases have a well-defined growth order via
+  // the spanning tree of 'FragmentGraph', and grow and retrace build from the same deterministic
+  // plan, so the lowest-index placed neighbour is a consistent bend/torsion reference that preserves
+  // detailed balance. The former code rejected the flexible acyclic case with "Multiple previous
+  // beads"; the spanning tree removes the need for that restriction, so it is simply allowed.
   return makeStep(CBMC::GrowStep::Kind::AttachFragment, previousBead, currentBead, std::move(nextBeads), false);
 }
 

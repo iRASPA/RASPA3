@@ -116,9 +116,6 @@ import cbmc_operators;
   // Recompute all the internal interactions (including the cross-terms) for the returned energy.
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
-  // Keep this thermalized, non-overlapping conformation as the warm start for the next grow.
-  component.warmStartConformation = chain_atoms;
-
   // Build a valid molecule record: center of mass, and for a fully rigid component the orientation
   // quaternion recovered from the grown positions (used by translation/rotation moves and rigid-body
   // molecular dynamics to regenerate the atoms).

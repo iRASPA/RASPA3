@@ -27,6 +27,10 @@ import torsion_potential;
 // ---------------------------------------------------------------------------------------------------
 namespace
 {
+// Sentinel bound by the base-conformation seed selection when the reservoir is empty (only while the
+// reservoir is being built), which triggers the cold-start branch.
+const std::vector<Atom> emptyConformation{};
+
 enum class MoveType : std::size_t
 {
   BondLengthChange = 0,
@@ -207,15 +211,19 @@ static std::vector<Atom> generateFlexibleBaseConformation(RandomNumber &random, 
 
   double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
 
-  // Seed the base conformation. A cold start (no warm-start conformation available yet for this
-  // component) samples each next-bead's bond length from its bond potential and its direction on the
-  // bend cone; a warm start reuses the most recently grown, thermalized (non-overlapping)
-  // conformation of this component, rigidly rotated so its previous-current bond aligns with the
-  // current one. The base conformation carries no Rosenbluth weight -- it is only the starting point
-  // for the internal Metropolis MC below -- but the warm start matters in practice: the internal MC
-  // only sees the bonded energy, so a self-overlapping cold seed of a floppy molecule cannot be
-  // relaxed here and would be rejected downstream by every trial direction.
-  const std::vector<Atom> &warmStart = component.warmStartConformation;
+  // Seed the base conformation. A cold start (empty reservoir, i.e. only while the reservoir is being
+  // built) samples each next-bead's bond length from its bond potential and its direction on the bend
+  // cone; otherwise an independent, well-mixed ideal-gas conformation is drawn from the component's
+  // reservoir and rigidly rotated so its previous-current bond aligns with the current one. The base
+  // conformation carries no Rosenbluth weight -- it is only the starting point for the internal
+  // Metropolis MC below -- but the seed matters in practice: the internal MC only sees the bonded
+  // energy, so a self-overlapping cold seed of a floppy molecule cannot be relaxed here and would be
+  // rejected downstream by every trial direction. Drawing an independent member per grow (rather than
+  // reusing one shared warm start) also decorrelates successive grows.
+  const std::vector<Atom> &warmStart =
+      component.conformationReservoir.empty()
+          ? emptyConformation
+          : component.conformationReservoir[random.uniform_integer(0, component.conformationReservoir.size() - 1)];
   if (warmStart.empty())
   {
     for (std::size_t next_bead : nextBeads)
@@ -595,7 +603,15 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
                                                   const std::vector<std::size_t> &nextBeads,
                                                   const Potentials::IntraMolecularPotentials &intra)
 {
-  double3 anchor_reference = component.atoms[currentBead].position;
+  // Seed geometry: an independent, well-mixed ideal-gas conformation from the reservoir (so different
+  // grows start from different ring puckers), or the reference geometry while the reservoir is still
+  // being built. A reservoir member keeps the exact internal geometry of any rigid sub-fragment, so
+  // rigid parts of the ring stay rigid. The declared chirality reference below stays 'component.atoms'.
+  const std::vector<Atom> &seed =
+      component.conformationReservoir.empty()
+          ? component.atoms
+          : component.conformationReservoir[random.uniform_integer(0, component.conformationReservoir.size() - 1)];
+  double3 anchor_reference = seed[currentBead].position;
   double3 anchor_position = chainAtoms[currentBead].position;
   std::vector<Atom> chain_atoms(chainAtoms.begin(), chainAtoms.end());
 
@@ -603,7 +619,7 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
   {
     for (std::size_t atom : nextBeads)
     {
-      double3 offset = component.atoms[atom].position - anchor_reference;
+      double3 offset = seed[atom].position - anchor_reference;
       chain_atoms[atom].position = anchor_position + rotation * offset;
     }
   };
@@ -637,10 +653,35 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
     return true;
   };
 
-  // A proper rotation of the reference geometry preserves the parity of centers that lie entirely
-  // inside the ring body, but a center involving the junction's placed neighbor starts with a random
-  // parity; re-orient until every monitored center matches the reference.
+  // A proper rotation of the reference geometry preserves the parity of every chiral center that
+  // lies entirely inside the rigidly placed ring body (its signed volume keeps the reference sign),
+  // so only a center that also involves the junction's placed neighbour can come out with the wrong
+  // parity. Reflecting the whole placed body through a plane that contains the previous-current axis
+  // flips exactly those junction-involving centers while preserving all internal distances and the
+  // bend angles to the anchor -- the bonded model is achiral, so the reflected seed has identical
+  // energy. Because a reflection is improper it also flips any body-internal center, so it is only a
+  // valid fix when it restores every monitored parity at once; we therefore try it, keep it only when
+  // 'parityPreserved()' then holds, and otherwise fall back to re-rolling random orientations. This
+  // replaces an unconditional (up to 1000) random re-roll that could also fail outright, and it makes
+  // the dominant single-junction-stereocentre case an O(1), deterministic correction.
   placeWithRotation(random.randomRotationMatrix());
+  if (!parityPreserved() && previousBead.has_value())
+  {
+    double3 axis = (chain_atoms[previousBead.value()].position - anchor_position).normalized();
+    double3 normal = double3::perpendicular(axis, random.randomVectorOnUnitSphere());
+    std::vector<double3> beforeReflection(nextBeads.size());
+    for (std::size_t k = 0; k != nextBeads.size(); ++k)
+    {
+      beforeReflection[k] = chain_atoms[nextBeads[k]].position;
+      double3 relative = beforeReflection[k] - anchor_position;
+      chain_atoms[nextBeads[k]].position =
+          anchor_position + (relative - 2.0 * double3::dot(relative, normal) * normal);
+    }
+    if (!parityPreserved())
+    {
+      for (std::size_t k = 0; k != nextBeads.size(); ++k) chain_atoms[nextBeads[k]].position = beforeReflection[k];
+    }
+  }
   for (std::size_t attempt = 0; attempt != 1000 && !parityPreserved(); ++attempt)
   {
     placeWithRotation(random.randomRotationMatrix());
@@ -665,6 +706,61 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
       auto [it, inserted] = rigidFragmentUnits.insert({fragmentIndex, moveUnits.size()});
       if (inserted) moveUnits.push_back({});
       moveUnits[it->second].push_back(atom);
+    }
+  }
+
+  // Fixed-bond neighbours of each atom. A Fixed bond is a holonomic distance constraint that carries
+  // no energy, so a free Cartesian displacement of a ring atom would stretch it with no penalty and be
+  // accepted. Any move of a flexible ring atom is therefore built as a rotation about its fixed
+  // neighbour(s), which preserves those bond lengths exactly (a rotation about an axis through a point
+  // preserves the distance to it). 'intra.bonds' only involves atoms placed in this step, all of which
+  // have positions, so every listed endpoint is usable as a pivot.
+  std::vector<std::vector<std::size_t>> fixedNeighbors(chain_atoms.size());
+  for (const BondPotential &bond : intra.bonds)
+  {
+    if (bond.type != BondType::Fixed) continue;
+    fixedNeighbors[bond.identifiers[0]].push_back(bond.identifiers[1]);
+    fixedNeighbors[bond.identifiers[1]].push_back(bond.identifiers[0]);
+  }
+
+  // Conformer-hopping (crankshaft) candidates: a flexible (single-atom fragment) ring atom rotated by
+  // a large angle about the line through two of its positioned bonded neighbours. This preserves both
+  // of those bond lengths exactly while flipping the local pucker (chair <-> twist-boat) and
+  // axial <-> equatorial placement -- the barrier crossing that the small adaptive moves almost never
+  // make on their own. The axis is chosen to include every Fixed-bond neighbour of the atom (fixed
+  // neighbours first), so the crankshaft can never break a Fixed bond; an atom with three or more
+  // Fixed bonds is over-constrained (its position is pinned, e.g. a fused-ring junction with fixed
+  // bond lengths) and is left to a concerted move, not offered here. The proposal is symmetric
+  // (uniform +/- angle), so plain Metropolis on the base energy keeps the sampled distribution exact.
+  struct CrankshaftCandidate
+  {
+    std::size_t atom;
+    std::size_t axisA;
+    std::size_t axisB;
+  };
+  std::vector<CrankshaftCandidate> crankshafts{};
+  {
+    std::vector<bool> positioned(chain_atoms.size(), false);
+    positioned[currentBead] = true;
+    if (previousBead.has_value()) positioned[previousBead.value()] = true;
+    for (std::size_t atom : nextBeads) positioned[atom] = true;
+    for (std::size_t atom : nextBeads)
+    {
+      if (graph.fragments[graph.atomFragmentIds[atom]].isRigidBody()) continue;
+      if (fixedNeighbors[atom].size() >= 3) continue;
+
+      // Fixed neighbours first (they must lie on the axis), then any other positioned bonded
+      // neighbours; the first two form the crankshaft axis.
+      std::vector<std::size_t> axisNeighbors = fixedNeighbors[atom];
+      for (std::size_t other = 0; other != chain_atoms.size(); ++other)
+      {
+        if (other == atom || !positioned[other]) continue;
+        if (!component.connectivityTable[atom, other]) continue;
+        if (std::find(fixedNeighbors[atom].begin(), fixedNeighbors[atom].end(), other) != fixedNeighbors[atom].end())
+          continue;
+        axisNeighbors.push_back(other);
+      }
+      if (axisNeighbors.size() >= 2) crankshafts.push_back({atom, axisNeighbors[0], axisNeighbors[1]});
     }
   }
 
@@ -696,7 +792,7 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
   const double maximumDisplacement = displacementStats.maxChange;
   const double maximumRotationAngle = rotationStats.maxChange;
   const bool haveJunction = previousBead.has_value();
-  std::size_t number_of_trials = numberOfTrialMovesPerOpenBead * nextBeads.size();
+  std::size_t number_of_trials = 2 * numberOfTrialMovesPerOpenBead * nextBeads.size();
   std::vector<double3> saved(nextBeads.size());
 
   auto acceptOrReject = [&](MoveStatistics<double> &stats, std::size_t unitSize, auto restore)
@@ -720,6 +816,21 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
 
   for (std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
+    // Conformer-hopping crankshaft: a large-angle rotation of one flexible ring atom about the line
+    // through two of its neighbours (see 'crankshafts' above). Attempted a fraction of the time so
+    // local relaxation still dominates; it supplies the barrier crossings between ring conformers.
+    if (!crankshafts.empty() && random.uniform() < 0.2)
+    {
+      const CrankshaftCandidate &c = crankshafts[random.uniform_integer(0, crankshafts.size() - 1)];
+      double3 pivot = chain_atoms[c.axisA].position;
+      double3 axis = (chain_atoms[c.axisB].position - pivot).normalized();
+      double angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+      double3 savedPosition = chain_atoms[c.atom].position;
+      chain_atoms[c.atom].position = pivot + axis.rotateAroundAxis(savedPosition - pivot, angle);
+      acceptOrReject(rotationStats, 1, [&](std::size_t) { chain_atoms[c.atom].position = savedPosition; });
+      continue;
+    }
+
     if (haveJunction && random.uniform() < 0.25)
     {
       double3 axis = random.randomVectorOnUnitSphere();
@@ -744,11 +855,29 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, std::siz
 
       if (unit.size() == 1)
       {
-        double3 displacement{(2.0 * random.uniform() - 1.0) * maximumDisplacement,
-                             (2.0 * random.uniform() - 1.0) * maximumDisplacement,
-                             (2.0 * random.uniform() - 1.0) * maximumDisplacement};
-        chain_atoms[unit[0]].position += displacement;
-        acceptOrReject(displacementStats, unit.size(), restore);
+        // Local single-atom move, constraint-preserving. With no Fixed bond the atom is displaced
+        // freely; with Fixed bonds it is rotated about its fixed neighbour(s) so those exact lengths
+        // are kept: one fixed neighbour leaves a full sphere (rotate about a random axis through it),
+        // two leave a circle (rotate about the line through both), and three or more pin the atom, so
+        // it moves only through the whole-cluster rotation or a concerted move.
+        const std::vector<std::size_t> &fixed = fixedNeighbors[unit[0]];
+        if (fixed.empty())
+        {
+          double3 displacement{(2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                               (2.0 * random.uniform() - 1.0) * maximumDisplacement,
+                               (2.0 * random.uniform() - 1.0) * maximumDisplacement};
+          chain_atoms[unit[0]].position += displacement;
+          acceptOrReject(displacementStats, unit.size(), restore);
+        }
+        else if (fixed.size() <= 2)
+        {
+          double3 pivot = chain_atoms[fixed[0]].position;
+          double3 axis = fixed.size() == 1 ? random.randomVectorOnUnitSphere()
+                                           : (chain_atoms[fixed[1]].position - pivot).normalized();
+          double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;
+          chain_atoms[unit[0]].position = pivot + axis.rotateAroundAxis(chain_atoms[unit[0]].position - pivot, angle);
+          acceptOrReject(rotationStats, unit.size(), restore);
+        }
       }
       else if (random.uniform() < 0.5)
       {

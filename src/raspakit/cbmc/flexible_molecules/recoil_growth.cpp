@@ -230,9 +230,6 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
-  // Keep this thermalized, non-overlapping conformation as the warm start for the next grow.
-  component.warmStartConformation = chain_atoms;
-
   // Center of mass, and for a fully rigid component the orientation quaternion recovered from the
   // grown positions (used downstream to regenerate the atoms of rigid molecules).
   Molecule molecule = component.createMoleculeRecord(chain_atoms);

@@ -398,6 +398,129 @@ TEST(MC_CYCLIC_CBMC, nvt_drift_and_ring_geometry_cbmc)
   }
 }
 
+// A cyclohexane whose ring bonds are FIXED (holonomic constraints) rather than stiff harmonic: the
+// ring must still pucker (flexible bends/torsions), but every ring bond length must be held exactly,
+// which only the constraint-preserving ring-closure moves can do (a free displacement would stretch a
+// zero-energy Fixed bond without penalty). After a short reinsertion run every ring bond of every
+// molecule must equal 1.54 Å to a tight tolerance -- far tighter than the loose window that the
+// stiff-harmonic rings satisfy -- and the running energies must stay drift-free.
+TEST(MC_CYCLIC_CBMC, fixed_bond_ring_bonds_preserved)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+
+  TemporaryFile file("fixed-bond-cyclohexane.json", molecule_fixtures::kFixedBondCyclohexaneJson);
+  Component cyclohexane(Component::Type::Adsorbate, 0, forceField, "fixed-bond-cyclohexane",
+                        file.stemPath().string(), 5, 21, probabilities, std::nullopt, false);
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {cyclohexane}, {}, {20}, 5);
+
+  MonteCarlo mc = makeShortMonteCarlo({system});
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    expectNoEnergyDrift(s);
+
+    std::span<const Atom> atoms = std::as_const(s).spanOfMoleculeAtoms();
+    ASSERT_EQ(atoms.size() % 6uz, 0uz);
+    for (std::size_t offset = 0; offset < atoms.size(); offset += 6)
+    {
+      for (std::size_t i = 0; i != 6; ++i)
+      {
+        double bond = (atoms[offset + (i + 1) % 6].position - atoms[offset + i].position).length();
+        EXPECT_NEAR(bond, 1.54, 1e-6) << "molecule at offset " << offset << " bond " << i;
+      }
+    }
+  }
+}
+
+// Parse-time diagnostic for an over-constrained ring topology: a flexible ring atom with three or
+// more FIXED bonds (here the two norbornane bridgeheads, atoms 0 and 3, when every ring bond is
+// FIXED) cannot be moved by any constraint-preserving single-atom rotation, so its conformation is
+// never sampled. Reading such a component must warn on stderr, naming each pinned atom; the ordinary
+// fixed-bond cyclohexane (two Fixed bonds per atom) must stay silent.
+TEST(MC_CYCLIC_CBMC, fixed_bond_overconstrained_ring_atom_warns_at_parse_time)
+{
+  const ForceField forceField = makeCyclohexaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+
+  {
+    TemporaryFile file("fixed-bond-norbornane.json", molecule_fixtures::kFixedBondNorbornaneJson);
+    testing::internal::CaptureStderr();
+    Component norbornane(Component::Type::Adsorbate, 0, forceField, "fixed-bond-norbornane",
+                         file.stemPath().string(), 5, 21, probabilities, std::nullopt, false);
+    std::string output = testing::internal::GetCapturedStderr();
+    EXPECT_NE(output.find("flexible ring atom 0 has 3 FIXED bonds"), std::string::npos) << output;
+    EXPECT_NE(output.find("flexible ring atom 3 has 3 FIXED bonds"), std::string::npos) << output;
+  }
+
+  {
+    TemporaryFile file("fixed-bond-cyclohexane.json", molecule_fixtures::kFixedBondCyclohexaneJson);
+    testing::internal::CaptureStderr();
+    Component cyclohexane(Component::Type::Adsorbate, 0, forceField, "fixed-bond-cyclohexane",
+                          file.stemPath().string(), 5, 21, probabilities, std::nullopt, false);
+    std::string output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(output.find("FIXED bonds"), std::string::npos) << output;
+  }
+}
+
+// The reference coordinates of a FIXED bond inside a ring are load-bearing: ring-closure growth
+// takes the ring geometry from the reference conformation, and the constraint-preserving moves only
+// ever preserve the length the reference already has. A FIXED bond carries no energy, so a reference
+// geometry violating the declared length would silently propagate to every sampled configuration.
+// Reading such a component must fail at parse time.
+TEST(MC_CYCLIC_CBMC, fixed_ring_bond_violated_by_reference_geometry_is_rejected)
+{
+  // The cyclohexane reference ring is geometrically 1.54 Angstrom, but the fixed length claims 1.60.
+  static constexpr std::string_view kBadFixedBondCyclohexaneJson =
+R"({
+  "CriticalTemperature" : 553.6,
+  "CriticalPressure" : 4073000.0,
+  "AcentricFactor" : 0.211,
+  "pseudoAtoms" :
+    [
+      ["CH2_c", [1.465493, 0.000000, 0.236606]],
+      ["CH2_c", [0.732747, 1.269154, -0.236606]],
+      ["CH2_c", [-0.732747, 1.269154, 0.236606]],
+      ["CH2_c", [-1.465493, 0.000000, -0.236606]],
+      ["CH2_c", [-0.732747, -1.269154, 0.236606]],
+      ["CH2_c", [0.732747, -1.269154, -0.236606]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "FIXED", [1.60]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+
+  const ForceField forceField = makeCyclohexaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  TemporaryFile file("bad-fixed-bond-cyclohexane.json", kBadFixedBondCyclohexaneJson);
+  EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "bad-fixed-bond-cyclohexane",
+                         file.stemPath().string(), 5, 21, probabilities, std::nullopt, false),
+               std::runtime_error);
+}
+
 TEST(MC_CYCLIC_CBMC, nvt_drift_and_ring_geometry_recoil_growth)
 {
   ForceField forceField = makeCyclohexaneForceField();

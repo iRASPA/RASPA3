@@ -396,6 +396,7 @@ export struct System
   std::span<const GroupState> spanOfFrameworkGroupData() const;
   std::span<double> spanOfMoleculeElectrostaticPotential();
   std::span<double3> spanOfMoleculeElectricField();
+  std::span<const double3> spanOfMoleculeElectricField() const;
   std::span<double3> spanOfMoleculeElectricFieldNew();
   std::span<double3> spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule);
   const std::span<const double3> spanElectricFieldNew(std::size_t selectedComponent,
@@ -454,6 +455,11 @@ export struct System
   void incrementReactionFractionalMoleculeIds(std::size_t componentId) noexcept;
   void initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std::size_t numberOfLambdaBins);
   [[nodiscard]] double reactionDUdlambda(const Reaction& reaction) const noexcept;
+
+  /// Instantaneous dU/dlambda of the lambda coordinate driving dUdlambda-group 'groupId'. The
+  /// VDW/charge/Ewald parts are maintained incrementally in 'runningEnergies'; the polarization part is
+  /// evaluated on demand from the incrementally-maintained stored electric field.
+  [[nodiscard]] double currentDUdlambda(double lambda, std::size_t groupId) const noexcept;
   void syncReactionLambdaBin(Reaction& reaction) noexcept;
   void syncReactionLambdaBins() noexcept;
   [[nodiscard]] bool usesReactionConventionalCFCMC() const noexcept;
@@ -563,6 +569,20 @@ export struct System
    * \return The sampled, mass-centered internal conformation.
    */
   std::vector<Atom> equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent);
+
+  /**
+   * \brief Fills each flexible/semi-flexible component's ideal-gas conformation reservoir.
+   *
+   * For every component with more than one atom that is not fully rigid, draws a fixed number of
+   * independent conformations from the ideal-gas Boltzmann distribution exp(-beta * U_intra) (via
+   * equilibratedIdealGasConformation) and stores them in Component::conformationReservoir. The CBMC
+   * internal Monte-Carlo seeds each grow from a random member, which decorrelates successive grows and
+   * (together with the ring conformer-hopping move) samples every ring conformer. The reservoir seeds
+   * the internal MC only; it does not enter any Rosenbluth weight. Built once at the system temperature
+   * with a fixed local RNG so it does not perturb the simulation's random stream; a temperature change
+   * (e.g. parallel tempering) would require rebuilding it.
+   */
+  void buildConformationReservoirs();
 
   bool insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const;
 
