@@ -454,6 +454,35 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       rotationalDegreesOfFreedom += components[componentId].rotationalDegreesOfFreedom;
     }
 
+    // Broensted protons: one single-site proton per candidate group, placed on the group's first
+    // site (stored as fractional coordinates in the simulation box). The proton count is fully
+    // determined by the tether groups, so no random growth is done for this component below.
+    if (!component.tetheredProtonHopSiteGroups.empty())
+    {
+      for (const std::vector<double3>& siteGroup : component.tetheredProtonHopSiteGroups)
+      {
+        if (siteGroup.empty()) continue;
+
+        const double3 position = simulationBox.cell * siteGroup.front();
+
+        Molecule molecule(position, simd_quatd{}, component.totalMass, componentId, component.atoms.size());
+
+        std::vector<Atom> molecule_atoms = component.atoms;
+        for (Atom& atom : molecule_atoms)
+        {
+          atom.position = position;
+        }
+
+        insertMolecule(componentId, molecule, molecule_atoms);
+      }
+
+      translationalDegreesOfFreedom += components[componentId].translationalDegreesOfFreedom;
+      rotationalDegreesOfFreedom += components[componentId].rotationalDegreesOfFreedom;
+
+      componentId++;
+      continue;
+    }
+
     // Add atom position passed to 'createInitialMolecules'
     if (componentId < initialPositions.size())
     {

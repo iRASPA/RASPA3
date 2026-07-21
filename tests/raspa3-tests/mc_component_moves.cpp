@@ -8,6 +8,7 @@ import double3;
 import forcefield;
 import mc_moves;
 import mc_moves_group_swap;
+import mc_moves_tethered_proton_hop;
 import mc_moves_move_types;
 import mc_moves_pair_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
@@ -92,6 +93,52 @@ System makeGroupSystem(const std::vector<double3>& positionsA, const std::vector
 
   return System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, pressure, 1.0, {},
                 {componentA, componentB}, {positionsA, positionsB}, {0, 0}, 5);
+}
+
+System makeTetheredProtonHopSystem(const std::vector<double3>& cartesianSites)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::TetheredProtonHop, 1.0);
+
+  Component proton = makeIonComponent(forceField, 0, "A", 0, probabilities);
+
+  // The move reads the candidate sites as fractional coordinates in the simulation box; convert the
+  // requested Cartesian positions with the inverse cell so the test can reason in Cartesian space.
+  const SimulationBox box(10.0, 10.0, 10.0);
+  std::vector<double3> fractionalSites;
+  fractionalSites.reserve(cartesianSites.size());
+  for (const double3& site : cartesianSites)
+  {
+    fractionalSites.push_back(box.inverseCell * site);
+  }
+  proton.tetheredProtonHopSiteGroups = {fractionalSites};
+
+  // A single proton placed on the first candidate site.
+  return System(forceField, box, false, 300.0, 1.0e5, 1.0, {}, {proton}, {{cartesianSites.front()}}, {0}, 5);
+}
+
+System makeAutoPlacedProtonSystem(const std::vector<std::vector<double3>>& cartesianGroups)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::TetheredProtonHop, 1.0);
+
+  Component proton = makeIonComponent(forceField, 0, "A", 0, probabilities);
+
+  const SimulationBox box(10.0, 10.0, 10.0);
+  std::vector<std::vector<double3>> fractionalGroups;
+  for (const std::vector<double3>& group : cartesianGroups)
+  {
+    std::vector<double3> fractionalGroup;
+    for (const double3& site : group) fractionalGroup.push_back(box.inverseCell * site);
+    fractionalGroups.push_back(std::move(fractionalGroup));
+  }
+  proton.tetheredProtonHopSiteGroups = fractionalGroups;
+
+  // No explicit initial positions and a zero create-count: the protons must be placed from the
+  // tether groups alone (one proton per group, on the group's first site).
+  return System(forceField, box, false, 300.0, 1.0e5, 1.0, {}, {proton}, {}, {0}, 5);
 }
 
 double totalTrials(const System& system, Move::Types move)
@@ -342,6 +389,74 @@ TEST(MC_COMPONENT_MOVES, group_insertion_deletion_proposals_are_reciprocal)
                    { return MC_Moves::groupInsertionMoveCBMC(random, system, 0); },
                    [](RandomNumber& random, System& system, std::size_t component, std::size_t molecule)
                    { return MC_Moves::groupDeletionMoveCBMC(random, system, component, molecule); });
+}
+
+TEST(MC_COMPONENT_MOVES, tethered_proton_hop_requires_at_least_two_sites)
+{
+  // A group with a single candidate site offers no alternative position, so the move is a no-op.
+  System system = makeTetheredProtonHopSystem({double3(0.5, 5.0, 5.0)});
+  RandomNumber random(91);
+  EXPECT_FALSE(MC_Moves::tetheredProtonHopMove(random, system, 0, 0).has_value());
+}
+
+TEST(MC_COMPONENT_MOVES, tethered_proton_hop_sites_place_one_proton_per_group)
+{
+  // The number of protons is derived from the tether groups (one per group), each placed on the
+  // group's first site, independent of any create-count or initial-position input.
+  const std::vector<std::vector<double3>> groups{
+      {double3(0.5, 5.0, 5.0), double3(1.5, 5.0, 5.0)},
+      {double3(5.0, 8.0, 5.0), double3(5.0, 9.0, 5.0), double3(5.0, 7.0, 5.0)}};
+
+  System system = makeAutoPlacedProtonSystem(groups);
+
+  ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 2uz);
+  EXPECT_LT((system.spanOfMolecule(0, 0).front().position - groups[0].front()).length(), 1.0e-9);
+  EXPECT_LT((system.spanOfMolecule(0, 1).front().position - groups[1].front()).length(), 1.0e-9);
+}
+
+TEST(MC_COMPONENT_MOVES, tethered_proton_hop_relocates_to_a_different_site)
+{
+  // Non-interacting force field: the energy difference is zero, so the symmetric proposal is always
+  // accepted. The proton must land exactly on one of the other candidate sites, never the one it
+  // started on.
+  const std::vector<double3> sites{double3(0.5, 5.0, 5.0), double3(1.5, 5.0, 5.0), double3(2.5, 5.0, 5.0)};
+
+  for (std::size_t seed = 0; seed < 16; ++seed)
+  {
+    System system = makeTetheredProtonHopSystem(sites);
+    RandomNumber random(seed);
+
+    ASSERT_TRUE(MC_Moves::tetheredProtonHopMove(random, system, 0, 0).has_value());
+
+    const double3 position = system.spanOfMolecule(0, 0).front().position;
+    EXPECT_GT((position - sites[0]).length(), 1.0e-9);
+    const bool onSite1 = (position - sites[1]).length() < 1.0e-9;
+    const bool onSite2 = (position - sites[2]).length() < 1.0e-9;
+    EXPECT_TRUE(onSite1 || onSite2);
+  }
+}
+
+TEST(MC_COMPONENT_MOVES, tethered_proton_hop_selects_each_alternative_site_across_seeds)
+{
+  // With two alternative sites the uniform proposal must reach both across seeds.
+  const std::vector<double3> sites{double3(0.5, 5.0, 5.0), double3(1.5, 5.0, 5.0), double3(2.5, 5.0, 5.0)};
+
+  std::size_t selectedSite1 = 0;
+  std::size_t selectedSite2 = 0;
+  for (std::size_t seed = 0; seed < 64; ++seed)
+  {
+    System system = makeTetheredProtonHopSystem(sites);
+    RandomNumber random(seed);
+    ASSERT_TRUE(MC_Moves::tetheredProtonHopMove(random, system, 0, 0).has_value());
+
+    const double3 position = system.spanOfMolecule(0, 0).front().position;
+    selectedSite1 += (position - sites[1]).length() < 1.0e-9;
+    selectedSite2 += (position - sites[2]).length() < 1.0e-9;
+  }
+
+  EXPECT_EQ(selectedSite1 + selectedSite2, 64uz);
+  EXPECT_GE(selectedSite1, 20uz);
+  EXPECT_GE(selectedSite2, 20uz);
 }
 
 TEST(MC_COMPONENT_MOVES, random_rotation_uses_uniform_rotation_matrix)

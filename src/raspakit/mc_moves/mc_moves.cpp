@@ -45,6 +45,7 @@ import mc_moves_pair_insertion_cbmc;
 import mc_moves_pair_deletion_cbmc;
 import mc_moves_group_swap;
 import mc_moves_group_swap_cfcmc;
+import mc_moves_tethered_proton_hop;
 import mc_moves_pair_swap_cfcmc;
 import mc_moves_pair_swap_cfcmc_cbmc;
 import mc_moves_swap_cfcmc;
@@ -728,6 +729,23 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         selectedSystem.runningEnergies += energyDifference.value();
       }
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::TetheredProtonHop:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::tetheredProtonHopMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
       break;
     }
     case Move::Types::GibbsVolume:
@@ -1431,6 +1449,23 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
+    case Move::Types::TetheredProtonHop:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::tetheredProtonHopMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
@@ -2130,6 +2165,23 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         selectedSystem.runningEnergies += energyDifference.value();
       }
       selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::TetheredProtonHop:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::tetheredProtonHopMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
       break;
     }
     case Move::Types::GibbsVolume:

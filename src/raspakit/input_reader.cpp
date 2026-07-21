@@ -804,6 +804,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("TetheredProtonHopProbability") && item["TetheredProtonHopProbability"].is_number_float())
+      {
+        double tetheredProtonHopProbability = item["TetheredProtonHopProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::TetheredProtonHop, tetheredProtonHopProbability);
+        }
+      }
+
       if (item.contains("CFCMC_PairSwapProbability") && item["CFCMC_PairSwapProbability"].is_number_float())
       {
         double pairSwapCFCMCProbability = item["CFCMC_PairSwapProbability"].get<double>();
@@ -1022,6 +1031,45 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].maximumGroupDistance = maximum_group_distance;
+        }
+      }
+
+      // Discrete candidate positions for the tethered proton-hop move: an array of groups, each
+      // group an array of [x, y, z] fractional coordinates (in the simulation box) of the sites that
+      // one proton can occupy (e.g. the oxygens around one framework Al).
+      if (item.contains("TetheredProtonHopSites") && item["TetheredProtonHopSites"].is_array())
+      {
+        std::vector<std::vector<double3>> tethered_proton_hop_site_groups;
+        for (auto& group_item : item["TetheredProtonHopSites"])
+        {
+          if (!group_item.is_array())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: component '{}' 'TetheredProtonHopSites' must be an array of groups, each "
+                            "group an array of [x, y, z] fractional coordinates\n",
+                            jsonComponentName));
+          }
+
+          std::vector<double3> group_sites;
+          for (auto& site_item : group_item)
+          {
+            std::vector<double> coordinates =
+                site_item.is_array() ? site_item.get<std::vector<double>>() : std::vector<double>{};
+            if (coordinates.size() != 3)
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: component '{}' each 'TetheredProtonHopSites' entry must list exactly "
+                              "three fractional coordinates [x, y, z]\n",
+                              jsonComponentName));
+            }
+            group_sites.push_back(double3(coordinates[0], coordinates[1], coordinates[2]));
+          }
+          tethered_proton_hop_site_groups.push_back(std::move(group_sites));
+        }
+
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].tetheredProtonHopSiteGroups = tethered_proton_hop_site_groups;
         }
       }
 
@@ -2870,6 +2918,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "CFCMC_CBMC_GroupSwapProbability",
     "GroupComponents",
     "MaximumGroupDistance",
+    "TetheredProtonHopProbability",
+    "TetheredProtonHopSites",
     "CFCMC_SwapProbability",
     "CFCMC_CBMC_SwapProbability",
     "GibbsSwapCBMCProbability",

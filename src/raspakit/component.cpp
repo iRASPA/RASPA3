@@ -2104,6 +2104,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.groupComponentIds;
   archive << c.maximumGroupDistance;
 
+  archive << c.tetheredProtonHopSiteGroups;
+
   archive << c.lambdaPairSwap;
   archive << c.lambdaPairSwapCB;
 
@@ -2197,6 +2199,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.groupComponentIds;
   archive >> c.maximumGroupDistance;
+
+  archive >> c.tetheredProtonHopSiteGroups;
 
   archive >> c.lambdaPairSwap;
   archive >> c.lambdaPairSwapCB;

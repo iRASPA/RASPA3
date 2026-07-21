@@ -184,6 +184,13 @@ export struct Component
   /// Maximum satellite separation R_max from the central molecule for group insertion/deletion [m].
   std::optional<double> maximumGroupDistance{};
 
+  /// Discrete candidate positions for the tethered proton-hop move, grouped per tethering site (e.g. the four
+  /// oxygens around one framework Al). Each inner vector holds the fractional coordinates (in the
+  /// simulation box) of the sites belonging to one group; a proton always occupies one site of its
+  /// group and the move relocates it uniformly among that group's sites. Empty when the move is
+  /// unused.
+  std::vector<std::vector<double3>> tetheredProtonHopSiteGroups{};
+
   double netCharge{0.0};                                ///< Net charge of the component [e].
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.

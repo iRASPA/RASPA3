@@ -47,7 +47,8 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Group swap",
   "Group swap (CBMC)",
   "Group swap (CFCMC)",
-  "Group swap (CB/CFCMC)"
+  "Group swap (CB/CFCMC)",
+  "Tethered proton hop"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -224,6 +225,9 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // GroupSwapCBCFCMC
   std::vector<Move::Timing>{Move::Timing::InsertionNonEwald, Move::Timing::InsertionEwald, Move::Timing::InsertionTail,
                             Move::Timing::DeletionNonEwald, Move::Timing::DeletionEwald, Move::Timing::DeletionTail,
-                            Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail}
+                            Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail},
+  // TetheredProtonHop
+  std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald}
 };
 
