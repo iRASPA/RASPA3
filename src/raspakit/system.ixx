@@ -101,7 +101,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{5};
+  std::uint64_t versionNumber{1};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -151,6 +151,13 @@ export struct System
 
   // # fractional molecules for ion-pair insertion/deletion CB/CFCMC (PairSwapCBCFCMC)
   std::vector<std::size_t> numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for group insertion/deletion CFCMC (GroupSwapCFCMC); a component may hold
+  // more than one slot when it occurs multiple times in a group (e.g. two Cl of CaCl2)
+  std::vector<std::size_t> numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for group insertion/deletion CB/CFCMC (GroupSwapCBCFCMC)
+  std::vector<std::size_t> numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC{};
 
   // # fractional molecules for GibbsSwapCFCMC / GibbsSwapCBCFCMC
   std::vector<std::size_t> numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC{};
@@ -290,8 +297,9 @@ export struct System
   std::optional<InterpolationEnergyGrid> externalFieldInterpolationGrid;
 
   // Fractional molecules per component are stored in Move::Types enum order, then integer molecules.
-  // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> PairSwapCFCMC -> PairSwapCBCFCMC -> GibbsSwapCFCMC ->
-  //          ReactionConventionalCFCMC -> ReactionCFCMC -> GibbsConventionalCFCMC
+  // Regions: SwapCFCMC (GC) -> SwapCBCFCMC (pair) -> PairSwapCFCMC -> PairSwapCBCFCMC -> GroupSwapCFCMC ->
+  //          GroupSwapCBCFCMC -> GibbsSwapCFCMC -> ReactionConventionalCFCMC -> ReactionCFCMC ->
+  //          GibbsConventionalCFCMC
   [[nodiscard]] std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(
@@ -299,6 +307,10 @@ export struct System
   [[nodiscard]] std::size_t indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(
+      std::size_t selectedComponent) const noexcept;
+  [[nodiscard]] std::size_t indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
@@ -477,6 +489,12 @@ export struct System
   void reactionLambdaClearBookkeeping() noexcept;
   void reactionLambdaFinalize() noexcept;
   [[nodiscard]] bool componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
+  [[nodiscard]] bool componentDrivesGroupSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
+  /// The component whose group-swap lambda histogram drives the group fractional slots of
+  /// 'componentId' for the given group CFCMC move (the driver itself or a component listing
+  /// 'componentId' among its GroupComponents). Returns std::nullopt when there is none.
+  [[nodiscard]] std::optional<std::size_t> groupSwapLambdaDriver(std::size_t componentId,
+                                                                 Move::Types move) const noexcept;
   void assignDUdlambdaGroups();
   [[nodiscard]] std::uint8_t fractionalSlotDUdlambdaGroupId(std::size_t componentId,
                                                             std::size_t slotIndex) const noexcept;

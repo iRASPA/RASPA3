@@ -40,7 +40,7 @@ export struct PropertyConventionalRadialDistributionFunction
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const

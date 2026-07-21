@@ -21,6 +21,7 @@ import monte_carlo;
 import simulationbox;
 import running_energy;
 import mc_moves_statistics;
+import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_move_types;
@@ -788,6 +789,276 @@ TEST(MC_MUVT_DRIFT, pair_swap_conventional_na_cl)
   for (System& s : mc.systems)
   {
     EXPECT_EQ(s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, group_swap_conventional_ca_cl2)
+{
+  ForceField forceField =
+      ForceField({{"Ca2+", false, 40.08, 2.0, 0.0, 20, false}, {"Cl-", false, 35.45, -1.0, 0.0, 17, false}},
+                 {{25.0, 3.0}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+
+  std::optional<std::size_t> type_ca = forceField.findPseudoAtom("Ca2+");
+  std::optional<std::size_t> type_cl = forceField.findPseudoAtom("Cl-");
+  ASSERT_TRUE(type_ca.has_value());
+  ASSERT_TRUE(type_cl.has_value());
+
+  MCMoveProbabilities probabilities_ca = MCMoveProbabilities();
+  probabilities_ca.setProbability(Move::Types::Translation, 1.0);
+  probabilities_ca.setProbability(Move::Types::GroupSwap, 1.0);
+
+  MCMoveProbabilities probabilities_cl = MCMoveProbabilities();
+  probabilities_cl.setProbability(Move::Types::Translation, 1.0);
+
+  Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
+  ca.mc_moves_probabilities = probabilities_ca;
+  ca.groupComponentIds = {1, 1};
+  ca.maximumGroupDistance = 8.0;
+  ca.fugacityCoefficient = 1.0;
+  ca.idealGasRosenbluthWeight = 1.0;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", type_cl.value(), -1.0);
+  cl.mc_moves_probabilities = probabilities_cl;
+  cl.fugacityCoefficient = 1.0;
+  cl.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
+
+  std::vector<System> systems{system};
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    EXPECT_EQ(2 * s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, group_swap_cbmc_ca_cl2)
+{
+  ForceField forceField =
+      ForceField({{"Ca2+", false, 40.08, 2.0, 0.0, 20, false}, {"Cl-", false, 35.45, -1.0, 0.0, 17, false}},
+                 {{25.0, 3.0}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+
+  std::optional<std::size_t> type_ca = forceField.findPseudoAtom("Ca2+");
+  std::optional<std::size_t> type_cl = forceField.findPseudoAtom("Cl-");
+  ASSERT_TRUE(type_ca.has_value());
+  ASSERT_TRUE(type_cl.has_value());
+
+  MCMoveProbabilities probabilities_ca = MCMoveProbabilities();
+  probabilities_ca.setProbability(Move::Types::Translation, 1.0);
+  probabilities_ca.setProbability(Move::Types::GroupSwapCBMC, 1.0);
+
+  MCMoveProbabilities probabilities_cl = MCMoveProbabilities();
+  probabilities_cl.setProbability(Move::Types::Translation, 1.0);
+
+  Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
+  ca.mc_moves_probabilities = probabilities_ca;
+  ca.groupComponentIds = {1, 1};
+  ca.maximumGroupDistance = 8.0;
+  ca.fugacityCoefficient = 1.0;
+  ca.idealGasRosenbluthWeight = 1.0;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", type_cl.value(), -1.0);
+  cl.mc_moves_probabilities = probabilities_cl;
+  cl.fugacityCoefficient = 1.0;
+  cl.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
+
+  std::vector<System> systems{system};
+  MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    EXPECT_EQ(2 * s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, group_swap_cfcmc_ca_cl2)
+{
+  ForceField forceField =
+      ForceField({{"Ca2+", false, 40.08, 2.0, 0.0, 20, false}, {"Cl-", false, 35.45, -1.0, 0.0, 17, false}},
+                 {{25.0, 3.0}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+
+  std::optional<std::size_t> type_ca = forceField.findPseudoAtom("Ca2+");
+  std::optional<std::size_t> type_cl = forceField.findPseudoAtom("Cl-");
+  ASSERT_TRUE(type_ca.has_value());
+  ASSERT_TRUE(type_cl.has_value());
+
+  MCMoveProbabilities probabilities_ca = MCMoveProbabilities();
+  probabilities_ca.setProbability(Move::Types::Translation, 1.0);
+  probabilities_ca.setProbability(Move::Types::GroupSwapCFCMC, 1.0);
+
+  MCMoveProbabilities probabilities_cl = MCMoveProbabilities();
+  probabilities_cl.setProbability(Move::Types::Translation, 1.0);
+
+  Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
+  ca.mc_moves_probabilities = probabilities_ca;
+  ca.groupComponentIds = {1, 1};
+  ca.fugacityCoefficient = 1.0;
+  ca.idealGasRosenbluthWeight = 1.0;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", type_cl.value(), -1.0);
+  cl.mc_moves_probabilities = probabilities_cl;
+  cl.fugacityCoefficient = 1.0;
+  cl.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
+
+  std::vector<System> systems{system};
+  // enough equilibration for the Wang-Landau bias to flatten the lambda histogram, so that the
+  // production stage exercises all three sub-moves (statistics are cleared after equilibration)
+  MonteCarlo mc = MonteCarlo({100, 0, 5, 100, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    // the group move preserves the 2:1 Cl:Ca stoichiometry of the integer molecules; the fractional
+    // slots hold one Ca and two Cl molecules on top of that
+    EXPECT_EQ(2 * s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 1uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 2uz);
+
+    // the move must actually be exercised: all three sub-moves attempted, some accepted
+    const MoveStatistics<double3>& moveStatistics = std::get<MoveStatistics<double3>>(
+        s.components[0].mc_moves_statistics[Move::Types::GroupSwapCFCMC]);
+    EXPECT_GT(moveStatistics.totalCounts.x, 0.0);  // insertions attempted
+    EXPECT_GT(moveStatistics.totalCounts.y, 0.0);  // deletions attempted
+    EXPECT_GT(moveStatistics.totalCounts.z, 0.0);  // lambda changes attempted
+    EXPECT_GT(moveStatistics.totalAccepted.x + moveStatistics.totalAccepted.y + moveStatistics.totalAccepted.z, 0.0);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, group_swap_cbcfcmc_combined_ca_cl2)
+{
+  ForceField forceField =
+      ForceField({{"Ca2+", false, 40.08, 2.0, 0.0, 20, false}, {"Cl-", false, 35.45, -1.0, 0.0, 17, false}},
+                 {{25.0, 3.0}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+
+  std::optional<std::size_t> type_ca = forceField.findPseudoAtom("Ca2+");
+  std::optional<std::size_t> type_cl = forceField.findPseudoAtom("Cl-");
+  ASSERT_TRUE(type_ca.has_value());
+  ASSERT_TRUE(type_cl.has_value());
+
+  // combine the CB/CFCMC group move with the conventional CFCMC group move and the direct group
+  // move: every flavor keeps its own fractional-molecule slots
+  MCMoveProbabilities probabilities_ca = MCMoveProbabilities();
+  probabilities_ca.setProbability(Move::Types::Translation, 1.0);
+  probabilities_ca.setProbability(Move::Types::GroupSwap, 0.5);
+  probabilities_ca.setProbability(Move::Types::GroupSwapCFCMC, 0.5);
+  probabilities_ca.setProbability(Move::Types::GroupSwapCBCFCMC, 0.5);
+
+  MCMoveProbabilities probabilities_cl = MCMoveProbabilities();
+  probabilities_cl.setProbability(Move::Types::Translation, 1.0);
+
+  Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
+  ca.mc_moves_probabilities = probabilities_ca;
+  ca.groupComponentIds = {1, 1};
+  ca.maximumGroupDistance = 8.0;
+  ca.fugacityCoefficient = 1.0;
+  ca.idealGasRosenbluthWeight = 1.0;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", type_cl.value(), -1.0);
+  cl.mc_moves_probabilities = probabilities_cl;
+  cl.fugacityCoefficient = 1.0;
+  cl.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
+
+  std::vector<System> systems{system};
+  // enough equilibration for the Wang-Landau bias to flatten the lambda histograms, so that the
+  // production stage exercises all three sub-moves (statistics are cleared after equilibration)
+  MonteCarlo mc = MonteCarlo({50, 0, 5, 60, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    EXPECT_EQ(2 * s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+    // one Ca slot per CFCMC flavor, two Cl slots per CFCMC flavor
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 2uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 4uz);
+
+    // the CB/CFCMC move must actually be exercised: all three sub-moves attempted, some accepted
+    const MoveStatistics<double3>& moveStatistics =
+        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::GroupSwapCBCFCMC]);
+    EXPECT_GT(moveStatistics.totalCounts.x, 0.0);  // insertions attempted
+    EXPECT_GT(moveStatistics.totalCounts.y, 0.0);  // deletions attempted
+    EXPECT_GT(moveStatistics.totalCounts.z, 0.0);  // lambda changes attempted
+    EXPECT_GT(moveStatistics.totalAccepted.x + moveStatistics.totalAccepted.y + moveStatistics.totalAccepted.z, 0.0);
 
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;

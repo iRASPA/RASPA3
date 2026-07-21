@@ -89,7 +89,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
   archive >> p.conePositionChange;
   archive >> p.ringDisplacementChange;
   archive >> p.ringRotationChange;
-  if (versionNumber >= 3) archive >> p.ringCrankshaftMove;
+  archive >> p.ringCrankshaftMove;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -411,6 +411,23 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
 
+      // group-swap slots: a component can hold several (e.g. two Cl slots of a CaCl2 group)
+      for (std::size_t k = 0; k < numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[componentId]; ++k)
+      {
+        const std::size_t slot = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(componentId) + k;
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
+      }
+
+      for (std::size_t k = 0; k < numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[componentId]; ++k)
+      {
+        const std::size_t slot = indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(componentId) + k;
+        const std::optional<ChainGrowData> growData =
+            growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
+        insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
+      }
+
       if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);

@@ -1627,7 +1627,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.EwaldPrecision;
   archive >> f.EwaldAlpha;
-  if (versionNumber >= 2) archive >> f.modifiedShiftedForceBeta;
+  archive >> f.modifiedShiftedForceBeta;
   archive >> f.numberOfWaveVectors;
   archive >> f.reciprocalIntegerCutOffSquared;
   archive >> f.reciprocalCutOffSquared;
@@ -1642,11 +1642,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.numberOfFirstBeadPositions;
   archive >> f.numberOfTrialMovesPerOpenBead;
   archive >> f.minimumRosenbluthFactor;
-  if (versionNumber >= 3)
-  {
-    archive >> f.cbmcRingCrankshaftProbability;
-    archive >> f.cbmcRingTiltProbability;
-  }
+  archive >> f.cbmcRingCrankshaftProbability;
+  archive >> f.cbmcRingTiltProbability;
 
   archive >> f.useRecoilGrowth;
   archive >> f.recoilGrowthMaximumRecoilLength;

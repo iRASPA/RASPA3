@@ -667,7 +667,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;
   archive >> e.NoseHooverEnergy;
-  if (versionNumber >= 2) archive >> e.thermobarostatEnergy;
+  archive >> e.thermobarostatEnergy;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

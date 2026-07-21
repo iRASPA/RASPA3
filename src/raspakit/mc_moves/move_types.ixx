@@ -12,42 +12,46 @@ export struct Move
     RandomTranslation = 1,
     Rotation = 2,
     RandomRotation = 3,
-    VolumeChange = 4,
-    AnisotropicVolumeChange = 5,
-    ReinsertionCBMC = 6,
-    PartialReinsertionCBMC = 7,
-    IdentityChangeCBMC = 8,
-    Swap = 9,
-    SwapCBMC = 10,
-    SwapCFCMC = 11,
-    SwapCBCFCMC = 12,
-    GibbsVolume = 13,
-    GibbsSwapCBMC = 14,
-    GibbsConventionalCFCMC = 15,      // parallel CFCMC Gibbs
-    GibbsConventionalCBCFCMC = 16,    // parallel CFCMC/CBMC Gibbs
-    GibbsSwapCFCMC = 17,              // serial CFCMC Gibbs
-    GibbsSwapCBCFCMC = 18,            // serial CFCMC/CBMC Gibbs
-    GibbsIdentityChangeCBMC = 19,
-    Widom = 20,
-    WidomCFCMC = 21,
-    WidomCBCFCMC = 22,
-    ParallelTempering = 23,
-    HybridMC = 24,
-    ReactionCBMC = 25,
-    ReactionConventionalCFCMC = 26,    // parallel CFCMC reaction MC
-    ReactionConventionalCBCFCMC = 27,  // parallel CFCMC/CBMC reaction MC
-    ReactionCFCMC = 28,                // serial CFCMC reaction MC
-    ReactionCBCFCMC = 29,              // serial CFCMC/CBMC reaction MC
-    PairSwap = 30,
-    PairSwapCBMC = 31,
-    PairSwapCFCMC = 32,
-    PairSwapCBCFCMC = 33,
-    TranslationSmartMC = 34,          // force-biased (smart MC) translation of a single molecule
-    TranslationSmartMCAll = 35,       // force-biased (smart MC) translation of all molecules simultaneously
-    RotationSmartMC = 36,             // torque-biased (smart MC) rotation of a single molecule
-    RotationSmartMCAll = 37,          // torque-biased (smart MC) rotation of all molecules simultaneously
-    TranslationRotationSmartMC = 38,  // combined force- and torque-biased (smart MC) move of a single molecule
-    Count = 39
+    TranslationSmartMC = 4,           // force-biased (smart MC) translation of a single molecule
+    TranslationSmartMCAll = 5,        // force-biased (smart MC) translation of all molecules simultaneously
+    RotationSmartMC = 6,              // torque-biased (smart MC) rotation of a single molecule
+    RotationSmartMCAll = 7,           // torque-biased (smart MC) rotation of all molecules simultaneously
+    TranslationRotationSmartMC = 8,   // combined force- and torque-biased (smart MC) move of a single molecule
+    VolumeChange = 9,
+    AnisotropicVolumeChange = 10,
+    ReinsertionCBMC = 11,
+    PartialReinsertionCBMC = 12,
+    IdentityChangeCBMC = 13,
+    Swap = 14,
+    SwapCBMC = 15,
+    SwapCFCMC = 16,
+    SwapCBCFCMC = 17,
+    GibbsVolume = 18,
+    GibbsSwapCBMC = 19,
+    GibbsConventionalCFCMC = 20,      // parallel CFCMC Gibbs
+    GibbsConventionalCBCFCMC = 21,    // parallel CFCMC/CBMC Gibbs
+    GibbsSwapCFCMC = 22,              // serial CFCMC Gibbs
+    GibbsSwapCBCFCMC = 23,            // serial CFCMC/CBMC Gibbs
+    GibbsIdentityChangeCBMC = 24,
+    Widom = 25,
+    WidomCFCMC = 26,
+    WidomCBCFCMC = 27,
+    ParallelTempering = 28,
+    HybridMC = 29,
+    ReactionCBMC = 30,
+    ReactionConventionalCFCMC = 31,    // parallel CFCMC reaction MC
+    ReactionConventionalCBCFCMC = 32,  // parallel CFCMC/CBMC reaction MC
+    ReactionCFCMC = 33,                // serial CFCMC reaction MC
+    ReactionCBCFCMC = 34,              // serial CFCMC/CBMC reaction MC
+    PairSwap = 35,
+    PairSwapCBMC = 36,
+    PairSwapCFCMC = 37,
+    PairSwapCBCFCMC = 38,
+    GroupSwap = 39,                   // insertion/deletion of a neutral group of molecules (conventional)
+    GroupSwapCBMC = 40,               // insertion/deletion of a neutral group of molecules (CBMC)
+    GroupSwapCFCMC = 41,              // CFCMC insertion/deletion of a neutral group of molecules
+    GroupSwapCBCFCMC = 42,            // CB/CFCMC insertion/deletion of a neutral group of molecules
+    Count = 43
   };
 
   /**
@@ -123,6 +127,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::IdentityChangeCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,
                                                                 Move::Types::PairSwap,
+                                                                Move::Types::GroupSwap,          Move::Types::GroupSwapCBMC,
+                                                                Move::Types::GroupSwapCFCMC,     Move::Types::GroupSwapCBCFCMC,
                                                                 Move::Types::PairSwapCFCMC,      Move::Types::PairSwapCBCFCMC,
                                                                 Move::Types::SwapCFCMC,          Move::Types::SwapCBCFCMC,
                                                                 Move::Types::Widom,

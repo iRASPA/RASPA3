@@ -81,6 +81,8 @@ cd examples/basic/1_mc_methane_in_box
 # Experimental
 - flexible molecules (CBMC)
 - flexible molecules (MD)
+- mixed flexible/rigid molecule
+- flexible (fused-)rings
 - partial insertion move
 - identity change
 - Gibbs identity change

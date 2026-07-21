@@ -1467,49 +1467,22 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.unitCellAtoms;
   archive >> c.atoms;
 
-  if (versionNumber == 1)
-  {
-    [[maybe_unused]] std::vector<std::size_t> chiralCenters;
-    std::vector<BondPotential> bonds;
-    archive >> chiralCenters;
-    archive >> bonds;
-    c.intraMolecularPotentials.bonds = std::move(bonds);
-  }
-  else
-  {
-    archive >> c.connectivityTable;
-    archive >> c.intraMolecularPotentials;
-    if (versionNumber >= 3)
-    {
-      archive >> c.intraMolecularImageShifts.bonds;
-      archive >> c.intraMolecularImageShifts.bends;
-      archive >> c.intraMolecularImageShifts.torsions;
-      archive >> c.intraMolecularImageShifts.improperTorsions;
-      archive >> c.intraMolecularImageShifts.vanDerWaals;
-      archive >> c.intraMolecularImageShifts.coulombs;
-    }
-  }
+  archive >> c.connectivityTable;
+  archive >> c.intraMolecularPotentials;
+  archive >> c.intraMolecularImageShifts.bonds;
+  archive >> c.intraMolecularImageShifts.bends;
+  archive >> c.intraMolecularImageShifts.torsions;
+  archive >> c.intraMolecularImageShifts.improperTorsions;
+  archive >> c.intraMolecularImageShifts.vanDerWaals;
+  archive >> c.intraMolecularImageShifts.coulombs;
 
-  if (versionNumber >= 4)
-  {
-    archive >> c.groups;
-    archive >> c.atomGroupIds;
-    archive >> c.fixedAtomCount;
-    archive >> c.rigidGroupAtomCount;
-    archive >> c.flexibleAtomCount;
-    archive >> c.rigidGroupCount;
-    archive >> c.mixed;
-  }
-  else
-  {
-    c.groups.clear();
-    c.atomGroupIds.clear();
-    c.fixedAtomCount = 0;
-    c.rigidGroupAtomCount = 0;
-    c.flexibleAtomCount = 0;
-    c.rigidGroupCount = 0;
-    c.mixed = false;
-  }
+  archive >> c.groups;
+  archive >> c.atomGroupIds;
+  archive >> c.fixedAtomCount;
+  archive >> c.rigidGroupAtomCount;
+  archive >> c.flexibleAtomCount;
+  archive >> c.rigidGroupCount;
+  archive >> c.mixed;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

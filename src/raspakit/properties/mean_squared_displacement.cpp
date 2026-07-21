@@ -331,12 +331,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMean
                     location.line(), location.file_name()));
   }
 
-  if (versionNumber < 2)
-  {
-    // version 1 serialized the (unused, uninitialized) 'numberOfBlocks' member
-    std::size_t unusedNumberOfBlocks;
-    archive >> unusedNumberOfBlocks;
-  }
   archive >> msd.numberOfMoleculesPerComponent;
   archive >> msd.numberOfComponents;
   archive >> msd.numberOfParticles;

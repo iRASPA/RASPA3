@@ -767,6 +767,43 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("GroupSwapConventionalProbability") &&
+          item["GroupSwapConventionalProbability"].is_number_float())
+      {
+        double groupSwapProbability = item["GroupSwapConventionalProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GroupSwap, groupSwapProbability);
+        }
+      }
+
+      if (item.contains("GroupSwapProbability") && item["GroupSwapProbability"].is_number_float())
+      {
+        double groupSwapCBMCProbability = item["GroupSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GroupSwapCBMC, groupSwapCBMCProbability);
+        }
+      }
+
+      if (item.contains("CFCMC_GroupSwapProbability") && item["CFCMC_GroupSwapProbability"].is_number_float())
+      {
+        double groupSwapCFCMCProbability = item["CFCMC_GroupSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GroupSwapCFCMC, groupSwapCFCMCProbability);
+        }
+      }
+
+      if (item.contains("CFCMC_CBMC_GroupSwapProbability") && item["CFCMC_CBMC_GroupSwapProbability"].is_number_float())
+      {
+        double groupSwapCBCFCMCProbability = item["CFCMC_CBMC_GroupSwapProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GroupSwapCBCFCMC, groupSwapCBCFCMCProbability);
+        }
+      }
+
       if (item.contains("CFCMC_PairSwapProbability") && item["CFCMC_PairSwapProbability"].is_number_float())
       {
         double pairSwapCFCMCProbability = item["CFCMC_PairSwapProbability"].get<double>();
@@ -969,6 +1006,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("GroupComponents") && item["GroupComponents"].is_array())
+      {
+        std::vector<std::size_t> group_component_ids =
+            item["GroupComponents"].get<std::vector<std::size_t>>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].groupComponentIds = group_component_ids;
+        }
+      }
+
+      if (item.contains("MaximumGroupDistance") && item["MaximumGroupDistance"].is_number_float())
+      {
+        double maximum_group_distance = item["MaximumGroupDistance"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].maximumGroupDistance = maximum_group_distance;
+        }
+      }
+
       if (item.contains("IdentityChanges") && item["IdentityChanges"].is_array())
       {
         std::vector<std::size_t> identity_changes = item["IdentityChanges"].get<std::vector<std::size_t>>();
@@ -1009,7 +1065,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       // selects which lambda the dU/dlambda group-tagging (thermodynamic integration) applies to:
-      // "CFCMC" (default lambdaGC, also used by CB/CFCMC swap), "CFCMC_PairSwap", or "CFCMC_CBMC_PairSwap"
+      // "CFCMC" (default lambdaGC, also used by CB/CFCMC swap), "CFCMC_PairSwap", "CFCMC_CBMC_PairSwap",
+      // "CFCMC_GroupSwap", or "CFCMC_CBMC_GroupSwap"
       if (item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_string())
       {
         std::string thermodynamicIntegrationString = item["ThermodynamicIntegration"].get<std::string>();
@@ -1029,11 +1086,20 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           {
             jsonComponents[i][componentId].lambdaPairSwapCB.computeDUdlambda = true;
           }
+          else if (caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_GroupSwap"))
+          {
+            jsonComponents[i][componentId].lambdaGroupSwap.computeDUdlambda = true;
+          }
+          else if (caseInSensStringCompare(thermodynamicIntegrationString, "CFCMC_CBMC_GroupSwap"))
+          {
+            jsonComponents[i][componentId].lambdaGroupSwapCB.computeDUdlambda = true;
+          }
           else
           {
             throw std::runtime_error(
                 std::format("Error [Component {}]: unknown 'ThermodynamicIntegration' value '{}' "
-                            "(allowed: 'CFCMC', 'CFCMC_PairSwap', 'CFCMC_CBMC_PairSwap')\n",
+                            "(allowed: 'CFCMC', 'CFCMC_PairSwap', 'CFCMC_CBMC_PairSwap', 'CFCMC_GroupSwap', "
+                            "'CFCMC_CBMC_GroupSwap')\n",
                             componentId, thermodynamicIntegrationString));
           }
         }
@@ -2470,6 +2536,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         ++numberOfDUDlambda;
       }
+      if (systems[i].components[j].lambdaGroupSwap.computeDUdlambda)
+      {
+        ++numberOfDUDlambda;
+      }
+      if (systems[i].components[j].lambdaGroupSwapCB.computeDUdlambda)
+      {
+        ++numberOfDUDlambda;
+      }
     }
     // serial Rx/CFC reactions consume one dU/dlambda group; parallel Rx/CFC reactions consume two
     // (reactants coupled at 1-lambda and products at lambda need separate accumulators)
@@ -2790,6 +2864,12 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "CFCMC_CBMC_PairSwapProbability",
     "PairComponent",
     "MaximumPairDistance",
+    "GroupSwapConventionalProbability",
+    "GroupSwapProbability",
+    "CFCMC_GroupSwapProbability",
+    "CFCMC_CBMC_GroupSwapProbability",
+    "GroupComponents",
+    "MaximumGroupDistance",
     "CFCMC_SwapProbability",
     "CFCMC_CBMC_SwapProbability",
     "GibbsSwapCBMCProbability",

@@ -9,6 +9,11 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Random translation",
   "Rotation",
   "Random rotation",
+  "Translation smart MC",
+  "Translation smart MC (all)",
+  "Rotation smart MC",
+  "Rotation smart MC (all)",
+  "Trans/rot smart MC",
   "Volume change",
   "Anisotropic volume change",
   "Reinsertion (CBMC)",
@@ -39,11 +44,10 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Pair swap (CBMC)",
   "Pair swap (CFCMC)",
   "Pair swap (CB/CFCMC)",
-  "Translation smart MC",
-  "Translation smart MC (all)",
-  "Rotation smart MC",
-  "Rotation smart MC (all)",
-  "Trans/rot smart MC"
+  "Group swap",
+  "Group swap (CBMC)",
+  "Group swap (CFCMC)",
+  "Group swap (CB/CFCMC)"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -106,6 +110,16 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // RandomRotation
   std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
                             Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // TranslationSmartMC
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // TranslationSmartMCAll
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // RotationSmartMC
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // RotationSmartMCAll
+  std::vector<Move::Timing>{Move::Timing::Integration},
+  // TranslationRotationSmartMC
+  std::vector<Move::Timing>{Move::Timing::Integration},
   // VolumeChange
   std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Tail, Move::Timing::Ewald},
   // AnisotropicVolumeChange
@@ -197,15 +211,19 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   std::vector<Move::Timing>{Move::Timing::InsertionNonEwald, Move::Timing::InsertionEwald, Move::Timing::InsertionTail,
                             Move::Timing::DeletionNonEwald, Move::Timing::DeletionEwald, Move::Timing::DeletionTail,
                             Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail},
-  // TranslationSmartMC
-  std::vector<Move::Timing>{Move::Timing::Integration},
-  // TranslationSmartMCAll
-  std::vector<Move::Timing>{Move::Timing::Integration},
-  // RotationSmartMC
-  std::vector<Move::Timing>{Move::Timing::Integration},
-  // RotationSmartMCAll
-  std::vector<Move::Timing>{Move::Timing::Integration},
-  // TranslationRotationSmartMC
-  std::vector<Move::Timing>{Move::Timing::Integration}
+  // GroupSwap
+  std::vector<Move::Timing>{Move::Timing::InsertionTotal, Move::Timing::DeletionTotal, Move::Timing::NonEwald,
+                            Move::Timing::Tail, Move::Timing::Ewald},
+  // GroupSwapCBMC
+  std::vector<Move::Timing>{Move::Timing::InsertionTotal, Move::Timing::DeletionTotal, Move::Timing::NonEwald,
+                            Move::Timing::Tail, Move::Timing::Ewald},
+  // GroupSwapCFCMC
+  std::vector<Move::Timing>{Move::Timing::InsertionNonEwald, Move::Timing::InsertionEwald, Move::Timing::InsertionTail,
+                            Move::Timing::DeletionNonEwald, Move::Timing::DeletionEwald, Move::Timing::DeletionTail,
+                            Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail},
+  // GroupSwapCBCFCMC
+  std::vector<Move::Timing>{Move::Timing::InsertionNonEwald, Move::Timing::InsertionEwald, Move::Timing::InsertionTail,
+                            Move::Timing::DeletionNonEwald, Move::Timing::DeletionEwald, Move::Timing::DeletionTail,
+                            Move::Timing::LambdaNonEwald, Move::Timing::LambdaEwald, Move::Timing::LambdaTail}
 };
 

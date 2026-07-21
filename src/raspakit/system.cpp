@@ -109,6 +109,8 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfPairSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
@@ -312,6 +314,25 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
 
 void System::determineSwappableComponents()
 {
+  // Satellite components of a group-swap move are swappable even when they carry no swap
+  // probability themselves: the group move inserts/deletes their molecules.
+  for (const Component& component : components)
+  {
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GroupSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0)
+    {
+      for (std::size_t satelliteComponentId : component.groupComponentIds)
+      {
+        if (satelliteComponentId < components.size())
+        {
+          components[satelliteComponentId].swappable = true;
+        }
+      }
+    }
+  }
+
   for (std::size_t componentId{0}; Component& component : components)
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
@@ -320,6 +341,10 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
     {
@@ -547,6 +572,22 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
       component.lambdaPairSwapCB.sampleHistogram(
           currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCFCMC))
+    {
+      const double groupLambda = component.lambdaGroupSwap.lambdaValue();
+      component.lambdaGroupSwap.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwap.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCBCFCMC))
+    {
+      const double groupLambda = component.lambdaGroupSwapCB.lambdaValue();
+      component.lambdaGroupSwapCB.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwapCB.dUdlambdaGroupId),
           containsTheFractionalMolecule, w);
     }
 
@@ -1245,6 +1286,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
@@ -1362,7 +1405,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.pressureTensorDiagonal;
   archive >> s.input_pressureTensorDiagonal;
   archive >> s.beta;
-  if (versionNumber >= 3)
   {
     std::uint8_t cellMinimizationType;
     std::uint8_t monoclinicAngleType;
@@ -1383,14 +1425,13 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.components;
 
   archive >> s.equationOfState;
-  if (versionNumber >= 4)
   {
     std::uint8_t molecularDynamicsEnsemble;
     archive >> molecularDynamicsEnsemble;
     s.molecularDynamicsEnsemble = static_cast<MolecularDynamicsEnsemble>(molecularDynamicsEnsemble);
   }
   archive >> s.thermostat;
-  if (versionNumber >= 4) archive >> s.thermobarostat;
+  archive >> s.thermobarostat;
 
   archive >> s.loadings;
 
@@ -1404,6 +1445,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
@@ -1475,11 +1518,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.averageRotationalTemperature;
   archive >> s.averagePressure;
   archive >> s.averageSimulationBox;
-  if (versionNumber >= 5)
-  {
-    archive >> s.propertyElasticConstantsFluctuation;
-    archive >> s.elasticConstantsSampleEvery;
-  }
+  archive >> s.propertyElasticConstantsFluctuation;
+  archive >> s.elasticConstantsSampleEvery;
 
   archive >> s.samplePDBMovie;
 

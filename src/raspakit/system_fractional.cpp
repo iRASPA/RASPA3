@@ -55,6 +55,8 @@ void System::determineFractionalComponents()
     numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
+    numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
@@ -117,6 +119,44 @@ void System::determineFractionalComponents()
     }
   }
 
+  // group CFCMC moves need one fractional molecule for the central component plus one per satellite
+  // occurrence (a component occurring twice among the satellites, e.g. Cl of CaCl2, gets two slots)
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (components[i].groupComponentIds.empty())
+    {
+      continue;
+    }
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0)
+    {
+      numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[i] += 1;
+      components[i].hasFractionalMolecule = true;
+      for (std::size_t satelliteComponentId : components[i].groupComponentIds)
+      {
+        if (satelliteComponentId < components.size())
+        {
+          numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[satelliteComponentId] += 1;
+          components[satelliteComponentId].hasFractionalMolecule = true;
+        }
+      }
+    }
+
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0)
+    {
+      numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[i] += 1;
+      components[i].hasFractionalMolecule = true;
+      for (std::size_t satelliteComponentId : components[i].groupComponentIds)
+      {
+        if (satelliteComponentId < components.size())
+        {
+          numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[satelliteComponentId] += 1;
+          components[satelliteComponentId].hasFractionalMolecule = true;
+        }
+      }
+    }
+  }
+
   numberOfReactionFractionalMoleculesPerComponent_CFCMC.assign(
       reactions.list.size(), std::vector<std::size_t>(components.size(), 0));
 }
@@ -144,10 +184,23 @@ std::size_t System::indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(std::
          numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[selectedComponent];
 }
 
-std::size_t System::indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+std::size_t System::indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
 {
   return indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
          numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(
+    std::size_t selectedComponent) const noexcept
+{
+  return indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+}
+
+std::size_t System::indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent) const noexcept
+{
+  return indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
+         numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[selectedComponent];
 }
 
 std::size_t System::indexOfParallelReactionFractionalMoleculesPerComponent_CFCMC(
@@ -186,6 +239,10 @@ std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size
       return indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::PairSwapCBCFCMC:
       return indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::GroupSwapCFCMC:
+      return indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+    case Move::Types::GroupSwapCBCFCMC:
+      return indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
       return indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
@@ -645,6 +702,39 @@ bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types 
   return component.mc_moves_probabilities.getProbability(move) > 0.0;
 }
 
+// A component "drives" a group-swap lambda histogram if it has a group definition (GroupComponents)
+// and the corresponding group CFCMC move is enabled. All fractional molecules of the group (central
+// and satellites) are coupled to the driving component's histogram.
+bool System::componentDrivesGroupSwapLambda(std::size_t componentId, Move::Types move) const noexcept
+{
+  const Component& component = components[componentId];
+  return !component.groupComponentIds.empty() && component.mc_moves_probabilities.getProbability(move) > 0.0;
+}
+
+// The driving component of the group fractional slots held by 'componentId': either the component
+// itself (when it drives a group CFCMC move) or the first component listing it among its satellites.
+// A component can participate in at most one CFCMC group per move flavor.
+std::optional<std::size_t> System::groupSwapLambdaDriver(std::size_t componentId, Move::Types move) const noexcept
+{
+  if (componentDrivesGroupSwapLambda(componentId, move))
+  {
+    return componentId;
+  }
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    if (!componentDrivesGroupSwapLambda(i, move))
+    {
+      continue;
+    }
+    if (std::find(components[i].groupComponentIds.begin(), components[i].groupComponentIds.end(), componentId) !=
+        components[i].groupComponentIds.end())
+    {
+      return i;
+    }
+  }
+  return std::nullopt;
+}
+
 // Assigns sequential 1-based thermodynamic-integration group ids to all lambda histograms with
 // computeDUdlambda enabled. Atoms of the corresponding fractional molecules carry this id in
 // Atom::groupId, and RunningEnergy accumulates dU/dlambda separately per group, so up to
@@ -708,6 +798,24 @@ void System::assignDUdlambdaGroups()
     {
       components[i].lambdaPairSwapCB.dUdlambdaGroupId = 0;
     }
+
+    // the group-swap histograms live on the driving component of the group
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      assign(components[i].lambdaGroupSwap);
+    }
+    else
+    {
+      components[i].lambdaGroupSwap.dUdlambdaGroupId = 0;
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      assign(components[i].lambdaGroupSwapCB);
+    }
+    else
+    {
+      components[i].lambdaGroupSwapCB.dUdlambdaGroupId = 0;
+    }
   }
 
   // Reaction lambda coordinates. Serial Rx/CFC has one fractional side at a time, coupled directly
@@ -761,6 +869,24 @@ std::uint8_t System::fractionalSlotDUdlambdaGroupId(std::size_t componentId, std
     return components[driver].lambdaPairSwapCB.dUdlambdaGroupId;
   }
 
+  const std::size_t groupSwapBegin = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(componentId);
+  const std::size_t groupSwapEnd = groupSwapBegin + numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[componentId];
+  const std::size_t groupSwapCBEnd =
+      groupSwapEnd + numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[componentId];
+
+  if (slotIndex >= groupSwapBegin && slotIndex < groupSwapEnd)
+  {
+    const std::optional<std::size_t> groupDriver = groupSwapLambdaDriver(componentId, Move::Types::GroupSwapCFCMC);
+    return groupDriver.has_value() ? components[groupDriver.value()].lambdaGroupSwap.dUdlambdaGroupId
+                                   : std::uint8_t{0};
+  }
+  if (slotIndex >= groupSwapEnd && slotIndex < groupSwapCBEnd)
+  {
+    const std::optional<std::size_t> groupDriver = groupSwapLambdaDriver(componentId, Move::Types::GroupSwapCBCFCMC);
+    return groupDriver.has_value() ? components[groupDriver.value()].lambdaGroupSwapCB.dUdlambdaGroupId
+                                   : std::uint8_t{0};
+  }
+
   const std::size_t gibbsConventionalBegin =
       indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId);
   const std::size_t gibbsConventionalEnd =
@@ -773,6 +899,8 @@ std::uint8_t System::fractionalSlotDUdlambdaGroupId(std::size_t componentId, std
   return components[componentId].lambdaGC.dUdlambdaGroupId;
 }
 
+// The pairSwapLambda* bookkeeping functions cover both the ion-pair and the group CFCMC lambda
+// histograms (they share the same lifecycle: Wang-Landau, occupancy, normalization, biasing files).
 void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase) noexcept
 {
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -784,6 +912,14 @@ void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogra
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
     {
       components[i].lambdaPairSwapCB.WangLandauIteration(phase, containsTheFractionalMolecule);
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      components[i].lambdaGroupSwap.WangLandauIteration(phase, containsTheFractionalMolecule);
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      components[i].lambdaGroupSwapCB.WangLandauIteration(phase, containsTheFractionalMolecule);
     }
   }
 }
@@ -800,6 +936,14 @@ void System::pairSwapLambdaSampleOccupancy() noexcept
     {
       components[i].lambdaPairSwapCB.sampleOccupancy(containsTheFractionalMolecule);
     }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      components[i].lambdaGroupSwap.sampleOccupancy(containsTheFractionalMolecule);
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      components[i].lambdaGroupSwapCB.sampleOccupancy(containsTheFractionalMolecule);
+    }
   }
 }
 
@@ -814,6 +958,14 @@ void System::pairSwapLambdaClearBookkeeping() noexcept
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
     {
       components[i].lambdaPairSwapCB.clear();
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      components[i].lambdaGroupSwap.clear();
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      components[i].lambdaGroupSwapCB.clear();
     }
   }
 }
@@ -833,6 +985,16 @@ double System::pairSwapLambdaMinBias() const noexcept
       minBias = std::min(minBias, *std::min_element(components[i].lambdaPairSwapCB.biasFactor.cbegin(),
                                                     components[i].lambdaPairSwapCB.biasFactor.cend()));
     }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      minBias = std::min(minBias, *std::min_element(components[i].lambdaGroupSwap.biasFactor.cbegin(),
+                                                    components[i].lambdaGroupSwap.biasFactor.cend()));
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      minBias = std::min(minBias, *std::min_element(components[i].lambdaGroupSwapCB.biasFactor.cbegin(),
+                                                    components[i].lambdaGroupSwapCB.biasFactor.cend()));
+    }
   }
   return minBias;
 }
@@ -848,6 +1010,14 @@ void System::pairSwapLambdaNormalize(double minBias) noexcept
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
     {
       components[i].lambdaPairSwapCB.normalize(minBias);
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      components[i].lambdaGroupSwap.normalize(minBias);
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      components[i].lambdaGroupSwapCB.normalize(minBias);
     }
   }
 }
@@ -865,6 +1035,16 @@ void System::pairSwapLambdaWriteBiasingFiles(std::size_t systemId)
     {
       components[i].lambdaPairSwapCB.writeBiasingFile(
           std::format("bias_factors/lambda_pair_cb_bias_{}.s{}.json", components[i].name, systemId));
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
+    {
+      components[i].lambdaGroupSwap.writeBiasingFile(
+          std::format("bias_factors/lambda_group_bias_{}.s{}.json", components[i].name, systemId));
+    }
+    if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
+    {
+      components[i].lambdaGroupSwapCB.writeBiasingFile(
+          std::format("bias_factors/lambda_group_cb_bias_{}.s{}.json", components[i].name, systemId));
     }
   }
 }

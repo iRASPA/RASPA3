@@ -9,7 +9,7 @@ import move_statistics;
 
 export struct CBMCMoveStatistics
 {
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   MoveStatistics<double> bondLengthChange{
       .maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};

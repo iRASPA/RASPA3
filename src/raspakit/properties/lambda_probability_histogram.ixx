@@ -52,7 +52,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   bool operator==(PropertyLambdaProbabilityHistogram const &) const = default;
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
   std::size_t numberOfBlocks;
 
   std::size_t numberOfSamplePoints;

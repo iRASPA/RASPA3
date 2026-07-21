@@ -64,7 +64,7 @@ export struct PropertyMeanSquaredDisplacement
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   std::vector<std::size_t> numberOfMoleculesPerComponent;
   std::size_t numberOfComponents{0uz};

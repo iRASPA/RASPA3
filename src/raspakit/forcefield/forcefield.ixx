@@ -83,7 +83,7 @@ export struct ForceField
     Triquintic = 27
   };
 
-  std::uint64_t versionNumber{3};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{1};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.

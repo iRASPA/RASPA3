@@ -7,6 +7,7 @@ import component;
 import double3;
 import forcefield;
 import mc_moves;
+import mc_moves_group_swap;
 import mc_moves_move_types;
 import mc_moves_pair_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
@@ -75,6 +76,22 @@ System makePairInsertionSystem(const std::vector<double3>& positionsB, double pr
 
   return System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, pressure, 1.0, {}, {componentA, componentB},
                 {{}, positionsB}, {0, 0}, 5);
+}
+
+System makeGroupSystem(const std::vector<double3>& positionsA, const std::vector<double3>& positionsB,
+                       double pressure)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::GroupSwap, 1.0);
+
+  Component componentA = makeIonComponent(forceField, 0, "A", 0, probabilities);
+  Component componentB = makeIonComponent(forceField, 1, "B", 1, {});
+  componentA.groupComponentIds = {1, 1};
+  componentA.maximumGroupDistance = 2.0;
+
+  return System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, pressure, 1.0, {},
+                {componentA, componentB}, {positionsA, positionsB}, {0, 0}, 5);
 }
 
 double totalTrials(const System& system, Move::Types move)
@@ -223,6 +240,71 @@ TEST(MC_COMPONENT_MOVES, pair_insertion_deletion_proposals_are_reciprocal)
   const auto [deletionEnergy, deletionAcceptance] = MC_Moves::pairDeletionMove(deletionRandom, system, 0, 0);
   EXPECT_FALSE(deletionEnergy.has_value());
   EXPECT_NEAR(insertionAcceptance.z * deletionAcceptance.x, 1.0, 1.0e-11);
+}
+
+TEST(MC_COMPONENT_MOVES, group_deletion_uses_sequential_candidate_counts)
+{
+  // Central molecule at the box center with two satellite slots of the same component. With two
+  // in-range satellites the sequential candidate counts are (2, 1); with three they are (3, 2).
+  // The candidate counts enter the deletion acceptance in the numerator, so the acceptance must
+  // differ by a factor (3*2)/(2*1) = 3.
+  const auto checkCandidateCounts = [](auto deletionMove)
+  {
+    System twoInRange = makeGroupSystem(
+        {double3(5.0, 5.0, 5.0)},
+        {double3(6.5, 5.0, 5.0), double3(3.5, 5.0, 5.0), double3(5.0, 5.0, 9.0)}, 1.0e12);
+    System threeInRange = makeGroupSystem(
+        {double3(5.0, 5.0, 5.0)},
+        {double3(6.5, 5.0, 5.0), double3(3.5, 5.0, 5.0), double3(5.0, 6.5, 5.0)}, 1.0e12);
+    RandomNumber randomTwo(91);
+    RandomNumber randomThree(91);
+
+    const auto [energyTwo, acceptanceTwo] = deletionMove(randomTwo, twoInRange);
+    const auto [energyThree, acceptanceThree] = deletionMove(randomThree, threeInRange);
+
+    EXPECT_FALSE(energyTwo.has_value());
+    EXPECT_FALSE(energyThree.has_value());
+    ASSERT_GT(acceptanceTwo.x, 0.0);
+    EXPECT_NEAR(acceptanceThree.x / acceptanceTwo.x, 3.0, 1.0e-9);
+  };
+
+  checkCandidateCounts([](RandomNumber& random, System& system)
+                       { return MC_Moves::groupDeletionMove(random, system, 0, 0); });
+  // All in-range satellites sit at the same distance, so the CBMC distance-bias factors are equal
+  // in both systems and the ratio isolates the same candidate-count factor.
+  checkCandidateCounts([](RandomNumber& random, System& system)
+                       { return MC_Moves::groupDeletionMoveCBMC(random, system, 0, 0); });
+}
+
+TEST(MC_COMPONENT_MOVES, group_insertion_deletion_proposals_are_reciprocal)
+{
+  // Insert a full group into an empty system and immediately propose the reverse deletion of the
+  // same molecules; the product of the two acceptance probabilities must be exactly one because
+  // both moves are evaluated in the same configuration (the energies are zero for the
+  // non-interacting force field).
+  const auto checkReciprocity = [](auto insertionMove, auto deletionMove)
+  {
+    System system = makeGroupSystem({}, {}, 1.0e12);
+    RandomNumber insertionRandom(918);
+    const auto [insertionEnergy, insertionAcceptance] = insertionMove(insertionRandom, system);
+    ASSERT_TRUE(insertionEnergy.has_value());
+    ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 1uz);
+    ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 2uz);
+
+    RandomNumber deletionRandom(41);
+    const auto [deletionEnergy, deletionAcceptance] = deletionMove(deletionRandom, system, 0, 0);
+    EXPECT_FALSE(deletionEnergy.has_value());
+    EXPECT_NEAR(insertionAcceptance.z * deletionAcceptance.x, 1.0, 1.0e-9);
+  };
+
+  checkReciprocity([](RandomNumber& random, System& system)
+                   { return MC_Moves::groupInsertionMove(random, system, 0); },
+                   [](RandomNumber& random, System& system, std::size_t component, std::size_t molecule)
+                   { return MC_Moves::groupDeletionMove(random, system, component, molecule); });
+  checkReciprocity([](RandomNumber& random, System& system)
+                   { return MC_Moves::groupInsertionMoveCBMC(random, system, 0); },
+                   [](RandomNumber& random, System& system, std::size_t component, std::size_t molecule)
+                   { return MC_Moves::groupDeletionMoveCBMC(random, system, component, molecule); });
 }
 
 TEST(MC_COMPONENT_MOVES, random_rotation_uses_uniform_rotation_matrix)

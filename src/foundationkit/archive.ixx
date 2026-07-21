@@ -406,11 +406,15 @@ class Archive
     *this >> index;
     if(index == 0)
     {
-      *this >> get<0>(v);
+      T1 value{};
+      *this >> value;
+      v = std::move(value);
     }
     if(index == 1)
     {
-      *this >> get<1>(v);
+      T2 value{};
+      *this >> value;
+      v = std::move(value);
     }
     return *this;
   }

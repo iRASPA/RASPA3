@@ -25,7 +25,7 @@ export struct PropertyEnergyHistogram
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfBins;
   std::pair<double, double> valueRange;

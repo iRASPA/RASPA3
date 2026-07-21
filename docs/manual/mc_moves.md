@@ -35,6 +35,10 @@ the [Commands](\ref commands) page for the full input documentation.
   * [Pair swap (CBMC)](#pair-swap-cbmc)
   * [Pair swap (CFCMC)](#pair-swap-cfcmc)
   * [Pair swap (CB/CFCMC)](#pair-swap-cbcfcmc)
+  * [Group swap (conventional)](#group-swap-conventional)
+  * [Group swap (CBMC)](#group-swap-cbmc)
+  * [Group swap (CFCMC)](#group-swap-cfcmc)
+  * [Group swap (CB/CFCMC)](#group-swap-cbcfcmc)
 * [System moves](#system-moves)
   * [Volume change](#volume-change)
   * [Anisotropic volume change](#anisotropic-volume-change)
@@ -1137,6 +1141,272 @@ contribution of both fractionals; stored fields change only after acceptance.
 
 Useful for: flexible ionic species in dense phases, combining charge-neutral
 pair transfer, gradual coupling, and conformational biasing.
+
+References: A. Torres-Knoop, S.P. Balaji, T.J.H. Vlugt, and D. Dubbeldam,
+J. Chem. Theory Comput. **10**, 942-952 (2014).
+<https://doi.org/10.1021/ct4009766>; W. Shi and E.J. Maginn, J. Chem. Theory
+Comput. **3**, 1451-1463 (2007). <https://doi.org/10.1021/ct7000039>
+
+### Group swap (conventional) <a name="group-swap-conventional"></a>
+
+Keyword: `"GroupSwapConventionalProbability"` (component move), together with
+the group definition `"GroupComponents"` (a list of component ids, repetitions
+allowed) and `"MaximumGroupDistance"` \f$R_\text{max}\f$
+
+The generalization of the pair swap to a *group* of molecules: one molecule of
+the selected (central) component \f$0\f$ plus the satellite molecules listed in
+`"GroupComponents"` are inserted or deleted in a single move. The central
+molecule is placed at a random position in the box; every satellite is grown
+one after the other with its starting bead uniformly inside the sphere of
+volume \f$V_s = \tfrac{4}{3}\pi R_\text{max}^3\f$ around the central starting
+bead (the distance is drawn as \f$r = R_\text{max}\sqrt[3]{u}\f$). Intended for
+inserting a group of charged ions that is overall neutral, e.g. Ca\f$^{2+}\f$
+with `"GroupComponents"` set to two Cl\f$^-\f$ entries for CaCl\f$_2\f$.
+
+Steps:
+
+- select a random box and a random component (the group is defined on the
+  central component in the input),
+- reject unless `"GroupComponents"` is non-empty and \f$R_\text{max}>0\f$,
+- with 50% probability attempt a group insertion, otherwise a group deletion,
+- insertion: grow the central molecule at a random position; for every
+  satellite slot, in the listed order, draw \f$r = R_\text{max}\sqrt[3]{u}\f$ and a
+  random direction and grow the satellite with its starting bead at that
+  position, in a background that already contains the previously grown group
+  members,
+- deletion: select an integer central molecule uniformly; for every satellite
+  slot, in the listed order, choose a partner uniformly among the \f$k_t\f$
+  integer molecules of the slot's component whose starting bead lies within
+  \f$R_\text{max}\f$ of the central starting bead (excluding the central
+  molecule itself and the satellites selected in earlier slots) — reject if
+  any slot has no candidate; retrace all group members against the same nested
+  backgrounds as the insertion,
+- compute the energy differences and accept or reject.
+
+Order of growth and retracing: the group members are grown one after the
+other in a *fixed* order — the central molecule first (against the existing
+system), then each satellite in the listed order, each in the presence of the
+previously grown group members. The retrace at deletion uses exactly the same
+nested environments, so every intra-group interaction enters exactly once and
+each molecule sees the same environment in the forward and reverse moves, as
+required by detailed balance.
+
+Acceptance rules (product over the satellite slots \f$t = 0, 1, \ldots\f$;
+\f$c(t)\f$ is the component of slot \f$t\f$):
+
+\f[
+\text{acc}_\text{ins} = \min\left(1,
+   B_{N_0+1,N_0}\,\frac{\beta f_0 V}{N_0(\mathbf{n})}\,
+   \frac{W_0(\mathbf{n})}{W_0^\text{IG}}\,
+   \prod_t \frac{\beta f_{c(t)} V_s}{k_t(\mathbf{n})}\,
+   \frac{W_{c(t)}(\mathbf{n})}{W_{c(t)}^\text{IG}}\;
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
+\f]
+
+\f[
+\text{acc}_\text{del} = \min\left(1,
+   B_{N_0-1,N_0}\,\frac{N_0}{\beta f_0 V}\,
+   \frac{W_0^\text{IG}}{W_0(\mathbf{o})}\,
+   \prod_t \frac{k_t(\mathbf{o})}{\beta f_{c(t)} V_s}\,
+   \frac{W_{c(t)}^\text{IG}}{W_{c(t)}(\mathbf{o})}\;
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
+\f]
+
+Here \f$N_0(\mathbf{n})\f$ is the number of integer molecules of the central
+component in the inserted state (including any satellites of the same
+component), and \f$k_t\f$ is the number of eligible deletion candidates of
+slot \f$t\f$ — the in-range integer molecules of the slot's component,
+excluding the central molecule and the satellites already selected in earlier
+slots. All distances use starting beads and the minimum-image convention. The
+generation multiplicity of identical satellites cancels exactly against the
+reverse-selection multiplicity, so no factorials appear. One box-volume
+factor \f$V\f$ enters for the central molecule and one sphere-volume factor
+\f$V_s\f$ per satellite, because the satellites are confined to the group
+sphere; this makes the acceptance ratio dimensionless for any group size.
+\f$\Delta U_\mathrm{corr}\f$ collects the Ewald, tail-correction, and
+polarization energies outside the growth/retrace weights, all evaluated
+sequentially against the same accumulated backgrounds.
+
+Useful for: open-ensemble simulations of salts that dissociate into more than
+two ions (CaCl\f$_2\f$, Na\f$_2\f$SO\f$_4\f$, ...), or any constraint that
+requires a fixed stoichiometric group of molecules to be inserted or deleted
+together to preserve overall charge neutrality.
+
+Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
+1452-1459 (1994). <https://doi.org/10.1063/1.467770>
+
+### Group swap (CBMC) <a name="group-swap-cbmc"></a>
+
+Keyword: `"GroupSwapProbability"` (component move)
+
+The configurational-bias variant of the group swap: all group members are
+grown with CBMC (multiple trial positions and orientations) and the satellite
+distances are drawn uniformly in \f$r \in [0, R_\text{max}]\f$, which introduces an
+explicit distance-bias factor \f$b(r_t) = 3r_t^2/R_\text{max}^2\f$ per satellite
+in the acceptance rule (the reverse of the \f$r^2\f$ volume element of the
+spherical shell).
+
+The steps, growth/retrace order, and bookkeeping are identical to the
+conventional group swap; only the radial proposal and the CBMC growth differ.
+
+Acceptance rules:
+
+\f[
+\text{acc}_\text{ins} = \min\left(1,
+   B_{N_0+1,N_0}\,\frac{\beta f_0 V}{N_0(\mathbf{n})}\,
+   \frac{W_0(\mathbf{n})}{W_0^\text{IG}}\,
+   \prod_t \frac{\beta f_{c(t)} V_s}{k_t(\mathbf{n})}\,
+   \frac{3 r_t^2}{R_\text{max}^2}\,
+   \frac{W_{c(t)}(\mathbf{n})}{W_{c(t)}^\text{IG}}\;
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
+\f]
+
+\f[
+\text{acc}_\text{del} = \min\left(1,
+   B_{N_0-1,N_0}\,\frac{N_0}{\beta f_0 V}\,
+   \frac{W_0^\text{IG}}{W_0(\mathbf{o})}\,
+   \prod_t \frac{k_t(\mathbf{o})}{\beta f_{c(t)} V_s}\,
+   \frac{R_\text{max}^2}{3 r_t^2}\,
+   \frac{W_{c(t)}^\text{IG}}{W_{c(t)}(\mathbf{o})}\;
+   e^{-\beta \Delta U_\mathrm{corr}}\right)
+\f]
+
+The definitions of \f$N_0(\mathbf{n})\f$, \f$k_t\f$, minimum-image distances,
+and the sequential candidate selection are identical to the conventional
+group move.
+
+Useful for: group insertions of *flexible* charged species (molecular ions
+with several beads) where the conventional group placement has too low an
+acceptance.
+
+Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
+1452-1459 (1994). <https://doi.org/10.1063/1.467770>
+
+### Group swap (CFCMC) <a name="group-swap-cfcmc"></a>
+
+Keyword: `"CFCMC_GroupSwapProbability"` (component move), together with the
+group definition `"GroupComponents"`
+
+The CFCMC variant of the group swap: the whole group — one fractional
+molecule of the central component plus one fractional molecule per entry of
+`"GroupComponents"` (\f$K\f$ molecules in total; a component may occur more
+than once, e.g. two Cl\f$^-\f$ for CaCl\f$_2\f$) — is coupled through a
+*single, common* coupling parameter \f$\lambda\f$, so all members appear and
+disappear together and the system stays charge neutral at every value of
+\f$\lambda\f$. Like the pair CFCMC moves and unlike the two direct group
+moves above, this move does **not** use \f$R_\text{max}\f$, a radial
+proposal, or an in-range-neighbor factor.
+
+Every group member holds its own fractional-molecule slot, allocated
+separately from the slots of the GC-CFCMC swap, the pair CFCMC swaps, and the
+CB/CFCMC group swap, so the move can be freely combined with those moves on
+the same components. All slots of a group are driven by the group-swap lambda
+histogram of the central component (Wang-Landau biased during equilibration,
+optionally sampled with `"ThermodynamicIntegration": "CFCMC_GroupSwap"`).
+
+Steps:
+
+- select a random box and a random component (the group is defined on the
+  central component in the input),
+- reject unless `"GroupComponents"` is non-empty,
+- draw a random change \f$\Delta\lambda\f$ of the common coupling parameter; three
+  cases arise:
+- if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**:
+  rescale all \f$K\f$ fractional molecules simultaneously,
+- if \f$\lambda + \Delta\lambda > 1\f$ — **group insertion**: all \f$K\f$ fractional
+  molecules become integer molecules and a new fractional group is inserted at
+  independent random positions with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
+- if \f$\lambda + \Delta\lambda < 0\f$ — **group deletion**: the fractional group is
+  removed and randomly selected integer molecules (one per member, drawn
+  without replacement per component) become the new fractional group with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
+- accept or reject.
+
+Acceptance rules (product over the group members \f$i = 1, \ldots, K\f$;
+\f$c(i)\f$ is the component of member \f$i\f$ and \f$k_i\f$ counts the members
+of the same component placed so far, \f$k_i = 1\f$ for the first, \f$2\f$ for
+the second, ...; \f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
+
+\f[
+\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\f]
+
+\f[
+\text{acc}_\text{ins} = \min\left(1,
+   B_{N_0+1,N_0}\prod_i \frac{\beta f_{c(i)} V}{N_{c(i)}+k_i}\;
+   e^{-\beta \Delta U + \Delta\eta}\right),
+\qquad
+\text{acc}_\text{del} = \min\left(1,
+   B_{N_0-1,N_0}\prod_i \frac{N_{c(i)}-k_i+1}{\beta f_{c(i)} V}\;
+   e^{-\beta \Delta U + \Delta\eta}\right)
+\f]
+
+For one satellite these rules reduce exactly to the pair CFCMC rules; the
+counting factors \f$k_i\f$ keep detailed balance when a component occurs more
+than once in the group. For all three branches, \f$\Delta U\f$ includes the
+enabled polarization change as well as the real-space, reciprocal-Ewald, and
+tail contributions, evaluated sequentially against the same accumulated
+backgrounds in the forward and reverse moves.
+
+Useful for: open-ensemble simulations of salts that dissociate into more than
+two ions (CaCl\f$_2\f$, Na\f$_2\f$SO\f$_4\f$, ...) in dense phases, where both
+charge neutrality and gradual coupling are required.
+
+References: W. Shi and E.J. Maginn, J. Chem. Theory Comput. **3**, 1451-1463
+(2007). <https://doi.org/10.1021/ct7000039>; G. Orkoulas and A.Z.
+Panagiotopoulos, J. Chem. Phys. **101**, 1452-1459 (1994).
+<https://doi.org/10.1063/1.467770>
+
+### Group swap (CB/CFCMC) <a name="group-swap-cbcfcmc"></a>
+
+Keyword: `"CFCMC_CBMC_GroupSwapProbability"` (component move), together with
+the group definition `"GroupComponents"`
+
+The CFCMC group swap with configurational-bias growth: in the group-insertion
+and group-deletion branches the fractional molecules are grown/retraced with
+CBMC, adding the Rosenbluth-weight ratio of every group member to the
+acceptance rules. It likewise has no \f$R_\text{max}\f$ constraint, and its
+fractional-molecule slots are again separate (driven by their own lambda
+histogram, `"ThermodynamicIntegration": "CFCMC_CBMC_GroupSwap"`), so the move
+can be combined with the conventional CFCMC group swap and the direct group
+moves on the same components.
+
+The three branches are those of the CFCMC group swap. The group members are
+grown one after the other in a fixed order — the central molecule first, then
+each satellite in the listed order, each in a background that already
+contains the previously grown group members; the retrace at deletion uses
+exactly the same nested environments in reverse order, so every intra-group
+interaction enters exactly once, as required by detailed balance.
+
+Acceptance rules (notation as for the CFCMC group swap):
+
+\f[
+\text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
+\f]
+
+\f[
+\text{acc}_\text{ins} = \min\left(1,
+   B_{N_0+1,N_0}\prod_i \frac{\beta f_{c(i)} V}{N_{c(i)}+k_i}\,
+   \frac{W_{c(i)}(\mathbf{n})}{W_{c(i)}^\text{IG}}\;
+   e^{-\beta \Delta U + \Delta\eta}\right)
+\f]
+
+\f[
+\text{acc}_\text{del} = \min\left(1,
+   B_{N_0-1,N_0}\prod_i \frac{N_{c(i)}-k_i+1}{\beta f_{c(i)} V}\,
+   \frac{W_{c(i)}^\text{IG}}{W_{c(i)}(\mathbf{o})}\;
+   e^{-\beta \Delta U + \Delta\eta}\right)
+\f]
+
+Here \f$\Delta U\f$ collects the contributions evaluated outside the
+growth/retrace weights (dual-cutoff correction, reciprocal Ewald, tail, and
+enabled polarization), all evaluated sequentially against the same
+accumulated backgrounds.
+
+Useful for: flexible ionic species that dissociate into more than two ions,
+combining charge-neutral group transfer, gradual coupling, and conformational
+biasing.
 
 References: A. Torres-Knoop, S.P. Balaji, T.J.H. Vlugt, and D. Dubbeldam,
 J. Chem. Theory Comput. **10**, 942-952 (2014).

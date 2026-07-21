@@ -43,6 +43,8 @@ import mc_moves_insertion_cbmc;
 import mc_moves_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
 import mc_moves_pair_deletion_cbmc;
+import mc_moves_group_swap;
+import mc_moves_group_swap_cfcmc;
 import mc_moves_pair_swap_cfcmc;
 import mc_moves_pair_swap_cfcmc_cbmc;
 import mc_moves_swap_cfcmc;
@@ -650,6 +652,82 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
+      break;
+    }
+    case Move::Types::GroupSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] = MC_Moves::groupInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMoveCBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCFCMC:
+    {
+      const auto [energyDifference, Pacc] = MC_Moves::groupSwapMove_CFCMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::GroupSwapCBCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::groupSwapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::GibbsVolume:
@@ -1277,6 +1355,82 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       }
       break;
     }
+    case Move::Types::GroupSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] = MC_Moves::groupInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMoveCBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCFCMC:
+    {
+      const auto [energyDifference, Pacc] = MC_Moves::groupSwapMove_CFCMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::GroupSwapCBCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::groupSwapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
     case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
@@ -1900,6 +2054,82 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
+      break;
+    }
+    case Move::Types::GroupSwap:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] = MC_Moves::groupInsertionMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCBMC:
+    {
+      if (random.uniform() < 0.5)
+      {
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupInsertionMoveCBMC(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        const auto [energyDifference, Pacc] =
+            MC_Moves::groupDeletionMoveCBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies -= energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      }
+      break;
+    }
+    case Move::Types::GroupSwapCFCMC:
+    {
+      const auto [energyDifference, Pacc] = MC_Moves::groupSwapMove_CFCMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      break;
+    }
+    case Move::Types::GroupSwapCBCFCMC:
+    {
+      const auto [energyDifference, Pacc] =
+          MC_Moves::groupSwapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
+      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::GibbsVolume:

@@ -142,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{5};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -175,6 +175,14 @@ export struct Component
   std::optional<std::size_t> pairComponentId{};
   /// Maximum ion-pair separation R_max for distance-biased pair insertion/deletion [m].
   std::optional<double> maximumPairDistance{};
+
+  /// Satellite component indices for group GCMC (one entry per satellite molecule, repetitions
+  /// allowed, e.g. {1, 1} inserts two molecules of component 1 together with one molecule of this
+  /// component). The molecule of this component is placed at a random position; every satellite is
+  /// placed with its starting bead inside a sphere of radius 'maximumGroupDistance' around it.
+  std::vector<std::size_t> groupComponentIds{};
+  /// Maximum satellite separation R_max from the central molecule for group insertion/deletion [m].
+  std::optional<double> maximumGroupDistance{};
 
   double netCharge{0.0};                                ///< Net charge of the component [e].
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
@@ -228,6 +236,8 @@ export struct Component
   PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs simulations.
   PropertyLambdaProbabilityHistogram lambdaPairSwap;    ///< Lambda probability histogram for ion-pair CFCMC swaps.
   PropertyLambdaProbabilityHistogram lambdaPairSwapCB;  ///< Lambda probability histogram for ion-pair CB/CFCMC swaps.
+  PropertyLambdaProbabilityHistogram lambdaGroupSwap;    ///< Lambda probability histogram for group CFCMC swaps.
+  PropertyLambdaProbabilityHistogram lambdaGroupSwapCB;  ///< Lambda probability histogram for group CB/CFCMC swaps.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
 
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.

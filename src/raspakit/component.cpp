@@ -71,6 +71,8 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       lambdaPairSwap(numberOfBlocks, numberOfLambdaBins),
       lambdaPairSwapCB(numberOfBlocks, numberOfLambdaBins),
+      lambdaGroupSwap(numberOfBlocks, numberOfLambdaBins),
+      lambdaGroupSwapCB(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       averageRosenbluthWeights(numberOfBlocks),
       averageGibbsRosenbluthWeights(numberOfBlocks)
@@ -103,6 +105,8 @@ Component::Component(const ForceField &forceField, std::string componentName, do
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       lambdaPairSwap(numberOfBlocks, numberOfLambdaBins),
       lambdaPairSwapCB(numberOfBlocks, numberOfLambdaBins),
+      lambdaGroupSwap(numberOfBlocks, numberOfLambdaBins),
+      lambdaGroupSwapCB(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
@@ -2097,8 +2101,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.pairComponentId;
   archive << c.maximumPairDistance;
 
+  archive << c.groupComponentIds;
+  archive << c.maximumGroupDistance;
+
   archive << c.lambdaPairSwap;
   archive << c.lambdaPairSwapCB;
+
+  archive << c.lambdaGroupSwap;
+  archive << c.lambdaGroupSwapCB;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -2185,8 +2195,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.pairComponentId;
   archive >> c.maximumPairDistance;
 
+  archive >> c.groupComponentIds;
+  archive >> c.maximumGroupDistance;
+
   archive >> c.lambdaPairSwap;
   archive >> c.lambdaPairSwapCB;
+
+  archive >> c.lambdaGroupSwap;
+  archive >> c.lambdaGroupSwapCB;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
