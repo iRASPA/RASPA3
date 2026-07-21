@@ -221,6 +221,43 @@ TEST(MC_COMPONENT_MOVES, pair_insertion_uses_reverse_state_neighbor_count)
                             { return MC_Moves::pairInsertionMoveCBMC(random, system, 0); });
 }
 
+TEST(MC_COMPONENT_MOVES, pair_insertion_acceptance_matches_grand_canonical_prefactor)
+{
+  // Insertion into an empty, non-interacting system: all energies and Rosenbluth ratios are one,
+  // and the only in-range reverse partner is the inserted molecule B itself (k = 1). The
+  // acceptance must then equal the bare grand-canonical prefactor
+  //   (beta f_A V / (N_A+1)) * (beta f_B V_s b / k)
+  // with V_s = 4 pi R_max^3 / 3 the pair-sphere volume and b the radial-proposal bias
+  // (b = 1 for the conventional move, b = 3 r^2 / R_max^2 for the CBMC move).
+  constexpr double R_max = 2.0;
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
+
+  {
+    System system = makePairInsertionSystem({}, 1.0e-12);
+    RandomNumber random(918);
+    const auto [energy, acceptance] = MC_Moves::pairInsertionMove(random, system, 0);
+    EXPECT_FALSE(energy.has_value());
+    const double expected = (system.beta * system.pressure * system.simulationBox.volume) *
+                            (system.beta * system.pressure * sphereVolume);
+    EXPECT_NEAR(acceptance.z / expected, 1.0, 1.0e-10);
+  }
+
+  {
+    // High pressure so the CBMC insertion is accepted and the drawn pair distance r can be
+    // recovered from the inserted positions.
+    System system = makePairInsertionSystem({}, 1.0e12);
+    RandomNumber random(918);
+    const auto [energy, acceptance] = MC_Moves::pairInsertionMoveCBMC(random, system, 0);
+    ASSERT_TRUE(energy.has_value());
+    const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+        system.spanOfMolecule(0, 0).front().position - system.spanOfMolecule(1, 0).front().position);
+    const double r = dr.length();
+    const double expected = (system.beta * system.pressure * system.simulationBox.volume) *
+                            (system.beta * system.pressure * sphereVolume * (3.0 * r * r / (R_max * R_max)));
+    EXPECT_NEAR(acceptance.z / expected, 1.0, 1.0e-10);
+  }
+}
+
 TEST(MC_COMPONENT_MOVES, pair_insertion_deletion_proposals_are_reciprocal)
 {
   constexpr std::size_t seed = 918;

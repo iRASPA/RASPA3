@@ -67,8 +67,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  // Only the lower-index component performs pair moves to avoid double counting.
-  if (selectedComponent > componentB)
+  // Only the strictly lower-index component performs pair moves (avoids double counting and
+  // ill-defined self-pairing).
+  if (selectedComponent >= componentB)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -265,7 +266,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                                polarizationDifference.potentialEnergy()));
 
+  // Molecule B is proposed with r uniform in [0, R_max] instead of uniform in the sphere volume,
+  // giving the radial bias 3 r^2 / R_max^2 relative to the sphere-volume factor V_s.
   const double distanceBias = 3.0 * r * r / (R_max * R_max);
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
@@ -277,8 +281,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const double k_new = double(reversePairDeletionPartnerCount(
       system, componentB, growDataA->atoms[componentA.startingBead].position, growDataB->atoms, R_max));
 
-  const double preFactor = correctionFactorEwald * system.beta * fugacityA * fugacityB * system.simulationBox.volume /
-                           ((N_A + 1.0) * k_new) * distanceBias;
+  // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
+  // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
+  // integer molecules and B among the k_new in-range partners.
+  const double preFactor = correctionFactorEwald *
+                           (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
+                           (system.beta * fugacityB * sphereVolume * distanceBias / k_new);
 
   const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
 
@@ -343,8 +351,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  // Only the lower-index component performs pair moves to avoid double counting.
-  if (selectedComponent > componentB)
+  // Only the strictly lower-index component performs pair moves (avoids double counting and
+  // ill-defined self-pairing).
+  if (selectedComponent >= componentB)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -541,7 +550,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                                polarizationDifference.potentialEnergy()));
 
-  const double distanceBias = 1.0;
+  // Molecule B is proposed uniformly in the sphere volume (r = R_max * cbrt(u)), so there is no
+  // radial bias.
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
@@ -553,8 +564,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const double k_new = double(reversePairDeletionPartnerCount(
       system, componentB, growDataA->atoms[componentA.startingBead].position, growDataB->atoms, R_max));
 
-  const double preFactor = correctionFactorEwald * system.beta * fugacityA * fugacityB * system.simulationBox.volume /
-                           ((N_A + 1.0) * k_new) * distanceBias;
+  // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
+  // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
+  // integer molecules and B among the k_new in-range partners.
+  const double preFactor = correctionFactorEwald *
+                           (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
+                           (system.beta * fugacityB * sphereVolume / k_new);
 
   const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
 

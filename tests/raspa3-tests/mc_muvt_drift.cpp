@@ -950,6 +950,7 @@ TEST(MC_MUVT_DRIFT, group_swap_cfcmc_ca_cl2)
   Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
   ca.mc_moves_probabilities = probabilities_ca;
   ca.groupComponentIds = {1, 1};
+  ca.maximumGroupDistance = 8.0;
   ca.fugacityCoefficient = 1.0;
   ca.idealGasRosenbluthWeight = 1.0;
 
@@ -963,8 +964,10 @@ TEST(MC_MUVT_DRIFT, group_swap_cfcmc_ca_cl2)
 
   std::vector<System> systems{system};
   // enough equilibration for the Wang-Landau bias to flatten the lambda histogram, so that the
-  // production stage exercises all three sub-moves (statistics are cleared after equilibration)
-  MonteCarlo mc = MonteCarlo({100, 0, 5, 100, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  // production stage exercises all three sub-moves (statistics are cleared after equilibration);
+  // the sphere-confined insertion binds the group compactly at high lambda, so the bias needs
+  // more cycles to open the path down to the deletion boundary
+  MonteCarlo mc = MonteCarlo({200, 0, 5, 2000, 1000, 10000, 500, 5000}, systems, 42uz, 5, false);
   mc.run();
 
   for (System& s : mc.systems)
@@ -978,6 +981,80 @@ TEST(MC_MUVT_DRIFT, group_swap_cfcmc_ca_cl2)
     // the move must actually be exercised: all three sub-moves attempted, some accepted
     const MoveStatistics<double3>& moveStatistics = std::get<MoveStatistics<double3>>(
         s.components[0].mc_moves_statistics[Move::Types::GroupSwapCFCMC]);
+    EXPECT_GT(moveStatistics.totalCounts.x, 0.0);  // insertions attempted
+    EXPECT_GT(moveStatistics.totalCounts.y, 0.0);  // deletions attempted
+    EXPECT_GT(moveStatistics.totalCounts.z, 0.0);  // lambda changes attempted
+    EXPECT_GT(moveStatistics.totalAccepted.x + moveStatistics.totalAccepted.y + moveStatistics.totalAccepted.z, 0.0);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-5);
+    EXPECT_NEAR(drift.frameworkMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_self, 0.0, 1e-5);
+    EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-5);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraCoul, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+  }
+}
+
+TEST(MC_MUVT_DRIFT, group_swap_cbcfcmc_ca_cl2)
+{
+  ForceField forceField =
+      ForceField({{"Ca2+", false, 40.08, 2.0, 0.0, 20, false}, {"Cl-", false, 35.45, -1.0, 0.0, 17, false}},
+                 {{25.0, 3.0}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+
+  std::optional<std::size_t> type_ca = forceField.findPseudoAtom("Ca2+");
+  std::optional<std::size_t> type_cl = forceField.findPseudoAtom("Cl-");
+  ASSERT_TRUE(type_ca.has_value());
+  ASSERT_TRUE(type_cl.has_value());
+
+  MCMoveProbabilities probabilities_ca = MCMoveProbabilities();
+  probabilities_ca.setProbability(Move::Types::Translation, 1.0);
+  probabilities_ca.setProbability(Move::Types::GroupSwapCBCFCMC, 1.0);
+
+  MCMoveProbabilities probabilities_cl = MCMoveProbabilities();
+  probabilities_cl.setProbability(Move::Types::Translation, 1.0);
+
+  Component ca = Component::makeIon(forceField, 0, "Ca2+", type_ca.value(), 2.0);
+  ca.mc_moves_probabilities = probabilities_ca;
+  ca.groupComponentIds = {1, 1};
+  ca.maximumGroupDistance = 8.0;
+  ca.fugacityCoefficient = 1.0;
+  ca.idealGasRosenbluthWeight = 1.0;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", type_cl.value(), -1.0);
+  cl.mc_moves_probabilities = probabilities_cl;
+  cl.fugacityCoefficient = 1.0;
+  cl.idealGasRosenbluthWeight = 1.0;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
+
+  std::vector<System> systems{system};
+  // enough equilibration for the Wang-Landau bias to flatten the lambda histogram, so that the
+  // production stage exercises all three sub-moves (statistics are cleared after equilibration);
+  // the sphere-confined insertion binds the group compactly at high lambda, so the bias needs
+  // more cycles to open the path down to the deletion boundary
+  MonteCarlo mc = MonteCarlo({200, 0, 5, 2000, 1000, 10000, 500, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    EXPECT_EQ(2 * s.numberOfIntegerMoleculesPerComponent[0], s.numberOfIntegerMoleculesPerComponent[1]);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 1uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 2uz);
+
+    // the move must actually be exercised: all three sub-moves attempted, some accepted
+    const MoveStatistics<double3>& moveStatistics =
+        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::GroupSwapCBCFCMC]);
     EXPECT_GT(moveStatistics.totalCounts.x, 0.0);  // insertions attempted
     EXPECT_GT(moveStatistics.totalCounts.y, 0.0);  // deletions attempted
     EXPECT_GT(moveStatistics.totalCounts.z, 0.0);  // lambda changes attempted
@@ -1040,8 +1117,10 @@ TEST(MC_MUVT_DRIFT, group_swap_cbcfcmc_combined_ca_cl2)
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {ca, cl}, {}, {4, 8}, 5);
 
   std::vector<System> systems{system};
-  // enough equilibration for the Wang-Landau bias to flatten the lambda histograms, so that the
-  // production stage exercises all three sub-moves (statistics are cleared after equilibration)
+  // this test verifies that the three group-move flavors coexist (separate fractional slots, no
+  // drift); full boundary-crossing coverage of each CFCMC flavor is exercised in the dedicated
+  // single-flavor tests, since with a shared sampling budget the per-flavor Wang-Landau biases
+  // converge too slowly to guarantee crossings here
   MonteCarlo mc = MonteCarlo({50, 0, 5, 60, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
@@ -1052,13 +1131,13 @@ TEST(MC_MUVT_DRIFT, group_swap_cbcfcmc_combined_ca_cl2)
     EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 2uz);
     EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 4uz);
 
-    // the CB/CFCMC move must actually be exercised: all three sub-moves attempted, some accepted
-    const MoveStatistics<double3>& moveStatistics =
-        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::GroupSwapCBCFCMC]);
-    EXPECT_GT(moveStatistics.totalCounts.x, 0.0);  // insertions attempted
-    EXPECT_GT(moveStatistics.totalCounts.y, 0.0);  // deletions attempted
-    EXPECT_GT(moveStatistics.totalCounts.z, 0.0);  // lambda changes attempted
-    EXPECT_GT(moveStatistics.totalAccepted.x + moveStatistics.totalAccepted.y + moveStatistics.totalAccepted.z, 0.0);
+    // both CFCMC flavors must actually be exercised (lambda moves at minimum)
+    const MoveStatistics<double3>& statsCFCMC = std::get<MoveStatistics<double3>>(
+        s.components[0].mc_moves_statistics[Move::Types::GroupSwapCFCMC]);
+    EXPECT_GT(statsCFCMC.totalCounts.x + statsCFCMC.totalCounts.y + statsCFCMC.totalCounts.z, 0.0);
+    const MoveStatistics<double3>& statsCBCFCMC = std::get<MoveStatistics<double3>>(
+        s.components[0].mc_moves_statistics[Move::Types::GroupSwapCBCFCMC]);
+    EXPECT_GT(statsCBCFCMC.totalCounts.x + statsCBCFCMC.totalCounts.y + statsCBCFCMC.totalCounts.z, 0.0);
 
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;

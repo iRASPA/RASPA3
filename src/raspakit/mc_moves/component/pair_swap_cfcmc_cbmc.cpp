@@ -44,6 +44,20 @@ static void accumulateInterMolecularFieldDelta(System& system, std::span<const A
 // cross-interaction between the two molecules of the pair is counted exactly once. The CBMC growth of
 // the pair grows the molecule of component A first and the molecule of component B afterwards (with
 // the trial molecule of A included in the background); the retrace mirrors this order.
+//
+// The insertion endpoint (lambda crossing 1) uses the same distance-biased placement as the direct
+// CBMC pair moves: the new fractional molecule of B is grown with its first bead at a distance
+// r = R_max * u (uniform in r) from the first bead of the new fractional molecule of A, contributing
+// a factor beta*f_B*V_s * 3r^2/R_max^2 with V_s = 4 pi R_max^3 / 3 instead of beta*f_B*V. The
+// reverse of this placement is the removal of the fractional pair at the deletion endpoint (lambda
+// crossing 0), which is therefore rejected when the fractional pair has drifted further apart than
+// R_max (the reverse insertion could not regenerate it) and otherwise carries the reverse distance
+// bias R_max^2 / (3 r^2) evaluated at the removed pair's separation. The selection of the integer
+// pair that becomes the new fractional pair at deletion is uniform and unconstrained — its reverse,
+// turning the fractional pair integer at insertion, is proposable for any separation — so the
+// insertion crossing is never blocked by the positions of the freely diffusing fractional molecules;
+// an unfavorably paired selection is suppressed by the Boltzmann factor at lambda near 1 rather than
+// by a hard geometric constraint.
 
 // difference in scaled net charge when 'oldAtoms' is replaced by 'newAtoms'
 static double scaledChargeDifference(std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms)
@@ -125,6 +139,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   }
   Component& componentBRef = system.components[componentB];
 
+  if (!componentA.maximumPairDistance.has_value())
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  const double R_max = componentA.maximumPairDistance.value();
+  if (R_max <= 0.0)
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
+
   // both fractional molecules of the pair are coupled to the lambda histogram of component A
   PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaPairSwapCB;
   const std::size_t oldBin = lambda.currentBin;
@@ -172,6 +197,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     std::span<Atom> fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
     std::span<Atom> fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
+
+    // No pairing constraint on the pair being made integer: the reverse deletion selects the pair to
+    // fractionalize uniformly, so this crossing is proposable for any separation of the fractional
+    // pair. This keeps the insertion crossing always open (each crossing re-pairs the fractional
+    // molecules inside the sphere), which is essential for ergodicity: the fractional pair diffuses
+    // freely at low lambda and would otherwise block both endpoint crossings.
 
     std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
     std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
@@ -307,8 +338,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
     }
 
-    // (2b) grow a new fractional molecule of component B with lambda_new; the background includes the
-    // trial molecule of A
+    // (2b) grow a new fractional molecule of component B with lambda_new; its first bead is fixed at
+    // a distance r = R_max * u (uniform in r, giving the radial bias 3 r^2 / R_max^2) from the first
+    // bead of the trial molecule of A, and the background includes the trial molecule of A
+    const double r_new = R_max * random.uniform();
+    const double3 fixedFirstBeadPositionB =
+        growDataA->atoms[componentA.startingBead].position + r_new * random.UnitSphere();
+    const double distanceBias = 3.0 * r_new * r_new / (R_max * R_max);
+
     std::vector<Atom> moleculeAtomDataWithTrialA(system.spanOfMoleculeAtoms().begin(),
                                                  system.spanOfMoleculeAtoms().end());
     moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(),
@@ -320,8 +357,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growDataB = CBMC::growMoleculeSwapInsertion(
-        random, growContextB, componentBRef, componentB, newMoleculeB, newLambda,
+    std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
+        random, growContextB, componentBRef, componentB, newMoleculeB, fixedFirstBeadPositionB, newLambda,
         componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -468,10 +505,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                                                   tailEnergyDifferenceGrow.potentialEnergy() +
                                                                   polarizationDifference.potentialEnergy()));
 
-    // Calculate acceptance probability
+    // Calculate acceptance probability. One factor beta*f*V per molecule of the pair: the box volume
+    // V for A and the pair-sphere volume V_s (with the radial bias) for B. The reverse deletion
+    // selects the pair to fractionalize uniformly: A among the N_A+1 and B among the N_B+1 integer
+    // molecules.
     const double preFactor = correctionFactorEwald *
                              (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
-                             (system.beta * fugacityB * system.simulationBox.volume / static_cast<double>(1 + oldN_B));
+                             (system.beta * fugacityB * sphereVolume * distanceBias /
+                              static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     const double physicalPacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) *
                                 (growDataB->RosenbluthWeight / idealGasB) *
@@ -562,9 +603,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   {
     // Steps for deletion Lambda_new = -epsilon
     // ===================================================================
-    // (1) Biased: the existing fractional pair is retraced using CBMC with lambda=lambda_old and removed
-    // (2) Unbiased: a randomly selected integer molecule of each component becomes the new
-    //     fractional pair with lambda_new = 1 - epsilon
+    // (1) Biased: the existing fractional pair is retraced using CBMC with lambda=lambda_old and
+    //     removed (molecule B with its first bead fixed, mirroring the distance-biased growth);
+    //     rejected when the pair is further apart than R_max
+    // (2) Unbiased: a randomly selected integer molecule of component A and a randomly selected
+    //     integer molecule of component B become the new fractional pair with lambda_new = 1 - epsilon
 
     componentA.mc_moves_statistics.addTrial(move, 1);
 
@@ -577,11 +620,29 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
         static_cast<std::size_t>(selectedNewBin + std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
+    std::span<Atom> fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
+    std::span<Atom> fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
+
+    // The reverse insertion grows the new fractional molecule of B with its first bead inside the
+    // pair sphere around the new fractional molecule of A, so it could not regenerate a removed
+    // fractional pair that is further apart. The radial proposal density at the removed pair's
+    // separation gives the reverse distance bias R_max^2 / (3 r^2).
+    const double3 drFractionalPair = system.simulationBox.applyPeriodicBoundaryConditions(
+        fractionalMoleculeA[componentA.startingBead].position -
+        fractionalMoleculeB[componentBRef.startingBead].position);
+    const double r_fractional = drFractionalPair.length();
+    if (r_fractional <= 0.0 || r_fractional > R_max)
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
+    const double distanceBias = (R_max * R_max) / (3.0 * r_fractional * r_fractional);
+
+    // Select the new fractional pair uniformly and independently among the integer molecules of each
+    // component (the reverse of turning the fractional pair integer at insertion, which is
+    // proposable for any separation).
     std::size_t selectedMoleculeA = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
     std::size_t selectedMoleculeB = system.randomIntegerMoleculeOfComponent(random, componentB);
 
-    std::span<Atom> fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
-    std::span<Atom> fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
     std::span<Atom> newFractionalMoleculeA = system.spanOfMolecule(selectedComponent, selectedMoleculeA);
     std::span<Atom> newFractionalMoleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 
@@ -623,7 +684,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceDataB =
-        CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentBRef, fractionalMoleculeB);
+        CBMC::retraceMoleculePairSecondSwapDeletion(retraceContextB, componentBRef, fractionalMoleculeB);
     ChainRetraceData retraceDataA =
         CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, fractionalMoleculeA);
     time_end = std::chrono::steady_clock::now();
@@ -831,10 +892,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                                                   tailEnergyDifferenceRetrace.potentialEnergy() +
                                                                   polarizationDifference.potentialEnergy()));
 
-    // Calculate acceptance probability
+    // Calculate acceptance probability: exact reciprocal of the insertion prefactor, with the
+    // reverse distance bias evaluated at the removed pair's separation.
     const double preFactor = correctionFactorEwald *
                              (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
-                             (static_cast<double>(oldN_B) / (system.beta * fugacityB * system.simulationBox.volume));
+                             (static_cast<double>(oldN_B) * distanceBias /
+                              (system.beta * fugacityB * sphereVolume));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     const double physicalPacc = preFactor * (idealGasA / retraceDataA.RosenbluthWeight) *
                                 (idealGasB / retraceDataB.RosenbluthWeight) *

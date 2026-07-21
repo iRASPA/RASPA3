@@ -901,20 +901,23 @@ Acceptance rules:
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_A+1,N_A}\frac{\beta f_A f_B V}{(N_A+1)k_\mathbf{n}}\,
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V_s}{k_\mathbf{n}}\,
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
    e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_A-1,N_A}\frac{N_A k_\mathbf{o}}{\beta f_A f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{k_\mathbf{o}}{\beta f_B V_s}\,
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
    e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
-A single volume factor \f$V\f$ appears because molecule \f$B\f$ is confined to
-the pair sphere. \f$k_\mathbf{o}\f$ is the number of integer \f$B\f$ molecules
+One factor \f$\beta f V\f$ appears per molecule: the box volume \f$V\f$ for
+molecule \f$A\f$ (placed anywhere in the box) and the sphere volume
+\f$V_s = \tfrac{4}{3}\pi R_\text{max}^3\f$ for molecule \f$B\f$ (confined to
+the pair sphere) — the same structure as in the group swap moves.
+\f$k_\mathbf{o}\f$ is the number of integer \f$B\f$ molecules
 within \f$R_\text{max}\f$ of the selected old \f$A\f$ before deletion.
 \f$k_\mathbf{n}\f$ is the corresponding count in the proposed state after
 insertion, including the inserted \f$B\f$ and any pre-existing integer \f$B\f$
@@ -980,7 +983,7 @@ Acceptance rules:
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_A+1,N_A}\frac{\beta f_A f_B V}{(N_A+1)k_\mathbf{n}}\;
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V_s}{k_\mathbf{n}}\;
    \frac{3 r^2}{R_\text{max}^2}\;
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
    e^{-\beta \Delta U_\mathrm{corr}}\right)
@@ -988,15 +991,16 @@ Acceptance rules:
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_A-1,N_A}\frac{N_A k_\mathbf{o}}{\beta f_A f_B V}\;
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{k_\mathbf{o}}{\beta f_B V_s}\;
    \frac{R_\text{max}^2}{3 r^2}\;
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
    e^{-\beta \Delta U_\mathrm{corr}}\right)
 \f]
 
-The definitions of \f$k_\mathbf{o}\f$ and \f$k_\mathbf{n}\f$, minimum-image
-distance, and uniform reverse partner choice are identical to the conventional
-pair move. Both direct pair variants retrace \f$B\f$ first with \f$A\f$ present,
+The definitions of \f$V_s\f$, \f$k_\mathbf{o}\f$, \f$k_\mathbf{n}\f$,
+minimum-image distance, and uniform reverse partner choice are identical to
+the conventional pair move; the extra factor \f$3r^2/R_\text{max}^2\f$ is the
+radial-proposal bias of the uniform-in-\f$r\f$ placement. Both direct pair variants retrace \f$B\f$ first with \f$A\f$ present,
 then retrace \f$A\f$ with the pair excluded.
 
 Useful for: pair insertions of *flexible* charged species (e.g. molecular ions
@@ -1014,8 +1018,18 @@ The CFCMC variant of the pair swap: the pair of fractional molecules (one of
 component \f$A\f$, one of component \f$B\f$) is coupled through a *single, common*
 coupling parameter \f$\lambda\f$, so both molecules appear and disappear together and
 the system stays charge neutral at every value of \f$\lambda\f$.
-Unlike the two direct pair moves above, these CFCMC pair variants do **not**
-use \f$R_\text{max}\f$, a radial proposal, or an in-range-neighbor factor.
+The insertion endpoint uses the same distance-biased placement as the direct
+pair moves: the new fractional molecule of \f$B\f$ is placed uniformly inside
+the sphere of radius \f$R_\text{max}\f$ around the new fractional molecule of
+\f$A\f$ (volume \f$V_s = \tfrac{4}{3}\pi R_\text{max}^3\f$). Its reverse is the
+removal of the fractional pair at the deletion endpoint, which is therefore
+rejected when the fractional pair has drifted further apart than
+\f$R_\text{max}\f$. The selection of the integer pair that becomes the new
+fractional pair at deletion is uniform and unconstrained; its reverse, turning
+the fractional pair integer at insertion, is proposable for any separation, so
+the insertion crossing is never blocked by the positions of the freely
+diffusing fractional molecules (each accepted insertion re-pairs the fractional
+molecules inside the sphere).
 
 Steps:
 
@@ -1028,12 +1042,17 @@ Steps:
   arise:
 - if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale both
   fractional molecules simultaneously,
-- if \f$\lambda + \Delta\lambda > 1\f$ — **pair insertion**: both fractional molecules become
-  integer molecules and a new fractional pair is inserted at random positions
-  with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
-- if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: the fractional pair is removed and
-  independently and uniformly selected integer molecule of each component becomes the new
-  fractional pair with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
+- if \f$\lambda + \Delta\lambda > 1\f$ — **pair insertion**: both fractional molecules
+  become integer molecules (at any separation) and a new fractional pair is
+  inserted with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$: molecule
+  \f$A\f$ at a random position, molecule \f$B\f$ uniformly inside the sphere
+  around it (\f$r = R_\text{max}\sqrt[3]{u}\f$, uniform in the sphere volume),
+- if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: reject when the fractional
+  pair is separated by more than \f$R_\text{max}\f$ (the reverse insertion could
+  not regenerate it); otherwise the fractional pair is removed, and a uniformly
+  selected integer molecule of \f$A\f$ and a uniformly selected integer molecule
+  of \f$B\f$ become the new fractional pair with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
 - accept or reject.
 
 Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
@@ -1044,11 +1063,11 @@ Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathb
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V_s}{N_B+1}\,
    e^{-\beta \Delta U + \Delta\eta}\right),
 \qquad
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V_s}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 
@@ -1071,10 +1090,17 @@ Keyword: `"CFCMC_CBMC_PairSwapProbability"` (component move)
 The CFCMC pair swap with configurational-bias growth: in the pair-insertion
 and pair-deletion branches the fractional molecules are grown/retraced with
 CBMC, adding the Rosenbluth-weight ratios of both molecules to the acceptance
-rules.
-It likewise has no \f$R_\text{max}\f$ constraint. Boundary deletion selects
-the replacement integer \f$A\f$ and \f$B\f$ independently; it does not search
-for a geometrically paired neighbor.
+rules. The insertion endpoint uses the same distance-biased placement as the
+direct CBMC pair move: the new fractional molecule of \f$B\f$ is grown with its
+first bead at a distance \f$r = R_\text{max}\, u\f$ (uniform in \f$r\f$, giving
+the radial bias \f$3r^2/R_\text{max}^2\f$) from the first bead of the new
+fractional molecule of \f$A\f$. Its reverse is the removal of the fractional
+pair at the deletion endpoint, which is therefore rejected when the fractional
+pair has drifted further apart than \f$R_\text{max}\f$. The selection of the
+integer pair that becomes the new fractional pair at deletion is uniform and
+unconstrained; its reverse, turning the fractional pair integer at insertion,
+is proposable for any separation, so the insertion crossing is never blocked by
+the positions of the freely diffusing fractional molecules.
 
 Steps:
 
@@ -1087,18 +1113,23 @@ Steps:
   fractional pair; three cases arise:
 - if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**: rescale both
   fractional molecules simultaneously and compute \f$\Delta U\f$,
-- if \f$\lambda + \Delta\lambda > 1\f$ — **pair insertion**: both fractional molecules become
-  fully coupled integer molecules (\f$\lambda \rightarrow 1\f$); grow the new
-  fractional molecule \f$A\f$ first, then grow fractional molecule \f$B\f$ with
-  \f$A\f$ present in its CBMC background (Rosenbluth weights
-  \f$W_A(\mathbf{n})\f$ and \f$W_B(\mathbf{n})\f$), with
+- if \f$\lambda + \Delta\lambda > 1\f$ — **pair insertion**: both fractional molecules
+  become fully coupled integer molecules (\f$\lambda \rightarrow 1\f$, at any
+  separation); grow the new fractional molecule \f$A\f$ first, then grow
+  fractional molecule \f$B\f$ with its first bead fixed at
+  \f$r = R_\text{max}\, u\f$ from \f$A\f$ and with \f$A\f$ present in its CBMC
+  background (Rosenbluth weights \f$W_A(\mathbf{n})\f$ and
+  \f$W_B(\mathbf{n})\f$), with
   \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
-- if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: first retrace fractional
-  molecule \f$B\f$ with \f$A\f$ present in its CBMC background, then exclude
+- if \f$\lambda + \Delta\lambda < 0\f$ — **pair deletion**: reject when the fractional
+  pair is separated by \f$r > R_\text{max}\f$ (the reverse insertion could not
+  regenerate it); otherwise first retrace fractional molecule \f$B\f$ with its
+  first bead fixed and \f$A\f$ present in its CBMC background, then exclude
   \f$B\f$ and retrace fractional molecule \f$A\f$ without \f$B\f$ in its
   background (Rosenbluth weights \f$W_B(\mathbf{o})\f$ and
-  \f$W_A(\mathbf{o})\f$); remove the old fractional pair, and make a randomly
-  selected integer molecule of each component the new fractional pair with
+  \f$W_A(\mathbf{o})\f$); remove the old fractional pair, and make a uniformly
+  selected integer molecule of \f$A\f$ and a uniformly selected integer molecule
+  of \f$B\f$ the new fractional pair with
   \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
 - accept or reject.
 
@@ -1121,17 +1152,23 @@ Acceptance rules (\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathb
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,\frac{\beta f_B V}{N_B+1}\,
+   B_{N_A+1,N_A}\frac{\beta f_A V}{N_A+1}\,
+   \frac{\beta f_B V_s}{N_B+1}\frac{3r_\mathbf{n}^2}{R_\text{max}^2}\,
    \frac{W_A(\mathbf{n})}{W_A^\text{IG}}\,\frac{W_B(\mathbf{n})}{W_B^\text{IG}}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,\frac{N_B}{\beta f_B V}\,
+   B_{N_A-1,N_A}\frac{N_A}{\beta f_A V}\,
+   \frac{N_B}{\beta f_B V_s}\frac{R_\text{max}^2}{3r_\mathbf{o}^2}\,
    \frac{W_A^\text{IG}}{W_A(\mathbf{o})}\,\frac{W_B^\text{IG}}{W_B(\mathbf{o})}\,
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
+
+Here \f$r_\mathbf{n}\f$ is the drawn first-bead distance of the newly grown
+fractional pair and \f$r_\mathbf{o}\f$ the first-bead separation of the removed
+fractional pair.
 
 The pair CB/CFCMC correction includes enabled polarization: both grown/removed
 fractional molecules' self terms, their mutual field contribution, and (when
@@ -1285,7 +1322,8 @@ Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
 ### Group swap (CFCMC) <a name="group-swap-cfcmc"></a>
 
 Keyword: `"CFCMC_GroupSwapProbability"` (component move), together with the
-group definition `"GroupComponents"`
+group definition `"GroupComponents"` and `"MaximumGroupDistance"`
+\f$R_\text{max}\f$
 
 The CFCMC variant of the group swap: the whole group — one fractional
 molecule of the central component plus one fractional molecule per entry of
@@ -1293,9 +1331,19 @@ molecule of the central component plus one fractional molecule per entry of
 than once, e.g. two Cl\f$^-\f$ for CaCl\f$_2\f$) — is coupled through a
 *single, common* coupling parameter \f$\lambda\f$, so all members appear and
 disappear together and the system stays charge neutral at every value of
-\f$\lambda\f$. Like the pair CFCMC moves and unlike the two direct group
-moves above, this move does **not** use \f$R_\text{max}\f$, a radial
-proposal, or an in-range-neighbor factor.
+\f$\lambda\f$. The insertion endpoint uses the same distance-biased placement
+as the direct group moves: each new fractional satellite is placed uniformly
+inside the sphere of volume \f$V_s = \tfrac{4}{3}\pi R_\text{max}^3\f$ around
+the new fractional central molecule. Its reverse is the removal of the
+fractional group at the deletion endpoint, which is therefore rejected when any
+fractional satellite has drifted further than \f$R_\text{max}\f$ from the
+fractional central molecule. The selection of the integer molecules that become
+the new fractional group at deletion is uniform and unconstrained (sequentially
+without replacement per component); its reverse, turning the fractional group
+integer at insertion, is proposable for any group geometry, so the insertion
+crossing is never blocked by the positions of the freely diffusing fractional
+molecules (each accepted insertion re-groups the fractional molecules inside
+the sphere).
 
 Every group member holds its own fractional-molecule slot, allocated
 separately from the slots of the GC-CFCMC swap, the pair CFCMC swaps, and the
@@ -1308,25 +1356,35 @@ Steps:
 
 - select a random box and a random component (the group is defined on the
   central component in the input),
-- reject unless `"GroupComponents"` is non-empty,
+- reject unless `"GroupComponents"` is non-empty and \f$R_\text{max}>0\f$,
 - draw a random change \f$\Delta\lambda\f$ of the common coupling parameter; three
   cases arise:
 - if \f$\lambda + \Delta\lambda\f$ stays within \f$[0,1]\f$ — **\f$\lambda\f$-change**:
   rescale all \f$K\f$ fractional molecules simultaneously,
-- if \f$\lambda + \Delta\lambda > 1\f$ — **group insertion**: all \f$K\f$ fractional
-  molecules become integer molecules and a new fractional group is inserted at
-  independent random positions with
-  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$,
-- if \f$\lambda + \Delta\lambda < 0\f$ — **group deletion**: the fractional group is
-  removed and randomly selected integer molecules (one per member, drawn
-  without replacement per component) become the new fractional group with
-  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
+- if \f$\lambda + \Delta\lambda > 1\f$ — **group insertion**: all \f$K\f$
+  fractional molecules become integer molecules (at any geometry) and a new
+  fractional group is inserted with
+  \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda - 1\f$: the central molecule
+  at a random position, each satellite uniformly inside the sphere around it
+  (\f$r = R_\text{max}\sqrt[3]{u}\f$, uniform in the sphere volume),
+- if \f$\lambda + \Delta\lambda < 0\f$ — **group deletion**: reject when any
+  fractional satellite is further than \f$R_\text{max}\f$ from the fractional
+  central molecule (the reverse insertion could not regenerate it); otherwise
+  the fractional group is removed, a uniformly selected integer molecule of
+  the central component and, per satellite slot, a uniformly selected integer
+  molecule of the slot's component (drawn without replacement, the central
+  molecule excluded; reject when none remains) become the new fractional group
+  with \f$\lambda_\mathbf{n} = \lambda + \Delta\lambda + 1\f$,
 - accept or reject.
 
-Acceptance rules (product over the group members \f$i = 1, \ldots, K\f$;
-\f$c(i)\f$ is the component of member \f$i\f$ and \f$k_i\f$ counts the members
-of the same component placed so far, \f$k_i = 1\f$ for the first, \f$2\f$ for
-the second, ...; \f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
+Acceptance rules (product over the satellite slots \f$j\f$; \f$c(j)\f$ is the
+component of slot \f$j\f$, \f$N_{c(j)}\f$ the number of integer molecules of
+that component in the state with the larger molecule count — the (integerized
+or selected) central molecule excluded when \f$c(j)\f$ equals the central
+component — and \f$t_j\f$ counts earlier slots of the same component;
+\f$N_0(\mathbf{n})\f$ counts all integer molecules of the central component in
+the inserted state, including integerized group members of the same component;
+\f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf{o})\f$):
 
 \f[
 \text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
@@ -1334,20 +1392,22 @@ the second, ...; \f$\Delta\eta = \eta(\lambda_\mathbf{n}) - \eta(\lambda_\mathbf
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_0+1,N_0}\prod_i \frac{\beta f_{c(i)} V}{N_{c(i)}+k_i}\;
+   B_{N_0+1,N_0}\frac{\beta f_0 V}{N_0(\mathbf{n})}
+   \prod_j \frac{\beta f_{c(j)} V_s}{N_{c(j)}-t_j}\;
    e^{-\beta \Delta U + \Delta\eta}\right),
 \qquad
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_0-1,N_0}\prod_i \frac{N_{c(i)}-k_i+1}{\beta f_{c(i)} V}\;
+   B_{N_0-1,N_0}\frac{N_0}{\beta f_0 V}
+   \prod_j \frac{N_{c(j)}-t_j}{\beta f_{c(j)} V_s}\;
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 
 For one satellite these rules reduce exactly to the pair CFCMC rules; the
-counting factors \f$k_i\f$ keep detailed balance when a component occurs more
-than once in the group. For all three branches, \f$\Delta U\f$ includes the
-enabled polarization change as well as the real-space, reciprocal-Ewald, and
-tail contributions, evaluated sequentially against the same accumulated
-backgrounds in the forward and reverse moves.
+sequential counts \f$N_{c(j)}-t_j\f$ keep detailed balance when a component
+occurs more than once in the group. For all three branches, \f$\Delta U\f$
+includes the enabled polarization change as well as the real-space,
+reciprocal-Ewald, and tail contributions, evaluated sequentially against the
+same accumulated backgrounds in the forward and reverse moves.
 
 Useful for: open-ensemble simulations of salts that dissociate into more than
 two ions (CaCl\f$_2\f$, Na\f$_2\f$SO\f$_4\f$, ...) in dense phases, where both
@@ -1361,25 +1421,34 @@ Panagiotopoulos, J. Chem. Phys. **101**, 1452-1459 (1994).
 ### Group swap (CB/CFCMC) <a name="group-swap-cbcfcmc"></a>
 
 Keyword: `"CFCMC_CBMC_GroupSwapProbability"` (component move), together with
-the group definition `"GroupComponents"`
+the group definition `"GroupComponents"` and `"MaximumGroupDistance"`
+\f$R_\text{max}\f$
 
 The CFCMC group swap with configurational-bias growth: in the group-insertion
 and group-deletion branches the fractional molecules are grown/retraced with
 CBMC, adding the Rosenbluth-weight ratio of every group member to the
-acceptance rules. It likewise has no \f$R_\text{max}\f$ constraint, and its
-fractional-molecule slots are again separate (driven by their own lambda
-histogram, `"ThermodynamicIntegration": "CFCMC_CBMC_GroupSwap"`), so the move
-can be combined with the conventional CFCMC group swap and the direct group
-moves on the same components.
+acceptance rules. Like the direct CBMC group move, each new fractional
+satellite is grown with its first bead at a distance
+\f$r = R_\text{max}\, u\f$ (uniform in \f$r\f$, giving the radial bias
+\f$3r^2/R_\text{max}^2\f$) from the first bead of the new fractional central
+molecule. Its fractional-molecule slots are again separate (driven by their
+own lambda histogram, `"ThermodynamicIntegration": "CFCMC_CBMC_GroupSwap"`),
+so the move can be combined with the conventional CFCMC group swap and the
+direct group moves on the same components.
 
-The three branches are those of the CFCMC group swap. The group members are
-grown one after the other in a fixed order — the central molecule first, then
-each satellite in the listed order, each in a background that already
-contains the previously grown group members; the retrace at deletion uses
-exactly the same nested environments in reverse order, so every intra-group
-interaction enters exactly once, as required by detailed balance.
+The three branches, the deletion-endpoint distance check, and the uniform
+reverse selections are those of the CFCMC group swap. The group members are
+grown one after the other in a
+fixed order — the central molecule first (free first bead), then each
+satellite in the listed order (fixed first bead), each in a background that
+already contains the previously grown group members; the retrace at deletion
+uses exactly the same nested environments in reverse order, so every
+intra-group interaction enters exactly once, as required by detailed balance.
 
-Acceptance rules (notation as for the CFCMC group swap):
+Acceptance rules (notation as for the CFCMC group swap; \f$r_j\f$ is the
+first-bead distance of slot \f$j\f$'s satellite from the central molecule in
+the newly grown fractional group at insertion, or in the removed fractional
+group at deletion):
 
 \f[
 \text{acc}_{\lambda} = \min\left(1, e^{-\beta \Delta U + \Delta\eta}\right)
@@ -1387,15 +1456,19 @@ Acceptance rules (notation as for the CFCMC group swap):
 
 \f[
 \text{acc}_\text{ins} = \min\left(1,
-   B_{N_0+1,N_0}\prod_i \frac{\beta f_{c(i)} V}{N_{c(i)}+k_i}\,
-   \frac{W_{c(i)}(\mathbf{n})}{W_{c(i)}^\text{IG}}\;
+   B_{N_0+1,N_0}\frac{\beta f_0 V}{N_0(\mathbf{n})}
+   \frac{W_0(\mathbf{n})}{W_0^\text{IG}}
+   \prod_j \frac{\beta f_{c(j)} V_s}{N_{c(j)}-t_j}\frac{3r_j^2}{R_\text{max}^2}\,
+   \frac{W_{c(j)}(\mathbf{n})}{W_{c(j)}^\text{IG}}\;
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 
 \f[
 \text{acc}_\text{del} = \min\left(1,
-   B_{N_0-1,N_0}\prod_i \frac{N_{c(i)}-k_i+1}{\beta f_{c(i)} V}\,
-   \frac{W_{c(i)}^\text{IG}}{W_{c(i)}(\mathbf{o})}\;
+   B_{N_0-1,N_0}\frac{N_0}{\beta f_0 V}
+   \frac{W_0^\text{IG}}{W_0(\mathbf{o})}
+   \prod_j \frac{N_{c(j)}-t_j}{\beta f_{c(j)} V_s}\frac{R_\text{max}^2}{3r_j^2}\,
+   \frac{W_{c(j)}^\text{IG}}{W_{c(j)}(\mathbf{o})}\;
    e^{-\beta \Delta U + \Delta\eta}\right)
 \f]
 

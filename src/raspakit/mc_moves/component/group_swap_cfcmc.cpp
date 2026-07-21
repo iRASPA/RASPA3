@@ -31,6 +31,21 @@ import scaling;
 // central component). Energy differences are computed sequentially, one molecule at a time: each
 // molecule is updated in place before the difference of the next molecule is computed, so that
 // every intra-group cross-interaction is counted exactly once.
+//
+// The insertion endpoint (lambda crossing 1) uses the same distance-biased placement as the direct
+// group moves: each new fractional satellite is placed with its starting bead inside the sphere of
+// radius R_max around the starting bead of the new fractional central molecule (uniform in the
+// sphere volume for the conventional variant, uniform in r with the radial bias 3 r^2 / R_max^2 for
+// the CB variant), contributing a factor beta*f_c*V_s*b with V_s = 4 pi R_max^3 / 3 per satellite.
+// The reverse of this placement is the removal of the fractional group at the deletion endpoint
+// (lambda crossing 0), which is therefore rejected when any fractional satellite has drifted further
+// than R_max from the fractional central molecule (the reverse insertion could not regenerate it).
+// The selection of the integer molecules that become the new fractional group at deletion is uniform
+// and unconstrained (sequential without replacement per component) — its reverse, turning the
+// fractional group integer at insertion, is proposable for any group geometry — so the insertion
+// crossing is never blocked by the positions of the freely diffusing fractional molecules; an
+// unfavorably grouped selection is suppressed by the Boltzmann factor at lambda near 1 rather than
+// by a hard geometric constraint.
 
 namespace
 {
@@ -157,6 +172,17 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     }
   }
 
+  if (!central.maximumGroupDistance.has_value())
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  const double R_max = central.maximumGroupDistance.value();
+  if (R_max <= 0.0)
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
+
   const std::vector<GroupMember> members = buildGroupMembers(system, selectedComponent, move);
   const std::size_t groupSize = members.size();
 
@@ -220,14 +246,22 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // Steps for insertion Lambda_new = 1 + epsilon
     // ===================================================================
     // (1) Unbiased: the fractional group with lambda=lambda_old is made integer (lambda=1)
-    // (2) A new fractional group is inserted with lambda_new = epsilon: at independent random
-    //     positions (conventional) or grown with CBMC (CB variant)
+    // (2) A new fractional group is inserted with lambda_new = epsilon: the central molecule at a
+    //     random position, each satellite with its starting bead inside the sphere of radius R_max
+    //     around the central molecule (placed uniformly for the conventional variant, grown with
+    //     CBMC at a distance uniform in r for the CB variant)
 
     std::size_t newBin =
         static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     central.mc_moves_statistics.addTrial(move, 0);
+
+    // No distance constraint on the group being made integer: the reverse deletion selects the
+    // molecules to fractionalize uniformly, so this crossing is proposable for any geometry of the
+    // fractional group. This keeps the insertion crossing always open (each crossing re-groups the
+    // fractional molecules inside the sphere), which is essential for ergodicity: the fractional
+    // group diffuses apart at low lambda and would otherwise block both endpoint crossings.
 
     RunningEnergy energyDifference{};
     double runningNetCharge = system.netCharge;
@@ -281,6 +315,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     std::vector<Molecule> trialMolecules(groupSize);
     std::vector<std::vector<Atom>> trialAtoms(groupSize);
     std::vector<RunningEnergy> trialGrowEnergies(groupSize);
+    std::vector<double> distanceBiasFactors(groupSize, 1.0);  // radial-proposal bias per satellite (CB variant)
     double rosenbluthRatio = 1.0;  // product of W/W_ideal (CB variant only; 1 for conventional)
 
     // accumulated background: existing molecules plus already-created trial molecules
@@ -304,8 +339,24 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                             system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
         time_begin = std::chrono::steady_clock::now();
-        std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-            random, growContext, memberComponent, componentId, upcomingMoleculeId, newLambda, dUdlambdaGroupId, true);
+        std::optional<ChainGrowData> growData;
+        if (i == 0)
+        {
+          growData = CBMC::growMoleculeSwapInsertion(random, growContext, memberComponent, componentId,
+                                                     upcomingMoleculeId, newLambda, dUdlambdaGroupId, true);
+        }
+        else
+        {
+          // satellite: first bead fixed at a distance r = R_max * u (uniform in r, giving the
+          // radial bias 3 r^2 / R_max^2) from the first bead of the trial central molecule
+          const double r = R_max * random.uniform();
+          const double3 fixedFirstBeadPosition =
+              trialAtoms[0][central.startingBead].position + r * random.UnitSphere();
+          distanceBiasFactors[i] = 3.0 * r * r / (R_max * R_max);
+          growData = CBMC::growMoleculePairSecondSwapInsertion(random, growContext, memberComponent, componentId,
+                                                               upcomingMoleculeId, fixedFirstBeadPosition, newLambda,
+                                                               dUdlambdaGroupId, true);
+        }
         time_end = std::chrono::steady_clock::now();
         central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
         system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
@@ -340,6 +391,18 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       {
         std::pair<Molecule, std::vector<Atom>> trialMolecule =
             system.equilibratedIdealGasMoleculeRandomInBox(random, componentId);
+        if (i > 0)
+        {
+          // satellite: starting bead uniform inside the sphere around the trial central molecule
+          // (r = R_max * cbrt(u) is uniform in the sphere volume, so there is no radial bias)
+          const double r = R_max * std::cbrt(random.uniform());
+          const double3 targetFirstBeadPosition =
+              trialAtoms[0][central.startingBead].position + r * random.UnitSphere();
+          const double3 shift =
+              targetFirstBeadPosition - trialMolecule.second[memberComponent.startingBead].position;
+          for (Atom& atom : trialMolecule.second) atom.position += shift;
+          trialMolecule.first.centerOfMassPosition += shift;
+        }
         for (Atom& atom : trialMolecule.second)
         {
           atom.moleculeId = static_cast<std::uint32_t>(upcomingMoleculeId);
@@ -476,21 +539,39 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
     }
 
-    // Acceptance probability: one factor beta*f_c*V/(N_c + k) per group member, where k counts the
-    // members of the same component placed so far (k = 1 for the first, 2 for the second, ...)
+    // Acceptance probability: beta*f_0*V / N_0(new) for the central molecule, where N_0(new) counts
+    // all integer molecules of the central component in the inserted state (including integerized
+    // group members of the same component), and beta*f_c*V_s*b/(N_c(new) - e - t) per satellite
+    // slot, where N_c(new) is the number of integer molecules of the slot's component in the
+    // inserted state (the integerized group members still occupy fractional slots here, so they are
+    // added explicitly), e excludes the selected central molecule when the slot's component equals
+    // the central component, and t counts earlier satellite slots of the same component (the reverse
+    // deletion selects uniformly, sequentially without replacement).
     double preFactor = 1.0;
     {
-      std::vector<std::size_t> placedOfComponent(system.components.size(), 0);
-      for (std::size_t i = 0; i < groupSize; ++i)
+      std::vector<std::size_t> totalMembersOfComponent(system.components.size(), 0);
+      for (const GroupMember& member : members) ++totalMembersOfComponent[member.componentId];
+
+      const double fugacityCentral =
+          central.molFraction * central.fugacityCoefficient.value_or(1.0) * system.pressure;
+      preFactor *= system.beta * fugacityCentral * system.simulationBox.volume /
+                   static_cast<double>(oldN + totalMembersOfComponent[selectedComponent]);
+
+      std::vector<std::size_t> earlierSlotsOfComponent(system.components.size(), 0);
+      for (std::size_t i = 1; i < groupSize; ++i)
       {
         const std::size_t componentId = members[i].componentId;
         const Component& memberComponent = system.components[componentId];
+        const std::size_t reverseCandidates = system.numberOfIntegerMoleculesPerComponent[componentId] +
+                                              totalMembersOfComponent[componentId] -
+                                              (componentId == selectedComponent ? 1 : 0) -
+                                              earlierSlotsOfComponent[componentId];
+        ++earlierSlotsOfComponent[componentId];
+
         const double fugacity =
             memberComponent.molFraction * memberComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
-        const std::size_t oldCount = system.numberOfIntegerMoleculesPerComponent[componentId];
-        preFactor *= system.beta * fugacity * system.simulationBox.volume /
-                     static_cast<double>(oldCount + 1 + placedOfComponent[componentId]);
-        ++placedOfComponent[componentId];
+        preFactor *= system.beta * fugacity * sphereVolume * distanceBiasFactors[i] /
+                     static_cast<double>(reverseCandidates);
       }
     }
 
@@ -575,9 +656,11 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // Steps for deletion Lambda_new = -epsilon
     // ===================================================================
     // (1) The existing fractional group with lambda=lambda_old is removed (retraced with CBMC in
-    //     the CB variant)
-    // (2) Randomly selected integer molecules (one per member, drawn without replacement per
-    //     component) become the new fractional group with lambda_new = 1 - epsilon
+    //     the CB variant); rejected when any satellite is further than R_max from the central
+    //     molecule (reverse of the sphere-confined placement at insertion)
+    // (2) A randomly selected integer molecule of the central component and, per satellite slot, a
+    //     uniformly selected integer molecule (drawn without replacement) become the new fractional
+    //     group with lambda_new = 1 - epsilon
 
     central.mc_moves_statistics.addTrial(move, 1);
 
@@ -598,30 +681,68 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         static_cast<std::size_t>(selectedNewBin + std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
-    // ordered selection without replacement: for every member draw a random integer molecule of its
-    // component distinct from the ones already chosen for earlier members of the same component
-    std::vector<std::size_t> selectedMolecules(groupSize);
+    // The reverse insertion places the new fractional satellites inside the sphere around the new
+    // fractional central molecule, so it could not regenerate a removed fractional group whose
+    // satellites are further away. The CB variant's radial proposal density gives the reverse
+    // distance bias R_max^2 / (3 r^2) per satellite, evaluated at the removed group's geometry.
+    std::vector<double> removedDistanceBiasFactors(groupSize, 1.0);
     {
-      std::vector<std::vector<std::size_t>> chosenPerComponent(system.components.size());
-      for (std::size_t i = 0; i < groupSize; ++i)
+      const double3 fractionalCentralPosition = fractionalMolecules[0][central.startingBead].position;
+      for (std::size_t i = 1; i < groupSize; ++i)
+      {
+        const std::size_t startingBead = system.components[members[i].componentId].startingBead;
+        const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(
+            fractionalCentralPosition - fractionalMolecules[i][startingBead].position);
+        const double r = dr.length();
+        if (r <= 0.0 || r > R_max)
+        {
+          return {std::nullopt, double3(0.0, 1.0, 0.0)};
+        }
+        if (useCBMC) removedDistanceBiasFactors[i] = (R_max * R_max) / (3.0 * r * r);
+      }
+    }
+
+    // member 0 (central): uniform among all integer molecules of the central component; satellite
+    // slots: uniform sequential selection without replacement among all integer molecules of the
+    // slot's component (central molecule excluded), matching the reverse-count bookkeeping of the
+    // insertion move
+    std::vector<std::size_t> selectedMolecules(groupSize);
+    std::vector<std::size_t> slotCandidateCounts(groupSize, 0);
+    {
+      selectedMolecules[0] = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+      for (std::size_t i = 1; i < groupSize; ++i)
       {
         const std::size_t componentId = members[i].componentId;
-        const std::size_t firstIntegerMolecule = system.numberOfFractionalMoleculesPerComponent[componentId];
-        const std::size_t numberOfIntegers = system.numberOfIntegerMoleculesPerComponent[componentId];
-        std::vector<std::size_t>& chosen = chosenPerComponent[componentId];
 
-        std::size_t pick =
-            static_cast<std::size_t>(random.uniform() * static_cast<double>(numberOfIntegers - chosen.size()));
-        // map 'pick' to the actual molecule index, skipping already-chosen molecules
-        std::size_t moleculeIndex = firstIntegerMolecule;
-        for (std::size_t skipped = 0;; ++moleculeIndex)
+        std::vector<std::size_t> candidates;
+        const std::size_t firstIntegerMolecule = system.numberOfFractionalMoleculesPerComponent[componentId];
+        for (std::size_t molecule = firstIntegerMolecule;
+             molecule < system.numberOfMoleculesPerComponent[componentId]; ++molecule)
         {
-          if (std::find(chosen.begin(), chosen.end(), moleculeIndex) != chosen.end()) continue;
-          if (skipped == pick) break;
-          ++skipped;
+          if (componentId == selectedComponent && molecule == selectedMolecules[0]) continue;
+
+          bool alreadySelected = false;
+          for (std::size_t earlier = 1; earlier < i; ++earlier)
+          {
+            if (members[earlier].componentId == componentId && selectedMolecules[earlier] == molecule)
+            {
+              alreadySelected = true;
+              break;
+            }
+          }
+          if (alreadySelected) continue;
+
+          candidates.push_back(molecule);
         }
-        selectedMolecules[i] = moleculeIndex;
-        chosen.push_back(moleculeIndex);
+
+        if (candidates.empty())
+        {
+          return {std::nullopt, double3(0.0, 1.0, 0.0)};
+        }
+
+        slotCandidateCounts[i] = candidates.size();
+        selectedMolecules[i] = candidates[random.uniform_integer(0, candidates.size() - 1)];
       }
     }
 
@@ -678,8 +799,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                                system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
         Component& memberComponent = system.components[members[i].componentId];
+        // the reverse insertion grows the central molecule with a free first bead and every
+        // satellite with its first bead fixed inside the sphere; the retraces mirror this
         ChainRetraceData retraceData =
-            CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent, fractionalMolecules[i]);
+            (i == 0) ? CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent,
+                                                         fractionalMolecules[i])
+                     : CBMC::retraceMoleculePairSecondSwapDeletion(retraceContext, memberComponent,
+                                                                   fractionalMolecules[i]);
 
         if (system.forceField.useDualCutOff)
         {
@@ -856,21 +982,23 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
     }
 
-    // Acceptance probability: one factor (N_c - k)/(beta*f_c*V) per group member, where k counts
-    // the members of the same component removed before it
+    // Acceptance probability: N_0 / (beta*f_0*V) for the central molecule (selected uniformly among
+    // the integer molecules of the central component) and (candidate count) * b / (beta*f_c*V_s)
+    // per satellite slot, the exact reciprocal of the insertion prefactor with the reverse distance
+    // bias evaluated at the removed fractional group's geometry.
     double preFactor = 1.0;
     {
-      std::vector<std::size_t> removedOfComponent(system.components.size(), 0);
-      for (std::size_t i = 0; i < groupSize; ++i)
+      const double fugacityCentral =
+          central.molFraction * central.fugacityCoefficient.value_or(1.0) * system.pressure;
+      preFactor *= static_cast<double>(oldN) / (system.beta * fugacityCentral * system.simulationBox.volume);
+
+      for (std::size_t i = 1; i < groupSize; ++i)
       {
-        const std::size_t componentId = members[i].componentId;
-        const Component& memberComponent = system.components[componentId];
+        const Component& memberComponent = system.components[members[i].componentId];
         const double fugacity =
             memberComponent.molFraction * memberComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
-        const std::size_t oldCount = system.numberOfIntegerMoleculesPerComponent[componentId];
-        preFactor *= static_cast<double>(oldCount - removedOfComponent[componentId]) /
-                     (system.beta * fugacity * system.simulationBox.volume);
-        ++removedOfComponent[componentId];
+        preFactor *= static_cast<double>(slotCandidateCounts[i]) * removedDistanceBiasFactors[i] /
+                     (system.beta * fugacity * sphereVolume);
       }
     }
 

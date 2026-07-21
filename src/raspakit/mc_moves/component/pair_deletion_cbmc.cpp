@@ -107,7 +107,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   }
 
   const std::size_t componentB = componentA.pairComponentId.value();
-  if (selectedComponent > componentB)
+  if (selectedComponent >= componentB)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -284,7 +284,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                                polarizationDifference.potentialEnergy()));
 
+  // Reverse of the insertion's radial proposal (r uniform in [0, R_max]): bias R_max^2 / (3 r^2)
+  // relative to the sphere-volume factor V_s.
   const double distanceBias = (R_max * R_max) / (3.0 * r * r);
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
@@ -296,8 +299,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double k = double(numberOfPartners);
   const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
 
-  const double preFactor = correctionFactorEwald * (N_A * k) /
-                           (system.beta * fugacityA * fugacityB * system.simulationBox.volume * distanceBias);
+  // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
+  const double preFactor = correctionFactorEwald *
+                           (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
+                           (k * distanceBias / (system.beta * fugacityB * sphereVolume));
 
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
 
@@ -360,7 +365,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   }
 
   const std::size_t componentB = componentA.pairComponentId.value();
-  if (selectedComponent > componentB)
+  if (selectedComponent >= componentB)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -537,7 +542,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                                polarizationDifference.potentialEnergy()));
 
-  const double distanceBias = 1.0;
+  // Reverse of the insertion's uniform-in-sphere proposal: no radial bias.
+  const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
 
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
@@ -549,8 +555,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double k = double(numberOfPartners);
   const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
 
-  const double preFactor = correctionFactorEwald * (N_A * k) /
-                           (system.beta * fugacityA * fugacityB * system.simulationBox.volume * distanceBias);
+  // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
+  const double preFactor = correctionFactorEwald *
+                           (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
+                           (k / (system.beta * fugacityB * sphereVolume));
 
   const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
 
