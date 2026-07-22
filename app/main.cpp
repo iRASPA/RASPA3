@@ -8,6 +8,7 @@ import monte_carlo;
 import monte_carlo_transition_matrix;
 import molecular_dynamics;
 import minimization;
+import thermodynamic_integration;
 //import breakthrough;
 //import breakthrough_simulation;
 //import mixture_prediction_simulation;
@@ -109,6 +110,12 @@ int main(int argc, char* argv[])
       {
         Minimization minimization(inputReader);
         minimization.run();
+        break;
+      }
+      case InputReader::SimulationType::ThermodynamicIntegration:
+      {
+        ThermodynamicIntegration ti(inputReader);
+        ti.run();
         break;
       }
       case InputReader::SimulationType::Breakthrough:

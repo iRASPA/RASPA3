@@ -46,6 +46,14 @@ import scaling;
          system.components[componentId].intraMolecularPotentials.computeInternalEnergies(atoms);
 }
 
+// Whether the component pins the given lambda coordinate at a fixed bin (fixed-lambda
+// thermodynamic integration, "SimulationType": "ThermodynamicIntegration"). The corresponding
+// fractional molecules then exist without any lambda-changing move being enabled.
+static bool pinsFixedLambda(const Component &component, Component::FixedLambdaCoordinate coordinate)
+{
+  return component.fixedLambdaBin.has_value() && component.fixedLambdaCoordinate == coordinate;
+}
+
 void System::determineFractionalComponents()
 {
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -62,8 +70,11 @@ void System::determineFractionalComponents()
     numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
+    // fixed-lambda thermodynamic integration pins a fractional molecule in the GC slot without
+    // any lambda-changing move being enabled
     const bool needsGCSlot = components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
-                             components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0;
+                             components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0 ||
+                             pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::GC);
     if (needsGCSlot)
     {
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -102,7 +113,8 @@ void System::determineFractionalComponents()
     }
     const std::size_t partner = components[i].pairComponentId.value();
 
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+        pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap))
     {
       numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[i] = 1;
       numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[partner] = 1;
@@ -128,7 +140,8 @@ void System::determineFractionalComponents()
       continue;
     }
 
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
+        pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::GroupSwap))
     {
       numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[i] += 1;
       components[i].hasFractionalMolecule = true;
@@ -454,6 +467,72 @@ void System::initializeGibbsConventionalFractionalMolecules() noexcept
   }
 }
 
+// Fixed-lambda thermodynamic integration: pin the fractional molecule(s) of each component with a
+// 'fixedLambdaBin' at lambda = bin * delta. Depending on the pinned coordinate this is the single
+// GC fractional molecule, both molecules of an ion-pair, or all members of a CFCMC group. The bin
+// never changes during the simulation, so all dU/dlambda samples accumulate in this single bin.
+void System::initializeFixedLambdaFractionalMolecules() noexcept
+{
+  auto rescale = [this](std::size_t componentId, std::size_t slotIndex, double lambda, std::uint8_t groupId)
+  {
+    for (Atom& atom : spanOfMolecule(componentId, slotIndex))
+    {
+      atom.setScalingToFractional(lambda, groupId);
+    }
+  };
+
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    Component& component = components[componentId];
+    if (!component.fixedLambdaBin.has_value())
+    {
+      continue;
+    }
+
+    PropertyLambdaProbabilityHistogram& histogram = component.fixedLambdaHistogram();
+    histogram.setCurrentBin(component.fixedLambdaBin.value());
+    const double lambda = histogram.lambdaValue();
+
+    switch (component.fixedLambdaCoordinate)
+    {
+      case Component::FixedLambdaCoordinate::GC:
+      {
+        rescale(componentId, indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId), lambda,
+                histogram.dUdlambdaGroupId);
+        break;
+      }
+      case Component::FixedLambdaCoordinate::PairSwap:
+      {
+        // both fractional molecules of the ion-pair are coupled to the driving component's histogram
+        const std::size_t partner = component.pairComponentId.value();
+        rescale(componentId, indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId), lambda,
+                histogram.dUdlambdaGroupId);
+        rescale(partner, indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(partner), lambda,
+                histogram.dUdlambdaGroupId);
+        break;
+      }
+      case Component::FixedLambdaCoordinate::GroupSwap:
+      {
+        // all fractional molecules of the group (the central component and every satellite
+        // occurrence) are coupled to the central component's histogram
+        for (std::size_t member = 0; member < components.size(); ++member)
+        {
+          if (groupSwapLambdaDriver(member, Move::Types::GroupSwapCFCMC) != componentId)
+          {
+            continue;
+          }
+          const std::size_t begin = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(member);
+          for (std::size_t k = 0; k < numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[member]; ++k)
+          {
+            rescale(member, begin + k, lambda, histogram.dUdlambdaGroupId);
+          }
+        }
+        break;
+      }
+    }
+  }
+}
+
 // Serial Gibbs CFCMC: only the system that owns the active fractional molecule contributes dUdlambda.
 // Fractional molecules in inactive systems are switched off (lambda=0) and must have groupId=0,
 // otherwise the soft-core derivative still yields a spurious dUdlambda contribution.
@@ -699,7 +778,11 @@ bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types 
   {
     return false;
   }
-  return component.mc_moves_probabilities.getProbability(move) > 0.0;
+  // a fixed lambda-bin (thermodynamic integration at constant lambda) drives the conventional
+  // pair-swap histogram without any move being enabled
+  return component.mc_moves_probabilities.getProbability(move) > 0.0 ||
+         (move == Move::Types::PairSwapCFCMC &&
+          pinsFixedLambda(component, Component::FixedLambdaCoordinate::PairSwap));
 }
 
 // A component "drives" a group-swap lambda histogram if it has a group definition (GroupComponents)
@@ -708,7 +791,15 @@ bool System::componentDrivesPairSwapLambda(std::size_t componentId, Move::Types 
 bool System::componentDrivesGroupSwapLambda(std::size_t componentId, Move::Types move) const noexcept
 {
   const Component& component = components[componentId];
-  return !component.groupComponentIds.empty() && component.mc_moves_probabilities.getProbability(move) > 0.0;
+  if (component.groupComponentIds.empty())
+  {
+    return false;
+  }
+  // a fixed lambda-bin (thermodynamic integration at constant lambda) drives the conventional
+  // group-swap histogram without any move being enabled
+  return component.mc_moves_probabilities.getProbability(move) > 0.0 ||
+         (move == Move::Types::GroupSwapCFCMC &&
+          pinsFixedLambda(component, Component::FixedLambdaCoordinate::GroupSwap));
 }
 
 // The driving component of the group fractional slots held by 'componentId': either the component

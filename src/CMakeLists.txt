@@ -5,6 +5,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/mathkit/*.cpp
   ${PROJECT_SOURCE_DIR}/symmetrykit/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/drivers/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/flexible_molecules/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/interactions/*.cpp
@@ -37,6 +38,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/mathkit/*.ixx
   ${PROJECT_SOURCE_DIR}/symmetrykit/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/drivers/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/flexible_molecules/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/interactions/*.ixx

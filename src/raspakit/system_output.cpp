@@ -161,13 +161,17 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
+    // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
+    // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
+    const PropertyLambdaProbabilityHistogram& histogram =
+        c.fixedLambdaBin.has_value() ? c.fixedLambdaHistogram() : c.lambdaGC;
+    double averageOccupancy = histogram.occupancy();
+    double lambda = histogram.lambdaValue();
 
-    if (c.lambdaGC.computeDUdlambda)
+    if (histogram.computeDUdlambda)
     {
       std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 componentId, c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 componentId, c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -236,13 +240,17 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   for (std::size_t componentId = 0; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
+    // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
+    // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
+    const PropertyLambdaProbabilityHistogram& histogram =
+        c.fixedLambdaBin.has_value() ? c.fixedLambdaHistogram() : c.lambdaGC;
+    double averageOccupancy = histogram.occupancy();
+    double lambda = histogram.lambdaValue();
 
-    if (c.lambdaGC.computeDUdlambda)
+    if (histogram.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -358,13 +366,17 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
+    // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
+    // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
+    const PropertyLambdaProbabilityHistogram& histogram =
+        c.fixedLambdaBin.has_value() ? c.fixedLambdaHistogram() : c.lambdaGC;
+    double averageOccupancy = histogram.occupancy();
+    double lambda = histogram.lambdaValue();
 
-    if (c.lambdaGC.computeDUdlambda)
+    if (histogram.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -431,13 +443,17 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   for (std::size_t componentId{0}; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
+    // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
+    // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
+    const PropertyLambdaProbabilityHistogram& histogram =
+        c.fixedLambdaBin.has_value() ? c.fixedLambdaHistogram() : c.lambdaGC;
+    double averageOccupancy = histogram.occupancy();
+    double lambda = histogram.lambdaValue();
 
-    if (c.lambdaGC.computeDUdlambda)
+    if (histogram.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
@@ -735,13 +751,17 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   for (std::size_t componentId = 0; const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
+    // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
+    // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
+    const PropertyLambdaProbabilityHistogram& histogram =
+        c.fixedLambdaBin.has_value() ? c.fixedLambdaHistogram() : c.lambdaGC;
+    double averageOccupancy = histogram.occupancy();
+    double lambda = histogram.lambdaValue();
 
-    if (c.lambdaGC.computeDUdlambda)
+    if (histogram.computeDUdlambda)
     {
       std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
-                 c.name, lambda, currentDUdlambda(lambda, c.lambdaGC.dUdlambdaGroupId), occupancy, averageOccupancy);
+                 c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {

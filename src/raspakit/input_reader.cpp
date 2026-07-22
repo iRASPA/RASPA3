@@ -190,6 +190,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ParallelTempering;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "ThermodynamicIntegration"))
+    {
+      simulationType = SimulationType::ThermodynamicIntegration;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -1149,6 +1154,72 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                             "(allowed: 'CFCMC', 'CFCMC_PairSwap', 'CFCMC_CBMC_PairSwap', 'CFCMC_GroupSwap', "
                             "'CFCMC_CBMC_GroupSwap')\n",
                             componentId, thermodynamicIntegrationString));
+          }
+        }
+      }
+
+      // Fixed lambda-bin for thermodynamic integration at constant lambda: fractional molecule(s)
+      // are created and pinned at lambda = LambdaBinIndex / (NumberOfLambdaBins - 1); during
+      // production <dU/dlambda> is accumulated in that single bin (one point of the
+      // <dU/dlambda>(lambda) curve). The lambda coordinate is inferred from the component
+      // definition: 'GroupComponents' pins the group-swap lambda, 'PairComponent' the ion-pair
+      // lambda, otherwise the grand-canonical lambda.
+      if (item.contains("LambdaBinIndex") && item["LambdaBinIndex"].is_number_integer())
+      {
+        std::size_t lambda_bin_index = item["LambdaBinIndex"].get<std::size_t>();
+        if (lambda_bin_index >= jsonNumberOfLambdaBins)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}': 'LambdaBinIndex' ({}) out of range, must be smaller than "
+                          "'NumberOfLambdaBins' ({})\n",
+                          jsonComponentName, lambda_bin_index, jsonNumberOfLambdaBins));
+        }
+
+        // fixed-lambda thermodynamic integration is incompatible with lambda-changing CFCMC moves
+        const std::array<Move::Types, 12> lambdaChangingMoves{
+            Move::Types::SwapCFCMC,         Move::Types::SwapCBCFCMC,
+            Move::Types::WidomCFCMC,        Move::Types::WidomCBCFCMC,
+            Move::Types::GibbsSwapCFCMC,    Move::Types::GibbsSwapCBCFCMC,
+            Move::Types::GibbsConventionalCFCMC, Move::Types::GibbsConventionalCBCFCMC,
+            Move::Types::PairSwapCFCMC,     Move::Types::PairSwapCBCFCMC,
+            Move::Types::GroupSwapCFCMC,    Move::Types::GroupSwapCBCFCMC};
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          for (const Move::Types move : lambdaChangingMoves)
+          {
+            if (move_probabilities[i].getProbability(move) > 0.0)
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: component '{}': 'LambdaBinIndex' (fixed-lambda thermodynamic "
+                              "integration) cannot be combined with lambda-changing CFCMC moves\n",
+                              jsonComponentName));
+            }
+          }
+
+          Component& component = jsonComponents[i][componentId];
+          component.fixedLambdaBin = lambda_bin_index;
+
+          if (!component.groupComponentIds.empty())
+          {
+            component.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::GroupSwap;
+            component.lambdaGroupSwap.computeDUdlambda = true;
+          }
+          else if (component.pairComponentId.has_value())
+          {
+            if (component.pairComponentId.value() <= componentId)
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: component '{}': 'LambdaBinIndex' with 'PairComponent' must be set "
+                              "on the first (lowest-index) component of the ion-pair\n",
+                              jsonComponentName));
+            }
+            component.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::PairSwap;
+            component.lambdaPairSwap.computeDUdlambda = true;
+          }
+          else
+          {
+            component.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::GC;
+            component.lambdaGC.computeDUdlambda = true;
           }
         }
       }
@@ -2939,6 +3010,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdentityChanges",
     "GibbsIdentityChanges",
     "ThermodynamicIntegration",
+    "LambdaBinIndex",
     "LambdaBiasFileName",
     "BlockingPockets",
     "LnPartitionFunction"};

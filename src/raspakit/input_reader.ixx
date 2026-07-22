@@ -85,7 +85,8 @@ export struct InputReader
     Breakthrough = 5,                ///< Breakthrough simulation for adsorption studies.
     MixturePrediction = 6,           ///< Simulation for predicting mixtures.
     Fitting = 7,                     ///< Simulation type for fitting parameters.
-    ParallelTempering = 8            ///< Parallel Tempering simulation for enhanced sampling.
+    ParallelTempering = 8,           ///< Parallel Tempering simulation for enhanced sampling.
+    ThermodynamicIntegration = 9     ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
   };
 
   /**

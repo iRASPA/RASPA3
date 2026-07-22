@@ -2086,6 +2086,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGC;
   archive << c.lambdaGibbs;
   archive << c.hasFractionalMolecule;
+  archive << c.fixedLambdaBin;
+  archive << c.fixedLambdaCoordinate;
 
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
@@ -2182,6 +2184,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGC;
   archive >> c.lambdaGibbs;
   archive >> c.hasFractionalMolecule;
+  archive >> c.fixedLambdaBin;
+  archive >> c.fixedLambdaCoordinate;
 
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;

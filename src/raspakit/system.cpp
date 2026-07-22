@@ -201,6 +201,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   }
 
   createInitialMolecules(initialpositions);
+  initializeFixedLambdaFractionalMolecules();
   computeTailCorrectionCounts();
 
   // Build the per-component ideal-gas conformation reservoirs used to seed CBMC growth. Done after the

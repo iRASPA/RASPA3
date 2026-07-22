@@ -218,6 +218,21 @@ reported separately at the end of the simulation.
     internal Hessian (default `1.0e-8`). A significant negative internal mode
     is treated as an unstable minimized structure.
 
+-   `"SimulationType" : "ThermodynamicIntegration"`\
+    Runs a Monte Carlo simulation at a fixed value of the CFCMC coupling
+    parameter λ. Every component with a `"LambdaBinIndex"` gets fractional
+    molecule(s) pinned at λ = binIndex / (`NumberOfLambdaBins` − 1); no
+    λ-changing moves and no Wang-Landau biasing are involved. The pinned λ
+    coordinate follows the component definition: with `"GroupComponents"` the
+    group-swap λ is pinned (fractional molecules for the central component and
+    all satellites), with `"PairComponent"` the ion-pair λ (fractional
+    molecules for both components of the pair), otherwise the grand-canonical
+    λ (a single fractional molecule). During production the ensemble average
+    ⟨∂U/∂λ⟩ is accumulated at that λ and reported (with a block-error
+    estimate) at the end of the run. Running one simulation per λ-bin and
+    integrating ⟨∂U/∂λ⟩ from λ=0 to λ=1 yields the excess chemical potential
+    via thermodynamic integration.
+
 ### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfProductionCycles" : integer`\
@@ -938,6 +953,22 @@ and `"BinaryInteractions"` are read from the force field file
     boolean, `true` integrates the default (grand-canonical) λ. As a string it
     selects which λ coordinate to follow: `"CFCMC"` (default), `"CFCMC_PairSwap"`,
     or `"CFCMC_CBMC_PairSwap"`.
+
+-   `"LambdaBinIndex" : integer`\
+    Used with `"SimulationType" : "ThermodynamicIntegration"`. Creates
+    fractional molecule(s) pinned at the fixed lambda-bin
+    λ = binIndex / (`NumberOfLambdaBins` − 1). The value must be smaller than
+    `NumberOfLambdaBins`, and cannot be combined with λ-changing CFCMC moves.
+    When the component defines `"GroupComponents"` the group-swap λ is pinned
+    and the whole group (central component plus satellites) becomes fractional;
+    when it defines `"PairComponent"` the ion-pair λ is pinned and both
+    components of the pair become fractional (set `"LambdaBinIndex"` on the
+    lowest-index component of the pair); otherwise the grand-canonical λ is
+    pinned with a single fractional molecule. During production ⟨∂U/∂λ⟩ is
+    sampled at this λ only; the average and its block-error estimate are
+    written to the text and JSON output
+    (`"properties" > "thermodynamicIntegration"`), giving one point of the
+    ⟨∂U/∂λ⟩(λ) curve.
 
 -   `"LnPartitionFunction" : number or string`\
     The natural logarithm of the (reduced) partition function used for reactions.

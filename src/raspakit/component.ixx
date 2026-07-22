@@ -247,6 +247,40 @@ export struct Component
   PropertyLambdaProbabilityHistogram lambdaGroupSwapCB;  ///< Lambda probability histogram for group CB/CFCMC swaps.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
 
+  /// Which lambda coordinate a fixed lambda-bin (thermodynamic integration at constant lambda)
+  /// applies to. Inferred from the component definition: GroupComponents -> GroupSwap,
+  /// PairComponent -> PairSwap, otherwise the grand-canonical lambda.
+  enum class FixedLambdaCoordinate : std::size_t
+  {
+    GC = 0,        ///< grand-canonical lambda (lambdaGC), single fractional molecule
+    PairSwap = 1,  ///< ion-pair lambda (lambdaPairSwap), fractional molecule on both pair components
+    GroupSwap = 2  ///< group lambda (lambdaGroupSwap), fractional molecules on central + satellites
+  };
+
+  /// Fixed lambda-bin for thermodynamic integration at constant lambda ("SimulationType":
+  /// "ThermodynamicIntegration"). When set, fractional molecule(s) are created and pinned at
+  /// lambda = fixedLambdaBin * delta; <dU/dlambda> accumulates in that single bin.
+  std::optional<std::size_t> fixedLambdaBin{std::nullopt};
+  FixedLambdaCoordinate fixedLambdaCoordinate{FixedLambdaCoordinate::GC};
+
+  /// The lambda histogram pinned by 'fixedLambdaBin'.
+  const PropertyLambdaProbabilityHistogram &fixedLambdaHistogram() const
+  {
+    switch (fixedLambdaCoordinate)
+    {
+      case FixedLambdaCoordinate::PairSwap:
+        return lambdaPairSwap;
+      case FixedLambdaCoordinate::GroupSwap:
+        return lambdaGroupSwap;
+      default:
+        return lambdaGC;
+    }
+  }
+  PropertyLambdaProbabilityHistogram &fixedLambdaHistogram()
+  {
+    return const_cast<PropertyLambdaProbabilityHistogram &>(std::as_const(*this).fixedLambdaHistogram());
+  }
+
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
