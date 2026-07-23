@@ -195,6 +195,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ThermodynamicIntegration;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "ParallelThermodynamicIntegration"))
+    {
+      simulationType = SimulationType::ParallelThermodynamicIntegration;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -256,6 +261,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   if (parsed_data.contains("NumberOfLambdaBins") && parsed_data["NumberOfLambdaBins"].is_number_unsigned())
   {
     jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<std::size_t>();
+  }
+  numberOfLambdaBins = jsonNumberOfLambdaBins;
+
+  // Parallel thermodynamic integration: how often (in cycles) a sweep of lambda-exchanges between
+  // neighboring replicas is attempted (0 disables the exchanges)
+  if (parsed_data.contains("LambdaExchangeEvery") && parsed_data["LambdaExchangeEvery"].is_number_unsigned())
+  {
+    lambdaExchangeEvery = parsed_data["LambdaExchangeEvery"].get<std::size_t>();
   }
 
   if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
@@ -1108,7 +1121,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_boolean())
+      if (item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_boolean() &&
+          simulationType != SimulationType::ParallelThermodynamicIntegration)
       {
         bool thermodynamic_integration = item["ThermodynamicIntegration"].get<bool>();
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
@@ -1164,9 +1178,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // <dU/dlambda>(lambda) curve). The lambda coordinate is inferred from the component
       // definition: 'GroupComponents' pins the group-swap lambda, 'PairComponent' the ion-pair
       // lambda, otherwise the grand-canonical lambda.
+      //
+      // For "SimulationType": "ParallelThermodynamicIntegration" the bin index is assigned per
+      // replica by the driver (replica k gets bin k); the TI component is marked either with
+      // 'LambdaBinIndex' (value ignored) or with '"ThermodynamicIntegration": true'.
+      std::optional<std::size_t> fixed_lambda_bin{std::nullopt};
       if (item.contains("LambdaBinIndex") && item["LambdaBinIndex"].is_number_integer())
       {
-        std::size_t lambda_bin_index = item["LambdaBinIndex"].get<std::size_t>();
+        fixed_lambda_bin = item["LambdaBinIndex"].get<std::size_t>();
+      }
+      else if (simulationType == SimulationType::ParallelThermodynamicIntegration &&
+               item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_boolean() &&
+               item["ThermodynamicIntegration"].get<bool>())
+      {
+        fixed_lambda_bin = 0;
+      }
+      if (simulationType == SimulationType::ParallelThermodynamicIntegration && fixed_lambda_bin.has_value())
+      {
+        fixed_lambda_bin = 0;  // placeholder; the driver assigns bin k to replica k
+      }
+
+      if (fixed_lambda_bin.has_value())
+      {
+        std::size_t lambda_bin_index = fixed_lambda_bin.value();
         if (lambda_bin_index >= jsonNumberOfLambdaBins)
         {
           throw std::runtime_error(
@@ -2804,6 +2838,35 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
     }
   }
+
+  // Parallel thermodynamic integration: a single declared system is replicated by the driver into
+  // one replica per lambda-bin (each replica running in its own thread)
+  if (simulationType == SimulationType::ParallelThermodynamicIntegration)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelThermodynamicIntegration' requires exactly one declared system "
+                      "(it is replicated internally into one replica per lambda-bin), {} systems were declared\n",
+                      systems.size()));
+    }
+
+    std::size_t numberOfTIComponents{0};
+    for (const Component& component : systems.front().components)
+    {
+      if (component.fixedLambdaBin.has_value())
+      {
+        ++numberOfTIComponents;
+      }
+    }
+    if (numberOfTIComponents != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelThermodynamicIntegration' requires exactly one component marked "
+                      "with '\"ThermodynamicIntegration\": true' (or 'LambdaBinIndex'), found {}\n",
+                      numberOfTIComponents));
+    }
+  }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
@@ -2843,6 +2906,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PhononDOSBroadening",
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
+    "LambdaExchangeEvery",
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",

@@ -1,0 +1,73 @@
+{
+  "PseudoAtoms": [
+    {
+      "name": "Ow",
+      "framework": false,
+      "print_to_output": true,
+      "element": "O",
+      "print_as": "O",
+      "mass": 15.9994,
+      "charge": -0.8476,
+      "source": "SPC/E, H.J.C. Berendsen, J.R. Grigera, T.P. Straatsma, J. Phys. Chem. 1987, 91, 6269-6271"
+    },
+    {
+      "name": "Hw",
+      "framework": false,
+      "print_to_output": true,
+      "element": "H",
+      "print_as": "H",
+      "mass": 1.008,
+      "charge": 0.4238,
+      "source": "SPC/E, H.J.C. Berendsen, J.R. Grigera, T.P. Straatsma, J. Phys. Chem. 1987, 91, 6269-6271"
+    },
+    {
+      "name": "Na",
+      "framework": false,
+      "print_to_output": true,
+      "element": "Na",
+      "print_as": "Na",
+      "mass": 22.98977,
+      "charge": 1.0,
+      "source": "I.S. Joung, T.E. Cheatham, J. Phys. Chem. B 2008, 112, 9020-9041"
+    },
+    {
+      "name": "Cl",
+      "framework": false,
+      "print_to_output": true,
+      "element": "Cl",
+      "print_as": "Cl",
+      "mass": 35.453,
+      "charge": -1.0,
+      "source": "I.S. Joung, T.E. Cheatham, J. Phys. Chem. B 2008, 112, 9020-9041"
+    }
+  ],
+  "SelfInteractions": [
+    {
+      "name": "Ow",
+      "type": "lennard-jones",
+      "parameters": [78.177, 3.166],
+      "source": "SPC/E, H.J.C. Berendsen, J.R. Grigera, T.P. Straatsma, J. Phys. Chem. 1987, 91, 6269-6271"
+    },
+    {
+      "name": "Hw",
+      "type": "lennard-jones",
+      "parameters": [1.0, 1.0],
+      "source": "Table S1, J. Chem. Inf. Model. 2021, 61, 3752-3757 (Supporting Information)"
+    },
+    {
+      "name": "Na",
+      "type": "lennard-jones",
+      "parameters": [177.46, 2.159],
+      "source": "I.S. Joung, T.E. Cheatham, J. Phys. Chem. B 2008, 112, 9020-9041"
+    },
+    {
+      "name": "Cl",
+      "type": "lennard-jones",
+      "parameters": [6.434, 4.830],
+      "source": "I.S. Joung, T.E. Cheatham, J. Phys. Chem. B 2008, 112, 9020-9041"
+    }
+  ],
+  "MixingRule": "Lorentz-Berthelot",
+  "TruncationMethod": "truncated",
+  "TailCorrections": true
+}

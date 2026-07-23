@@ -16,6 +16,8 @@ import integrators_update;
 import integrators_compute;
 import thermostat;
 import interactions_ewald;
+import interactions_intermolecular;
+import interactions_framework_molecule;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
@@ -159,6 +161,17 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
                                           system.spanOfGroupData());
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
+
+    // The MD gradient/energy routines do not include the LJ tail corrections. The tail term is
+    // constant along the NVE trajectory (N, V and the scaling factors do not change), so it cancels
+    // in the acceptance rule, but it must be restored in the returned energy: the caller overwrites
+    // system.runningEnergies with it, and both the tail energy and its dU/dlambda contribution would
+    // otherwise be lost.
+    currentEnergy += Interactions::computeInterMolecularTailEnergy(system.forceField, system.simulationBox,
+                                                                   system.spanOfMoleculeAtoms()) +
+                     Interactions::computeFrameworkMoleculeTailEnergy(system.forceField, system.simulationBox,
+                                                                      system.spanOfFrameworkAtoms(),
+                                                                      system.spanOfMoleculeAtoms());
     return currentEnergy;
   }
   return std::nullopt;

@@ -233,6 +233,53 @@ reported separately at the end of the simulation.
     integrating ⟨∂U/∂λ⟩ from λ=0 to λ=1 yields the excess chemical potential
     via thermodynamic integration.
 
+-   `"SimulationType" : "ParallelThermodynamicIntegration"`\
+    Computes the full ⟨∂U/∂λ⟩(λ) curve and the excess chemical potential in a
+    single multithreaded run. Exactly one system is declared in the input; it
+    is replicated internally into one replica per λ-bin (replica *k* starts
+    pinned at λ-bin *k*), and every replica runs in its own thread with its own
+    random-number stream. Exactly one component is marked as the
+    thermodynamic-integration component with `"ThermodynamicIntegration" :
+    true` (a `"LambdaBinIndex"` marking also works; its value is ignored). The
+    pinned λ coordinate is inferred from the component definition exactly as
+    for `"ThermodynamicIntegration"` (group-swap, ion-pair, or grand-canonical
+    λ).
+
+    Every `"LambdaExchangeEvery"` cycles (default `10`, `0` disables) the
+    threads synchronize on a barrier and Hamiltonian parallel-tempering
+    exchanges of the λ values between replicas at neighboring λ-bins are
+    attempted, with acceptance rule
+    min(1, exp[−β(ΔU_A + ΔU_B)]) where ΔU_A = U_A(λ_B) − U_A(λ_A) and
+    ΔU_B = U_B(λ_A) − U_B(λ_B). This is the only synchronization point between
+    the threads besides the start and end of each stage. Because the exchanges
+    permute the λ values over the replicas, every λ-bin is occupied by exactly
+    one replica at all times and the whole curve is sampled every cycle.
+
+    At the end the per-bin ⟨∂U/∂λ⟩ book-keeping of all replicas is stitched
+    together and integrated from λ=0 to λ=1 with a natural cubic spline (a
+    Simpson estimate is reported as a consistency check); the confidence
+    interval follows from the block-wise spline integrals. The combined
+    output file `output/output_{T}_{P}.parallel_ti.txt` (and `.json`) holds
+    the stitched results and the λ-exchange statistics. In addition every
+    replica writes its own output file
+    `output/output_{T}_{P}.parallel_ti.r{k}.txt` (and `.json`) with the
+    standard status reports every `"PrintEvery"` cycles (including the λ-bin
+    the replica currently occupies), and at the end its energy-drift check,
+    Monte-Carlo move statistics, averages, and its own per-bin ⟨∂U/∂λ⟩
+    book-keeping (the bins it visited through accepted λ-exchanges).
+    During production the current stitched curve and its running spline
+    integral are additionally written to the gnuplot-friendly snapshot file
+    `output/dudlambda_{T}_{P}.parallel_ti.txt` (columns: λ, ⟨∂U/∂λ⟩ [K],
+    error [K]; overwritten every `"PrintEvery"` cycles at a λ-exchange
+    synchronization point, and once more at the end of the run), so the
+    convergence of the curve can be monitored while the simulation is
+    running. Binary restart files are not supported by this driver.
+
+    The driver spawns `NumberOfLambdaBins` worker threads (plain C++ threads,
+    no OpenMP); leave `"NumberOfThreads"` at its default of `1` so the
+    per-energy-evaluation thread pool stays serial and the machine is not
+    oversubscribed.
+
 ### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfProductionCycles" : integer`\
@@ -952,7 +999,10 @@ and `"BinaryInteractions"` are read from the force field file
     Enables thermodynamic integration of dU/dλ for the fractional molecule. As a
     boolean, `true` integrates the default (grand-canonical) λ. As a string it
     selects which λ coordinate to follow: `"CFCMC"` (default), `"CFCMC_PairSwap"`,
-    or `"CFCMC_CBMC_PairSwap"`.
+    or `"CFCMC_CBMC_PairSwap"`. With
+    `"SimulationType" : "ParallelThermodynamicIntegration"`, `true` marks the
+    component whose λ is pinned per replica (the λ coordinate is inferred from
+    the component definition as for `"LambdaBinIndex"`).
 
 -   `"LambdaBinIndex" : integer`\
     Used with `"SimulationType" : "ThermodynamicIntegration"`. Creates

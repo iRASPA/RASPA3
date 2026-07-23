@@ -1,0 +1,48 @@
+{
+  "SimulationType" : "ParallelThermodynamicIntegration",
+  "NumberOfLambdaBins" : 16,
+  "LambdaExchangeEvery" : 10,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [20.8, 20.8, 20.8],
+      "ExternalTemperature" : 298.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "Ewald",
+      "CutOff" : 10.0,
+      "VolumeMoveProbability" : 0.01,
+      "HybridMCProbability" : 0.001,
+      "HybridMCMoveNumberOfSteps" : 10
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "water",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "CreateNumberOfMolecules" : 300
+    },
+    {
+      "Name" : "sodium",
+      "FugacityCoefficient" : 1.0,
+      "PairComponent" : 2,
+      "ThermodynamicIntegration" : true,
+      "TranslationProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "chloride",
+      "FugacityCoefficient" : 1.0,
+      "PairComponent" : 1,
+      "TranslationProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

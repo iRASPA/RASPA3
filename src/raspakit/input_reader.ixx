@@ -86,7 +86,8 @@ export struct InputReader
     MixturePrediction = 6,           ///< Simulation for predicting mixtures.
     Fitting = 7,                     ///< Simulation type for fitting parameters.
     ParallelTempering = 8,           ///< Parallel Tempering simulation for enhanced sampling.
-    ThermodynamicIntegration = 9     ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
+    ThermodynamicIntegration = 9,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
+    ParallelThermodynamicIntegration = 10  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
   };
 
   /**
@@ -109,6 +110,11 @@ export struct InputReader
   SimulationType simulationType{SimulationType::MonteCarlo};  ///< Type of simulation to be executed.
 
   std::size_t numberOfBlocks{5};  ///< Number of simulation blocks.
+
+  std::size_t numberOfLambdaBins{41};  ///< Number of lambda-bins (grid points on [0,1]).
+  /// Parallel thermodynamic integration: attempt a sweep of lambda-exchanges between neighboring
+  /// replicas every this many cycles (0 disables the exchanges).
+  std::size_t lambdaExchangeEvery{10};
 
   std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.
