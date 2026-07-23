@@ -171,7 +171,9 @@ reported separately at the end of the simulation.
     the threads synchronize on a barrier and configuration swaps between
     replicas at neighboring temperatures are attempted with acceptance rule
     min(1, exp[(β_B − β_A)(U_B − U_A)]) (extended with the Yan & de Pablo
-    factor when the pressures differ). The replicas keep their temperatures;
+    fugacity factor Π_i [(β_A f_A,i)/(β_B f_B,i)]^(N_B,i − N_A,i) when the
+    molecule counts differ, and with the PV work term when the boxes travel
+    with the configurations). The replicas keep their temperatures;
     only the configurations migrate through the ladder. The pairing offset
     alternates between sweeps, so a configuration can traverse the whole
     ladder. This is the only synchronization point between the threads besides
@@ -183,7 +185,11 @@ reported separately at the end of the simulation.
     `output/output.parallel_tempering.txt` (and `.json`) holds the swap
     statistics, including a per-pair acceptance table (low acceptance for a
     particular pair marks a bottleneck in the ladder; use a denser ladder
-    there). Binary restart files are not supported by this driver.
+    there). The optional property files (RDFs, density grids, energy and
+    molecule-count histograms, molecule properties, movies, and the
+    number-of-molecules/volume evolution files) are written per replica, keyed
+    by the replica index (`.s{k}`). Restart files (JSON and binary) are not
+    supported by this driver.
 
     The driver spawns one worker thread per temperature (plain C++ threads,
     no OpenMP); leave `"NumberOfThreads"` at its default of `1` so the
@@ -191,6 +197,68 @@ reported separately at the end of the simulation.
     oversubscribed. Note that the swap move requires rigid, whole-molecule
     replicas: systems with fractional (CFCMC) molecules, flexible components,
     or reactions reject all swap attempts.
+
+-   `"SimulationType" : "HyperParallelTempering"`\
+    Runs a multithreaded hyper-parallel-tempering (replica-exchange) Monte
+    Carlo simulation over a two-dimensional grid of state points (Yan & de
+    Pablo, JCP 111(21), 9509-9516, 1999). Exactly one system is declared in the
+    input, with a temperature ladder `"ExternalTemperatures"` and a pressure
+    ladder `"ExternalPressures"` (both sorted lists); the system is replicated
+    internally into one replica per (temperature, pressure) grid point, and
+    every replica runs in its own thread with its own random-number stream.
+    The pressures are converted to per-component fugacities internally: the
+    fugacity coefficients are recomputed with the Peng-Robinson equation of
+    state at every grid point (an explicitly given `"FugacityCoefficient"` is
+    ignored, since a single value cannot be valid at all state points).
+
+    Every `"ParallelTemperingSwapEvery"` cycles (default `10`, `0` disables)
+    the threads synchronize on a barrier and configuration swaps between
+    replicas at neighboring grid points are attempted with the Yan & de Pablo
+    acceptance rule
+
+    min(1, exp[(β_B − β_A)(U_B − U_A)] × Π_i [(β_A f_A,i)/(β_B f_B,i)]^(N_B,i − N_A,i))
+
+    with per-component fugacities f_X,i (the second factor accounts for the
+    different numbers of adsorbed molecules in the two configurations). The
+    sweeps alternate between the temperature direction (neighboring
+    temperatures at the same pressure) and the pressure direction (neighboring
+    pressures at the same temperature), each with an alternating pairing
+    offset, so a configuration can traverse the whole grid. The replicas keep
+    their (temperature, pressure) state points; only the configurations
+    migrate. This is the only synchronization point between the threads
+    besides the start and end of each stage.
+
+    Every replica writes its own output file
+    `output/output_{T}_{P}.hyper_parallel_tempering.r{k}.txt` (and `.json`)
+    with the standard status reports and final averages (one adsorption
+    isotherm/isobar point per replica); the combined file
+    `output/output.hyper_parallel_tempering.txt` (and `.json`) holds the swap
+    statistics, with separate per-pair acceptance tables for the temperature
+    and the pressure direction (low acceptance for a particular pair marks a
+    bottleneck in the grid; use a denser ladder there). The optional property
+    files (RDFs, density grids, energy and molecule-count histograms, molecule
+    properties, movies, and the number-of-molecules/volume evolution files)
+    are written per replica, keyed by the replica index (`.s{k}`). Restart
+    files (JSON and binary) are not supported by this driver.
+
+    The assembled adsorption isotherms are additionally written to one
+    gnuplot-friendly file per temperature,
+    `output/isotherm_{T}.hyper_parallel_tempering.txt`, with one block per
+    component and rows ordered by increasing pressure (columns: fugacity [Pa],
+    absolute loading with its confidence-interval error in molecules/cell,
+    molecules/unit-cell, mol/kg-framework and mg/g-framework, and the pressure
+    [Pa]). The files are overwritten every `"PrintEvery"` cycles at a swap
+    synchronization point during production, and once more at the end of the
+    run, so the convergence of the isotherms can be monitored while the
+    simulation is running.
+
+    The driver spawns one worker thread per grid point (plain C++ threads, no
+    OpenMP) — with N_T temperatures and N_P pressures that is N_T × N_P
+    threads, so size the grid to the machine. Leave `"NumberOfThreads"` at its
+    default of `1` so the per-energy-evaluation thread pool stays serial. The
+    swap move requires rigid, whole-molecule replicas: systems with fractional
+    (CFCMC) molecules, flexible components, or reactions reject all swap
+    attempts.
 
 -   `"SimulationType" : "Minimization"`\
     Performs an energy minimization of the initial configuration.
@@ -390,9 +458,10 @@ reported separately at the end of the simulation.
     move its time step, and so on. Default: `5000`.
 
 -   `"ParallelTemperingSwapEvery" : integer`\
-    For `"SimulationType" : "ParallelTempering"`: how often (in cycles) a sweep
-    of configuration swaps between replicas at neighboring temperatures is
-    attempted (`0` disables the swaps). Default: `10`.
+    For `"SimulationType" : "ParallelTempering"` and `"HyperParallelTempering"`:
+    how often (in cycles) a sweep of configuration swaps between replicas at
+    neighboring state points is attempted (`0` disables the swaps).
+    Default: `10`.
 
 ### Threading and reproducibility <a name="threading-and-reproducibility"></a>
 
@@ -436,13 +505,22 @@ reported separately at the end of the simulation.
     required for every system. Default: `300`.
 
 -   `"ExternalTemperatures" : [T_0, T_1, ...]`\
-    The temperature ladder for `"SimulationType" : "ParallelTempering"`: a
-    sorted list of at least two temperatures in Kelvin. The single declared
-    system is replicated into one replica per temperature. Replaces
-    `"ExternalTemperature"` for that simulation type.
+    The temperature ladder for `"SimulationType" : "ParallelTempering"` (a
+    sorted list of at least two temperatures in Kelvin) or
+    `"HyperParallelTempering"` (at least one). The single declared system is
+    replicated into one replica per temperature (per (temperature, pressure)
+    grid point for hyper-parallel tempering). Replaces `"ExternalTemperature"`
+    for those simulation types.
 
 -   `"ExternalPressure" : floating-point-number`\
     The external pressure of the system in Pascal.
+
+-   `"ExternalPressures" : [P_0, P_1, ...]`\
+    The pressure ladder for `"SimulationType" : "HyperParallelTempering"`: a
+    sorted list of pressures in Pascal, converted to per-component fugacities
+    internally with the Peng-Robinson equation of state at each grid point.
+    Together with `"ExternalTemperatures"` it spans the (temperature, pressure)
+    replica grid. Replaces `"ExternalPressure"` for that simulation type.
 
 -   `"ExternalPressureX" / "ExternalPressureY" / "ExternalPressureZ" : floating-point-number`\
     Override individual diagonal components of the pressure tensor, for
@@ -558,9 +636,9 @@ reported separately at the end of the simulation.
 
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\
     The probability per cycle of attempting a parallel-tempering swap between two
-    systems. Ignored with `"SimulationType" : "ParallelTempering"`, where the
-    swaps are performed by the driver at the barrier synchronization points
-    (see `"ParallelTemperingSwapEvery"`).
+    systems. Ignored with `"SimulationType" : "ParallelTempering"` and
+    `"HyperParallelTempering"`, where the swaps are performed by the driver at
+    the barrier synchronization points (see `"ParallelTemperingSwapEvery"`).
 
 -   `"TranslationSmartMCAllProbability" : floating-point-number`\
     The probability per cycle of attempting a translation smart-MC move that

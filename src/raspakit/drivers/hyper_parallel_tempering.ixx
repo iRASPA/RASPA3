@@ -1,6 +1,6 @@
 module;
 
-export module parallel_tempering;
+export module hyper_parallel_tempering;
 
 import std;
 
@@ -12,25 +12,32 @@ import running_energy;
 import json;
 
 /**
- * \brief Multithreaded parallel-tempering driver for Monte Carlo.
+ * \brief Multithreaded hyper-parallel-tempering driver for Monte Carlo.
  *
- * The single declared system is replicated into one replica per temperature of the ladder
- * ('ExternalTemperatures'); replica k runs at temperature T_k. Every replica runs in its own
- * thread with its own random-number stream (no OpenMP; plain std::jthread worker threads). The
- * threads only synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where
- * configuration swaps between replicas at neighboring temperatures are attempted with the standard
- * parallel-tempering acceptance rule
+ * Ref: "Hyper-parallel tempering Monte Carlo: Application to the Lennard-Jones fluid and the
+ * restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999.
  *
- *     acc = min(1, exp[(beta_B - beta_A) (U_B - U_A)])
+ * The single declared system is replicated into one replica per point of the (temperature,
+ * pressure) grid spanned by the ladders 'ExternalTemperatures' x 'ExternalPressures'. The
+ * pressures are converted to per-component fugacities internally through the Peng-Robinson
+ * equation of state evaluated at each grid point. Every replica runs in its own thread with its
+ * own random-number stream (no OpenMP; plain std::jthread worker threads). The threads only
+ * synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where configuration
+ * swaps between replicas at neighboring grid points are attempted with the Yan & de Pablo
+ * acceptance rule
  *
- * (extended with the Yan & de Pablo factor when the pressures differ). The replicas keep their
- * temperatures; only the configurations migrate through the ladder. Swaps alternate between the
- * (0,1),(2,3),... and (1,2),(3,4),... pairings so a configuration can traverse the whole ladder.
+ *     acc = min(1, exp[(beta_B - beta_A)(U_B - U_A)]
+ *                  x prod_i [(beta_A f_A,i)/(beta_B f_B,i)]^(N_B,i - N_A,i))
+ *
+ * The sweeps alternate between the temperature direction (neighboring temperatures at the same
+ * pressure) and the pressure direction (neighboring pressures at the same temperature), each with
+ * an alternating pairing offset, so a configuration can traverse the whole grid. The replicas keep
+ * their (temperature, pressure) state points; only the configurations migrate through the grid.
  *
  * Each replica writes its own output file with the standard status reports and final averages;
- * a combined output file holds the swap statistics.
+ * a combined output file holds the swap statistics for both directions.
  */
-export struct ParallelTempering
+export struct HyperParallelTempering
 {
   enum class SimulationStage : std::size_t
   {
@@ -41,15 +48,16 @@ export struct ParallelTempering
     Production = 4          ///< Production stage.
   };
 
-  ParallelTempering() = delete;
-  ParallelTempering(const ParallelTempering&) = delete;
-  ParallelTempering& operator=(const ParallelTempering&) = delete;
+  HyperParallelTempering() = delete;
+  HyperParallelTempering(const HyperParallelTempering&) = delete;
+  HyperParallelTempering& operator=(const HyperParallelTempering&) = delete;
 
   /**
    * \brief Constructs the driver and replicates the single declared system into one replica per
-   *        temperature of the ladder (replica k pinned at temperature k).
+   *        (temperature, pressure) grid point, recomputing the per-replica fugacity coefficients
+   *        with the Peng-Robinson equation of state.
    */
-  ParallelTempering(InputReader& reader);
+  HyperParallelTempering(InputReader& reader);
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -67,10 +75,13 @@ export struct ParallelTempering
 
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
-  std::vector<double> temperatures;   ///< The temperature ladder (one replica per entry).
-  std::size_t numberOfReplicas;       ///< Number of replicas == number of temperatures == number of threads.
-  std::vector<System> systems;        ///< One replica per temperature.
-  std::vector<RandomNumber> randoms;  ///< Independent random-number stream per replica.
+  std::vector<double> temperatures;  ///< The temperature ladder [K].
+  std::vector<double> pressures;     ///< The pressure ladder [Pa].
+  std::size_t numberOfTemperatures;  ///< Number of temperatures in the ladder.
+  std::size_t numberOfPressures;     ///< Number of pressures in the ladder.
+  std::size_t numberOfReplicas;      ///< numberOfTemperatures x numberOfPressures == number of threads.
+  std::vector<System> systems;       ///< One replica per (temperature, pressure) grid point.
+  std::vector<RandomNumber> randoms; ///< Independent random-number stream per replica.
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
 
@@ -90,13 +101,17 @@ export struct ParallelTempering
   std::vector<std::string> replicaJsonFileNames;  ///< Filename of the JSON output file per replica.
   std::vector<nlohmann::json> replicaJsons;       ///< JSON output data per replica.
 
-  std::size_t swapSweeps{0};      ///< Number of swap sweeps performed (all stages).
+  std::size_t swapSweeps{0};       ///< Number of swap sweeps performed (all stages).
   std::size_t sweepsThisStage{0};  ///< Number of swap sweeps in the current stage.
-  std::size_t swapAttempts{0};    ///< Number of pairwise swap attempts.
-  std::size_t swapAccepted{0};    ///< Number of accepted pairwise swaps.
+  std::size_t swapAttempts{0};     ///< Number of pairwise swap attempts (both directions).
+  std::size_t swapAccepted{0};     ///< Number of accepted pairwise swaps (both directions).
 
-  std::vector<std::size_t> swapAttemptsPerPair;  ///< Attempts per neighboring temperature-pair (k, k+1).
-  std::vector<std::size_t> swapAcceptedPerPair;  ///< Acceptances per neighboring temperature-pair (k, k+1).
+  /// Attempts/acceptances per neighboring temperature-pair (t, t+1), aggregated over the pressures.
+  std::vector<std::size_t> swapAttemptsPerTemperaturePair;
+  std::vector<std::size_t> swapAcceptedPerTemperaturePair;
+  /// Attempts/acceptances per neighboring pressure-pair (p, p+1), aggregated over the temperatures.
+  std::vector<std::size_t> swapAttemptsPerPressurePair;
+  std::vector<std::size_t> swapAcceptedPerPressurePair;
 
   std::chrono::duration<double> totalPreInitializationSimulationTime{0};  ///< Total time for pre-initialization.
   std::chrono::duration<double> totalInitializationSimulationTime{0};    ///< Total time for initialization stage.
@@ -105,7 +120,15 @@ export struct ParallelTempering
   std::chrono::duration<double> totalSimulationTime{0};                  ///< Total simulation time.
 
   /**
-   * \brief Runs the parallel-tempering simulation.
+   * \brief The replica at grid point (temperature index, pressure index).
+   */
+  std::size_t replicaIndex(std::size_t temperatureIndex, std::size_t pressureIndex) const
+  {
+    return temperatureIndex * numberOfPressures + pressureIndex;
+  }
+
+  /**
+   * \brief Runs the hyper-parallel-tempering simulation.
    */
   void run();
 
@@ -126,8 +149,9 @@ export struct ParallelTempering
   void performReplicaCycle(std::size_t replicaId, SimulationStage stage, std::size_t currentBlock);
 
   /**
-   * \brief One sweep of configuration-swap attempts between replicas at neighboring temperatures.
-   *        Runs single-threaded inside the barrier completion (all worker threads are blocked).
+   * \brief One sweep of configuration-swap attempts, alternating between the temperature and the
+   *        pressure direction of the grid. Runs single-threaded inside the barrier completion
+   *        (all worker threads are blocked).
    */
   void performSwapSweep(SimulationStage stage, std::size_t numberOfCycles) noexcept;
 
@@ -135,6 +159,16 @@ export struct ParallelTempering
    * \brief Generates the final combined output: swap statistics and timings.
    */
   void output();
+
+  /**
+   * \brief Assembles the adsorption-isotherm data per temperature and writes one gnuplot-friendly
+   *        file per temperature (rows ordered by increasing pressure; columns: fugacity, loading
+   *        with confidence-interval error in molecules/cell, molecules/unit-cell, mol/kg-framework
+   *        and mg/g-framework; one block per component). Overwritten on every write: called during
+   *        production from the barrier completion (all worker threads are parked, so reading the
+   *        replica averages is race-free) and once more at the end of the run.
+   */
+  void writeIsothermSnapshot() const;
 
   /**
    * \brief Writes the final per-replica reports (energy drift, move statistics and averages) to

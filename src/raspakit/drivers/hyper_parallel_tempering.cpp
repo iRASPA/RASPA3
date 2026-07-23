@@ -1,6 +1,6 @@
 module;
 
-module parallel_tempering;
+module hyper_parallel_tempering;
 
 import std;
 
@@ -16,9 +16,11 @@ import property_loading;
 import units;
 import simulationbox;
 import forcefield;
+import equation_of_states;
 import energy_status;
 import running_energy;
 import atom;
+import int3;
 import double3;
 import double3x3;
 import property_lambda_probability_histogram;
@@ -63,7 +65,7 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   }
 }
 
-ParallelTempering::ParallelTempering(InputReader& reader)
+HyperParallelTempering::HyperParallelTempering(InputReader& reader)
     : random(reader.randomSeed),
       numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
@@ -75,9 +77,12 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       numberOfBlocks(reader.numberOfBlocks),
       parallelTemperingSwapEvery(reader.parallelTemperingSwapEvery),
       temperatures(reader.parallelTemperingTemperatures),
-      numberOfReplicas(temperatures.size())
+      pressures(reader.parallelTemperingPressures),
+      numberOfTemperatures(temperatures.size()),
+      numberOfPressures(pressures.size()),
+      numberOfReplicas(numberOfTemperatures * numberOfPressures)
 {
-  // the single declared system is replicated into one replica per temperature of the ladder
+  // the single declared system is replicated into one replica per (temperature, pressure) grid point
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
 
@@ -88,38 +93,62 @@ ParallelTempering::ParallelTempering(InputReader& reader)
   }
   systems.push_back(std::move(templateSystem));
 
-  // replica k is pinned at temperature T_k, with its own random-number stream
+  // replica (t, p) is pinned at temperature T_t and pressure P_p, with its own random-number stream
   randoms.reserve(numberOfReplicas);
-  for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
   {
-    System& system = systems[replicaId];
-    const double T = temperatures[replicaId];
-
-    system.temperature = T;
-    system.beta = 1.0 / (Units::KB * T);
-
-    // temperature-dependent potentials (Feynman-Hibbs) derive pair coefficients, shifts and
-    // tail-corrections from the temperature
-    if (system.forceField.temperature != T)
+    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
     {
-      system.forceField.temperature = T;
-      system.forceField.preComputeDerivedParameters();
-      system.forceField.preComputePotentialShift();
-      system.forceField.preComputeTailCorrection();
+      const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
+      System& system = systems[replicaId];
+      const double T = temperatures[temperatureIndex];
+      const double P = pressures[pressureIndex];
+
+      system.temperature = T;
+      system.beta = 1.0 / (Units::KB * T);
+
+      system.input_pressure = P;
+      system.pressure = P / Units::PressureConversionFactor;
+      system.input_pressureTensorDiagonal = double3(system.input_pressure, system.input_pressure,
+                                                    system.input_pressure);
+      system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
+
+      // temperature-dependent potentials (Feynman-Hibbs) derive pair coefficients, shifts and
+      // tail-corrections from the temperature
+      if (system.forceField.temperature != T)
+      {
+        system.forceField.temperature = T;
+        system.forceField.preComputeDerivedParameters();
+        system.forceField.preComputePotentialShift();
+        system.forceField.preComputeTailCorrection();
+      }
+
+      // convert the pressure to per-component fugacities at this grid point: the fugacity
+      // coefficients are recomputed with the Peng-Robinson equation of state at (T_t, P_p)
+      // (an explicitly given 'FugacityCoefficient' would only be valid at one state point)
+      for (Component& component : system.components)
+      {
+        component.fugacityCoefficient = std::nullopt;
+      }
+      system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
+                                               EquationOfState::MixingRules::VanDerWaals, T, P, system.simulationBox,
+                                               system.heliumVoidFraction, system.components);
+
+      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
+      system.buildConformationReservoirs();
+
+      randoms.emplace_back(random.seed + replicaId + 1);
     }
-
-    // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
-    system.buildConformationReservoirs();
-
-    randoms.emplace_back(random.seed + replicaId + 1);
   }
 
   stepsPerReplica.assign(numberOfReplicas, 0uz);
-  swapAttemptsPerPair.assign(numberOfReplicas - 1uz, 0uz);
-  swapAcceptedPerPair.assign(numberOfReplicas - 1uz, 0uz);
+  swapAttemptsPerTemperaturePair.assign(numberOfTemperatures > 0uz ? numberOfTemperatures - 1uz : 0uz, 0uz);
+  swapAcceptedPerTemperaturePair.assign(numberOfTemperatures > 0uz ? numberOfTemperatures - 1uz : 0uz, 0uz);
+  swapAttemptsPerPressurePair.assign(numberOfPressures > 0uz ? numberOfPressures - 1uz : 0uz, 0uz);
+  swapAcceptedPerPressurePair.assign(numberOfPressures > 0uz ? numberOfPressures - 1uz : 0uz, 0uz);
 }
 
-void ParallelTempering::run()
+void HyperParallelTempering::run()
 {
   setup();
   runStage(SimulationStage::PreInitialization, numberOfPreInitializationCycles);
@@ -129,7 +158,7 @@ void ParallelTempering::run()
   output();
 }
 
-void ParallelTempering::setup()
+void HyperParallelTempering::setup()
 {
   for (System& system : systems)
   {
@@ -138,8 +167,8 @@ void ParallelTempering::setup()
   }
 
   std::filesystem::create_directories("output");
-  stream.open("output/output.parallel_tempering.txt", std::ios::out);
-  outputJsonFileName = "output/output.parallel_tempering.json";
+  stream.open("output/output.hyper_parallel_tempering.txt", std::ios::out);
+  outputJsonFileName = "output/output.hyper_parallel_tempering.json";
 
   const System& front = systems.front();
   std::print(stream, "{}", front.writeOutputHeader());
@@ -147,23 +176,47 @@ void ParallelTempering::setup()
   std::print(stream, "{}\n", HardwareInfo::writeInfo());
   std::print(stream, "{}", Units::printStatus());
 
-  std::print(stream, "Parallel tempering\n");
+  std::print(stream, "Hyper-parallel tempering\n");
   std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Number of temperatures / replicas / threads: {}\n", numberOfReplicas);
+  std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
+  std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
+  std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
   std::print(stream, "Temperature ladder:                         ");
   for (double T : temperatures)
   {
     std::print(stream, " {}", T);
   }
   std::print(stream, " [K]\n");
+  std::print(stream, "Pressure ladder:                            ");
+  for (double P : pressures)
+  {
+    std::print(stream, " {}", P);
+  }
+  std::print(stream, " [Pa]\n");
   if (parallelTemperingSwapEvery == 0uz)
   {
     std::print(stream, "Configuration swaps:                         disabled\n\n");
   }
   else
   {
-    std::print(stream, "Configuration-swap sweep every:              {} cycles\n\n", parallelTemperingSwapEvery);
+    std::print(stream, "Configuration-swap sweep every:              {} cycles\n", parallelTemperingSwapEvery);
+    std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n\n");
   }
+
+  std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
+             numberOfPressures);
+  std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
+  std::print(stream, "    ------------------------------------------------\n");
+  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+  {
+    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+    {
+      const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
+      std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
+                 pressures[pressureIndex]);
+    }
+  }
+  std::print(stream, "\n");
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -174,6 +227,7 @@ void ParallelTempering::setup()
   outputJson["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
   outputJson["initialization"]["units"] = Units::jsonStatus();
   outputJson["initialization"]["temperatures"] = temperatures;
+  outputJson["initialization"]["pressures"] = pressures;
   outputJson["initialization"]["parallelTemperingSwapEvery"] = parallelTemperingSwapEvery;
 
   std::ofstream json(outputJsonFileName);
@@ -186,16 +240,16 @@ void ParallelTempering::setup()
   for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
   {
     const System& system = systems[replicaId];
-    replicaStreams.emplace_back(std::format("output/output_{}_{}.parallel_tempering.r{}.txt", system.temperature,
+    replicaStreams.emplace_back(std::format("output/output_{}_{}.hyper_parallel_tempering.r{}.txt", system.temperature,
                                             system.input_pressure, replicaId),
                                 std::ios::out);
-    replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.parallel_tempering.r{}.json",
+    replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.hyper_parallel_tempering.r{}.json",
                                                   system.temperature, system.input_pressure, replicaId));
 
     std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
     std::print(replicaStream, "{}", system.writeOutputHeader());
-    std::print(replicaStream, "Parallel tempering: replica {} of {} (temperature {} [K])\n", replicaId,
-               numberOfReplicas, system.temperature);
+    std::print(replicaStream, "Hyper-parallel tempering: replica {} of {} (temperature {} [K], pressure {} [Pa])\n",
+               replicaId, numberOfReplicas, system.temperature, system.input_pressure);
     std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
     std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
     std::print(replicaStream, "{}", Units::printStatus());
@@ -211,6 +265,7 @@ void ParallelTempering::setup()
     replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
     replicaJsons[replicaId]["replicaId"] = replicaId;
     replicaJsons[replicaId]["temperature"] = system.temperature;
+    replicaJsons[replicaId]["pressure"] = system.input_pressure;
     replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
     replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
 
@@ -228,7 +283,8 @@ void ParallelTempering::setup()
   }
 }
 
-void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationStage stage, std::size_t currentBlock)
+void HyperParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationStage stage,
+                                                 std::size_t currentBlock)
 {
   System& system = systems[replicaId];
   RandomNumber& rng = randoms[replicaId];
@@ -276,19 +332,51 @@ void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationSta
   }
 }
 
-void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numberOfCycles) noexcept
+void HyperParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numberOfCycles) noexcept
 {
-  // the replicas keep their temperatures; the configurations migrate through the ladder.
-  // alternate the pairing offset between sweeps so configurations can traverse the whole ladder
-  const std::size_t offset = swapSweeps % 2uz;
-  for (std::size_t replicaId = offset; replicaId + 1 < numberOfReplicas; replicaId += 2uz)
+  // the replicas keep their (temperature, pressure) state points; the configurations migrate
+  // through the grid. Sweeps alternate between the temperature direction and the pressure
+  // direction; within a direction the pairing offset alternates between visits, so a configuration
+  // can traverse the whole grid.
+  bool temperatureDirection = (swapSweeps % 2uz == 0uz);
+  if (temperatureDirection && numberOfTemperatures < 2uz) temperatureDirection = false;
+  if (!temperatureDirection && numberOfPressures < 2uz) temperatureDirection = true;
+  const std::size_t offset = (swapSweeps / 2uz) % 2uz;
+
+  if (temperatureDirection)
   {
-    ++swapAttempts;
-    ++swapAttemptsPerPair[replicaId];
-    if (MC_Moves::ParallelTemperingSwap(random, systems[replicaId], systems[replicaId + 1]).has_value())
+    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
     {
-      ++swapAccepted;
-      ++swapAcceptedPerPair[replicaId];
+      for (std::size_t temperatureIndex = offset; temperatureIndex + 1 < numberOfTemperatures; temperatureIndex += 2uz)
+      {
+        ++swapAttempts;
+        ++swapAttemptsPerTemperaturePair[temperatureIndex];
+        if (MC_Moves::ParallelTemperingSwap(random, systems[replicaIndex(temperatureIndex, pressureIndex)],
+                                            systems[replicaIndex(temperatureIndex + 1, pressureIndex)])
+                .has_value())
+        {
+          ++swapAccepted;
+          ++swapAcceptedPerTemperaturePair[temperatureIndex];
+        }
+      }
+    }
+  }
+  else
+  {
+    for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+    {
+      for (std::size_t pressureIndex = offset; pressureIndex + 1 < numberOfPressures; pressureIndex += 2uz)
+      {
+        ++swapAttempts;
+        ++swapAttemptsPerPressurePair[pressureIndex];
+        if (MC_Moves::ParallelTemperingSwap(random, systems[replicaIndex(temperatureIndex, pressureIndex)],
+                                            systems[replicaIndex(temperatureIndex, pressureIndex + 1)])
+                .has_value())
+        {
+          ++swapAccepted;
+          ++swapAcceptedPerPressurePair[pressureIndex];
+        }
+      }
     }
   }
   ++swapSweeps;
@@ -303,15 +391,24 @@ void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numb
                                        : (stage == SimulationStage::Equilibration)    ? "equilibration"
                                                                                       : "production";
     const std::size_t cycle = std::min(sweepsThisStage * parallelTemperingSwapEvery, numberOfCycles);
-    std::scoped_lock lock(outputMutex);
-    std::print(stream, "Parallel-tempering sweep {} ({}, cycle {} of {}): accepted {}/{} ({:.2f}%)\n", swapSweeps,
-               stageName, cycle, numberOfCycles, swapAccepted, swapAttempts,
-               100.0 * static_cast<double>(swapAccepted) / static_cast<double>(std::max(1uz, swapAttempts)));
-    std::flush(stream);
+    {
+      std::scoped_lock lock(outputMutex);
+      std::print(stream, "Hyper-parallel-tempering sweep {} ({}, cycle {} of {}): accepted {}/{} ({:.2f}%)\n",
+                 swapSweeps, stageName, cycle, numberOfCycles, swapAccepted, swapAttempts,
+                 100.0 * static_cast<double>(swapAccepted) / static_cast<double>(std::max(1uz, swapAttempts)));
+      std::flush(stream);
+    }
+
+    // running snapshot of the assembled adsorption isotherms: all worker threads are parked on
+    // the barrier, so reading the per-replica loading averages is race-free
+    if (stage == SimulationStage::Production)
+    {
+      writeIsothermSnapshot();
+    }
   }
 }
 
-void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycles)
+void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycles)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
@@ -522,7 +619,7 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
   totalSimulationTime += (t2 - t1);
 }
 
-void ParallelTempering::output()
+void HyperParallelTempering::output()
 {
   std::size_t numberOfSteps = std::accumulate(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
 
@@ -569,13 +666,17 @@ void ParallelTempering::output()
 
   writeReplicaFinalReports(recomputed);
 
+  // final assembled adsorption isotherms (also covers runs with the swaps disabled)
+  writeIsothermSnapshot();
+
   std::print(stream, "Energy drift per replica\n");
   std::print(stream, "===============================================================================\n\n");
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
     const RunningEnergy drift = systems[replicaId].runningEnergies - recomputed[replicaId];
-    std::print(stream, "    replica {:4d} (temperature {:10.4f} [K]): drift {: .6e} [K]\n", replicaId,
-               systems[replicaId].temperature, Units::EnergyToKelvin * drift.potentialEnergy());
+    std::print(stream, "    replica {:4d} (temperature {:10.4f} [K], pressure {:13.5e} [Pa]): drift {: .6e} [K]\n",
+               replicaId, systems[replicaId].temperature, systems[replicaId].input_pressure,
+               Units::EnergyToKelvin * drift.potentialEnergy());
   }
   std::print(stream, "\n\n");
 
@@ -584,26 +685,46 @@ void ParallelTempering::output()
   std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
   std::print(stream, "\n\n");
 
-  std::print(stream, "Parallel-tempering swap statistics\n");
+  std::print(stream, "Hyper-parallel-tempering swap statistics\n");
   std::print(stream, "===============================================================================\n\n");
   std::print(stream, "    sweeps:    {}\n", swapSweeps);
   std::print(stream, "    attempts:  {}\n", swapAttempts);
   std::print(stream, "    accepted:  {} ({:.4f} %)\n\n", swapAccepted,
              100.0 * static_cast<double>(swapAccepted) / static_cast<double>(std::max(1uz, swapAttempts)));
 
-  // low acceptance for a particular pair marks a bottleneck in the temperature ladder
-  // (configurations cannot migrate past it); consider a denser ladder around such a pair
-  std::print(stream, "    pair (replicas)    temperature [K]           attempts    accepted    acceptance\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
-  for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
+  // low acceptance for a particular pair marks a bottleneck in the grid (configurations cannot
+  // migrate past it); consider a denser ladder around such a pair
+  if (numberOfTemperatures > 1uz)
   {
-    std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", replicaId,
-               replicaId + 1, temperatures[replicaId], temperatures[replicaId + 1], swapAttemptsPerPair[replicaId],
-               swapAcceptedPerPair[replicaId],
-               100.0 * static_cast<double>(swapAcceptedPerPair[replicaId]) /
-                   static_cast<double>(std::max(1uz, swapAttemptsPerPair[replicaId])));
+    std::print(stream, "    temperature direction (aggregated over the pressures)\n");
+    std::print(stream, "    pair (indices)     temperature [K]           attempts    accepted    acceptance\n");
+    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    for (std::size_t temperatureIndex = 0; temperatureIndex + 1 < numberOfTemperatures; ++temperatureIndex)
+    {
+      std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", temperatureIndex,
+                 temperatureIndex + 1, temperatures[temperatureIndex], temperatures[temperatureIndex + 1],
+                 swapAttemptsPerTemperaturePair[temperatureIndex], swapAcceptedPerTemperaturePair[temperatureIndex],
+                 100.0 * static_cast<double>(swapAcceptedPerTemperaturePair[temperatureIndex]) /
+                     static_cast<double>(std::max(1uz, swapAttemptsPerTemperaturePair[temperatureIndex])));
+    }
+    std::print(stream, "\n");
   }
-  std::print(stream, "\n\n");
+  if (numberOfPressures > 1uz)
+  {
+    std::print(stream, "    pressure direction (aggregated over the temperatures)\n");
+    std::print(stream, "    pair (indices)     pressure [Pa]                 attempts    accepted    acceptance\n");
+    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    for (std::size_t pressureIndex = 0; pressureIndex + 1 < numberOfPressures; ++pressureIndex)
+    {
+      std::print(stream, "    {:4d} - {:<4d}   {:12.5e} - {:<12.5e}   {:9d}   {:9d}    {:8.4f} %\n", pressureIndex,
+                 pressureIndex + 1, pressures[pressureIndex], pressures[pressureIndex + 1],
+                 swapAttemptsPerPressurePair[pressureIndex], swapAcceptedPerPressurePair[pressureIndex],
+                 100.0 * static_cast<double>(swapAcceptedPerPressurePair[pressureIndex]) /
+                     static_cast<double>(std::max(1uz, swapAttemptsPerPressurePair[pressureIndex])));
+    }
+    std::print(stream, "\n");
+  }
+  std::print(stream, "\n");
 
   std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
   std::print(stream, "===============================================================================\n\n");
@@ -617,11 +738,13 @@ void ParallelTempering::output()
   std::flush(stream);
 
   outputJson["output"]["numberOfSteps"] = numberOfSteps;
-  outputJson["output"]["parallelTempering"]["sweeps"] = swapSweeps;
-  outputJson["output"]["parallelTempering"]["attempts"] = swapAttempts;
-  outputJson["output"]["parallelTempering"]["accepted"] = swapAccepted;
-  outputJson["output"]["parallelTempering"]["attemptsPerPair"] = swapAttemptsPerPair;
-  outputJson["output"]["parallelTempering"]["acceptedPerPair"] = swapAcceptedPerPair;
+  outputJson["output"]["hyperParallelTempering"]["sweeps"] = swapSweeps;
+  outputJson["output"]["hyperParallelTempering"]["attempts"] = swapAttempts;
+  outputJson["output"]["hyperParallelTempering"]["accepted"] = swapAccepted;
+  outputJson["output"]["hyperParallelTempering"]["attemptsPerTemperaturePair"] = swapAttemptsPerTemperaturePair;
+  outputJson["output"]["hyperParallelTempering"]["acceptedPerTemperaturePair"] = swapAcceptedPerTemperaturePair;
+  outputJson["output"]["hyperParallelTempering"]["attemptsPerPressurePair"] = swapAttemptsPerPressurePair;
+  outputJson["output"]["hyperParallelTempering"]["acceptedPerPressurePair"] = swapAcceptedPerPressurePair;
   outputJson["output"]["cpuTimings"]["preInitialization"] = totalPreInitializationSimulationTime.count();
   outputJson["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
   outputJson["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
@@ -632,7 +755,70 @@ void ParallelTempering::output()
   json << outputJson.dump(4);
 }
 
-void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed)
+void HyperParallelTempering::writeIsothermSnapshot() const
+{
+  // one isotherm file per temperature: every replica along the pressure ladder contributes one
+  // point, so the whole isotherm is assembled from the per-replica block averages
+  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+  {
+    std::ofstream isotherm(std::format("output/isotherm_{}.hyper_parallel_tempering.txt",
+                                       temperatures[temperatureIndex]),
+                           std::ios::trunc);
+
+    std::print(isotherm, "# Hyper-parallel tempering: adsorption isotherm at {} [K]\n",
+               temperatures[temperatureIndex]);
+    std::print(isotherm, "# one block per component (gnuplot 'index'), rows ordered by increasing pressure\n");
+    std::print(isotherm, "# errors are the block confidence-interval errors (zero until three blocks are filled)\n");
+    std::print(isotherm, "# column 1: fugacity [Pa]\n");
+    std::print(isotherm, "# column 2, 3: absolute loading, error [molecules/cell]\n");
+    std::print(isotherm, "# column 4, 5: absolute loading, error [molecules/unit-cell]\n");
+    std::print(isotherm, "# column 6, 7: absolute loading, error [mol/kg-framework]\n");
+    std::print(isotherm, "# column 8, 9: absolute loading, error [mg/g-framework]\n");
+    std::print(isotherm, "# column 10: pressure [Pa]\n");
+
+    const System& front = systems[replicaIndex(temperatureIndex, 0)];
+    for (std::size_t componentId = 0; componentId < front.components.size(); ++componentId)
+    {
+      std::print(isotherm, "\n\n# component {} ({})\n", componentId, front.components[componentId].name);
+
+      for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+      {
+        const System& system = systems[replicaIndex(temperatureIndex, pressureIndex)];
+        const Component& component = system.components[componentId];
+
+        const double fugacity =
+            component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.input_pressure;
+
+        const auto [loadingAverage, loadingError] = system.averageLoadings.average();
+        const double moleculesPerCell = loadingAverage.numberOfMolecules[componentId];
+        const double moleculesPerCellError = loadingError.numberOfMolecules[componentId];
+
+        // without a framework the per-unit-cell and per-framework-mass units are not defined
+        double toMoleculesPerUnitCell = 1.0;
+        double toMolePerKg = 0.0;
+        double toMgPerG = 0.0;
+        if (system.framework.has_value())
+        {
+          const int3 numberOfUnitCells = system.framework->numberOfUnitCells;
+          toMoleculesPerUnitCell =
+              1.0 / static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
+          const double frameworkMass = system.frameworkMass().value();
+          toMolePerKg = 1000.0 / frameworkMass;
+          toMgPerG = 1000.0 * component.totalMass / frameworkMass;
+        }
+
+        std::print(isotherm,
+                   "{: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e}\n",
+                   fugacity, moleculesPerCell, moleculesPerCellError, toMoleculesPerUnitCell * moleculesPerCell,
+                   toMoleculesPerUnitCell * moleculesPerCellError, toMolePerKg * moleculesPerCell,
+                   toMolePerKg * moleculesPerCellError, toMgPerG * moleculesPerCell,
+                   toMgPerG * moleculesPerCellError, system.input_pressure);
+      }
+    }
+  }
+}
+
+void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed)
 {
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {

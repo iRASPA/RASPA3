@@ -200,6 +200,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ParallelThermodynamicIntegration;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "HyperParallelTempering"))
+    {
+      simulationType = SimulationType::HyperParallelTempering;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -1571,7 +1576,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // swap move is not available there (each replica thread only owns its own system).
       if (value.contains("ParallelTemperingSwapProbability") &&
           value["ParallelTemperingSwapProbability"].is_number_float() &&
-          simulationType != SimulationType::ParallelTempering)
+          simulationType != SimulationType::ParallelTempering &&
+          simulationType != SimulationType::HyperParallelTempering)
       {
         mc_moves_probabilities.setProbability(Move::Types::ParallelTempering,
                                               value["ParallelTemperingSwapProbability"].get<double>());
@@ -1783,27 +1789,59 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
       std::string typeString = value["Type"].get<std::string>();
 
-      // Parallel tempering: the temperature ladder; the single declared system is replicated by the
-      // driver into one replica per temperature (each running in its own thread)
+      // Parallel tempering / hyper-parallel tempering: the temperature ladder; the single declared
+      // system is replicated by the driver into one replica per temperature (each in its own thread)
       if (value.contains("ExternalTemperatures") && value["ExternalTemperatures"].is_array())
       {
-        if (simulationType != SimulationType::ParallelTempering)
+        if (simulationType != SimulationType::ParallelTempering &&
+            simulationType != SimulationType::HyperParallelTempering)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' (a temperature ladder) is only valid for "
-                          "'SimulationType': 'ParallelTempering'; use 'ExternalTemperature' instead\n"));
+                          "'SimulationType': 'ParallelTempering' or 'HyperParallelTempering'; use "
+                          "'ExternalTemperature' instead\n"));
         }
         parallelTemperingTemperatures = value["ExternalTemperatures"].get<std::vector<double>>();
-        if (parallelTemperingTemperatures.size() < 2)
+        if (simulationType == SimulationType::ParallelTempering && parallelTemperingTemperatures.size() < 2)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' must contain at least two temperatures\n"));
+        }
+        if (parallelTemperingTemperatures.empty())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalTemperatures' must contain at least one temperature\n"));
         }
         if (!std::ranges::is_sorted(parallelTemperingTemperatures))
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' must be sorted in increasing order (swaps are "
                           "attempted between neighboring temperatures)\n"));
+        }
+      }
+
+      // Hyper-parallel tempering: the pressure ladder (in Pa, converted to per-component fugacities
+      // internally through the Peng-Robinson equation of state); combined with the temperature ladder
+      // the single declared system is replicated into one replica per (temperature, pressure) point
+      if (value.contains("ExternalPressures") && value["ExternalPressures"].is_array())
+      {
+        if (simulationType != SimulationType::HyperParallelTempering)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalPressures' (a pressure ladder) is only valid for "
+                          "'SimulationType': 'HyperParallelTempering'; use 'ExternalPressure' instead\n"));
+        }
+        parallelTemperingPressures = value["ExternalPressures"].get<std::vector<double>>();
+        if (parallelTemperingPressures.empty())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalPressures' must contain at least one pressure\n"));
+        }
+        if (!std::ranges::is_sorted(parallelTemperingPressures))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalPressures' must be sorted in increasing order (swaps are "
+                          "attempted between neighboring pressures)\n"));
         }
       }
 
@@ -1829,6 +1867,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalPressure"))
       {
         P = value["ExternalPressure"].get<double>();
+      }
+      else if (!parallelTemperingPressures.empty())
+      {
+        // the template system is constructed at the first ladder pressure; the driver re-pins each
+        // replica to its own pressure (recomputing the fugacity coefficients)
+        P = parallelTemperingPressures.front();
       }
       if (value.contains("ChemicalPotential"))
       {
@@ -2928,6 +2972,32 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
     }
   }
+
+  // Hyper-parallel tempering: a single declared system is replicated by the driver into one replica
+  // per (temperature, pressure) grid point (each replica running in its own thread)
+  if (simulationType == SimulationType::HyperParallelTempering)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'HyperParallelTempering' requires exactly one declared system (it is "
+                      "replicated internally into one replica per (temperature, pressure) grid point), {} systems "
+                      "were declared\n",
+                      systems.size()));
+    }
+    if (parallelTemperingTemperatures.empty() || parallelTemperingPressures.empty())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'HyperParallelTempering' requires both ladders: give the system the keys "
+                      "'ExternalTemperatures' and 'ExternalPressures' (sorted lists)\n"));
+    }
+    if (parallelTemperingTemperatures.size() * parallelTemperingPressures.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'HyperParallelTempering' requires at least two (temperature, pressure) grid "
+                      "points\n"));
+    }
+  }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
@@ -2996,6 +3066,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "Type",
     "ExternalTemperature",
     "ExternalTemperatures",
+    "ExternalPressures",
     "ExternalPressure",
     "ExternalPressureX",
     "ExternalPressureY",

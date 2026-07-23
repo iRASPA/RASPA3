@@ -11,6 +11,7 @@ import minimization;
 import thermodynamic_integration;
 import parallel_thermodynamic_integration;
 import parallel_tempering;
+import hyper_parallel_tempering;
 //import breakthrough;
 //import breakthrough_simulation;
 //import mixture_prediction_simulation;
@@ -130,6 +131,12 @@ int main(int argc, char* argv[])
       {
         ParallelTempering parallel_tempering(inputReader);
         parallel_tempering.run();
+        break;
+      }
+      case InputReader::SimulationType::HyperParallelTempering:
+      {
+        HyperParallelTempering hyper_parallel_tempering(inputReader);
+        hyper_parallel_tempering.run();
         break;
       }
       case InputReader::SimulationType::Breakthrough:

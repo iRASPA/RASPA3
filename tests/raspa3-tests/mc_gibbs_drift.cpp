@@ -854,7 +854,15 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_swaps_complete_configuration_only)
   expectNoEnergyDrift(systemA);
   expectNoEnergyDrift(systemB);
 
-  const auto reverseEnergies = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  // the reverse swap has an acceptance probability below one (the Yan & de Pablo fugacity factor
+  // penalizes moving the four-molecule configuration back to the colder system); rejections leave
+  // the configurations untouched (verified by 'parallel_tempering_rejection_preserves_configuration'),
+  // so retry until the swap is accepted
+  std::optional<std::pair<RunningEnergy, RunningEnergy>> reverseEnergies{};
+  for (std::size_t attempt = 0; attempt < 1024uz && !reverseEnergies.has_value(); ++attempt)
+  {
+    reverseEnergies = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  }
   ASSERT_TRUE(reverseEnergies.has_value());
   EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
   EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 4u);

@@ -1,0 +1,29 @@
+{
+  "SimulationType" : "HyperParallelTempering",
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperatures" : [300.0, 350.0, 400.0],
+      "ExternalPressures" : [1.0e4, 1.0e5, 1.0e6],
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

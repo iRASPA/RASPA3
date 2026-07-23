@@ -87,7 +87,8 @@ export struct InputReader
     Fitting = 7,                     ///< Simulation type for fitting parameters.
     ParallelTempering = 8,           ///< Parallel Tempering simulation for enhanced sampling.
     ThermodynamicIntegration = 9,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
-    ParallelThermodynamicIntegration = 10  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
+    ParallelThermodynamicIntegration = 10,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
+    HyperParallelTempering = 11  ///< Multithreaded replica-exchange over a temperature x pressure grid.
   };
 
   /**
@@ -119,6 +120,10 @@ export struct InputReader
   /// Parallel tempering: the temperature ladder ('ExternalTemperatures' in the system block); the
   /// single declared system is replicated into one replica per temperature.
   std::vector<double> parallelTemperingTemperatures;
+  /// Hyper-parallel tempering: the pressure ladder ('ExternalPressures' in the system block, in Pa);
+  /// combined with the temperature ladder the single declared system is replicated into one replica
+  /// per (temperature, pressure) grid point.
+  std::vector<double> parallelTemperingPressures;
   /// Parallel tempering: attempt a sweep of configuration swaps between replicas at neighboring
   /// temperatures every this many cycles (0 disables the swaps).
   std::size_t parallelTemperingSwapEvery{10};

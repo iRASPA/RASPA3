@@ -174,24 +174,50 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     return std::nullopt;
   }
 
+  // Swapping the configurations X_A <-> X_B between the ensembles (beta_A, f_A) and (beta_B, f_B):
+  //
+  //     acc = [W_A(X_B) W_B(X_A)] / [W_A(X_A) W_B(X_B)]
+  //
+  // The potential-energy part gives exp[(beta_B - beta_A)(U_B - U_A)]. For open (grand-canonical)
+  // ensembles the weight carries (beta f_i V)^{N_i} per component (exp(beta mu) = beta f Lambda^3;
+  // the thermal wavelengths cancel within each ensemble), contributing
+  //
+  //     prod_i [(beta_A f_A,i) / (beta_B f_B,i)]^{N_B,i - N_A,i}
+  //
+  // with f_X,i = molFraction_i * fugacityCoefficient_X,i * P_X. This is the Yan & de Pablo
+  // hyper-parallel-tempering rule (JCP 111(21), 9509-9516, 1999) written in fugacities. For
+  // isobaric ensembles the boxes travel with the configurations and the PV work contributes
+  // exp[(beta_B P_B - beta_A P_A)(V_B - V_A)].
+  time_begin = std::chrono::steady_clock::now();
+
   double acc = std::exp((systemB.beta - systemA.beta) *
                         (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy()));
 
-  if (systemA.pressure != systemB.pressure)
+  for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
   {
-    /// Ref: "Hyper-parallel tempering Monte Carlo: Application to the Lennard-Jones fluid and the
-    /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
-
-    // Adjust acceptance probability for pressure differences
-    time_begin = std::chrono::steady_clock::now();
     const std::ptrdiff_t moleculeDifference =
-        static_cast<std::ptrdiff_t>(systemB.numberOfIntegerMolecules()) -
-        static_cast<std::ptrdiff_t>(systemA.numberOfIntegerMolecules());
-    acc *= std::pow(systemB.pressure / systemA.pressure, static_cast<double>(moleculeDifference));
-    time_end = std::chrono::steady_clock::now();
-
-    systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
+        static_cast<std::ptrdiff_t>(systemB.numberOfIntegerMoleculesPerComponent[componentId]) -
+        static_cast<std::ptrdiff_t>(systemA.numberOfIntegerMoleculesPerComponent[componentId]);
+    if (moleculeDifference != 0)
+    {
+      const Component &componentA = systemA.components[componentId];
+      const Component &componentB = systemB.components[componentId];
+      const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * systemA.pressure;
+      const double fugacityB = componentB.molFraction * componentB.fugacityCoefficient.value_or(1.0) * systemB.pressure;
+      acc *= std::pow((systemA.beta * fugacityA) / (systemB.beta * fugacityB),
+                      static_cast<double>(moleculeDifference));
+    }
   }
+
+  // the simulation boxes are exchanged along with the configurations when there is no framework
+  if (!systemA.framework.has_value())
+  {
+    acc *= std::exp((systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
+                    (systemB.simulationBox.volume - systemA.simulationBox.volume));
+  }
+
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
 
   // Update constructed move counts for both systems
   systemA.mc_moves_statistics.addConstructed(move);
