@@ -116,6 +116,13 @@ export struct InputReader
   /// replicas every this many cycles (0 disables the exchanges).
   std::size_t lambdaExchangeEvery{10};
 
+  /// Parallel tempering: the temperature ladder ('ExternalTemperatures' in the system block); the
+  /// single declared system is replicated into one replica per temperature.
+  std::vector<double> parallelTemperingTemperatures;
+  /// Parallel tempering: attempt a sweep of configuration swaps between replicas at neighboring
+  /// temperatures every this many cycles (0 disables the swaps).
+  std::size_t parallelTemperingSwapEvery{10};
+
   std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.
   std::size_t numberOfInitializationCycles{0};     ///< Number of initialization cycles.

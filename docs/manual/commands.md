@@ -160,8 +160,37 @@ reported separately at the end of the simulation.
     system. See the macro-state keywords in the system options.
 
 -   `"SimulationType" : "ParallelTempering"`\
-    Runs a parallel-tempering (replica-exchange) simulation, which swaps
-    configurations between two systems held at different conditions.
+    Runs a multithreaded parallel-tempering (replica-exchange) Monte Carlo
+    simulation. Exactly one system is declared in the input, with a temperature
+    ladder given by the system key `"ExternalTemperatures"` (a sorted list of
+    at least two temperatures); the system is replicated internally into one
+    replica per temperature, and every replica runs in its own thread with its
+    own random-number stream.
+
+    Every `"ParallelTemperingSwapEvery"` cycles (default `10`, `0` disables)
+    the threads synchronize on a barrier and configuration swaps between
+    replicas at neighboring temperatures are attempted with acceptance rule
+    min(1, exp[(β_B − β_A)(U_B − U_A)]) (extended with the Yan & de Pablo
+    factor when the pressures differ). The replicas keep their temperatures;
+    only the configurations migrate through the ladder. The pairing offset
+    alternates between sweeps, so a configuration can traverse the whole
+    ladder. This is the only synchronization point between the threads besides
+    the start and end of each stage.
+
+    Every replica writes its own output file
+    `output/output_{T_k}_{P}.parallel_tempering.r{k}.txt` (and `.json`) with
+    the standard status reports and final averages; the combined file
+    `output/output.parallel_tempering.txt` (and `.json`) holds the swap
+    statistics, including a per-pair acceptance table (low acceptance for a
+    particular pair marks a bottleneck in the ladder; use a denser ladder
+    there). Binary restart files are not supported by this driver.
+
+    The driver spawns one worker thread per temperature (plain C++ threads,
+    no OpenMP); leave `"NumberOfThreads"` at its default of `1` so the
+    per-energy-evaluation thread pool stays serial and the machine is not
+    oversubscribed. Note that the swap move requires rigid, whole-molecule
+    replicas: systems with fractional (CFCMC) molecules, flexible components,
+    or reactions reject all swap attempts.
 
 -   `"SimulationType" : "Minimization"`\
     Performs an energy minimization of the initial configuration.
@@ -353,6 +382,11 @@ reported separately at the end of the simulation.
     its maximum displacement, the rotation move its maximum angle, the hybrid MC
     move its time step, and so on. Default: `5000`.
 
+-   `"ParallelTemperingSwapEvery" : integer`\
+    For `"SimulationType" : "ParallelTempering"`: how often (in cycles) a sweep
+    of configuration swaps between replicas at neighboring temperatures is
+    attempted (`0` disables the swaps). Default: `10`.
+
 ### Threading and reproducibility <a name="threading-and-reproducibility"></a>
 
 -   `"NumberOfThreads" : integer`\
@@ -393,6 +427,12 @@ reported separately at the end of the simulation.
     The external temperature of the system in Kelvin. The inverse temperature
     β is derived from it and enters all Boltzmann statistics. This key is
     required for every system. Default: `300`.
+
+-   `"ExternalTemperatures" : [T_0, T_1, ...]`\
+    The temperature ladder for `"SimulationType" : "ParallelTempering"`: a
+    sorted list of at least two temperatures in Kelvin. The single declared
+    system is replicated into one replica per temperature. Replaces
+    `"ExternalTemperature"` for that simulation type.
 
 -   `"ExternalPressure" : floating-point-number`\
     The external pressure of the system in Pascal.
@@ -511,7 +551,9 @@ reported separately at the end of the simulation.
 
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\
     The probability per cycle of attempting a parallel-tempering swap between two
-    systems.
+    systems. Ignored with `"SimulationType" : "ParallelTempering"`, where the
+    swaps are performed by the driver at the barrier synchronization points
+    (see `"ParallelTemperingSwapEvery"`).
 
 -   `"TranslationSmartMCAllProbability" : floating-point-number`\
     The probability per cycle of attempting a translation smart-MC move that

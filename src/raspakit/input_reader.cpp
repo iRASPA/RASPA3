@@ -271,6 +271,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     lambdaExchangeEvery = parsed_data["LambdaExchangeEvery"].get<std::size_t>();
   }
 
+  // Parallel tempering: how often (in cycles) a sweep of configuration swaps between replicas at
+  // neighboring temperatures is attempted (0 disables the swaps)
+  if (parsed_data.contains("ParallelTemperingSwapEvery") &&
+      parsed_data["ParallelTemperingSwapEvery"].is_number_unsigned())
+  {
+    parallelTemperingSwapEvery = parsed_data["ParallelTemperingSwapEvery"].get<std::size_t>();
+  }
+
   if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
   {
     restartFromBinary = parsed_data["RestartFromBinaryFile"].get<bool>();
@@ -1558,8 +1566,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                               value["GibbsVolumeMoveProbability"].get<double>());
       }
 
+      // With 'SimulationType': 'ParallelTempering' the swaps are performed by the driver at the
+      // barrier synchronization points ('ParallelTemperingSwapEvery'); the in-cycle cross-system
+      // swap move is not available there (each replica thread only owns its own system).
       if (value.contains("ParallelTemperingSwapProbability") &&
-          value["ParallelTemperingSwapProbability"].is_number_float())
+          value["ParallelTemperingSwapProbability"].is_number_float() &&
+          simulationType != SimulationType::ParallelTempering)
       {
         mc_moves_probabilities.setProbability(Move::Types::ParallelTempering,
                                               value["ParallelTemperingSwapProbability"].get<double>());
@@ -1771,7 +1783,31 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
       std::string typeString = value["Type"].get<std::string>();
 
-      if (!value.contains("ExternalTemperature"))
+      // Parallel tempering: the temperature ladder; the single declared system is replicated by the
+      // driver into one replica per temperature (each running in its own thread)
+      if (value.contains("ExternalTemperatures") && value["ExternalTemperatures"].is_array())
+      {
+        if (simulationType != SimulationType::ParallelTempering)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalTemperatures' (a temperature ladder) is only valid for "
+                          "'SimulationType': 'ParallelTempering'; use 'ExternalTemperature' instead\n"));
+        }
+        parallelTemperingTemperatures = value["ExternalTemperatures"].get<std::vector<double>>();
+        if (parallelTemperingTemperatures.size() < 2)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalTemperatures' must contain at least two temperatures\n"));
+        }
+        if (!std::ranges::is_sorted(parallelTemperingTemperatures))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalTemperatures' must be sorted in increasing order (swaps are "
+                          "attempted between neighboring temperatures)\n"));
+        }
+      }
+
+      if (!value.contains("ExternalTemperature") && parallelTemperingTemperatures.empty())
       {
         throw std::runtime_error(
             std::format("[Input reader]: framework must have a key 'ExternalTemperature' with a value of "
@@ -1781,6 +1817,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalTemperature"))
       {
         T = value["ExternalTemperature"].get<double>();
+      }
+      else if (!parallelTemperingTemperatures.empty())
+      {
+        // the template system is constructed at the first ladder temperature; the driver re-pins
+        // each replica to its own temperature
+        T = parallelTemperingTemperatures.front();
       }
 
       std::optional<double> P{};
@@ -2867,6 +2909,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       numberOfTIComponents));
     }
   }
+
+  // Parallel tempering: a single declared system is replicated by the driver into one replica per
+  // temperature of the ladder (each replica running in its own thread)
+  if (simulationType == SimulationType::ParallelTempering)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTempering' requires exactly one declared system "
+                      "(it is replicated internally into one replica per temperature), {} systems were declared\n",
+                      systems.size()));
+    }
+    if (parallelTemperingTemperatures.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTempering' requires a temperature ladder: give the system a key "
+                      "'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
+    }
+  }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
@@ -2907,6 +2968,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "WriteBinaryRestartEvery",
     "RescaleWangLandauEvery",
     "LambdaExchangeEvery",
+    "ParallelTemperingSwapEvery",
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",
@@ -2933,6 +2995,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "RotationSmartMCAllProbability",
     "Type",
     "ExternalTemperature",
+    "ExternalTemperatures",
     "ExternalPressure",
     "ExternalPressureX",
     "ExternalPressureY",
