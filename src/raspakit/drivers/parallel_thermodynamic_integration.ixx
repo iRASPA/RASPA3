@@ -169,4 +169,9 @@ export struct ParallelThermodynamicIntegration
    * \brief Integral over [0,1] of the natural cubic spline through equidistant data points.
    */
   static double cubicSplineIntegral(const std::vector<double>& data, double delta);
+
+  /**
+   * \brief Composite trapezoidal rule over equidistant data points (baseline comparison).
+   */
+  static double trapezoidIntegral(const std::vector<double>& data, double delta);
 };

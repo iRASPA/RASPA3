@@ -285,9 +285,16 @@ reported separately at the end of the simulation.
     one replica at all times and the whole curve is sampled every cycle.
 
     At the end the per-bin ⟨∂U/∂λ⟩ book-keeping of all replicas is stitched
-    together and integrated from λ=0 to λ=1 with a natural cubic spline (a
-    Simpson estimate is reported as a consistency check); the confidence
-    interval follows from the block-wise spline integrals. The combined
+    together and integrated from λ=0 to λ=1 with three quadrature rules, each
+    with a confidence interval from its block-wise integrals: a natural cubic
+    spline (the recommended value), composite Simpson (1/3 rule with a 3/8
+    tail for odd interval counts), and the trapezoidal rule as a baseline.
+    Because the data live on fixed equidistant λ-bins, Gaussian quadrature is
+    not applicable (it would require samples at the non-equidistant Gauss
+    nodes); the Newton–Cotes rules and the spline are the applicable choices.
+    A quadrature spread far below the sampling error confirms the λ-grid
+    resolves the curvature of the curve; a large spread signals that more
+    λ-bins are needed. The combined
     output file `output/output_{T}_{P}.parallel_ti.txt` (and `.json`) holds
     the stitched results and the λ-exchange statistics. In addition every
     replica writes its own output file

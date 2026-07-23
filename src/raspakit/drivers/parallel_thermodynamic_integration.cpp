@@ -470,6 +470,8 @@ void ParallelThermodynamicIntegration::writeDUdlambdaSnapshot(std::size_t cycle,
   const std::vector<double> errors = blockErrorEstimate(filledBlockAverages, average);
   const double splineIntegral = cubicSplineIntegral(average, stitched.delta);
   const double splineError = blockErrorEstimate<double>(filledBlockIntegrals, splineIntegral);
+  const double simpsonIntegral = stitched.simpsonIntegral(average);
+  const double trapezoidalIntegral = trapezoidIntegral(average, stitched.delta);
 
   std::ofstream snapshot(dudlambdaFileName, std::ios::trunc);
   std::print(snapshot, "# Parallel thermodynamic integration: stitched <dU/dlambda>(lambda) curve\n");
@@ -477,10 +479,14 @@ void ParallelThermodynamicIntegration::writeDUdlambdaSnapshot(std::size_t cycle,
   std::print(snapshot, "# production cycle {} of {}\n", cycle, numberOfCycles);
   std::print(snapshot, "# blocks filled: {} of {} (confidence intervals use the filled blocks only)\n",
              filledBlockAverages.size(), numberOfBlocks);
-  std::print(snapshot, "# excess chemical potential (spline): {: .6e} +/- {: .6e} [K]\n",
+  std::print(snapshot, "# excess chemical potential (spline):    {: .6e} +/- {: .6e} [K]\n",
              Units::EnergyToKelvin * splineIntegral, Units::EnergyToKelvin * splineError);
-  std::print(snapshot, "# excess chemical potential (spline): {: .6e} +/- {: .6e} [kJ/mol]\n",
+  std::print(snapshot, "# excess chemical potential (spline):    {: .6e} +/- {: .6e} [kJ/mol]\n",
              Units::EnergyToKJPerMol * splineIntegral, Units::EnergyToKJPerMol * splineError);
+  std::print(snapshot, "# excess chemical potential (Simpson):   {: .6e} [K]\n",
+             Units::EnergyToKelvin * simpsonIntegral);
+  std::print(snapshot, "# excess chemical potential (trapezoid): {: .6e} [K]\n",
+             Units::EnergyToKelvin * trapezoidalIntegral);
   std::print(snapshot, "# column 1: lambda\n");
   std::print(snapshot, "# column 2: <dU/dlambda> [K]\n");
   std::print(snapshot, "# column 3: confidence-interval error [K]\n");
@@ -805,6 +811,19 @@ double ParallelThermodynamicIntegration::cubicSplineIntegral(const std::vector<d
   return integral;
 }
 
+double ParallelThermodynamicIntegration::trapezoidIntegral(const std::vector<double>& data, double delta)
+{
+  const std::size_t n = data.size();
+  if (n < 2uz) return 0.0;
+
+  double integral = 0.0;
+  for (std::size_t i = 0; i + 1 < n; ++i)
+  {
+    integral += 0.5 * delta * (data[i] + data[i + 1]);
+  }
+  return integral;
+}
+
 std::string ParallelThermodynamicIntegration::writeStitchedThermodynamicIntegration() const
 {
   std::ostringstream outStream;
@@ -829,25 +848,46 @@ std::string ParallelThermodynamicIntegration::writeStitchedThermodynamicIntegrat
   }
   std::print(outStream, "\n");
 
-  // block-wise spline integrals give the confidence interval of the integrated result
-  std::vector<double> blockIntegrals(numberOfBlocks);
+  // block-wise integrals give the confidence interval of each quadrature rule. The data live on
+  // fixed equidistant lambda-bins, so the applicable rules are the natural-spline integral and the
+  // Newton-Cotes rules (Gaussian quadrature would require samples at the non-equidistant Gauss
+  // nodes). The three estimates agreeing within their error bars signals that the grid resolves
+  // the curvature of the curve; the spline value is the recommended one.
+  std::vector<double> blockSplineIntegrals(numberOfBlocks);
+  std::vector<double> blockSimpsonIntegrals(numberOfBlocks);
+  std::vector<double> blockTrapezoidIntegrals(numberOfBlocks);
   for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
-    blockIntegrals[blockIndex] = cubicSplineIntegral(stitched.averagedDUdlambda(blockIndex), stitched.delta);
+    const std::vector<double> blockAverage = stitched.averagedDUdlambda(blockIndex);
+    blockSplineIntegrals[blockIndex] = cubicSplineIntegral(blockAverage, stitched.delta);
+    blockSimpsonIntegrals[blockIndex] = stitched.simpsonIntegral(blockAverage);
+    blockTrapezoidIntegrals[blockIndex] = trapezoidIntegral(blockAverage, stitched.delta);
     std::print(outStream, "        Block[ {:2d}] integral (spline): {: .6e} [K]\n", blockIndex,
-               Units::EnergyToKelvin * blockIntegrals[blockIndex]);
+               Units::EnergyToKelvin * blockSplineIntegrals[blockIndex]);
   }
   const double splineIntegral = cubicSplineIntegral(dudlambda.first, stitched.delta);
-  const double splineError = blockErrorEstimate<double>(blockIntegrals, splineIntegral);
-  const double simpsonIntegral = stitched.averagedExcessChemicalPotentialDUdlambda();
+  const double splineError = blockErrorEstimate<double>(blockSplineIntegrals, splineIntegral);
+  const double simpsonIntegral = stitched.simpsonIntegral(dudlambda.first);
+  const double simpsonError = blockErrorEstimate<double>(blockSimpsonIntegrals, simpsonIntegral);
+  const double trapezoidalIntegral = trapezoidIntegral(dudlambda.first, stitched.delta);
+  const double trapezoidError = blockErrorEstimate<double>(blockTrapezoidIntegrals, trapezoidalIntegral);
 
   std::print(outStream, "    ---------------------------------------------------------------------------\n");
-  std::print(outStream, "    excess chemical potential (spline):  {: .6e} +/- {: .6e} [K]\n",
-             Units::EnergyToKelvin * splineIntegral, Units::EnergyToKelvin * splineError);
-  std::print(outStream, "    excess chemical potential (spline):  {: .6e} +/- {: .6e} [kJ/mol]\n",
-             Units::EnergyToKJPerMol * splineIntegral, Units::EnergyToKJPerMol * splineError);
-  std::print(outStream, "    excess chemical potential (Simpson): {: .6e} [K] (consistency check)\n",
-             Units::EnergyToKelvin * simpsonIntegral);
+  std::print(outStream, "    excess chemical potential\n");
+  std::print(outStream, "        spline:     {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * splineIntegral,
+             Units::EnergyToKelvin * splineError);
+  std::print(outStream, "        Simpson:    {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * simpsonIntegral,
+             Units::EnergyToKelvin * simpsonError);
+  std::print(outStream, "        trapezoid:  {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * trapezoidalIntegral,
+             Units::EnergyToKelvin * trapezoidError);
+  std::print(outStream, "        spline:     {: .6e} +/- {: .6e} [kJ/mol]\n", Units::EnergyToKJPerMol * splineIntegral,
+             Units::EnergyToKJPerMol * splineError);
+  std::print(outStream, "        Simpson:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+             Units::EnergyToKJPerMol * simpsonIntegral, Units::EnergyToKJPerMol * simpsonError);
+  std::print(outStream, "        trapezoid:  {: .6e} +/- {: .6e} [kJ/mol]\n",
+             Units::EnergyToKJPerMol * trapezoidalIntegral, Units::EnergyToKJPerMol * trapezoidError);
+  std::print(outStream,
+             "    (quadrature spread far below the sampling error confirms the lambda-grid is fine enough)\n");
   std::print(outStream, "\n\n");
 
   return outStream.str();
@@ -872,31 +912,43 @@ nlohmann::json ParallelThermodynamicIntegration::jsonStitchedThermodynamicIntegr
     errorsInKelvin[bin] = Units::EnergyToKelvin * dudlambda.second[bin];
   }
 
-  std::vector<double> blockIntegrals(numberOfBlocks);
+  std::vector<double> blockSplineIntegrals(numberOfBlocks);
+  std::vector<double> blockSimpsonIntegrals(numberOfBlocks);
+  std::vector<double> blockTrapezoidIntegrals(numberOfBlocks);
+  std::vector<double> blockSplineIntegralsInKelvin(numberOfBlocks);
   for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
-    blockIntegrals[blockIndex] =
-        Units::EnergyToKelvin * cubicSplineIntegral(stitched.averagedDUdlambda(blockIndex), stitched.delta);
+    const std::vector<double> blockAverage = stitched.averagedDUdlambda(blockIndex);
+    blockSplineIntegrals[blockIndex] = cubicSplineIntegral(blockAverage, stitched.delta);
+    blockSimpsonIntegrals[blockIndex] = stitched.simpsonIntegral(blockAverage);
+    blockTrapezoidIntegrals[blockIndex] = trapezoidIntegral(blockAverage, stitched.delta);
+    blockSplineIntegralsInKelvin[blockIndex] = Units::EnergyToKelvin * blockSplineIntegrals[blockIndex];
   }
   const double splineIntegral = cubicSplineIntegral(dudlambda.first, stitched.delta);
-  std::vector<double> blockIntegralsInternal(numberOfBlocks);
-  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
-  {
-    blockIntegralsInternal[blockIndex] = blockIntegrals[blockIndex] / Units::EnergyToKelvin;
-  }
-  const double splineError = blockErrorEstimate<double>(blockIntegralsInternal, splineIntegral);
+  const double splineError = blockErrorEstimate<double>(blockSplineIntegrals, splineIntegral);
+  const double simpsonIntegral = stitched.simpsonIntegral(dudlambda.first);
+  const double simpsonError = blockErrorEstimate<double>(blockSimpsonIntegrals, simpsonIntegral);
+  const double trapezoidalIntegral = trapezoidIntegral(dudlambda.first, stitched.delta);
+  const double trapezoidError = blockErrorEstimate<double>(blockTrapezoidIntegrals, trapezoidalIntegral);
 
   status[component.name]["numberOfLambdaBins"] = numberOfLambdaBins;
   status[component.name]["lambda"] = lambdas;
   status[component.name]["averageDUdlambda[K]"] = averagesInKelvin;
   status[component.name]["confidenceDUdlambda[K]"] = errorsInKelvin;
-  status[component.name]["blockIntegralsSpline[K]"] = blockIntegrals;
+  status[component.name]["blockIntegralsSpline[K]"] = blockSplineIntegralsInKelvin;
   status[component.name]["excessChemicalPotentialSpline[K]"] = Units::EnergyToKelvin * splineIntegral;
   status[component.name]["confidenceExcessChemicalPotentialSpline[K]"] = Units::EnergyToKelvin * splineError;
   status[component.name]["excessChemicalPotentialSpline[kJ/mol]"] = Units::EnergyToKJPerMol * splineIntegral;
   status[component.name]["confidenceExcessChemicalPotentialSpline[kJ/mol]"] = Units::EnergyToKJPerMol * splineError;
-  status[component.name]["excessChemicalPotentialSimpson[K]"] =
-      Units::EnergyToKelvin * stitched.averagedExcessChemicalPotentialDUdlambda();
+  status[component.name]["excessChemicalPotentialSimpson[K]"] = Units::EnergyToKelvin * simpsonIntegral;
+  status[component.name]["confidenceExcessChemicalPotentialSimpson[K]"] = Units::EnergyToKelvin * simpsonError;
+  status[component.name]["excessChemicalPotentialSimpson[kJ/mol]"] = Units::EnergyToKJPerMol * simpsonIntegral;
+  status[component.name]["confidenceExcessChemicalPotentialSimpson[kJ/mol]"] = Units::EnergyToKJPerMol * simpsonError;
+  status[component.name]["excessChemicalPotentialTrapezoid[K]"] = Units::EnergyToKelvin * trapezoidalIntegral;
+  status[component.name]["confidenceExcessChemicalPotentialTrapezoid[K]"] = Units::EnergyToKelvin * trapezoidError;
+  status[component.name]["excessChemicalPotentialTrapezoid[kJ/mol]"] = Units::EnergyToKJPerMol * trapezoidalIntegral;
+  status[component.name]["confidenceExcessChemicalPotentialTrapezoid[kJ/mol]"] =
+      Units::EnergyToKJPerMol * trapezoidError;
 
   return status;
 }

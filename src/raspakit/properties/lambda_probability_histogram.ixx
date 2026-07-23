@@ -384,20 +384,36 @@ export struct PropertyLambdaProbabilityHistogram
   //====================================================================================================================
   // excess chemical potential from thermodynamic integration: Simpson's rule over <dU/dlambda>
 
-  /// Composite Simpson's rule over the lambda grid (spacing delta).
+  /// Composite Simpson's rule over the lambda grid (spacing delta). The 1/3 rule requires an even
+  /// number of intervals; for an odd number of intervals the last three are integrated with the
+  /// 3/8 rule (same fourth-order accuracy), so any grid size is handled exactly.
   double simpsonIntegral(const std::vector<double> &data) const
   {
+    const std::size_t n = data.size();
+    if (n < 2uz) return 0.0;
+    if (n == 2uz) return 0.5 * delta * (data[0] + data[1]);
+
+    const std::size_t intervals = n - 1uz;
+    const std::size_t oneThirdIntervals = (intervals % 2uz == 0uz) ? intervals : intervals - 3uz;
+
     double sum = 0.0;
-    for (std::size_t i = 0; i < data.size(); ++i)
+    if (oneThirdIntervals > 0uz)
     {
-      if (i == 0 || i == data.size() - 1)
-        sum += data[i];
-      else if (i % 2 != 0)
-        sum += 4.0 * data[i];
-      else
-        sum += 2.0 * data[i];
+      double weighted = data[0] + data[oneThirdIntervals];
+      for (std::size_t i = 1; i < oneThirdIntervals; ++i)
+      {
+        weighted += (i % 2uz != 0uz) ? 4.0 * data[i] : 2.0 * data[i];
+      }
+      sum += weighted * (delta / 3.0);
     }
-    return sum * (delta / 3.0);
+
+    if (intervals % 2uz != 0uz)
+    {
+      const std::size_t s = oneThirdIntervals;
+      sum += (3.0 * delta / 8.0) * (data[s] + 3.0 * data[s + 1] + 3.0 * data[s + 2] + data[s + 3]);
+    }
+
+    return sum;
   }
 
   double averagedExcessChemicalPotentialDUdlambda(std::size_t blockIndex) const
