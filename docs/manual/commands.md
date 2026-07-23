@@ -330,6 +330,98 @@ reported separately at the end of the simulation.
     grid points to overlap — the same requirement as a healthy swap acceptance,
     so the per-pair acceptance tables double as an overlap diagnostic.
 
+-   `"SimulationType" : "ParallelTMMC"`\
+    Runs a multithreaded transition-matrix Monte Carlo simulation with
+    windowed macrostate walkers (Errington, JCP 118, 9915, 2003; Shen &
+    Errington, JCP 122, 064508, 2005). Exactly one system with exactly one
+    component is declared. The macrostate range
+    `"MacroStateMinimumNumberOfMolecules"` to
+    `"MacroStateMaximumNumberOfMolecules"` is split into `"NumberOfWindows"`
+    contiguous windows that share their endpoint macrostates, and the system
+    is replicated into one walker per (temperature, window) pair of the
+    ladder `"ExternalTemperatures"` × windows (a single
+    `"ExternalTemperature"` gives a one-temperature run). Every walker runs
+    grand-canonical Monte Carlo in its own thread with its own random-number
+    stream, confined to its window and flattened by the transition-matrix
+    bias, which is re-derived from the collection matrix every
+    `"TMMCUpdateEvery"` steps (default `100000`). Each walker starts inside
+    its window: molecules are grown with CBMC up to the lower window boundary
+    (`"CreateNumberOfMolecules"` must not exceed the macrostate minimum). The
+    walkers are fully independent — there are no swaps and no barriers, so
+    the threads only join at the stage boundaries.
+
+    The collection matrix records the unbiased acceptance probabilities of
+    all attempted insertions and deletions — also those rejected at the
+    window bounds — so the collection matrices of the windows of one
+    temperature simply add, and the macrostate probability distribution over
+    the full range follows from detailed balance,
+    ln Π(N+1) = ln Π(N) + ln P(N→N+1) − ln P(N+1→N). The distribution is
+    exact at the reference fugacity (from `"ExternalPressure"` through the
+    Peng-Robinson equation of state at every temperature) and reweights
+    exactly to any other fugacity, ln Π(N; f) = ln Π(N; f_ref) + N ln(f/f_ref).
+    Every temperature is solved from its own walkers only, so
+    temperature-dependent potentials (Feynman-Hibbs) are allowed. The error
+    bars come from re-deriving ln Π from the production-only per-block
+    increments of the collection matrices. The collection matrix itself is
+    never reset (its entries are valid across bias updates), so the final
+    ln Π uses the statistics of the equilibration and production stages
+    combined.
+
+    Outputs: per temperature, the macrostate distribution
+    `output/lnpi_{T}.parallel_tmmc.txt` (ln Π(N) with per-block errors and
+    the visit histogram) and the reweighted isotherms on a log-spaced
+    pressure grid spanning `"ReweightingPressureRange"` (default: four
+    decades around the reference pressure) with
+    `"ReweightingNumberOfPressures"` points (fugacity coefficients from the
+    Peng-Robinson equation of state at every point; note the isotherms
+    saturate artificially when ⟨N⟩ approaches the upper macrostate bound):
+    the equilibrium isotherm
+    `output/reweighted_isotherm_{T}.parallel_tmmc.txt` (averaged over both
+    basins of Π(N)) and the adsorption and desorption branches
+    `output/adsorption_isotherm_{T}.parallel_tmmc.txt` and
+    `output/desorption_isotherm_{T}.parallel_tmmc.txt` — where Π(N; f) is
+    bimodal (a first-order transition: capillary condensation in a pore,
+    vapor-liquid in a box) the adsorption branch is the conditional average
+    over the low-density basin (the metastable states followed on the way
+    up), the desorption branch the conditional average over the high-density
+    basin, and together they trace the hysteresis loop around the
+    equilibrium step; where Π(N; f) is unimodal all three coincide (the last
+    column flags the bimodal points).
+    Every walker writes its own output file
+    `output/output_{T}_w{w}.parallel_tmmc.r{k}.txt` (and `.json`; the direct
+    averages there are biased flat-histogram averages, diagnostics only) and
+    its transition-matrix statistics to
+    `tmmc/tmmc_statistics_{T}_w{w}.parallel_tmmc.txt`. The combined file
+    `output/output.parallel_tmmc.txt` (and `.json`) holds the macrostate
+    coverage per walker (every state of a window must be visited for the
+    stitched ln Π to be reliable) and the analysis report. Restart files
+    (JSON and binary) are not supported by this driver.
+
+    For bulk boxes (no framework) the analysis additionally computes the
+    vapor-liquid equilibrium at every simulated subcritical temperature with
+    the equal-weight criterion (Wilding): the fugacity is bisected until the
+    vapor and liquid peaks of the bimodal Π(N) carry equal probability
+    weight. The coexistence table `output/vle_coexistence.parallel_tmmc.txt`
+    holds, per temperature, the coexistence fugacity, the saturation pressure
+    (from β p V = ln Ξ, normalized exactly by the empty-box state — set the
+    macrostate minimum to `0` for this), and the saturated vapor and liquid
+    densities in kg/m³, all with per-block error bars; the distribution at
+    coexistence is written to `output/vle_distribution_{T}.parallel_tmmc.txt`.
+    Practical setup: the macrostate maximum must comfortably exceed the
+    liquid peak (ρ_liq V), and the scanned pressure range must bracket the
+    saturation pressures of all the temperatures. In contrast to
+    grand-canonical sampling at a single state point, the flat-histogram walk
+    crosses the vapor-liquid gap by construction — no starting configuration
+    tricks are needed.
+
+    The driver spawns one worker thread per walker (plain C++ threads, no
+    OpenMP) — with N_T temperatures and N_W windows that is N_T × N_W
+    threads, so size the grid to the machine. Leave `"NumberOfThreads"` at
+    its default of `1` so the per-energy-evaluation thread pool stays serial.
+    More windows shorten the equilibration (each walker only needs to flatten
+    its own window) but every window must still be crossed many times for a
+    reliable stitched distribution.
+
 -   `"SimulationType" : "Minimization"`\
     Performs an energy minimization of the initial configuration.
 
@@ -551,8 +643,21 @@ reported separately at the end of the simulation.
     ladder `"ExternalPressures"`.
 
 -   `"ReweightingNumberOfPressures" : integer`\
-    For `"SimulationType" : "ReweightedHistogram"`: the number of log-spaced
-    pressures the reweighted isotherms are evaluated at. Default: `100`.
+    For `"SimulationType" : "ReweightedHistogram"` and `"ParallelTMMC"`: the
+    number of log-spaced pressures the reweighted isotherms are evaluated at.
+    Default: `100`.
+
+-   `"NumberOfWindows" : integer`\
+    For `"SimulationType" : "ParallelTMMC"`: the number of contiguous
+    macrostate windows the range `"MacroStateMinimumNumberOfMolecules"` to
+    `"MacroStateMaximumNumberOfMolecules"` is split into (the windows share
+    their endpoint macrostates). One walker (thread) is run per (temperature,
+    window) pair. Default: `1`.
+
+-   `"TMMCUpdateEvery" : integer`\
+    For `"SimulationType" : "ParallelTMMC"`: the number of Monte Carlo steps
+    between updates of the flattening transition-matrix bias (re-derived from
+    the collection matrix). Default: `100000`.
 
 ### Threading and reproducibility <a name="threading-and-reproducibility"></a>
 
@@ -598,10 +703,11 @@ reported separately at the end of the simulation.
 -   `"ExternalTemperatures" : [T_0, T_1, ...]`\
     The temperature ladder for `"SimulationType" : "ParallelTempering"` (a
     sorted list of at least two temperatures in Kelvin),
-    `"HyperParallelTempering"` or `"ReweightedHistogram"` (at least one). The
-    single declared system is replicated into one replica per temperature (per
-    (temperature, pressure) grid point for the grid-based types). Replaces
-    `"ExternalTemperature"` for those simulation types.
+    `"HyperParallelTempering"`, `"ReweightedHistogram"` or `"ParallelTMMC"`
+    (at least one). The single declared system is replicated into one replica
+    per temperature (per (temperature, pressure) grid point for the
+    grid-based types, per (temperature, window) pair for `"ParallelTMMC"`).
+    Replaces `"ExternalTemperature"` for those simulation types.
 
 -   `"ExternalPressure" : floating-point-number`\
     The external pressure of the system in Pascal.
@@ -622,6 +728,20 @@ reported separately at the end of the simulation.
 -   `"ChemicalPotential" : floating-point-number`\
     Sets the imposed chemical potential (in internal units); the corresponding
     fugacity is derived from it and the temperature.
+
+-   `"MacroStateMinimumNumberOfMolecules" / "MacroStateMaximumNumberOfMolecules" : integer`\
+    For `"SimulationType" : "MonteCarloTransitionMatrix"` and
+    `"ParallelTMMC"`: the macrostate range (the total molecule count) the
+    transition-matrix walk is confined to. For `"ParallelTMMC"` the range is
+    split into `"NumberOfWindows"` windows, and a minimum of `0` enables the
+    exact normalization of the saturation pressure by the empty-box state.
+    Defaults: `0` and `100`.
+
+-   `"MacroStateUseBias" : boolean`\
+    For `"SimulationType" : "MonteCarloTransitionMatrix"`: whether the
+    flattening transition-matrix bias is applied to the insertion/deletion
+    acceptance (the collection-matrix statistics are unbiased either way).
+    Default: `true`.
 
 -   `"ThermostatChainLength" : integer`\
     The length of the Nosé-Hoover chain used to thermostat the system. Default:

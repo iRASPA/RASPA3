@@ -1,0 +1,33 @@
+{
+  "SimulationType" : "ParallelTMMC",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "NumberOfWindows" : 6,
+  "TMMCUpdateEvery" : 100000,
+  "ReweightingPressureRange" : [2.0e5, 8.0e6],
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperatures" : [160.0, 170.0, 180.0],
+      "ExternalPressure" : 2.0e6,
+      "ChargeMethod" : "None",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : 420
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

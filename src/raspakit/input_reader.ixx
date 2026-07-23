@@ -89,7 +89,8 @@ export struct InputReader
     ThermodynamicIntegration = 9,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
     ParallelThermodynamicIntegration = 10,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
     HyperParallelTempering = 11,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
-    ReweightedHistogram = 12  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
+    ReweightedHistogram = 12,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
+    ParallelTMMC = 13  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
   };
 
   /**
@@ -140,6 +141,13 @@ export struct InputReader
   std::optional<std::pair<double, double>> reweightingPressureRange;
   /// Reweighted histogram: the number of log-spaced pressures of the reweighted isotherms.
   std::size_t reweightingNumberOfPressures{100};
+
+  /// Parallel TMMC: the macrostate range [MacroStateMinimumNumberOfMolecules,
+  /// MacroStateMaximumNumberOfMolecules] is split into this many windows sharing their endpoints;
+  /// one walker (thread) is run per (temperature, window) pair.
+  std::size_t tmmcNumberOfWindows{1};
+  /// Parallel TMMC: number of Monte Carlo steps between updates of the transition-matrix bias.
+  std::size_t tmmcUpdateEvery{100000};
 
   std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.

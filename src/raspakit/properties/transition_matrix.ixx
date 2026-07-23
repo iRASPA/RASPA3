@@ -21,7 +21,7 @@ export struct TransitionMatrix
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
 
-  bool operator==(TransitionMatrix const &) const = default;
+  bool operator==(TransitionMatrix const&) const = default;
 
   std::vector<double3> cmatrix;        ///< Collection matrix: x=deletion, y=no change, z=insertion.
   std::vector<double> bias;            ///< Bias factors for each macrostate.
@@ -36,8 +36,11 @@ export struct TransitionMatrix
   std::size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
   std::size_t numberOfUpdates = {0};      ///< Number of times the bias has been updated.
 
-  bool doTMMC = {false};                     ///< Flag indicating whether to perform TMMC simulation.
-  bool useBias = {false};                    ///< Flag indicating whether to use bias for changing macrostates.
+  bool doTMMC = {false};   ///< Flag indicating whether to perform TMMC simulation.
+  bool useBias = {false};  ///< Flag indicating whether to use bias for changing macrostates.
+
+  /// File name for the statistics output; parallel drivers set a unique name per walker.
+  std::string statisticsFileName{"tmmc/tmmc_statistics.txt"};
   bool useTMBias = {true};                   ///< Flag indicating whether to use Transition Matrix bias.
   bool rejectOutOfBound = {true};            ///< Flag indicating whether to reject moves outside macrostate bounds.
   bool rezeroAfterInitialization = {false};  ///< Flag indicating whether to reset statistics after initialization.
@@ -112,6 +115,6 @@ export struct TransitionMatrix
    */
   void writeStatistics();
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TransitionMatrix &m);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const TransitionMatrix& m);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMatrix& m);
 };

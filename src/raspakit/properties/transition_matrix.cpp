@@ -169,12 +169,8 @@ void TransitionMatrix::writeStatistics()
   std::ofstream textTMMCFile{};
   std::filesystem::path cwd = std::filesystem::current_path();
 
-  std::string dirname = "tmmc/";
-  std::string fname = dirname + "/" + "tmmc_statistics.txt";
-
-  std::filesystem::path directoryName = cwd / dirname;
-  std::filesystem::path fileName = cwd / fname;
-  std::filesystem::create_directories(directoryName);
+  std::filesystem::path fileName = cwd / statisticsFileName;
+  std::filesystem::create_directories(fileName.parent_path());
   textTMMCFile = std::ofstream(fileName, std::ios::out);
 
   if (doTMMC)

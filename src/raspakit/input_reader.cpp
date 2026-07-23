@@ -210,6 +210,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ReweightedHistogram;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "ParallelTMMC"))
+    {
+      simulationType = SimulationType::ParallelTMMC;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -312,6 +317,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       parsed_data["ReweightingNumberOfPressures"].is_number_unsigned())
   {
     reweightingNumberOfPressures = std::max(2uz, parsed_data["ReweightingNumberOfPressures"].get<std::size_t>());
+  }
+
+  // Parallel TMMC: window and bias-update controls
+  if (parsed_data.contains("NumberOfWindows") && parsed_data["NumberOfWindows"].is_number_unsigned())
+  {
+    tmmcNumberOfWindows = std::max(1uz, parsed_data["NumberOfWindows"].get<std::size_t>());
+  }
+  if (parsed_data.contains("TMMCUpdateEvery") && parsed_data["TMMCUpdateEvery"].is_number_unsigned())
+  {
+    tmmcUpdateEvery = std::max(1uz, parsed_data["TMMCUpdateEvery"].get<std::size_t>());
   }
 
   if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
@@ -1826,12 +1841,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         if (simulationType != SimulationType::ParallelTempering &&
             simulationType != SimulationType::HyperParallelTempering &&
-            simulationType != SimulationType::ReweightedHistogram)
+            simulationType != SimulationType::ReweightedHistogram && simulationType != SimulationType::ParallelTMMC)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' (a temperature ladder) is only valid for "
-                          "'SimulationType': 'ParallelTempering', 'HyperParallelTempering' or "
-                          "'ReweightedHistogram'; use 'ExternalTemperature' instead\n"));
+                          "'SimulationType': 'ParallelTempering', 'HyperParallelTempering', "
+                          "'ReweightedHistogram' or 'ParallelTMMC'; use 'ExternalTemperature' instead\n"));
         }
         parallelTemperingTemperatures = value["ExternalTemperatures"].get<std::vector<double>>();
         if (simulationType == SimulationType::ParallelTempering && parallelTemperingTemperatures.size() < 2)
@@ -3067,6 +3082,57 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       systems.front().components.size()));
     }
   }
+
+  // Parallel TMMC: a single declared system is replicated by the driver into one walker per
+  // (temperature, macrostate-window) pair; the collection matrices of the windows are summed
+  // afterwards into the macrostate distribution over the full macrostate range
+  if (simulationType == SimulationType::ParallelTMMC)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTMMC' requires exactly one declared system (it is replicated "
+                      "internally into one walker per (temperature, window) pair), {} systems were declared\n",
+                      systems.size()));
+    }
+    if (systems.front().components.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTMMC' requires exactly one component (the macrostate is the "
+                      "molecule count of a single adsorbate), {} components were declared\n",
+                      systems.front().components.size()));
+    }
+    System& system = systems.front();
+    system.tmmc.doTMMC = true;
+    system.tmmc.useBias = true;
+    system.tmmc.useTMBias = true;
+    system.tmmc.rejectOutOfBound = true;
+    system.tmmc.updateTMEvery = tmmcUpdateEvery;
+    if (system.tmmc.maxMacrostate <= system.tmmc.minMacrostate)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTMMC' requires a macrostate range: give the system the keys "
+                      "'MacroStateMinimumNumberOfMolecules' and 'MacroStateMaximumNumberOfMolecules' with "
+                      "minimum < maximum\n"));
+    }
+    const std::size_t numberOfMacrostates = system.tmmc.maxMacrostate - system.tmmc.minMacrostate + 1;
+    if (tmmcNumberOfWindows > (numberOfMacrostates - 1))
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'NumberOfWindows' ({}) is too large for the macrostate range [{}, {}]; "
+                      "every window must span at least two macrostates\n",
+                      tmmcNumberOfWindows, system.tmmc.minMacrostate, system.tmmc.maxMacrostate));
+    }
+    const std::size_t initialNumberOfMolecules =
+        std::accumulate(system.initialNumberOfMolecules.begin(), system.initialNumberOfMolecules.end(), 0uz);
+    if (initialNumberOfMolecules > system.tmmc.minMacrostate)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTMMC' fills every window from below by growing molecules; "
+                      "'CreateNumberOfMolecules' ({}) must not exceed 'MacroStateMinimumNumberOfMolecules' ({})\n",
+                      initialNumberOfMolecules, system.tmmc.minMacrostate));
+    }
+  }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
@@ -3112,6 +3178,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ReweightingTemperatures",
     "ReweightingPressureRange",
     "ReweightingNumberOfPressures",
+    "NumberOfWindows",
+    "TMMCUpdateEvery",
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",

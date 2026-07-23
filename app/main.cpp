@@ -13,6 +13,7 @@ import parallel_thermodynamic_integration;
 import parallel_tempering;
 import hyper_parallel_tempering;
 import reweighted_histogram;
+import parallel_tmmc;
 //import breakthrough;
 //import breakthrough_simulation;
 //import mixture_prediction_simulation;
@@ -144,6 +145,12 @@ int main(int argc, char* argv[])
       {
         ReweightedHistogram reweighted_histogram(inputReader);
         reweighted_histogram.run();
+        break;
+      }
+      case InputReader::SimulationType::ParallelTMMC:
+      {
+        ParallelTMMC parallel_tmmc(inputReader);
+        parallel_tmmc.run();
         break;
       }
       case InputReader::SimulationType::Breakthrough:
