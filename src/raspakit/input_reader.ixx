@@ -88,7 +88,8 @@ export struct InputReader
     ParallelTempering = 8,           ///< Parallel Tempering simulation for enhanced sampling.
     ThermodynamicIntegration = 9,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
     ParallelThermodynamicIntegration = 10,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
-    HyperParallelTempering = 11  ///< Multithreaded replica-exchange over a temperature x pressure grid.
+    HyperParallelTempering = 11,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
+    ReweightedHistogram = 12  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
   };
 
   /**
@@ -127,6 +128,18 @@ export struct InputReader
   /// Parallel tempering: attempt a sweep of configuration swaps between replicas at neighboring
   /// temperatures every this many cycles (0 disables the swaps).
   std::size_t parallelTemperingSwapEvery{10};
+
+  /// Reweighted histogram: record an (N, U) sample of every replica every this many production
+  /// cycles (controls the memory use and the sample correlation of the reweighting analysis).
+  std::size_t sampleReweightingEvery{5};
+  /// Reweighted histogram: the temperatures the reweighted isotherms are evaluated at
+  /// (defaults to the temperature ladder).
+  std::vector<double> reweightingTemperatures;
+  /// Reweighted histogram: the pressure range [min, max] of the reweighted isotherms in Pa
+  /// (defaults to the span of the pressure ladder).
+  std::optional<std::pair<double, double>> reweightingPressureRange;
+  /// Reweighted histogram: the number of log-spaced pressures of the reweighted isotherms.
+  std::size_t reweightingNumberOfPressures{100};
 
   std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.

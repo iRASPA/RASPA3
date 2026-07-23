@@ -1,0 +1,31 @@
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [155.0, 160.0, 165.0, 170.0, 175.0, 180.0, 185.0],
+  "ReweightingPressureRange" : [5.0e5, 6.0e6],
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperatures" : [160.0, 170.0, 180.0, 186.0],
+      "ExternalPressures" : [1.2e6, 2.4e6, 4.0e6],
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 300
+    }
+  ]
+}

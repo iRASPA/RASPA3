@@ -205,6 +205,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::HyperParallelTempering;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "ReweightedHistogram"))
+    {
+      simulationType = SimulationType::ReweightedHistogram;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -282,6 +287,31 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       parsed_data["ParallelTemperingSwapEvery"].is_number_unsigned())
   {
     parallelTemperingSwapEvery = parsed_data["ParallelTemperingSwapEvery"].get<std::size_t>();
+  }
+
+  // Reweighted histogram: sampling and analysis controls
+  if (parsed_data.contains("SampleReweightingEvery") && parsed_data["SampleReweightingEvery"].is_number_unsigned())
+  {
+    sampleReweightingEvery = std::max(1uz, parsed_data["SampleReweightingEvery"].get<std::size_t>());
+  }
+  if (parsed_data.contains("ReweightingTemperatures") && parsed_data["ReweightingTemperatures"].is_array())
+  {
+    reweightingTemperatures = parsed_data["ReweightingTemperatures"].get<std::vector<double>>();
+  }
+  if (parsed_data.contains("ReweightingPressureRange") && parsed_data["ReweightingPressureRange"].is_array())
+  {
+    std::vector<double> range = parsed_data["ReweightingPressureRange"].get<std::vector<double>>();
+    if (range.size() != 2 || range[0] <= 0.0 || range[1] <= range[0])
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ReweightingPressureRange' must be [min, max] with 0 < min < max\n"));
+    }
+    reweightingPressureRange = std::make_pair(range[0], range[1]);
+  }
+  if (parsed_data.contains("ReweightingNumberOfPressures") &&
+      parsed_data["ReweightingNumberOfPressures"].is_number_unsigned())
+  {
+    reweightingNumberOfPressures = std::max(2uz, parsed_data["ReweightingNumberOfPressures"].get<std::size_t>());
   }
 
   if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
@@ -1577,7 +1607,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ParallelTemperingSwapProbability") &&
           value["ParallelTemperingSwapProbability"].is_number_float() &&
           simulationType != SimulationType::ParallelTempering &&
-          simulationType != SimulationType::HyperParallelTempering)
+          simulationType != SimulationType::HyperParallelTempering &&
+          simulationType != SimulationType::ReweightedHistogram)
       {
         mc_moves_probabilities.setProbability(Move::Types::ParallelTempering,
                                               value["ParallelTemperingSwapProbability"].get<double>());
@@ -1794,12 +1825,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalTemperatures") && value["ExternalTemperatures"].is_array())
       {
         if (simulationType != SimulationType::ParallelTempering &&
-            simulationType != SimulationType::HyperParallelTempering)
+            simulationType != SimulationType::HyperParallelTempering &&
+            simulationType != SimulationType::ReweightedHistogram)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' (a temperature ladder) is only valid for "
-                          "'SimulationType': 'ParallelTempering' or 'HyperParallelTempering'; use "
-                          "'ExternalTemperature' instead\n"));
+                          "'SimulationType': 'ParallelTempering', 'HyperParallelTempering' or "
+                          "'ReweightedHistogram'; use 'ExternalTemperature' instead\n"));
         }
         parallelTemperingTemperatures = value["ExternalTemperatures"].get<std::vector<double>>();
         if (simulationType == SimulationType::ParallelTempering && parallelTemperingTemperatures.size() < 2)
@@ -1825,11 +1857,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // the single declared system is replicated into one replica per (temperature, pressure) point
       if (value.contains("ExternalPressures") && value["ExternalPressures"].is_array())
       {
-        if (simulationType != SimulationType::HyperParallelTempering)
+        if (simulationType != SimulationType::HyperParallelTempering &&
+            simulationType != SimulationType::ReweightedHistogram)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalPressures' (a pressure ladder) is only valid for "
-                          "'SimulationType': 'HyperParallelTempering'; use 'ExternalPressure' instead\n"));
+                          "'SimulationType': 'HyperParallelTempering' or 'ReweightedHistogram'; use "
+                          "'ExternalPressure' instead\n"));
         }
         parallelTemperingPressures = value["ExternalPressures"].get<std::vector<double>>();
         if (parallelTemperingPressures.empty())
@@ -2998,6 +3032,41 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "points\n"));
     }
   }
+
+  // Reweighted histogram: a single declared system is replicated by the driver into one replica per
+  // (temperature, pressure) grid point and the collected (N, U) samples are combined by
+  // multiple-histogram reweighting into a continuous isotherm surface
+  if (simulationType == SimulationType::ReweightedHistogram)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ReweightedHistogram' requires exactly one declared system (it is "
+                      "replicated internally into one replica per (temperature, pressure) grid point), {} systems "
+                      "were declared\n",
+                      systems.size()));
+    }
+    if (parallelTemperingTemperatures.empty() || parallelTemperingPressures.empty())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ReweightedHistogram' requires both ladders: give the system the keys "
+                      "'ExternalTemperatures' and 'ExternalPressures' (sorted lists)\n"));
+    }
+    if (parallelTemperingTemperatures.size() * parallelTemperingPressures.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ReweightedHistogram' requires at least two (temperature, pressure) grid "
+                      "points\n"));
+    }
+    if (systems.front().components.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ReweightedHistogram' requires exactly one component (the reweighting "
+                      "histograms are collected over the molecule count of a single adsorbate), {} components "
+                      "were declared\n",
+                      systems.front().components.size()));
+    }
+  }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
@@ -3039,6 +3108,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "RescaleWangLandauEvery",
     "LambdaExchangeEvery",
     "ParallelTemperingSwapEvery",
+    "SampleReweightingEvery",
+    "ReweightingTemperatures",
+    "ReweightingPressureRange",
+    "ReweightingNumberOfPressures",
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",

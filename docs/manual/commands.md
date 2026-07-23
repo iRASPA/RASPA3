@@ -260,6 +260,76 @@ reported separately at the end of the simulation.
     (CFCMC) molecules, flexible components, or reactions reject all swap
     attempts.
 
+-   `"SimulationType" : "ReweightedHistogram"`\
+    Runs the same multithreaded replica-exchange simulation over a
+    (temperature, pressure) grid as `"HyperParallelTempering"` (one system with
+    the ladders `"ExternalTemperatures"` and `"ExternalPressures"`, one thread
+    per grid point, Yan & de Pablo configuration swaps, per-replica and
+    combined output files, directly-measured isotherm files) and additionally
+    combines the results of all threads with multiple-histogram reweighting
+    (WHAM; Ferrenberg & Swendsen, PRL 63, 1195, 1989; Kumar et al., J. Comput.
+    Chem. 13, 1011, 1992) into a continuous isotherm surface.
+
+    Every `"SampleReweightingEvery"` production cycles (default `5`) each
+    replica records a raw (N, U) sample: the molecule count of the adsorbate
+    and the potential energy. At the end of the run the pooled samples are
+    binned over (N, U) and the WHAM self-consistent equations for the
+    grand-canonical density of states Ω(N, U) are solved in log space,
+
+    ln Ω(N,U) = ln M(N,U) − ln Σ_i n_i exp[g_i − β_i U + N ln(β_i f_i)],
+    g_i = −ln Σ_{N,U} Ω(N,U) exp[−β_i U + N ln(β_i f_i)]
+
+    (M is the total count of a bin, n_i the sample count of grid point i, f_i
+    its fugacity). The density of states is then reweighted to arbitrary
+    (temperature, fugacity) points, giving smooth isotherms in between (and
+    somewhat beyond) the simulated grid points from a single run. The error
+    bars are obtained by re-solving the WHAM equations per block.
+
+    Outputs, in addition to the hyper-parallel-tempering ones (which use the
+    tag `reweighted_histogram` in the filenames): one reweighted isotherm per
+    requested temperature, `output/reweighted_isotherm_{T}.reweighted_histogram.txt`,
+    evaluated on a fine log-spaced pressure grid (fugacity coefficients from
+    the Peng-Robinson equation of state at every point; columns as in the
+    directly-measured isotherm files, plus the effective sample size that
+    diagnoses the overlap — small values flag extrapolation beyond the sampled
+    (N, U) region); the per-state free energies g_i together with a
+    self-consistency table (reweighted vs. directly-measured loading at every
+    simulated grid point) in
+    `output/reweighted_free_energies.reweighted_histogram.txt`; and the WHAM
+    convergence report in the combined output file. The analysis controls are
+    the optional top-level keys `"ReweightingTemperatures"` (default: the
+    temperature ladder), `"ReweightingPressureRange"` (default: the span of
+    the pressure ladder) and `"ReweightingNumberOfPressures"` (default `100`).
+
+    For bulk boxes (no framework) the analysis additionally computes the
+    vapor-liquid equilibrium at every requested subcritical temperature with
+    the equal-weight criterion (Wilding): the fugacity is bisected until the
+    vapor and liquid peaks of the bimodal reweighted molecule-number
+    distribution P(N) carry equal probability weight. The coexistence table
+    `output/vle_coexistence.reweighted_histogram.txt` holds, per temperature,
+    the coexistence fugacity, the saturation pressure (from β p V = ln Ξ,
+    normalized exactly by the empty-box state when it was sampled, otherwise
+    approximately by an ideal-gas reference at the dilute end of the pressure
+    range), and the saturated vapor and liquid densities in kg/m³, all with
+    per-block error bars; the distribution at coexistence is written to
+    `output/vle_distribution_{T}.reweighted_histogram.txt` (for inspection and
+    finite-size scaling). Temperatures where no bimodal distribution is found
+    in the scanned pressure range (supercritical, or the sampling does not
+    connect the phases) are flagged. Practical setup: place the top of the
+    temperature ladder close to the critical point (there the vapor and
+    liquid histograms overlap and configurations can cross between the
+    phases), span the coexistence pressures with the pressure ladder, and
+    start from a liquid-density configuration (`"CreateNumberOfMolecules"`) so
+    both phases are visited — the liquid does not nucleate spontaneously from
+    the vapor in grand-canonical sampling.
+
+    The reweighting reuses each sampled energy U(x) at all temperatures, so
+    temperature-dependent potentials (Feynman-Hibbs) are rejected, and exactly
+    one component is required (the histograms are collected over its molecule
+    count). Reliable reweighting requires the (N, U) histograms of neighboring
+    grid points to overlap — the same requirement as a healthy swap acceptance,
+    so the per-pair acceptance tables double as an overlap diagnostic.
+
 -   `"SimulationType" : "Minimization"`\
     Performs an energy minimization of the initial configuration.
 
@@ -458,10 +528,31 @@ reported separately at the end of the simulation.
     move its time step, and so on. Default: `5000`.
 
 -   `"ParallelTemperingSwapEvery" : integer`\
-    For `"SimulationType" : "ParallelTempering"` and `"HyperParallelTempering"`:
-    how often (in cycles) a sweep of configuration swaps between replicas at
-    neighboring state points is attempted (`0` disables the swaps).
-    Default: `10`.
+    For `"SimulationType" : "ParallelTempering"`, `"HyperParallelTempering"`
+    and `"ReweightedHistogram"`: how often (in cycles) a sweep of
+    configuration swaps between replicas at neighboring state points is
+    attempted (`0` disables the swaps). Default: `10`.
+
+-   `"SampleReweightingEvery" : integer`\
+    For `"SimulationType" : "ReweightedHistogram"`: every this many production
+    cycles each replica records a raw (N, U) sample for the reweighting
+    analysis (controls the memory use and the sample correlation).
+    Default: `5`.
+
+-   `"ReweightingTemperatures" : [T_0, T_1, ...]`\
+    For `"SimulationType" : "ReweightedHistogram"`: the temperatures (in
+    Kelvin) the reweighted isotherms are evaluated and written at; they may
+    lie in between the simulated temperatures. Default: the temperature
+    ladder `"ExternalTemperatures"`.
+
+-   `"ReweightingPressureRange" : [P_min, P_max]`\
+    For `"SimulationType" : "ReweightedHistogram"`: the pressure range (in
+    Pascal) of the reweighted isotherms. Default: the span of the pressure
+    ladder `"ExternalPressures"`.
+
+-   `"ReweightingNumberOfPressures" : integer`\
+    For `"SimulationType" : "ReweightedHistogram"`: the number of log-spaced
+    pressures the reweighted isotherms are evaluated at. Default: `100`.
 
 ### Threading and reproducibility <a name="threading-and-reproducibility"></a>
 
@@ -506,21 +597,22 @@ reported separately at the end of the simulation.
 
 -   `"ExternalTemperatures" : [T_0, T_1, ...]`\
     The temperature ladder for `"SimulationType" : "ParallelTempering"` (a
-    sorted list of at least two temperatures in Kelvin) or
-    `"HyperParallelTempering"` (at least one). The single declared system is
-    replicated into one replica per temperature (per (temperature, pressure)
-    grid point for hyper-parallel tempering). Replaces `"ExternalTemperature"`
-    for those simulation types.
+    sorted list of at least two temperatures in Kelvin),
+    `"HyperParallelTempering"` or `"ReweightedHistogram"` (at least one). The
+    single declared system is replicated into one replica per temperature (per
+    (temperature, pressure) grid point for the grid-based types). Replaces
+    `"ExternalTemperature"` for those simulation types.
 
 -   `"ExternalPressure" : floating-point-number`\
     The external pressure of the system in Pascal.
 
 -   `"ExternalPressures" : [P_0, P_1, ...]`\
-    The pressure ladder for `"SimulationType" : "HyperParallelTempering"`: a
-    sorted list of pressures in Pascal, converted to per-component fugacities
-    internally with the Peng-Robinson equation of state at each grid point.
-    Together with `"ExternalTemperatures"` it spans the (temperature, pressure)
-    replica grid. Replaces `"ExternalPressure"` for that simulation type.
+    The pressure ladder for `"SimulationType" : "HyperParallelTempering"` or
+    `"ReweightedHistogram"`: a sorted list of pressures in Pascal, converted
+    to per-component fugacities internally with the Peng-Robinson equation of
+    state at each grid point. Together with `"ExternalTemperatures"` it spans
+    the (temperature, pressure) replica grid. Replaces `"ExternalPressure"`
+    for those simulation types.
 
 -   `"ExternalPressureX" / "ExternalPressureY" / "ExternalPressureZ" : floating-point-number`\
     Override individual diagonal components of the pressure tensor, for
@@ -636,9 +728,10 @@ reported separately at the end of the simulation.
 
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\
     The probability per cycle of attempting a parallel-tempering swap between two
-    systems. Ignored with `"SimulationType" : "ParallelTempering"` and
-    `"HyperParallelTempering"`, where the swaps are performed by the driver at
-    the barrier synchronization points (see `"ParallelTemperingSwapEvery"`).
+    systems. Ignored with `"SimulationType" : "ParallelTempering"`,
+    `"HyperParallelTempering"` and `"ReweightedHistogram"`, where the swaps
+    are performed by the driver at the barrier synchronization points (see
+    `"ParallelTemperingSwapEvery"`).
 
 -   `"TranslationSmartMCAllProbability" : floating-point-number`\
     The probability per cycle of attempting a translation smart-MC move that

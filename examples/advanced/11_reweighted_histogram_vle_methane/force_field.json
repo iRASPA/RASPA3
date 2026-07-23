@@ -1,0 +1,27 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH4",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 16.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",
+      "parameters" : [148.0, 3.73],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true
+}
