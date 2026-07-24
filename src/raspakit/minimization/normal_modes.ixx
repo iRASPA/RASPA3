@@ -5,6 +5,7 @@ export module normal_modes;
 import std;
 
 import system;
+import archive;
 
 export struct NormalModesResult
 {
@@ -17,6 +18,9 @@ export struct NormalModesResult
   std::size_t zeroModes{};
   /// Rigid-molecule orientation DOFs with (near-)zero moment of inertia, excluded from mass weighting.
   std::size_t discardedRotationalDofs{};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NormalModesResult& r);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NormalModesResult& r);
 };
 
 /**

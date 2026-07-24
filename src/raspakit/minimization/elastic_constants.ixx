@@ -6,6 +6,7 @@ import std;
 
 import system;
 import double3x3;
+import archive;
 
 export struct ElasticConstantsResult
 {
@@ -27,6 +28,9 @@ export struct ElasticConstantsResult
   double shearModulusHill{};
   std::size_t discardedInternalModes{};
   bool complianceAvailable{};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ElasticConstantsResult& r);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ElasticConstantsResult& r);
 };
 
 /**

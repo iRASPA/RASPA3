@@ -81,16 +81,12 @@ export struct InputReader
     MonteCarloTransitionMatrix = 1,  ///< Monte Carlo simulation using a transition matrix approach.
     MolecularDynamics = 2,           ///< Molecular Dynamics simulation.
     Minimization = 3,                ///< Energy minimization simulation.
-    Test = 4,                        ///< Test simulation type for debugging or development.
-    Breakthrough = 5,                ///< Breakthrough simulation for adsorption studies.
-    MixturePrediction = 6,           ///< Simulation for predicting mixtures.
-    Fitting = 7,                     ///< Simulation type for fitting parameters.
-    ParallelTempering = 8,           ///< Parallel Tempering simulation for enhanced sampling.
-    ThermodynamicIntegration = 9,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
-    ParallelThermodynamicIntegration = 10,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
-    HyperParallelTempering = 11,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
-    ReweightedHistogram = 12,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
-    ParallelTMMC = 13  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
+    ParallelTempering = 4,           ///< Parallel Tempering simulation for enhanced sampling.
+    ThermodynamicIntegration = 5,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
+    ParallelThermodynamicIntegration = 6,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
+    HyperParallelTempering = 7,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
+    ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
+    ParallelTMMC = 9  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
   };
 
   /**

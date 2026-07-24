@@ -4,6 +4,7 @@ module elastic_constants;
 
 import std;
 
+import archive;
 import units;
 import double3x3;
 import double3;
@@ -338,4 +339,46 @@ std::string writeElasticConstants(const ElasticConstantsResult& result)
   }
   output += "\n";
   return output;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ElasticConstantsResult& r)
+{
+  archive << r.born;
+  archive << r.relaxation;
+  archive << r.pressureCorrection;
+  archive << r.stiffness;
+  archive << r.compliance;
+  archive << r.stabilityEigenvalues;
+  archive << r.youngModuli;
+  archive << r.poissonRatios;
+  archive << r.bulkModulusVoigt;
+  archive << r.shearModulusVoigt;
+  archive << r.bulkModulusReuss;
+  archive << r.shearModulusReuss;
+  archive << r.bulkModulusHill;
+  archive << r.shearModulusHill;
+  archive << r.discardedInternalModes;
+  archive << r.complianceAvailable;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ElasticConstantsResult& r)
+{
+  archive >> r.born;
+  archive >> r.relaxation;
+  archive >> r.pressureCorrection;
+  archive >> r.stiffness;
+  archive >> r.compliance;
+  archive >> r.stabilityEigenvalues;
+  archive >> r.youngModuli;
+  archive >> r.poissonRatios;
+  archive >> r.bulkModulusVoigt;
+  archive >> r.shearModulusVoigt;
+  archive >> r.bulkModulusReuss;
+  archive >> r.shearModulusReuss;
+  archive >> r.bulkModulusHill;
+  archive >> r.shearModulusHill;
+  archive >> r.discardedInternalModes;
+  archive >> r.complianceAvailable;
+  return archive;
 }

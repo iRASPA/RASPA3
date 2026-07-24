@@ -4,6 +4,8 @@ module minimization;
 
 import std;
 
+import archive;
+import graceful_shutdown;
 import input_reader;
 import atom;
 import system;
@@ -271,13 +273,22 @@ Minimization::Minimization(const MinimizationOptions& options, std::vector<Syste
 
 void Minimization::setup()
 {
-  results.assign(systems.size(), {});
+  // on a binary restart the deserialized results (of the already-minimized systems) are kept
+  if (results.size() != systems.size())
+  {
+    results.assign(systems.size(), {});
+  }
+  // on a binary-restart resume append to the existing output files (and skip re-printing the
+  // headers) so each log continues where the interrupted run left off
+  const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
+
   if (outputToFiles)
   {
     std::filesystem::create_directories("output");
     for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
     {
-      streams.emplace_back(std::format("output/minimization.s{}.txt", systemIndex), std::ios::out);
+      streams.emplace_back(std::format("output/minimization.s{}.txt", systemIndex),
+                           resumedFromBinaryRestart ? std::ios::app : std::ios::out);
     }
   }
 
@@ -295,7 +306,7 @@ void Minimization::setup()
                                                        system.forceField.cutOffFrameworkVDW);
     }
     system.precomputeTotalRigidEnergy();
-    if (outputToFiles)
+    if (outputToFiles && !resumedFromBinaryRestart)
     {
       std::print(streams[systemIndex], "{}", system.writeOutputHeader());
       std::print(streams[systemIndex], "{}\n", system.writeSystemStatus());
@@ -425,10 +436,7 @@ void Minimization::preInitialize()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // minimization driver does not currently write binary restarts
-    }
+    checkpointIfDue(currentCycle);
 
   continuePreInitializationStage:;
   }
@@ -467,10 +475,7 @@ void Minimization::initialize()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // minimization driver does not currently write binary restarts
-    }
+    checkpointIfDue(currentCycle);
 
   continueInitializationStage:;
   }
@@ -552,10 +557,7 @@ void Minimization::equilibrate()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // minimization driver does not currently write binary restarts
-    }
+    checkpointIfDue(currentCycle);
 
   continueEquilibrationStage:;
   }
@@ -563,12 +565,16 @@ void Minimization::equilibrate()
 
 void Minimization::runPhase()
 {
-  if (simulationStage == SimulationStage::Run) return;
+  // binary restart: resume at the checkpointed system and Baker iteration. The systems before
+  // 'runSystemIndex' are already minimized and analyzed (their results were deserialized); the
+  // Baker temporaries (generalized Hessian, gradient, DOF layout) are rebuilt below from the
+  // deserialized system state.
+  const bool resumed = (simulationStage == SimulationStage::Run);
+  const std::size_t startSystemIndex = resumed ? runSystemIndex : 0uz;
+  const std::size_t resumeIteration = resumed ? runIteration : 0uz;
   simulationStage = SimulationStage::Run;
 
-  bool allConverged = true;
-
-  for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
+  for (std::size_t systemIndex = startSystemIndex; systemIndex < systems.size(); ++systemIndex)
   {
     System& system = systems[systemIndex];
     MinimizationSystemResult& systemResult = results[systemIndex];
@@ -596,7 +602,8 @@ void Minimization::runPhase()
     capabilities.hessianPositionPosition = true;
 
     DerivativeResults derivatives{.gradient = gradient, .hessian = hessian};
-    for (std::size_t iteration = 0; iteration < options.maximumNumberOfSteps; ++iteration)
+    const std::size_t startIteration = (systemIndex == startSystemIndex) ? resumeIteration : 0uz;
+    for (std::size_t iteration = startIteration; iteration < options.maximumNumberOfSteps; ++iteration)
     {
       evaluateDerivatives(system, layout, capabilities, derivatives);
       if (!std::isfinite(derivatives.energy))
@@ -644,16 +651,31 @@ void Minimization::runPhase()
         }
       }
 
+      // periodic binary-restart checkpoint: the displacement of this iteration has been applied,
+      // so a resumed run continues at 'iteration + 1' from the stored system state
+      if (writeBinaryRestartEvery != 0uz && (iteration + 1uz) % writeBinaryRestartEvery == 0uz && !step.converged)
+      {
+        runSystemIndex = systemIndex;
+        runIteration = iteration + 1uz;
+        writeBinaryRestartFile();
+      }
+
+      if (GracefulShutdown::requested() && !step.converged)
+      {
+        runSystemIndex = systemIndex;
+        runIteration = iteration + 1uz;
+        writeBinaryRestartFile();
+        // std::exit skips stack unwinding: flush the text output streams explicitly
+        for (std::ofstream& outputStream : streams) std::flush(outputStream);
+        GracefulShutdown::exitAfterCheckpoint();
+      }
+
       if (step.converged)
       {
         break;
       }
     }
-    if (!systemResult.converged)
-    {
-      allConverged = false;
-    }
-    else
+    if (systemResult.converged)
     {
       if (options.computeElasticConstants)
       {
@@ -708,8 +730,28 @@ void Minimization::runPhase()
         }
       }
     }
+
+    // checkpoint after this system is fully done (its analyses are stored in the result), so a
+    // resumed run continues with the next system
+    runSystemIndex = systemIndex + 1uz;
+    runIteration = 0uz;
+    if (writeBinaryRestartEvery != 0uz)
+    {
+      writeBinaryRestartFile();
+    }
+
+    if (GracefulShutdown::requested())
+    {
+      writeBinaryRestartFile();
+      // std::exit skips stack unwinding: flush the text output streams explicitly
+      for (std::ofstream& outputStream : streams) std::flush(outputStream);
+      GracefulShutdown::exitAfterCheckpoint();
+    }
   }
 
+  // includes the systems minimized before a binary restart
+  const bool allConverged =
+      std::ranges::all_of(results, [](const MinimizationSystemResult& result) { return result.converged; });
   if (!allConverged)
   {
     throw std::runtime_error("Baker minimization did not converge for all systems");
@@ -727,21 +769,30 @@ void Minimization::run()
   // bend-bend, bond/bend-torsion, inversion and out-of-plane bends) are supported as well: their
   // dense Cartesian per-term Hessian is projected onto the generalized (flexible Cartesian +
   // rigid-body) degrees of freedom.
+  // on a binary restart (stage != Uninitialized) the setup still runs: it recreates the output
+  // streams and re-derives the force-field state (cutoffs, Ewald parameters, image lists, rigid
+  // energies) from the deserialized systems; the restored results are kept
   switch (simulationStage)
   {
     case SimulationStage::Uninitialized:
       setup();
       break;
     case SimulationStage::PreInitialization:
+      setup();
       goto continuePreInitializationStage;
     case SimulationStage::Initialization:
+      setup();
       goto continueInitializationStage;
     case SimulationStage::Equilibration:
+      setup();
       goto continueEquilibrationStage;
     case SimulationStage::Run:
+      setup();
       goto continueRunStage;
     default:
-      break;
+      // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
+      // instead of silently rerunning the simulation from the beginning
+      throw std::runtime_error("Minimization::run(): no resume dispatch for the checkpointed simulation stage");
   }
 
 continuePreInitializationStage:
@@ -914,6 +965,29 @@ void Minimization::output()
   }
 }
 
+void Minimization::writeBinaryRestartFile() noexcept
+{
+  ::writeBinaryRestartFile(*this);
+}
+
+void Minimization::checkpointIfDue(std::size_t currentCycle)
+{
+  // periodic binary restart file
+  if (currentCycle % writeBinaryRestartEvery == 0uz)
+  {
+    writeBinaryRestartFile();
+  }
+
+  // graceful shutdown: checkpoint at this cycle boundary and exit cleanly
+  if (GracefulShutdown::requested())
+  {
+    writeBinaryRestartFile();
+    // std::exit skips stack unwinding: flush the text output streams explicitly
+    for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    GracefulShutdown::exitAfterCheckpoint();
+  }
+}
+
 void Minimization::tearDown()
 {
   if (outputToFiles)
@@ -945,4 +1019,115 @@ void Minimization::tearDown()
       }
     }
   }
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MinimizationSystemResult& r)
+{
+  archive << r.converged;
+  archive << r.iterations;
+  archive << r.initialEnergy;
+  archive << r.finalEnergy;
+  archive << r.rmsGradient;
+  archive << r.maxGradient;
+  archive << r.negativeModes;
+  archive << r.zeroModes;
+  archive << r.elasticConstants;
+  archive << r.normalModes;
+  archive << r.phononDispersion;
+  archive << r.phononDensityOfStates;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MinimizationSystemResult& r)
+{
+  archive >> r.converged;
+  archive >> r.iterations;
+  archive >> r.initialEnergy;
+  archive >> r.finalEnergy;
+  archive >> r.rmsGradient;
+  archive >> r.maxGradient;
+  archive >> r.negativeModes;
+  archive >> r.zeroModes;
+  archive >> r.elasticConstants;
+  archive >> r.normalModes;
+  archive >> r.phononDispersion;
+  archive >> r.phononDensityOfStates;
+  return archive;
+}
+
+// The MinimizationOptions are not serialized: they are reconstructed from the input file on a
+// restart. The Baker temporaries (generalized Hessian, gradient, DOF layout) are not serialized
+// either; they are rebuilt from the stored system state.
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Minimization& m)
+{
+  archive << m.versionNumber;
+
+  archive << m.numberOfPreInitializationCycles;
+  archive << m.numberOfInitializationCycles;
+  archive << m.numberOfEquilibrationCycles;
+
+  archive << m.printEvery;
+  archive << m.writeBinaryRestartEvery;
+  archive << m.rescaleWangLandauEvery;
+  archive << m.optimizeMCMovesEvery;
+
+  archive << m.currentCycle;
+  archive << m.absoluteCurrentCycle;
+  archive << m.simulationStage;
+  archive << m.runSystemIndex;
+  archive << m.runIteration;
+
+  archive << m.randomSeed;
+  archive << m.random;
+  archive << m.fractionalMoleculeSystem;
+
+  archive << m.systems;
+  archive << m.results;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Minimization& m)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > m.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Minimization' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> m.numberOfPreInitializationCycles;
+  archive >> m.numberOfInitializationCycles;
+  archive >> m.numberOfEquilibrationCycles;
+
+  archive >> m.printEvery;
+  archive >> m.writeBinaryRestartEvery;
+  archive >> m.rescaleWangLandauEvery;
+  archive >> m.optimizeMCMovesEvery;
+
+  archive >> m.currentCycle;
+  archive >> m.absoluteCurrentCycle;
+  archive >> m.simulationStage;
+  archive >> m.runSystemIndex;
+  archive >> m.runIteration;
+
+  archive >> m.randomSeed;
+  archive >> m.random;
+  archive >> m.fractionalMoleculeSystem;
+
+  archive >> m.systems;
+  archive >> m.results;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("Minimization: Error in binary restart\n"));
+  }
+
+  return archive;
 }

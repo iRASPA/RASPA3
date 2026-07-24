@@ -6,6 +6,8 @@ import std;
 
 import stringutils;
 import hardware_info;
+import archive;
+import graceful_shutdown;
 import system;
 import framework;
 import randomnumbers;
@@ -35,6 +37,7 @@ ParallelThermodynamicIntegration::ParallelThermodynamicIntegration(InputReader& 
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       numberOfLambdaBins(reader.numberOfLambdaBins),
       lambdaExchangeEvery(reader.lambdaExchangeEvery)
@@ -102,37 +105,44 @@ void ParallelThermodynamicIntegration::setup()
   }
 
   std::filesystem::create_directories("output");
+
+  // on a binary-restart resume append to the existing output files (and skip re-printing the
+  // headers) so each log continues where the interrupted run left off
+  const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
   const System& front = systems.front();
   std::string fileNameString =
       std::format("output/output_{}_{}.parallel_ti.txt", front.temperature, front.input_pressure);
-  stream.open(fileNameString, std::ios::out);
+  stream.open(fileNameString, resumedFromBinaryRestart ? std::ios::app : std::ios::out);
   outputJsonFileName = std::format("output/output_{}_{}.parallel_ti.json", front.temperature, front.input_pressure);
   dudlambdaFileName = std::format("output/dudlambda_{}_{}.parallel_ti.txt", front.temperature, front.input_pressure);
 
-  std::print(stream, "{}", front.writeOutputHeader());
-  std::print(stream, "Random seed: {}\n\n", random.seed);
-  std::print(stream, "{}\n", HardwareInfo::writeInfo());
-  std::print(stream, "{}", Units::printStatus());
-
-  std::print(stream, "Parallel thermodynamic integration\n");
-  std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Number of lambda-bins / replicas / threads: {}\n", numberOfLambdaBins);
-  std::print(stream, "Pinned component:                           {} ({})\n", tiComponentId,
-             front.components[tiComponentId].name);
-  if (lambdaExchangeEvery == 0uz)
+  if (!resumedFromBinaryRestart)
   {
-    std::print(stream, "Lambda-exchange:                            disabled\n\n");
-  }
-  else
-  {
-    std::print(stream, "Lambda-exchange sweep every:                {} cycles\n\n", lambdaExchangeEvery);
-  }
+    std::print(stream, "{}", front.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "{}", Units::printStatus());
 
-  std::print(stream, "{}", front.writeSystemStatus());
-  std::print(stream, "{}", front.forceField.printPseudoAtomStatus());
-  std::print(stream, "{}", front.forceField.printForceFieldStatus());
-  std::print(stream, "{}", front.writeComponentStatus());
-  std::print(stream, "{}", front.writeNumberOfPseudoAtoms());
+    std::print(stream, "Parallel thermodynamic integration\n");
+    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "Number of lambda-bins / replicas / threads: {}\n", numberOfLambdaBins);
+    std::print(stream, "Pinned component:                           {} ({})\n", tiComponentId,
+               front.components[tiComponentId].name);
+    if (lambdaExchangeEvery == 0uz)
+    {
+      std::print(stream, "Lambda-exchange:                            disabled\n\n");
+    }
+    else
+    {
+      std::print(stream, "Lambda-exchange sweep every:                {} cycles\n\n", lambdaExchangeEvery);
+    }
+
+    std::print(stream, "{}", front.writeSystemStatus());
+    std::print(stream, "{}", front.forceField.printPseudoAtomStatus());
+    std::print(stream, "{}", front.forceField.printForceFieldStatus());
+    std::print(stream, "{}", front.writeComponentStatus());
+    std::print(stream, "{}", front.writeNumberOfPseudoAtoms());
+  }
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -161,22 +171,25 @@ void ParallelThermodynamicIntegration::setup()
     const System& system = systems[replicaId];
     replicaStreams.emplace_back(
         std::format("output/output_{}_{}.parallel_ti.r{}.txt", system.temperature, system.input_pressure, replicaId),
-        std::ios::out);
+        resumedFromBinaryRestart ? std::ios::app : std::ios::out);
     replicaJsonFileNames.emplace_back(
         std::format("output/output_{}_{}.parallel_ti.r{}.json", system.temperature, system.input_pressure, replicaId));
 
-    std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-    std::print(replicaStream, "{}", system.writeOutputHeader());
-    std::print(replicaStream, "Parallel thermodynamic integration: replica {} of {} (starting at lambda-bin {})\n",
-               replicaId, numberOfLambdaBins, replicaId);
-    std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
-    std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
-    std::print(replicaStream, "{}", Units::printStatus());
-    std::print(replicaStream, "{}", system.writeSystemStatus());
-    std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
-    std::print(replicaStream, "{}", system.writeComponentStatus());
-    std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    if (!resumedFromBinaryRestart)
+    {
+      std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
+      std::print(replicaStream, "{}", system.writeOutputHeader());
+      std::print(replicaStream, "Parallel thermodynamic integration: replica {} of {} (starting at lambda-bin {})\n",
+                 replicaId, numberOfLambdaBins, replicaId);
+      std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
+      std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
+      std::print(replicaStream, "{}", Units::printStatus());
+      std::print(replicaStream, "{}", system.writeSystemStatus());
+      std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
+      std::print(replicaStream, "{}", system.writeComponentStatus());
+      std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    }
 
 #ifdef VERSION
     replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
@@ -295,43 +308,88 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
+  // binary restart: stages the restart file was written after are skipped entirely; the stage it
+  // was written in resumes from the checkpointed cycle (its per-stage preparation already ran
+  // before the checkpoint and must not be repeated)
+  if (stage < simulationStage)
+  {
+    return;
+  }
+  const std::size_t startCycle = (stage == simulationStage) ? cyclesCompletedThisStage : 0uz;
+
   simulationStage = stage;
 
-  // serial per-stage preparation
-  if (stage == SimulationStage::Production)
+  if (startCycle == 0uz)
   {
-    for (System& system : systems)
+    // serial per-stage preparation
+    if (stage == SimulationStage::Production)
     {
-      system.mc_moves_statistics.clearMoveStatistics();
-      system.mc_moves_cputime.clearTimingStatistics();
-
-      for (Component& component : system.components)
+      for (System& system : systems)
       {
-        component.mc_moves_statistics.clearMoveStatistics();
-        component.mc_moves_cputime.clearTimingStatistics();
+        system.mc_moves_statistics.clearMoveStatistics();
+        system.mc_moves_cputime.clearTimingStatistics();
 
-        // start production with fresh dU/dlambda accumulators; the occupied bin is kept
-        component.lambdaGC.clear();
+        for (Component& component : system.components)
+        {
+          component.mc_moves_statistics.clearMoveStatistics();
+          component.mc_moves_cputime.clearTimingStatistics();
+
+          // start production with fresh dU/dlambda accumulators; the occupied bin is kept
+          component.lambdaGC.clear();
+        }
+        // pinned pair- and group-swap lambda histograms
+        system.pairSwapLambdaClearBookkeeping();
       }
-      // pinned pair- and group-swap lambda histograms
-      system.pairSwapLambdaClearBookkeeping();
+      std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
     }
-    std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+    sweepsThisStage = 0uz;
   }
-  sweepsThisStage = 0uz;
 
   {
     std::scoped_lock lock(outputMutex);
     const std::string_view stageName = (stage == SimulationStage::Initialization) ? "Initialization"
                                        : (stage == SimulationStage::Equilibration) ? "Equilibration"
                                                                                    : "Production";
-    std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles,
-               numberOfLambdaBins);
+    if (startCycle == 0uz)
+    {
+      std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles,
+                 numberOfLambdaBins);
+    }
+    else
+    {
+      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} on {} replicas/threads\n",
+                 stageName, startCycle, numberOfCycles, numberOfLambdaBins);
+    }
     std::flush(stream);
   }
 
-  // one worker thread per replica; the barrier completion performs the lambda-exchange sweeps
-  auto onAllArrived = [this, stage, numberOfCycles]() noexcept { performLambdaExchangeSweep(stage, numberOfCycles); };
+  // one worker thread per replica; the barrier completion performs the lambda-exchange sweeps and
+  // writes the periodic binary restart file (all worker threads are parked, so the state is consistent)
+  auto onAllArrived = [this, stage, numberOfCycles]() noexcept
+  {
+    const std::size_t completedCycles = checkpointCycle.load(std::memory_order_relaxed);
+    if (lambdaExchangeEvery != 0uz && completedCycles % lambdaExchangeEvery == 0uz)
+    {
+      performLambdaExchangeSweep(stage, numberOfCycles);
+    }
+    const bool stopRequested = GracefulShutdown::requested();
+    const bool binaryRestartDue =
+        writeBinaryRestartEvery != 0uz &&
+        (completedCycles % writeBinaryRestartEvery == 0uz || completedCycles == numberOfCycles);
+    if (binaryRestartDue || stopRequested)
+    {
+      writeBinaryRestartFile(completedCycles);
+    }
+    // all worker threads are parked on this barrier, so the checkpoint just written is a
+    // consistent snapshot: safe to exit here on a shutdown signal
+    if (stopRequested)
+    {
+      // std::exit skips stack unwinding: flush the text output streams explicitly
+      std::flush(stream);
+      for (std::ofstream& replicaStream : replicaStreams) std::flush(replicaStream);
+      GracefulShutdown::exitAfterCheckpoint();
+    }
+  };
   std::barrier synchronizationPoint(static_cast<std::ptrdiff_t>(numberOfLambdaBins), onAllArrived);
 
   {
@@ -340,7 +398,7 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
     for (std::size_t replicaId = 0; replicaId < numberOfLambdaBins; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, stage, numberOfCycles, &synchronizationPoint]()
+          [this, replicaId, stage, numberOfCycles, startCycle, &synchronizationPoint]()
           {
             System& system = systems[replicaId];
 
@@ -353,7 +411,7 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfProductionCycles));
 
-            for (std::size_t cycle = 0uz; cycle != numberOfCycles; ++cycle)
+            for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {
               if (stage == SimulationStage::Production)
               {
@@ -415,8 +473,17 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
               }
 
               // the only synchronization point between the threads: the lambda-exchange sweep
-              if (lambdaExchangeEvery != 0uz && (cycle + 1uz) % lambdaExchangeEvery == 0uz)
+              // and the periodic binary-restart checkpoint, both performed by the barrier completion
+              const bool exchangeDue = lambdaExchangeEvery != 0uz && (cycle + 1uz) % lambdaExchangeEvery == 0uz;
+              const bool binaryRestartDue =
+                  writeBinaryRestartEvery != 0uz &&
+                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
+              if (exchangeDue || binaryRestartDue)
               {
+                if (replicaId == 0uz)
+                {
+                  checkpointCycle.store(cycle + 1uz, std::memory_order_relaxed);
+                }
                 synchronizationPoint.arrive_and_wait();
               }
             }
@@ -951,4 +1018,112 @@ nlohmann::json ParallelThermodynamicIntegration::jsonStitchedThermodynamicIntegr
       Units::EnergyToKJPerMol * trapezoidError;
 
   return status;
+}
+
+void ParallelThermodynamicIntegration::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
+{
+  cyclesCompletedThisStage = cyclesCompleted;
+
+  ::writeBinaryRestartFile(*this);
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelThermodynamicIntegration& pti)
+{
+  archive << pti.versionNumber;
+
+  archive << pti.random;
+
+  archive << pti.numberOfProductionCycles;
+  archive << pti.numberOfInitializationCycles;
+  archive << pti.numberOfEquilibrationCycles;
+
+  archive << pti.printEvery;
+  archive << pti.optimizeMCMovesEvery;
+  archive << pti.writeBinaryRestartEvery;
+
+  archive << pti.numberOfBlocks;
+  archive << pti.numberOfLambdaBins;
+  archive << pti.lambdaExchangeEvery;
+
+  archive << pti.simulationStage;
+  archive << pti.cyclesCompletedThisStage;
+
+  archive << pti.systems;
+  archive << pti.randoms;
+  archive << pti.tiComponentId;
+
+  archive << pti.stepsPerReplica;
+
+  archive << pti.exchangeSweeps;
+  archive << pti.sweepsThisStage;
+  archive << pti.exchangeAttempts;
+  archive << pti.exchangeAccepted;
+  archive << pti.exchangeAttemptsPerPair;
+  archive << pti.exchangeAcceptedPerPair;
+
+  archive << pti.totalInitializationSimulationTime;
+  archive << pti.totalEquilibrationSimulationTime;
+  archive << pti.totalProductionSimulationTime;
+  archive << pti.totalSimulationTime;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelThermodynamicIntegration& pti)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > pti.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(
+        std::format("Invalid version reading 'ParallelThermodynamicIntegration' at line {} in file {}\n",
+                    location.line(), location.file_name()));
+  }
+
+  archive >> pti.random;
+
+  archive >> pti.numberOfProductionCycles;
+  archive >> pti.numberOfInitializationCycles;
+  archive >> pti.numberOfEquilibrationCycles;
+
+  archive >> pti.printEvery;
+  archive >> pti.optimizeMCMovesEvery;
+  archive >> pti.writeBinaryRestartEvery;
+
+  archive >> pti.numberOfBlocks;
+  archive >> pti.numberOfLambdaBins;
+  archive >> pti.lambdaExchangeEvery;
+
+  archive >> pti.simulationStage;
+  archive >> pti.cyclesCompletedThisStage;
+
+  archive >> pti.systems;
+  archive >> pti.randoms;
+  archive >> pti.tiComponentId;
+
+  archive >> pti.stepsPerReplica;
+
+  archive >> pti.exchangeSweeps;
+  archive >> pti.sweepsThisStage;
+  archive >> pti.exchangeAttempts;
+  archive >> pti.exchangeAccepted;
+  archive >> pti.exchangeAttemptsPerPair;
+  archive >> pti.exchangeAcceptedPerPair;
+
+  archive >> pti.totalInitializationSimulationTime;
+  archive >> pti.totalEquilibrationSimulationTime;
+  archive >> pti.totalProductionSimulationTime;
+  archive >> pti.totalSimulationTime;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error("ParallelThermodynamicIntegration: error in binary restart\n");
+  }
+
+  return archive;
 }

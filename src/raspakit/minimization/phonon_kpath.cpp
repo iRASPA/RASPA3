@@ -4,6 +4,7 @@ module phonon_kpath;
 
 import std;
 
+import archive;
 import double3;
 import double3x3;
 import simulationbox;
@@ -55,4 +56,20 @@ std::vector<PhononKPoint> buildPhononKPath(std::span<const PhononPathNode> nodes
     }
   }
   return path;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononKPoint& p)
+{
+  archive << p.kFractional;
+  archive << p.pathCoordinate;
+  archive << p.label;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononKPoint& p)
+{
+  archive >> p.kFractional;
+  archive >> p.pathCoordinate;
+  archive >> p.label;
+  return archive;
 }

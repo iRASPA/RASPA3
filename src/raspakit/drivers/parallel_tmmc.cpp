@@ -6,6 +6,8 @@ import std;
 
 import stringutils;
 import hardware_info;
+import archive;
+import graceful_shutdown;
 import system;
 import framework;
 import randomnumbers;
@@ -76,6 +78,7 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
       printEvery(reader.printEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       reweightingNumberOfPressures(reader.reweightingNumberOfPressures),
       temperatures(reader.parallelTemperingTemperatures),
@@ -187,45 +190,52 @@ void ParallelTMMC::setup()
   }
 
   std::filesystem::create_directories("output");
-  stream.open("output/output.parallel_tmmc.txt", std::ios::out);
+
+  // on a binary-restart resume append to the existing output files (and skip re-printing the
+  // headers) so each log continues where the interrupted run left off
+  const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
+  stream.open("output/output.parallel_tmmc.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
   outputJsonFileName = "output/output.parallel_tmmc.json";
 
   const System& front = systems.front();
-  std::print(stream, "{}", front.writeOutputHeader());
-  std::print(stream, "Random seed: {}\n\n", random.seed);
-  std::print(stream, "{}\n", HardwareInfo::writeInfo());
-  std::print(stream, "{}", Units::printStatus());
-
-  std::print(stream, "Parallel transition-matrix Monte Carlo (TMMC)\n");
-  std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
-  std::print(stream, "Number of macrostate windows:                {}\n", numberOfWindows);
-  std::print(stream, "Number of walkers / threads:                 {}\n", numberOfWalkers);
-  std::print(stream, "Temperature ladder:                         ");
-  for (double T : temperatures)
+  if (!resumedFromBinaryRestart)
   {
-    std::print(stream, " {}", T);
-  }
-  std::print(stream, " [K]\n");
-  std::print(stream, "Reference pressure:                          {:.5e} [Pa]\n", referencePressure);
-  std::print(stream, "Macrostate range:                            [{}, {}] molecules\n", minMacrostate, maxMacrostate);
-  std::print(stream, "Bias update every:                           {} steps\n", front.tmmc.updateTMEvery);
-  std::print(stream, "Isotherm/coexistence pressure scan:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
-             reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
+    std::print(stream, "{}", front.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "{}", Units::printStatus());
 
-  std::print(stream, "Walker grid: walker (t, w) = t * {} + w\n", numberOfWindows);
-  std::print(stream, "    walker    temperature [K]    window [molecules]\n");
-  std::print(stream, "    ----------------------------------------------\n");
-  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
-  {
-    for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+    std::print(stream, "Parallel transition-matrix Monte Carlo (TMMC)\n");
+    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
+    std::print(stream, "Number of macrostate windows:                {}\n", numberOfWindows);
+    std::print(stream, "Number of walkers / threads:                 {}\n", numberOfWalkers);
+    std::print(stream, "Temperature ladder:                         ");
+    for (double T : temperatures)
     {
-      const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
-      std::print(stream, "    {:6d}    {:15.4f}    [{}, {}]\n", walkerId, temperatures[temperatureIndex],
-                 windowBoundaries[windowIndex], windowBoundaries[windowIndex + 1uz]);
+      std::print(stream, " {}", T);
     }
+    std::print(stream, " [K]\n");
+    std::print(stream, "Reference pressure:                          {:.5e} [Pa]\n", referencePressure);
+    std::print(stream, "Macrostate range:                            [{}, {}] molecules\n", minMacrostate, maxMacrostate);
+    std::print(stream, "Bias update every:                           {} steps\n", front.tmmc.updateTMEvery);
+    std::print(stream, "Isotherm/coexistence pressure scan:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
+               reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
+
+    std::print(stream, "Walker grid: walker (t, w) = t * {} + w\n", numberOfWindows);
+    std::print(stream, "    walker    temperature [K]    window [molecules]\n");
+    std::print(stream, "    ----------------------------------------------\n");
+    for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+    {
+      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+      {
+        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
+        std::print(stream, "    {:6d}    {:15.4f}    [{}, {}]\n", walkerId, temperatures[temperatureIndex],
+                   windowBoundaries[windowIndex], windowBoundaries[windowIndex + 1uz]);
+      }
+    }
+    std::print(stream, "\n");
   }
-  std::print(stream, "\n");
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -258,22 +268,25 @@ void ParallelTMMC::setup()
       const System& system = systems[walkerId];
       walkerStreams.emplace_back(
           std::format("output/output_{}_w{}.parallel_tmmc.r{}.txt", system.temperature, windowIndex, walkerId),
-          std::ios::out);
+          resumedFromBinaryRestart ? std::ios::app : std::ios::out);
       walkerJsonFileNames.emplace_back(
           std::format("output/output_{}_w{}.parallel_tmmc.r{}.json", system.temperature, windowIndex, walkerId));
 
-      std::ostream walkerStream(walkerStreams[walkerId].rdbuf());
-      std::print(walkerStream, "{}", system.writeOutputHeader());
-      std::print(walkerStream, "Parallel TMMC: walker {} of {} (temperature {} [K], window [{}, {}] molecules)\n",
-                 walkerId, numberOfWalkers, system.temperature, system.tmmc.minMacrostate, system.tmmc.maxMacrostate);
-      std::print(walkerStream, "Random seed of this walker: {}\n\n", randoms[walkerId].seed);
-      std::print(walkerStream, "{}\n", HardwareInfo::writeInfo());
-      std::print(walkerStream, "{}", Units::printStatus());
-      std::print(walkerStream, "{}", system.writeSystemStatus());
-      std::print(walkerStream, "{}", system.forceField.printPseudoAtomStatus());
-      std::print(walkerStream, "{}", system.forceField.printForceFieldStatus());
-      std::print(walkerStream, "{}", system.writeComponentStatus());
-      std::print(walkerStream, "{}", system.writeNumberOfPseudoAtoms());
+    if (!resumedFromBinaryRestart)
+    {
+        std::ostream walkerStream(walkerStreams[walkerId].rdbuf());
+        std::print(walkerStream, "{}", system.writeOutputHeader());
+        std::print(walkerStream, "Parallel TMMC: walker {} of {} (temperature {} [K], window [{}, {}] molecules)\n",
+                   walkerId, numberOfWalkers, system.temperature, system.tmmc.minMacrostate, system.tmmc.maxMacrostate);
+        std::print(walkerStream, "Random seed of this walker: {}\n\n", randoms[walkerId].seed);
+        std::print(walkerStream, "{}\n", HardwareInfo::writeInfo());
+        std::print(walkerStream, "{}", Units::printStatus());
+        std::print(walkerStream, "{}", system.writeSystemStatus());
+        std::print(walkerStream, "{}", system.forceField.printPseudoAtomStatus());
+        std::print(walkerStream, "{}", system.forceField.printForceFieldStatus());
+        std::print(walkerStream, "{}", system.writeComponentStatus());
+        std::print(walkerStream, "{}", system.writeNumberOfPseudoAtoms());
+    }
 
 #ifdef VERSION
       walkerJsons[walkerId]["version"] = EXPAND_AND_QUOTE(VERSION);
@@ -421,10 +434,19 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
+  // binary restart: stages the restart file was written after are skipped entirely; the stage it
+  // was written in resumes from the checkpointed cycle (its per-stage preparation already ran
+  // before the checkpoint and must not be repeated)
+  if (stage < simulationStage)
+  {
+    return;
+  }
+  const std::size_t startCycle = (stage == simulationStage) ? cyclesCompletedThisStage : 0uz;
+
   simulationStage = stage;
 
   // serial per-stage preparation
-  if (stage == SimulationStage::Equilibration)
+  if (startCycle == 0uz && stage == SimulationStage::Equilibration)
   {
     for (System& system : systems)
     {
@@ -443,7 +465,7 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
       system.reactionLambdaClearBookkeeping();
     }
   }
-  if (stage == SimulationStage::Production)
+  if (startCycle == 0uz && stage == SimulationStage::Production)
   {
     productionStartCollectionMatrices.resize(systems.size());
     productionStartHistograms.resize(systems.size());
@@ -487,20 +509,47 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
                                        : (stage == SimulationStage::Initialization)  ? "Initialization"
                                        : (stage == SimulationStage::Equilibration)   ? "Equilibration"
                                                                                      : "Production";
-    std::print(stream, "\n{} stage: {} cycles on {} walkers/threads\n", stageName, numberOfCycles, numberOfWalkers);
+    if (startCycle == 0uz)
+    {
+      std::print(stream, "\n{} stage: {} cycles on {} walkers/threads\n", stageName, numberOfCycles, numberOfWalkers);
+    }
+    else
+    {
+      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} on {} walkers/threads\n",
+                 stageName, startCycle, numberOfCycles, numberOfWalkers);
+    }
     std::flush(stream);
   }
 
   const std::size_t stageCycleOffset = absoluteCycleOffset;
 
-  // one worker thread per walker; the walkers are fully independent within a stage
+  // the walkers are fully independent within a stage; the barrier is only used for the periodic
+  // binary-restart checkpoint (every walker runs the same cycle count, so they all agree on when
+  // a checkpoint is due). The completion runs while all worker threads are parked, so the full
+  // driver state is consistent. With 'writeBinaryRestartEvery' disabled the barrier is never used.
+  auto onAllArrived = [this]() noexcept
+  {
+    writeBinaryRestartFile(checkpointCycle.load(std::memory_order_relaxed));
+    // all worker threads are parked on this barrier, so the checkpoint just written is a
+    // consistent snapshot: safe to exit here on a shutdown signal
+    if (GracefulShutdown::requested())
+    {
+      // std::exit skips stack unwinding: flush the text output streams explicitly
+      std::flush(stream);
+      for (std::ofstream& walkerStream : walkerStreams) std::flush(walkerStream);
+      GracefulShutdown::exitAfterCheckpoint();
+    }
+  };
+  std::barrier synchronizationPoint(static_cast<std::ptrdiff_t>(numberOfWalkers), onAllArrived);
+
+  // one worker thread per walker
   {
     std::vector<std::jthread> threads;
     threads.reserve(numberOfWalkers);
     for (std::size_t walkerId = 0; walkerId < numberOfWalkers; ++walkerId)
     {
       threads.emplace_back(
-          [this, walkerId, stage, numberOfCycles, stageCycleOffset]()
+          [this, walkerId, stage, numberOfCycles, stageCycleOffset, startCycle, &synchronizationPoint]()
           {
             System& system = systems[walkerId];
 
@@ -512,9 +561,11 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
             system.runningEnergies = system.computeTotalEnergies();
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfProductionCycles));
-            std::size_t currentBlock = 0uz;
+            // one cumulative snapshot has been pushed per block boundary crossed so far, so the
+            // snapshot count restores the current block on a resume from a binary restart
+            std::size_t currentBlock = blockCollectionMatrices[walkerId].size();
 
-            for (std::size_t cycle = 0uz; cycle != numberOfCycles; ++cycle)
+            for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {
               if (stage == SimulationStage::Production)
               {
@@ -622,6 +673,18 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
                   std::print(stream, "Parallel-TMMC cycle {} of {} (walker 0)\n", cycle, numberOfCycles);
                   std::flush(stream);
                 }
+              }
+
+              // the only synchronization point between the threads: the periodic binary-restart
+              // checkpoint, written by the barrier completion while all threads are parked
+              if (writeBinaryRestartEvery != 0uz &&
+                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles))
+              {
+                if (walkerId == 0uz)
+                {
+                  checkpointCycle.store(cycle + 1uz, std::memory_order_relaxed);
+                }
+                synchronizationPoint.arrive_and_wait();
               }
             }
 
@@ -1554,4 +1617,135 @@ void ParallelTMMC::writeWalkerFinalReports(std::vector<RunningEnergy>& recompute
     std::ofstream json(walkerJsonFileNames[walkerId]);
     json << walkerJsons[walkerId].dump(4);
   }
+}
+
+void ParallelTMMC::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
+{
+  cyclesCompletedThisStage = cyclesCompleted;
+
+  ::writeBinaryRestartFile(*this);
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTMMC& ptmmc)
+{
+  archive << ptmmc.versionNumber;
+
+  archive << ptmmc.random;
+
+  archive << ptmmc.numberOfProductionCycles;
+  archive << ptmmc.numberOfPreInitializationCycles;
+  archive << ptmmc.numberOfInitializationCycles;
+  archive << ptmmc.numberOfEquilibrationCycles;
+
+  archive << ptmmc.printEvery;
+  archive << ptmmc.optimizeMCMovesEvery;
+  archive << ptmmc.rescaleWangLandauEvery;
+  archive << ptmmc.writeBinaryRestartEvery;
+
+  archive << ptmmc.numberOfBlocks;
+
+  archive << ptmmc.reweightingPressureRange;
+  archive << ptmmc.reweightingNumberOfPressures;
+
+  archive << ptmmc.simulationStage;
+  archive << ptmmc.cyclesCompletedThisStage;
+
+  archive << ptmmc.temperatures;
+  archive << ptmmc.referencePressure;
+  archive << ptmmc.numberOfTemperatures;
+  archive << ptmmc.numberOfWindows;
+  archive << ptmmc.numberOfWalkers;
+
+  archive << ptmmc.minMacrostate;
+  archive << ptmmc.maxMacrostate;
+  archive << ptmmc.windowBoundaries;
+
+  archive << ptmmc.systems;
+  archive << ptmmc.randoms;
+
+  archive << ptmmc.blockCollectionMatrices;
+  archive << ptmmc.productionStartCollectionMatrices;
+  archive << ptmmc.productionStartHistograms;
+
+  archive << ptmmc.stepsPerWalker;
+  archive << ptmmc.absoluteCycleOffset;
+
+  archive << ptmmc.totalPreInitializationSimulationTime;
+  archive << ptmmc.totalInitializationSimulationTime;
+  archive << ptmmc.totalEquilibrationSimulationTime;
+  archive << ptmmc.totalProductionSimulationTime;
+  archive << ptmmc.totalAnalysisTime;
+  archive << ptmmc.totalSimulationTime;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC& ptmmc)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > ptmmc.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'ParallelTMMC' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> ptmmc.random;
+
+  archive >> ptmmc.numberOfProductionCycles;
+  archive >> ptmmc.numberOfPreInitializationCycles;
+  archive >> ptmmc.numberOfInitializationCycles;
+  archive >> ptmmc.numberOfEquilibrationCycles;
+
+  archive >> ptmmc.printEvery;
+  archive >> ptmmc.optimizeMCMovesEvery;
+  archive >> ptmmc.rescaleWangLandauEvery;
+  archive >> ptmmc.writeBinaryRestartEvery;
+
+  archive >> ptmmc.numberOfBlocks;
+
+  archive >> ptmmc.reweightingPressureRange;
+  archive >> ptmmc.reweightingNumberOfPressures;
+
+  archive >> ptmmc.simulationStage;
+  archive >> ptmmc.cyclesCompletedThisStage;
+
+  archive >> ptmmc.temperatures;
+  archive >> ptmmc.referencePressure;
+  archive >> ptmmc.numberOfTemperatures;
+  archive >> ptmmc.numberOfWindows;
+  archive >> ptmmc.numberOfWalkers;
+
+  archive >> ptmmc.minMacrostate;
+  archive >> ptmmc.maxMacrostate;
+  archive >> ptmmc.windowBoundaries;
+
+  archive >> ptmmc.systems;
+  archive >> ptmmc.randoms;
+
+  archive >> ptmmc.blockCollectionMatrices;
+  archive >> ptmmc.productionStartCollectionMatrices;
+  archive >> ptmmc.productionStartHistograms;
+
+  archive >> ptmmc.stepsPerWalker;
+  archive >> ptmmc.absoluteCycleOffset;
+
+  archive >> ptmmc.totalPreInitializationSimulationTime;
+  archive >> ptmmc.totalInitializationSimulationTime;
+  archive >> ptmmc.totalEquilibrationSimulationTime;
+  archive >> ptmmc.totalProductionSimulationTime;
+  archive >> ptmmc.totalAnalysisTime;
+  archive >> ptmmc.totalSimulationTime;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error("ParallelTMMC: error in binary restart\n");
+  }
+
+  return archive;
 }

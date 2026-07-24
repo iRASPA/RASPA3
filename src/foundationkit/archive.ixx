@@ -1,20 +1,13 @@
 module;
 
+#if !defined(_WIN32)
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 export module archive;
 
 import std;
-
-
-// not yet implemented in stdlibc++
-template<std::integral T>
-constexpr T byteswap(T value) noexcept
-{
-    static_assert(std::has_unique_object_representations_v<T>, 
-                  "T may not have padding bits");
-    auto value_representation = std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
-    std::ranges::reverse(value_representation);
-    return std::bit_cast<T>(value_representation);
-}
 
 // on linux uint64_t is unsigned long        8
 //          size_t   is unsigned long        8
@@ -22,6 +15,19 @@ constexpr T byteswap(T value) noexcept
 // on mac   uint64_t is unsigned long long   8
 //          size_t   is unsigned long        8
 //          size_t is an alias for unsigned long
+
+// The archive format uses the native endianness and native in-memory layout of the scalar types:
+// restart files are scratch data for the machine that wrote them, and skipping per-element byte
+// swapping makes checkpoint writes of large arrays a single bulk memcpy to the stream.
+
+// Element types whose element-wise serialization is bit-identical to their in-memory layout, so
+// contiguous containers of them can be read/written in one bulk stream operation. Enums are
+// excluded (they are serialized widened to int64), bool is excluded (std::vector<bool> is packed
+// and bool has no guaranteed representation), std::complex<double> is guaranteed to be laid out
+// as {real, imag}.
+template <typename T>
+constexpr bool is_bulk_serializable_v =
+    (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) || std::is_same_v<T, std::complex<double>>;
 
 export template <class STREAM>
 class Archive
@@ -60,9 +66,12 @@ class Archive
     return *this;
   }
 
-  Archive& operator>>(std::int8_t& v)
+  // all arithmetic scalars (integers and floating point) are written in native byte order
+  template <typename T>
+    requires(std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
+  Archive& operator>>(T& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::int8_t));
+    stream.read(std::bit_cast<char*>(&v), sizeof(T));
     if (!stream)
     {
       throw std::runtime_error("malformed data");
@@ -70,289 +79,25 @@ class Archive
     return *this;
   }
 
-  Archive& operator<<(const std::int8_t& v)
+  template <typename T>
+    requires(std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
+  Archive& operator<<(const T& v)
   {
-    stream.write(std::bit_cast<const char*>(&v), sizeof(std::int8_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::uint8_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::uint8_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::uint8_t& v)
-  {
-    stream.write(std::bit_cast<const char*>(&v), sizeof(std::uint8_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::int16_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::int16_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::int16_t& v)
-  {
-    std::int16_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::int16_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::uint16_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::uint16_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::uint16_t& v)
-  {
-    std::uint16_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint16_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::int32_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::int32_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::int32_t& v)
-  {
-    std::int32_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::int32_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::uint32_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::uint32_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::uint32_t& v)
-  {
-    std::uint32_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint32_t));
-    return *this;
-  }
-
-  Archive& operator>>(std::int64_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::int64_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::int64_t& v)
-  {
-    std::int64_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::int64_t));
-    return *this;
-  }
-
-#if defined(__APPLE__) && defined(__MACH__)
-  Archive& operator>>(std::uint64_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::uint64_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::uint64_t& v)
-  {
-    std::uint64_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::uint64_t));
-    return *this;
-  }
-#endif
-
-  Archive& operator>>(std::size_t& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::size_t));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::size_t& v)
-  {
-    std::size_t w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::size_t));
-    return *this;
-  }
-
-#if defined(__APPLE__) && defined(__MACH__)
-  Archive& operator>>(std::make_signed_t<std::size_t>& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(std::make_signed_t<std::size_t>));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      v = byteswap(v);
-    }
-    return *this;
-  }
-
-  Archive& operator<<(const std::make_signed_t<std::size_t>& v)
-  {
-    std::make_signed_t<std::size_t> w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      w = byteswap(w);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(std::make_signed_t<std::size_t>));
-    return *this;
-  }
-#endif
-
-  Archive& operator>>(double& v)
-  {
-    stream.read(std::bit_cast<char*>(&v), sizeof(double));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(v);
-      std::ranges::reverse(value_representation);
-      v = std::bit_cast<double>(value_representation);
-    }
-    return *this;
-  }
-
-  Archive<std::ofstream>& operator<<(const double& v)
-  {
-    double w{v};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(w);
-      std::ranges::reverse(value_representation);
-      w = std::bit_cast<double>(value_representation);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(double));
+    stream.write(std::bit_cast<const char*>(&v), sizeof(T));
     return *this;
   }
 
   Archive& operator>>(std::chrono::duration<double>& v)
   {
     double count{0.0};
-    stream.read(std::bit_cast<char*>(&count), sizeof(double));
-    if (!stream)
-    {
-      throw std::runtime_error("malformed data");
-    }
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(count);
-      std::ranges::reverse(value_representation);
-      count = std::bit_cast<double>(value_representation);
-    }
+    *this >> count;
     v = std::chrono::duration<double>(count);
     return *this;
   }
 
-  Archive<std::ofstream>& operator<<(const std::chrono::duration<double>& v)
+  Archive& operator<<(const std::chrono::duration<double>& v)
   {
-    double w{v.count()};
-    if constexpr (std::endian::native == std::endian::little)
-    {
-      auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(w);
-      std::ranges::reverse(value_representation);
-      w = std::bit_cast<double>(value_representation);
-    }
-    stream.write(std::bit_cast<const char*>(&w), sizeof(double));
+    *this << v.count();
     return *this;
   }
 
@@ -365,7 +110,7 @@ class Archive
     return *this;
   }
 
-  Archive<std::ofstream>& operator<<(const std::complex<double>& v)
+  Archive& operator<<(const std::complex<double>& v)
   {
     *this << v.real();
     *this << v.imag();
@@ -439,11 +184,22 @@ class Archive
   template <class T, std::size_t size>
   Archive& operator>>(std::array<T, size>& v)
   {
-    for (std::size_t i = 0; i < size; ++i)
+    if constexpr (is_bulk_serializable_v<T>)
     {
-      T element;
-      *this >> element;
-      v[i] = std::move(element);
+      stream.read(std::bit_cast<char*>(v.data()), static_cast<std::streamsize>(size * sizeof(T)));
+      if (!stream)
+      {
+        throw std::runtime_error("malformed data");
+      }
+    }
+    else
+    {
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        T element;
+        *this >> element;
+        v[i] = std::move(element);
+      }
     }
     return *this;
   }
@@ -451,9 +207,16 @@ class Archive
   template <typename T, std::size_t size>
   Archive& operator<<(const std::array<T, size>& v)
   {
-    for (std::size_t i = 0; i < size; ++i)
+    if constexpr (is_bulk_serializable_v<T>)
     {
-      *this << v[i];
+      stream.write(std::bit_cast<const char*>(v.data()), static_cast<std::streamsize>(size * sizeof(T)));
+    }
+    else
+    {
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        *this << v[i];
+      }
     }
     return *this;
   }
@@ -463,13 +226,25 @@ class Archive
   {
     std::size_t len;
     *this >> len;
-    v.clear();
-    v.reserve(len);
-    for (std::size_t i = 0; i < len; ++i)
+    if constexpr (is_bulk_serializable_v<T>)
     {
-      T element;
-      *this >> element;
-      v.push_back(std::move(element));
+      v.resize(len);
+      stream.read(std::bit_cast<char*>(v.data()), static_cast<std::streamsize>(len * sizeof(T)));
+      if (!stream)
+      {
+        throw std::runtime_error("malformed data");
+      }
+    }
+    else
+    {
+      v.clear();
+      v.reserve(len);
+      for (std::size_t i = 0; i < len; ++i)
+      {
+        T element;
+        *this >> element;
+        v.push_back(std::move(element));
+      }
     }
     return *this;
   }
@@ -479,9 +254,16 @@ class Archive
   {
     std::size_t len = v.size();
     *this << len;
-    for (const T& element : v)
+    if constexpr (is_bulk_serializable_v<T>)
     {
-      *this << element;
+      stream.write(std::bit_cast<const char*>(v.data()), static_cast<std::streamsize>(len * sizeof(T)));
+    }
+    else
+    {
+      for (const T& element : v)
+      {
+        *this << element;
+      }
     }
     return *this;
   }
@@ -612,3 +394,236 @@ class Archive
  private:
   STREAM& stream;
 };
+
+// Byte-order marker at the start of every binary restart file. The archive format uses the
+// native byte order, so a file written on a machine with different endianness reads this back
+// permuted and can be rejected with a clear error instead of deserializing garbage.
+constexpr std::uint32_t restartFileByteOrderMarker = 0x01020304;
+
+// Restart file layout: byte-order marker, payload size, payload checksum, payload.
+constexpr std::uint64_t restartFileHeaderSize = sizeof(std::uint32_t) + 2uz * sizeof(std::uint64_t);
+
+// Streaming 64-bit hash over the payload (8-byte words with splitmix64-style mixing, seeded with
+// the payload size). Not cryptographic; detects truncation and bit corruption. Throws when the
+// stream ends before 'payloadSize' bytes.
+inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t payloadSize)
+{
+  constexpr auto mixBits = [](std::uint64_t h)
+  {
+    h ^= h >> 30;
+    h *= 0xbf58476d1ce4e5b9;
+    h ^= h >> 27;
+    h *= 0x94d049bb133111eb;
+    h ^= h >> 31;
+    return h;
+  };
+
+  std::uint64_t hash = 0xcbf29ce484222325 ^ payloadSize;
+  std::vector<char> buffer(1uz << 20uz);  // multiple of 8: partial words only in the last chunk
+  std::uint64_t remaining = payloadSize;
+  while (remaining != 0uz)
+  {
+    const std::size_t chunk = static_cast<std::size_t>(std::min<std::uint64_t>(remaining, buffer.size()));
+    stream.read(buffer.data(), static_cast<std::streamsize>(chunk));
+    if (!stream)
+    {
+      throw std::runtime_error("truncated restart file payload");
+    }
+
+    std::size_t position = 0uz;
+    for (; position + sizeof(std::uint64_t) <= chunk; position += sizeof(std::uint64_t))
+    {
+      std::uint64_t word;
+      std::memcpy(&word, buffer.data() + position, sizeof(std::uint64_t));
+      hash = mixBits(hash ^ word);
+    }
+    if (position != chunk)
+    {
+      std::uint64_t word{0};
+      std::memcpy(&word, buffer.data() + position, chunk - position);
+      hash = mixBits(hash ^ word);
+    }
+
+    remaining -= chunk;
+  }
+  return mixBits(hash);
+}
+
+// Durability: flush the written file contents to stable storage before the rename, so a power
+// loss cannot leave a fully-renamed but partially-persisted restart file. On macOS fsync only
+// flushes to the drive cache; F_FULLFSYNC is the real storage barrier.
+inline void syncFileToStableStorage(const std::string& fileName) noexcept
+{
+#if !defined(_WIN32)
+  int fileDescriptor = ::open(fileName.c_str(), O_RDONLY);
+  if (fileDescriptor < 0) return;
+#if defined(__APPLE__) && defined(__MACH__)
+  if (::fcntl(fileDescriptor, F_FULLFSYNC) != 0)
+  {
+    ::fsync(fileDescriptor);
+  }
+#else
+  ::fsync(fileDescriptor);
+#endif
+  ::close(fileDescriptor);
+#endif
+}
+
+// Durability: persist the renames themselves (directory entries) to stable storage.
+inline void syncParentDirectory(const std::string& fileName) noexcept
+{
+#if !defined(_WIN32)
+  std::filesystem::path parent = std::filesystem::path(fileName).parent_path();
+  if (parent.empty()) parent = ".";
+  int fileDescriptor = ::open(parent.c_str(), O_RDONLY);
+  if (fileDescriptor < 0) return;
+  ::fsync(fileDescriptor);
+  ::close(fileDescriptor);
+#endif
+}
+
+/**
+ * \brief Serializes 'object' to a binary restart file, atomically replacing any previous file.
+ *
+ * The object is written to '<fileName>_temp' using a large stream buffer (few, large write
+ * system calls), the header is completed with the payload size and checksum, and the file is
+ * flushed to stable storage before the renames, so neither a crash nor a power loss can destroy
+ * the previous valid restart file. The previous file is kept as '<fileName>.prev' so one older
+ * checkpoint always remains as a fallback against corruption of the latest file. Failures leave
+ * the previous restart file intact and are not propagated: a failed periodic checkpoint should
+ * not kill a running simulation.
+ */
+export template <typename T>
+void writeBinaryRestartFile(const T& object, const std::string& fileName = "restart_data.bin")
+{
+  try
+  {
+    const std::string temporaryFileName = fileName + "_temp";
+
+    // serialize with a placeholder header
+    {
+      std::vector<char> buffer(1uz << 20uz);
+      std::ofstream ofile;
+      ofile.rdbuf()->pubsetbuf(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+      ofile.open(temporaryFileName, std::ios::binary);
+
+      Archive<std::ofstream> archive(ofile);
+      archive << restartFileByteOrderMarker;
+      archive << std::uint64_t{0};  // payload size, patched below
+      archive << std::uint64_t{0};  // payload checksum, patched below
+      archive << object;
+      ofile.close();
+      if (!ofile) return;
+    }
+
+    // compute the payload size and checksum, and patch them into the header
+    {
+      const std::uint64_t payloadSize =
+          static_cast<std::uint64_t>(std::filesystem::file_size(temporaryFileName)) - restartFileHeaderSize;
+
+      std::ifstream ifile(temporaryFileName, std::ios::binary);
+      ifile.seekg(static_cast<std::streamoff>(restartFileHeaderSize));
+      const std::uint64_t checksum = hashRestartFilePayload(ifile, payloadSize);
+      ifile.close();
+
+      std::fstream patch(temporaryFileName, std::ios::in | std::ios::out | std::ios::binary);
+      patch.seekp(static_cast<std::streamoff>(sizeof(std::uint32_t)));
+      patch.write(std::bit_cast<const char*>(&payloadSize), sizeof(std::uint64_t));
+      patch.write(std::bit_cast<const char*>(&checksum), sizeof(std::uint64_t));
+      patch.close();
+      if (!patch) return;
+    }
+
+    syncFileToStableStorage(temporaryFileName);
+
+    // keep the previous checkpoint as fallback, then atomically publish the new one
+    std::error_code error;
+    if (std::filesystem::exists(fileName, error))
+    {
+      std::filesystem::rename(fileName, fileName + ".prev", error);
+    }
+    std::filesystem::rename(temporaryFileName, fileName, error);
+
+    syncParentDirectory(fileName);
+  }
+  catch (const std::exception&)
+  {
+  }
+}
+
+// Reads and fully validates a single restart file: byte-order marker, payload size against the
+// actual file size (truncation), and payload checksum (bit corruption) before deserializing.
+template <typename T>
+void readValidatedBinaryRestartFile(T& object, const std::string& fileName)
+{
+  std::ifstream ifile(fileName, std::ios::binary);
+  if (!ifile.is_open())
+  {
+    throw std::runtime_error(std::format("Binary restart file '{}' doesn't exist\n", fileName));
+  }
+
+  Archive<std::ifstream> archive(ifile);
+  std::uint32_t byteOrderMarker;
+  archive >> byteOrderMarker;
+  if (byteOrderMarker != restartFileByteOrderMarker)
+  {
+    throw std::runtime_error(
+        std::format("Binary restart file '{}' was written on a machine with an incompatible "
+                    "byte order (or is not a restart file)\n",
+                    fileName));
+  }
+
+  std::uint64_t storedPayloadSize, storedChecksum;
+  archive >> storedPayloadSize;
+  archive >> storedChecksum;
+
+  const std::uint64_t actualPayloadSize =
+      static_cast<std::uint64_t>(std::filesystem::file_size(fileName)) - restartFileHeaderSize;
+  if (actualPayloadSize != storedPayloadSize)
+  {
+    throw std::runtime_error(std::format("Binary restart file '{}' is truncated or padded ({} payload "
+                                         "bytes, expected {})\n",
+                                         fileName, actualPayloadSize, storedPayloadSize));
+  }
+
+  const std::uint64_t checksum = hashRestartFilePayload(ifile, storedPayloadSize);
+  if (checksum != storedChecksum)
+  {
+    throw std::runtime_error(std::format("Binary restart file '{}' is corrupt (checksum mismatch)\n", fileName));
+  }
+
+  ifile.clear();
+  ifile.seekg(static_cast<std::streamoff>(restartFileHeaderSize));
+  archive >> object;
+}
+
+/**
+ * \brief Deserializes 'object' from a binary restart file written by writeBinaryRestartFile.
+ *
+ * The file is fully validated (byte order, size, checksum) before deserialization. When the
+ * latest file is missing or corrupt and a previous checkpoint '<fileName>.prev' exists, that
+ * fallback is used instead (with a warning): resuming from one checkpoint earlier beats losing
+ * the whole run.
+ */
+export template <typename T>
+void readBinaryRestartFile(T& object, const std::string& fileName = "restart_data.bin")
+{
+  const std::string previousFileName = fileName + ".prev";
+
+  try
+  {
+    readValidatedBinaryRestartFile(object, fileName);
+    return;
+  }
+  catch (const std::exception& error)
+  {
+    if (!std::filesystem::exists(previousFileName))
+    {
+      throw;
+    }
+    std::cerr << std::format("Warning: {}Falling back to the previous checkpoint '{}'\n", error.what(),
+                             previousFileName);
+  }
+
+  readValidatedBinaryRestartFile(object, previousFileName);
+}

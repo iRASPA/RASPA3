@@ -7,6 +7,7 @@ import std;
 import stringutils;
 import hardware_info;
 import archive;
+import graceful_shutdown;
 import system;
 import framework;
 import randomnumbers;
@@ -105,7 +106,9 @@ void MonteCarlo::run()
     case SimulationStage::Production:
       goto continueProductionStage;
     default:
-      break;
+      // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
+      // instead of silently rerunning the simulation from the beginning
+      throw std::runtime_error("MonteCarlo::run(): no resume dispatch for the checkpointed simulation stage");
   }
 
 continuePreInitializationStage:
@@ -183,17 +186,40 @@ void MonteCarlo::tearDown()
 
 void MonteCarlo::createOutputFiles()
 {
+  // on a binary-restart resume append to the existing output files instead of truncating them,
+  // so each log continues where the interrupted run left off
+  const std::ios::openmode mode =
+      (simulationStage != SimulationStage::Uninitialized) ? std::ios::app : std::ios::out;
+
   std::filesystem::create_directories("output");
   for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
-    streams.emplace_back(fileNameString, std::ios::out);
+    streams.emplace_back(fileNameString, mode);
     fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
 
     ++system_id;
+  }
+}
+
+void MonteCarlo::checkpointIfDue(std::size_t currentCycle)
+{
+  // periodic binary restart file
+  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  {
+    writeBinaryRestartFile(*this);
+  }
+
+  // graceful shutdown: checkpoint at this cycle boundary and exit cleanly
+  if (GracefulShutdown::requested())
+  {
+    writeBinaryRestartFile(*this);
+    // std::exit skips stack unwinding: flush the text output streams explicitly
+    for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    GracefulShutdown::exitAfterCheckpoint();
   }
 }
 
@@ -422,21 +448,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      if (outputToFiles)
-      {
-        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-        Archive<std::ofstream> archive(ofile);
-        archive << *this;
-        ofile.close();
-        if (ofile)
-        {
-          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-        }
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     for (std::size_t system_id{0}; System& system : systems)
     {
@@ -549,21 +561,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      if (outputToFiles)
-      {
-        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-        Archive<std::ofstream> archive(ofile);
-        archive << *this;
-        ofile.close();
-        if (ofile)
-        {
-          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-        }
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     for (std::size_t system_id{0}; System& system : systems)
     {
@@ -739,21 +737,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       ++system_id;
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      if (outputToFiles)
-      {
-        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-        Archive<std::ofstream> archive(ofile);
-        archive << *this;
-        ofile.close();
-        if (ofile)
-        {
-          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-        }
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     if (currentCycle % writeRestartEvery == 0uz)
     {
@@ -1023,21 +1007,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
     }
     
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      if (outputToFiles)
-      {
-        std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-        Archive<std::ofstream> archive(ofile);
-        archive << *this;
-        ofile.close();
-        if (ofile)
-        {
-          std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-        }
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     if (currentCycle % writeRestartEvery == 0uz)
     {
@@ -1351,8 +1321,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
+    throw std::runtime_error(std::format("MonteCarlo: Invalid magic number {} at the end of the restart data\n",
+                                         magicNumber));
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
-                           static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

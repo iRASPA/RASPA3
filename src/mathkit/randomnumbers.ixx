@@ -11,6 +11,9 @@ import simd_quatd;
 
 export struct RandomNumber
 {
+  /// Only used as a deserialization target; the state is overwritten by the archive read.
+  RandomNumber() : RandomNumber(std::size_t{0uz}) {}
+
   RandomNumber(std::optional<std::size_t> s)
   {
     std::random_device rd;

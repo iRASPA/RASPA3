@@ -9,6 +9,7 @@ import double3;
 import system;
 import phonon_force_constants;
 import phonon_kpath;
+import archive;
 
 /**
  * k-dependent dynamical matrix and phonon frequencies built from the image-resolved force constants.
@@ -26,6 +27,9 @@ export struct PhononModes
 {
   double3 kFractional{};
   std::vector<double> eigenvalues;  ///< Squared angular frequencies (ascending), internal units.
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononModes& m);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononModes& m);
 };
 
 /** Per-atom inverse square-root masses in force-constant site order (flexible framework atoms, then molecules). */
@@ -83,6 +87,9 @@ export struct PhononDispersionResult
 {
   std::vector<PhononKPoint> path;   ///< Sampled k-points (fractional, path coordinate, labels).
   std::vector<PhononModes> modes;   ///< Modes at each path point, parallel to `path`.
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononDispersionResult& r);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononDispersionResult& r);
 };
 
 /**
@@ -106,6 +113,9 @@ export struct PhononDensityOfStates
   std::size_t numberOfQPoints{};   ///< Total number of sampled q-points (mesh.x * mesh.y * mesh.z).
   std::vector<double> frequency;   ///< Bin-center frequencies [cm^-1] (or reduced units).
   std::vector<double> dos;         ///< Density of states; integral over frequency equals the number of branches 3N.
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononDensityOfStates& r);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononDensityOfStates& r);
 };
 
 /**

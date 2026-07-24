@@ -9,6 +9,7 @@ import averages;
 import system;
 import input_reader;
 import running_energy;
+import archive;
 import json;
 
 /**
@@ -51,6 +52,8 @@ export struct ParallelTempering
    */
   ParallelTempering(InputReader& reader);
 
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
   std::size_t numberOfProductionCycles;         ///< Number of production cycles.
@@ -61,11 +64,20 @@ export struct ParallelTempering
   std::size_t printEvery;              ///< Frequency of printing status reports.
   std::size_t optimizeMCMovesEvery;    ///< Frequency of optimizing MC moves.
   std::size_t rescaleWangLandauEvery;  ///< Frequency of adjusting the Wang-Landau biasing factors.
+  std::size_t writeBinaryRestartEvery; ///< Frequency of writing the binary restart file (0 disables).
 
   std::size_t numberOfBlocks;              ///< Number of blocks for the block-error estimation.
   std::size_t parallelTemperingSwapEvery;  ///< Attempt a swap sweep every this many cycles (0 disables).
 
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
+
+  /// Completed cycles of the stage the binary restart file was written in; a restarted run
+  /// continues that stage from this cycle.
+  std::size_t cyclesCompletedThisStage{0};
+
+  /// The end-of-cycle count communicated by the worker threads to the barrier completion
+  /// (written by replica 0 before arriving; read while all threads are parked). Not serialized.
+  std::atomic<std::size_t> checkpointCycle{0};
 
   std::vector<double> temperatures;   ///< The temperature ladder (one replica per entry).
   std::size_t numberOfReplicas;       ///< Number of replicas == number of temperatures == number of threads.
@@ -141,4 +153,13 @@ export struct ParallelTempering
    *        the per-replica output files.
    */
   void writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed);
+
+  /**
+   * \brief Writes the binary restart file. Called from the barrier completion, where all worker
+   *        threads are parked, so the full driver state is consistent.
+   */
+  void writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept;
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTempering& pt);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTempering& pt);
 };

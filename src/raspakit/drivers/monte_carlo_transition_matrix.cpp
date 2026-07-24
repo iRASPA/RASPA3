@@ -7,6 +7,7 @@ import std;
 import stringutils;
 import hardware_info;
 import archive;
+import graceful_shutdown;
 import system;
 import randomnumbers;
 import input_reader;
@@ -124,8 +125,12 @@ void MonteCarloTransitionMatrix::run()
       goto continueEquilibrationStage;
     case SimulationStage::Production:
       goto continueProductionStage;
-    default:
+    case SimulationStage::Uninitialized:
       break;
+    default:
+      // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
+      // instead of silently rerunning the simulation from the beginning
+      throw std::runtime_error("MonteCarloTransitionMatrix::run(): no resume dispatch for the checkpointed simulation stage");
   }
 
 continuePreInitializationStage:
@@ -142,16 +147,39 @@ continueProductionStage:
 
 void MonteCarloTransitionMatrix::createOutputFiles()
 {
+  // on a binary-restart resume append to the existing output files instead of truncating them,
+  // so each log continues where the interrupted run left off
+  const std::ios::openmode mode =
+      (simulationStage != SimulationStage::Uninitialized) ? std::ios::app : std::ios::out;
+
   std::filesystem::create_directories("output");
   for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
-    streams.emplace_back(fileNameString, std::ios::out);
+    streams.emplace_back(fileNameString, mode);
     fileNameString = std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
 
     ++system_id;
+  }
+}
+
+void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t currentCycle)
+{
+  // periodic binary restart file
+  if (currentCycle % writeBinaryRestartEvery == 0uz)
+  {
+    writeBinaryRestartFile(*this);
+  }
+
+  // graceful shutdown: checkpoint at this cycle boundary and exit cleanly
+  if (GracefulShutdown::requested())
+  {
+    writeBinaryRestartFile(*this);
+    // std::exit skips stack unwinding: flush the text output streams explicitly
+    for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    GracefulShutdown::exitAfterCheckpoint();
   }
 }
 
@@ -350,18 +378,7 @@ void MonteCarloTransitionMatrix::preInitialize()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     t2 = std::chrono::steady_clock::now();
 
@@ -475,18 +492,7 @@ void MonteCarloTransitionMatrix::initialize()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     t2 = std::chrono::steady_clock::now();
 
@@ -576,18 +582,7 @@ void MonteCarloTransitionMatrix::equilibrate()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     t2 = std::chrono::steady_clock::now();
 
@@ -719,18 +714,7 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
-    if (currentCycle % writeBinaryRestartEvery == 0uz)
-    {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
-    }
+    checkpointIfDue(currentCycle);
 
     t2 = std::chrono::steady_clock::now();
 
@@ -917,8 +901,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
+    throw std::runtime_error(std::format("MonteCarloTransitionMatrix: Error in binary restart\n"));
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
-                           static_cast<std::uint64_t>(0x6f6b6179));
+
   return archive;
 }

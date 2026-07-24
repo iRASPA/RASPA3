@@ -1379,8 +1379,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyVolumeEvolution;
   archive << s.propertyConservedEnergyEvolution;
 
-  archive << s.interpolationGrids;
-  archive << s.externalFieldInterpolationGrid;
+  // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
+  // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
+  // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1554,8 +1555,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   // archive >> s.carrierGasComponent;
   // archive >> s.maxIsothermTerms;
 
-  archive >> s.interpolationGrids;
-  archive >> s.externalFieldInterpolationGrid;
+  // The interpolation grids are not stored in the archive; size the empty containers here and let
+  // the driver's restart path rebuild them (createInterpolationGrids).
+  s.interpolationGrids =
+      std::vector<std::optional<InterpolationEnergyGrid>>(s.forceField.pseudoAtoms.size() + 1, std::nullopt);
+  s.externalFieldInterpolationGrid = std::nullopt;
 
   // Derived quantities: rebuild the aggregated tail-correction counts from the restored atoms.
   s.computeTailCorrectionCounts();

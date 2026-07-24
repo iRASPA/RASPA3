@@ -221,6 +221,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Transi
   archive << m.rejectOutOfBound;
   archive << m.rezeroAfterInitialization;
 
+  archive << m.statisticsFileName;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -257,6 +259,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMa
   archive >> m.useTMBias;
   archive >> m.rejectOutOfBound;
   archive >> m.rezeroAfterInitialization;
+
+  archive >> m.statisticsFileName;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

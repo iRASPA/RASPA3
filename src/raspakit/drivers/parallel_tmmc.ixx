@@ -10,6 +10,7 @@ import system;
 import input_reader;
 import running_energy;
 import double3;
+import archive;
 import json;
 
 /**
@@ -71,6 +72,8 @@ export struct ParallelTMMC
    */
   ParallelTMMC(InputReader& reader);
 
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+
   RandomNumber random;  ///< Random number generator (seeding).
 
   std::size_t numberOfProductionCycles;         ///< Number of production cycles.
@@ -78,9 +81,10 @@ export struct ParallelTMMC
   std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
 
-  std::size_t printEvery;              ///< Frequency of printing status reports.
-  std::size_t optimizeMCMovesEvery;    ///< Frequency of optimizing MC moves.
-  std::size_t rescaleWangLandauEvery;  ///< Frequency of adjusting the Wang-Landau biasing factors.
+  std::size_t printEvery;               ///< Frequency of printing status reports.
+  std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
+  std::size_t rescaleWangLandauEvery;   ///< Frequency of adjusting the Wang-Landau biasing factors.
+  std::size_t writeBinaryRestartEvery;  ///< Frequency of writing the binary restart file (0 disables).
 
   std::size_t numberOfBlocks;  ///< Number of blocks for the block-error estimation.
 
@@ -88,6 +92,14 @@ export struct ParallelTMMC
   std::size_t reweightingNumberOfPressures;            ///< Number of log-spaced pressures of the reweighted isotherms.
 
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
+
+  /// Completed cycles of the stage the binary restart file was written in; a restarted run
+  /// continues that stage from this cycle.
+  std::size_t cyclesCompletedThisStage{0};
+
+  /// The end-of-cycle count communicated by the worker threads to the barrier completion
+  /// (written by walker 0 before arriving; read while all threads are parked). Not serialized.
+  std::atomic<std::size_t> checkpointCycle{0};
 
   std::vector<double> temperatures;  ///< The temperature ladder [K].
   double referencePressure;          ///< The reference pressure ('ExternalPressure') [Pa].
@@ -201,4 +213,13 @@ export struct ParallelTMMC
    *        the per-walker output files.
    */
   void writeWalkerFinalReports(std::vector<RunningEnergy>& recomputed);
+
+  /**
+   * \brief Writes the binary restart file. Called from the barrier completion, where all worker
+   *        threads are parked, so the full driver state is consistent.
+   */
+  void writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept;
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTMMC& ptmmc);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC& ptmmc);
 };

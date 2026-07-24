@@ -5,6 +5,7 @@ export module minimization;
 import std;
 import randomnumbers;
 
+import archive;
 import input_reader;
 import system;
 import generalized_hessian;
@@ -31,6 +32,9 @@ export struct MinimizationSystemResult
   std::optional<NormalModesResult> normalModes{};
   std::optional<PhononDispersionResult> phononDispersion{};
   std::optional<PhononDensityOfStates> phononDensityOfStates{};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MinimizationSystemResult& r);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MinimizationSystemResult& r);
 };
 
 /** Baker eigenvector-following minimization driver with optional logarithmic cell DOFs. */
@@ -59,6 +63,19 @@ export struct Minimization
   void output();
   void tearDown();
 
+  /**
+   * \brief Writes the binary restart file. The Baker temporaries (generalized Hessian, gradient,
+   *        DOF layout) are not stored; they are rebuilt from the serialized system state.
+   */
+  void writeBinaryRestartFile() noexcept;
+
+  /**
+   * \brief Writes the periodic binary restart file and services a pending shutdown signal.
+   */
+  void checkpointIfDue(std::size_t currentCycle);
+
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+
   MinimizationOptions options{};
   bool outputToFiles{true};
 
@@ -76,6 +93,12 @@ export struct Minimization
 
   SimulationStage simulationStage{SimulationStage::Uninitialized};
 
+  /// Binary-restart resume point of the Run stage: the system currently being minimized and the
+  /// next Baker iteration of that system (systems before 'runSystemIndex' are already done and
+  /// their results are stored).
+  std::size_t runSystemIndex{0};
+  std::size_t runIteration{0};
+
   std::optional<std::size_t> randomSeed{std::nullopt};
   RandomNumber random{std::nullopt};
   std::size_t fractionalMoleculeSystem{0};
@@ -83,4 +106,7 @@ export struct Minimization
   std::vector<System> systems;
   std::vector<MinimizationSystemResult> results;
   std::vector<std::ofstream> streams;
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Minimization& m);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Minimization& m);
 };

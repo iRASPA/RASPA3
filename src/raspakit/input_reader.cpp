@@ -170,21 +170,6 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::Minimization;
       parseMolecularSimulations(parsed_data);
     }
-    else if (caseInSensStringCompare(simulationTypeString, "Breakthrough"))
-    {
-      simulationType = SimulationType::Breakthrough;
-      parseBreakthrough(parsed_data);
-    }
-    else if (caseInSensStringCompare(simulationTypeString, "MixturePrediction"))
-    {
-      simulationType = SimulationType::MixturePrediction;
-      parseMixturePrediction(parsed_data);
-    }
-    else if (caseInSensStringCompare(simulationTypeString, "Fitting"))
-    {
-      simulationType = SimulationType::Fitting;
-      parseFitting(parsed_data);
-    }
     else if (caseInSensStringCompare(simulationTypeString, "ParallelTempering"))
     {
       simulationType = SimulationType::ParallelTempering;

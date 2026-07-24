@@ -4,6 +4,7 @@ module normal_modes;
 
 import std;
 
+import archive;
 import units;
 import double3;
 import double3x3;
@@ -305,4 +306,28 @@ void writeNormalModeMovies(const System& system, const NormalModesResult& result
       writePdbFrame(stream, frameSystem, frame + 1);
     }
   }
+}
+
+// The (3N)^2 'eigenvectors' matrix is intentionally not serialized: it is only consumed by
+// writeNormalModeMovies immediately after computeNormalModes; the restored result only needs the
+// eigenvalues for the final output.
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NormalModesResult& r)
+{
+  archive << r.numberOfModes;
+  archive << r.eigenvalues;
+  archive << r.negativeModes;
+  archive << r.zeroModes;
+  archive << r.discardedRotationalDofs;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NormalModesResult& r)
+{
+  archive >> r.numberOfModes;
+  archive >> r.eigenvalues;
+  r.eigenvectors.clear();
+  archive >> r.negativeModes;
+  archive >> r.zeroModes;
+  archive >> r.discardedRotationalDofs;
+  return archive;
 }

@@ -6,6 +6,7 @@ import std;
 
 import double3;
 import simulationbox;
+import archive;
 
 /**
  * A labeled node along a phonon band-structure path, expressed in fractional (crystallographic)
@@ -35,6 +36,9 @@ export struct PhononKPoint
   double3 kFractional{};
   double pathCoordinate{};
   std::string label{};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononKPoint& p);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononKPoint& p);
 };
 
 /**

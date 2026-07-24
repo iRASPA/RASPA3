@@ -4,6 +4,7 @@ module phonon_dynamical_matrix;
 
 import std;
 
+import archive;
 import units;
 import int3;
 import double3;
@@ -965,4 +966,50 @@ std::string writePhononDensityOfStates(const PhononDensityOfStates& result)
     output += std::format("    {: 18.8f}  {: 18.8e}\n", result.frequency[index], result.dos[index]);
   }
   return output;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononModes& m)
+{
+  archive << m.kFractional;
+  archive << m.eigenvalues;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononModes& m)
+{
+  archive >> m.kFractional;
+  archive >> m.eigenvalues;
+  return archive;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononDispersionResult& r)
+{
+  archive << r.path;
+  archive << r.modes;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononDispersionResult& r)
+{
+  archive >> r.path;
+  archive >> r.modes;
+  return archive;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononDensityOfStates& r)
+{
+  archive << r.mesh;
+  archive << r.numberOfQPoints;
+  archive << r.frequency;
+  archive << r.dos;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononDensityOfStates& r)
+{
+  archive >> r.mesh;
+  archive >> r.numberOfQPoints;
+  archive >> r.frequency;
+  archive >> r.dos;
+  return archive;
 }

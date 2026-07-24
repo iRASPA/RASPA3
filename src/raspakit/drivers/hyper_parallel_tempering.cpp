@@ -6,6 +6,8 @@ import std;
 
 import stringutils;
 import hardware_info;
+import archive;
+import graceful_shutdown;
 import system;
 import framework;
 import randomnumbers;
@@ -74,6 +76,7 @@ HyperParallelTempering::HyperParallelTempering(InputReader& reader)
       printEvery(reader.printEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       parallelTemperingSwapEvery(reader.parallelTemperingSwapEvery),
       temperatures(reader.parallelTemperingTemperatures),
@@ -167,56 +170,63 @@ void HyperParallelTempering::setup()
   }
 
   std::filesystem::create_directories("output");
-  stream.open("output/output.hyper_parallel_tempering.txt", std::ios::out);
+
+  // on a binary-restart resume append to the existing output files (and skip re-printing the
+  // headers) so each log continues where the interrupted run left off
+  const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
+  stream.open("output/output.hyper_parallel_tempering.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
   outputJsonFileName = "output/output.hyper_parallel_tempering.json";
 
   const System& front = systems.front();
-  std::print(stream, "{}", front.writeOutputHeader());
-  std::print(stream, "Random seed: {}\n\n", random.seed);
-  std::print(stream, "{}\n", HardwareInfo::writeInfo());
-  std::print(stream, "{}", Units::printStatus());
+  if (!resumedFromBinaryRestart)
+  {
+    std::print(stream, "{}", front.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "{}", Units::printStatus());
 
-  std::print(stream, "Hyper-parallel tempering\n");
-  std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
-  std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
-  std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
-  std::print(stream, "Temperature ladder:                         ");
-  for (double T : temperatures)
-  {
-    std::print(stream, " {}", T);
-  }
-  std::print(stream, " [K]\n");
-  std::print(stream, "Pressure ladder:                            ");
-  for (double P : pressures)
-  {
-    std::print(stream, " {}", P);
-  }
-  std::print(stream, " [Pa]\n");
-  if (parallelTemperingSwapEvery == 0uz)
-  {
-    std::print(stream, "Configuration swaps:                         disabled\n\n");
-  }
-  else
-  {
-    std::print(stream, "Configuration-swap sweep every:              {} cycles\n", parallelTemperingSwapEvery);
-    std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n\n");
-  }
-
-  std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
-             numberOfPressures);
-  std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
-  std::print(stream, "    ------------------------------------------------\n");
-  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
-  {
-    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+    std::print(stream, "Hyper-parallel tempering\n");
+    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
+    std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
+    std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
+    std::print(stream, "Temperature ladder:                         ");
+    for (double T : temperatures)
     {
-      const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
-      std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
-                 pressures[pressureIndex]);
+      std::print(stream, " {}", T);
     }
+    std::print(stream, " [K]\n");
+    std::print(stream, "Pressure ladder:                            ");
+    for (double P : pressures)
+    {
+      std::print(stream, " {}", P);
+    }
+    std::print(stream, " [Pa]\n");
+    if (parallelTemperingSwapEvery == 0uz)
+    {
+      std::print(stream, "Configuration swaps:                         disabled\n\n");
+    }
+    else
+    {
+      std::print(stream, "Configuration-swap sweep every:              {} cycles\n", parallelTemperingSwapEvery);
+      std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n\n");
+    }
+
+    std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
+               numberOfPressures);
+    std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
+    std::print(stream, "    ------------------------------------------------\n");
+    for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+    {
+      for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+      {
+        const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
+        std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
+                   pressures[pressureIndex]);
+      }
+    }
+    std::print(stream, "\n");
   }
-  std::print(stream, "\n");
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -242,22 +252,25 @@ void HyperParallelTempering::setup()
     const System& system = systems[replicaId];
     replicaStreams.emplace_back(std::format("output/output_{}_{}.hyper_parallel_tempering.r{}.txt", system.temperature,
                                             system.input_pressure, replicaId),
-                                std::ios::out);
+                                resumedFromBinaryRestart ? std::ios::app : std::ios::out);
     replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.hyper_parallel_tempering.r{}.json",
                                                   system.temperature, system.input_pressure, replicaId));
 
-    std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-    std::print(replicaStream, "{}", system.writeOutputHeader());
-    std::print(replicaStream, "Hyper-parallel tempering: replica {} of {} (temperature {} [K], pressure {} [Pa])\n",
-               replicaId, numberOfReplicas, system.temperature, system.input_pressure);
-    std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
-    std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
-    std::print(replicaStream, "{}", Units::printStatus());
-    std::print(replicaStream, "{}", system.writeSystemStatus());
-    std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
-    std::print(replicaStream, "{}", system.writeComponentStatus());
-    std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    if (!resumedFromBinaryRestart)
+    {
+      std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
+      std::print(replicaStream, "{}", system.writeOutputHeader());
+      std::print(replicaStream, "Hyper-parallel tempering: replica {} of {} (temperature {} [K], pressure {} [Pa])\n",
+                 replicaId, numberOfReplicas, system.temperature, system.input_pressure);
+      std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
+      std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
+      std::print(replicaStream, "{}", Units::printStatus());
+      std::print(replicaStream, "{}", system.writeSystemStatus());
+      std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
+      std::print(replicaStream, "{}", system.writeComponentStatus());
+      std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    }
 
 #ifdef VERSION
     replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
@@ -412,49 +425,61 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
+  // binary restart: stages the restart file was written after are skipped entirely; the stage it
+  // was written in resumes from the checkpointed cycle (its per-stage preparation already ran
+  // before the checkpoint and must not be repeated)
+  if (stage < simulationStage)
+  {
+    return;
+  }
+  const std::size_t startCycle = (stage == simulationStage) ? cyclesCompletedThisStage : 0uz;
+
   simulationStage = stage;
 
-  // serial per-stage preparation
-  if (stage == SimulationStage::Equilibration)
+  if (startCycle == 0uz)
   {
-    for (System& system : systems)
+    // serial per-stage preparation
+    if (stage == SimulationStage::Equilibration)
     {
-      for (Component& component : system.components)
+      for (System& system : systems)
       {
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                               system.containsTheFractionalMolecule);
-        component.lambdaGC.clear();
+        for (Component& component : system.components)
+        {
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.clear();
+        }
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+        system.pairSwapLambdaClearBookkeeping();
+        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+        system.reactionLambdaClearBookkeeping();
       }
-      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-      system.pairSwapLambdaClearBookkeeping();
-      system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-      system.reactionLambdaClearBookkeeping();
     }
-  }
-  if (stage == SimulationStage::Production)
-  {
-    for (System& system : systems)
+    if (stage == SimulationStage::Production)
     {
-      system.mc_moves_statistics.clearMoveStatistics();
-      system.mc_moves_cputime.clearTimingStatistics();
-
-      for (Component& component : system.components)
+      for (System& system : systems)
       {
-        component.mc_moves_statistics.clearMoveStatistics();
-        component.mc_moves_cputime.clearTimingStatistics();
+        system.mc_moves_statistics.clearMoveStatistics();
+        system.mc_moves_cputime.clearTimingStatistics();
 
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                               system.containsTheFractionalMolecule);
-        component.lambdaGC.clear();
+        for (Component& component : system.components)
+        {
+          component.mc_moves_statistics.clearMoveStatistics();
+          component.mc_moves_cputime.clearTimingStatistics();
+
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
+                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.clear();
+        }
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+        system.pairSwapLambdaClearBookkeeping();
+        system.reactionLambdaFinalize();
+        system.reactionLambdaClearBookkeeping();
       }
-      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
-      system.pairSwapLambdaClearBookkeeping();
-      system.reactionLambdaFinalize();
-      system.reactionLambdaClearBookkeeping();
+      std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
     }
-    std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+    sweepsThisStage = 0uz;
   }
-  sweepsThisStage = 0uz;
 
   {
     std::scoped_lock lock(outputMutex);
@@ -462,12 +487,46 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                                        : (stage == SimulationStage::Initialization)   ? "Initialization"
                                        : (stage == SimulationStage::Equilibration)    ? "Equilibration"
                                                                                       : "Production";
-    std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles, numberOfReplicas);
+    if (startCycle == 0uz)
+    {
+      std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles,
+                 numberOfReplicas);
+    }
+    else
+    {
+      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} on {} replicas/threads\n",
+                 stageName, startCycle, numberOfCycles, numberOfReplicas);
+    }
     std::flush(stream);
   }
 
-  // one worker thread per replica; the barrier completion performs the swap sweeps
-  auto onAllArrived = [this, stage, numberOfCycles]() noexcept { performSwapSweep(stage, numberOfCycles); };
+  // one worker thread per replica; the barrier completion performs the swap sweeps and writes the
+  // periodic binary restart file (all worker threads are parked, so the state is consistent)
+  auto onAllArrived = [this, stage, numberOfCycles]() noexcept
+  {
+    const std::size_t completedCycles = checkpointCycle.load(std::memory_order_relaxed);
+    if (parallelTemperingSwapEvery != 0uz && completedCycles % parallelTemperingSwapEvery == 0uz)
+    {
+      performSwapSweep(stage, numberOfCycles);
+    }
+    const bool stopRequested = GracefulShutdown::requested();
+    const bool binaryRestartDue =
+        writeBinaryRestartEvery != 0uz &&
+        (completedCycles % writeBinaryRestartEvery == 0uz || completedCycles == numberOfCycles);
+    if (binaryRestartDue || stopRequested)
+    {
+      writeBinaryRestartFile(completedCycles);
+    }
+    // all worker threads are parked on this barrier, so the checkpoint just written is a
+    // consistent snapshot: safe to exit here on a shutdown signal
+    if (stopRequested)
+    {
+      // std::exit skips stack unwinding: flush the text output streams explicitly
+      std::flush(stream);
+      for (std::ofstream& replicaStream : replicaStreams) std::flush(replicaStream);
+      GracefulShutdown::exitAfterCheckpoint();
+    }
+  };
   std::barrier synchronizationPoint(static_cast<std::ptrdiff_t>(numberOfReplicas), onAllArrived);
 
   const std::size_t stageCycleOffset = absoluteCycleOffset;
@@ -478,7 +537,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, stage, numberOfCycles, stageCycleOffset, &synchronizationPoint]()
+          [this, replicaId, stage, numberOfCycles, stageCycleOffset, startCycle, &synchronizationPoint]()
           {
             System& system = systems[replicaId];
 
@@ -491,7 +550,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfProductionCycles));
 
-            for (std::size_t cycle = 0uz; cycle != numberOfCycles; ++cycle)
+            for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {
               if (stage == SimulationStage::Production)
               {
@@ -586,8 +645,18 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
               }
 
               // the only synchronization point between the threads: the configuration-swap sweep
-              if (parallelTemperingSwapEvery != 0uz && (cycle + 1uz) % parallelTemperingSwapEvery == 0uz)
+              // and the periodic binary-restart checkpoint, both performed by the barrier completion
+              const bool swapDue =
+                  parallelTemperingSwapEvery != 0uz && (cycle + 1uz) % parallelTemperingSwapEvery == 0uz;
+              const bool binaryRestartDue =
+                  writeBinaryRestartEvery != 0uz &&
+                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
+              if (swapDue || binaryRestartDue)
               {
+                if (replicaId == 0uz)
+                {
+                  checkpointCycle.store(cycle + 1uz, std::memory_order_relaxed);
+                }
                 synchronizationPoint.arrive_and_wait();
               }
             }
@@ -904,4 +973,129 @@ void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);
   }
+}
+
+void HyperParallelTempering::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
+{
+  cyclesCompletedThisStage = cyclesCompleted;
+
+  ::writeBinaryRestartFile(*this);
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const HyperParallelTempering& hpt)
+{
+  archive << hpt.versionNumber;
+
+  archive << hpt.random;
+
+  archive << hpt.numberOfProductionCycles;
+  archive << hpt.numberOfPreInitializationCycles;
+  archive << hpt.numberOfInitializationCycles;
+  archive << hpt.numberOfEquilibrationCycles;
+
+  archive << hpt.printEvery;
+  archive << hpt.optimizeMCMovesEvery;
+  archive << hpt.rescaleWangLandauEvery;
+  archive << hpt.writeBinaryRestartEvery;
+
+  archive << hpt.numberOfBlocks;
+  archive << hpt.parallelTemperingSwapEvery;
+
+  archive << hpt.simulationStage;
+  archive << hpt.cyclesCompletedThisStage;
+
+  archive << hpt.temperatures;
+  archive << hpt.pressures;
+  archive << hpt.numberOfTemperatures;
+  archive << hpt.numberOfPressures;
+  archive << hpt.numberOfReplicas;
+  archive << hpt.systems;
+  archive << hpt.randoms;
+
+  archive << hpt.stepsPerReplica;
+  archive << hpt.absoluteCycleOffset;
+
+  archive << hpt.swapSweeps;
+  archive << hpt.sweepsThisStage;
+  archive << hpt.swapAttempts;
+  archive << hpt.swapAccepted;
+  archive << hpt.swapAttemptsPerTemperaturePair;
+  archive << hpt.swapAcceptedPerTemperaturePair;
+  archive << hpt.swapAttemptsPerPressurePair;
+  archive << hpt.swapAcceptedPerPressurePair;
+
+  archive << hpt.totalPreInitializationSimulationTime;
+  archive << hpt.totalInitializationSimulationTime;
+  archive << hpt.totalEquilibrationSimulationTime;
+  archive << hpt.totalProductionSimulationTime;
+  archive << hpt.totalSimulationTime;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HyperParallelTempering& hpt)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > hpt.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'HyperParallelTempering' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> hpt.random;
+
+  archive >> hpt.numberOfProductionCycles;
+  archive >> hpt.numberOfPreInitializationCycles;
+  archive >> hpt.numberOfInitializationCycles;
+  archive >> hpt.numberOfEquilibrationCycles;
+
+  archive >> hpt.printEvery;
+  archive >> hpt.optimizeMCMovesEvery;
+  archive >> hpt.rescaleWangLandauEvery;
+  archive >> hpt.writeBinaryRestartEvery;
+
+  archive >> hpt.numberOfBlocks;
+  archive >> hpt.parallelTemperingSwapEvery;
+
+  archive >> hpt.simulationStage;
+  archive >> hpt.cyclesCompletedThisStage;
+
+  archive >> hpt.temperatures;
+  archive >> hpt.pressures;
+  archive >> hpt.numberOfTemperatures;
+  archive >> hpt.numberOfPressures;
+  archive >> hpt.numberOfReplicas;
+  archive >> hpt.systems;
+  archive >> hpt.randoms;
+
+  archive >> hpt.stepsPerReplica;
+  archive >> hpt.absoluteCycleOffset;
+
+  archive >> hpt.swapSweeps;
+  archive >> hpt.sweepsThisStage;
+  archive >> hpt.swapAttempts;
+  archive >> hpt.swapAccepted;
+  archive >> hpt.swapAttemptsPerTemperaturePair;
+  archive >> hpt.swapAcceptedPerTemperaturePair;
+  archive >> hpt.swapAttemptsPerPressurePair;
+  archive >> hpt.swapAcceptedPerPressurePair;
+
+  archive >> hpt.totalPreInitializationSimulationTime;
+  archive >> hpt.totalInitializationSimulationTime;
+  archive >> hpt.totalEquilibrationSimulationTime;
+  archive >> hpt.totalProductionSimulationTime;
+  archive >> hpt.totalSimulationTime;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error("HyperParallelTempering: error in binary restart\n");
+  }
+
+  return archive;
 }

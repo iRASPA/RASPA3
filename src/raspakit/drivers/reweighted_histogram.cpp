@@ -6,6 +6,8 @@ import std;
 
 import stringutils;
 import hardware_info;
+import archive;
+import graceful_shutdown;
 import system;
 import framework;
 import randomnumbers;
@@ -75,6 +77,7 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
       printEvery(reader.printEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       parallelTemperingSwapEvery(reader.parallelTemperingSwapEvery),
       sampleReweightingEvery(std::max(1uz, reader.sampleReweightingEvery)),
@@ -198,65 +201,72 @@ void ReweightedHistogram::setup()
   }
 
   std::filesystem::create_directories("output");
-  stream.open("output/output.reweighted_histogram.txt", std::ios::out);
+
+  // on a binary-restart resume append to the existing output files (and skip re-printing the
+  // headers) so each log continues where the interrupted run left off
+  const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
+  stream.open("output/output.reweighted_histogram.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
   outputJsonFileName = "output/output.reweighted_histogram.json";
 
   const System& front = systems.front();
-  std::print(stream, "{}", front.writeOutputHeader());
-  std::print(stream, "Random seed: {}\n\n", random.seed);
-  std::print(stream, "{}\n", HardwareInfo::writeInfo());
-  std::print(stream, "{}", Units::printStatus());
+  if (!resumedFromBinaryRestart)
+  {
+    std::print(stream, "{}", front.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "{}", Units::printStatus());
 
-  std::print(stream, "Reweighted histogram\n");
-  std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
-  std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
-  std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
-  std::print(stream, "Temperature ladder:                         ");
-  for (double T : temperatures)
-  {
-    std::print(stream, " {}", T);
-  }
-  std::print(stream, " [K]\n");
-  std::print(stream, "Pressure ladder:                            ");
-  for (double P : pressures)
-  {
-    std::print(stream, " {}", P);
-  }
-  std::print(stream, " [Pa]\n");
-  if (parallelTemperingSwapEvery == 0uz)
-  {
-    std::print(stream, "Configuration swaps:                         disabled\n");
-  }
-  else
-  {
-    std::print(stream, "Configuration-swap sweep every:              {} cycles\n", parallelTemperingSwapEvery);
-    std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n");
-  }
-  std::print(stream, "Reweighting (N, U) sample every:             {} cycles\n", sampleReweightingEvery);
-  std::print(stream, "Reweighted-isotherm temperatures:           ");
-  for (double T : reweightingTemperatures)
-  {
-    std::print(stream, " {}", T);
-  }
-  std::print(stream, " [K]\n");
-  std::print(stream, "Reweighted-isotherm pressure range:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
-             reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
-
-  std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
-             numberOfPressures);
-  std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
-  std::print(stream, "    ------------------------------------------------\n");
-  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
-  {
-    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+    std::print(stream, "Reweighted histogram\n");
+    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
+    std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
+    std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
+    std::print(stream, "Temperature ladder:                         ");
+    for (double T : temperatures)
     {
-      const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
-      std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
-                 pressures[pressureIndex]);
+      std::print(stream, " {}", T);
     }
+    std::print(stream, " [K]\n");
+    std::print(stream, "Pressure ladder:                            ");
+    for (double P : pressures)
+    {
+      std::print(stream, " {}", P);
+    }
+    std::print(stream, " [Pa]\n");
+    if (parallelTemperingSwapEvery == 0uz)
+    {
+      std::print(stream, "Configuration swaps:                         disabled\n");
+    }
+    else
+    {
+      std::print(stream, "Configuration-swap sweep every:              {} cycles\n", parallelTemperingSwapEvery);
+      std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n");
+    }
+    std::print(stream, "Reweighting (N, U) sample every:             {} cycles\n", sampleReweightingEvery);
+    std::print(stream, "Reweighted-isotherm temperatures:           ");
+    for (double T : reweightingTemperatures)
+    {
+      std::print(stream, " {}", T);
+    }
+    std::print(stream, " [K]\n");
+    std::print(stream, "Reweighted-isotherm pressure range:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
+               reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
+
+    std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
+               numberOfPressures);
+    std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
+    std::print(stream, "    ------------------------------------------------\n");
+    for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+    {
+      for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+      {
+        const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
+        std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
+                   pressures[pressureIndex]);
+      }
+    }
+    std::print(stream, "\n");
   }
-  std::print(stream, "\n");
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -287,22 +297,25 @@ void ReweightedHistogram::setup()
     const System& system = systems[replicaId];
     replicaStreams.emplace_back(std::format("output/output_{}_{}.reweighted_histogram.r{}.txt", system.temperature,
                                             system.input_pressure, replicaId),
-                                std::ios::out);
+                                resumedFromBinaryRestart ? std::ios::app : std::ios::out);
     replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.reweighted_histogram.r{}.json",
                                                   system.temperature, system.input_pressure, replicaId));
 
-    std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-    std::print(replicaStream, "{}", system.writeOutputHeader());
-    std::print(replicaStream, "Reweighted histogram: replica {} of {} (temperature {} [K], pressure {} [Pa])\n",
-               replicaId, numberOfReplicas, system.temperature, system.input_pressure);
-    std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
-    std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
-    std::print(replicaStream, "{}", Units::printStatus());
-    std::print(replicaStream, "{}", system.writeSystemStatus());
-    std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
-    std::print(replicaStream, "{}", system.writeComponentStatus());
-    std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    if (!resumedFromBinaryRestart)
+    {
+      std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
+      std::print(replicaStream, "{}", system.writeOutputHeader());
+      std::print(replicaStream, "Reweighted histogram: replica {} of {} (temperature {} [K], pressure {} [Pa])\n",
+                 replicaId, numberOfReplicas, system.temperature, system.input_pressure);
+      std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
+      std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
+      std::print(replicaStream, "{}", Units::printStatus());
+      std::print(replicaStream, "{}", system.writeSystemStatus());
+      std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
+      std::print(replicaStream, "{}", system.writeComponentStatus());
+      std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
+    }
 
 #ifdef VERSION
     replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
@@ -456,10 +469,19 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
+  // binary restart: stages the restart file was written after are skipped entirely; the stage it
+  // was written in resumes from the checkpointed cycle (its per-stage preparation already ran
+  // before the checkpoint and must not be repeated)
+  if (stage < simulationStage)
+  {
+    return;
+  }
+  const std::size_t startCycle = (stage == simulationStage) ? cyclesCompletedThisStage : 0uz;
+
   simulationStage = stage;
 
   // serial per-stage preparation
-  if (stage == SimulationStage::Equilibration)
+  if (startCycle == 0uz && stage == SimulationStage::Equilibration)
   {
     for (System& system : systems)
     {
@@ -475,7 +497,7 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
       system.reactionLambdaClearBookkeeping();
     }
   }
-  if (stage == SimulationStage::Production)
+  if (startCycle == 0uz && stage == SimulationStage::Production)
   {
     for (System& system : systems)
     {
@@ -498,7 +520,10 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
     }
     std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
   }
-  sweepsThisStage = 0uz;
+  if (startCycle == 0uz)
+  {
+    sweepsThisStage = 0uz;
+  }
 
   {
     std::scoped_lock lock(outputMutex);
@@ -506,12 +531,46 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                                        : (stage == SimulationStage::Initialization)   ? "Initialization"
                                        : (stage == SimulationStage::Equilibration)    ? "Equilibration"
                                                                                       : "Production";
-    std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles, numberOfReplicas);
+    if (startCycle == 0uz)
+    {
+      std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles,
+                 numberOfReplicas);
+    }
+    else
+    {
+      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} on {} replicas/threads\n",
+                 stageName, startCycle, numberOfCycles, numberOfReplicas);
+    }
     std::flush(stream);
   }
 
-  // one worker thread per replica; the barrier completion performs the swap sweeps
-  auto onAllArrived = [this, stage, numberOfCycles]() noexcept { performSwapSweep(stage, numberOfCycles); };
+  // one worker thread per replica; the barrier completion performs the swap sweeps and writes the
+  // periodic binary restart file (all worker threads are parked, so the state is consistent)
+  auto onAllArrived = [this, stage, numberOfCycles]() noexcept
+  {
+    const std::size_t completedCycles = checkpointCycle.load(std::memory_order_relaxed);
+    if (parallelTemperingSwapEvery != 0uz && completedCycles % parallelTemperingSwapEvery == 0uz)
+    {
+      performSwapSweep(stage, numberOfCycles);
+    }
+    const bool stopRequested = GracefulShutdown::requested();
+    const bool binaryRestartDue =
+        writeBinaryRestartEvery != 0uz &&
+        (completedCycles % writeBinaryRestartEvery == 0uz || completedCycles == numberOfCycles);
+    if (binaryRestartDue || stopRequested)
+    {
+      writeBinaryRestartFile(completedCycles);
+    }
+    // all worker threads are parked on this barrier, so the checkpoint just written is a
+    // consistent snapshot: safe to exit here on a shutdown signal
+    if (stopRequested)
+    {
+      // std::exit skips stack unwinding: flush the text output streams explicitly
+      std::flush(stream);
+      for (std::ofstream& replicaStream : replicaStreams) std::flush(replicaStream);
+      GracefulShutdown::exitAfterCheckpoint();
+    }
+  };
   std::barrier synchronizationPoint(static_cast<std::ptrdiff_t>(numberOfReplicas), onAllArrived);
 
   const std::size_t stageCycleOffset = absoluteCycleOffset;
@@ -522,7 +581,7 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, stage, numberOfCycles, stageCycleOffset, &synchronizationPoint]()
+          [this, replicaId, stage, numberOfCycles, stageCycleOffset, startCycle, &synchronizationPoint]()
           {
             System& system = systems[replicaId];
 
@@ -535,7 +594,7 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfProductionCycles));
 
-            for (std::size_t cycle = 0uz; cycle != numberOfCycles; ++cycle)
+            for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {
               if (stage == SimulationStage::Production)
               {
@@ -641,8 +700,18 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
               }
 
               // the only synchronization point between the threads: the configuration-swap sweep
-              if (parallelTemperingSwapEvery != 0uz && (cycle + 1uz) % parallelTemperingSwapEvery == 0uz)
+              // and the periodic binary-restart checkpoint, both performed by the barrier completion
+              const bool swapDue =
+                  parallelTemperingSwapEvery != 0uz && (cycle + 1uz) % parallelTemperingSwapEvery == 0uz;
+              const bool binaryRestartDue =
+                  writeBinaryRestartEvery != 0uz &&
+                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
+              if (swapDue || binaryRestartDue)
               {
+                if (replicaId == 0uz)
+                {
+                  checkpointCycle.store(cycle + 1uz, std::memory_order_relaxed);
+                }
                 synchronizationPoint.arrive_and_wait();
               }
             }
@@ -1769,4 +1838,161 @@ void ReweightedHistogram::writeReplicaFinalReports(std::vector<RunningEnergy>& r
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);
   }
+}
+
+void ReweightedHistogram::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
+{
+  cyclesCompletedThisStage = cyclesCompleted;
+
+  ::writeBinaryRestartFile(*this);
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ReweightedHistogram::Sample& s)
+{
+  archive << s.energy;
+  archive << s.numberOfMolecules;
+  archive << s.block;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHistogram::Sample& s)
+{
+  archive >> s.energy;
+  archive >> s.numberOfMolecules;
+  archive >> s.block;
+  return archive;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ReweightedHistogram& rh)
+{
+  archive << rh.versionNumber;
+
+  archive << rh.random;
+
+  archive << rh.numberOfProductionCycles;
+  archive << rh.numberOfPreInitializationCycles;
+  archive << rh.numberOfInitializationCycles;
+  archive << rh.numberOfEquilibrationCycles;
+
+  archive << rh.printEvery;
+  archive << rh.optimizeMCMovesEvery;
+  archive << rh.rescaleWangLandauEvery;
+  archive << rh.writeBinaryRestartEvery;
+
+  archive << rh.numberOfBlocks;
+  archive << rh.parallelTemperingSwapEvery;
+
+  archive << rh.sampleReweightingEvery;
+  archive << rh.reweightingTemperatures;
+  archive << rh.reweightingPressureRange;
+  archive << rh.reweightingNumberOfPressures;
+
+  archive << rh.simulationStage;
+  archive << rh.cyclesCompletedThisStage;
+
+  archive << rh.temperatures;
+  archive << rh.pressures;
+  archive << rh.numberOfTemperatures;
+  archive << rh.numberOfPressures;
+  archive << rh.numberOfReplicas;
+  archive << rh.systems;
+  archive << rh.randoms;
+
+  archive << rh.reweightingSamples;
+
+  archive << rh.stepsPerReplica;
+  archive << rh.absoluteCycleOffset;
+
+  archive << rh.swapSweeps;
+  archive << rh.sweepsThisStage;
+  archive << rh.swapAttempts;
+  archive << rh.swapAccepted;
+  archive << rh.swapAttemptsPerTemperaturePair;
+  archive << rh.swapAcceptedPerTemperaturePair;
+  archive << rh.swapAttemptsPerPressurePair;
+  archive << rh.swapAcceptedPerPressurePair;
+
+  archive << rh.totalPreInitializationSimulationTime;
+  archive << rh.totalInitializationSimulationTime;
+  archive << rh.totalEquilibrationSimulationTime;
+  archive << rh.totalProductionSimulationTime;
+  archive << rh.totalReweightingAnalysisTime;
+  archive << rh.totalSimulationTime;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHistogram& rh)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > rh.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'ReweightedHistogram' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> rh.random;
+
+  archive >> rh.numberOfProductionCycles;
+  archive >> rh.numberOfPreInitializationCycles;
+  archive >> rh.numberOfInitializationCycles;
+  archive >> rh.numberOfEquilibrationCycles;
+
+  archive >> rh.printEvery;
+  archive >> rh.optimizeMCMovesEvery;
+  archive >> rh.rescaleWangLandauEvery;
+  archive >> rh.writeBinaryRestartEvery;
+
+  archive >> rh.numberOfBlocks;
+  archive >> rh.parallelTemperingSwapEvery;
+
+  archive >> rh.sampleReweightingEvery;
+  archive >> rh.reweightingTemperatures;
+  archive >> rh.reweightingPressureRange;
+  archive >> rh.reweightingNumberOfPressures;
+
+  archive >> rh.simulationStage;
+  archive >> rh.cyclesCompletedThisStage;
+
+  archive >> rh.temperatures;
+  archive >> rh.pressures;
+  archive >> rh.numberOfTemperatures;
+  archive >> rh.numberOfPressures;
+  archive >> rh.numberOfReplicas;
+  archive >> rh.systems;
+  archive >> rh.randoms;
+
+  archive >> rh.reweightingSamples;
+
+  archive >> rh.stepsPerReplica;
+  archive >> rh.absoluteCycleOffset;
+
+  archive >> rh.swapSweeps;
+  archive >> rh.sweepsThisStage;
+  archive >> rh.swapAttempts;
+  archive >> rh.swapAccepted;
+  archive >> rh.swapAttemptsPerTemperaturePair;
+  archive >> rh.swapAcceptedPerTemperaturePair;
+  archive >> rh.swapAttemptsPerPressurePair;
+  archive >> rh.swapAcceptedPerPressurePair;
+
+  archive >> rh.totalPreInitializationSimulationTime;
+  archive >> rh.totalInitializationSimulationTime;
+  archive >> rh.totalEquilibrationSimulationTime;
+  archive >> rh.totalProductionSimulationTime;
+  archive >> rh.totalReweightingAnalysisTime;
+  archive >> rh.totalSimulationTime;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error("ReweightedHistogram: error in binary restart\n");
+  }
+
+  return archive;
 }

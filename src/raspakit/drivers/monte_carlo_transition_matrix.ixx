@@ -109,6 +109,12 @@ export struct MonteCarloTransitionMatrix
   void createOutputFiles();
 
   /**
+   * \brief Writes the periodic binary restart file and services a pending shutdown signal.
+   */
+  void checkpointIfDue(std::size_t currentCycle);
+
+
+  /**
    * \brief Runs the Monte Carlo simulation.
    *
    * Orchestrates the simulation by executing initialization, equilibration,

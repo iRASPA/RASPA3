@@ -119,6 +119,12 @@ export struct MolecularDynamics
    */
   void createOutputFiles();
 
+  /**
+   * \brief Writes the periodic binary restart file and services a pending shutdown signal.
+   */
+  void checkpointIfDue(std::size_t currentCycle);
+
+
   void createInterpolationGrids();
 
   /**

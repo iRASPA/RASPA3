@@ -120,6 +120,12 @@ export struct MonteCarlo
   void createOutputFiles();
 
   /**
+   * \brief Writes the periodic binary restart file and services a pending shutdown signal.
+   */
+  void checkpointIfDue(std::size_t currentCycle);
+
+
+  /**
    * \brief Write the output header
    */
   void writeOutputHeader();
