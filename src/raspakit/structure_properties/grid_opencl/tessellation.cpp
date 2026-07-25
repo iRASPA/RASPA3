@@ -118,7 +118,8 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
   }
 
-  std::vector<int32_t> output_data(grid_size.x * grid_size.y * grid_size.x);
+  std::vector<int32_t> output_data(static_cast<std::size_t>(grid_size.x) * static_cast<std::size_t>(grid_size.y) *
+                                   static_cast<std::size_t>(grid_size.z));
 
   if (positions.size() > 0)
   {
@@ -176,6 +177,14 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
         {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
 
     cl_int numberOfAtoms = static_cast<cl_int>(positions.size());
+
+    // int3/uint3 are host types whose members are not 32-bit (uint3 holds std::size_t), so
+    // their storage does not match the 4x32-bit layout the kernel expects for an int3
+    // argument. Repack explicitly instead of passing the host structs.
+    cl_int3 clNumberOfReplicas = {{cl_int(numberOfReplicas.x), cl_int(numberOfReplicas.y), cl_int(numberOfReplicas.z),
+                                   cl_int(0)}};
+    cl_int3 clGridSize = {{cl_int(grid_size.x), cl_int(grid_size.y), cl_int(grid_size.z), cl_int(0)}};
+
     err = clSetKernelArg(tessellationKernel, 0, sizeof(cl_mem), &inputPos);
     err |= clSetKernelArg(tessellationKernel, 1, sizeof(cl_mem), &inputSigma);
     err |= clSetKernelArg(tessellationKernel, 2, sizeof(cl_mem), &image);
@@ -183,8 +192,8 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     err |= clSetKernelArg(tessellationKernel, 4, sizeof(cl_float4), &clCellb);
     err |= clSetKernelArg(tessellationKernel, 5, sizeof(cl_float4), &clCellc);
     err |= clSetKernelArg(tessellationKernel, 6, sizeof(cl_int), &numberOfAtoms);
-    err |= clSetKernelArg(tessellationKernel, 7, sizeof(cl_int3), &numberOfReplicas);
-    err |= clSetKernelArg(tessellationKernel, 8, sizeof(cl_int3), &grid_size);
+    err |= clSetKernelArg(tessellationKernel, 7, sizeof(cl_int3), &clNumberOfReplicas);
+    err |= clSetKernelArg(tessellationKernel, 8, sizeof(cl_int3), &clGridSize);
 
     std::size_t global_work_size[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
                                        static_cast<std::size_t>(grid_size.z)};
@@ -241,6 +250,8 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
 }
 
 const char* Tessellation::tessellationKernelSource = R"foo(
+#pragma OPENCL EXTENSION cl_khr_3d_image_writes : enable
+
 __kernel void Tessellation(__global float4 *position,
                            __global float *sigma,
                            __write_only image3d_t image,
@@ -251,8 +262,6 @@ __kernel void Tessellation(__global float4 *position,
                            const int3 numberOfReplicas,
                            const int3 grid_size)
 {
-  #pragma OPENCL EXTENSION cl_khr_3d_image_writes : enable
-
   int4 ipos = {get_global_id(0), get_global_id(1), get_global_id(2), 0};
 
   int iatom;
@@ -261,7 +270,11 @@ __kernel void Tessellation(__global float4 *position,
 
   float4 correction = (float4)(1.0/(float)(numberOfReplicas.x), 1.0/(float)(numberOfReplicas.y), 1.0/(float)(numberOfReplicas.z), 0.0f);
 
-  float4 grid_position = correction * (float4)((float)(ipos.x) / (float)(grid_size.x-1), (float)(ipos.y) / (float)(grid_size.y-1), (float)(ipos.z) / (float)(grid_size.z-1), 0.0f);
+  // Endpoint-exclusive sampling: fractional 0 and 1 are the same periodic point, so dividing
+  // by grid_size (not grid_size-1) keeps the spacing uniform and every sample distinct. The
+  // marching-cubes grids elsewhere divide by grid_size-1 on purpose, because there the last
+  // plane has to duplicate the first for the cubes to span the cell.
+  float4 grid_position = correction * (float4)((float)(ipos.x) / (float)(grid_size.x), (float)(ipos.y) / (float)(grid_size.y), (float)(ipos.z) / (float)(grid_size.z), 0.0f);
 
   int closest_atom = -1;
   float closest_distance = 1e5;
