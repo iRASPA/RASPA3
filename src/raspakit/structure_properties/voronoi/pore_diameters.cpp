@@ -91,7 +91,7 @@ PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
   {
     if (unionFind.find(i).first == percolatingRoot)
     {
-      maximumIncluded = std::max(maximumIncluded, network.nodes[i].radius);
+      maximumIncluded = std::max(maximumIncluded, network.nodes[i].maximalRadius);
     }
   }
   diameters.includedAlongFreePathDiameter = 2.0 * maximumIncluded;

@@ -480,30 +480,25 @@ SKVoronoiCell SKVoronoi::computeCell(std::size_t siteIndex) const
     cell.faces.push_back(std::move(outputFace));
   }
 
-  // Volume and centroid from the fan of tetrahedra spanned by the site (which lies strictly
-  // inside the cell) and the triangulated faces.
+  // Volume and centroid from the fan of tetrahedra spanned by the site and the triangulated
+  // faces. Every face is ordered right-handed around its outward normal, so the signed
+  // contributions must be summed as they are: in a radical diagram the site need not lie
+  // inside its own cell (the plane towards a much larger neighbour can be pushed past the
+  // site's centre), and the faces facing away from the cell then contribute negatively.
+  // Taking the magnitude per face would add those regions instead of subtracting them.
   double volume = 0.0;
   double3 centroid(0.0, 0.0, 0.0);
   for (const SKVoronoiFace &face : cell.faces)
   {
-    double signedVolume = 0.0;
-    double3 signedCentroid(0.0, 0.0, 0.0);
     const double3 &p0 = cell.verticesCartesian[face.vertexIndices[0]];
     for (std::size_t k = 1; k + 1 < face.vertexIndices.size(); ++k)
     {
       const double3 &p1 = cell.verticesCartesian[face.vertexIndices[k]];
       const double3 &p2 = cell.verticesCartesian[face.vertexIndices[k + 1]];
       double tetrahedronVolume = double3::dot(p0, double3::cross(p1, p2)) / 6.0;
-      signedVolume += tetrahedronVolume;
-      signedCentroid += tetrahedronVolume * 0.25 * (p0 + p1 + p2);
+      volume += tetrahedronVolume;
+      centroid += tetrahedronVolume * 0.25 * (p0 + p1 + p2);
     }
-    if (signedVolume < 0.0)
-    {
-      signedVolume = -signedVolume;
-      signedCentroid = -signedCentroid;
-    }
-    volume += signedVolume;
-    centroid += signedCentroid;
   }
   cell.volume = volume;
   cell.centroidCartesian = centroid / volume;

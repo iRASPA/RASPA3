@@ -22,10 +22,86 @@ double distanceSquaredOriginToSegment(const double3& a, const double3& b)
   return double3::dot(closest, closest);
 }
 
+std::vector<ApolloniusSphere> apolloniusTangentSpheres(const std::array<double3, 4>& centres,
+                                                       const std::array<double, 4>& radii)
+{
+  // A sphere of radius t centred at c that touches all four from outside satisfies
+  // |c - x_i| = r_i + t. Squaring gives |c|^2 - 2 c.x_i + |x_i|^2 = t^2 + 2 r_i t + r_i^2, and
+  // subtracting the i = 0 equation cancels both |c|^2 and t^2, leaving three equations that are
+  // linear in c and t:
+  //     2 (x_i - x_0) . c + 2 (r_i - r_0) t = (|x_i|^2 - r_i^2) - (|x_0|^2 - r_0^2)
+  double3 rows[3];
+  double3 rightHandSide(0.0, 0.0, 0.0);
+  double3 timeCoefficient(0.0, 0.0, 0.0);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    rows[i] = 2.0 * (centres[i + 1] - centres[0]);
+    double value = (double3::dot(centres[i + 1], centres[i + 1]) - radii[i + 1] * radii[i + 1]) -
+                   (double3::dot(centres[0], centres[0]) - radii[0] * radii[0]);
+    double coefficient = 2.0 * (radii[i + 1] - radii[0]);
+    if (i == 0)
+    {
+      rightHandSide.x = value;
+      timeCoefficient.x = coefficient;
+    }
+    else if (i == 1)
+    {
+      rightHandSide.y = value;
+      timeCoefficient.y = coefficient;
+    }
+    else
+    {
+      rightHandSide.z = value;
+      timeCoefficient.z = coefficient;
+    }
+  }
+
+  // double3x3 is built from columns, so transpose the rows into it.
+  double3x3 matrix(double3(rows[0].x, rows[1].x, rows[2].x), double3(rows[0].y, rows[1].y, rows[2].y),
+                   double3(rows[0].z, rows[1].z, rows[2].z));
+  double determinant = matrix.determinant();
+
+  // Coplanar or coincident centres leave the centre undetermined along a direction.
+  double scale = std::max({rows[0].length(), rows[1].length(), rows[2].length()});
+  if (scale <= 0.0 || std::abs(determinant) < 1.0e-12 * scale * scale * scale) return {};
+
+  double3x3 inverse = matrix.inverse();
+  double3 base = inverse * rightHandSide;       // centre at t = 0
+  double3 direction = inverse * timeCoefficient;  // centre moves by -t * direction
+
+  // Substituting c = base - t * direction into |c - x_0| = r_0 + t gives a quadratic in t.
+  double3 offset = base - centres[0];
+  double a = double3::dot(direction, direction) - 1.0;
+  double b = -2.0 * (double3::dot(offset, direction) + radii[0]);
+  double c = double3::dot(offset, offset) - radii[0] * radii[0];
+
+  std::vector<double> roots;
+  if (std::abs(a) < 1.0e-14)
+  {
+    if (std::abs(b) > 1.0e-14) roots.push_back(-c / b);
+  }
+  else
+  {
+    double discriminant = b * b - 4.0 * a * c;
+    if (discriminant < 0.0) return {};
+    double squareRoot = std::sqrt(discriminant);
+    roots.push_back((-b + squareRoot) / (2.0 * a));
+    roots.push_back((-b - squareRoot) / (2.0 * a));
+  }
+
+  std::vector<ApolloniusSphere> spheres;
+  for (double t : roots)
+  {
+    if (t < 0.0) continue;
+    spheres.push_back(ApolloniusSphere{base - t * direction, t});
+  }
+  return spheres;
+}
+
 double VoronoiNetwork::largestIncludedSphereDiameter() const
 {
   double maximum = 0.0;
-  for (const VoronoiNode& node : nodes) maximum = std::max(maximum, node.radius);
+  for (const VoronoiNode& node : nodes) maximum = std::max(maximum, node.maximalRadius);
   return 2.0 * maximum;
 }
 
@@ -76,6 +152,11 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
                (static_cast<std::size_t>(by) + static_cast<std::size_t>(binCount.y) * static_cast<std::size_t>(bz));
   };
 
+  // With one or two bins along an axis the -1 and +1 offsets wrap onto bins that are already
+  // covered, so the scan range is narrowed to visit each neighbouring bin exactly once.
+  auto offsetLow = [](std::int32_t count) { return count >= 3 ? -1 : 0; };
+  auto offsetHigh = [](std::int32_t count) { return count >= 2 ? 1 : 0; };
+
   auto findOrAddNode = [&](const double3& unwrappedFractional, double contributionRadius,
                            std::size_t atomIndex) -> std::size_t
   {
@@ -84,9 +165,9 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     std::int32_t by = std::min(binCount.y - 1, static_cast<std::int32_t>(wrapped.y * binCount.y));
     std::int32_t bz = std::min(binCount.z - 1, static_cast<std::int32_t>(wrapped.z * binCount.z));
 
-    for (std::int32_t dz = -1; dz <= 1; ++dz)
-      for (std::int32_t dy = -1; dy <= 1; ++dy)
-        for (std::int32_t dx = -1; dx <= 1; ++dx)
+    for (std::int32_t dz = offsetLow(binCount.z); dz <= offsetHigh(binCount.z); ++dz)
+      for (std::int32_t dy = offsetLow(binCount.y); dy <= offsetHigh(binCount.y); ++dy)
+        for (std::int32_t dx = offsetLow(binCount.x); dx <= offsetHigh(binCount.x); ++dx)
         {
           std::int32_t nx = (bx + dx + binCount.x) % binCount.x;
           std::int32_t ny = (by + dy + binCount.y) % binCount.y;
@@ -127,17 +208,25 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     return index;
   };
 
-  // Undirected edges keyed by (min node, max node, oriented lattice shift); the value is
-  // the running minimum bottleneck radius and the edge length.
-  struct EdgeAccumulator
+  // Undirected edges keyed by (min node, max node, oriented lattice shift). Every cell that
+  // shares an edge registers its own bottleneck contribution, so entries are collected into a
+  // flat vector and reduced afterwards. Keeping the shift as three separate key components
+  // avoids packing them into one integer, and sorting once is cheaper than maintaining a tree
+  // with an allocation per edge.
+  struct EdgeEntry
   {
-    int3 delta;
+    std::array<std::int64_t, 5> key;  // from node, to node, and the three lattice shift components
     double radius;
     double length;
   };
-  std::map<std::array<std::int64_t, 4>, EdgeAccumulator> edgeLookup;
+  std::vector<EdgeEntry> edgeEntries;
 
   std::vector<SKVoronoiCell> cells = voronoi.computeAllCells();
+
+  std::size_t numberOfFaceEdges = 0;
+  for (const SKVoronoiCell& polyhedron : cells)
+    for (const SKVoronoiFace& face : polyhedron.faces) numberOfFaceEdges += face.vertexIndices.size();
+  edgeEntries.reserve(numberOfFaceEdges);
 
   for (std::size_t i = 0; i < cells.size(); ++i)
   {
@@ -154,6 +243,7 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
       double distanceToAtom = relative.length();
       vertexFractional[v] = siteFractional + inverseCell * relative;
       vertexNode[v] = findOrAddNode(vertexFractional[v], distanceToAtom - radiusI, i);
+
       network.atomNodeVectors[i].push_back({vertexNode[v], relative});
     }
 
@@ -206,35 +296,253 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
           std::swap(a, b);
           orientedDelta = int3(-delta.x, -delta.y, -delta.z);
         }
-        std::array<std::int64_t, 4> edgeKey{static_cast<std::int64_t>(a), static_cast<std::int64_t>(b),
-                                            0, 0};
-        // Fold the oriented lattice shift into the remaining key slots.
-        edgeKey[2] = (static_cast<std::int64_t>(orientedDelta.x) << 42) ^
-                     (static_cast<std::int64_t>(orientedDelta.y) << 21) ^
-                     static_cast<std::int64_t>(orientedDelta.z);
-
-        auto it = edgeLookup.find(edgeKey);
-        if (it == edgeLookup.end())
-        {
-          edgeLookup[edgeKey] = EdgeAccumulator{orientedDelta, bottleneck, length};
-        }
-        else
-        {
-          it->second.radius = std::min(it->second.radius, bottleneck);
-        }
+        std::array<std::int64_t, 5> edgeKey{
+            static_cast<std::int64_t>(a),               static_cast<std::int64_t>(b),
+            static_cast<std::int64_t>(orientedDelta.x), static_cast<std::int64_t>(orientedDelta.y),
+            static_cast<std::int64_t>(orientedDelta.z)};
+        edgeEntries.push_back(EdgeEntry{edgeKey, bottleneck, length});
       }
     }
   }
 
-  network.edges.reserve(2 * edgeLookup.size());
-  for (const auto& [key, accumulator] : edgeLookup)
+  // A stable sort groups the contributions to each edge while leaving the first-registered one
+  // at the front of its run, so the retained length is the one insertion order would have kept.
+  std::stable_sort(edgeEntries.begin(), edgeEntries.end(),
+                   [](const EdgeEntry& lhs, const EdgeEntry& rhs) { return lhs.key < rhs.key; });
+
+  std::size_t numberOfUniqueEdges = 0;
+  for (std::size_t i = 0; i < edgeEntries.size(); ++i)
+    if (i == 0 || edgeEntries[i].key != edgeEntries[i - 1].key) ++numberOfUniqueEdges;
+  network.edges.reserve(2 * numberOfUniqueEdges);
+
+  for (std::size_t start = 0; start < edgeEntries.size();)
   {
+    // The bottleneck is the tightest contribution over the cells that share the edge.
+    std::size_t end = start;
+    double radius = edgeEntries[start].radius;
+    while (end < edgeEntries.size() && edgeEntries[end].key == edgeEntries[start].key)
+    {
+      radius = std::min(radius, edgeEntries[end].radius);
+      ++end;
+    }
+
+    const std::array<std::int64_t, 5>& key = edgeEntries[start].key;
     std::size_t a = static_cast<std::size_t>(key[0]);
     std::size_t b = static_cast<std::size_t>(key[1]);
-    network.edges.push_back(VoronoiEdge{a, b, accumulator.delta, accumulator.radius, accumulator.length});
-    network.edges.push_back(VoronoiEdge{
-        b, a, int3(-accumulator.delta.x, -accumulator.delta.y, -accumulator.delta.z), accumulator.radius,
-        accumulator.length});
+    int3 delta(static_cast<std::int32_t>(key[2]), static_cast<std::int32_t>(key[3]),
+               static_cast<std::int32_t>(key[4]));
+    double length = edgeEntries[start].length;
+
+    network.edges.push_back(VoronoiEdge{a, b, delta, radius, length});
+    network.edges.push_back(VoronoiEdge{b, a, int3(-delta.x, -delta.y, -delta.z), radius, length});
+
+    start = end;
+  }
+
+  // Every radius above is a clearance to the atoms whose cells bound that node or edge. The
+  // tessellation is radical, so adjacency is decided by the power distance |x-x_j|^2 - r_j^2
+  // while the room for a probe is the clearance |x-x_j| - r_j; the two disagree once the radii
+  // differ, and an atom that bounds nothing here can still be the nearest in clearance. Left
+  // uncorrected the radii are therefore too large, and an edge can be reported as wider than a
+  // sphere can actually pass. Recomputing each radius as a minimum over all nearby atoms makes
+  // the bottlenecks a rigorous lower bound: a sphere of that radius really does fit everywhere
+  // along the edge. For equal radii the radical diagram is the ordinary Voronoi diagram and the
+  // bounding atoms are already the nearest ones, so this pass leaves the network untouched.
+  double maximumAtomRadius = 0.0;
+  for (double radius : radii) maximumAtomRadius = std::max(maximumAtomRadius, radius);
+
+  // Cell list over the atoms, sized for roughly four atoms per bin.
+  double atomTargetBinSize = std::cbrt(volume / std::max(1.0, static_cast<double>(numberOfAtoms) / 4.0));
+  int3 atomBinCount(std::max(1, static_cast<std::int32_t>(perpendicularWidths.x / atomTargetBinSize)),
+                    std::max(1, static_cast<std::int32_t>(perpendicularWidths.y / atomTargetBinSize)),
+                    std::max(1, static_cast<std::int32_t>(perpendicularWidths.z / atomTargetBinSize)));
+  double3 atomBinWidth(perpendicularWidths.x / static_cast<double>(atomBinCount.x),
+                       perpendicularWidths.y / static_cast<double>(atomBinCount.y),
+                       perpendicularWidths.z / static_cast<double>(atomBinCount.z));
+
+  std::vector<double3> atomPositionsCartesian(numberOfAtoms);
+  std::vector<std::vector<std::size_t>> atomBins(static_cast<std::size_t>(atomBinCount.x) *
+                                                 static_cast<std::size_t>(atomBinCount.y) *
+                                                 static_cast<std::size_t>(atomBinCount.z));
+  for (std::size_t j = 0; j < numberOfAtoms; ++j)
+  {
+    const double3& fractional = network.atomPositionsFractional[j];
+    atomPositionsCartesian[j] = cell * fractional;
+    std::int32_t bx = std::min(atomBinCount.x - 1, static_cast<std::int32_t>(fractional.x * atomBinCount.x));
+    std::int32_t by = std::min(atomBinCount.y - 1, static_cast<std::int32_t>(fractional.y * atomBinCount.y));
+    std::int32_t bz = std::min(atomBinCount.z - 1, static_cast<std::int32_t>(fractional.z * atomBinCount.z));
+    atomBins[static_cast<std::size_t>((bz * atomBinCount.y + by) * atomBinCount.x + bx)].push_back(j);
+  }
+
+  // Splits an out-of-range bin coordinate into a wrapped index and the image it came from.
+  auto binAndImage = [](std::int32_t coordinate, std::int32_t extent)
+  {
+    std::int32_t image = (coordinate >= 0) ? coordinate / extent : -((-coordinate + extent - 1) / extent);
+    return std::pair<std::int32_t, std::int32_t>{coordinate - image * extent, image};
+  };
+
+  // Visits every atom image whose centre lies within searchRadius of the given wrapped point.
+  auto forEachAtomNear = [&](const double3& wrappedCentre, double searchRadius, auto&& visit)
+  {
+    double3 centreFractional = inverseCell * wrappedCentre;
+    std::int32_t cx = std::min(atomBinCount.x - 1, static_cast<std::int32_t>(centreFractional.x * atomBinCount.x));
+    std::int32_t cy = std::min(atomBinCount.y - 1, static_cast<std::int32_t>(centreFractional.y * atomBinCount.y));
+    std::int32_t cz = std::min(atomBinCount.z - 1, static_cast<std::int32_t>(centreFractional.z * atomBinCount.z));
+
+    // A displacement of searchRadius spans at most ceil(searchRadius / bin width) bins; the
+    // extra bin absorbs the position of the centre within its own bin.
+    int3 span(static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.x)) + 1,
+              static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.y)) + 1,
+              static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.z)) + 1);
+
+    for (std::int32_t oz = -span.z; oz <= span.z; ++oz)
+    {
+      for (std::int32_t oy = -span.y; oy <= span.y; ++oy)
+      {
+        for (std::int32_t ox = -span.x; ox <= span.x; ++ox)
+        {
+          auto [bx, lx] = binAndImage(cx + ox, atomBinCount.x);
+          auto [by, ly] = binAndImage(cy + oy, atomBinCount.y);
+          auto [bz, lz] = binAndImage(cz + oz, atomBinCount.z);
+          double3 imageShift =
+              cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz));
+          for (std::size_t j : atomBins[static_cast<std::size_t>((bz * atomBinCount.y + by) * atomBinCount.x + bx)])
+          {
+            visit(j, atomPositionsCartesian[j] + imageShift);
+          }
+        }
+      }
+    }
+  };
+
+  // The stored radius is an upper bound on the true clearance, so only atoms within
+  // (radius + largest atom radius) of the feature can lower it.
+  for (VoronoiNode& node : network.nodes)
+  {
+    double clearance = node.radius;
+    forEachAtomNear(node.position, node.radius + maximumAtomRadius,
+                    [&](std::size_t j, const double3& atomImage)
+                    { clearance = std::min(clearance, (node.position - atomImage).length() - radii[j]); });
+    node.radius = clearance;
+  }
+
+  // Edges were emitted as consecutive forward/backward pairs sharing one radius.
+  for (std::size_t i = 0; i + 1 < network.edges.size(); i += 2)
+  {
+    VoronoiEdge& forward = network.edges[i];
+    double3 p = network.nodes[forward.from].position;
+    double3 q = network.nodes[forward.to].position + cell * double3(static_cast<double>(forward.delta.x),
+                                                                    static_cast<double>(forward.delta.y),
+                                                                    static_cast<double>(forward.delta.z));
+
+    // The segment can leave the cell, so shift it to sit around its own wrapped midpoint.
+    double3 midpoint = 0.5 * (p + q);
+    double3 wrappedMidpoint = cell * double3::fract(inverseCell * midpoint);
+    double3 shift = wrappedMidpoint - midpoint;
+    double halfLength = 0.5 * (q - p).length();
+
+    double clearance = forward.radius;
+    forEachAtomNear(wrappedMidpoint, halfLength + forward.radius + maximumAtomRadius,
+                    [&](std::size_t j, const double3& atomImage)
+                    {
+                      double distance = std::sqrt(
+                          distanceSquaredOriginToSegment(p + shift - atomImage, q + shift - atomImage));
+                      clearance = std::min(clearance, distance - radii[j]);
+                    });
+    forward.radius = clearance;
+    network.edges[i + 1].radius = clearance;
+  }
+
+  // The radii above are now honest, but they are measured at the radical vertices, and that is
+  // not where the free space is widest. The clearance min_j(|x - x_j| - r_j) peaks at an
+  // Apollonius vertex, the centre of a sphere tangent to four atoms; the two coincide only when
+  // the surrounding radii are equal, which is why the correction above leaves Di short. Each node
+  // therefore walks from its vertex to the peak of its own pocket, using the closed form above to
+  // supply the steps.
+  struct Candidate
+  {
+    double3 centre;
+    double radius;
+    double clearance;
+  };
+  std::vector<Candidate> candidates;
+  constexpr std::size_t maximumApolloniusIterations = 16;
+  constexpr std::size_t apolloniusCandidateCount = 8;
+  constexpr double apolloniusConvergenceTolerance = 1.0e-12;
+
+  for (VoronoiNode& node : network.nodes)
+  {
+    node.maximalRadius = node.radius;
+    node.maximalPosition = node.position;
+    if (node.radius <= 0.0) continue;
+
+    // One solve is not enough: the four atoms tightest at the radical vertex are usually not the
+    // four the maximal sphere ends up touching. So walk. Each step jumps to the Apollonius vertex
+    // of the currently tightest four and keeps it only if the true clearance there is larger.
+    //
+    // Recording the clearance rather than the tangent radius is what makes this safe: a clearance
+    // is by definition the radius of a sphere that touches nothing, so no step can ever claim
+    // room that is not there, and no separate emptiness test is needed. Monotonicity does the
+    // rest. The walk cannot cycle because the clearance strictly increases, and it cannot wander
+    // into a neighbouring pocket because reaching one means crossing a bottleneck where the
+    // clearance is lower. It halts at a point no tangent solve improves, the local peak.
+    double3 point = node.position;
+    for (std::size_t iteration = 0; iteration < maximumApolloniusIterations; ++iteration)
+    {
+      candidates.clear();
+      forEachAtomNear(point, node.maximalRadius + maximumAtomRadius,
+                      [&](std::size_t j, const double3& atomImage) {
+                        candidates.push_back(Candidate{atomImage, radii[j], (point - atomImage).length() - radii[j]});
+                      });
+      if (candidates.size() < 4) break;
+
+      // Which four atoms the peak touches is not known in advance, and simply taking the four
+      // tightest stalls short of it. Try every quadruple drawn from the nearest few instead; the
+      // radius test below discards almost all of them before any real work is done.
+      std::size_t considered = std::min(apolloniusCandidateCount, candidates.size());
+      std::partial_sort(candidates.begin(), candidates.begin() + static_cast<std::ptrdiff_t>(considered),
+                        candidates.end(),
+                        [](const Candidate& lhs, const Candidate& rhs) { return lhs.clearance < rhs.clearance; });
+
+      double bestClearance = node.maximalRadius;
+      double3 bestPoint = point;
+      for (std::size_t i0 = 0; i0 < considered; ++i0)
+        for (std::size_t i1 = i0 + 1; i1 < considered; ++i1)
+          for (std::size_t i2 = i1 + 1; i2 < considered; ++i2)
+            for (std::size_t i3 = i2 + 1; i3 < considered; ++i3)
+            {
+              std::array<double3, 4> tangentCentres{candidates[i0].centre, candidates[i1].centre,
+                                                    candidates[i2].centre, candidates[i3].centre};
+              std::array<double, 4> tangentRadii{candidates[i0].radius, candidates[i1].radius, candidates[i2].radius,
+                                                 candidates[i3].radius};
+
+              for (const ApolloniusSphere& sphere : apolloniusTangentSpheres(tangentCentres, tangentRadii))
+              {
+                // The sphere touches all four, so the clearance at its centre cannot exceed its
+                // radius; a shorter radius cannot improve on what we already have.
+                if (sphere.radius <= bestClearance) continue;
+                // Keep the jump inside the pocket rather than trusting a distant solution.
+                if ((sphere.centre - point).length() > node.radius) continue;
+
+                double3 wrappedCentre = cell * double3::fract(inverseCell * sphere.centre);
+                double clearance = sphere.radius;
+                forEachAtomNear(wrappedCentre, sphere.radius + maximumAtomRadius,
+                                [&](std::size_t j, const double3& atomImage)
+                                { clearance = std::min(clearance, (wrappedCentre - atomImage).length() - radii[j]); });
+
+                if (clearance > bestClearance)
+                {
+                  bestClearance = clearance;
+                  bestPoint = wrappedCentre;
+                }
+              }
+            }
+
+      if (bestClearance <= node.maximalRadius + apolloniusConvergenceTolerance) break;
+      node.maximalRadius = bestClearance;
+      node.maximalPosition = bestPoint;
+      point = bestPoint;
+    }
   }
 
   return network;

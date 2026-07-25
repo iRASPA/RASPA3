@@ -123,6 +123,54 @@ TEST(voronoi, volumes_tile_triclinic_cell)
   EXPECT_NEAR(totalVolume, voronoi.cellVolume(), 1.0e-6);
 }
 
+// The radical (power) cells also tile the periodic cell, so their volumes must sum to the
+// cell volume just as in the unweighted case.
+TEST(voronoi, radical_volumes_tile_cell)
+{
+  double3x3 unitCell(double3(12.0, 0.0, 0.0), double3(3.0, 11.0, 0.0), double3(2.0, 1.5, 9.0));
+  std::mt19937 generator(2024);
+  std::uniform_real_distribution<double> uniform(0.0, 1.0);
+  std::uniform_real_distribution<double> radius(0.5, 2.5);
+
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (std::size_t i = 0; i < 24; ++i)
+  {
+    positions.push_back(double3(uniform(generator), uniform(generator), uniform(generator)));
+    radii.push_back(radius(generator));
+  }
+
+  SKVoronoi voronoi(unitCell, positions, radii);
+  std::vector<SKVoronoiCell> cells = voronoi.computeAllCells();
+
+  double totalVolume = 0.0;
+  for (const SKVoronoiCell &cell : cells) totalVolume += cell.volume;
+  EXPECT_NEAR(totalVolume, voronoi.cellVolume(), 1.0e-6);
+}
+
+// In a radical diagram a site can lie outside its own cell: the plane between a small and a
+// much larger neighbour is pushed past the small site's centre. Here the plane towards site 0
+// sits 0.45 A behind site 1, so site 1 is outside its own power cell. The two cells still
+// tile the box.
+TEST(voronoi, radical_site_outside_own_cell)
+{
+  double a = 10.0;
+  double3x3 unitCell(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, a));
+  double separation = 1.6;
+  std::vector<double3> positions{double3(0.5, 0.5, 0.5), double3(0.5 + separation / a, 0.5, 0.5)};
+  std::vector<double> radii{2.5, 1.5};
+
+  SKVoronoi voronoi(unitCell, positions, radii);
+  std::vector<SKVoronoiCell> cells = voronoi.computeAllCells();
+
+  // Signed distance from site 1 to the radical plane towards site 0; negative means the
+  // site lies outside its own cell.
+  double offset = (separation * separation + radii[1] * radii[1] - radii[0] * radii[0]) / (2.0 * separation);
+  EXPECT_LT(offset, 0.0);
+
+  EXPECT_NEAR(cells[0].volume + cells[1].volume, a * a * a, 1.0e-6);
+}
+
 // Voronoi neighbor relations are symmetric: if j is a neighbor of i through image L, then
 // i must be a neighbor of j through image -L, and the shared faces have equal area.
 TEST(voronoi, faces_are_symmetric)

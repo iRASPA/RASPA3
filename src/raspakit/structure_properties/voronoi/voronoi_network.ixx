@@ -25,8 +25,27 @@ export struct VoronoiNode
   double3 position;   // Cartesian position in the home unit cell [Å]
   double3 fractional; // fractional position wrapped into [0,1)
   double radius;      // rad_stat_sphere: largest included sphere radius at this node [Å]
+  // Radius of the largest empty sphere in this node's own pocket of free space. A radical
+  // Voronoi vertex is not where the clearance peaks once the atom radii differ; the peak sits
+  // at a nearby Apollonius vertex, so this is at least `radius` and is what Di is read from.
+  double maximalRadius{0.0};
+  double3 maximalPosition{}; // Cartesian centre of that sphere, the deepest point of the pocket
   std::vector<std::size_t> atomIndices;  // indices of the atoms whose cells meet here
 };
+
+// A sphere tangent to, and outside, a set of atoms: a vertex of the Apollonius (additively
+// weighted Voronoi) diagram, where the clearance min_j(|x - x_j| - r_j) is locally maximal.
+export struct ApolloniusSphere
+{
+  double3 centre;
+  double radius;
+};
+
+// The spheres tangent to and outside all four given spheres. Four such constraints determine
+// the centre and radius up to a quadratic, so there are at most two; fewer are returned for
+// degenerate configurations or when no solution has a non-negative radius.
+export std::vector<ApolloniusSphere> apolloniusTangentSpheres(const std::array<double3, 4>& centres,
+                                                              const std::array<double, 4>& radii);
 
 export struct VoronoiEdge
 {

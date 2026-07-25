@@ -106,17 +106,25 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   double3 wrappedPoint = simulationBox.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 
-  // Nearest atom via the cell list: walk bin shells outward (wrapping periodically); all
-  // atoms in shell k are at least (k-1)·(minimum bin width) away, so the walk stops once
-  // that bound exceeds the best distance found.
+  // The network is a radical (power) diagram, so the cell containing the point is the one
+  // minimising the power distance |x-x_i|^2 - r_i^2, not the Euclidean distance. Picking the
+  // Euclidean-nearest atom instead can land on a site whose power cell is empty (a normal
+  // occurrence in a power diagram), leaving no vertices for the line-of-sight test below.
+  //
+  // Search via the cell list: walk bin shells outward (wrapping periodically); all atoms in
+  // shell k are at least (k-1)·(minimum bin width) away, so their power distance is at least
+  // that bound squared minus the largest radius squared, and the walk stops once that lower
+  // bound exceeds the best power distance found.
   std::size_t nearestAtom = 0;
-  double nearestDistanceSquared = std::numeric_limits<double>::max();
+  double nearestPowerDistance = std::numeric_limits<double>::max();
   double3 nearestDelta(0.0, 0.0, 0.0);
   bool found = false;
   for (int k = 0;; ++k)
   {
     double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
-    if (k > 0 && found && lowerBound * lowerBound > nearestDistanceSquared) break;
+    if (k > 0 && found && lowerBound > 0.0 &&
+        lowerBound * lowerBound - maximumAtomRadius * maximumAtomRadius > nearestPowerDistance)
+      break;
 
     for (int ox = -k; ox <= k; ++ox)
     {
@@ -137,10 +145,10 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
           for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
           {
             double3 delta = atomPositions[j] + imageShift;
-            double distanceSquared = double3::dot(delta, delta);
-            if (distanceSquared < nearestDistanceSquared)
+            double powerDistance = double3::dot(delta, delta) - atomRadii[j] * atomRadii[j];
+            if (powerDistance < nearestPowerDistance)
             {
-              nearestDistanceSquared = distanceSquared;
+              nearestPowerDistance = powerDistance;
               nearestAtom = j;
               nearestDelta = delta;
               found = true;
@@ -152,8 +160,8 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   }
   double3 nearestAtomImage = wrappedPoint + nearestDelta;  // nearest periodic image of the atom
 
-  double nearestDistance = std::sqrt(nearestDistanceSquared);
-  if (nearestDistance < atomRadii[nearestAtom] - 1.0e-8)
+  // A negative minimum power distance means the point lies inside that inflated atom.
+  if (nearestPowerDistance < -1.0e-8)
   {
     classification.inside = true;
     return classification;
@@ -162,14 +170,25 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   // Line-of-sight test against the Voronoi nodes of the nearest atom's cell.
   double3 sampleRay = wrappedPoint - nearestAtomImage;
   double bestDistanceSquared = std::numeric_limits<double>::max();
+  double nearestNodeDistanceSquared = std::numeric_limits<double>::max();
+  std::size_t nearestNode = 0;
   bool decided = false;
+  bool haveNearestNode = false;
   for (const auto& [nodeIndex, vertexRelative] : network.atomNodeVectors[nearestAtom])
   {
     double3 nodePosition = nearestAtomImage + vertexRelative;
     double3 otherRay = wrappedPoint - nodePosition;
+    double distanceSquared = double3::dot(otherRay, otherRay);
+
+    if (distanceSquared < nearestNodeDistanceSquared)
+    {
+      nearestNodeDistanceSquared = distanceSquared;
+      nearestNode = nodeIndex;
+      haveNearestNode = true;
+    }
+
     if (double3::dot(sampleRay, otherRay) <= 0.0)
     {
-      double distanceSquared = double3::dot(otherRay, otherRay);
       if (distanceSquared < bestDistanceSquared)
       {
         bestDistanceSquared = distanceSquared;
@@ -178,6 +197,16 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
         decided = true;
       }
     }
+  }
+
+  // In compact cages every node of the cell can sit forward of the sample point, so no node
+  // passes the test above. Attributing the point to the nearest node of the cell keeps it in
+  // the statistics; discarding it instead removes its share of the sampled area or volume.
+  if (!decided && haveNearestNode)
+  {
+    classification.accessible = nodeAccessible[nearestNode] != 0;
+    classification.poreId = channels.nodePoreId[nearestNode];
+    decided = true;
   }
 
   if (!decided) classification.resample = true;
