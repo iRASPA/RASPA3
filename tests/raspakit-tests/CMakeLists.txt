@@ -59,6 +59,7 @@ add_executable(unit_tests_raspakit
   nasa_polynomials.cpp
   partition_function.cpp
   voronoi.cpp
+  apollonius.cpp
   voronoi_analysis.cpp
   main.cpp)
 
