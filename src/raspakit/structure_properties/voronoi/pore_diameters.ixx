@@ -48,6 +48,7 @@ export PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std:
 export struct VoronoiPoreDiameters
 {
   PoreDiameters result;
+  VoronoiNetwork network;  // the network the diameters were read from, kept for the analyses that follow
 
   void run(const ForceField& forceField, const Framework& framework);
 };

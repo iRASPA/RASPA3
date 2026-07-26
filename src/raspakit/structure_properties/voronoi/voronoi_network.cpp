@@ -22,52 +22,59 @@ double distanceSquaredOriginToSegment(const double3& a, const double3& b)
   return double3::dot(closest, closest);
 }
 
-std::vector<ApolloniusSphere> apolloniusTangentSpheres(const std::array<double3, 4>& centres,
-                                                       const std::array<double, 4>& radii)
+// At most two spheres are tangent to four, so the answer fits in a pair of them. Which matters
+// because the walk below solves this millions of times and a vector would allocate at every one.
+struct TangentSpheres
+{
+  std::array<ApolloniusSphere, 2> spheres{};
+  std::size_t count{0};
+
+  void add(const ApolloniusSphere& sphere) { spheres[count++] = sphere; }
+  const ApolloniusSphere* begin() const { return spheres.data(); }
+  const ApolloniusSphere* end() const { return spheres.data() + count; }
+};
+
+// `weights` are the |x_i|^2 - r_i^2 of the four, which depend on one sphere each and not on the
+// quadruple, so the walk below works them out once per atom instead of once per quadruple it appears in.
+TangentSpheres tangentSpheresOf(const std::array<double3, 4>& centres, const std::array<double, 4>& radii,
+                                const std::array<double, 4>& weights)
 {
   // A sphere of radius t centred at c that touches all four from outside satisfies
   // |c - x_i| = r_i + t. Squaring gives |c|^2 - 2 c.x_i + |x_i|^2 = t^2 + 2 r_i t + r_i^2, and
   // subtracting the i = 0 equation cancels both |c|^2 and t^2, leaving three equations that are
   // linear in c and t:
   //     2 (x_i - x_0) . c + 2 (r_i - r_0) t = (|x_i|^2 - r_i^2) - (|x_0|^2 - r_0^2)
-  double3 rows[3];
-  double3 rightHandSide(0.0, 0.0, 0.0);
-  double3 timeCoefficient(0.0, 0.0, 0.0);
-  for (std::size_t i = 0; i < 3; ++i)
-  {
-    rows[i] = 2.0 * (centres[i + 1] - centres[0]);
-    double value = (double3::dot(centres[i + 1], centres[i + 1]) - radii[i + 1] * radii[i + 1]) -
-                   (double3::dot(centres[0], centres[0]) - radii[0] * radii[0]);
-    double coefficient = 2.0 * (radii[i + 1] - radii[0]);
-    if (i == 0)
-    {
-      rightHandSide.x = value;
-      timeCoefficient.x = coefficient;
-    }
-    else if (i == 1)
-    {
-      rightHandSide.y = value;
-      timeCoefficient.y = coefficient;
-    }
-    else
-    {
-      rightHandSide.z = value;
-      timeCoefficient.z = coefficient;
-    }
-  }
+  double3 rows[3]{2.0 * (centres[1] - centres[0]), 2.0 * (centres[2] - centres[0]),
+                  2.0 * (centres[3] - centres[0])};
+  double3 rightHandSide(weights[1] - weights[0], weights[2] - weights[0], weights[3] - weights[0]);
+  double3 timeCoefficient(2.0 * (radii[1] - radii[0]), 2.0 * (radii[2] - radii[0]), 2.0 * (radii[3] - radii[0]));
 
-  // double3x3 is built from columns, so transpose the rows into it.
-  double3x3 matrix(double3(rows[0].x, rows[1].x, rows[2].x), double3(rows[0].y, rows[1].y, rows[2].y),
-                   double3(rows[0].z, rows[1].z, rows[2].z));
-  double determinant = matrix.determinant();
+  // Both unknowns are solved from the same three rows, by Cramer's rule written with cross products.
+  // The two right-hand sides then share the three cofactor vectors and the one determinant, and the
+  // whole solve costs a single division; forming the inverse matrix instead would compute the
+  // determinant a second time and divide nine times, which the walk below cannot afford to do a
+  // million times over.
+  double3 cofactor0 = double3::cross(rows[1], rows[2]);
+  double3 cofactor1 = double3::cross(rows[2], rows[0]);
+  double3 cofactor2 = double3::cross(rows[0], rows[1]);
+  double determinant = double3::dot(rows[0], cofactor0);
 
-  // Coplanar or coincident centres leave the centre undetermined along a direction.
-  double scale = std::max({rows[0].length(), rows[1].length(), rows[2].length()});
-  if (scale <= 0.0 || std::abs(determinant) < 1.0e-12 * scale * scale * scale) return {};
+  // Coplanar or coincident centres leave the centre undetermined along a direction. The test is
+  // |det| < 1e-12 s^3 for s the longest row, squared throughout so that neither the row lengths nor
+  // the scale need a root taken of them.
+  double scaleSquared =
+      std::max({rows[0].length_squared(), rows[1].length_squared(), rows[2].length_squared()});
+  if (scaleSquared <= 0.0 ||
+      determinant * determinant < 1.0e-24 * scaleSquared * scaleSquared * scaleSquared)
+    return {};
 
-  double3x3 inverse = matrix.inverse();
-  double3 base = inverse * rightHandSide;       // centre at t = 0
-  double3 direction = inverse * timeCoefficient;  // centre moves by -t * direction
+  double inverseDeterminant = 1.0 / determinant;
+  // centre at t = 0
+  double3 base = inverseDeterminant * (rightHandSide.x * cofactor0 + rightHandSide.y * cofactor1 +
+                                       rightHandSide.z * cofactor2);
+  // centre moves by -t * direction
+  double3 direction = inverseDeterminant * (timeCoefficient.x * cofactor0 + timeCoefficient.y * cofactor1 +
+                                            timeCoefficient.z * cofactor2);
 
   // Substituting c = base - t * direction into |c - x_0| = r_0 + t gives a quadratic in t.
   double3 offset = base - centres[0];
@@ -75,27 +82,39 @@ std::vector<ApolloniusSphere> apolloniusTangentSpheres(const std::array<double3,
   double b = -2.0 * (double3::dot(offset, direction) + radii[0]);
   double c = double3::dot(offset, offset) - radii[0] * radii[0];
 
-  std::vector<double> roots;
+  std::array<double, 2> roots{};
+  std::size_t rootCount = 0;
   if (std::abs(a) < 1.0e-14)
   {
-    if (std::abs(b) > 1.0e-14) roots.push_back(-c / b);
+    if (std::abs(b) > 1.0e-14) roots[rootCount++] = -c / b;
   }
   else
   {
     double discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0.0) return {};
     double squareRoot = std::sqrt(discriminant);
-    roots.push_back((-b + squareRoot) / (2.0 * a));
-    roots.push_back((-b - squareRoot) / (2.0 * a));
+    roots[rootCount++] = (-b + squareRoot) / (2.0 * a);
+    roots[rootCount++] = (-b - squareRoot) / (2.0 * a);
   }
 
-  std::vector<ApolloniusSphere> spheres;
-  for (double t : roots)
+  TangentSpheres spheres;
+  for (std::size_t r = 0; r < rootCount; ++r)
   {
+    double t = roots[r];
     if (t < 0.0) continue;
-    spheres.push_back(ApolloniusSphere{base - t * direction, t});
+    spheres.add(ApolloniusSphere{base - t * direction, t});
   }
   return spheres;
+}
+
+std::vector<ApolloniusSphere> apolloniusTangentSpheres(const std::array<double3, 4>& centres,
+                                                       const std::array<double, 4>& radii)
+{
+  std::array<double, 4> weights{};
+  for (std::size_t i = 0; i < 4; ++i) weights[i] = double3::dot(centres[i], centres[i]) - radii[i] * radii[i];
+
+  TangentSpheres spheres = tangentSpheresOf(centres, radii, weights);
+  return std::vector<ApolloniusSphere>(spheres.begin(), spheres.end());
 }
 
 double VoronoiNetwork::largestIncludedSphereDiameter() const
@@ -381,7 +400,32 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     return std::pair<std::int32_t, std::int32_t>{coordinate - image * extent, image};
   };
 
+  // Half the longest diagonal of a bin, which is the radius of the sphere about a bin's centre that
+  // contains it. Together with the centre it says how near a bin can come to a point, and so which
+  // bins are worth looking inside. Stepping one bin along an axis moves by a fixed vector, so a bin's
+  // centre is reached by adding whole steps rather than by a coordinate transform of its own.
+  double binCircumradius = 0.0;
+  double3 binStepX = cell * double3(1.0 / static_cast<double>(atomBinCount.x), 0.0, 0.0);
+  double3 binStepY = cell * double3(0.0, 1.0 / static_cast<double>(atomBinCount.y), 0.0);
+  double3 binStepZ = cell * double3(0.0, 0.0, 1.0 / static_cast<double>(atomBinCount.z));
+  for (double sx : {-0.5, 0.5})
+    for (double sy : {-0.5, 0.5})
+      for (double sz : {-0.5, 0.5})
+        binCircumradius = std::max(binCircumradius, (sx * binStepX + sy * binStepY + sz * binStepZ).length());
+
   // Visits every atom image whose centre lies within searchRadius of the given wrapped point.
+  //
+  // The bins enumerated are a box around the point, but the region asked for is a ball, and in a box
+  // wide enough to hold a ball most of the bins are outside it. So each bin is measured before it is
+  // opened, by the distance from the point to its centre less its circumradius, which is how near
+  // anything in it can be. This is measured on the centre and circumradius rather than per axis
+  // because the axes of a triclinic cell are not perpendicular, and a bound taken along them
+  // separately would not bound the distance.
+  //
+  // That measurement has to be cheaper than the atoms it saves, or the box is merely paid for twice
+  // over. So it is a squared length against a squared reach, with no root, and the centre it needs is
+  // built by accumulating the axis steps down the loop nest, with no transform and nothing else per
+  // bin. The wrapped bin index and image are only worked out for the bins that survive it.
   auto forEachAtomNear = [&](const double3& wrappedCentre, double searchRadius, auto&& visit)
   {
     double3 centreFractional = inverseCell * wrappedCentre;
@@ -394,19 +438,33 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     int3 span(static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.x)) + 1,
               static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.y)) + 1,
               static_cast<std::int32_t>(std::ceil(searchRadius / atomBinWidth.z)) + 1);
+    double binReach = searchRadius + binCircumradius;
+    double binReachSquared = binReach * binReach;
+
+    // The centre of the point's own bin, as seen from the point.
+    double3 ownBinCentre = (static_cast<double>(cx) + 0.5) * binStepX + (static_cast<double>(cy) + 0.5) * binStepY +
+                           (static_cast<double>(cz) + 0.5) * binStepZ - wrappedCentre;
 
     for (std::int32_t oz = -span.z; oz <= span.z; ++oz)
     {
+      double3 alongZ = ownBinCentre + static_cast<double>(oz) * binStepZ;
       for (std::int32_t oy = -span.y; oy <= span.y; ++oy)
       {
+        double3 alongZY = alongZ + static_cast<double>(oy) * binStepY;
         for (std::int32_t ox = -span.x; ox <= span.x; ++ox)
         {
+          double3 binCentre = alongZY + static_cast<double>(ox) * binStepX;
+          if (double3::dot(binCentre, binCentre) > binReachSquared) continue;
+
           auto [bx, lx] = binAndImage(cx + ox, atomBinCount.x);
           auto [by, ly] = binAndImage(cy + oy, atomBinCount.y);
           auto [bz, lz] = binAndImage(cz + oz, atomBinCount.z);
+          std::size_t bin = static_cast<std::size_t>((bz * atomBinCount.y + by) * atomBinCount.x + bx);
+          if (atomBins[bin].empty()) continue;
+
           double3 imageShift =
               cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz));
-          for (std::size_t j : atomBins[static_cast<std::size_t>((bz * atomBinCount.y + by) * atomBinCount.x + bx)])
+          for (std::size_t j : atomBins[bin])
           {
             visit(j, atomPositionsCartesian[j] + imageShift);
           }
@@ -464,6 +522,7 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     double3 centre;
     double radius;
     double clearance;
+    double weight;  // |x|^2 - r^2, which the tangency solve needs and which is the atom's alone
   };
   std::vector<Candidate> candidates;
   constexpr std::size_t maximumApolloniusIterations = 16;
@@ -491,8 +550,11 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
     {
       candidates.clear();
       forEachAtomNear(point, node.maximalRadius + maximumAtomRadius,
-                      [&](std::size_t j, const double3& atomImage) {
-                        candidates.push_back(Candidate{atomImage, radii[j], (point - atomImage).length() - radii[j]});
+                      [&](std::size_t j, const double3& atomImage)
+                      {
+                        candidates.push_back(Candidate{atomImage, radii[j],
+                                                       (point - atomImage).length() - radii[j],
+                                                       double3::dot(atomImage, atomImage) - radii[j] * radii[j]});
                       });
       if (candidates.size() < 4) break;
 
@@ -515,14 +577,27 @@ VoronoiNetwork VoronoiNetwork::create(const SimulationBox& simulationBox,
                                                     candidates[i2].centre, candidates[i3].centre};
               std::array<double, 4> tangentRadii{candidates[i0].radius, candidates[i1].radius, candidates[i2].radius,
                                                  candidates[i3].radius};
+              std::array<double, 4> tangentWeights{candidates[i0].weight, candidates[i1].weight,
+                                                   candidates[i2].weight, candidates[i3].weight};
 
-              for (const ApolloniusSphere& sphere : apolloniusTangentSpheres(tangentCentres, tangentRadii))
+              for (const ApolloniusSphere& sphere : tangentSpheresOf(tangentCentres, tangentRadii, tangentWeights))
               {
                 // The sphere touches all four, so the clearance at its centre cannot exceed its
                 // radius; a shorter radius cannot improve on what we already have.
                 if (sphere.radius <= bestClearance) continue;
                 // Keep the jump inside the pocket rather than trusting a distant solution.
                 if ((sphere.centre - point).length() > node.radius) continue;
+
+                // Almost every sphere that gets this far is spoiled by an atom that is already in
+                // hand, since the atoms tightest at the point the sphere was solved from are the
+                // ones most likely to reach into it. A clearance over any set of atoms is an upper
+                // bound on the clearance over all of them, so a bound that already fails to improve
+                // settles the sphere without going to the grid for the rest.
+                double reachable = sphere.radius;
+                for (std::size_t s = 0; s < considered; ++s)
+                  reachable =
+                      std::min(reachable, (sphere.centre - candidates[s].centre).length() - candidates[s].radius);
+                if (reachable <= bestClearance) continue;
 
                 double3 wrappedCentre = cell * double3::fract(inverseCell * sphere.centre);
                 double clearance = sphere.radius;

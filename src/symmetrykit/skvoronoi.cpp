@@ -68,6 +68,9 @@ struct Workspace
   std::vector<std::size_t> remap;
   std::vector<double3> compactedVertices;
   std::vector<Candidate> shellCandidates;
+  // (distance, candidate) pairs, so that putting a shell in order of distance moves sixteen bytes per
+  // candidate rather than the whole of one.
+  std::vector<std::pair<double, std::uint32_t>> shellOrder;
 };
 
 Polyhedron makeInitialCube(double halfWidth)
@@ -362,6 +365,7 @@ SKVoronoiCell SKVoronoi::computeCell(std::size_t siteIndex) const
   };
 
   std::vector<Candidate> &shellCandidates = ws.shellCandidates;
+  std::vector<std::pair<double, std::uint32_t>> &shellOrder = ws.shellOrder;
   for (int k = 0;; ++k)
   {
     double lowerBound = static_cast<double>(k - 1) * _minimumBinWidth;
@@ -399,11 +403,20 @@ SKVoronoiCell SKVoronoi::computeCell(std::size_t siteIndex) const
         }
       }
     }
-    std::sort(shellCandidates.begin(), shellCandidates.end(),
-              [](const Candidate &lhs, const Candidate &rhs) { return lhs.rsq < rhs.rsq; });
+    // Nearest first, both so that the loop below can stop at the first candidate out of range and so
+    // that the cell shrinks as fast as it can, every cut narrowing the range left to search. What is
+    // put in order is a distance and a position in the shell rather than the candidates themselves,
+    // which are seven times the size and would be carried through every swap.
+    shellOrder.resize(shellCandidates.size());
+    for (std::size_t c = 0; c < shellCandidates.size(); ++c)
+      shellOrder[c] = {shellCandidates[c].rsq, static_cast<std::uint32_t>(c)};
+    std::sort(shellOrder.begin(), shellOrder.end(),
+              [](const std::pair<double, std::uint32_t> &lhs, const std::pair<double, std::uint32_t> &rhs)
+              { return lhs.first < rhs.first; });
 
-    for (const Candidate &candidate : shellCandidates)
+    for (const auto &[candidateDistance, candidateIndex] : shellOrder)
     {
+      const Candidate &candidate = shellCandidates[candidateIndex];
       // Candidates in this shell are sorted by distance; once one is beyond the search
       // radius so are the rest (the circumradius only shrinks as cuts proceed).
       if (candidate.rsq > searchRadiusSquared) break;

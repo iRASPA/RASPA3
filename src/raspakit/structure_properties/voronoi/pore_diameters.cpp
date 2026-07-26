@@ -135,7 +135,7 @@ void VoronoiPoreDiameters::run(const ForceField& forceField, const Framework& fr
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiNetwork network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
+  network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
   result = PoreDiameters::compute(network);
 
   std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;

@@ -119,13 +119,6 @@ ChannelAnalysis ChannelAnalysis::compute(const VoronoiNetwork& network, double p
 
 void VoronoiChannels::run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom)
 {
-  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
-  if (!probeType.has_value())
-  {
-    throw std::runtime_error("VoronoiChannels: Unknown probe-atom type\n");
-  }
-  double probeRadius = 0.5 * forceField[probeType.value()].sizeParameter();
-
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
   for (const Atom& atom : framework.unitCellAtoms)
@@ -135,7 +128,20 @@ void VoronoiChannels::run(const ForceField& forceField, const Framework& framewo
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiNetwork network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
+  run(forceField, framework, probePseudoAtom,
+      VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii));
+}
+
+void VoronoiChannels::run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
+                          const VoronoiNetwork& network)
+{
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
+  if (!probeType.has_value())
+  {
+    throw std::runtime_error("VoronoiChannels: Unknown probe-atom type\n");
+  }
+  double probeRadius = 0.5 * forceField[probeType.value()].sizeParameter();
+
   result = ChannelAnalysis::compute(network, probeRadius);
 
   std::ofstream myfile;

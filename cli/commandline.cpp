@@ -567,8 +567,9 @@ void CommandLine::run(int argc, char *argv[])
         VoronoiPoreDiameters diameters;
         diameters.run(forceField.value(), framework);
 
+        // Both analyses read the same network, and building it costs more than either of them.
         VoronoiChannels channels;
-        channels.run(forceField.value(), framework, probe);
+        channels.run(forceField.value(), framework, probe, diameters.network);
       }
     }
 

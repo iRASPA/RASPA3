@@ -40,6 +40,12 @@ export struct VoronoiChannels
   ChannelAnalysis result;
 
   void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom);
+
+  // The same, over a network already built on the framework's own radii. Building the network costs
+  // more than this analysis does, so a caller that has one already, as the pore-diameter pass does,
+  // should not pay for a second identical one.
+  void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
+           const VoronoiNetwork& network);
 };
 
 // Rank (0..3) of a set of integer lattice vectors, i.e. the dimensionality they span.
