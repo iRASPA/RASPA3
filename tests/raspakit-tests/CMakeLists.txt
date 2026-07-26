@@ -61,6 +61,7 @@ add_executable(unit_tests_raspakit
   voronoi.cpp
   apollonius.cpp
   voronoi_analysis.cpp
+  apollonius_pore_analysis.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

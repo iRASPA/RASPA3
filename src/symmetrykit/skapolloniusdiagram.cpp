@@ -503,7 +503,8 @@ std::vector<SKApolloniusTangentSphere> skApolloniusTangentSpheres(const std::arr
 
 std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::array<double3, 3>& centres,
                                                                    const std::array<double, 3>& radii,
-                                                                   const double3& from, const double3& to, double t)
+                                                                   const double3& from, const double3& to, double t,
+                                                                   bool allowNegativeRadius)
 {
   // Two rows from tangency to sites 1 and 2 relative to site 0, and a third from the plane cutting
   // the chord at parameter t, which selects one point on the curve.
@@ -524,7 +525,26 @@ std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::a
 
   std::vector<SKApolloniusTangentSphere> solutions =
       solveTangencyRows(rows, double3(timeArray[0], timeArray[1], timeArray[2]),
-                        double3(constantArray[0], constantArray[1], constantArray[2]), centres[0], radii[0]);
+                        double3(constantArray[0], constantArray[1], constantArray[2]), centres[0], radii[0],
+                        allowNegativeRadius);
+
+  // The rows carry the tangency to sites 1 and 2 squared, so a root of them need not satisfy the
+  // unsquared condition. With the clearance confined to be non-negative it always does; once the curve
+  // is followed inside the sites the wrong branch of each square root becomes a solution too, and has
+  // to be thrown out.
+  std::erase_if(solutions,
+                [&](const SKApolloniusTangentSphere& sphere)
+                {
+                  for (std::size_t i = 0; i < 3; ++i)
+                  {
+                    double tangentDistance = radii[i] + sphere.radius;
+                    if (tangentDistance < 0.0) return true;
+                    if (std::abs((sphere.centre - centres[i]).length() - tangentDistance) >
+                        1.0e-6 * std::max(1.0, tangentDistance))
+                      return true;
+                  }
+                  return false;
+                });
   if (solutions.empty()) return std::nullopt;
 
   // The plane meets the curve in up to two points, on opposite branches; keep the one nearest the
@@ -574,7 +594,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
   SKApolloniusDiagram diagram;
   std::size_t siteCount = fractionalPositions.size();
-  if (siteCount < 4 || radii.size() != siteCount) return diagram;
+  // One site in a periodic cell is already an infinite set of spheres, and the four a vertex needs may
+  // be four images of it, so what has to be non-empty is the cell and not the count of sites in it.
+  if (siteCount == 0 || radii.size() != siteCount) return diagram;
 
   double3x3 inverseCell = unitCell.inverse();
   double volume = std::abs(unitCell.determinant());
@@ -1351,23 +1373,73 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
       // Sample the arc to get its bottleneck and length. The curve bulges away from the chord, so
       // the samples are taken on the curve itself rather than on the straight line.
+      //
+      // The stretch of the curve inside the sites is followed too. An arc of the free space may leave
+      // it in the middle and return: that is what the window between two cages is, wide at both ends
+      // and shut where it passes the ring of atoms. Its bottleneck is the clearance at that ring, and
+      // it is negative, which is how a passage a probe cannot pass is told apart from one it can. Stop
+      // at the boundary of the free region instead and both look alike.
+      // The samples are kept, since the narrowest of them is where the passage is tightest and the
+      // window across it is cut there; a sample that could not be placed is left out of that choice,
+      // as it is left out of the bottleneck.
       constexpr std::size_t sampleCount = 16;
-      double bottleneck = std::min(diagram.vertices[fromVertex].radius, diagram.vertices[toVertex].radius);
+      std::array<double3, sampleCount + 1> curve;
+      std::array<double, sampleCount + 1> clearance;
+      curve[0] = from;
+      clearance[0] = diagram.vertices[fromVertex].radius;
+      curve[sampleCount] = to;
+      clearance[sampleCount] = diagram.vertices[toVertex].radius;
+
       double length = 0.0;
-      double3 previous = from;
+      bool sampled = true;
       for (std::size_t s = 1; s <= sampleCount; ++s)
       {
         double parameter = static_cast<double>(s) / static_cast<double>(sampleCount);
         std::optional<SKApolloniusTangentSphere> point =
-            skApolloniusTrisectorPoint(centres, tangentRadii, from, to, parameter);
-        double3 current = point.has_value() ? point->centre : (from + parameter * (to - from));
-        if (point.has_value()) bottleneck = std::min(bottleneck, point->radius);
-        length += (current - previous).length();
-        previous = current;
+            skApolloniusTrisectorPoint(centres, tangentRadii, from, to, parameter, true);
+        if (point.has_value())
+        {
+          curve[s] = point->centre;
+          clearance[s] = point->radius;
+        }
+        else
+        {
+          curve[s] = from + parameter * (to - from);
+          if (s < sampleCount) clearance[s] = std::numeric_limits<double>::max();
+          sampled = false;
+        }
+        length += (curve[s] - curve[s - 1]).length();
       }
+      if (!sampled) ++diagram.verification.unsampledArcs;
 
-      diagram.edges.push_back(
-          SKApolloniusEdge{fromVertex, toVertex, toImage, indices, images, bottleneck, length, false});
+      std::size_t narrowest = 0;
+      for (std::size_t s = 1; s <= sampleCount; ++s)
+        if (clearance[s] < clearance[narrowest]) narrowest = s;
+
+      // The tangent of the trisector at the narrowest sample. The curve is the intersection of two
+      // clearance bisectors, whose normals at a point are the differences of the unit vectors from the
+      // sites to it, so the tangent is the cross product of those two differences: exact, and no more
+      // work than the chord between neighbouring samples would be. It is oriented by that chord, since
+      // the cross product fixes the line and not which way along it the arc runs. Where the two normals
+      // are parallel, which is where the curve is not cut out by them transversally, the chord is all
+      // there is.
+      double3 chord = curve[std::min(narrowest + 1, sampleCount)] - curve[narrowest > 0 ? narrowest - 1 : 0];
+      std::array<double3, 3> fromSite;
+      for (std::size_t s = 0; s < 3; ++s)
+      {
+        double3 offset = curve[narrowest] - centres[s];
+        double offsetLength = offset.length();
+        fromSite[s] = offsetLength > 0.0 ? offset / offsetLength : double3(0.0, 0.0, 0.0);
+      }
+      double3 tangent = double3::cross(fromSite[0] - fromSite[1], fromSite[0] - fromSite[2]);
+      if (tangent.length() < 1.0e-10) tangent = chord;
+      if (double3::dot(tangent, chord) < 0.0) tangent = -tangent;
+
+      double tangentLength = tangent.length();
+      double3 direction = tangentLength > 0.0 ? tangent / tangentLength : double3(0.0, 0.0, 0.0);
+
+      diagram.edges.push_back(SKApolloniusEdge{fromVertex, toVertex, toImage, indices, images, clearance[narrowest],
+                                               curve[narrowest], direction, length, false});
     }
   }
 
@@ -1466,6 +1538,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       double length = 0.0;
       std::array<std::optional<double3>, 2> previousOnBranch;
       std::array<double3, 2> firstOnBranch;
+      std::array<std::optional<double3>, 2> secondOnBranch;
       for (std::size_t sample = 0; sample <= traverseSamples && !intruded; ++sample)
       {
         double clearance = minimumClearance + (maximumClearance - minimumClearance) *
@@ -1482,9 +1555,14 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
                            });
 
           if (previousOnBranch[branch].has_value())
+          {
             length += (points[branch] - previousOnBranch[branch].value()).length();
+            if (!secondOnBranch[branch].has_value()) secondOnBranch[branch] = points[branch];
+          }
           else
+          {
             firstOnBranch[branch] = points[branch];
+          }
           previousOnBranch[branch] = points[branch];
         }
       }
@@ -1497,10 +1575,25 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         length += (firstOnBranch[0] - firstOnBranch[1]).length();
       }
 
+      // The narrowest point of a ring is the pinch where its two branches meet, at the lowest clearance
+      // it reaches. The ring runs from one branch to the other through that point, so the chord between
+      // the branches just above the pinch is the direction it runs in there.
+      double3 pinch = previousOnBranch[0].has_value() ? firstOnBranch[0] : firstOnBranch[1];
+      double3 chord(0.0, 0.0, 0.0);
+      if (previousOnBranch[0].has_value() && previousOnBranch[1].has_value())
+      {
+        pinch = 0.5 * (firstOnBranch[0] + firstOnBranch[1]);
+        if (secondOnBranch[0].has_value() && secondOnBranch[1].has_value())
+          chord = secondOnBranch[0].value() - secondOnBranch[1].value();
+      }
+      double chordLength = chord.length();
+
       ringTopClearance[diagram.edges.size()] = maximumClearance;
       diagram.edges.push_back(SKApolloniusEdge{std::numeric_limits<std::size_t>::max(),
                                                std::numeric_limits<std::size_t>::max(), int3(0, 0, 0), indices, images,
-                                               minimumClearance, length, true});
+                                               minimumClearance, pinch,
+                                               chordLength > 0.0 ? chord / chordLength : double3(0.0, 0.0, 0.0), length,
+                                               true});
       ++diagram.verification.vertexlessLoops;
     }
   }

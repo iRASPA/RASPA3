@@ -54,6 +54,18 @@ export struct VoronoiEdge
   int3 delta;      // lattice image shift added to `to` relative to `from`
   double radius;   // rad_moving_sphere: bottleneck radius along the edge [Å]
   double length;   // Cartesian edge length [Å]
+
+  // Where along the edge the bottleneck sits and which way the passage runs there, in the frame in
+  // which `from` is the node in the home cell. Together they cut the window a probe has to get
+  // through: the plane through the position, perpendicular to the direction.
+  //
+  // Only the Apollonius builder fills them, and `hasBottleneckGeometry` says whether it did. Its
+  // radius is the clearance at a sampled point of the arc, so it has a point to name; the radical
+  // builder's radius is a bound taken over the whole segment at once, min over atoms of the distance
+  // from that atom to the segment, and belongs to no point of it.
+  double3 bottleneckPosition{};
+  double3 bottleneckDirection{};
+  bool hasBottleneckGeometry{false};
 };
 
 export struct VoronoiNetwork

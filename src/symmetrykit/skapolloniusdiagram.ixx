@@ -165,6 +165,12 @@ export struct SKApolloniusVertex
 // closed and carries no vertex, and the whole of it is one edge: a ring-shaped channel. Then `isLoop`
 // is true and `from`, `to` and `toImage` are meaningless, while the sites, bottleneck and length
 // describe the ring as for any other edge.
+//
+// Where the bottleneck sits is kept along with how wide it is. It is the narrowest cross-section of
+// the passage, so the plane through `bottleneckPosition` perpendicular to `bottleneckDirection`, the
+// tangent of the arc there, cuts the window a probe has to get through. Both come from the samples
+// that measure the bottleneck in the first place and cost nothing beyond them, and both are in the
+// frame in which `from` sits in the home cell.
 export struct SKApolloniusEdge
 {
   std::size_t from;
@@ -173,6 +179,8 @@ export struct SKApolloniusEdge
   std::array<std::size_t, 3> siteIndices;
   std::array<int3, 3> siteImages;  // images as seen from `from`
   double bottleneckRadius;         // smallest tangent-sphere radius along the arc [Å]
+  double3 bottleneckPosition;      // where along the arc that narrowest point sits [Å]
+  double3 bottleneckDirection;     // unit tangent of the arc there, the direction the passage runs in
   double length;                   // arc length [Å]
   bool isLoop;                     // closed trisector carrying no vertex; `from` and `to` unused
 };
@@ -257,6 +265,11 @@ export struct SKApolloniusDiagram
     std::size_t degenerateVertices{0};    // vertices where more than four sites are cotangent
     std::size_t ambiguousBranches{0};     // branches whose direction could not be decided
 
+    // Arcs along which a sample point could not be placed, so their narrowest point is not proven.
+    // A bottleneck read from the samples that did land can only come out too wide, never too narrow,
+    // and a bottleneck too wide is a passage reported open that is shut.
+    std::size_t unsampledArcs{0};
+
     // True when the complex closes as far as the free region allows: every triple is paired except
     // those clipped by the boundary, every vertex carries an edge along each of its branches except
     // where a clipped arc leaves it one short, and no face is left open except around a clipped arc. An
@@ -269,8 +282,8 @@ export struct SKApolloniusDiagram
     bool isComplete() const
     {
       return vertexCount > 0 && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
-             overpairedTriples == 0 && verticesOfFullValence + truncatedTriples >= vertexCount &&
-             unclosedFaces <= 3 * truncatedTriples;
+             overpairedTriples == 0 && unsampledArcs == 0 &&
+             verticesOfFullValence + truncatedTriples >= vertexCount && unclosedFaces <= 3 * truncatedTriples;
     }
   };
 
@@ -319,7 +332,13 @@ export std::vector<SKApolloniusTangentSphere> skApolloniusTangentSpheres(const s
 // The point on the trisector curve of three sites at parameter `t` in [0,1] between two vertex
 // positions, obtained by projecting the straight chord onto the curve. Used to sample edges for
 // bottleneck and length calculations, and available to callers that need edge geometry.
+//
+// An arc between two vertices of the free space can still dip inside the sites along the way: the
+// window between two cages is such an arc, open at both ends and closed in the middle. Measuring
+// its bottleneck means following it there, so `allowNegativeRadius` admits the stretch of the curve
+// that lies inside the sites. Without it the dip returns nothing and a passage no probe can pass is
+// left looking as wide as its ends.
 export std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::array<double3, 3>& centres,
                                                                           const std::array<double, 3>& radii,
                                                                           const double3& from, const double3& to,
-                                                                          double t);
+                                                                          double t, bool allowNegativeRadius = false);

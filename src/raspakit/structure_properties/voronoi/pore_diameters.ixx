@@ -27,6 +27,24 @@ export struct PoreDiameters
   static PoreDiameters compute(const VoronoiNetwork& network);
 };
 
+// The widest path that percolates through the periodic boundary, over the given nodes and the network
+// edges between them: how wide its bottleneck is, which edge is that bottleneck, and the nodes the path
+// can reach. Passing every node of the network answers the question Df asks; passing the nodes of one
+// pore asks it of that pore alone.
+//
+// Widest is in the max-min sense, the path whose narrowest edge is as wide as possible, so the edges are
+// added widest first and the first one that closes a loop with a non-zero net lattice offset is the
+// bottleneck of the best percolating path there is.
+export struct PercolatingPath
+{
+  bool percolates{false};
+  std::size_t limitingEdge{0};  // index into network.edges of the bottleneck
+  double radius{0.0};           // its radius [Å]; twice this is the Df of these nodes
+  std::vector<std::size_t> componentNodes;
+};
+
+export PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<const std::size_t> nodes);
+
 export struct VoronoiPoreDiameters
 {
   PoreDiameters result;

@@ -30,8 +30,18 @@ export struct PointClassification
 
 export struct VoronoiAccessibility
 {
+  // Which distance decides the cell a sample point falls in. It has to be the one the network's cells
+  // are cut by, since the point is attributed to a cell before that cell's nodes are consulted: the
+  // power distance for the radical diagram, the clearance for the Apollonius diagram.
+  enum class Metric
+  {
+    Power,     // |x - c|^2 - r^2
+    Clearance  // |x - c| - r
+  };
+
   VoronoiNetwork network;
   ChannelAnalysis channels;
+  Metric metric{Metric::Power};
   std::vector<std::int8_t> nodeAccessible;  // per node: 1 accessible, 0 inaccessible
   std::vector<double3> atomPositions;       // Cartesian, home cell
   std::vector<double> atomRadii;            // inflated radii used for the network
@@ -49,6 +59,12 @@ export struct VoronoiAccessibility
   static VoronoiAccessibility create(const SimulationBox& simulationBox,
                                      const std::vector<double3>& fractionalPositions,
                                      const std::vector<double>& radii, double probeRadius);
+
+  // Builds it from a pore network already constructed on the inflated atoms, for a caller that takes
+  // its network from somewhere other than the radical diagram. The network carries the cell, the atom
+  // positions and the inflated radii, so it is all that is needed besides the metric its cells are
+  // cut by.
+  static VoronoiAccessibility createFromNetwork(VoronoiNetwork network, Metric metric);
 
   PointClassification classify(const double3& point) const;
 

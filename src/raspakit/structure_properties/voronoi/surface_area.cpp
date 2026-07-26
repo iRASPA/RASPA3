@@ -14,35 +14,10 @@ import units;
 import voronoi_network;
 import voronoi_accessibility;
 
-void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
-                             std::optional<std::size_t> samplesPerAtom)
+SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& accessibility, std::size_t density)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
-
-  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
-  if (!probeType.has_value())
-  {
-    throw std::runtime_error("VoronoiSurfaceArea: Unknown probe-atom type\n");
-  }
-  double probeRadius = 0.5 * forceField[probeType.value()].sizeParameter();
-
-  std::vector<double3> fractionalPositions;
-  std::vector<double> radii;
-  for (const Atom& atom : framework.unitCellAtoms)
-  {
-    fractionalPositions.push_back(framework.simulationBox.inverseCell * atom.position);
-    std::size_t type = static_cast<std::size_t>(atom.type);
-    radii.push_back(0.5 * forceField(type, type).sizeParameter());
-  }
-
-  VoronoiAccessibility accessibility =
-      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
-
-  const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
-
-  double accessibleArea = 0.0;
-  double inaccessibleArea = 0.0;
+  SurfaceAreaSample sample;
 
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
   {
@@ -69,12 +44,42 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
     }
 
     double perSample = sphereArea / static_cast<double>(numberOfSamples);
-    accessibleArea += static_cast<double>(accessibleCount) * perSample;
-    inaccessibleArea += static_cast<double>(inaccessibleCount) * perSample;
+    sample.accessible += static_cast<double>(accessibleCount) * perSample;
+    sample.inaccessible += static_cast<double>(inaccessibleCount) * perSample;
   }
 
-  accessibleSurfaceArea = accessibleArea;
-  inaccessibleSurfaceArea = inaccessibleArea;
+  return sample;
+}
+
+void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
+                             std::optional<std::size_t> samplesPerAtom)
+{
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
+
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
+  if (!probeType.has_value())
+  {
+    throw std::runtime_error("VoronoiSurfaceArea: Unknown probe-atom type\n");
+  }
+  double probeRadius = 0.5 * forceField[probeType.value()].sizeParameter();
+
+  std::vector<double3> fractionalPositions;
+  std::vector<double> radii;
+  for (const Atom& atom : framework.unitCellAtoms)
+  {
+    fractionalPositions.push_back(framework.simulationBox.inverseCell * atom.position);
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    radii.push_back(0.5 * forceField(type, type).sizeParameter());
+  }
+
+  VoronoiAccessibility accessibility =
+      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+
+  const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
+
+  SurfaceAreaSample sample = sampleAccessibleSurfaceArea(accessibility, density);
+  accessibleSurfaceArea = sample.accessible;
+  inaccessibleSurfaceArea = sample.inaccessible;
 
   std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;
 

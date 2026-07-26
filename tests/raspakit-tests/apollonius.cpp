@@ -1128,6 +1128,19 @@ TEST(apollonius, edge_bottleneck_is_the_narrowest_point_of_the_arc)
     double3 to = diagram.vertices[edge.to].position +
                  sites.cell * double3(edge.toImage.x, edge.toImage.y, edge.toImage.z);
     EXPECT_GE(edge.length, (to - from).length() - 1.0e-9);
+
+    // The bottleneck is a place on the arc and not only a number, which is what lets the window across
+    // the passage be measured there. It is a point of the trisector at that clearance, so all three
+    // sites of the arc stand at the bottleneck radius from it, and the direction kept with it is the
+    // unit tangent of the arc.
+    for (std::size_t s = 0; s < 3; ++s)
+    {
+      double3 centre = sites.cell * (sites.fractionalPositions[edge.siteIndices[s]] +
+                                     double3(edge.siteImages[s].x, edge.siteImages[s].y, edge.siteImages[s].z));
+      EXPECT_NEAR((edge.bottleneckPosition - centre).length() - sites.radii[edge.siteIndices[s]],
+                  edge.bottleneckRadius, 1.0e-6);
+    }
+    EXPECT_NEAR(edge.bottleneckDirection.length(), 1.0, 1.0e-9);
   }
 }
 

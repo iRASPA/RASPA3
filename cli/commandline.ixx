@@ -34,7 +34,9 @@ enum State : std::uint8_t
   PSD = 7,
   EnergyGrid = 8,
   PSD_BV = 9, // Pore Size Distribution using Ban, Vlugt method
-  Last = 10
+  PoreAnalysis = 10, // Pore diameters (Di, Df, Dif) and the channel/pocket analysis, as in zeo++
+  BlockingSpheres = 11, // Spheres covering the pockets a probe cannot reach
+  Last = 12
 };
 
 void run(int argc, char* argv[]);

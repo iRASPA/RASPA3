@@ -38,23 +38,27 @@ struct PeriodicUnionFind
   }
 };
 
-PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
+PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<const std::size_t> nodes)
 {
-  PoreDiameters diameters;
-  diameters.includedSphereDiameter = network.largestIncludedSphereDiameter();
+  PercolatingPath path;
+  if (network.nodes.empty() || network.edges.empty() || nodes.empty()) return path;
 
-  if (network.nodes.empty() || network.edges.empty()) return diameters;
+  std::vector<char> inSubset(network.nodes.size(), 0);
+  for (std::size_t node : nodes) inSubset[node] = 1;
 
   // Process edges from widest to narrowest; the first edge that closes a loop with a
   // non-zero net lattice offset marks the percolation threshold (the free sphere).
-  std::vector<std::size_t> order(network.edges.size());
-  std::iota(order.begin(), order.end(), std::size_t{0});
+  std::vector<std::size_t> order;
+  order.reserve(network.edges.size());
+  for (std::size_t i = 0; i < network.edges.size(); ++i)
+  {
+    const VoronoiEdge& edge = network.edges[i];
+    if (inSubset[edge.from] != 0 && inSubset[edge.to] != 0) order.push_back(i);
+  }
   std::sort(order.begin(), order.end(),
             [&](std::size_t a, std::size_t b) { return network.edges[a].radius > network.edges[b].radius; });
 
   PeriodicUnionFind unionFind(network.nodes.size());
-  bool percolates = false;
-  double freeRadius = 0.0;
   std::size_t percolatingRoot = 0;
 
   for (std::size_t index : order)
@@ -68,8 +72,9 @@ PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
       int3 net = accFrom + edge.delta - accTo;
       if (net.x != 0 || net.y != 0 || net.z != 0)
       {
-        percolates = true;
-        freeRadius = edge.radius;
+        path.percolates = true;
+        path.limitingEdge = index;
+        path.radius = edge.radius;
         percolatingRoot = rootFrom;
         break;
       }
@@ -81,18 +86,34 @@ PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
     }
   }
 
-  if (!percolates) return diameters;
+  if (!path.percolates) return path;
 
-  diameters.freeSphereDiameter = 2.0 * freeRadius;
+  for (std::size_t node : nodes)
+  {
+    if (unionFind.find(node).first == percolatingRoot) path.componentNodes.push_back(node);
+  }
+
+  return path;
+}
+
+PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
+{
+  PoreDiameters diameters;
+  diameters.includedSphereDiameter = network.largestIncludedSphereDiameter();
+
+  std::vector<std::size_t> allNodes(network.nodes.size());
+  std::iota(allNodes.begin(), allNodes.end(), std::size_t{0});
+
+  PercolatingPath path = widestPercolatingPath(network, allNodes);
+  if (!path.percolates) return diameters;
+
+  diameters.freeSphereDiameter = 2.0 * path.radius;
 
   // Dif: the largest node radius reachable within the component that first percolated.
   double maximumIncluded = 0.0;
-  for (std::size_t i = 0; i < network.nodes.size(); ++i)
+  for (std::size_t node : path.componentNodes)
   {
-    if (unionFind.find(i).first == percolatingRoot)
-    {
-      maximumIncluded = std::max(maximumIncluded, network.nodes[i].maximalRadius);
-    }
+    maximumIncluded = std::max(maximumIncluded, network.nodes[node].maximalRadius);
   }
   diameters.includedAlongFreePathDiameter = 2.0 * maximumIncluded;
 

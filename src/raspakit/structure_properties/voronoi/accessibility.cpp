@@ -30,17 +30,23 @@ VoronoiAccessibility VoronoiAccessibility::create(const SimulationBox& simulatio
                                                   const std::vector<double3>& fractionalPositions,
                                                   const std::vector<double>& radii, double probeRadius)
 {
-  VoronoiAccessibility accessibility;
-  accessibility.simulationBox = simulationBox;
-
   // Inflate atoms by the probe radius; the network's node radii then measure the room
   // available to the probe's centre.
   std::vector<double> inflatedRadii(radii.size());
   for (std::size_t i = 0; i < radii.size(); ++i) inflatedRadii[i] = radii[i] + probeRadius;
-  accessibility.atomRadii = inflatedRadii;
-  accessibility.maximumAtomRadius = *std::max_element(inflatedRadii.begin(), inflatedRadii.end());
 
-  accessibility.network = VoronoiNetwork::create(simulationBox, fractionalPositions, inflatedRadii);
+  return createFromNetwork(VoronoiNetwork::create(simulationBox, fractionalPositions, inflatedRadii), Metric::Power);
+}
+
+VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork network, Metric metric)
+{
+  VoronoiAccessibility accessibility;
+  const SimulationBox simulationBox = network.simulationBox;
+  accessibility.simulationBox = simulationBox;
+  accessibility.metric = metric;
+  accessibility.atomRadii = network.atomRadii;
+  accessibility.maximumAtomRadius = *std::max_element(network.atomRadii.begin(), network.atomRadii.end());
+  accessibility.network = std::move(network);
 
   // With inflated atoms, any node with positive radius has room for the probe centre, so
   // channels are detected at probe radius zero.
@@ -106,25 +112,24 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   double3 wrappedPoint = simulationBox.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 
-  // The network is a radical (power) diagram, so the cell containing the point is the one
-  // minimising the power distance |x-x_i|^2 - r_i^2, not the Euclidean distance. Picking the
-  // Euclidean-nearest atom instead can land on a site whose power cell is empty (a normal
-  // occurrence in a power diagram), leaving no vertices for the line-of-sight test below.
+  // The cell containing the point is the one nearest in the metric the network's cells are cut by:
+  // the power distance |x-x_i|^2 - r_i^2 for a radical diagram, the clearance |x-x_i| - r_i for an
+  // Apollonius diagram. Picking the Euclidean-nearest atom instead can land on a site whose cell is
+  // empty, which either diagram allows, leaving no vertices for the line-of-sight test below.
   //
   // Search via the cell list: walk bin shells outward (wrapping periodically); all atoms in
-  // shell k are at least (k-1)·(minimum bin width) away, so their power distance is at least
-  // that bound squared minus the largest radius squared, and the walk stops once that lower
-  // bound exceeds the best power distance found.
+  // shell k are at least (k-1)·(minimum bin width) away, so their distance in either metric is at
+  // least what that bound gives, and the walk stops once that lower bound exceeds the best found.
   std::size_t nearestAtom = 0;
-  double nearestPowerDistance = std::numeric_limits<double>::max();
+  double nearestDistance = std::numeric_limits<double>::max();
   double3 nearestDelta(0.0, 0.0, 0.0);
   bool found = false;
   for (int k = 0;; ++k)
   {
     double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
-    if (k > 0 && found && lowerBound > 0.0 &&
-        lowerBound * lowerBound - maximumAtomRadius * maximumAtomRadius > nearestPowerDistance)
-      break;
+    double reachable = (metric == Metric::Power) ? lowerBound * lowerBound - maximumAtomRadius * maximumAtomRadius
+                                                 : lowerBound - maximumAtomRadius;
+    if (k > 0 && found && lowerBound > 0.0 && reachable > nearestDistance) break;
 
     for (int ox = -k; ox <= k; ++ox)
     {
@@ -145,10 +150,11 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
           for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
           {
             double3 delta = atomPositions[j] + imageShift;
-            double powerDistance = double3::dot(delta, delta) - atomRadii[j] * atomRadii[j];
-            if (powerDistance < nearestPowerDistance)
+            double distance = (metric == Metric::Power) ? double3::dot(delta, delta) - atomRadii[j] * atomRadii[j]
+                                                        : delta.length() - atomRadii[j];
+            if (distance < nearestDistance)
             {
-              nearestPowerDistance = powerDistance;
+              nearestDistance = distance;
               nearestAtom = j;
               nearestDelta = delta;
               found = true;
@@ -160,8 +166,8 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   }
   double3 nearestAtomImage = wrappedPoint + nearestDelta;  // nearest periodic image of the atom
 
-  // A negative minimum power distance means the point lies inside that inflated atom.
-  if (nearestPowerDistance < -1.0e-8)
+  // A negative distance in either metric means the point lies inside that inflated atom.
+  if (nearestDistance < -1.0e-8)
   {
     classification.inside = true;
     return classification;

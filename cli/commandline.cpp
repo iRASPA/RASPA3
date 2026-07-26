@@ -34,6 +34,15 @@ import getopt;
 import tessellation;
 import interpolation_energy_grid;
 import pore_size_distribution_ban_vlugt;
+import voronoi_pore_diameters;
+import voronoi_channels;
+import voronoi_surface_area;
+import voronoi_accessible_volume;
+import voronoi_blocking_spheres;
+import apollonius_pore_analysis;
+import apollonius_surface_area;
+import apollonius_accessible_volume;
+import apollonius_blocking_spheres;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
 #endif
@@ -51,6 +60,8 @@ void CommandLine::run(int argc, char *argv[])
   bool use_monte_carlo_methods{false};
   bool use_energy_methods{false};
   bool use_integration_methods{false};
+  bool use_voronoi{false};
+  bool use_apollonius{false};
   bool use_cpu{false};
   bool use_gpu{false};
   std::bitset<CommandLine::State::Last> state;
@@ -123,6 +134,19 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
            "Use pore size distribution method from Ban, Vlugt paper",
            [&state](std::string const &){state.set(State::PSD_BV);})
+      .reg({"--pore-analysis"}, argparser::no_argument,
+           "Compute the pore diameters Di, Df and Dif and the channel/pocket analysis (as zeo++ -res and -chan)",
+           [&state](std::string const &) { state.set(State::PoreAnalysis); })
+      .reg({"--blocking-spheres"}, argparser::no_argument,
+           "Compute spheres covering the pockets the probe cannot reach, in RASPA .block format",
+           [&state](std::string const &) { state.set(State::BlockingSpheres); })
+      .reg({"--voronoi"}, argparser::no_argument,
+           "Use the Voronoi (radical) pore network for the geometric analyses",
+           [&use_voronoi](std::string const &) { use_voronoi = true; })
+      .reg({"-apollonius", "--apollonius"}, argparser::no_argument,
+           "Use the Apollonius diagram instead of the Voronoi network for the geometric analyses (on its own, "
+           "computes the pore analysis)",
+           [&use_apollonius](std::string const &) { use_apollonius = true; })
       .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
            [&state](std::string const &) { state.set(State::TessellationComputation); })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
@@ -263,6 +287,14 @@ void CommandLine::run(int argc, char *argv[])
 
   if (!use_cpu && !use_gpu) use_cpu = true;
 
+  // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
+  // without saying what to do with it is asking for the pore analysis.
+  if ((use_apollonius || use_voronoi) && !state.test(State::SurfaceArea) && !state.test(State::VoidFraction) &&
+      !state.test(State::BlockingSpheres))
+  {
+    state.set(State::PoreAnalysis);
+  }
+
   // start running
   std::vector<std::string> filenames =
       std::ranges::to<std::vector<std::string>>(std::string_view(input_files) | std::ranges::views::split(' '));
@@ -334,6 +366,17 @@ void CommandLine::run(int argc, char *argv[])
       probe_atom_name = "-";
     }
 
+    // The probe the geometric analyses sample with. Not every force field defines every probe: the
+    // zeo++ radii set has nitrogen only, so an unchosen default falls back to it rather than aborting
+    // the run over a name the user never asked for. A probe named on the command line is passed
+    // through, and the analysis says so if it does not exist.
+    auto geometricProbe = [&](const std::string &preferred) -> std::string
+    {
+      if (probe_atom_name.has_value()) return probe_atom_name.value();
+      if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
+      return "probe-N2";
+    };
+
     if (state.test(CommandLine::State::TessellationComputation))
     {
       std::cout << "Compute tesselation" << std::endl;
@@ -373,6 +416,17 @@ void CommandLine::run(int argc, char *argv[])
     if (state.test(CommandLine::State::SurfaceArea))
     {
       std::cout << "Compute surface area" << std::endl;
+
+      if (use_apollonius)
+      {
+        ApolloniusSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"));
+      }
+      else if (use_voronoi)
+      {
+        VoronoiSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"));
+      }
 
       if (use_geometric_methods)
       {
@@ -428,6 +482,19 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::cout << "Compute void fraction" << std::endl;
 
+      // The geometric void fraction is the probe-accessible void, split from the void closed off in
+      // pockets, which is what zeo++ reports as the accessible volume.
+      if (use_apollonius)
+      {
+        ApolloniusAccessibleVolume av;
+        av.run(forceField.value(), framework, geometricProbe("probe-He"));
+      }
+      else if (use_voronoi)
+      {
+        VoronoiAccessibleVolume av;
+        av.run(forceField.value(), framework, geometricProbe("probe-He"));
+      }
+
       if (use_monte_carlo_methods)
       {
         if (use_cpu)
@@ -479,6 +546,49 @@ void CommandLine::run(int argc, char *argv[])
       if (use_energy_methods)
       {
         std::print("TODO: not implemented yet\n");
+      }
+    }
+
+    if (state.test(CommandLine::State::PoreAnalysis))
+    {
+      std::string probe = geometricProbe("probe-N2");
+
+      if (use_apollonius)
+      {
+        std::cout << "Compute pore diameters and channels from the Apollonius diagram" << std::endl;
+
+        ApolloniusPoreAnalysis analysis;
+        analysis.run(forceField.value(), framework, probe);
+      }
+      else
+      {
+        std::cout << "Compute pore diameters and channels from the Voronoi network" << std::endl;
+
+        VoronoiPoreDiameters diameters;
+        diameters.run(forceField.value(), framework);
+
+        VoronoiChannels channels;
+        channels.run(forceField.value(), framework, probe);
+      }
+    }
+
+    if (state.test(CommandLine::State::BlockingSpheres))
+    {
+      std::string probe = geometricProbe("probe-N2");
+
+      if (use_apollonius)
+      {
+        std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
+
+        ApolloniusBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe);
+      }
+      else
+      {
+        std::cout << "Compute blocking spheres from the Voronoi network" << std::endl;
+
+        VoronoiBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe);
       }
     }
 
