@@ -100,19 +100,23 @@ std::vector<BlockingSphere> computeBlockingSpheres(const VoronoiAccessibility& a
       for (const double3& p : accessiblePoints)
         closestChannel = std::min(closestChannel, periodicDistance(simulationBox, center, p));
 
-      double radius;
-      if (accessiblePoints.empty())
-      {
-        radius = furthestPocket + probeRadius + overshoot;
-      }
-      else if (furthestPocket < closestChannel)
-      {
-        radius = std::min(furthestPocket + probeRadius + overshoot, closestChannel - (probeRadius + overshoot));
-      }
-      else
-      {
-        radius = std::max(overshoot, closestChannel - (probeRadius + overshoot));
-      }
+      // Covering the pocket asks for this much, and there is nothing to gain by being larger.
+      double wanted = furthestPocket + probeRadius + overshoot;
+
+      // A blocking sphere may not reach into space the probe can get to from a channel, or the
+      // simulation would lose part of its pore rather than a pocket. That caps the radius at how
+      // near the closest accessible sample is, less the probe radius it would be excluded by.
+      double admissible = accessiblePoints.empty() ? std::numeric_limits<double>::max()
+                                                   : closestChannel - (probeRadius + overshoot);
+      double radius = std::min(wanted, admissible);
+
+      // The cap can leave nothing to place: that is a sample called accessible lying within a probe
+      // radius of the centre of a pocket, so the two classifications disagree about one
+      // neighbourhood, and no sphere here can close the pocket without closing the channel with it.
+      // Stop rather than emit spheres too small to block anything -- which, before the cap was
+      // applied to both branches, could be written out with a negative radius, and which cover so
+      // few of the pocket's samples that the loop would emit one for nearly every sample in it.
+      if (radius <= overshoot) break;
 
       double3 centerFractional = double3::fract(simulationBox.inverseCell * center);
       spheres.push_back(BlockingSphere{centerFractional, radius});

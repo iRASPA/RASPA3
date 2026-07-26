@@ -1462,6 +1462,14 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     double centreOffset = 0.0;          // where the conic is centred along the first axis
     double firstSemiAxis = 0.0;
     double secondSemiAxis = 0.0;
+    // The clearance is affine along the first axis, t = originClearance + rate * u, which is what makes
+    // the bottleneck of an arc a matter of the least u it reaches and no search at all.
+    double rate = 0.0;
+    double originClearance = 0.0;
+    double reach = 0.0;
+    double flattening = 0.0;
+    double extent = 0.0;
+    double heightSquared = 0.0;  // |planeOrigin - c_0|^2, the offset of the plane from site 0
 
     double radiusScale = std::max({tangentRadii[0], tangentRadii[1], tangentRadii[2], 1.0});
     if (std::abs(radiusDifference[0]) < 1.0e-14 * radiusScale)
@@ -1499,23 +1507,24 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
       double3 gradient =
           -(difference[0] - double3::dot(difference[0], planeNormal) * planeNormal) / radiusDifference[0];
-      double rate = gradient.length();
+      rate = gradient.length();
       firstAxis = (rate > 0.0) ? gradient / rate
                                : double3::cross(planeNormal, (std::abs(planeNormal.x) < 0.9) ? double3(1.0, 0.0, 0.0)
                                                                                              : double3(0.0, 1.0, 0.0));
       firstAxis = firstAxis / firstAxis.length();
       secondAxis = double3::cross(planeNormal, firstAxis);
 
-      double originClearance = (constants[0] - double3::dot(difference[0], planeOrigin)) / radiusDifference[0];
-      double reach = tangentRadii[0] + originClearance;
+      originClearance = (constants[0] - double3::dot(difference[0], planeOrigin)) / radiusDifference[0];
+      reach = tangentRadii[0] + originClearance;
+      heightSquared = double3::dot(fromSite, fromSite);
+      flattening = 1.0 - rate * rate;
 
       if (rate < 1.0)
       {
         // (1 - g^2)(u - u_c)^2 + v^2 = C, an ellipse, and a circle when the clearance does not vary at all.
         shape = Shape::Ellipse;
-        double flattening = 1.0 - rate * rate;
         centreOffset = reach * rate / flattening;
-        double extent = reach * reach / flattening - double3::dot(fromSite, fromSite);
+        extent = reach * reach / flattening - heightSquared;
         if (extent <= 0.0)
         {
           // No real curve at all, so the vertices reported on it cannot be there.
@@ -1532,6 +1541,14 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         // be a trisector, the other being where the tangency holds with its sign reversed, so there is one
         // curve to order here as much as in the other cases.
         shape = Shape::Branch;
+        // The same constants as the ellipse's, and used the same way to place a point on the curve. At
+        // exactly one they are not there to be had, the conic being a parabola, which is carried by its
+        // own form below rather than by a case of its own.
+        if (std::abs(flattening) > 1.0e-12)
+        {
+          centreOffset = reach * rate / flattening;
+          extent = reach * reach / flattening - heightSquared;
+        }
       }
     }
 
@@ -1592,6 +1609,97 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     std::sort(ordered.begin(), ordered.end(),
               [](const OrderedVertex& lhs, const OrderedVertex& rhs) { return lhs.along < rhs.along; });
 
+    // A point of the curve at a given value of that same parameter, and the clearance there. Both are in
+    // closed form: the position because the conic is in principal position in the plane's own axes, and
+    // the clearance because it is affine along the first of them, t = originClearance + g u. So a sample
+    // costs a cosine at worst and needs no tangency system solved for it.
+    //
+    // The straight line of three equal radii is the one case with no such t to be had, the clearance
+    // there being the distance to a site rather than an affine function, and it is taken as it comes.
+    double3 lineBase(0.0, 0.0, 0.0);
+    double branchSign = 1.0;
+    {
+      const OrderedVertex& reference = ordered.front();
+      double3 referencePosition =
+          diagram.vertices[reference.vertex].position -
+          unitCell * double3(reference.offset.x, reference.offset.y, reference.offset.z);
+      if (shape == Shape::Line)
+      {
+        lineBase = referencePosition - reference.along * lineDirection;
+      }
+      else if (shape == Shape::Branch && std::abs(flattening) > 1.0e-12)
+      {
+        // Which of the hyperbola's two branches is the trisector, the other holding the tangency with
+        // its sign reversed. The whole curve is on one of them, so one vertex settles it.
+        double first = double3::dot(referencePosition - planeOrigin, firstAxis) - centreOffset;
+        branchSign = (first < 0.0) ? -1.0 : 1.0;
+      }
+    }
+
+    auto curvePoint = [&](double along) -> std::optional<std::pair<double3, double>>
+    {
+      if (shape == Shape::Line)
+      {
+        double3 position = lineBase + along * lineDirection;
+        return std::pair{position, (position - baseCentres[0]).length() - tangentRadii[0]};
+      }
+
+      double first = 0.0;
+      double second = 0.0;
+      if (shape == Shape::Ellipse)
+      {
+        first = firstSemiAxis * std::cos(along);
+        second = secondSemiAxis * std::sin(along);
+      }
+      else
+      {
+        second = along;
+        if (std::abs(flattening) > 1.0e-12)
+        {
+          double squared = (extent - second * second) / flattening;
+          if (squared < 0.0) return std::nullopt;
+          first = branchSign * std::sqrt(squared);
+        }
+        else
+        {
+          // Equal to one the conic is a parabola, which has no centre to measure from: 2 h u = v^2 +
+          // |c_0 - o|^2 - h^2 for h the reach, straight from the tangency to site 0.
+          if (std::abs(reach) < 1.0e-12) return std::nullopt;
+          first = (second * second + heightSquared - reach * reach) / (2.0 * reach);
+        }
+      }
+
+      double alongFirstAxis = centreOffset + first;
+      return std::pair{planeOrigin + alongFirstAxis * firstAxis + second * secondAxis,
+                       originClearance + rate * alongFirstAxis};
+    };
+
+    // The clearance along the curve is smooth and turns at one point at most: the far end of the ellipse,
+    // the waist of the open branch, or the foot of the perpendicular from site 0 on the straight line. The
+    // least clearance on an arc is therefore at one of its two ends or at that point, so putting it among
+    // the samples makes the bottleneck exact instead of as fine as the sampling is.
+    std::array<double, 3> turningPoints{};
+    std::size_t turningCount = 0;
+    if (shape == Shape::Line)
+    {
+      turningPoints[turningCount++] = double3::dot(baseCentres[0] - lineBase, lineDirection);
+    }
+    else if (shape == Shape::Ellipse)
+    {
+      // Where the first coordinate is least, which is where an affine clearance is least. A circle, the
+      // mark of collinear centres, has the same clearance everywhere and no turn to look for.
+      if (rate > 0.0)
+      {
+        turningPoints[turningCount++] = -std::numbers::pi;
+        turningPoints[turningCount++] = std::numbers::pi;
+        turningPoints[turningCount++] = 3.0 * std::numbers::pi;
+      }
+    }
+    else
+    {
+      turningPoints[turningCount++] = 0.0;
+    }
+
     // Consecutive vertices along the curve delimit its arcs, including the arc that wraps from the
     // last back to the first, which is a real edge on a closed trisector and is the pair of infinite
     // ends on an open one. An arc is in the diagram only if the edges leaving both of its endpoints
@@ -1633,8 +1741,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       double3 from = diagram.vertices[fromVertex].position;
       double3 to = diagram.vertices[toVertex].position + unitCell * double3(toImage.x, toImage.y, toImage.z);
 
-      // Sample the arc to get its bottleneck and length. The curve bulges away from the chord, so
-      // the samples are taken on the curve itself rather than on the straight line.
+      // Sample the arc to get its bottleneck and length, walking the curve in its own parameter: the very
+      // one the vertices were ordered by, so that the samples land on the stretch of curve between them
+      // and nowhere else. Cutting the chord into equal parts instead reaches only the part of a strongly
+      // curved arc that projects onto the chord, and where the cutting plane meets the curve twice it
+      // takes whichever point is nearer the chord, which on such an arc is the wrong one. Either way it
+      // reads a bottleneck wider than the arc really has, and a probe is then let through a wall.
       //
       // The stretch of the curve inside the sites is followed too. An arc of the free space may leave
       // it in the middle and return: that is what the window between two cages is, wide at both ends
@@ -1645,37 +1757,80 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       // window across it is cut there; a sample that could not be placed is left out of that choice,
       // as it is left out of the bottleneck.
       constexpr std::size_t sampleCount = 16;
-      std::array<double3, sampleCount + 1> curve;
-      std::array<double, sampleCount + 1> clearance;
+      std::array<double3, sampleCount + 1 + turningPoints.size()> curve;
+      std::array<double, sampleCount + 1 + turningPoints.size()> clearance;
+
+      // The arc runs from p to q the way the ordering runs. On the closed ellipse the last vertex meets
+      // the first the long way round, which is a turn of the parameter past its wrap.
+      double alongFrom = ordered[p].along;
+      double alongTo = ordered[q].along;
+      bool spanned = true;
+      if (alongTo < alongFrom)
+      {
+        if (shape == Shape::Ellipse)
+          alongTo += 2.0 * std::numbers::pi;
+        else
+          spanned = false;  // an open curve is ordered one way only, so there is no such arc to walk
+      }
+
+      // The curve is placed in the frame of the key, and this arc in the frame where its own `from`
+      // vertex sits at the position it is stored at.
+      double3 toArcFrame = unitCell * double3(fromOffset.x, fromOffset.y, fromOffset.z);
+
       curve[0] = from;
       clearance[0] = diagram.vertices[fromVertex].radius;
       curve[sampleCount] = to;
       clearance[sampleCount] = diagram.vertices[toVertex].radius;
 
       double length = 0.0;
-      bool sampled = true;
+      bool sampled = spanned;
       for (std::size_t s = 1; s <= sampleCount; ++s)
       {
         double parameter = static_cast<double>(s) / static_cast<double>(sampleCount);
-        std::optional<SKApolloniusTangentSphere> point =
-            skApolloniusTrisectorPoint(centres, tangentRadii, from, to, parameter, true);
-        if (point.has_value())
+        std::optional<std::pair<double3, double>> point =
+            spanned ? curvePoint(alongFrom + parameter * (alongTo - alongFrom)) : std::nullopt;
+        if (point.has_value() && s < sampleCount)
         {
-          curve[s] = point->centre;
-          clearance[s] = point->radius;
+          curve[s] = point->first + toArcFrame;
+          clearance[s] = point->second;
         }
-        else
+        else if (s < sampleCount)
         {
           curve[s] = from + parameter * (to - from);
-          if (s < sampleCount) clearance[s] = std::numeric_limits<double>::max();
+          clearance[s] = std::numeric_limits<double>::max();
           sampled = false;
         }
         length += (curve[s] - curve[s - 1]).length();
       }
+
+      // The turn of the clearance, where the arc reaches it, which is the bottleneck exactly. Its own
+      // neighbours are kept alongside it, since the samples no longer run in order once it is added and
+      // the direction across the passage is read off them below.
+      std::size_t sampleTotal = sampleCount + 1;
+      std::array<double3, turningPoints.size()> turningChord{};
+      for (std::size_t k = 0; k < turningCount && spanned; ++k)
+      {
+        double turn = turningPoints[k];
+        if (turn <= alongFrom || turn >= alongTo) continue;
+        std::optional<std::pair<double3, double>> point = curvePoint(turn);
+        if (!point.has_value())
+        {
+          sampled = false;
+          continue;
+        }
+        double step = 1.0e-4 * std::max(std::abs(alongTo - alongFrom), 1.0e-6);
+        std::optional<std::pair<double3, double>> before = curvePoint(std::max(turn - step, alongFrom));
+        std::optional<std::pair<double3, double>> after = curvePoint(std::min(turn + step, alongTo));
+        turningChord[sampleTotal - (sampleCount + 1)] =
+            (before.has_value() && after.has_value()) ? after->first - before->first : to - from;
+        curve[sampleTotal] = point->first + toArcFrame;
+        clearance[sampleTotal] = point->second;
+        ++sampleTotal;
+      }
       if (!sampled) ++diagram.verification.unsampledArcs;
 
       std::size_t narrowest = 0;
-      for (std::size_t s = 1; s <= sampleCount; ++s)
+      for (std::size_t s = 1; s < sampleTotal; ++s)
         if (clearance[s] < clearance[narrowest]) narrowest = s;
 
       // The tangent of the trisector at the narrowest sample. The curve is the intersection of two
@@ -1685,7 +1840,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       // the cross product fixes the line and not which way along it the arc runs. Where the two normals
       // are parallel, which is where the curve is not cut out by them transversally, the chord is all
       // there is.
-      double3 chord = curve[std::min(narrowest + 1, sampleCount)] - curve[narrowest > 0 ? narrowest - 1 : 0];
+      double3 chord = (narrowest > sampleCount)
+                          ? turningChord[narrowest - (sampleCount + 1)]
+                          : curve[std::min(narrowest + 1, sampleCount)] - curve[narrowest > 0 ? narrowest - 1 : 0];
       std::array<double3, 3> fromSite;
       for (std::size_t s = 0; s < 3; ++s)
       {
