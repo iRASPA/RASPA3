@@ -15,17 +15,20 @@ import voronoi_accessibility;
 
 VolumeSample sampleAccessibleVolume(const VoronoiAccessibility& accessibility, std::size_t numberOfSamples)
 {
-  RandomNumber random{std::nullopt};
+  RandomNumber random{samplingSeed};
 
   std::size_t samples = std::max<std::size_t>(1, numberOfSamples);
   std::size_t accessibleCount = 0;
   std::size_t inaccessibleCount = 0;
   for (std::size_t s = 0; s < samples; ++s)
   {
-    double3 fractional(random.uniform(), random.uniform(), random.uniform());
-    double3 point = accessibility.simulationBox.cell * fractional;
-
-    PointClassification classification = accessibility.classify(point);
+    PointClassification classification;
+    for (std::size_t attempt = 0; attempt < resampleLimit; ++attempt)
+    {
+      double3 fractional(random.uniform(), random.uniform(), random.uniform());
+      classification = accessibility.classify(accessibility.simulationBox.cell * fractional);
+      if (!classification.resample) break;
+    }
     if (classification.inside || classification.resample) continue;
     if (classification.accessible)
       ++accessibleCount;

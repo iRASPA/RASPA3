@@ -38,7 +38,7 @@ void ApolloniusBlockingSpheres::run(const ForceField& forceField, const Framewor
   double volume = framework.simulationBox.volume;
   std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
 
-  spheres = computeBlockingSpheres(classifier.accessibility, probeRadius, samples);
+  spheres = computeBlockingSpheres(classifier.accessibility, samples);
 
   std::ofstream myfile;
   myfile.open(framework.name + ".block");

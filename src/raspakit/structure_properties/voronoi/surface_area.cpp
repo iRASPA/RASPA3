@@ -16,7 +16,7 @@ import voronoi_accessibility;
 
 SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& accessibility, std::size_t density)
 {
-  RandomNumber random{std::nullopt};
+  RandomNumber random{samplingSeed};
   SurfaceAreaSample sample;
 
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
@@ -30,13 +30,21 @@ SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& access
     std::size_t inaccessibleCount = 0;
     for (std::size_t s = 0; s < numberOfSamples; ++s)
     {
-      double3 point = accessibility.atomPositions[i] + inflatedRadius * random.randomVectorOnUnitSphere();
+      PointClassification classification;
+      bool buried = false;
+      for (std::size_t attempt = 0; attempt < resampleLimit; ++attempt)
+      {
+        double3 point = accessibility.atomPositions[i] + inflatedRadius * random.randomVectorOnUnitSphere();
 
-      // Reject the point if it lies inside any other inflated atom.
-      if (accessibility.overlapsAtom(point, i)) continue;
+        // A point under another inflated atom carries no area, and that is an answer rather than a
+        // failure to decide, so it is kept as one instead of being drawn again.
+        buried = accessibility.overlapsAtom(point, i);
+        if (buried) break;
 
-      PointClassification classification = accessibility.classify(point);
-      if (classification.resample || classification.inside) continue;
+        classification = accessibility.classify(point);
+        if (!classification.resample) break;
+      }
+      if (buried || classification.resample || classification.inside) continue;
       if (classification.accessible)
         ++accessibleCount;
       else

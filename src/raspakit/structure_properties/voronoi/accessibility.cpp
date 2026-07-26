@@ -99,6 +99,29 @@ VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork netw
     accessibility.bins[static_cast<std::size_t>((bin.z * gridSize.y + bin.y) * gridSize.x + bin.x)].push_back(i);
   }
 
+  // Needs the cell list, so it comes last.
+  accessibility.nodeClearance.reserve(accessibility.network.nodes.size());
+  for (const VoronoiNode& node : accessibility.network.nodes)
+  {
+    accessibility.nodeClearance.push_back(accessibility.clearance(node.position));
+  }
+
+  // The nodes into the same bins, for the containment test. Nodes too narrow for the probe are left out:
+  // they carry no pore and so can say nothing about a point that lands in one of them.
+  accessibility.nodeBins.assign(accessibility.bins.size(), {});
+  accessibility.nodeBinMaximumClearance.assign(accessibility.bins.size(), 0.0);
+  for (std::size_t i = 0; i < accessibility.network.nodes.size(); ++i)
+  {
+    if (accessibility.channels.nodePoreId[i] < 0) continue;
+    double3 fractional = double3::fract(simulationBox.inverseCell * accessibility.network.nodes[i].position);
+    int3 bin = binOfFractional(fractional, gridSize);
+    std::size_t index = static_cast<std::size_t>((bin.z * gridSize.y + bin.y) * gridSize.x + bin.x);
+    accessibility.nodeBins[index].push_back(i);
+    accessibility.nodeBinMaximumClearance[index] =
+        std::max(accessibility.nodeBinMaximumClearance[index], accessibility.nodeClearance[i]);
+    accessibility.maximumNodeClearance = std::max(accessibility.maximumNodeClearance, accessibility.nodeClearance[i]);
+  }
+
   return accessibility;
 }
 
@@ -173,50 +196,182 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
     return classification;
   }
 
-  // Line-of-sight test against the Voronoi nodes of the nearest atom's cell.
+  // A node whose free ball holds the point settles the question outright, so that is asked first. It is
+  // the only test here that proves rather than infers, and asking it second was how the Apollonius route
+  // came to write blocking spheres in the middle of a channel in YFI: a point with over an \si{\angstrom}
+  // of room to spare, held by any number of channel nodes, was handed to a pocket because the diagram's
+  // account of which nodes surround the nearest atom is incomplete on a strongly degenerate structure.
+  if (std::optional<std::size_t> holder = containingNode(wrappedPoint); holder.has_value())
+  {
+    classification.accessible = nodeAccessible[holder.value()] != 0;
+    classification.poreId = channels.nodePoreId[holder.value()];
+    return classification;
+  }
+
+  // Line-of-sight test against the Voronoi nodes of the nearest atom's cell, for the points no ball
+  // holds: those nearer to an atom than any node has room, which is most of a surface-area sweep.
   double3 sampleRay = wrappedPoint - nearestAtomImage;
   double bestDistanceSquared = std::numeric_limits<double>::max();
-  double nearestNodeDistanceSquared = std::numeric_limits<double>::max();
-  std::size_t nearestNode = 0;
   bool decided = false;
-  bool haveNearestNode = false;
   for (const auto& [nodeIndex, vertexRelative] : network.atomNodeVectors[nearestAtom])
   {
     double3 nodePosition = nearestAtomImage + vertexRelative;
     double3 otherRay = wrappedPoint - nodePosition;
     double distanceSquared = double3::dot(otherRay, otherRay);
 
-    if (distanceSquared < nearestNodeDistanceSquared)
+    if (double3::dot(sampleRay, otherRay) <= 0.0 && distanceSquared < bestDistanceSquared)
     {
-      nearestNodeDistanceSquared = distanceSquared;
-      nearestNode = nodeIndex;
-      haveNearestNode = true;
+      bestDistanceSquared = distanceSquared;
+      classification.accessible = nodeAccessible[nodeIndex] != 0;
+      classification.poreId = channels.nodePoreId[nodeIndex];
+      decided = true;
     }
+  }
+  if (decided) return classification;
 
-    if (double3::dot(sampleRay, otherRay) <= 0.0)
+  // In a compact cage every node of the cell can sit forward of the sample point, and then nothing
+  // passes the test above. What settles it then is the node whose own free ball comes nearest to holding
+  // the point: distance to the node, less the room for the probe's centre there. A point inside such a
+  // ball is provably in the same channel or pocket as its node, the ball being free and connected, so
+  // the measure is negative exactly when the answer is certain and otherwise says by how much it falls
+  // short. Every node is a candidate, not just those of the nearest atom's cell, because on a strongly
+  // degenerate diagram the cell of an atom lining a cage need not carry any of that cage's nodes -- and
+  // then a search confined to the cell can only return a node in the channel next door.
+  //
+  // What this replaces is the nearest node of the cell, taken with no regard for how much room it has.
+  // That guess went wrong in one direction: the nearest node of an atom in the wall between a cage and a
+  // channel is as likely to be on the channel side as not, so a sealed cage was reported as reachable
+  // and its pocket never blocked. It is the whole reason the Apollonius route lost LTA's sodalite cage.
+  // Drawing another point instead is no answer either: the points that cannot be decided are the ones
+  // inside cages, so replacing them costs a cage the volume it should have been counted for.
+  //
+  // This runs over every node and only points that get this far pay for it, which is few enough that it
+  // does not show in the cost of a sweep.
+  double bestReach = std::numeric_limits<double>::max();
+  std::size_t reachNode = 0;
+  for (std::size_t nodeIndex = 0; nodeIndex < network.nodes.size(); ++nodeIndex)
+  {
+    if (channels.nodePoreId[nodeIndex] < 0) continue;  // too narrow for the probe, so it says nothing
+    double3 delta = simulationBox.applyPeriodicBoundaryConditions(wrappedPoint - network.nodes[nodeIndex].position);
+    double reach = delta.length() - nodeClearance[nodeIndex];
+    if (reach < bestReach)
     {
-      if (distanceSquared < bestDistanceSquared)
+      bestReach = reach;
+      reachNode = nodeIndex;
+      decided = true;
+    }
+  }
+
+  if (decided)
+  {
+    classification.accessible = nodeAccessible[reachNode] != 0;
+    classification.poreId = channels.nodePoreId[reachNode];
+    return classification;
+  }
+
+  // No node anywhere has room for the probe, so there is nothing here to decide it with.
+  classification.resample = true;
+  return classification;
+}
+
+std::optional<std::size_t> VoronoiAccessibility::containingNode(const double3& point, bool accessibleOnly) const
+{
+  double3 fractional = double3::fract(simulationBox.inverseCell * point);
+  double3 wrappedPoint = simulationBox.cell * fractional;
+  const int3 pointBin = binOfFractional(fractional, gridSize);
+
+  std::optional<std::size_t> best;
+  double deepest = 0.0;
+  for (int k = 0;; ++k)
+  {
+    // Nothing in shell k is nearer than this, so once even the largest free ball anywhere falls short of
+    // it there is nothing left to find.
+    double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
+    if (k > 0 && lowerBound >= maximumNodeClearance) break;
+
+    for (int ox = -k; ox <= k; ++ox)
+    {
+      for (int oy = -k; oy <= k; ++oy)
       {
-        bestDistanceSquared = distanceSquared;
-        classification.accessible = nodeAccessible[nodeIndex] != 0;
-        classification.poreId = channels.nodePoreId[nodeIndex];
-        decided = true;
+        for (int oz = -k; oz <= k; ++oz)
+        {
+          if (std::max({std::abs(ox), std::abs(oy), std::abs(oz)}) != k) continue;
+
+          auto [bx, lx] = binAndImage(pointBin.x + ox, gridSize.x);
+          auto [by, ly] = binAndImage(pointBin.y + oy, gridSize.y);
+          auto [bz, lz] = binAndImage(pointBin.z + oz, gridSize.z);
+          std::size_t index = static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx);
+          if (nodeBinMaximumClearance[index] <= lowerBound) continue;
+
+          double3 imageShift =
+              simulationBox.cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz)) -
+              wrappedPoint;
+
+          for (std::size_t nodeIndex : nodeBins[index])
+          {
+            if (accessibleOnly && nodeAccessible[nodeIndex] == 0) continue;
+            double3 delta = network.nodes[nodeIndex].position + imageShift;
+            double reach = delta.length() - nodeClearance[nodeIndex];
+            if (reach < deepest)
+            {
+              deepest = reach;
+              best = nodeIndex;
+            }
+          }
+        }
       }
     }
   }
+  return best;
+}
 
-  // In compact cages every node of the cell can sit forward of the sample point, so no node
-  // passes the test above. Attributing the point to the nearest node of the cell keeps it in
-  // the statistics; discarding it instead removes its share of the sampled area or volume.
-  if (!decided && haveNearestNode)
+bool VoronoiAccessibility::provablyAccessible(const double3& point) const
+{
+  return containingNode(point, true).has_value();
+}
+
+double VoronoiAccessibility::clearance(const double3& point) const
+{
+  double3 fractional = double3::fract(simulationBox.inverseCell * point);
+  double3 wrappedPoint = simulationBox.cell * fractional;
+  const int3 pointBin = binOfFractional(fractional, gridSize);
+
+  double best = std::numeric_limits<double>::max();
+  bool found = false;
+  for (int k = 0;; ++k)
   {
-    classification.accessible = nodeAccessible[nearestNode] != 0;
-    classification.poreId = channels.nodePoreId[nearestNode];
-    decided = true;
-  }
+    // Atoms in shell k are at least (k-1)·(minimum bin width) away, so the smallest clearance they can
+    // contribute is that less the largest radius; stop once even that cannot beat what is in hand.
+    double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
+    if (k > 0 && found && lowerBound - maximumAtomRadius > best) break;
 
-  if (!decided) classification.resample = true;
-  return classification;
+    for (int ox = -k; ox <= k; ++ox)
+    {
+      for (int oy = -k; oy <= k; ++oy)
+      {
+        for (int oz = -k; oz <= k; ++oz)
+        {
+          if (std::max({std::abs(ox), std::abs(oy), std::abs(oz)}) != k) continue;
+
+          auto [bx, lx] = binAndImage(pointBin.x + ox, gridSize.x);
+          auto [by, ly] = binAndImage(pointBin.y + oy, gridSize.y);
+          auto [bz, lz] = binAndImage(pointBin.z + oz, gridSize.z);
+
+          double3 imageShift =
+              simulationBox.cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz)) -
+              wrappedPoint;
+
+          for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
+          {
+            double3 delta = atomPositions[j] + imageShift;
+            best = std::min(best, delta.length() - atomRadii[j]);
+            found = true;
+          }
+        }
+      }
+    }
+  }
+  return found ? best : std::numeric_limits<double>::max();
 }
 
 bool VoronoiAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
