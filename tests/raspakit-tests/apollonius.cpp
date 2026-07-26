@@ -848,9 +848,11 @@ TEST(apollonius, degenerate_vertex_is_one_vertex_of_higher_degree)
   SKApolloniusDiagram diagram =
       SKApolloniusDiagram::create(sites.cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
 
-  // The sweep meets the degeneracy, since five exactly cotangent sites cannot be separated however far it
-  // refines, and one vertex comes of it rather than a cluster of copies.
-  EXPECT_GT(diagram.verification.degenerateSweepBoxes, 0u);
+  // The sweep meets the degeneracy and one vertex comes of it rather than a cluster of copies. It takes no
+  // special effort over it: five exactly cotangent sites cannot be separated however far a box around them
+  // is refined, and the sweep does not try to, finishing a box as soon as few sites can be nearest in it and
+  // solving those. So it never refines to the floor, which is what the count of degenerate boxes records.
+  EXPECT_EQ(diagram.verification.degenerateSweepBoxes, 0u);
   EXPECT_EQ(diagram.verification.degenerateVertices, 1u);
   EXPECT_EQ(diagram.verification.coincidentVertices, 0u);
 
@@ -1106,6 +1108,45 @@ TEST(apollonius, equal_radii_close_the_complex_too)
       EXPECT_NEAR(edge.length, (to - from).length(), 1.0e-9);
     }
   }
+}
+
+// Close packing is the configuration that is degenerate everywhere at once: every octahedral hole of a
+// face-centred lattice of equal spheres has six of them cotangent and every tetrahedral hole four, and the
+// holes sit on the faces and edges of the cell, so each is found many times over and in several wrappings.
+// It is where both the sweep and the gathering of the copies are worked hardest, and the point of the test
+// is that neither has to work hard: the sweep never refines to its floor, and the copies come together into
+// as many vertices as the lattice has holes and no more.
+TEST(apollonius, close_packing_is_degenerate_everywhere_and_costs_nothing_extra)
+{
+  double edge = 6.0;
+  double3x3 latticeCell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  std::vector<double3> fractionalPositions{double3(0.0, 0.0, 0.0), double3(0.0, 0.5, 0.5),
+                                           double3(0.5, 0.0, 0.5), double3(0.5, 0.5, 0.0)};
+  std::vector<double> radii(fractionalPositions.size(), 1.0);
+
+  SKApolloniusDiagram diagram =
+      SKApolloniusDiagram::create(latticeCell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+
+  // Four octahedral holes and eight tetrahedral ones to the cell, which is what the lattice has.
+  EXPECT_EQ(diagram.vertices.size(), 12u);
+  std::size_t sixfold = 0;
+  for (const SKApolloniusVertex& vertex : diagram.vertices)
+    if (vertex.siteIndices.size() == 6) ++sixfold;
+  EXPECT_EQ(sixfold, 4u);
+  EXPECT_EQ(diagram.verification.degenerateVertices, 4u);
+
+  // Nothing was left behind by the gathering, and nothing was left to the refinement floor.
+  EXPECT_EQ(diagram.verification.coincidentVertices, 0u);
+  EXPECT_EQ(diagram.verification.degenerateSweepBoxes, 0u);
+  EXPECT_TRUE(diagram.verification.isComplete());
+
+  std::size_t v = diagram.vertices.size();
+  std::size_t e = diagram.edges.size();
+  std::size_t f = diagram.faces.size() / 2;
+  std::size_t c = 0;
+  for (const SKApolloniusCell& cell : diagram.cells)
+    if (!cell.isEmpty) ++c;
+  EXPECT_EQ(v + f, e + c);
 }
 
 // An edge is the narrowest passage between its endpoints, so its bottleneck cannot exceed either

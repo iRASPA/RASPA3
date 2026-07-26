@@ -34,6 +34,21 @@ import skvoronoi;
 
 namespace
 {
+// Three rows in four unknowns leave a line, and a quadratic meets a line at most twice, so a tangency has
+// at most two solutions and they go in a fixed place. Millions of quadruples are solved and nearly all of
+// them are thrown away again, so what a solution is returned in is worth as much as the algebra: a vector
+// here would spend more time in the allocator than in the arithmetic.
+struct TangentSpheres
+{
+  std::array<SKApolloniusTangentSphere, 2> spheres{};
+  std::size_t count{0};
+
+  void add(const SKApolloniusTangentSphere& sphere) { spheres[count++] = sphere; }
+  const SKApolloniusTangentSphere* begin() const { return spheres.data(); }
+  const SKApolloniusTangentSphere* end() const { return spheres.data() + count; }
+  bool empty() const { return count == 0; }
+};
+
 // Solves three rows that are linear in the four unknowns (c, t) together with the tangency condition for
 // the reference site, returning the at most two (c, t), restricted to t >= 0 unless negative clearance is
 // admitted. Rows are given as `rows[i]·c + timeCoefficients[i] * t = constants[i]`.
@@ -46,10 +61,9 @@ namespace
 // spheres share. It is the same line either way, so reading it off the null space treats the arrangements
 // alike, and the arrangement that has no c as a function of t is not special: it is simply the one whose
 // null vector has no component along t.
-std::vector<SKApolloniusTangentSphere> solveTangencyRows(const std::array<double3, 3>& rows,
-                                                         const double3& timeCoefficients, const double3& constants,
-                                                         const double3& referenceCentre, double referenceRadius,
-                                                         bool allowNegativeRadius = false)
+TangentSpheres solveTangencyRows(const std::array<double3, 3>& rows, const double3& timeCoefficients,
+                                 const double3& constants, const double3& referenceCentre, double referenceRadius,
+                                 bool allowNegativeRadius = false)
 {
   // The rows as three of four columns, the last column holding the coefficients of t.
   std::array<std::array<double, 4>, 3> system;
@@ -114,23 +128,25 @@ std::vector<SKApolloniusTangentSphere> solveTangencyRows(const std::array<double
   double b = 2.0 * (double3::dot(offset, alongCentre) - reach * alongRadius);
   double c = double3::dot(offset, offset) - reach * reach;
 
-  std::vector<double> roots;
+  std::array<double, 2> roots{};
+  std::size_t rootCount = 0;
   if (std::abs(a) < 1.0e-14)
   {
-    if (std::abs(b) > 1.0e-14 * scale) roots.push_back(-c / b);
+    if (std::abs(b) > 1.0e-14 * scale) roots[rootCount++] = -c / b;
   }
   else
   {
     double discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0.0) return {};
     double squareRoot = std::sqrt(discriminant);
-    roots.push_back((-b + squareRoot) / (2.0 * a));
-    roots.push_back((-b - squareRoot) / (2.0 * a));
+    roots[rootCount++] = (-b + squareRoot) / (2.0 * a);
+    roots[rootCount++] = (-b - squareRoot) / (2.0 * a);
   }
 
-  std::vector<SKApolloniusTangentSphere> spheres;
-  for (double s : roots)
+  TangentSpheres spheres;
+  for (std::size_t root = 0; root < rootCount; ++root)
   {
+    double s = roots[root];
     double t = baseRadius + s * alongRadius;
     if (t < 0.0 && !allowNegativeRadius) continue;
 
@@ -140,7 +156,7 @@ std::vector<SKApolloniusTangentSphere> solveTangencyRows(const std::array<double
     // taken for vertices.
     if (referenceRadius + t < 0.0) continue;
 
-    spheres.push_back(SKApolloniusTangentSphere{baseCentre + s * alongCentre, t});
+    spheres.add(SKApolloniusTangentSphere{baseCentre + s * alongCentre, t});
   }
   return spheres;
 }
@@ -251,6 +267,105 @@ struct SiteTuple
     return orientation < other.orientation;
   }
   bool operator==(const SiteTuple& other) const { return data == other.data && orientation == other.orientation; }
+};
+
+// For each position, one of the positions it coincides with to within `tolerance`, the same one for all of
+// a coinciding set, so that what shares an answer is what is the same point. Coincidence is periodic: a
+// point near a face of the cell coincides with one near the opposite face.
+//
+// A grid of the tolerance's own size is laid over the cell and the points are dropped into it, so a point
+// can only coincide with the points in its own cell of the grid or in one of the twenty-six around it, and
+// what has to be searched does not grow with how many points coincide. Nothing is gained by looking further
+// than the first match, the rest of the set being reached through it.
+//
+// The grid may be coarser than the tolerance and still be right, since what it has to do is put every pair
+// closer than the tolerance within a cell of each other, which a coarser grid also does; that is what lets
+// the division count be capped, and it is capped so that a very large cell cannot ask for more divisions
+// than there are numbers to count them with. Only the occupied cells are held, so the count costs nothing.
+std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, const double3x3& inverseCell,
+                                          const double3& perpendicularWidths, const std::vector<double3>& positions,
+                                          double tolerance)
+{
+  constexpr std::int32_t mostDivisions = 1 << 20;
+  auto divisionsAlong = [&](double width)
+  { return std::clamp(static_cast<std::int32_t>(std::min(width / tolerance, 1.0e9)), 1, mostDivisions); };
+  int3 divisions(divisionsAlong(perpendicularWidths.x), divisionsAlong(perpendicularWidths.y),
+                 divisionsAlong(perpendicularWidths.z));
+
+  auto cellOf = [&](const double3& position)
+  {
+    double3 fractional = double3::fract(inverseCell * position);
+    return int3(std::min(divisions.x - 1, static_cast<std::int32_t>(fractional.x * divisions.x)),
+                std::min(divisions.y - 1, static_cast<std::int32_t>(fractional.y * divisions.y)),
+                std::min(divisions.z - 1, static_cast<std::int32_t>(fractional.z * divisions.z)));
+  };
+
+  struct CellHash
+  {
+    std::size_t operator()(const std::array<std::int32_t, 3>& cell) const
+    {
+      std::size_t hash = 1469598103934665603ull;
+      for (std::int32_t coordinate : cell) hash = (hash ^ static_cast<std::size_t>(coordinate)) * 1099511628211ull;
+      return hash;
+    }
+  };
+  std::unordered_map<std::array<std::int32_t, 3>, std::vector<std::size_t>, CellHash> occupants;
+
+  std::vector<std::size_t> group(positions.size());
+  for (std::size_t p = 0; p < positions.size(); ++p)
+  {
+    group[p] = p;
+    int3 own = cellOf(positions[p]);
+
+    bool found = false;
+    for (std::int32_t ox = -1; ox <= 1 && !found; ++ox)
+      for (std::int32_t oy = -1; oy <= 1 && !found; ++oy)
+        for (std::int32_t oz = -1; oz <= 1 && !found; ++oz)
+        {
+          std::array<std::int32_t, 3> neighbour{(own.x + ox + divisions.x) % divisions.x,
+                                                (own.y + oy + divisions.y) % divisions.y,
+                                                (own.z + oz + divisions.z) % divisions.z};
+          auto entry = occupants.find(neighbour);
+          if (entry == occupants.end()) continue;
+          for (std::size_t other : entry->second)
+          {
+            double3 delta = inverseCell * (positions[p] - positions[other]);
+            delta = double3(delta.x - std::round(delta.x), delta.y - std::round(delta.y),
+                            delta.z - std::round(delta.z));
+            if ((unitCell * delta).length() < tolerance)
+            {
+              group[p] = other;
+              found = true;
+              break;
+            }
+          }
+        }
+
+    occupants[{own.x, own.y, own.z}].push_back(p);
+  }
+  return group;
+}
+
+// For the sets that are asked about a key far more often than they are read in order. Ordinary FNV-1a
+// over the words of the key.
+struct SiteWordsHash
+{
+  std::size_t operator()(const std::vector<std::int64_t>& words) const
+  {
+    std::size_t hash = 1469598103934665603ull;
+    for (std::int64_t word : words) hash = (hash ^ static_cast<std::size_t>(word)) * 1099511628211ull;
+    return hash;
+  }
+};
+
+struct SiteTupleHash
+{
+  std::size_t operator()(const SiteTuple& key) const
+  {
+    std::size_t hash = 1469598103934665603ull;
+    for (std::int64_t word : key.data) hash = (hash ^ static_cast<std::size_t>(word)) * 1099511628211ull;
+    return (hash ^ static_cast<std::size_t>(key.orientation)) * 1099511628211ull;
+  }
 };
 
 // Sorts (site, image) pairs and rebases the images on the first pair, which removes the lattice
@@ -394,7 +509,9 @@ struct SiteGrid
                        perpendicularWidths.z / binCount.z);
 
     positions.resize(count);
-    bins.assign(static_cast<std::size_t>(binCount.x) * binCount.y * binCount.z, {});
+    bins.assign(static_cast<std::size_t>(binCount.x) * static_cast<std::size_t>(binCount.y) *
+                    static_cast<std::size_t>(binCount.z),
+                {});
     for (std::size_t i = 0; i < count; ++i)
     {
       double3 fractional = double3::fract(fractionalPositions[i]);
@@ -440,6 +557,50 @@ struct SiteGrid
         }
   }
 
+  // Whether any site image overlaps the sphere of radius `radius` about `wrappedCentre`, which is to say
+  // whether any site comes nearer to it than r_j + radius. This is the certification a candidate vertex
+  // has to pass, and nearly every candidate proposed fails it, so what the test costs is decided by how
+  // quickly a failure is found. The bins are therefore taken in shells outwards from the one the centre
+  // is in, and the search stops at the first site that overlaps: an intruder is usually close by, being a
+  // site that was nearly a site of the vertex, and is met in the first shell or two. A sphere that is
+  // genuinely empty costs the full search, as it must.
+  bool intrudes(const double3& wrappedCentre, double radius, const std::vector<double>& radii, double maximumRadius,
+                double tolerance) const
+  {
+    auto split = [](std::int32_t coordinate, std::int32_t extent)
+    {
+      std::int32_t image = (coordinate >= 0) ? coordinate / extent : -((-coordinate + extent - 1) / extent);
+      return std::pair<std::int32_t, std::int32_t>{coordinate - image * extent, image};
+    };
+
+    double searchRadius = std::max(0.0, radius + maximumRadius);
+    double3 fractional = inverseCell * wrappedCentre;
+    std::int32_t cx = std::min(binCount.x - 1, static_cast<std::int32_t>(fractional.x * binCount.x));
+    std::int32_t cy = std::min(binCount.y - 1, static_cast<std::int32_t>(fractional.y * binCount.y));
+    std::int32_t cz = std::min(binCount.z - 1, static_cast<std::int32_t>(fractional.z * binCount.z));
+
+    int3 span(static_cast<std::int32_t>(std::ceil(searchRadius / binWidth.x)) + 1,
+              static_cast<std::int32_t>(std::ceil(searchRadius / binWidth.y)) + 1,
+              static_cast<std::int32_t>(std::ceil(searchRadius / binWidth.z)) + 1);
+    std::int32_t widest = std::max({span.x, span.y, span.z});
+
+    for (std::int32_t shell = 0; shell <= widest; ++shell)
+      for (std::int32_t oz = -std::min(shell, span.z); oz <= std::min(shell, span.z); ++oz)
+        for (std::int32_t oy = -std::min(shell, span.y); oy <= std::min(shell, span.y); ++oy)
+          for (std::int32_t ox = -std::min(shell, span.x); ox <= std::min(shell, span.x); ++ox)
+          {
+            if (std::max({std::abs(ox), std::abs(oy), std::abs(oz)}) != shell) continue;
+
+            auto [bx, lx] = split(cx + ox, binCount.x);
+            auto [by, ly] = split(cy + oy, binCount.y);
+            auto [bz, lz] = split(cz + oz, binCount.z);
+            double3 shift = cell * double3(lx, ly, lz);
+            for (std::size_t j : bins[static_cast<std::size_t>((bz * binCount.y + by) * binCount.x + bx)])
+              if ((wrappedCentre - (positions[j] + shift)).length() < radii[j] + radius - tolerance) return true;
+          }
+    return false;
+  }
+
   // Clearance min_j(|x - x_j| - r_j) at a point, together with the site image that attains it.
   // `upperBound` must be an upper bound on the answer so the search radius can be sized exactly.
   double clearance(const double3& wrappedPoint, const std::vector<double>& radii, double upperBound,
@@ -462,12 +623,14 @@ struct SiteGrid
   }
 };
 
-
 }  // namespace
 
-std::vector<SKApolloniusTangentSphere> skApolloniusTangentSpheres(const std::array<double3, 4>& centres,
-                                                                 const std::array<double, 4>& radii,
-                                                                 bool allowNegativeRadius)
+namespace
+{
+// The spheres tangent to four sites, as `skApolloniusTangentSpheres` gives them but without allocating,
+// which is what the searches over quadruples use.
+TangentSpheres tangentSpheresOf(const std::array<double3, 4>& centres, const std::array<double, 4>& radii,
+                                bool allowNegativeRadius)
 {
   std::array<double3, 3> rows;
   double3 timeCoefficients(0.0, 0.0, 0.0);
@@ -479,26 +642,36 @@ std::vector<SKApolloniusTangentSphere> skApolloniusTangentSpheres(const std::arr
 
   timeCoefficients = double3(timeArray[0], timeArray[1], timeArray[2]);
   constants = double3(constantArray[0], constantArray[1], constantArray[2]);
-  std::vector<SKApolloniusTangentSphere> solutions =
+  TangentSpheres solutions =
       solveTangencyRows(rows, timeCoefficients, constants, centres[0], radii[0], allowNegativeRadius);
 
   // solveTangencyRows can only impose the unsquared tangency for the site it was given as reference.
   // The other three were folded into differences of squares, so each needs the same test, and each
   // needs its distance to come out right rather than merely right in magnitude.
-  std::erase_if(solutions,
-                [&](const SKApolloniusTangentSphere& sphere)
-                {
-                  for (std::size_t i = 0; i < 4; ++i)
-                  {
-                    double tangentDistance = radii[i] + sphere.radius;
-                    if (tangentDistance < 0.0) return true;
-                    if (std::abs((sphere.centre - centres[i]).length() - tangentDistance) >
-                        1.0e-6 * std::max(1.0, tangentDistance))
-                      return true;
-                  }
-                  return false;
-                });
-  return solutions;
+  TangentSpheres kept;
+  for (const SKApolloniusTangentSphere& sphere : solutions)
+  {
+    bool tangent = true;
+    for (std::size_t i = 0; i < 4 && tangent; ++i)
+    {
+      double tangentDistance = radii[i] + sphere.radius;
+      if (tangentDistance < 0.0 || std::abs((sphere.centre - centres[i]).length() - tangentDistance) >
+                                       1.0e-6 * std::max(1.0, tangentDistance))
+        tangent = false;
+    }
+    if (tangent) kept.add(sphere);
+  }
+  return kept;
+}
+
+}  // namespace
+
+std::vector<SKApolloniusTangentSphere> skApolloniusTangentSpheres(const std::array<double3, 4>& centres,
+                                                                 const std::array<double, 4>& radii,
+                                                                 bool allowNegativeRadius)
+{
+  TangentSpheres spheres = tangentSpheresOf(centres, radii, allowNegativeRadius);
+  return std::vector<SKApolloniusTangentSphere>(spheres.begin(), spheres.end());
 }
 
 std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::array<double3, 3>& centres,
@@ -523,7 +696,7 @@ std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::a
   timeArray[2] = 0.0;
   constantArray[2] = double3::dot(normal, planePoint);
 
-  std::vector<SKApolloniusTangentSphere> solutions =
+  TangentSpheres solutions =
       solveTangencyRows(rows, double3(timeArray[0], timeArray[1], timeArray[2]),
                         double3(constantArray[0], constantArray[1], constantArray[2]), centres[0], radii[0],
                         allowNegativeRadius);
@@ -532,35 +705,31 @@ std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::a
   // unsquared condition. With the clearance confined to be non-negative it always does; once the curve
   // is followed inside the sites the wrong branch of each square root becomes a solution too, and has
   // to be thrown out.
-  std::erase_if(solutions,
-                [&](const SKApolloniusTangentSphere& sphere)
-                {
-                  for (std::size_t i = 0; i < 3; ++i)
-                  {
-                    double tangentDistance = radii[i] + sphere.radius;
-                    if (tangentDistance < 0.0) return true;
-                    if (std::abs((sphere.centre - centres[i]).length() - tangentDistance) >
-                        1.0e-6 * std::max(1.0, tangentDistance))
-                      return true;
-                  }
-                  return false;
-                });
-  if (solutions.empty()) return std::nullopt;
-
-  // The plane meets the curve in up to two points, on opposite branches; keep the one nearest the
-  // chord, which is the branch the arc between the two vertices runs along.
-  std::size_t best = 0;
+  //
+  // The plane meets the curve in up to two points, on opposite branches; the one nearest the chord is
+  // kept, which is the branch the arc between the two vertices runs along.
+  std::optional<SKApolloniusTangentSphere> best;
   double bestDistance = std::numeric_limits<double>::max();
-  for (std::size_t i = 0; i < solutions.size(); ++i)
+  for (const SKApolloniusTangentSphere& sphere : solutions)
   {
-    double distance = (solutions[i].centre - planePoint).length();
+    bool tangent = true;
+    for (std::size_t i = 0; i < 3 && tangent; ++i)
+    {
+      double tangentDistance = radii[i] + sphere.radius;
+      if (tangentDistance < 0.0 || std::abs((sphere.centre - centres[i]).length() - tangentDistance) >
+                                       1.0e-6 * std::max(1.0, tangentDistance))
+        tangent = false;
+    }
+    if (!tangent) continue;
+
+    double distance = (sphere.centre - planePoint).length();
     if (distance < bestDistance)
     {
       bestDistance = distance;
-      best = i;
+      best = sphere;
     }
   }
-  return solutions[best];
+  return best;
 }
 
 double SKApolloniusDiagram::largestEmptySphereRadius() const
@@ -673,6 +842,20 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   std::map<SiteTuple, std::size_t> vertexLookup;
   constexpr double emptinessTolerance = 1.0e-7;
 
+  // Quadruples already solved, keyed by their canonical form, from which the lattice translation has been
+  // removed. A quadruple is reached from each of its four sites, and in the sweep below from every box that
+  // its vertex is near, so most of the ones proposed have been solved already. What a quadruple gives is
+  // fixed by the shape it makes: translating it translates its tangent spheres, which are wrapped back into
+  // the cell and canonicalised to the same keys, and leaves the emptiness of those spheres alone. So a
+  // quadruple seen a second time can add nothing, and both the tangency and the certification of it are
+  // spared.
+  std::unordered_set<SiteTuple, SiteTupleHash> solvedQuadruples;
+  auto quadrupleIsNew = [&solvedQuadruples](const std::size_t* indices, const int3* images)
+  {
+    int3 unusedOffset;
+    return solvedQuadruples.insert(canonicalTuple(indices, images, 4, unusedOffset)).second;
+  };
+
   for (std::size_t i = 0; i < siteCount; ++i)
   {
     const std::vector<std::pair<std::size_t, int3>>& neighbours = adjacency[i];
@@ -687,6 +870,8 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
           std::array<int3, 4> siteImages{int3(0, 0, 0), neighbours[p].second, neighbours[q].second,
                                          neighbours[r].second};
 
+          if (!quadrupleIsNew(siteIndices.data(), siteImages.data())) continue;
+
           std::array<double3, 4> centres;
           std::array<double, 4> tangentRadii;
           centres[0] = centreI;
@@ -698,7 +883,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
             tangentRadii[s] = radii[siteIndices[s]];
           }
 
-          for (const SKApolloniusTangentSphere& sphere : skApolloniusTangentSpheres(centres, tangentRadii, allowNegativeRadius))
+          for (const SKApolloniusTangentSphere& sphere : tangentSpheresOf(centres, tangentRadii, allowNegativeRadius))
           {
             if (sphere.radius > emptyRadiusBound) continue;
 
@@ -707,14 +892,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
             // radius is exact: a site can only intrude if its centre is within t + r_max.
             double3 wrappedCentre = unitCell * double3::fract(inverseCell * sphere.centre);
             double3 latticeShift = wrappedCentre - sphere.centre;
-            bool empty = true;
-            grid.forEachNear(wrappedCentre, std::max(0.0, sphere.radius + maximumRadius),
-                             [&](std::size_t j, const double3& image, const int3&)
-                             {
-                               if ((wrappedCentre - image).length() < radii[j] + sphere.radius - emptinessTolerance)
-                                 empty = false;
-                             });
-            if (!empty) continue;
+            if (grid.intrudes(wrappedCentre, sphere.radius, radii, maximumRadius, emptinessTolerance)) continue;
 
             // Re-express the four sites relative to the wrapped centre, so that stored images are
             // consistent with the stored position and every periodic copy canonicalises alike.
@@ -782,26 +960,57 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // Completeness pass, following the vertex location of Wang et al., Section 5.2. Enumerating
   // candidate quadruples from radical adjacency is a heuristic and does miss vertices. Rather than
   // widen it, which converges slowly and costs cubically, the cell is swept: a box is subdivided
-  // until the sites that can be nearest anywhere inside it number four, at which point those four
-  // are the only quadruple that can give a vertex there and are solved directly. Since every vertex
-  // has four nearest sites, a small enough box around it retains exactly those four, so no vertex
-  // can escape the sweep. Boxes near a face or an edge of the diagram retain two or three sites and
-  // are dropped, which is what keeps the refinement local and the cost down.
+  // until few enough sites can be nearest anywhere inside it to take those sites in quadruples, and
+  // every quadruple of them is solved. Since every vertex has four nearest sites, and the sites that
+  // can be nearest in a box containing it include them, the quadruple that gives it is among those
+  // solved, so no vertex can escape the sweep whenever the box holding it is finished. Boxes near a
+  // face or an edge of the diagram come down to two or three sites and cost nothing, which is what
+  // keeps the refinement local.
   //
   // The sweep also collects the triples it passes, which is how the trisectors that carry no vertex are
   // later found: they cannot be reached from the vertices, so they need a source of candidates that
   // does not depend on vertices existing.
-  std::set<SiteTuple> candidateTriples;
+  std::unordered_set<SiteTuple, SiteTupleHash> candidateTriples;
   {
-    // Wang et al. describe a cube carrying the sites that may dominate part of it. The paper reaches
-    // that set by a Dijkstra-like propagation over cubes through a queue of distance events; here the
-    // site grid already answers the same question directly, by range query, so the propagation and
-    // its event queue are unnecessary and only the cube itself is needed.
+    // Wang et al. describe a cube carrying the sites that may dominate part of it, and reach that set by
+    // a Dijkstra-like propagation over cubes through a queue of distance events. What matters about the
+    // propagation is that a cube is told which sites to reckon with by its parent rather than by a fresh
+    // search: a box lies inside its parent, so the sites that concern it are among those that concerned
+    // the parent, and the whole sweep then costs one distance per site per box instead of a range query
+    // per box. The queue itself is unnecessary, since a box knows its own parent.
+    //
+    // For the parent's list to answer for the child it has to be drawn a little wider than the test the
+    // child applies to it, and the margin that closes is four times the circumradius. Writing d_i for the
+    // clearance to site i and S(c, r, a) for {i : d_i(c) <= min_j d_j(c) + a r}, the clearance is
+    // 1-Lipschitz, so for a child of centre c' and circumradius r/2 inside a parent of centre c and
+    // circumradius r,
+    //
+    //     i in S(c', r/2, 4)  =>  d_i(c) <= d_i(c') + r <= min_j d_j(c') + 2r + r <= min_j d_j(c) + 4r,
+    //
+    // that is S(c', r/2, 4) is contained in S(c, r, 4). The margin four is the fixed point of that
+    // recursion and so is the one that lets the lists nest all the way down. Theorem 6 needs only
+    // S(c, r, 2) to decide the box, which is read off the wider list at no cost.
+    struct CandidateSite
+    {
+      std::size_t index;
+      int3 image;
+      double3 position;  // of that image, so descending the tree costs one distance and no lattice work
+    };
+
+    // The list belongs to the level rather than to the box. All eight children of a box reckon with the
+    // same sites, and the boxes are taken depth first, so while a box of some level is being processed no
+    // other box of that level has been reached and the one list per level is the only one any of them
+    // needs. That is what keeps the sweep free of allocation: a box costs one distance per site on its
+    // list and nothing else.
+    // A box is its corner and its level, since every box of a level has the same size: the size and the
+    // circumradius that go with it are worked out once per level rather than once per box. It also carries
+    // how many sites could be nearest in its parent, which is what tells it whether splitting is achieving
+    // anything.
     struct Cube
     {
       double3 originFractional;
-      double3 sizeFractional;
-      std::vector<std::pair<std::size_t, int3>> candidateSites;
+      std::size_t level;
+      std::size_t parentNearestCount;
     };
 
     // Half the longest diagonal, the radius of the sphere about the centre that encloses the box.
@@ -817,13 +1026,13 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       return largest;
     };
 
-    // Theorem 6: over a box of circumradius r about c, the clearance to site i stays within
-    // d_i(c) ± r, so site i can only be nearest somewhere in the box if d_i(c) - r is below the
-    // smallest d_j(c) + r. Fewer than four survivors means the box holds no vertex.
-    auto gatherCandidates = [&](const double3& centre, double radius, std::vector<std::pair<std::size_t, int3>>& out)
+    // The list a box of the coarsest level starts from, which is the only one that has to come out of the
+    // grid. The query has to reach every site within 4r of the nearest one, and how far that is is not
+    // known until the nearest is, so it widens until it does.
+    auto gatherFromGrid = [&](const double3& centre, double radius, std::vector<CandidateSite>& out)
     {
       out.clear();
-      double searchRadius = maximumRadius + 2.0 * radius + 1.0;
+      double searchRadius = maximumRadius + 4.0 * radius + 1.0;
       double smallest = 0.0;
       bool found = false;
       for (std::size_t attempt = 0; attempt < 8; ++attempt)
@@ -836,22 +1045,29 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
                            found = true;
                            smallest = std::min(smallest, (centre - image).length() - radii[j]);
                          });
-        // The query must reach every site that can still be within 2r of the nearest one.
-        if (found && searchRadius >= smallest + 2.0 * radius + maximumRadius) break;
-        searchRadius = found ? (smallest + 2.0 * radius + maximumRadius + 1.0e-6) : (2.0 * searchRadius);
+        if (found && searchRadius >= smallest + 4.0 * radius + maximumRadius) break;
+        searchRadius = found ? (smallest + 4.0 * radius + maximumRadius + 1.0e-6) : (2.0 * searchRadius);
       }
       if (!found) return;
 
-      double threshold = smallest + 2.0 * radius;
+      double threshold = smallest + 4.0 * radius;
       grid.forEachNear(centre, searchRadius,
                        [&](std::size_t j, const double3& image, const int3& imageOffset)
                        {
-                         if ((centre - image).length() - radii[j] < threshold) out.push_back({j, imageOffset});
+                         if ((centre - image).length() - radii[j] <= threshold)
+                           out.push_back(CandidateSite{j, imageOffset, image});
                        });
     };
 
-    auto certifyAndStore = [&](const std::array<std::size_t, 4>& quadIndices, const std::array<int3, 4>& quadImages)
+    // `nearby` is the list of the box the quadruple came from, which is at hand and in cache. Nearly every
+    // quadruple proposed meets at no vertex, and the site that spoils it is usually one of these, so trying
+    // them before the grid is what most candidates cost in total. It is only a shortcut: a candidate that
+    // survives it is still certified against everything.
+    auto certifyAndStore = [&](const std::array<std::size_t, 4>& quadIndices, const std::array<int3, 4>& quadImages,
+                               const std::vector<CandidateSite>& nearby)
     {
+      if (!quadrupleIsNew(quadIndices.data(), quadImages.data())) return;
+
       std::array<double3, 4> quadCentres;
       std::array<double, 4> quadRadii;
       for (std::size_t s = 0; s < 4; ++s)
@@ -861,20 +1077,19 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         quadRadii[s] = radii[quadIndices[s]];
       }
 
-      for (const SKApolloniusTangentSphere& sphere : skApolloniusTangentSpheres(quadCentres, quadRadii, allowNegativeRadius))
+      for (const SKApolloniusTangentSphere& sphere : tangentSpheresOf(quadCentres, quadRadii, allowNegativeRadius))
       {
         if (sphere.radius > emptyRadiusBound) continue;
 
+        bool spoiled = false;
+        for (std::size_t s = 0; s < nearby.size() && !spoiled; ++s)
+          spoiled = (sphere.centre - nearby[s].position).length() <
+                    radii[nearby[s].index] + sphere.radius - emptinessTolerance;
+        if (spoiled) continue;
+
         double3 wrappedCentre = unitCell * double3::fract(inverseCell * sphere.centre);
         double3 latticeShift = wrappedCentre - sphere.centre;
-        bool empty = true;
-        grid.forEachNear(wrappedCentre, std::max(0.0, sphere.radius + maximumRadius),
-                         [&](std::size_t j, const double3& image, const int3&)
-                         {
-                           if ((wrappedCentre - image).length() < radii[j] + sphere.radius - emptinessTolerance)
-                             empty = false;
-                         });
-        if (!empty) continue;
+        if (grid.intrudes(wrappedCentre, sphere.radius, radii, maximumRadius, emptinessTolerance)) continue;
 
         double3 shiftFractional = inverseCell * latticeShift;
         int3 shift(static_cast<std::int32_t>(std::llround(shiftFractional.x)),
@@ -901,107 +1116,167 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       }
     };
 
-    // Refinement stops at a box far smaller than any site separation. Reaching it while more than four
-    // sites can still be nearest means those sites share a tangent sphere, which no amount of further
-    // splitting will resolve; such a box is handled directly below.
+    // A floor on refinement, at a box far smaller than any site separation, so that the recursion has a
+    // bound that does not depend on the sites being in any particular position. The rules below finish a
+    // box long before it, and on the structures this has been run on it is never reached; it is here for
+    // the configuration that would defeat them.
     constexpr double smallestBoxCircumradius = 1.0e-3;
-    constexpr std::size_t initialDivisions = 6;
+
+    // The coarsest boxes are sized by the geometry and not as a fraction of the cell, so that the list a
+    // box has to reckon with is set by how the sites are packed rather than by how large the cell is.
+    // Dividing the cell a fixed number of times would grow that list with the cell, which is the one way
+    // this sweep could fail to be linear in the number of sites.
+    constexpr double initialBoxEdge = 3.0;
+    int3 initialDivisions(std::max(1, static_cast<std::int32_t>(std::llround(perpendicularWidths.x / initialBoxEdge))),
+                          std::max(1, static_cast<std::int32_t>(std::llround(perpendicularWidths.y / initialBoxEdge))),
+                          std::max(1, static_cast<std::int32_t>(std::llround(perpendicularWidths.z / initialBoxEdge))));
+    double3 initialSize(1.0 / initialDivisions.x, 1.0 / initialDivisions.y, 1.0 / initialDivisions.z);
 
     std::vector<Cube> stack;
-    double initialSize = 1.0 / static_cast<double>(initialDivisions);
-    for (std::size_t ix = 0; ix < initialDivisions; ++ix)
-      for (std::size_t iy = 0; iy < initialDivisions; ++iy)
-        for (std::size_t iz = 0; iz < initialDivisions; ++iz)
-          stack.push_back(Cube{double3(static_cast<double>(ix) * initialSize, static_cast<double>(iy) * initialSize,
-                                       static_cast<double>(iz) * initialSize),
-                               double3(initialSize, initialSize, initialSize),
-                               {}});
+    std::vector<std::vector<CandidateSite>> levelReachable(1);
+    std::vector<double3> levelSize{initialSize};
+    std::vector<double> levelRadius{circumradius(initialSize)};
+    auto reachLevel = [&](std::size_t level)
+    {
+      while (levelSize.size() <= level)
+      {
+        levelSize.push_back(0.5 * levelSize.back());
+        levelRadius.push_back(0.5 * levelRadius.back());
+      }
+      if (levelReachable.size() <= level) levelReachable.resize(level + 1);
+    };
+
+    for (std::int32_t ix = 0; ix < initialDivisions.x; ++ix)
+      for (std::int32_t iy = 0; iy < initialDivisions.y; ++iy)
+        for (std::int32_t iz = 0; iz < initialDivisions.z; ++iz)
+          stack.push_back(Cube{double3(static_cast<double>(ix) * initialSize.x, static_cast<double>(iy) * initialSize.y,
+                                       static_cast<double>(iz) * initialSize.z),
+                               0, std::numeric_limits<std::size_t>::max()});
+
+    std::vector<double> clearances;
+    std::vector<std::pair<std::size_t, int3>> nearestSites;  // S(c, r, 2): can be nearest inside the box
+    std::vector<std::int64_t> finishedKey;
+    std::unordered_set<std::vector<std::int64_t>, SiteWordsHash> finishedSets;
 
     while (!stack.empty())
     {
-      Cube cube = std::move(stack.back());
+      Cube cube = stack.back();
       stack.pop_back();
 
-      double3 centreFractional = cube.originFractional + 0.5 * cube.sizeFractional;
-      double3 centre = unitCell * centreFractional;
-      double radius = circumradius(cube.sizeFractional);
+      // Room for this box's own list and for the one it may write for its children, taken before either is
+      // referred to so that neither reference is left dangling by the growth.
+      reachLevel(cube.level + 1);
 
-      gatherCandidates(centre, radius, cube.candidateSites);
+      double3 centre = unitCell * (cube.originFractional + 0.5 * levelSize[cube.level]);
+      double radius = levelRadius[cube.level];
 
-      // Three possible nearest sites means the box straddles a trisector, so the triple is worth
-      // examining later for a closed curve that carries no vertex and would otherwise go unseen. The
-      // triples of a four-site box are recorded too, since a box near such a curve need not narrow all
-      // the way to three before it is solved and dropped. Recording a triple costs nothing if it turns
-      // out to carry vertices after all.
-      if (cube.candidateSites.size() == 3 || cube.candidateSites.size() == 4)
+      // A box of the coarsest level is the one that has no parent to inherit from.
+      if (cube.level == 0) gatherFromGrid(centre, radius, levelReachable[0]);
+      const std::vector<CandidateSite>& reachable = levelReachable[cube.level];
+
+      clearances.resize(reachable.size());
+      double smallest = std::numeric_limits<double>::max();
+      for (std::size_t s = 0; s < reachable.size(); ++s)
       {
-        const std::vector<std::pair<std::size_t, int3>>& sites = cube.candidateSites;
-        std::size_t tripleCount = sites.size() == 3 ? 1 : 4;  // the box itself, or each of its four triples
-        for (std::size_t omitted = 0; omitted < tripleCount; ++omitted)
-        {
-          std::array<std::size_t, 3> tripleIndices;
-          std::array<int3, 3> tripleImages;
-          std::size_t written = 0;
-          for (std::size_t s = 0; s < sites.size(); ++s)
-          {
-            if (sites.size() == 4 && s == omitted) continue;
-            tripleIndices[written] = sites[s].first;
-            tripleImages[written] = sites[s].second;
-            ++written;
-          }
-          int3 tripleOffset;
-          candidateTriples.insert(canonicalTuple(tripleIndices.data(), tripleImages.data(), 3, tripleOffset));
-        }
+        clearances[s] = (centre - reachable[s].position).length() - radii[reachable[s].index];
+        smallest = std::min(smallest, clearances[s]);
       }
+      if (reachable.empty()) continue;
 
-      if (cube.candidateSites.size() < 4) continue;
+      // Over the free region alone, a box whose clearance is negative throughout holds no vertex and no
+      // point of any trisector the diagram keeps, since the clearance cannot rise by more than the
+      // circumradius anywhere in the box. Such a box lies inside the sites and is not explored.
+      if (!allowNegativeRadius && smallest + radius < 0.0) continue;
 
-      if (cube.candidateSites.size() == 4)
-      {
-        std::array<std::size_t, 4> quadIndices;
-        std::array<int3, 4> quadImages;
-        for (std::size_t s = 0; s < 4; ++s)
-        {
-          quadIndices[s] = cube.candidateSites[s].first;
-          quadImages[s] = cube.candidateSites[s].second;
-        }
-        certifyAndStore(quadIndices, quadImages);
-        continue;
-      }
+      nearestSites.clear();
+      for (std::size_t s = 0; s < reachable.size(); ++s)
+        if (clearances[s] < smallest + 2.0 * radius)
+          nearestSites.push_back({reachable[s].index, reachable[s].image});
 
-      // Refinement has bottomed out with five or more sites still able to be nearest here, so they share a
-      // tangent sphere to within the size of the box and the configuration is degenerate. Splitting further
-      // cannot separate them, but abandoning the box would drop whatever vertices are in it, so every
-      // quadruple of its candidates is solved and certified instead. The vertex they meet at satisfies
-      // several of those quadruples and so is constructed several times; the copies are gathered into the
-      // one vertex they are further down. The box is counted so that a degeneracy is never silent.
+      // Where a box is down to a few possible nearest sites there is nothing left to narrow: whatever the
+      // diagram does inside it, it does with those sites and no others. So the box is finished here rather
+      // than refined, by taking its sites in threes and in fours.
       //
-      // In practice the adjacency pass finds these quadruples too, since sites sharing a vertex are
-      // mutually adjacent, and no configuration was found where solving them here changed the outcome. It
-      // is done anyway because the whole purpose of this sweep is that completeness does not rest on that
-      // heuristic, and abandoning the one case the sweep cannot split would leave exactly that dependence.
-      if (radius < smallestBoxCircumradius)
+      // Every quadruple is solved, and each vertex inside the box is tangent to four sites that are nearest
+      // there, so it is tangent to four of these and is among the solutions; the certification throws out
+      // the quadruples that meet at no vertex of the diagram, as it does everywhere else. Every triple is
+      // recorded, and a trisector inside the box likewise runs on three of these, which is what the search
+      // for the closed ones later needs. And since a child box lies inside this one, the same holds of
+      // anything in any of them: refining could turn up nothing that solving these does not.
+      //
+      // Since that argument holds of a box of any size, a box may be finished whenever finishing it is
+      // cheaper than splitting it, and when to do so is a question of cost alone and not of correctness.
+      // Two things answer it. One is that the box is down to few sites, six being where the fifteen
+      // quadruples of six cost about what the level of refinement they replace costs. The other is that
+      // splitting the parent did not reduce the count, so splitting this box is unlikely to either, and the
+      // quadruples are better paid for once here than in eight children and again in theirs. This second is
+      // what a degeneracy looks like from inside the sweep, and having it is what lets the sweep leave
+      // degeneracies alone rather than refine at them: sites exactly cotangent stay cotangent however far a
+      // box around them is split, and Wang et al.'s condition of refining until four sites remain is
+      // precisely the one that would never be met. It is held to sets whose quadruples are few enough to be
+      // worth it, a coarse box holding hundreds of sites with no degeneracy anywhere near it.
+      constexpr std::size_t fewSites = 6;
+      constexpr std::size_t affordableSites = 16;
+      bool splittingIsHelping = nearestSites.size() < cube.parentNearestCount;
+      if (nearestSites.size() <= fewSites || radius < smallestBoxCircumradius ||
+          (!splittingIsHelping && nearestSites.size() <= affordableSites))
       {
-        ++diagram.verification.degenerateSweepBoxes;
-        const std::vector<std::pair<std::size_t, int3>>& sites = cube.candidateSites;
-        for (std::size_t i = 0; i < sites.size(); ++i)
-          for (std::size_t j = i + 1; j < sites.size(); ++j)
-            for (std::size_t k = j + 1; k < sites.size(); ++k)
-              for (std::size_t l = k + 1; l < sites.size(); ++l)
-                certifyAndStore({sites[i].first, sites[j].first, sites[k].first, sites[l].first},
-                                {sites[i].second, sites[j].second, sites[k].second, sites[l].second});
+        if (nearestSites.size() > affordableSites) ++diagram.verification.degenerateSweepBoxes;
+
+        const std::vector<std::pair<std::size_t, int3>>& sites = nearestSites;
+        if (sites.size() >= 3)
+        {
+          // Boxes far outnumber the sets of sites they finish with: the boxes along one edge of the diagram
+          // are finished by the same three sites, those around one vertex by the same four, and a box in one
+          // corner of the cell by the same set as its periodic twin in another. So the set is asked about
+          // before it is worked with, and only a set not seen before is taken in threes and fours. What the
+          // set is asked in is its canonical form, sorted and with the lattice translation removed, which is
+          // what makes the twins the same set.
+          std::sort(nearestSites.begin(), nearestSites.end(),
+                    [](const auto& lhs, const auto& rhs)
+                    {
+                      return std::tie(lhs.first, lhs.second.x, lhs.second.y, lhs.second.z) <
+                             std::tie(rhs.first, rhs.second.x, rhs.second.y, rhs.second.z);
+                    });
+          int3 base = nearestSites.front().second;
+          finishedKey.clear();
+          for (const auto& [index, image] : nearestSites)
+            finishedKey.insert(finishedKey.end(), {static_cast<std::int64_t>(index), image.x - base.x,
+                                                  image.y - base.y, image.z - base.z});
+          if (!finishedSets.insert(finishedKey).second) continue;
+
+          for (std::size_t i = 0; i < sites.size(); ++i)
+            for (std::size_t j = i + 1; j < sites.size(); ++j)
+              for (std::size_t k = j + 1; k < sites.size(); ++k)
+              {
+                std::array<std::size_t, 3> tripleIndices{sites[i].first, sites[j].first, sites[k].first};
+                std::array<int3, 3> tripleImages{sites[i].second, sites[j].second, sites[k].second};
+                int3 tripleOffset;
+                candidateTriples.insert(canonicalTuple(tripleIndices.data(), tripleImages.data(), 3, tripleOffset));
+
+                for (std::size_t l = k + 1; l < sites.size(); ++l)
+                  certifyAndStore({sites[i].first, sites[j].first, sites[k].first, sites[l].first},
+                                  {sites[i].second, sites[j].second, sites[k].second, sites[l].second}, reachable);
+              }
+        }
         continue;
       }
 
-      double3 half = 0.5 * cube.sizeFractional;
+      // The sites the children reckon with, which are those on this box's list that they can still be
+      // concerned by, written to the level below for all eight of them to read.
+      std::vector<CandidateSite>& childReachable = levelReachable[cube.level + 1];
+      childReachable.clear();
+      for (std::size_t s = 0; s < reachable.size(); ++s)
+        if (clearances[s] <= smallest + 4.0 * radius) childReachable.push_back(reachable[s]);
+
+      const double3& half = levelSize[cube.level + 1];
       for (std::size_t ix = 0; ix < 2; ++ix)
         for (std::size_t iy = 0; iy < 2; ++iy)
           for (std::size_t iz = 0; iz < 2; ++iz)
             stack.push_back(Cube{cube.originFractional + double3(static_cast<double>(ix) * half.x,
                                                                  static_cast<double>(iy) * half.y,
                                                                  static_cast<double>(iz) * half.z),
-                                 half,
-                                 {}});
+                                 cube.level + 1, nearestSites.size()});
     }
   }
 
@@ -1015,9 +1290,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // point can only be one vertex found twice.
   //
   // Coincidence is judged on the minimum image, since a vertex on a cell face may be wrapped to either
-  // side of it. The scan runs twice, in the cell as given and in the same cell offset by half, because a
-  // pair straddling a boundary in one frame is in the interior of the other, which makes sorting by
-  // position enough to find every pair without any pair being cut apart by the wrap.
+  // side of it. Which copies to compare comes from a grid of the tolerance's own size laid over the cell:
+  // a copy can only coincide with one in its own cell of that grid or in a neighbouring one, and the cells
+  // wrap, so a vertex on a face of the unit cell meets the copies of it that came out on the far side. Which
+  // matters because a degenerate configuration can produce a hundred copies of one vertex and there is no
+  // bound on how many: comparing the copies with one another would be quadratic in a quantity that is not
+  // the size of the answer.
   {
     constexpr double coincidenceTolerance = 1.0e-6;
     std::size_t rawCount = diagram.vertices.size();
@@ -1029,32 +1307,16 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       return node;
     };
 
-    auto separation = [&](std::size_t left, std::size_t right)
+    std::vector<double3> rawPositions;
+    rawPositions.reserve(rawCount);
+    for (const SKApolloniusVertex& vertex : diagram.vertices) rawPositions.push_back(vertex.position);
+    std::vector<std::size_t> groupOf =
+        coincidentGroups(unitCell, inverseCell, perpendicularWidths, rawPositions, coincidenceTolerance);
+    for (std::size_t v = 0; v < rawCount; ++v)
     {
-      double3 delta = inverseCell * (diagram.vertices[left].position - diagram.vertices[right].position);
-      delta = double3(delta.x - std::round(delta.x), delta.y - std::round(delta.y), delta.z - std::round(delta.z));
-      return (unitCell * delta).length();
-    };
-
-    for (double frameShift : {0.0, 0.5})
-    {
-      std::vector<std::pair<double, std::size_t>> byPosition(rawCount);
-      for (std::size_t v = 0; v < rawCount; ++v)
-      {
-        double3 frame = inverseCell * diagram.vertices[v].position + double3(frameShift, frameShift, frameShift);
-        byPosition[v] = {(unitCell * double3::fract(frame)).x, v};
-      }
-      std::sort(byPosition.begin(), byPosition.end());
-
-      for (std::size_t p = 0; p + 1 < rawCount; ++p)
-        for (std::size_t q = p + 1; q < rawCount; ++q)
-        {
-          if (byPosition[q].first - byPosition[p].first > coincidenceTolerance) break;
-          std::size_t left = find(byPosition[p].second);
-          std::size_t right = find(byPosition[q].second);
-          if (left != right && separation(byPosition[p].second, byPosition[q].second) < coincidenceTolerance)
-            parent[left] = right;
-        }
+      std::size_t left = find(v);
+      std::size_t right = find(groupOf[v]);
+      if (left != right) parent[left] = right;
     }
 
     std::map<std::size_t, std::vector<std::size_t>> groups;
@@ -1468,7 +1730,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     constexpr std::size_t bisectionSteps = 40;
     double intrusionTolerance = 1.0e-7;
 
-    for (const SiteTuple& key : candidateTriples)
+    // In the order the triples canonicalise in, so that the rings come out in an order that is the
+    // structure's and not the hash table's.
+    std::vector<SiteTuple> ringCandidates(candidateTriples.begin(), candidateTriples.end());
+    std::sort(ringCandidates.begin(), ringCandidates.end());
+
+    for (const SiteTuple& key : ringCandidates)
     {
       if (tripleLookup.contains(key)) continue;  // the curve already carries vertices
 
@@ -1793,21 +2060,13 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // Vertices left sharing a position would be a cotangent set that the gathering above failed to bring
   // together, which would leave each copy pairing along triples the others also claim. The gathering is
   // meant to make this impossible, so any survivor is a defect and is reported as one.
-  std::vector<std::size_t> order(diagram.vertices.size());
-  for (std::size_t v = 0; v < order.size(); ++v) order[v] = v;
-  std::sort(order.begin(), order.end(),
-            [&](std::size_t lhs, std::size_t rhs)
-            { return diagram.vertices[lhs].position.x < diagram.vertices[rhs].position.x; });
-  for (std::size_t p = 0; p + 1 < order.size(); ++p)
-    for (std::size_t q = p + 1; q < order.size(); ++q)
-    {
-      const double3& left = diagram.vertices[order[p]].position;
-      const double3& right = diagram.vertices[order[q]].position;
-      if (right.x - left.x > 1.0e-6) break;
-      double3 delta = inverseCell * (right - left);
-      delta = double3(delta.x - std::round(delta.x), delta.y - std::round(delta.y), delta.z - std::round(delta.z));
-      if ((unitCell * delta).length() < 1.0e-6) ++diagram.verification.coincidentVertices;
-    }
+  std::vector<double3> mergedPositions;
+  mergedPositions.reserve(diagram.vertices.size());
+  for (const SKApolloniusVertex& vertex : diagram.vertices) mergedPositions.push_back(vertex.position);
+  std::vector<std::size_t> coincidentWith =
+      coincidentGroups(unitCell, inverseCell, perpendicularWidths, mergedPositions, 1.0e-6);
+  for (std::size_t v = 0; v < coincidentWith.size(); ++v)
+    if (coincidentWith[v] != v) ++diagram.verification.coincidentVertices;
 
   return diagram;
 }

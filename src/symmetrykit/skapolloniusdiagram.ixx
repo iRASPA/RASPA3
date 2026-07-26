@@ -261,7 +261,14 @@ export struct SKApolloniusDiagram
     std::size_t unclosedFaces{0};
     std::size_t vertexlessLoops{0};       // closed trisectors carrying no vertex, recovered separately
     std::size_t ringsOfUncertainFace{0};  // rings that are a hole in one of several regions of a sheet
-    std::size_t degenerateSweepBoxes{0};  // places the sweep found more than four sites cotangent
+    // Places where the sweep refined as far as it goes, a thousandth of an Ångström, and still had more
+    // sites able to be nearest than it can take in quadruples cheaply, which needs seventeen of them
+    // cotangent to within that. Those boxes are solved over the sites they have, so this is not a defect
+    // either, but it is the one case the sweep resolves neither by refining nor by finishing early, and it
+    // is reported so that it is never silent. An ordinary degeneracy does not reach it: the sweep finishes a
+    // box as soon as its sites are few or as soon as splitting stops reducing them, and the second of those
+    // is what a degeneracy does, which is what makes it no harder than the general case.
+    std::size_t degenerateSweepBoxes{0};
     std::size_t degenerateVertices{0};    // vertices where more than four sites are cotangent
     std::size_t ambiguousBranches{0};     // branches whose direction could not be decided
 
