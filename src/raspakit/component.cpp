@@ -54,6 +54,47 @@ import chiral_center;
 import vdwparameters;
 import json;
 
+namespace
+{
+std::vector<std::array<std::size_t, 2>> readExplicitIntraPairs(
+    const nlohmann::basic_json<nlohmann::raspa_map>& parsedData, std::string_view key,
+    std::size_t numberOfAtoms)
+{
+  const auto& value = parsedData.at(std::string{key});
+  if (!value.is_array())
+  {
+    throw std::runtime_error(std::format("[Component reader]: {} must be an array of atom-index pairs\n", key));
+  }
+
+  std::vector<std::array<std::size_t, 2>> pairs{};
+  pairs.reserve(value.size());
+  for (const auto& item : value)
+  {
+    if (!item.is_array() || item.size() != 2 || !item[0].is_number_unsigned() ||
+        !item[1].is_number_unsigned())
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: {} item {} must contain two unsigned atom indices\n", key, item.dump()));
+    }
+
+    std::array<std::size_t, 2> pair{item[0].get<std::size_t>(), item[1].get<std::size_t>()};
+    if (pair[0] >= numberOfAtoms || pair[1] >= numberOfAtoms || pair[0] == pair[1])
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: {} item {} contains an invalid atom index\n", key, item.dump()));
+    }
+    if (pair[1] < pair[0]) std::swap(pair[0], pair[1]);
+    if (std::ranges::find(pairs, pair) != pairs.end())
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: {} contains duplicate pair [{}, {}]\n", key, pair[0], pair[1]));
+    }
+    pairs.push_back(pair);
+  }
+  return pairs;
+}
+}  // namespace
+
 // default constructor, needed for binary restart-file
 Component::Component() {}
 
@@ -1774,9 +1815,16 @@ std::vector<BendTorsionPotential> Component::readBendTorsionPotentials(
 }
 
 std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
-    const ForceField &forceField, [[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
   std::vector<VanDerWaalsPotential> van_der_waals_potentials{};
+
+  if (parsed_data.contains("IntraVanDerWaalsPairs") &&
+      parsed_data.contains("Intra14VanDerWaalsScalingValue"))
+  {
+    throw std::runtime_error(
+        "[Component reader]: IntraVanDerWaalsPairs and Intra14VanDerWaalsScalingValue are mutually exclusive\n");
+  }
 
   if (parsed_data.contains("Intra14VanDerWaalsScalingValue"))
   {
@@ -1813,7 +1861,10 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
     }
   }
 
-  std::vector<std::array<std::size_t, 2>> found_van_der_waals = connectivityTable.findAllVanDerWaals();
+  std::vector<std::array<std::size_t, 2>> found_van_der_waals =
+      parsed_data.contains("IntraVanDerWaalsPairs")
+          ? readExplicitIntraPairs(parsed_data, "IntraVanDerWaalsPairs", atoms.size())
+          : connectivityTable.findAllVanDerWaals();
 
   for (std::array<std::size_t, 2> &found_van_der_waal : found_van_der_waals)
   {
@@ -1841,11 +1892,18 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
 }
 
 std::vector<CoulombPotential> Component::readCoulombPotentials(
-    const ForceField &forceField, [[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
   std::vector<CoulombPotential> coulomb_potentials{};
 
   if(!forceField.useCharge) return coulomb_potentials;
+
+  if (parsed_data.contains("IntraCoulombPairs") &&
+      parsed_data.contains("Intra14ChargeChargeScalingValue"))
+  {
+    throw std::runtime_error(
+        "[Component reader]: IntraCoulombPairs and Intra14ChargeChargeScalingValue are mutually exclusive\n");
+  }
 
   if (parsed_data.contains("Intra14ChargeChargeScalingValue"))
   {
@@ -1874,7 +1932,10 @@ std::vector<CoulombPotential> Component::readCoulombPotentials(
     }
   }
 
-  std::vector<std::array<std::size_t, 2>> found_coulombs = connectivityTable.findAllVanDerWaals();
+  std::vector<std::array<std::size_t, 2>> found_coulombs =
+      parsed_data.contains("IntraCoulombPairs")
+          ? readExplicitIntraPairs(parsed_data, "IntraCoulombPairs", atoms.size())
+          : connectivityTable.findAllVanDerWaals();
 
   for (std::array<std::size_t, 2> &found_coulomb : found_coulombs)
   {
@@ -2305,8 +2366,7 @@ Component Component::makeWater(const ForceField &forceField, std::size_t id, boo
 
 Component Component::makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q)
 {
-  return Component(forceField, std::string{name}, 0.0, 0.0, 0.0, 
+  return Component(forceField, std::string{name}, 0.0, 0.0, 0.0,
                    {Atom({0, 0, 0}, q, 1.0, 0, static_cast<std::uint16_t>(type), static_cast<std::uint8_t>(id), false, false)}, {},
                    {}, 5, 21);
 }
-
