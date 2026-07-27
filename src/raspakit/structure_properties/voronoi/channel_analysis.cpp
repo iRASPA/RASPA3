@@ -45,6 +45,7 @@ ChannelAnalysis ChannelAnalysis::compute(const VoronoiNetwork& network, double p
   ChannelAnalysis analysis;
   const std::size_t numberOfNodes = network.nodes.size();
   analysis.nodePoreId.assign(numberOfNodes, -1);
+  analysis.nodeLatticeOffset.assign(numberOfNodes, int3(0, 0, 0));
 
   // Adjacency list restricted to nodes/edges wide enough for the probe.
   std::vector<bool> nodeActive(numberOfNodes, false);
@@ -106,7 +107,11 @@ ChannelAnalysis ChannelAnalysis::compute(const VoronoiNetwork& network, double p
     pore.nodeIndices = componentNodes;
 
     std::int32_t poreId = static_cast<std::int32_t>(analysis.pores.size());
-    for (std::size_t node : componentNodes) analysis.nodePoreId[node] = poreId;
+    for (std::size_t node : componentNodes)
+    {
+      analysis.nodePoreId[node] = poreId;
+      analysis.nodeLatticeOffset[node] = displacement[node];
+    }
     if (pore.isChannel)
       ++analysis.numberOfChannels;
     else

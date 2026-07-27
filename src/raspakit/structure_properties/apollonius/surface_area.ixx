@@ -7,17 +7,31 @@ import std;
 import framework;
 import forcefield;
 
-// Accessible and inaccessible surface area, sampled against the Apollonius diagram.
+// The measured route and the sampled one live in modules of their own, neither of which knows about any
+// diagram; what this adds is the Apollonius classifier they are run against.
+export import exact_surface_patches;
+
+// Accessible and inaccessible surface area against the Apollonius diagram, either measured or sampled.
 //
-// The estimate is the one made on the radical network: points on each probe-inflated sphere, those
-// buried in another atom thrown away, the rest asked whether they sit in a channel or in a pocket.
-// Only the classifier behind that question changes, so a difference in the answer is a difference in
-// which pockets count as closed.
+// Both routes split the boundary of the union of the probe-inflated atoms the same way, into the part
+// reachable from outside the crystal and the part sealed in pockets, and both take the same classifier
+// from the Apollonius diagram to decide which is which. What differs is how the area itself is arrived
+// at: the sampled route is zeo++'s, points thrown on each inflated sphere and those buried in another
+// atom thrown away, whose error is statistical and falls off as one over the square root of their
+// number; the measured route integrates each patch and does not sample the sphere at all.
 export struct ApolloniusSurfaceArea
 {
+  enum class Method
+  {
+    Exact,   // the latitude integral, accurate to round-off
+    Sampled  // points on the inflated spheres, as zeo++
+  };
+
   double accessibleSurfaceArea{0.0};    // Å²
   double inaccessibleSurfaceArea{0.0};  // Å²
+  double undecidedSurfaceArea{0.0};     // Å², only ever nonzero for the exact method
 
   void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
-           std::optional<std::size_t> samplesPerAtom = std::nullopt);
+           Method method = Method::Exact, std::optional<std::size_t> samplesPerAtom = std::nullopt,
+           std::optional<std::size_t> subdivisions = std::nullopt);
 };

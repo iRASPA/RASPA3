@@ -32,6 +32,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration_opencl/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/voronoi/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/apollonius/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/exact/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/utilities/*.cpp)
 
 file(GLOB SRC_IXX_FILES
@@ -66,6 +67,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/integration_opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/voronoi/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/apollonius/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/exact/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/utilities/*.ixx)
 
 add_library(${PROJECT_NAME}_base STATIC ${PCH_HEADER} ${PCH_SOURCE})

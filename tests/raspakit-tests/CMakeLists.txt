@@ -63,6 +63,10 @@ add_executable(unit_tests_raspakit
   apollonius.cpp
   voronoi_analysis.cpp
   apollonius_pore_analysis.cpp
+  apollonius_surface_area.cpp
+  exact_union_volume.cpp
+  exact_void_split.cpp
+  boundary_components.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

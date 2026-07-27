@@ -211,15 +211,15 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "Sets the isovalue for the iso-surface energy surfaces", 
            [&iso_value](std::string const &arg) { iso_value = std::stod(arg); })
-      .reg({"--number-of-slices"}, argparser::required_argument, "Set number of slices",
+      .reg({"--number-of-slices"}, argparser::required_argument,
+           "Set number of slices: of the energy integration, or of each smooth piece of the exact surface area",
            [&number_of_slices](std::string const &arg)
            {
              std::istringstream iss(arg);
              std::size_t x;
              if (!(iss >> x))
              {
-               throw std::runtime_error(
-                   "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
+               throw std::runtime_error("Invalid --number-of-slices: expected a single integer");
              }
              number_of_slices = x;
            })
@@ -419,13 +419,23 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_apollonius)
       {
+        // The area itself is measured rather than sampled unless the sampled estimate is asked for by
+        // name, there being no reason to prefer a statistical answer to an exact one at the same cost.
         ApolloniusSurfaceArea sa;
-        sa.run(forceField.value(), framework, geometricProbe("probe-N2"));
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+               use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
+                                       : ApolloniusSurfaceArea::Method::Exact,
+               number_of_iterations, number_of_slices);
       }
       else if (use_voronoi)
       {
+        // The area is measured against the radical network too: it is the same union of atoms and comes
+        // to the same total, and what the network then decides is only how that total divides.
         VoronoiSurfaceArea sa;
-        sa.run(forceField.value(), framework, geometricProbe("probe-N2"));
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+               use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
+                                       : VoronoiSurfaceArea::Method::Exact,
+               number_of_iterations, number_of_slices);
       }
 
       if (use_geometric_methods)
@@ -486,13 +496,22 @@ void CommandLine::run(int argc, char *argv[])
       // pockets, which is what zeo++ reports as the accessible volume.
       if (use_apollonius)
       {
+        // Both how much void there is and how it divides between channels and pockets are measured
+        // rather than sampled, unless the sampled estimate is asked for by name. The division falls
+        // back on sampling only where the surface cannot supply it, and says so when it does.
         ApolloniusAccessibleVolume av;
-        av.run(forceField.value(), framework, geometricProbe("probe-He"));
+        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+               use_monte_carlo_methods ? ApolloniusAccessibleVolume::Method::Sampled
+                                       : ApolloniusAccessibleVolume::Method::Exact,
+               number_of_iterations, number_of_slices);
       }
       else if (use_voronoi)
       {
         VoronoiAccessibleVolume av;
-        av.run(forceField.value(), framework, geometricProbe("probe-He"));
+        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+               use_monte_carlo_methods ? VoronoiAccessibleVolume::Method::Sampled
+                                       : VoronoiAccessibleVolume::Method::Exact,
+               number_of_iterations, number_of_slices);
       }
 
       if (use_monte_carlo_methods)

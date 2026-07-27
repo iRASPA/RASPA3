@@ -26,6 +26,31 @@ export struct PointClassification
   bool accessible{false};  // in an accessible channel (only meaningful when !inside)
   std::int32_t poreId{-1}; // channel/pocket id of the deciding node, or -1
   bool resample{false};    // no line-of-sight node found; caller should resample
+
+  // The lattice translation carrying `point` into the frame the nodes of `poreId` are assembled in, i.e.
+  // into the one lift of that pore rather than whichever periodic copy of it happens to lie next to the
+  // point.  Zero when nothing was decided.
+  //
+  // A caller asking only whether a point is in a channel has no use for this.  It is there for the ones
+  // that integrate something over the boundary of a bounded pore, where the pieces are found on atoms of
+  // the home cell but belong to different lifts, and add up to a closed surface only once brought
+  // together.  Meaningful for a pocket; for a channel the offset depends on the path taken to the node,
+  // there being more than one, and it says nothing.
+  int3 latticeOffset{0, 0, 0};
+};
+
+// One periodic image of one atom, as a neighbour of some query point: where its centre is relative to
+// that point, how big it is, which atom of the home cell it is a copy of, and which copy.
+//
+// `image` is the lattice translation of that copy, so its centre is `atomPositions[index]` shifted by
+// `cell * image`. It is what lets a piece of surface found on one atom be recognised as the same piece
+// found on the other: the two see it in lifts that differ by exactly this translation.
+export struct NeighbourImage
+{
+  double3 delta;             // from the query point to this image's centre
+  double radius{0.0};        // inflated
+  std::size_t index{0};      // atom of the home cell this is a copy of
+  int3 image{0, 0, 0};       // which copy
 };
 
 // The samplers built on this machinery measure a fixed structure, so they are seeded from a constant:
@@ -106,6 +131,15 @@ export struct VoronoiAccessibility
   // heuristics in `classify`.
   std::optional<std::size_t> containingNode(const double3& point, bool accessibleOnly = false) const;
 
+  // Which lift of `poreId` lies nearest `point`: the lattice translation `t` for which some node of the
+  // pore, at `nodes[i].position + cell * (nodeLatticeOffset[i] + t)`, comes closest to it.
+  //
+  // A pore is one connected set of nodes, but it stands for a periodic family of them, and a point next to
+  // one member of that family is not next to the others. Which member matters to anything integrating over
+  // a pore's boundary, and the node that `classify` happened to decide the point by need not belong to it:
+  // the fallbacks there are chosen to get the pore right, that being all they were ever asked for.
+  int3 nearestLift(const double3& point, std::int32_t poreId) const;
+
   // Whether `point` is provably in a channel, by the above. Its use is to refuse a blocking sphere over
   // a point that has such a proof: a strongly degenerate diagram can leave a stretch of channel joined
   // to nothing and counted as a pocket, and blocking part of a pore is the one error here a simulation
@@ -124,4 +158,19 @@ export struct VoronoiAccessibility
   // True when the point lies strictly inside the inflated sphere of any atom other than
   // `excludedAtom` (pass a value >= number of atoms to test against all atoms).
   bool overlapsAtom(const double3& point, std::size_t excludedAtom) const;
+
+  // Every inflated atom, in every periodic image, whose centre lies within `reach` of `point`: the
+  // vector from the point to that centre, and the inflated radius there.
+  //
+  // Each image is an entry of its own, including the images of the atom sitting on the point itself,
+  // which in a cell smaller than twice an atom's radius cut into its sphere exactly as any other
+  // neighbour does. The copy at zero distance is returned too, so a caller measuring the surface of
+  // one atom has to drop that one and keep the rest.
+  std::vector<std::pair<double3, double>> neighbourAtoms(const double3& point, double reach) const;
+
+  // The same query, carrying which atom each image is of and which image of it. A caller that only
+  // measures one sphere needs neither; one that has to recognise the same piece of surface from both of
+  // the spheres it lies on needs both, the two descriptions of it being on different atoms in different
+  // lifts and having nothing else in common.
+  std::vector<NeighbourImage> neighbourAtomImages(const double3& point, double reach) const;
 };

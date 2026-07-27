@@ -32,6 +32,17 @@ export struct ChannelAnalysis
   std::size_t numberOfChannels{0};
   std::size_t numberOfPockets{0};
 
+  // Per node, the lattice translation carrying it into the frame of the first node of its pore, so that
+  // the positions `nodes[i].position + cell * nodeLatticeOffset[i]` over a pore are one connected lift of
+  // it rather than one representative of each periodic family. Zero for a pruned node.
+  //
+  // The walk below accumulates this already, to decide whether a component closes on a translate of
+  // itself; it is kept because anything integrating over the boundary of a bounded pore has to assemble
+  // that boundary in a single frame first, the pieces belonging to different lifts otherwise. Within a
+  // pocket it is well defined: a second path to a node that disagreed with the first would be a loop with
+  // a non-zero net translation, which is what makes a component a channel instead.
+  std::vector<int3> nodeLatticeOffset;
+
   static ChannelAnalysis compute(const VoronoiNetwork& network, double probeRadius);
 };
 

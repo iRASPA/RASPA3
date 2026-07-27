@@ -130,10 +130,27 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   PointClassification classification;
 
   // Work with the wrapped point; the configuration is periodic so the classification of
-  // the wrapped point equals that of the original.
-  double3 fractional = double3::fract(simulationBox.inverseCell * point);
+  // the wrapped point equals that of the original. The translation that wrapping removed is kept, since
+  // the frame the answer refers to is the caller's point and not the wrapped one.
+  double3 unwrappedFractional = simulationBox.inverseCell * point;
+  const int3 wrap(static_cast<int>(std::floor(unwrappedFractional.x)),
+                  static_cast<int>(std::floor(unwrappedFractional.y)),
+                  static_cast<int>(std::floor(unwrappedFractional.z)));
+  double3 fractional = double3::fract(unwrappedFractional);
   double3 wrappedPoint = simulationBox.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
+
+  // The pore of the node that decides the point, and the lift of that pore the point sits next to. The
+  // lift is taken from the nearest node of the pore rather than from the deciding node's own image: the
+  // deciding node is chosen to settle which pore, and the tests below that do that by proximity or by
+  // reach may well pick a node in another copy of it, which is no error in an answer about pores but is
+  // the wrong frame to bring the point into.
+  auto decideFrom = [&](std::size_t nodeIndex)
+  {
+    classification.accessible = nodeAccessible[nodeIndex] != 0;
+    classification.poreId = channels.nodePoreId[nodeIndex];
+    classification.latticeOffset = -nearestLift(wrappedPoint, classification.poreId) - wrap;
+  };
 
   // The cell containing the point is the one nearest in the metric the network's cells are cut by:
   // the power distance |x-x_i|^2 - r_i^2 for a radical diagram, the clearance |x-x_i| - r_i for an
@@ -203,8 +220,7 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   // account of which nodes surround the nearest atom is incomplete on a strongly degenerate structure.
   if (std::optional<std::size_t> holder = containingNode(wrappedPoint); holder.has_value())
   {
-    classification.accessible = nodeAccessible[holder.value()] != 0;
-    classification.poreId = channels.nodePoreId[holder.value()];
+    decideFrom(holder.value());
     return classification;
   }
 
@@ -213,6 +229,7 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   double3 sampleRay = wrappedPoint - nearestAtomImage;
   double bestDistanceSquared = std::numeric_limits<double>::max();
   bool decided = false;
+  std::size_t bestNode = 0;
   for (const auto& [nodeIndex, vertexRelative] : network.atomNodeVectors[nearestAtom])
   {
     double3 nodePosition = nearestAtomImage + vertexRelative;
@@ -222,12 +239,15 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
     if (double3::dot(sampleRay, otherRay) <= 0.0 && distanceSquared < bestDistanceSquared)
     {
       bestDistanceSquared = distanceSquared;
-      classification.accessible = nodeAccessible[nodeIndex] != 0;
-      classification.poreId = channels.nodePoreId[nodeIndex];
+      bestNode = nodeIndex;
       decided = true;
     }
   }
-  if (decided) return classification;
+  if (decided)
+  {
+    decideFrom(bestNode);
+    return classification;
+  }
 
   // In a compact cage every node of the cell can sit forward of the sample point, and then nothing
   // passes the test above. What settles it then is the node whose own free ball comes nearest to holding
@@ -264,8 +284,7 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
 
   if (decided)
   {
-    classification.accessible = nodeAccessible[reachNode] != 0;
-    classification.poreId = channels.nodePoreId[reachNode];
+    decideFrom(reachNode);
     return classification;
   }
 
@@ -325,6 +344,37 @@ std::optional<std::size_t> VoronoiAccessibility::containingNode(const double3& p
   return best;
 }
 
+int3 VoronoiAccessibility::nearestLift(const double3& point, std::int32_t poreId) const
+{
+  if (poreId < 0) return int3(0, 0, 0);
+  const VoronoiPore& pore = channels.pores[static_cast<std::size_t>(poreId)];
+
+  int3 best(0, 0, 0);
+  double nearest = std::numeric_limits<double>::max();
+  for (std::size_t nodeIndex : pore.nodeIndices)
+  {
+    // Where this node sits in the lift the pore is assembled in, and the translation carrying that to the
+    // copy of it nearest the point, which is the minimum image and needs no search.
+    const int3& offset = channels.nodeLatticeOffset[nodeIndex];
+    double3 assembled = network.nodes[nodeIndex].position +
+                        simulationBox.cell * double3(static_cast<double>(offset.x), static_cast<double>(offset.y),
+                                                     static_cast<double>(offset.z));
+    double3 fractional = simulationBox.inverseCell * (point - assembled);
+    int3 translation(static_cast<int>(std::lround(fractional.x)), static_cast<int>(std::lround(fractional.y)),
+                     static_cast<int>(std::lround(fractional.z)));
+    double3 shift = simulationBox.cell * double3(static_cast<double>(translation.x),
+                                                static_cast<double>(translation.y),
+                                                static_cast<double>(translation.z));
+    double distance = (point - (assembled + shift)).length();
+    if (distance < nearest)
+    {
+      nearest = distance;
+      best = translation;
+    }
+  }
+  return best;
+}
+
 bool VoronoiAccessibility::provablyAccessible(const double3& point) const
 {
   return containingNode(point, true).has_value();
@@ -372,6 +422,105 @@ double VoronoiAccessibility::clearance(const double3& point) const
     }
   }
   return found ? best : std::numeric_limits<double>::max();
+}
+
+std::vector<std::pair<double3, double>> VoronoiAccessibility::neighbourAtoms(const double3& point, double reach) const
+{
+  double3 fractional = double3::fract(simulationBox.inverseCell * point);
+  double3 wrappedPoint = simulationBox.cell * fractional;
+  const int3 pointBin = binOfFractional(fractional, gridSize);
+
+  std::vector<std::pair<double3, double>> neighbours;
+  for (int k = 0;; ++k)
+  {
+    // Nothing in shell k is nearer to the point than this, so once that passes the reach there is
+    // nothing left to collect. The walk is over the shells of the same cell list the other queries
+    // use, and wraps, so a reach larger than the cell returns the images as separate entries.
+    double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
+    if (k > 0 && lowerBound > reach) break;
+
+    for (int ox = -k; ox <= k; ++ox)
+    {
+      for (int oy = -k; oy <= k; ++oy)
+      {
+        for (int oz = -k; oz <= k; ++oz)
+        {
+          if (std::max({std::abs(ox), std::abs(oy), std::abs(oz)}) != k) continue;
+
+          auto [bx, lx] = binAndImage(pointBin.x + ox, gridSize.x);
+          auto [by, ly] = binAndImage(pointBin.y + oy, gridSize.y);
+          auto [bz, lz] = binAndImage(pointBin.z + oz, gridSize.z);
+
+          double3 imageShift =
+              simulationBox.cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz)) -
+              wrappedPoint;
+
+          for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
+          {
+            double3 delta = atomPositions[j] + imageShift;
+            if (delta.length() <= reach) neighbours.emplace_back(delta, atomRadii[j]);
+          }
+        }
+      }
+    }
+  }
+  return neighbours;
+}
+
+
+std::vector<NeighbourImage> VoronoiAccessibility::neighbourAtomImages(const double3& point, double reach) const
+{
+  // The same walk as `neighbourAtoms`, keeping what that one drops: which atom each image is of, and
+  // which image. The bin walk knows both -- the atom by its index in the bin, the image by how far the
+  // shell reached outside the cell -- and the only correction is the wrap the query point itself went
+  // through on the way in, since the translations are wanted relative to the point as given.
+  double3 unwrappedFractional = simulationBox.inverseCell * point;
+  const int3 wrap(static_cast<int>(std::floor(unwrappedFractional.x)),
+                  static_cast<int>(std::floor(unwrappedFractional.y)),
+                  static_cast<int>(std::floor(unwrappedFractional.z)));
+  double3 fractional = double3::fract(unwrappedFractional);
+  double3 wrappedPoint = simulationBox.cell * fractional;
+  const int3 pointBin = binOfFractional(fractional, gridSize);
+
+  std::vector<NeighbourImage> neighbours;
+  for (int k = 0;; ++k)
+  {
+    double lowerBound = static_cast<double>(k - 1) * minimumBinWidth;
+    if (k > 0 && lowerBound > reach) break;
+
+    for (int ox = -k; ox <= k; ++ox)
+    {
+      for (int oy = -k; oy <= k; ++oy)
+      {
+        for (int oz = -k; oz <= k; ++oz)
+        {
+          if (std::max({std::abs(ox), std::abs(oy), std::abs(oz)}) != k) continue;
+
+          auto [bx, lx] = binAndImage(pointBin.x + ox, gridSize.x);
+          auto [by, ly] = binAndImage(pointBin.y + oy, gridSize.y);
+          auto [bz, lz] = binAndImage(pointBin.z + oz, gridSize.z);
+
+          double3 imageShift =
+              simulationBox.cell * double3(static_cast<double>(lx), static_cast<double>(ly), static_cast<double>(lz)) -
+              wrappedPoint;
+
+          for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
+          {
+            double3 delta = atomPositions[j] + imageShift;
+            if (delta.length() > reach) continue;
+
+            NeighbourImage neighbour;
+            neighbour.delta = delta;
+            neighbour.radius = atomRadii[j];
+            neighbour.index = j;
+            neighbour.image = int3(lx + wrap.x, ly + wrap.y, lz + wrap.z);
+            neighbours.push_back(neighbour);
+          }
+        }
+      }
+    }
+  }
+  return neighbours;
 }
 
 bool VoronoiAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
