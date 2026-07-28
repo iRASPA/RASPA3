@@ -8,6 +8,7 @@ import int3;
 import double3;
 import simulationbox;
 import voronoi_accessibility;
+import voronoi_channels;
 
 namespace
 {
@@ -957,6 +958,19 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
     if (component[seed] >= 0) continue;
     std::int32_t label = static_cast<std::int32_t>(result.numberOfComponents++);
     result.componentPercolates.push_back(0);
+    result.componentTranslations.emplace_back();
+
+    // The translations this surface closes on itself by, kept down to a basis of them. A framework of any size
+    // returns to an already lifted patch thousands of times, and all but the first few say the same thing, so
+    // one is kept only when it says something the ones before it did not.
+    std::vector<int3>& translations = result.componentTranslations.back();
+    auto remember = [&translations](const int3& translation)
+    {
+      if (latticeVectorRank(translations) == 3) return;
+      std::vector<int3> extended = translations;
+      extended.push_back(translation);
+      if (latticeVectorRank(extended) > latticeVectorRank(translations)) translations.push_back(translation);
+    };
 
     component[seed] = label;
     offset[seed] = int3(0, 0, 0);
@@ -978,12 +992,21 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
         else if (offset[edge.to].x != carried.x || offset[edge.to].y != carried.y ||
                  offset[edge.to].z != carried.z)
         {
-          // The surface has come back to a patch it had already reached, in a different copy of the cell:
-          // it closes on a translate of itself and so runs away in that direction.
+          // The surface has come back to a patch it had already reached, in a different copy of the cell: it
+          // closes on a translate of itself and so runs away in that direction. The disagreement is that
+          // translation, and over all such edges these generate every translation the surface has.
           result.componentPercolates[static_cast<std::size_t>(label)] = 1;
+          remember(int3(carried.x - offset[edge.to].x, carried.y - offset[edge.to].y,
+                        carried.z - offset[edge.to].z));
         }
       }
     }
+  }
+
+  result.componentDimensionality.reserve(result.numberOfComponents);
+  for (const std::vector<int3>& translations : result.componentTranslations)
+  {
+    result.componentDimensionality.push_back(latticeVectorRank(translations));
   }
 
   for (std::size_t patch = 0; patch < totalPatches; ++patch)

@@ -122,6 +122,29 @@ export struct BoundaryComponents
   // translations as they are accumulated, a cycle that does not cancel being exactly this.
   std::vector<std::uint8_t> componentPercolates;
 
+  // Per component: the translations it closes on itself by, and how many independent directions they span.
+  //
+  // Walking the patch graph and adding up the translations along the way gives each patch a lift of itself.
+  // Where the walk returns to a patch it has already lifted and disagrees, the difference is a translation
+  // taking the surface onto itself, and the differences generate the whole group of such translations --- the
+  // surface is periodic under exactly that subgroup of the lattice and no more. Its rank is how many
+  // independent directions the surface runs away in, which is the dimensionality of the pore it walls: a cage
+  // gives zero, the wall of a one-dimensional channel closes on itself along the channel and nowhere else and
+  // gives one, a wall between sheets gives two, and an intersecting system gives three.
+  //
+  // Read off the same walk that decides whether the surface is bounded, in integer arithmetic, without a pore
+  // network and without a probe path being traced through anything.
+  //
+  // What it cannot do alone is join two surfaces that wall the same pore. A surface faces one pore, and every
+  // translation of the surface is one of the pore, so its rank is never more than the pore's; where the pore
+  // is walled by a single surface the two are equal and the rank is the pore's own. Where it is walled by
+  // several --- a cluster of atoms standing in open void, two interpenetrating nets, a bundle of parallel rods
+  // in a common void --- each surface still gives a rank the pore's cannot fall below, and which of them face
+  // the same pore is the one question a pore network is for. It is the same residue the area and the volume
+  // leave behind, and no framework of the atlas has it.
+  std::vector<std::vector<int3>> componentTranslations;
+  std::vector<int> componentDimensionality;
+
   // Per component, the atom and patch the surface is asked about, chosen to be the piece with the most room
   // in front of it.
   std::vector<std::pair<std::size_t, std::size_t>> componentRepresentative;

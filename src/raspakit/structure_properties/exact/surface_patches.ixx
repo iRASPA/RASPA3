@@ -116,6 +116,30 @@ export struct ExactSurfaceAreaSample
   std::size_t sealedSurfaces{0};
   std::size_t clusterSurfaces{0};
 
+  // How much surface runs away in each number of independent directions, indexed by that number: a surface
+  // walls a pore of its own dimensionality, so this is the area of the framework divided by the kind of pore
+  // it faces. Index 0 is everything bounded, whether it seals void or stands round a cluster.
+  //
+  // The dimensionality of a surface is the rank of the group of lattice translations it closes on itself by,
+  // which the decomposition accumulates on its way to deciding whether the surface is bounded at all. It is
+  // integer arithmetic on the same walk, so it costs nothing and admits no tolerance, and it consults no pore
+  // network: where the network route has to prune its edges at the probe radius and trust that connectivity
+  // through a discrete graph is connectivity of the void, this reads the periodicity off the boundary itself.
+  std::array<std::size_t, 4> surfacesOfDimension{};
+  std::array<double, 4> areaOfDimension{};  // Å²
+
+  // The largest of those that carries any surface. It is the dimensionality of the pore system wherever each
+  // pore is walled by a single surface, and a lower bound on it otherwise, a pore walled by several being one
+  // only a network can put back together.
+  int dimensionality() const
+  {
+    for (int rank = 3; rank > 0; --rank)
+    {
+      if (surfacesOfDimension[static_cast<std::size_t>(rank)] > 0) return rank;
+    }
+    return 0;
+  }
+
   double total() const { return accessible + inaccessible + undecided; }
 };
 

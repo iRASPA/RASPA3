@@ -87,6 +87,24 @@ void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& f
                "are clusters of atoms the network was asked about\n",
                measured.numberOfSurfaces, measured.runawaySurfaces, measured.sealedSurfaces,
                measured.clusterSurfaces);
+
+    // A surface is periodic under a subgroup of the lattice, and how many directions that subgroup spans is
+    // how many directions the pore behind the surface runs away in. Integer arithmetic on the translations the
+    // decomposition has already accumulated, so it is decided rather than resolved, and no pore network is
+    // consulted for it.
+    std::print(myfile, "# Pore system: {}{}-dimensional, from the periodicity of the surfaces themselves\n",
+               measured.clusterSurfaces > 0 ? "at least " : "", measured.dimensionality());
+    for (std::size_t rank = 1; rank < 4; ++rank)
+    {
+      if (measured.surfacesOfDimension[rank] == 0) continue;
+      std::print(myfile, "#   {} surface(s) running away in {} direction(s), {} Å² of wall\n",
+                 measured.surfacesOfDimension[rank], rank, measured.areaOfDimension[rank]);
+    }
+    if (measured.surfacesOfDimension[0] > 0)
+    {
+      std::print(myfile, "#   {} bounded surface(s), {} Å² of wall\n", measured.surfacesOfDimension[0],
+                 measured.areaOfDimension[0]);
+    }
   }
   else
   {

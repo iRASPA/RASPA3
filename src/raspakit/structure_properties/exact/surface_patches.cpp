@@ -626,6 +626,11 @@ ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const VoronoiAccess
 
     ++sample.numberOfSurfaces;
 
+    // How many directions this surface runs away in, which is the dimensionality of the pore behind it.
+    std::size_t rank = static_cast<std::size_t>(std::clamp(components.componentDimensionality[label], 0, 3));
+    ++sample.surfacesOfDimension[rank];
+    sample.areaOfDimension[rank] += moments.area;
+
     bool reachable;
     if (components.componentPercolates[label] != 0)
     {

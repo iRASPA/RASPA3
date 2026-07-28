@@ -13,31 +13,44 @@ import voronoi_network;
 
 int latticeVectorRank(const std::vector<int3>& vectors)
 {
-  // Gaussian elimination on the vectors as rows; count non-zero pivot rows.
-  std::array<std::array<double, 3>, 3> basis{};
-  std::size_t rank = 0;
+  // In integers throughout. These are lattice translations, so how many directions they span is a property of
+  // the integers themselves and there is no tolerance to choose: a vector is off a line when its cross product
+  // with that line does not vanish, and off a plane when its product with the plane's normal does not, and
+  // both tests are decided rather than estimated. Rounding here would be a threshold on how nearly parallel
+  // two directions of a channel system may be before they are called one, and there is no such thing.
+  using vector = std::array<std::int64_t, 3>;
+  auto cross = [](const vector& u, const vector& v) {
+    return vector{u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]};
+  };
+  auto nonZero = [](const vector& u) { return u[0] != 0 || u[1] != 0 || u[2] != 0; };
+
+  vector along{}, normal{};
+  int rank = 0;
   for (const int3& v : vectors)
   {
-    std::array<double, 3> row{static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z)};
-    for (std::size_t r = 0; r < rank; ++r)
+    vector row{v.x, v.y, v.z};
+    if (!nonZero(row)) continue;
+
+    if (rank == 0)
     {
-      double dot = row[0] * basis[r][0] + row[1] * basis[r][1] + row[2] * basis[r][2];
-      double norm = basis[r][0] * basis[r][0] + basis[r][1] * basis[r][1] + basis[r][2] * basis[r][2];
-      if (norm > 0.0)
+      along = row;
+      rank = 1;
+    }
+    else if (rank == 1)
+    {
+      vector off = cross(along, row);
+      if (nonZero(off))
       {
-        double factor = dot / norm;
-        for (std::size_t d = 0; d < 3; ++d) row[d] -= factor * basis[r][d];
+        normal = off;
+        rank = 2;
       }
     }
-    double residual = std::sqrt(row[0] * row[0] + row[1] * row[1] + row[2] * row[2]);
-    if (residual > 1.0e-6)
+    else if (normal[0] * row[0] + normal[1] * row[1] + normal[2] * row[2] != 0)
     {
-      basis[rank] = row;
-      ++rank;
-      if (rank == 3) break;
+      return 3;
     }
   }
-  return static_cast<int>(rank);
+  return rank;
 }
 
 ChannelAnalysis ChannelAnalysis::compute(const VoronoiNetwork& network, double probeRadius)

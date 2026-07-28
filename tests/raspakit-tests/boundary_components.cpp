@@ -510,3 +510,110 @@ TEST(boundary_components, neighbour_images_are_consistent_and_symmetric)
     }
   }
 }
+
+
+// How many independent directions a surface runs away in, on arrangements built to run away in a known number
+// of them. The rank is the one over the translations the surface closes on itself by, so it is decided in
+// integers and each of these has an answer that can be read off the arrangement: a cage closes on itself and
+// on nothing else, a chain of balls round the cell closes on itself one cell along and nowhere else, a sealed
+// sheet closes on itself in the two directions it spreads in, and a scaffold of rods along all three axes
+// closes on itself in all three.
+TEST(boundary_components, a_surface_knows_how_many_directions_it_runs_away_in)
+{
+  const double a = 16.0;
+  SimulationBox box(a, a, a);
+
+  // A cage: two surfaces, an inside and an outside, neither going anywhere.
+  {
+    BoundaryComponents cage = boundaryComponents(geometryOf(box, cageCentres(double3(8.0, 8.0, 8.0), 3.0, 32), 1.8));
+    ASSERT_EQ(cage.numberOfComponents, 2uz);
+    EXPECT_EQ(cage.componentDimensionality[0], 0);
+    EXPECT_EQ(cage.componentDimensionality[1], 0);
+  }
+
+  // A chain of overlapping balls round the cell along x. One surface, closing on itself one cell along x.
+  {
+    std::vector<double3> positions;
+    for (std::size_t i = 0; i < 8; ++i) positions.push_back(double3(2.0 * static_cast<double>(i), 8.0, 8.0));
+
+    BoundaryComponents chain = boundaryComponents(geometryOf(box, positions, 1.5));
+    ASSERT_EQ(chain.numberOfComponents, 1uz);
+    EXPECT_EQ(chain.componentDimensionality[0], 1);
+
+    // And the direction is the one it was built along, not merely some direction.
+    ASSERT_FALSE(chain.componentTranslations[0].empty());
+    for (const int3& translation : chain.componentTranslations[0])
+    {
+      EXPECT_NE(translation.x, 0);
+      EXPECT_EQ(translation.y, 0);
+      EXPECT_EQ(translation.z, 0);
+    }
+  }
+
+  // A sheet of balls, close enough together to leave no way through it. Two surfaces, one above and one
+  // below, each spreading in x and y and neither reaching the other.
+  {
+    std::vector<double3> positions;
+    for (std::size_t i = 0; i < 8; ++i)
+    {
+      for (std::size_t j = 0; j < 8; ++j)
+      {
+        positions.push_back(double3(2.0 * static_cast<double>(i), 2.0 * static_cast<double>(j), 8.0));
+      }
+    }
+
+    BoundaryComponents sheet = boundaryComponents(geometryOf(box, positions, 1.5));
+    ASSERT_EQ(sheet.numberOfComponents, 2uz);
+    EXPECT_EQ(sheet.componentDimensionality[0], 2);
+    EXPECT_EQ(sheet.componentDimensionality[1], 2);
+  }
+
+  // A scaffold of rods along all three axes, joined at the corners of a coarser lattice. One surface, and it
+  // comes back to itself along each of the three.
+  {
+    std::vector<double3> positions;
+    for (std::size_t i = 0; i < 2; ++i)
+    {
+      for (std::size_t j = 0; j < 2; ++j)
+      {
+        for (std::size_t k = 0; k < 2; ++k)
+        {
+          double3 node(8.0 * static_cast<double>(i), 8.0 * static_cast<double>(j), 8.0 * static_cast<double>(k));
+          positions.push_back(node);
+          for (double along : {2.0, 4.0, 6.0})
+          {
+            positions.push_back(node + double3(along, 0.0, 0.0));
+            positions.push_back(node + double3(0.0, along, 0.0));
+            positions.push_back(node + double3(0.0, 0.0, along));
+          }
+        }
+      }
+    }
+
+    BoundaryComponents scaffold = boundaryComponents(geometryOf(box, positions, 1.2));
+    ASSERT_EQ(scaffold.numberOfComponents, 1uz);
+    EXPECT_EQ(scaffold.componentDimensionality[0], 3);
+  }
+}
+
+
+// Where the rank of a surface is not the dimensionality of the pore behind it, which is the case the reading
+// has to be honest about. A single chain of balls threaded through the cell is a rod, and its surface closes
+// on itself along the rod and nowhere else, so the surface is one-dimensional; but the void it stands in is
+// the whole of the rest of the cell and runs away in all three directions. The rank is a lower bound on the
+// pore's, and here it is a strict one, because the pore is walled by every copy of this surface at once and
+// no surface can say that of itself. Only a pore network joins them up.
+TEST(boundary_components, a_rod_in_open_void_bounds_more_than_it_says)
+{
+  const double a = 16.0;
+  SimulationBox box(a, a, a);
+
+  std::vector<double3> positions;
+  for (std::size_t i = 0; i < 8; ++i) positions.push_back(double3(2.0 * static_cast<double>(i), 8.0, 8.0));
+
+  BoundaryComponents rod = boundaryComponents(geometryOf(box, positions, 1.5));
+
+  ASSERT_EQ(rod.numberOfComponents, 1uz);
+  EXPECT_EQ(rod.componentDimensionality[0], 1);
+  EXPECT_EQ(rod.componentPercolates[0], 1);
+}
