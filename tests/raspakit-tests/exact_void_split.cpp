@@ -97,6 +97,70 @@ double sampledCavityVolume(const std::vector<double3>& cartesianPositions, const
   return side * side * side * static_cast<double>(hits) / static_cast<double>(samples);
 }
 
+
+// How far the cavity gets from a point, by the same sampling: the largest distance from `from` to a point that
+// landed in it. An extreme rather than a mean, so it approaches its limit from below and slowly, which is what
+// makes it worth comparing against a measured reach: it can only fail by exceeding it.
+double sampledCavityReach(const std::vector<double3>& cartesianPositions, const double3& centre,
+                          double shellRadius, double ballRadius, const double3& from, std::size_t samples,
+                          std::size_t seed)
+{
+  RandomNumber random{std::optional<std::size_t>(seed)};
+  const double side = 2.0 * shellRadius;
+  double furthest = 0.0;
+  for (std::size_t sample = 0; sample < samples; ++sample)
+  {
+    double3 point = centre + double3(side * (random.uniform() - 0.5), side * (random.uniform() - 0.5),
+                                     side * (random.uniform() - 0.5));
+    if ((point - centre).length() >= shellRadius) continue;
+
+    bool covered = false;
+    for (const double3& position : cartesianPositions)
+    {
+      if ((point - position).length() < ballRadius)
+      {
+        covered = true;
+        break;
+      }
+    }
+    if (!covered) furthest = std::max(furthest, (point - from).length());
+  }
+  return furthest;
+}
+
+
+// Where that cavity is, by the same sampling: the mean of the points that landed in it. Sampling the cavity
+// rather than the cell is what makes this worth comparing against, the mean of a few thousand hits settling
+// to a hundredth of an Ångström while the same points would give the volume to no better than a percent.
+double3 sampledCavityCentre(const std::vector<double3>& cartesianPositions, const double3& centre,
+                            double shellRadius, double ballRadius, std::size_t samples, std::size_t seed)
+{
+  RandomNumber random{std::optional<std::size_t>(seed)};
+  const double side = 2.0 * shellRadius;
+  double3 sum(0.0, 0.0, 0.0);
+  std::size_t hits = 0;
+  for (std::size_t sample = 0; sample < samples; ++sample)
+  {
+    double3 point = centre + double3(side * (random.uniform() - 0.5), side * (random.uniform() - 0.5),
+                                     side * (random.uniform() - 0.5));
+    if ((point - centre).length() >= shellRadius) continue;
+
+    bool covered = false;
+    for (const double3& position : cartesianPositions)
+    {
+      if ((point - position).length() < ballRadius)
+      {
+        covered = true;
+        break;
+      }
+    }
+    if (covered) continue;
+    sum += point;
+    ++hits;
+  }
+  return sum * (1.0 / static_cast<double>(std::max<std::size_t>(1, hits)));
+}
+
 }  // namespace
 
 
@@ -535,4 +599,184 @@ TEST(exact_void_split, by_components_refining_the_quadrature_does_not_move_the_p
   ASSERT_TRUE(coarse.reliable) << coarse.rejection;
   ASSERT_TRUE(fine.reliable) << fine.rejection;
   EXPECT_NEAR(coarse.inaccessibleVolume, fine.inaccessibleVolume, 1.0e-6 * fine.inaccessibleVolume);
+}
+
+
+// Where a pocket is, from the same arcs that say how large it is. The centroid is a moment of the enclosed
+// region, so the divergence theorem reaches it as well, and this is it against the mean of points thrown into
+// the cavity itself. A ball centred there and no wider than the nearest atom lies wholly in the pocket, which
+// is what makes the pair a blocking sphere, so the free radius has to be a real length and not zero.
+TEST(exact_void_split, by_components_a_pocket_knows_where_it_is)
+{
+  const double a = 14.0;
+  SimulationBox box(a, a, a);
+  const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
+  const double shellRadius = 3.0;
+  const double ballRadius = 1.8;
+
+  std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
+  ExactVoidSplit split = exactVoidSplitByComponents(cageGeometry(box, positions, ballRadius), box.volume);
+
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_EQ(split.pockets.size(), 1uz);
+
+  double3 sampled = sampledCavityCentre(positions, centre, shellRadius, ballRadius, 4000000, 71);
+  EXPECT_NEAR(split.pockets[0].centre.x, sampled.x, 0.02);
+  EXPECT_NEAR(split.pockets[0].centre.y, sampled.y, 0.02);
+  EXPECT_NEAR(split.pockets[0].centre.z, sampled.z, 0.02);
+
+  EXPECT_NEAR(split.pockets[0].volume, split.inaccessibleVolume, 1.0e-9 * split.inaccessibleVolume);
+  EXPECT_GT(split.pockets[0].freeRadius, 0.5);
+
+  // The three radii are nested, and not by convention: the free ball lies inside the pocket and the covering
+  // ball holds it, so their volumes bracket the pocket's own and the radii come in that order.
+  EXPECT_LE(split.pockets[0].freeRadius, split.pockets[0].equivalentRadius + 1.0e-9);
+  EXPECT_LE(split.pockets[0].equivalentRadius, split.pockets[0].coveringRadius + 1.0e-9);
+}
+
+
+// How far the pocket reaches from its own centre, against points thrown into the cavity. The reach is a
+// maximum over the surface, taken in closed form on each patch, so what has to hold is that it covers the
+// cavity -- no sampled point may lie outside it -- and that it is the least radius that does, which is the
+// sampled maximum creeping up to it from below rather than stopping short.
+TEST(exact_void_split, by_components_a_pockets_reach_covers_it_and_no_more)
+{
+  const double a = 14.0;
+  SimulationBox box(a, a, a);
+  const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
+  const double shellRadius = 3.0;
+  const double ballRadius = 1.8;
+
+  std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
+  ExactVoidSplit split = exactVoidSplitByComponents(cageGeometry(box, positions, ballRadius), box.volume);
+
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_EQ(split.pockets.size(), 1uz);
+  const PocketGeometry& pocket = split.pockets[0];
+
+  double sampled =
+      sampledCavityReach(positions, centre, shellRadius, ballRadius, pocket.centre, 4000000, 89);
+  EXPECT_LE(sampled, pocket.coveringRadius);
+  EXPECT_GT(sampled, pocket.coveringRadius - 0.05);
+}
+
+
+// The same cage, moved. A centroid that came out of a boundary assembled in the wrong frame would not follow
+// the pocket across the periodic boundary, so this is the check that the moment is taken in one frame and
+// brought home afterwards rather than averaged over the copies of the cell.
+TEST(exact_void_split, by_components_a_pockets_centre_moves_with_the_pocket)
+{
+  const double a = 14.0;
+  SimulationBox box(a, a, a);
+  const double3 shift(0.37 * a, -0.62 * a, 1.24 * a);
+  const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
+
+  ExactVoidSplit centred =
+      exactVoidSplitByComponents(cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8), box.volume);
+  ExactVoidSplit moved =
+      exactVoidSplitByComponents(cageGeometry(box, cageCentres(centre + shift, 3.0, 32), 1.8), box.volume);
+
+  ASSERT_EQ(centred.pockets.size(), 1uz);
+  ASSERT_EQ(moved.pockets.size(), 1uz);
+
+  double3 expected = double3::fract(box.inverseCell * (centred.pockets[0].centre + shift));
+  double3 difference = moved.pockets[0].centreFractional - expected;
+  difference -= double3(std::round(difference.x), std::round(difference.y), std::round(difference.z));
+  EXPECT_LT((box.cell * difference).length(), 1.0e-6);
+}
+
+
+// Two cages, each with its own centre. A single centroid taken over both pockets at once would land halfway
+// between them, in the middle of the framework, which is the mistake this rules out.
+TEST(exact_void_split, by_components_two_pockets_have_their_own_centres)
+{
+  const double a = 20.0;
+  SimulationBox box(a, a, a);
+  const double3 first(5.0, 5.0, 5.0);
+  const double3 second(14.0, 13.0, 15.0);
+
+  std::vector<double3> positions = cageCentres(first, 3.0, 32);
+  for (const double3& position : cageCentres(second, 3.0, 32)) positions.push_back(position);
+
+  ExactVoidSplit split = exactVoidSplitByComponents(cageGeometry(box, positions, 1.8), box.volume);
+
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_EQ(split.pockets.size(), 2uz);
+
+  std::vector<double3> found{split.pockets[0].centre, split.pockets[1].centre};
+  if ((found[0] - first).length() > (found[1] - first).length()) std::swap(found[0], found[1]);
+  EXPECT_LT((found[0] - first).length(), 0.2);
+  EXPECT_LT((found[1] - second).length(), 0.2);
+}
+
+
+// What a blocking sphere has to be, and the one of the two conditions that cannot be checked against the
+// pocket alone: the sphere may hold no point a molecule is entitled to sit at. The channel radius is a minimum
+// over the surfaces facing the accessible void, taken in closed form, and both halves of it are put to points
+// thrown at the cell. No point of the accessible void may fall inside the sphere -- a single one would be a
+// pore the simulation had lost -- and the nearest of them has to creep down to the radius rather than stop
+// short of it, or the sphere is smaller than it could safely have been.
+//
+// The two halves cannot use the same points. A cage in open void has the void reaching right up to its outer
+// wall, where the free space thins to nothing, and there a point can be in the accessible void without being
+// provably so; the proof is what makes the first half a proof, and its absence is what keeps such points from
+// coming near enough for the second. So the safe half asks the classifier and the tight half uses what this
+// arrangement is known to be: outside both shells, and out of the atoms, is the void around the cages.
+TEST(exact_void_split, by_components_a_blocking_sphere_holds_no_accessible_point)
+{
+  const double a = 20.0;
+  const double shellRadius = 3.0;
+  SimulationBox box(a, a, a);
+  const std::vector<double3> centres{double3(5.0, 5.0, 5.0), double3(14.0, 13.0, 15.0)};
+
+  std::vector<double3> positions;
+  for (const double3& centre : centres)
+  {
+    for (const double3& position : cageCentres(centre, shellRadius, 32)) positions.push_back(position);
+  }
+
+  VoronoiAccessibility geometry = cageGeometry(box, positions, 1.8);
+  ExactVoidSplit split = exactVoidSplitByComponents(geometry, box.volume);
+
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_EQ(split.pockets.size(), 2uz);
+
+  // The cages stand in void that runs away through the crystal, so each of them has a channel to keep clear of,
+  // and here it is further off than the cage is wide: one sphere covers the pocket and the cap does not bite.
+  for (const PocketGeometry& pocket : split.pockets)
+  {
+    ASSERT_TRUE(pocket.hasChannel());
+    EXPECT_TRUE(pocket.coversPocket());
+    EXPECT_EQ(pocket.blockingRadius(), pocket.coveringRadius);
+    EXPECT_GT(pocket.channelRadius, pocket.coveringRadius);
+  }
+
+  std::vector<double> nearest(split.pockets.size(), std::numeric_limits<double>::max());
+  RandomNumber random{std::optional<std::size_t>(2027)};
+  for (std::size_t sample = 0; sample < 4000000uz; ++sample)
+  {
+    double3 point = box.cell * double3(random.uniform(), random.uniform(), random.uniform());
+
+    bool free = geometry.clearance(point) > 0.0;
+    bool aroundTheCages =
+        free && std::ranges::all_of(centres, [&](const double3& centre)
+                                    { return (point - centre).length() > shellRadius; });
+    if (!aroundTheCages && !geometry.provablyAccessible(point)) continue;
+
+    for (std::size_t index = 0; index < split.pockets.size(); ++index)
+    {
+      double distance = (point - split.pockets[index].centre).length();
+      EXPECT_GT(distance, split.pockets[index].blockingRadius());
+      if (aroundTheCages) nearest[index] = std::min(nearest[index], distance);
+    }
+  }
+
+  for (std::size_t index = 0; index < split.pockets.size(); ++index)
+  {
+    EXPECT_GE(nearest[index], split.pockets[index].channelRadius);
+
+    // The nearest point of the void is an extremum of the sampling, so it comes down to its limit slowly and
+    // from above; a few hundredths of an angstrom is as close as this many points get to a waist this narrow.
+    EXPECT_LT(nearest[index], split.pockets[index].channelRadius + 0.15);
+  }
 }

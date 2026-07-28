@@ -9,6 +9,7 @@ import atom;
 import framework;
 import forcefield;
 import apollonius_accessibility;
+import exact_void_split;
 import voronoi_blocking_spheres;
 
 void ApolloniusBlockingSpheres::run(const ForceField& forceField, const Framework& framework,
@@ -36,17 +37,20 @@ void ApolloniusBlockingSpheres::run(const ForceField& forceField, const Framewor
       ApolloniusAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
 
   double volume = framework.simulationBox.volume;
-  std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
 
-  spheres = computeBlockingSpheres(classifier.accessibility, samples);
-
-  std::ofstream myfile;
-  myfile.open(framework.name + ".block");
-  std::print(myfile, "{}\n", spheres.size());
-  for (const BlockingSphere& sphere : spheres)
+  ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, volume);
+  fallbackReason = measuredSpheresRefused(split);
+  if (fallbackReason.empty())
   {
-    std::print(myfile, "{} {} {} {}\n", sphere.centerFractional.x, sphere.centerFractional.y,
-               sphere.centerFractional.z, sphere.radius);
+    measured = true;
+    pockets = split.pockets;
+    spheres = exactBlockingSpheres(split);
   }
-  myfile.close();
+  else
+  {
+    std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
+    spheres = computeBlockingSpheres(classifier.accessibility, samples);
+  }
+
+  writeBlockingSpheres(framework.name, "apollonius", probePseudoAtom, probeRadius, spheres, pockets, fallbackReason);
 }

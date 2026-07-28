@@ -4,6 +4,7 @@ export module exact_void_split;
 
 import std;
 
+import double3;
 import voronoi_accessibility;
 import exact_surface_patches;
 import exact_boundary_components;
@@ -29,6 +30,69 @@ import exact_boundary_components;
 //
 // What the split still rests on is the classifier, exactly as the surface area does. The geometry fixes
 // the totals and the network labels them.
+// One pocket, as the surface around it gives it: not only how much room it holds but where the room is.
+//
+// The same boundary that gives the volume gives the first moment of the region as well, so the centroid costs
+// one more sum per arc and no further geometry. What it is good for is a blocking sphere, which a simulation
+// wants written where the pocket is: `freeRadius` is the largest ball about the centroid that holds no atom,
+// and such a ball lies wholly in the pocket, being free space and connected and so unable to cross the neck
+// that sealed the pocket off. That makes the pair below a blocking sphere that is safe by construction, with
+// nothing sampled anywhere in it.
+//
+// `coveringRadius` is the other end of it: the farthest the pocket's own surface gets from the centroid, so a
+// ball of that radius holds the whole pocket and a simulation that rejects everything inside it rejects
+// everything the pocket could have held. It too is measured rather than sampled --- on each patch the farthest
+// point is either the direction straight away from the centre, if the patch holds it, or on the patch's own
+// edges, where the distance along a bounding circle is a single sinusoid --- and it is an upper bound on
+// nothing: it is attained. What it does not promise is that the ball reaches no channel. Reaching into the
+// framework is harmless, a molecule having no business inside an atom, but a ball wide enough to poke through
+// the neck would block part of a pore, and only the pore can say whether it does.
+//
+// `equivalentRadius`, the radius of the ball of the pocket's own volume, sits between the two and says how
+// round the pocket is: all three agree for a spherical cavity, and `coveringRadius` runs away from the others
+// for one drawn out along a channel, which is where one ball will not do.
+//
+// `channelRadius` is what settles the one thing the pocket alone cannot: how far a ball may be taken before it
+// reaches somewhere a molecule belongs. The channels are open regions whose closure is bounded by the patches
+// that face them, and the centre is not in one, so the nearest point of the accessible void is on one of those
+// patches and the distance to it is a minimum of the same kind as the reach. A ball of `blockingRadius` is
+// therefore both inside the pocket's own reach and clear of every channel, which is a blocking sphere with
+// nothing sampled and nothing assumed; and where the reach is the smaller of the two it covers the pocket
+// entirely, which `coversPocket` reports.
+export struct PocketGeometry
+{
+  double3 centre{0.0, 0.0, 0.0};             // Cartesian, in the home cell
+  double3 centreFractional{0.0, 0.0, 0.0};
+  double volume{0.0};                        // Å³
+  double area{0.0};                          // Å²
+  double equivalentRadius{0.0};              // Å, of the ball of the same volume
+  double freeRadius{0.0};                    // Å, of the largest ball about the centre that holds no atom
+  double coveringRadius{0.0};                // Å, of the smallest ball about the centre that holds the pocket
+
+  // Å, to the nearest point of the boundary of the accessible void. Left at the largest double where a
+  // structure has no accessible void at all, its whole void being sealed cages, and then nothing caps the
+  // reach. Not an infinity: the build turns those off, so a finite marker is the one that survives.
+  double channelRadius{std::numeric_limits<double>::max()};
+
+  bool hasChannel() const { return channelRadius < 0.5 * std::numeric_limits<double>::max(); }
+
+  // Whether the centroid lies in a channel rather than in the pocket it is the centroid of. A pocket bent
+  // round a corner can have its centroid outside itself: in the framework, which costs nothing, since the ball
+  // about it is capped by the pocket's own reach either way; or in the void beyond, where the reasoning behind
+  // both radii is measured from a point on the wrong side of the wall and the ball about it would block a pore.
+  // Only the second is dangerous, and it is the one the classifier can prove, so it is refused rather than
+  // capped and the structure falls back to sampling.
+  bool centreInChannel{false};
+
+  // The sphere to block this pocket with: as far as the pocket goes, or as far as it may go without reaching a
+  // channel, whichever is the shorter. It is never smaller than `freeRadius`, the nearest wall to the centre
+  // being the pocket's own.
+  double blockingRadius() const { return std::min(coveringRadius, channelRadius); }
+
+  // Whether that sphere holds the whole pocket, so that nothing is left for a second one.
+  bool coversPocket() const { return coveringRadius <= channelRadius; }
+};
+
 export struct ExactVoidSplit
 {
   double voidVolume{0.0};          // Å³, the whole of it
@@ -36,6 +100,10 @@ export struct ExactVoidSplit
   double inaccessibleVolume{0.0};  // Å³, the pockets
 
   std::size_t numberOfPockets{0};  // bounded surfaces enclosing void
+
+  // One entry per pocket, in the order they were counted. Filled by the route that goes through the connected
+  // surfaces, a pocket having a centre only where its boundary is a closed surface of its own.
+  std::vector<PocketGeometry> pockets;
 
   // Bounded surfaces enclosing solid rather than void, whose volume was subtracted: a cluster of atoms
   // standing inside a pocket takes up room that is not part of it. None occurs in a framework, whose atoms

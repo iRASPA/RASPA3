@@ -6,6 +6,7 @@ import std;
 
 import framework;
 import forcefield;
+import exact_void_split;
 
 // Void volume against the Apollonius diagram: how much of it there is, and how much of that a molecule
 // can reach.
@@ -57,6 +58,10 @@ export struct ApolloniusAccessibleVolume
   std::size_t numberOfEnclosedSolids{0};
   std::size_t signDisagreements{0};
   double signDisagreementVolume{0.0};  // Å³
+
+  // Where each pocket is and how large, from the surface around it. The boundary that gives a pocket its
+  // volume gives the first moment of the region as well, so the centre costs one more sum per arc.
+  std::vector<PocketGeometry> pockets;
 
   void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
            Method method = Method::Exact, std::optional<std::size_t> numberOfSamples = std::nullopt,

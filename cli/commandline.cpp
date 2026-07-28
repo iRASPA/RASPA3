@@ -596,12 +596,22 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::string probe = geometricProbe("probe-N2");
 
+      // The spheres come from the surfaces of the pockets themselves; the network is there for the cluster the
+      // surfaces cannot place and for the sampled fallback, so it is worth saying which of the two was used.
+      auto report = [](std::size_t spheres, bool measured, const std::string &reason)
+      {
+        std::cout << spheres << (measured ? " spheres, one per pocket, measured from its own surface"
+                                          : " spheres, sampled: " + reason)
+                  << std::endl;
+      };
+
       if (use_apollonius)
       {
         std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
 
         ApolloniusBlockingSpheres blocks;
         blocks.run(forceField.value(), framework, probe);
+        report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
       else
       {
@@ -609,6 +619,7 @@ void CommandLine::run(int argc, char *argv[])
 
         VoronoiBlockingSpheres blocks;
         blocks.run(forceField.value(), framework, probe);
+        report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
     }
 

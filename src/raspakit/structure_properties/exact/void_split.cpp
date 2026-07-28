@@ -4,6 +4,7 @@ module exact_void_split;
 
 import std;
 
+import int3;
 import double3;
 import voronoi_channels;
 import voronoi_accessibility;
@@ -17,6 +18,122 @@ import exact_boundary_components;
 // 1e15 of the area. A defect orders above that means arcs bounding one pore were labelled with another,
 // so that neither pore's boundary is whole and neither volume is that pore's.
 constexpr double closureTolerance = 1.0e-6;
+
+// How far a point is from the surfaces around it: the farthest one named surface gets from it, and the nearest
+// any of the surfaces facing a channel comes to it.
+//
+// A patch lies on the sphere of one atom, so on it the distance to the point depends only on the direction, and
+// it grows with the component of the direction along the line from the point to the atom's centre. So an
+// extremum over a patch is at the direction straight toward or away from the point, where the patch holds it,
+// and otherwise on the patch's boundary --- and along a bounding circle that component is one sinusoid in the
+// angle, taking its extreme value at a turning point or at the end of the arc. Testing those candidates is
+// exact, and nothing is stepped over.
+//
+// The two are taken in different frames, which is not an inconsistency but the difference between the two
+// questions. The reach is about one surface, which closes only in its own frame, so its patches are carried
+// there by the translations the decomposition accumulated. The distance to a channel is about real space, where
+// what matters is the copy of an atom that happens to lie nearest, so those patches are taken at their nearest
+// image.
+struct SurfaceDistances
+{
+  double reach{0.0};
+  double channel{std::numeric_limits<double>::max()};  // no infinities: the build turns them off
+};
+
+SurfaceDistances surfaceDistances(const VoronoiAccessibility& accessibility, const BoundaryComponents& components,
+                                  const std::vector<std::uint8_t>& facesChannel, std::int32_t label,
+                                  const double3& centre)
+{
+  SurfaceDistances result;
+  for (std::size_t atomIndex = 0; atomIndex < components.atoms.size(); ++atomIndex)
+  {
+    const SphereBoundary& boundary = components.atoms[atomIndex];
+    if (boundary.buried) continue;
+
+    const double radius = accessibility.atomRadii[atomIndex];
+
+    // The nearest copy of this atom, for the channel distance, and the least the whole of its sphere could come
+    // to the point. Where that already exceeds the nearest patch found so far, no patch of this atom can beat
+    // it, which is what keeps the search over the channels local.
+    const double3 nearestImage =
+        centre + accessibility.simulationBox.applyPeriodicBoundaryConditions(accessibility.atomPositions[atomIndex] -
+                                                                            centre);
+    const double sphereFloor = std::abs((nearestImage - centre).length() - radius);
+
+    for (std::size_t patch = 0; patch < components.componentOfPatch[atomIndex].size(); ++patch)
+    {
+      const std::int32_t of = components.componentOfPatch[atomIndex][patch];
+      const bool onSurface = (of == label);
+      const bool onChannel = of >= 0 && facesChannel[static_cast<std::size_t>(of)] != 0 && sphereFloor < result.channel;
+      if (!onSurface && !onChannel) continue;
+
+      const int3 offset = components.offsetOfPatch[atomIndex][patch];
+      const double3 inFrame =
+          accessibility.atomPositions[atomIndex] +
+          accessibility.simulationBox.cell *
+              double3(static_cast<double>(offset.x), static_cast<double>(offset.y), static_cast<double>(offset.z));
+      const double3 sphereCentre = onSurface ? inFrame : nearestImage;
+      const double3 outward = sphereCentre - centre;
+
+      auto consider = [&](const double3& unitDirection)
+      {
+        double distance = (sphereCentre + unitDirection * radius - centre).length();
+        if (onSurface) result.reach = std::max(result.reach, distance);
+        if (onChannel) result.channel = std::min(result.channel, distance);
+      };
+
+      // The two directions the sphere gets farthest from and nearest to the point in. Each has to be shown to be
+      // exposed before it is asked which patch it is on: a direction is buried where it lies inside the cap some
+      // neighbour cuts off, and a sphere left with a single patch answers that patch for every direction,
+      // buried or not. Where a direction is not on the patch the extremum is on the patch's edges instead, and
+      // taking it anyway would put the answer out at the whole sphere's, most of which is buried.
+      double distance = outward.length();
+      if (distance > 1.0e-12)
+      {
+        for (double sign : {1.0, -1.0})
+        {
+          double3 along = outward * (sign / distance);
+          bool exposed = std::ranges::none_of(boundary.circles, [&](const SphereCircle& circle)
+                                             { return double3::dot(along, circle.axis) > circle.cosineHalfAngle; });
+          if (exposed && components.patchOfDirection(atomIndex, along) == static_cast<std::int32_t>(patch))
+          {
+            consider(along);
+          }
+        }
+      }
+
+      for (const SphereCircle& circle : boundary.circles)
+      {
+        for (std::size_t arc = 0; arc < circle.arcPatch.size(); ++arc)
+        {
+          if (circle.arcPatch[arc] != static_cast<std::int32_t>(patch)) continue;
+
+          // A circle no crossing cuts is one arc closing on itself, where both turning points are in range.
+          double begin = circle.cornerAngles.empty() ? 0.0 : circle.cornerAngles[arc];
+          double end = circle.cornerAngles.empty()
+                           ? 2.0 * std::numbers::pi
+                           : circle.cornerAngles[(arc + 1) % circle.cornerAngles.size()];
+          if (end <= begin) end += 2.0 * std::numbers::pi;
+
+          consider(circle.direction(begin));
+          consider(circle.direction(end));
+
+          double turning = std::atan2(double3::dot(outward, circle.second), double3::dot(outward, circle.first));
+          for (int half = 0; half < 2; ++half)
+          {
+            for (int lift = 0; lift < 3; ++lift)
+            {
+              double angle = turning + static_cast<double>(half) * std::numbers::pi +
+                             static_cast<double>(lift - 1) * 2.0 * std::numbers::pi;
+              if (angle >= begin && angle <= end) consider(circle.direction(angle));
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 
 ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
                               double cellVolume)
@@ -105,6 +222,28 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
   split.undecidedArea = patches.undecided;
   split.numberOfSurfaces = components.numberOfComponents;
 
+  // The same points the sweep took its moments about, since the centroid below is read back against them.
+  const std::vector<double3> origins = surfaceMomentOrigins(accessibility, components);
+
+  // Which surfaces have the accessible void on their far side, by the same argument the area is divided by: a
+  // surface that runs away through the crystal has the void running away with it, one that closes around void
+  // seals it in, and one that closes around solid is a cluster whose surroundings only the network can place.
+  // Taken first because a pocket needs it about every surface but its own.
+  std::vector<std::uint8_t> facesChannel(components.numberOfComponents, 0);
+  for (std::size_t label = 0; label < patches.components.size(); ++label)
+  {
+    const PoreBoundaryMoments& moments = patches.components[label];
+    if (moments.area <= 0.0) continue;
+    if (components.componentPercolates[label] != 0)
+    {
+      facesChannel[label] = 1;
+    }
+    else if (-(moments.radiusWeightedArea + moments.originWeighted) <= 0.0)
+    {
+      facesChannel[label] = (labels[label].decided && labels[label].accessible) ? 1 : 0;
+    }
+  }
+
   std::size_t openPockets = 0;
   double worstArea = 0.0;
   for (std::size_t label = 0; label < patches.components.size(); ++label)
@@ -141,6 +280,33 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
       // Void, and enclosed, so sealed: a pocket, whatever the network makes of it.
       ++split.numberOfPockets;
       if (answer.proved) ++split.provedPockets;
+
+      // Where the pocket is, from the same arcs. The moments were taken about a point of the surface itself,
+      // carried into the surface's own frame, so the centroid comes back in that frame too and is brought
+      // home before anything is asked about it.
+      PocketGeometry pocket;
+      pocket.volume = enclosed;
+      pocket.area = moments.area;
+      pocket.equivalentRadius = std::cbrt(3.0 * enclosed / (4.0 * std::numbers::pi));
+
+      double3 centre = origins[label] + moments.enclosedFirstMoment * (1.0 / enclosed);
+      pocket.centreFractional = double3::fract(accessibility.simulationBox.inverseCell * centre);
+      pocket.centre = accessibility.simulationBox.cell * pocket.centreFractional;
+
+      // The clearance is measured against every atom, and where the centre is inside the pocket the nearest of
+      // them is one of the pocket's own walls: so it is the exact distance from the centre to the boundary and
+      // not a bound on it, and the ball of it lies within the pocket. A pocket bent round a corner can have its
+      // centroid outside itself, in the framework, where the clearance is negative, or in a channel beyond,
+      // where a ball about it would block a pore. Neither leaves a ball to write, and both say so with a zero.
+      pocket.centreInChannel = accessibility.provablyAccessible(pocket.centre);
+      pocket.freeRadius =
+          pocket.centreInChannel ? 0.0 : std::max(0.0, accessibility.clearance(pocket.centre));
+
+      SurfaceDistances distances =
+          surfaceDistances(accessibility, components, facesChannel, static_cast<std::int32_t>(label), centre);
+      pocket.coveringRadius = distances.reach;
+      pocket.channelRadius = distances.channel;
+      split.pockets.push_back(pocket);
     }
     else
     {

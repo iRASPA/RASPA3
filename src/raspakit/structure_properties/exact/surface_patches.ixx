@@ -47,12 +47,27 @@ export inline constexpr std::size_t exactQuadratureOrder = 10uz;
 // `vectorArea` is the integral of the normal over the same arcs. Over a closed surface it vanishes, which
 // is what makes the choice of c immaterial, so what it comes out as here is a check on the boundary
 // having been assembled whole and in one frame rather than a quantity wanted for itself.
+// Where the region sits, as well as how large it is, comes from the same arcs and one more moment. The
+// divergence theorem with the field |x - c|^2 e_j / 2, whose divergence is the jth component of x - c, turns
+// the first moment of the region into a surface integral as well:
+//
+//   integral over the region of (x - c)  =  - sum_a [ (|d_a|^2 + R_i^2) m_a / 2 + R_i T_a d_a ] ,
+//
+// with d_a = p_i + L_a - c and T_a the integral of the outer product of the normal with itself over the arc.
+// That tensor is as elementary in the latitude sweep as m_a is --- the azimuthal integrals of products of two
+// sines and cosines are the same endpoints again --- and only its product with d_a is ever wanted, so what is
+// accumulated is a vector and not a tensor. Dividing the sum by the enclosed volume gives the centroid.
 export struct PoreBoundaryMoments
 {
   double area{0.0};                // Å²
   double radiusWeightedArea{0.0};  // Å³
   double originWeighted{0.0};      // Å³, sum of (p_i + L_a - c).m_a
   double3 vectorArea{0.0, 0.0, 0.0};  // Å², sum of m_a
+
+  // Å⁴, the integral of x - c over the region the surface encloses, so the centroid is c plus this over the
+  // enclosed volume. It carries the volume's sign with it, and so is meaningless for a surface that does not
+  // close, exactly as the volume is.
+  double3 enclosedFirstMoment{0.0, 0.0, 0.0};
 };
 
 export struct ExactSurfaceAreaSample
@@ -133,6 +148,13 @@ export ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const Vorono
                                                                     const BoundaryComponents& components,
                                                                     const std::vector<ComponentLabel>& labels,
                                                                     std::size_t subdivisions = 1);
+
+// The point each surface's moments are taken about: a point of the surface itself, carried into the frame the
+// surface closes in. The choice cannot change a closed surface's volume, and it cancels out of the centroid
+// too, but both are read back against it, so a caller that wants either has to ask for the same point the
+// sweep used rather than assume one.
+export std::vector<double3> surfaceMomentOrigins(const VoronoiAccessibility& accessibility,
+                                                 const BoundaryComponents& components);
 
 // The same, decomposing the boundary and labelling it itself. For a caller that wants only the area, the
 // decomposition costing less than the sweep it replaces the classification in.

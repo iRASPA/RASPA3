@@ -90,6 +90,7 @@ void VoronoiAccessibleVolume::run(const ForceField& forceField, const Framework&
     signDisagreements = split.signDisagreements;
     signDisagreementVolume = split.signDisagreementVolume;
     splitRejection = split.rejection;
+    pockets = split.pockets;
 
     if (split.reliable)
     {
@@ -172,5 +173,36 @@ void VoronoiAccessibleVolume::run(const ForceField& forceField, const Framework&
              accessibleVolume, accessibleVolume * toGravimetric, splitMeasured ? "  (measured)" : "");
   std::print(myfile, "Inaccessible volume: fraction {}  {} [Å³]  {} [cm³/g]{}\n", inaccessibleVolumeFraction,
              inaccessibleVolume, inaccessibleVolume * toGravimetric, splitMeasured ? "  (measured)" : "");
+
+  if (!pockets.empty())
+  {
+    std::print(myfile, "\n");
+    std::print(myfile, "# Each pocket, from the surface around it. The centre is the centroid of the region, a\n");
+    std::print(myfile, "# moment of the same arcs that give the volume. `free` is the largest ball about that\n");
+    std::print(myfile, "# centre holding no atom: it is free space and connected, so it cannot cross the neck\n");
+    std::print(myfile, "# that sealed the pocket off and lies wholly within it, which makes it a blocking\n");
+    std::print(myfile, "# sphere that can be written down without sampling anything. `covering` is the other\n");
+    std::print(myfile, "# end of it, the farthest the pocket's own wall gets from the centre, so a ball of that\n");
+    std::print(myfile, "# radius holds the whole pocket; it is attained rather than bounded, but whether it also\n");
+    std::print(myfile, "# reaches through the neck into a channel only the channel can say. `equivalent` is the\n");
+    std::print(myfile, "# radius of the ball of the pocket's own volume and sits between the two, so the three\n");
+    std::print(myfile, "# together say how round the pocket is: they agree for a spherical cavity and spread\n");
+    std::print(myfile, "# apart for one drawn out along a channel, where one ball will not cover it.\n");
+    std::print(myfile, "# `channel` is how far the nearest point of the accessible void is, which is what caps a\n");
+    std::print(myfile, "# sphere that would otherwise block part of a pore, and `blocking` is the lesser of it and\n");
+    std::print(myfile, "# the covering radius: the sphere this pocket is blocked with, marked where it does not\n");
+    std::print(myfile, "# hold the whole of the pocket.\n");
+    std::print(myfile,
+               "#     s_a         s_b         s_c      volume [Å³]  area [Å²]  free [Å]  equivalent [Å]"
+               "  covering [Å]  channel [Å]  blocking [Å]\n");
+    for (const PocketGeometry& pocket : pockets)
+    {
+      std::print(myfile, "Pocket: {:11.7f} {:11.7f} {:11.7f} {:11.5f} {:11.5f} {:9.4f} {:9.4f} {:9.4f} {:>9} {:9.4f}{}\n",
+                 pocket.centreFractional.x, pocket.centreFractional.y, pocket.centreFractional.z, pocket.volume,
+                 pocket.area, pocket.freeRadius, pocket.equivalentRadius, pocket.coveringRadius,
+                 pocket.hasChannel() ? std::format("{:9.4f}", pocket.channelRadius) : "none",
+                 pocket.blockingRadius(), pocket.coversPocket() ? "" : "  (capped short of the pocket)");
+    }
+  }
   myfile.close();
 }

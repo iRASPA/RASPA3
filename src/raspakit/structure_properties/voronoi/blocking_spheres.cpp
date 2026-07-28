@@ -11,6 +11,35 @@ import atom;
 import framework;
 import forcefield;
 import voronoi_accessibility;
+import exact_void_split;
+
+std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& split)
+{
+  std::vector<BlockingSphere> spheres;
+  spheres.reserve(split.pockets.size());
+  for (const PocketGeometry& pocket : split.pockets)
+  {
+    if (pocket.blockingRadius() <= 0.0) continue;
+    spheres.push_back(BlockingSphere{pocket.centreFractional, pocket.blockingRadius()});
+  }
+  return spheres;
+}
+
+std::string measuredSpheresRefused(const ExactVoidSplit& split)
+{
+  if (!split.reliable) return split.rejection;
+
+  // Both radii are distances from the centroid, so they say what they say about the region the centroid is in.
+  // Where that is not the pocket but the void beyond it, the sphere would be centred in a channel, and there is
+  // no radius small enough to make that safe.
+  std::size_t adrift = static_cast<std::size_t>(
+      std::ranges::count_if(split.pockets, [](const PocketGeometry& pocket) { return pocket.centreInChannel; }));
+  if (adrift > 0)
+  {
+    return std::format("{} of {} pockets have their centroid in a channel", adrift, split.pockets.size());
+  }
+  return {};
+}
 
 double periodicDistance(const SimulationBox& simulationBox, const double3& a, const double3& b)
 {
@@ -167,6 +196,55 @@ std::vector<BlockingSphere> computeBlockingSpheres(const VoronoiAccessibility& a
   return spheres;
 }
 
+void writeBlockingSpheres(const std::string& frameworkName, const std::string& diagramName,
+                          const std::string& probeName, double probeRadius,
+                          const std::vector<BlockingSphere>& spheres, const std::vector<PocketGeometry>& pockets,
+                          const std::string& fallbackReason)
+{
+  // What a simulation reads: nothing but the numbers, a comment being more than the format allows.
+  std::ofstream blockFile;
+  blockFile.open(frameworkName + ".block");
+  std::print(blockFile, "{}\n", spheres.size());
+  for (const BlockingSphere& sphere : spheres)
+  {
+    std::print(blockFile, "{} {} {} {}\n", sphere.centerFractional.x, sphere.centerFractional.y,
+               sphere.centerFractional.z, sphere.radius);
+  }
+  blockFile.close();
+
+  std::ofstream report;
+  report.open(std::format("{}.{}.block.txt", frameworkName, diagramName));
+  std::print(report, "# Blocking spheres ({}, {})\n", diagramName,
+             fallbackReason.empty() ? "measured" : "sampled");
+  std::print(report, "# Framework: {}\n", frameworkName);
+  std::print(report, "# Probe atom: {} radius: {} [Å]\n", probeName, probeRadius);
+  std::print(report, "# Spheres written to {}.block: {}\n", frameworkName, spheres.size());
+  if (!fallbackReason.empty())
+  {
+    std::print(report, "# The measured pockets were refused ({}); the spheres are sampled\n", fallbackReason);
+  }
+  else
+  {
+    std::print(report, "# One sphere per pocket, at the centroid of the pocket, of the lesser of two radii:\n");
+    std::print(report, "#   `covering`, how far the pocket's own wall gets from that centre, which holds the\n");
+    std::print(report, "#     whole pocket and nothing outside its walls; and\n");
+    std::print(report, "#   `channel`, how near the boundary of the accessible void comes, past which a sphere\n");
+    std::print(report, "#     would block part of a pore. `none` where the structure has no channel at all.\n");
+    std::print(report, "# Both are extrema over the same patches of the same surfaces, in closed form, so the\n");
+    std::print(report, "# radius is neither a sampling estimate nor a bound: it is attained.\n");
+    std::print(report, "#     s_a         s_b         s_c      volume [Å³]  covering [Å]  channel [Å]  radius [Å]\n");
+    for (const PocketGeometry& pocket : pockets)
+    {
+      std::print(report, "Sphere: {:11.7f} {:11.7f} {:11.7f} {:11.5f} {:9.4f} {:>12} {:9.4f}{}\n",
+                 pocket.centreFractional.x, pocket.centreFractional.y, pocket.centreFractional.z, pocket.volume,
+                 pocket.coveringRadius, pocket.hasChannel() ? std::format("{:9.4f}", pocket.channelRadius) : "none",
+                 pocket.blockingRadius(), pocket.coversPocket() ? "" : "  (capped short of the pocket)");
+    }
+  }
+  report.close();
+}
+
+
 void VoronoiBlockingSpheres::run(const ForceField& forceField, const Framework& framework,
                                  std::string probePseudoAtom, std::optional<std::size_t> numberOfSamples)
 {
@@ -190,17 +268,24 @@ void VoronoiBlockingSpheres::run(const ForceField& forceField, const Framework& 
       VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
 
   double volume = framework.simulationBox.volume;
-  std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
 
-  spheres = computeBlockingSpheres(accessibility, samples);
-
-  std::ofstream myfile;
-  myfile.open(framework.name + ".block");
-  std::print(myfile, "{}\n", spheres.size());
-  for (const BlockingSphere& sphere : spheres)
+  // The pockets come from the surface around them, which also says how far each may be blocked. Sampling is
+  // what is left where that has to be refused: for the reasons the void fraction's division is refused, which
+  // are surface the decomposition could not place and boundaries that did not close, or for the one reason
+  // particular to a sphere, a centre that turns out to lie in a channel.
+  ExactVoidSplit split = exactVoidSplitByComponents(accessibility, volume);
+  fallbackReason = measuredSpheresRefused(split);
+  if (fallbackReason.empty())
   {
-    std::print(myfile, "{} {} {} {}\n", sphere.centerFractional.x, sphere.centerFractional.y,
-               sphere.centerFractional.z, sphere.radius);
+    measured = true;
+    pockets = split.pockets;
+    spheres = exactBlockingSpheres(split);
   }
-  myfile.close();
+  else
+  {
+    std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
+    spheres = computeBlockingSpheres(accessibility, samples);
+  }
+
+  writeBlockingSpheres(framework.name, "voronoi", probePseudoAtom, probeRadius, spheres, pockets, fallbackReason);
 }

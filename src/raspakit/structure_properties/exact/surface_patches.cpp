@@ -424,6 +424,48 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
                          secondAxis * (sineLatitude * std::sin(azimuth)) + polarAxis * cosineLatitude;
                 };
 
+                // The azimuthal integrals of the products of two of the normal's components, which are what
+                // the first moment of the enclosed region needs beyond the normal itself. They are the same
+                // two endpoints once more, at twice the angle.
+                double spread = 0.25 * (std::sin(2.0 * gapEnd) - std::sin(2.0 * cursor));
+                double integralCosine = std::sin(gapEnd) - std::sin(cursor);
+                double integralSine = std::cos(cursor) - std::cos(gapEnd);
+                double integralCosineCosine = 0.5 * gap + spread;
+                double integralSineSine = 0.5 * gap - spread;
+                double integralSineCosine = 0.25 * (std::cos(2.0 * cursor) - std::cos(2.0 * gapEnd));
+
+                // Everything one arc adds to the surface it belongs to, given where that surface's moments
+                // are taken from. Both routes below add the same thing and differ only in which surface it
+                // goes to and which copy of the cell the arc is carried into.
+                auto addArcTo = [&](PoreBoundaryMoments& moments, const double3& shifted, const double3& origin)
+                {
+                  const double3 delta = shifted - origin;
+
+                  // The tensor of the arc applied to `delta`, in the frame the sweep is done in.
+                  double alongFirst = double3::dot(delta, firstAxis);
+                  double alongSecond = double3::dot(delta, secondAxis);
+                  double alongPolar = double3::dot(delta, polarAxis);
+                  double3 tensorTimesDelta =
+                      firstAxis * (sineLatitude * sineLatitude * alongFirst * integralCosineCosine +
+                                   sineLatitude * sineLatitude * alongSecond * integralSineCosine +
+                                   sineLatitude * cosineLatitude * alongPolar * integralCosine) +
+                      secondAxis * (sineLatitude * sineLatitude * alongFirst * integralSineCosine +
+                                    sineLatitude * sineLatitude * alongSecond * integralSineSine +
+                                    sineLatitude * cosineLatitude * alongPolar * integralSine) +
+                      polarAxis * (cosineLatitude * sineLatitude * alongFirst * integralCosine +
+                                   cosineLatitude * sineLatitude * alongSecond * integralSine +
+                                   cosineLatitude * cosineLatitude * alongPolar * gap);
+                  tensorTimesDelta = tensorTimesDelta * (radius * radius * sineLatitude * weight);
+
+                  moments.area += area;
+                  moments.radiusWeightedArea += radius * area;
+                  moments.originWeighted += double3::dot(delta, arcVectorArea);
+                  moments.vectorArea += arcVectorArea;
+                  moments.enclosedFirstMoment +=
+                      arcVectorArea * (-0.5 * (double3::dot(delta, delta) + radius * radius)) -
+                      tensorTimesDelta * radius;
+                };
+
                 if (route != nullptr)
                 {
                   // Which patch the arc lies on. Either end of the gap is a point of that patch's own edge,
@@ -468,12 +510,8 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
                                                                            static_cast<double>(offset.y),
                                                                            static_cast<double>(offset.z));
 
-                    PoreBoundaryMoments& moments = sample.components[static_cast<std::size_t>(label)];
-                    moments.area += area;
-                    moments.radiusWeightedArea += radius * area;
-                    moments.originWeighted +=
-                        double3::dot(shifted - (*route->origins)[static_cast<std::size_t>(label)], arcVectorArea);
-                    moments.vectorArea += arcVectorArea;
+                    addArcTo(sample.components[static_cast<std::size_t>(label)], shifted,
+                             (*route->origins)[static_cast<std::size_t>(label)]);
                   }
                 }
                 else
@@ -503,11 +541,7 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
                                                            static_cast<double>(classification.latticeOffset.y),
                                                            static_cast<double>(classification.latticeOffset.z));
 
-                    PoreBoundaryMoments& moments = sample.pores[static_cast<std::size_t>(classification.poreId)];
-                    moments.area += area;
-                    moments.radiusWeightedArea += radius * area;
-                    moments.originWeighted += double3::dot(shifted - origin, arcVectorArea);
-                    moments.vectorArea += arcVectorArea;
+                    addArcTo(sample.pores[static_cast<std::size_t>(classification.poreId)], shifted, origin);
                   }
                 }
               }
@@ -536,14 +570,9 @@ ExactSurfaceAreaSample exactAccessibleSurfaceArea(const VoronoiAccessibility& ac
 }
 
 
-ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const VoronoiAccessibility& accessibility,
-                                                             const BoundaryComponents& components,
-                                                             const std::vector<ComponentLabel>& labels,
-                                                             std::size_t subdivisions)
+std::vector<double3> surfaceMomentOrigins(const VoronoiAccessibility& accessibility,
+                                          const BoundaryComponents& components)
 {
-  ExactSurfaceAreaSample sample;
-  sample.components.assign(components.numberOfComponents, PoreBoundaryMoments{});
-
   // Each surface's moments are taken about a point of the surface itself, carried into the surface's own
   // frame. The choice cannot change a closed surface's volume; what it changes is how much of the closure
   // defect shows up in it, and a near point is what keeps that small.
@@ -558,6 +587,19 @@ ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const VoronoiAccess
                                                                 static_cast<double>(offset.y),
                                                                 static_cast<double>(offset.z));
   }
+  return origins;
+}
+
+
+ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const VoronoiAccessibility& accessibility,
+                                                             const BoundaryComponents& components,
+                                                             const std::vector<ComponentLabel>& labels,
+                                                             std::size_t subdivisions)
+{
+  ExactSurfaceAreaSample sample;
+  sample.components.assign(components.numberOfComponents, PoreBoundaryMoments{});
+
+  std::vector<double3> origins = surfaceMomentOrigins(accessibility, components);
 
   ComponentRoute route;
   route.components = &components;
