@@ -10,6 +10,7 @@ add_executable(unit_tests_symmetrykit
   niggli_reduction.cpp
   poscar_parser.cpp
   cif_symmetry.cpp
+  space_group_database.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_symmetrykit)

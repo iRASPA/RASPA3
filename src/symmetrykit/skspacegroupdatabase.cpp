@@ -8507,7 +8507,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
         16,
         "C3^4",
         "462",
-        "012462732;>CQZC]JC9@FO[F\\\\LF",
+        "012462732;>CQZC]JC9@FO[F\\LF",
         {{0, 32}, {0, 32}, {0, 16}},
         SKTransformationMatrix::identity},
 
@@ -8569,7 +8569,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         17,
                         "C3i^2",
                         "462345",
-                        "012462732345175605;>CQZC]JCLOT@\\\\T[9T9@FO[F\\\\LFJQW>]WZ;W",
+                        "012462732345175605;>CQZC]JCLOT@\\T[9T9@FO[F\\LFJQW>]WZ;W",
                         {{0, 32}, {0, 32}, {0, 8}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{
@@ -8735,7 +8735,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         18,
                         "D3^7",
                         "462105",
-                        "012462732105375645;>CQZC]JC@9TL\\\\T[OT9@FO[F\\\\LF>;WJ]WZQW",
+                        "012462732105375645;>CQZC]JC@9TL\\T[OT9@FO[F\\LF>;WJ]WZQW",
                         {{0, 32}, {0, 32}, {0, 8}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{
@@ -8859,7 +8859,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         19,
                         "C3v^5",
                         "462432",
-                        "012462732432062712;>CQZC]JCQJC;ZC]>C9@FO[F\\\\LFOLF9[F\\\\@F",
+                        "012462732432062712;>CQZC]JCQJC;ZC]>C9@FO[F\\LFOLF9[F\\@F",
                         {{0, 32}, {0, 32}, {0, 16}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{
@@ -8899,7 +8899,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         19,
                         "C3v^6",
                         "46243B",
-                        "01246273243B06B71B;>CQZC]JCQJH;ZH]>H9@FO[F\\\\LFOLE9[E\\\\@E",
+                        "01246273243B06B71B;>CQZC]JCQJH;ZH]>H9@FO[F\\LFOLE9[E\\@E",
                         {{0, 32}, {0, 32}, {0, 8}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{
@@ -9019,7 +9019,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         20,
                         "D3d^5",
                         "462105345",
-                        "012462732105375645345175605432062712;>CQZC]JC@9TL\\\\T[OTLOT@\\\\T[9TQJC;ZC]>C9@FO[F\\\\LF>;WJ]WZQWJQW>]WZ;WOLF9[F\\\\@F",
+                        "012462732105375645345175605432062712;>CQZC]JC@9TL\\T[OTLOT@\\T[9TQJC;ZC]>C9@FO[F\\LF>;WJ]WZQWJQW>]WZ;WOLF9[F\\@F",
                         {{0, 32}, {0, 32}, {0, 8}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{459,
@@ -9058,7 +9058,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
                         20,
                         "D3d^6",
                         "46210S345",
-                        "01246273210S37S64S34517560543B06B71B;>CQZC]JC@9YL\\\\Y[OYLOT@\\\\T[9TQJH;ZH]>H9@FO[F\\\\LF>;VJ]VZQVJQW>]WZ;WOLE9[E\\\\@E",
+                        "01246273210S37S64S34517560543B06B71B;>CQZC]JC@9YL\\Y[OYLOT@\\T[9TQJH;ZH]>H9@FO[F\\LF>;VJ]VZQVJQW>]WZ;WOLE9[E\\@E",
                         {{0, 32}, {0, 32}, {0, 4}},
                         SKTransformationMatrix::identity},
     SKSpaceGroupSetting{461,

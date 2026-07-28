@@ -29,6 +29,7 @@ export class SKSpaceGroupSetting
   std::vector<SKSeitzIntegerMatrix> SeitzMatricesWithoutTranslation() const;
 
   std::size_t number() const { return _spaceGroupNumber; }
+  std::size_t order() const { return _order; }
   std::size_t HallNumber() const { return _HallNumber; }
   std::string HallString() const { return _HallString; }
   std::string HMString() const { return _HMString; }
@@ -39,6 +40,7 @@ export class SKSpaceGroupSetting
   std::string centringString() const;
 
   const std::string encodedGenerators() const { return _encodedGenerators; }
+  const std::string encodedSeitz() const { return _encodedSeitz; }
 
   bool inversionAtOrigin() const { return _inversionAtOrigin; }
   int3 inversionCenter() const { return _inversionCenter; }
