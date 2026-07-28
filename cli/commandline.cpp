@@ -39,7 +39,9 @@ import voronoi_channels;
 import voronoi_surface_area;
 import voronoi_accessible_volume;
 import voronoi_blocking_spheres;
+import voronoi_pore_size_distribution;
 import apollonius_pore_analysis;
+import apollonius_pore_size_distribution;
 import apollonius_surface_area;
 import apollonius_accessible_volume;
 import apollonius_blocking_spheres;
@@ -77,6 +79,7 @@ void CommandLine::run(int argc, char *argv[])
   double iso_value{ 0.0 };
   uint3 gridSize{128, 128, 128};
   std::optional<std::size_t> number_of_slices{ };
+  std::optional<std::size_t> number_of_bins{ };
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
@@ -222,6 +225,18 @@ void CommandLine::run(int argc, char *argv[])
                throw std::runtime_error("Invalid --number-of-slices: expected a single integer");
              }
              number_of_slices = x;
+           })
+      .reg({"--number-of-bins"}, argparser::required_argument,
+           "Set the number of pore sizes the pore-size distribution is evaluated at",
+           [&number_of_bins](std::string const &arg)
+           {
+             std::istringstream iss(arg);
+             std::size_t x;
+             if (!(iss >> x))
+             {
+               throw std::runtime_error("Invalid --number-of-bins: expected a single integer");
+             }
+             number_of_bins = x;
            })
       .reg({"-e", "--energy-grid-computation"}, argparser::required_argument,
            "Compute Energy grid for given list of pseudo atoms",
@@ -547,6 +562,22 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::PSD))
     {
+      // The distribution itself is a closed form over the surface of the framework, so it is evaluated rather
+      // than sampled unless the sampled estimate is asked for by name. Which diagram is named decides only how
+      // the curve is divided between the void a probe can reach and the void it cannot.
+      if (use_apollonius)
+      {
+        std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
+        ApolloniusPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, maximum_range, number_of_bins, number_of_slices.value_or(1));
+      }
+      else if (use_voronoi)
+      {
+        std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
+        VoronoiPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, maximum_range, number_of_bins, number_of_slices.value_or(1));
+      }
+
       if (use_monte_carlo_methods)
       {
         if (use_cpu)

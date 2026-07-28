@@ -407,6 +407,7 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
               ++sample.numberOfArcs;
               sample.area += area;
               sample.radiusWeightedArea += radius * area;
+              if (atomIndex < sample.atomArea.size()) sample.atomArea[atomIndex] += area;
 
               if (classifyArcs)
               {
@@ -560,6 +561,7 @@ ExactSurfaceAreaSample exactAccessibleSurfaceArea(const VoronoiAccessibility& ac
 {
   ExactSurfaceAreaSample sample;
   if (classifyArcs) sample.pores.assign(accessibility.channels.pores.size(), PoreBoundaryMoments{});
+  sample.atomArea.assign(accessibility.atomPositions.size(), 0.0);
 
   SphereWorkspace work;
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
@@ -598,6 +600,7 @@ ExactSurfaceAreaSample exactAccessibleSurfaceAreaByComponent(const VoronoiAccess
 {
   ExactSurfaceAreaSample sample;
   sample.components.assign(components.numberOfComponents, PoreBoundaryMoments{});
+  sample.atomArea.assign(accessibility.atomPositions.size(), 0.0);
 
   std::vector<double3> origins = surfaceMomentOrigins(accessibility, components);
 

@@ -89,6 +89,12 @@ export struct ExactSurfaceAreaSample
   double area{0.0};                // Å²
   double radiusWeightedArea{0.0};  // Å³
 
+  // Per atom, the area of its own exposed patch. The whole-surface total says nothing about how the area is
+  // spread over the spheres, and a weighting that is neither the radius nor a constant --- the shell between
+  // the accessible and the excluded surface wants r_i^3 / R_i^2 --- cannot be recovered from the total. It is
+  // filled on every route, costing one addition per arc.
+  std::vector<double> atomArea;  // Å²
+
   // Per pore of the classifier, the same arcs collected pore by pore. Empty unless the arcs were
   // classified. Only the bounded pores are of any use: a channel's share is not a closed surface and its
   // moments do not mean anything.

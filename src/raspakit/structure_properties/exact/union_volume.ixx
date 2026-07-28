@@ -4,6 +4,7 @@ export module exact_union_volume;
 
 import std;
 
+import double2;
 import voronoi_accessibility;
 import exact_surface_patches;
 
@@ -41,3 +42,9 @@ export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std:
 // weighted area, so a caller that has measured the surface, and had to classify it for other reasons,
 // need not sweep a second time.
 export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches);
+
+// The area of a disc of radius `radius` about the origin of its own plane, cut back by the half planes
+// `dot(normals[k], p) <= offsets[k]`. It is the face above, and it is exported because the same shape turns
+// up away from any cell of any diagram: the pieces of the solvent excluded surface that lie on a plane are
+// discs cut by half planes too. Exact for any number of lines, including none.
+export double clippedDiscArea(double radius, const std::vector<double2>& normals, const std::vector<double>& offsets);

@@ -123,6 +123,28 @@ double faceArea(double discRadius, const std::vector<CutLine>& lines, std::vecto
   return std::abs(total);
 }
 
+double clippedDiscArea(double radius, const std::vector<double2>& normals, const std::vector<double>& offsets)
+{
+  if (radius <= 0.0) return 0.0;
+
+  std::vector<CutLine> lines;
+  lines.reserve(normals.size());
+  for (std::size_t k = 0; k < normals.size(); ++k)
+  {
+    // A line whose normal has collapsed is not a line: it either leaves the disc alone or removes it.
+    if (double2::dot(normals[k], normals[k]) < 1.0e-24)
+    {
+      if (offsets[k] < 0.0) return 0.0;
+      continue;
+    }
+    lines.push_back({normals[k], offsets[k]});
+  }
+
+  std::vector<double2> polygon;
+  std::vector<double2> scratch;
+  return faceArea(radius, lines, polygon, scratch);
+}
+
 double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std::size_t subdivisions)
 {
   // The spheres. Each atom's exposed patch enters weighted by its own radius, which is what the field

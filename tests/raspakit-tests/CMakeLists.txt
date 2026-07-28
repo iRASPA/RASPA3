@@ -66,6 +66,8 @@ add_executable(unit_tests_raspakit
   apollonius_surface_area.cpp
   exact_union_volume.cpp
   exact_void_split.cpp
+  exact_solvent_excluded.cpp
+  exact_pore_size_distribution.cpp
   boundary_components.cpp
   main.cpp)
 
