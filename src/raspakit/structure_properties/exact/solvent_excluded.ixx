@@ -7,6 +7,7 @@ import std;
 import double3;
 import voronoi_accessibility;
 import exact_boundary_components;
+import exact_surface_patches;
 
 // The solvent excluded surface of the framework, and with it the pore-size distribution in closed form.
 //
@@ -74,6 +75,35 @@ export struct SphericalRegion
 // the loops traced and their number counted while the sweep needs nothing.
 export SphericalRegion regionOutsideCaps(const std::vector<SphericalCap>& caps, std::size_t subdivisions = 1);
 
+// The area of the excluded surface, by the kind of patch it is carried on.
+//
+// The surface has three kinds and no others, which is Richards's decomposition. Where the probe rests against
+// one atom it lies on that atom's bare sphere, convex and curving away from the void. Where it rolls along the
+// crease between two it traces a piece of a torus, curving away in one direction and towards the void in the
+// other. Where it is wedged against three or more it stands still, and the surface is a piece of the probe's
+// own sphere, concave and curving towards the void everywhere. So the split is the shape of the wall: convex
+// area is atom seen bare, and reentrant area --- saddle and concave together --- is the part of the wall the
+// probe cannot follow, which is the corrugation it bridges over.
+//
+// It is also exactly the split the pore-size distribution is carried by. Only the reentrant patches move as
+// the probe grows, so a wall with no reentrant area has no distribution, and a wall that is nearly all
+// reentrant is one whose every feature is finer than the probe.
+export struct ExcludedSurfaceAreas
+{
+  double convex{0.0};   // Å², on the bare spheres of the atoms
+  double saddle{0.0};   // Å², on the tori of the creases between two atoms
+  double concave{0.0};  // Å², on the probe's own sphere where it is wedged against three or more
+
+  double total() const { return convex + saddle + concave; }
+  double reentrant() const { return saddle + concave; }
+
+  // The three as fractions of the whole, which add to one wherever there is any area at all.
+  double convexFraction() const { return (total() > 0.0) ? convex / total() : 0.0; }
+  double saddleFraction() const { return (total() > 0.0) ? saddle / total() : 0.0; }
+  double concaveFraction() const { return (total() > 0.0) ? concave / total() : 0.0; }
+  double reentrantFraction() const { return (total() > 0.0) ? reentrant() / total() : 0.0; }
+};
+
 // The excluded volume of one probe size, and the distribution there.
 export struct SolventExcludedGeometry
 {
@@ -99,6 +129,15 @@ export struct SolventExcludedGeometry
   double toroidalDistribution{0.0};
   double concaveDistribution{0.0};
 
+  // The area of the excluded surface, whole and by the side it faces. The sides are the connected surfaces of
+  // the boundary again, so a patch is on the channel side or the pocket side because of where it sits and not
+  // because a sample near it was classified: the convex patch belongs to the surface its accessible patch does,
+  // and a crease or a wedge to the surface whose patches it joins.
+  ExcludedSurfaceAreas area;
+  ExcludedSurfaceAreas accessibleArea;
+  ExcludedSurfaceAreas inaccessibleArea;
+  ExcludedSurfaceAreas undecidedArea;
+
   // What the boundary was made of. `cuspedArcs` are the toroidal patches whose rolling circle is smaller than
   // the probe, which are the ones that fold back on themselves and have to be cut at the cusp;
   // `clippedVertices` are the concave patches that a neighbouring probe position reaches into.
@@ -116,10 +155,20 @@ export struct SolventExcludedGeometry
 
 // The excluded volume and the distribution at one probe radius, against a boundary already decomposed and
 // labelled. `probeRadius` has to be the radius the accessibility's atoms were inflated by, the bare radii
-// being read back from it.
+// being read back from it, and it is the radius the accessibility itself records: building it from bare radii
+// and a probe and passing the same probe here is the only consistent use.
 export SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility,
                                                        double probeRadius, const BoundaryComponents& components,
                                                        const std::vector<ComponentLabel>& labels,
+                                                       std::size_t subdivisions = 1);
+
+// The same again, for a caller that has already swept the spheres. The sweep is the cost of the whole
+// calculation, and a caller reporting the accessible surface area alongside the excluded one has done it
+// already: `patches` has to be the one that sweep returned, against these components and labels.
+export SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility,
+                                                       double probeRadius, const BoundaryComponents& components,
+                                                       const std::vector<ComponentLabel>& labels,
+                                                       const ExactSurfaceAreaSample& patches,
                                                        std::size_t subdivisions = 1);
 
 // The same, decomposing and labelling the boundary itself.

@@ -35,15 +35,17 @@ VoronoiAccessibility VoronoiAccessibility::create(const SimulationBox& simulatio
   std::vector<double> inflatedRadii(radii.size());
   for (std::size_t i = 0; i < radii.size(); ++i) inflatedRadii[i] = radii[i] + probeRadius;
 
-  return createFromNetwork(VoronoiNetwork::create(simulationBox, fractionalPositions, inflatedRadii), Metric::Power);
+  return createFromNetwork(VoronoiNetwork::create(simulationBox, fractionalPositions, inflatedRadii), Metric::Power,
+                           probeRadius);
 }
 
-VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork network, Metric metric)
+VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius)
 {
   VoronoiAccessibility accessibility;
   const SimulationBox simulationBox = network.simulationBox;
   accessibility.simulationBox = simulationBox;
   accessibility.metric = metric;
+  accessibility.probeRadius = probeRadius;
   accessibility.atomRadii = network.atomRadii;
   accessibility.maximumAtomRadius = *std::max_element(network.atomRadii.begin(), network.atomRadii.end());
   accessibility.network = std::move(network);

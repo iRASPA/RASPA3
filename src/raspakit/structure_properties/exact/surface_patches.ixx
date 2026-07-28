@@ -64,6 +64,14 @@ export struct PoreBoundaryMoments
   double originWeighted{0.0};      // Å³, sum of (p_i + L_a - c).m_a
   double3 vectorArea{0.0, 0.0, 0.0};  // Å², sum of m_a
 
+  // The same patches carried down onto the bare spheres, which is the convex part of the solvent excluded
+  // surface behind this one. A point of the accessible surface is the probe's centre touching atom i, and
+  // the probe touches the atom along the same radius, so the excluded surface's convex patch is the radial
+  // projection of the accessible one and its area is (r_i / R_i)^2 times as large --- exactly, patch by
+  // patch, whatever shape the patch is. Accumulated here because the ratio is the atom's and the total is
+  // not: a sum over patches cannot be rescaled after the fact.
+  double convexArea{0.0};  // Å²
+
   // Å⁴, the integral of x - c over the region the surface encloses, so the centroid is c plus this over the
   // enclosed volume. It carries the volume's sign with it, and so is meaningless for a surface that does not
   // close, exactly as the volume is.
@@ -88,6 +96,10 @@ export struct ExactSurfaceAreaSample
   // volume of the union rather than for its area, and it costs nothing to accumulate here.
   double area{0.0};                // Å²
   double radiusWeightedArea{0.0};  // Å³
+
+  // The whole area again, projected down onto the bare spheres, which is the convex part of the solvent
+  // excluded surface. Zero probe radius makes it the area itself.
+  double convexArea{0.0};  // Å²
 
   // Per atom, the area of its own exposed patch. The whole-surface total says nothing about how the area is
   // spread over the spheres, and a weighting that is neither the radius nor a constant --- the shell between

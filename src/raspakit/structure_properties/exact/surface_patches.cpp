@@ -174,6 +174,11 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
   const double radius = accessibility.atomRadii[atomIndex];
   const double3 centre = accessibility.atomPositions[atomIndex];
 
+  // What an area on this sphere is worth on the bare sphere inside it, the two patches being the same set of
+  // directions seen from the same centre.
+  const double bareRatio = (radius > 0.0) ? accessibility.bareRadius(atomIndex) / radius : 0.0;
+  const double bareWeight = bareRatio * bareRatio;
+
   // Every sphere that can reach this one, its own periodic images included.
   work.circles.clear();
   work.axes.clear();
@@ -407,6 +412,7 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
               ++sample.numberOfArcs;
               sample.area += area;
               sample.radiusWeightedArea += radius * area;
+              sample.convexArea += bareWeight * area;
               if (atomIndex < sample.atomArea.size()) sample.atomArea[atomIndex] += area;
 
               if (classifyArcs)
@@ -460,6 +466,7 @@ void measureSphere(const VoronoiAccessibility& accessibility, std::size_t atomIn
 
                   moments.area += area;
                   moments.radiusWeightedArea += radius * area;
+                  moments.convexArea += bareWeight * area;
                   moments.originWeighted += double3::dot(delta, arcVectorArea);
                   moments.vectorArea += arcVectorArea;
                   moments.enclosedFirstMoment +=

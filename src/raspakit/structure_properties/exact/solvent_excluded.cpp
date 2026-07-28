@@ -470,6 +470,59 @@ double shellArcVolume(const ExposedArc& arc, double probeRadius)
 }
 
 
+// One stretch of the turn through the crease that carries excluded surface.
+struct TurnStretch
+{
+  double begin{0.0};
+  double end{0.0};
+};
+
+// The turn the toroidal patch of one arc is traced through, in the angle psi measured from the point of the
+// rolling probe nearest the axis, and clipped to where the patch is a surface at all.
+//
+// The probe's surface is at a distance s - r cos psi from the axis, and the toroidal patch is what it sweeps
+// between the two tangency directions, psi from -first to second. When the rolling circle is wider than the
+// probe that whole turn is a surface. When it is not, the probe reaches across the axis and the sweep folds
+// back through it: the distance above goes negative for |psi| < acos(s/r), and there the sweep traces the
+// inside of the spindle, which is solid and not boundary. So the turn is cut at that cusp on either side, and
+// what is left is one stretch, or two, or none.
+std::size_t toroidalTurn(const ExposedArc& arc, double probeRadius, std::array<TurnStretch, 2>& turns)
+{
+  const double begin = -std::atan2(arc.firstOffset, arc.radius);
+  const double end = std::atan2(arc.secondOffset, arc.radius);
+  if (end <= begin) return 0uz;
+
+  if (arc.radius > probeRadius)
+  {
+    turns[0] = {begin, end};
+    return 1uz;
+  }
+
+  const double cusp = std::acos(std::clamp(arc.radius / probeRadius, -1.0, 1.0));
+  std::size_t pieces = 0uz;
+  if (begin < -cusp) turns[pieces++] = {begin, std::min(-cusp, end)};
+  if (end > cusp) turns[pieces++] = {std::max(cusp, begin), end};
+  return pieces;
+}
+
+
+// The area of the toroidal patch of one arc, which is the same turn with the surface element (s - r cos psi) r
+// dphi dpsi integrated over it rather than a speed or a volume.
+double toroidalPatchArea(const ExposedArc& arc, double probeRadius)
+{
+  std::array<TurnStretch, 2> turns;
+  const std::size_t pieces = toroidalTurn(arc, probeRadius, turns);
+
+  double total = 0.0;
+  for (std::size_t piece = 0; piece < pieces; ++piece)
+  {
+    total += arc.radius * (turns[piece].end - turns[piece].begin) -
+             probeRadius * (std::sin(turns[piece].end) - std::sin(turns[piece].begin));
+  }
+  return arc.extent * probeRadius * total;
+}
+
+
 // The arc's share of the derivative of the excluded volume, which is the integral of the normal speed of its
 // toroidal patch. With the rolling circle at radius s(r) and offset t(r) from the first centre,
 //
@@ -487,9 +540,6 @@ double toroidalNormalSpeed(const ExposedArc& arc, double probeRadius)
   const double offsetSpeed = (arc.firstBare - arc.secondBare) / arc.separation;
   const double radiusSpeed = (arc.firstInflated - arc.firstOffset * offsetSpeed) / s;
 
-  const double first = std::atan2(arc.firstOffset, s);
-  const double second = std::atan2(arc.secondOffset, s);
-
   auto antiderivative = [&](double turn)
   {
     return s * radiusSpeed * std::sin(turn) - 0.5 * r * radiusSpeed * (turn + std::sin(turn) * std::cos(turn)) +
@@ -497,16 +547,13 @@ double toroidalNormalSpeed(const ExposedArc& arc, double probeRadius)
            r * std::sin(turn);
   };
 
+  std::array<TurnStretch, 2> turns;
+  const std::size_t pieces = toroidalTurn(arc, r, turns);
+
   double total = 0.0;
-  if (s > r)
+  for (std::size_t piece = 0; piece < pieces; ++piece)
   {
-    total = antiderivative(second) - antiderivative(-first);
-  }
-  else
-  {
-    const double cusp = std::acos(std::clamp(s / r, -1.0, 1.0));
-    if (-first < -cusp) total += antiderivative(-cusp) - antiderivative(-first);
-    if (second > cusp) total += antiderivative(second) - antiderivative(cusp);
+    total += antiderivative(turns[piece].end) - antiderivative(turns[piece].begin);
   }
   return arc.extent * r * total;
 }
@@ -832,6 +879,11 @@ struct VertexTerms
 {
   double shell{0.0};
   double normalSpeed{0.0};
+
+  // The concave patch's own area, which is the solid angle left to it on the probe's sphere at the radius the
+  // probe is resting at. The clipping is already done for the shell, so this costs a multiplication.
+  double area{0.0};
+
   bool clipped{false};
   bool vanished{false};
 };
@@ -864,6 +916,7 @@ VertexTerms vertexTerms(const SasVertex& vertex, double probeRadius, const std::
 
   terms.shell = region.solidAngle * radius * radius * radius / 3.0;
   terms.normalSpeed = -radius * radius * (double3::dot(vertex.velocity, region.moment) + region.solidAngle);
+  terms.area = region.solidAngle * radius * radius;
 
   // The flat faces. Each lies halfway to a neighbouring probe, is a disc of what the probe's sphere leaves
   // there, and is cut back by the same hull planes as the concave patch and by the halfway planes to the other
@@ -945,20 +998,35 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
                                                 const BoundaryComponents& components,
                                                 const std::vector<ComponentLabel>& labels, std::size_t subdivisions)
 {
+  // One sweep of the spheres serves four purposes: the area of each atom's own patch, which the shell wants; the
+  // radius weighted area, which the volume of the union wants; the same patches on the bare spheres, which are
+  // the convex part of the excluded surface; and the moments of each surface, which say which side it faces.
+  return solventExcludedGeometry(
+      accessibility, probeRadius, components, labels,
+      exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, subdivisions), subdivisions);
+}
+
+
+SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility, double probeRadius,
+                                                const BoundaryComponents& components,
+                                                const std::vector<ComponentLabel>& labels,
+                                                const ExactSurfaceAreaSample& patches, std::size_t subdivisions)
+{
   SolventExcludedGeometry result;
   result.probeRadius = probeRadius;
-
-  // One sweep of the spheres serves three purposes: the area of each atom's own patch, which the shell wants;
-  // the radius weighted area, which the volume of the union wants; and the moments of each surface, which say
-  // which side that surface faces.
-  ExactSurfaceAreaSample patches = exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, subdivisions);
   result.accessibleVolume = unionOfBallsVolume(accessibility, patches);
 
   const std::vector<int> sides = componentSides(components, patches, labels);
+  auto sideOf = [&](std::int32_t component)
+  {
+    return (component >= 0 && static_cast<std::size_t>(component) < sides.size())
+               ? sides[static_cast<std::size_t>(component)]
+               : 0;
+  };
   auto addToSide = [&](std::int32_t component, double amount)
   {
     result.distribution += amount;
-    int side = (component >= 0 && static_cast<std::size_t>(component) < sides.size()) ? sides[static_cast<std::size_t>(component)] : 0;
+    int side = sideOf(component);
     if (side > 0)
       result.accessibleDistribution += amount;
     else if (side < 0)
@@ -967,8 +1035,23 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
       result.undecidedDistribution += amount;
   };
 
+  // The same routing for area, given which of the three kinds of patch it is on.
+  auto addAreaToSide = [&](std::int32_t component, double ExcludedSurfaceAreas::*kind, double amount)
+  {
+    result.area.*kind += amount;
+    int side = sideOf(component);
+    if (side > 0)
+      result.accessibleArea.*kind += amount;
+    else if (side < 0)
+      result.inaccessibleArea.*kind += amount;
+    else
+      result.undecidedArea.*kind += amount;
+  };
+
   // The patches. Each contributes the shell between the bare sphere and the inflated one over its own solid
-  // angle, and nothing to the derivative: the bare spheres do not move as the probe grows.
+  // angle, and nothing to the derivative: the bare spheres do not move as the probe grows. Its area on the
+  // excluded surface is its own accessible area brought down onto the bare sphere, which the sweep has already
+  // done atom by atom and surface by surface.
   double shell = 0.0;
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
   {
@@ -977,6 +1060,11 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
     const double bare = std::max(0.0, inflated - probeRadius);
     const double ratio = bare / inflated;
     shell += patches.atomArea[i] * inflated / 3.0 * (1.0 - ratio * ratio * ratio);
+  }
+  for (std::size_t label = 0; label < patches.components.size(); ++label)
+  {
+    addAreaToSide(static_cast<std::int32_t>(label), &ExcludedSurfaceAreas::convex,
+                  patches.components[label].convexArea);
   }
 
   // The arcs, which carry the toroidal patches.
@@ -989,6 +1077,7 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
     double speed = toroidalNormalSpeed(arc, probeRadius);
     result.toroidalDistribution += speed;
     addToSide(arc.component, speed);
+    addAreaToSide(arc.component, &ExcludedSurfaceAreas::saddle, toroidalPatchArea(arc, probeRadius));
   }
 
   // The vertices, which carry the concave patches.
@@ -1007,6 +1096,7 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
     shell += terms.shell;
     result.concaveDistribution += terms.normalSpeed;
     addToSide(vertex.component, terms.normalSpeed);
+    addAreaToSide(vertex.component, &ExcludedSurfaceAreas::concave, terms.area);
   }
 
   result.shellVolume = shell;

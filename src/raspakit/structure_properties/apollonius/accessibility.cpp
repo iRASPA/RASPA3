@@ -19,6 +19,6 @@ ApolloniusAccessibility ApolloniusAccessibility::create(const SimulationBox& sim
   ApolloniusAccessibility result;
   result.diagram = ApolloniusPoreNetwork::create(simulationBox, fractionalPositions, inflatedRadii);
   result.accessibility = VoronoiAccessibility::createFromNetwork(std::move(result.diagram.network),
-                                                                 VoronoiAccessibility::Metric::Clearance);
+                                                                 VoronoiAccessibility::Metric::Clearance, probeRadius);
   return result;
 }

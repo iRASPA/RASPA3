@@ -14,6 +14,8 @@ import units;
 import voronoi_network;
 import voronoi_accessibility;
 import exact_surface_patches;
+import exact_boundary_components;
+import exact_solvent_excluded;
 
 SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& accessibility, std::size_t density)
 {
@@ -60,6 +62,43 @@ SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& access
   return sample;
 }
 
+void writeExcludedSurfaceAreas(std::ostream& stream, const SolventExcludedGeometry& geometry)
+{
+  std::print(stream, "#\n");
+  std::print(stream,
+             "# The wall itself, at the same probe. The area above is the sheet the probe's centre traces over the\n"
+             "# framework; the surface the probe touches is the excluded one, and it is made of three kinds of piece.\n"
+             "# Where the probe rests against one atom the surface is that atom seen bare, convex. Where it rolls\n"
+             "# along the crease between two it is a piece of a torus, saddle-shaped. Where it is wedged against\n"
+             "# three or more it stands still and the surface is a piece of the probe's own sphere, concave. The\n"
+             "# three account for the wall exactly, so the fractions below add to one along each row.\n");
+  std::print(stream,
+             "#\n"
+             "# What the split says is how much of the wall is atom the probe can reach and how much is\n"
+             "# corrugation it has to bridge. It is also what the pore-size distribution is carried by: only the\n"
+             "# reentrant part moves as the probe grows, so a wall with none has no distribution at all.\n");
+  std::print(stream, "#\n");
+  std::print(stream, "# The four columns after the area are fractions of it, and the first three of them add to one.\n");
+  std::print(stream, "#                              area [Å²]     convex     saddle    concave  reentrant\n");
+
+  auto row = [&](const char* name, const ExcludedSurfaceAreas& areas)
+  {
+    if (areas.total() <= 0.0) return;
+    std::print(stream, "{:<26} {:13.5f} {:10.6f} {:10.6f} {:10.6f} {:10.6f}\n", name, areas.total(),
+               areas.convexFraction(), areas.saddleFraction(), areas.concaveFraction(), areas.reentrantFraction());
+  };
+
+  row("Excluded surface, all:", geometry.area);
+  row("  facing channels:", geometry.accessibleArea);
+  row("  facing pockets:", geometry.inaccessibleArea);
+  row("  undecided:", geometry.undecidedArea);
+
+  std::print(stream, "# Pieces: {} creases, {} of them folded back on themselves at a cusp, and {} wedges, {} of\n",
+             geometry.numberOfArcs, geometry.cuspedArcs, geometry.numberOfVertices, geometry.clippedVertices);
+  std::print(stream, "# them cut into by a neighbouring probe. Excluded volume: {} [Å³]\n", geometry.excludedVolume);
+}
+
+
 void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
                              Method method, std::optional<std::size_t> samplesPerAtom,
                              std::optional<std::size_t> subdivisions)
@@ -91,10 +130,17 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
 
   if (method == Method::Exact)
   {
-    measured = exactAccessibleSurfaceAreaByComponent(accessibility, panels);
+    // The boundary is decomposed once and used twice: for the accessible area, surface by surface, and for the
+    // excluded surface behind it, whose three kinds of patch hang off the same patches, creases and wedges.
+    BoundaryComponents components = boundaryComponents(accessibility);
+    std::vector<ComponentLabel> labels = labelBoundaryComponents(accessibility, components);
+
+    measured = exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, panels);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
+
+    excludedSurface = solventExcludedGeometry(accessibility, probeRadius, components, labels, measured, panels);
   }
   else
   {
@@ -160,5 +206,9 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
   }
   std::print(myfile, "Total surface area:        {} [Å²]\n",
              accessibleSurfaceArea + inaccessibleSurfaceArea + undecidedSurfaceArea);
+  if (method == Method::Exact)
+  {
+    writeExcludedSurfaceAreas(myfile, excludedSurface);
+  }
   myfile.close();
 }

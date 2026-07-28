@@ -10,6 +10,7 @@ import forcefield;
 // The measured route and the sampled one live in modules of their own, neither of which knows about any
 // diagram; what this adds is the Apollonius classifier they are run against.
 export import exact_surface_patches;
+import exact_solvent_excluded;
 
 // Accessible and inaccessible surface area against the Apollonius diagram, either measured or sampled.
 //
@@ -30,6 +31,10 @@ export struct ApolloniusSurfaceArea
   double accessibleSurfaceArea{0.0};    // Å²
   double inaccessibleSurfaceArea{0.0};  // Å²
   double undecidedSurfaceArea{0.0};     // Å², only ever nonzero for the exact method
+
+  // The wall the probe touches, rather than the sheet its centre traces: the excluded surface at the same probe,
+  // by the kind of patch and by the side it faces. Filled by the exact method alone.
+  SolventExcludedGeometry excludedSurface;
 
   void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
            Method method = Method::Exact, std::optional<std::size_t> samplesPerAtom = std::nullopt,

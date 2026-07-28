@@ -88,6 +88,17 @@ export struct VoronoiAccessibility
   std::vector<double> atomRadii;            // inflated radii used for the network
   SimulationBox simulationBox;
 
+  // What the radii above were inflated by, so that the bare atom is recoverable from them. Only the
+  // inflated radii bound the room left for the probe's centre, and that is what the network is cut on,
+  // but the solvent excluded surface lies on the bare spheres and every caller that wants it would
+  // otherwise have to be told the probe radius a second time and be trusted to name the same one.
+  double probeRadius{0.0};  // Å
+
+  // The bare radius of an atom, which is what the excluded surface is carried on. Never negative: a
+  // radius smaller than the probe would mean the atom was inflated from nothing, which the callers
+  // above do not do, and clamping is cheaper than a precondition every caller has to restate.
+  double bareRadius(std::size_t atomIndex) const { return std::max(0.0, atomRadii[atomIndex] - probeRadius); }
+
   // Cell list over the fractional unit cube, used to make the nearest-atom and overlap
   // queries O(1) per sample instead of O(number of atoms).
   int3 gridSize{1, 1, 1};
@@ -113,7 +124,7 @@ export struct VoronoiAccessibility
   // its network from somewhere other than the radical diagram. The network carries the cell, the atom
   // positions and the inflated radii, so it is all that is needed besides the metric its cells are
   // cut by.
-  static VoronoiAccessibility createFromNetwork(VoronoiNetwork network, Metric metric);
+  static VoronoiAccessibility createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius = 0.0);
 
   PointClassification classify(const double3& point) const;
 

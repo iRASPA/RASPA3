@@ -6,6 +6,7 @@ import double3;
 import simulationbox;
 import voronoi_accessibility;
 import exact_union_volume;
+import exact_surface_patches;
 import exact_solvent_excluded;
 
 // The solvent excluded surface of an arrangement of balls, the volume it encloses, and the pore-size
@@ -34,15 +35,13 @@ VoronoiAccessibility inflatedGeometry(const SimulationBox& box, const std::vecto
                                       const std::vector<double>& bareRadii, double probeRadius)
 {
   std::vector<double3> fractionalPositions;
-  std::vector<double> inflated;
-  for (std::size_t i = 0; i < positions.size(); ++i)
+  for (const double3& position : positions)
   {
-    fractionalPositions.push_back(double3::fract(box.inverseCell * positions[i]));
-    inflated.push_back(bareRadii[i] + probeRadius);
+    fractionalPositions.push_back(double3::fract(box.inverseCell * position));
   }
-  // Inflated once, here, so that the sphere the boundary is taken on is the same one the excluded volume is
-  // measured against; the routine takes the probe radius separately and reads the bare radii back from it.
-  return VoronoiAccessibility::create(box, fractionalPositions, inflated, 0.0);
+  // The bare radii and the probe go in separately, so that the structure carries both: the boundary is taken on
+  // the inflated spheres, and the excluded surface behind it on the bare ones.
+  return VoronoiAccessibility::create(box, fractionalPositions, bareRadii, probeRadius);
 }
 
 
@@ -77,6 +76,35 @@ double excludedVolumeOfTwoAtoms(double bare, double separation, double probe)
                 (2.0 / 3.0 * bare * bare * bare - bare * bare * lower + lower * lower * lower / 3.0);
 
   return crease + caps;
+}
+
+
+// The area of the excluded surface of two atoms on an axis, by the same revolution as the volume above.
+//
+// The surface has two kinds of piece here. Away from the crease each atom is seen bare, and what hides the rest
+// of it is the probe: the probe touches the atom along the direction to its own centre, so the patch is
+// everything outside the cap of half angle arccos(h / R) about the direction to the neighbour, whose area is
+// 2 pi a^2 (1 + h / R). In the crease the surface is the torus the probe sweeps, at a distance s - r cos psi
+// from the axis, and its area is that distance integrated over the turn and round the axis. Where the rolling
+// circle is smaller than the probe the turn is cut at the cusp, the surface having folded through the axis.
+double excludedAreaOfTwoAtoms(double bare, double separation, double probe)
+{
+  const double pi = std::numbers::pi;
+  const double inflated = bare + probe;
+  const double half = 0.5 * separation;
+  const double rolling = std::sqrt(inflated * inflated - half * half);  // s
+
+  const double caps = 2.0 * (2.0 * pi * bare * bare * (1.0 + half / inflated));
+
+  // sin psi = h / R at the tangency, and the cusp is where the distance to the axis reaches zero.
+  const double outer = std::asin(std::clamp(half / inflated, -1.0, 1.0));
+  const double inner = (rolling < probe) ? std::acos(std::clamp(rolling / probe, -1.0, 1.0)) : 0.0;
+  const double band =
+      (outer > inner) ? 2.0 * (2.0 * pi * probe *
+                               (rolling * (outer - inner) - probe * (std::sin(outer) - std::sin(inner))))
+                      : 0.0;
+
+  return caps + band;
 }
 
 
@@ -367,6 +395,230 @@ TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_union_of_the_atoms)
   EXPECT_NEAR(excluded.excludedVolume, expected, 1.0e-9 * expected);
   EXPECT_NEAR(excluded.shellVolume, 0.0, 1.0e-9 * expected);
   EXPECT_NEAR(excluded.distribution, 0.0, 1.0e-9);
+}
+
+
+// The three kinds of patch on the excluded surface, one arrangement at a time, each against a closed form
+// derived without any of the machinery under test.
+//
+// A lone atom is convex and nothing else, whatever the probe: there is no crease to roll into and nowhere to
+// wedge. It is the only case where the area is known without any integration at all.
+TEST(exact_solvent_excluded, a_lone_atom_is_all_convex)
+{
+  double a = 40.0;
+  SimulationBox box(a, a, a);
+  const double bare = 1.7;
+  const double sphere = 4.0 * std::numbers::pi * bare * bare;
+
+  for (double probe : {0.0, 0.5, 1.4, 3.0})
+  {
+    SolventExcludedGeometry geometry =
+        solventExcludedGeometry(inflatedGeometry(box, {double3(20.0, 20.0, 20.0)}, {bare}, probe), probe);
+
+    EXPECT_NEAR(geometry.area.convex, sphere, 1.0e-9 * sphere) << "probe " << probe;
+    EXPECT_NEAR(geometry.area.saddle, 0.0, 1.0e-12) << "probe " << probe;
+    EXPECT_NEAR(geometry.area.concave, 0.0, 1.0e-12) << "probe " << probe;
+    EXPECT_NEAR(geometry.area.convexFraction(), 1.0, 1.0e-12) << "probe " << probe;
+  }
+}
+
+
+// Two atoms in the crease of one another: two convex caps and the band of the torus between them, against the
+// closed form for the same surface of revolution the volume was checked against. The last cases are tight
+// enough that the band folds back on itself at a cusp, which is where the turn has to be cut and where an
+// integral over the whole torus would return more area than the surface has.
+TEST(exact_solvent_excluded, two_atoms_against_the_surface_of_revolution)
+{
+  double a = 60.0;
+  SimulationBox box(a, a, a);
+
+  // bare radius, separation, probe. The rolling circle is smaller than the probe, and so the band cusped, once
+  // the atoms are further apart than twice sqrt(a^2 + 2 a r): the last two are, and the rest are not.
+  const std::array<std::array<double, 3>, 9> cases = {{{1.7, 4.0, 1.0},
+                                                       {1.7, 4.4, 1.4},
+                                                       {1.7, 5.2, 1.4},
+                                                       {1.2, 3.0, 0.8},
+                                                       {2.0, 4.6, 2.0},
+                                                       {1.7, 4.2, 1.8},
+                                                       {1.5, 3.4, 1.6},
+                                                       {1.7, 6.4, 1.8},
+                                                       {1.2, 5.0, 1.6}}};
+
+  std::size_t withCusps = 0;
+  for (const std::array<double, 3>& one : cases)
+  {
+    const double bare = one[0];
+    const double separation = one[1];
+    const double probe = one[2];
+
+    std::vector<double3> positions = {double3(30.0 - 0.5 * separation, 30.0, 30.0),
+                                      double3(30.0 + 0.5 * separation, 30.0, 30.0)};
+    SolventExcludedGeometry geometry =
+        solventExcludedGeometry(inflatedGeometry(box, positions, {bare, bare}, probe), probe);
+
+    const double expected = excludedAreaOfTwoAtoms(bare, separation, probe);
+    const double caps = 2.0 * (2.0 * std::numbers::pi * bare * bare * (1.0 + 0.5 * separation / (bare + probe)));
+
+    if (geometry.cuspedArcs > 0) ++withCusps;
+    EXPECT_NEAR(geometry.area.total(), expected, 1.0e-9 * expected)
+        << "bare " << bare << " separation " << separation << " probe " << probe;
+    EXPECT_NEAR(geometry.area.convex, caps, 1.0e-9 * caps)
+        << "bare " << bare << " separation " << separation << " probe " << probe;
+    EXPECT_NEAR(geometry.area.saddle, expected - caps, 1.0e-9 * expected)
+        << "bare " << bare << " separation " << separation << " probe " << probe;
+    EXPECT_NEAR(geometry.area.concave, 0.0, 1.0e-12);
+  }
+  EXPECT_GE(withCusps, 2uz);
+}
+
+
+// Three atoms in a triangle, for the concave patch. The probe wedges into the triangle from either side and
+// stops, and the surface there is the piece of its own sphere facing the void: the spherical triangle whose
+// corners are the three directions it touches the atoms in, its edges the great circles it leaves the tori
+// along. Girard's theorem gives its area from the angles alone, and for an equilateral triangle those follow
+// from the side. Sides are chosen so that the two patches are out of reach of one another, since a clipped
+// patch is no longer a triangle and Girard says nothing about it.
+TEST(exact_solvent_excluded, a_triangle_leaves_two_spherical_triangles)
+{
+  double a = 60.0;
+  SimulationBox box(a, a, a);
+
+  // bare radius, side of the triangle, probe. The two patches are out of reach of one another as long as the
+  // probe's rest is further above the plane than the probe's own radius, which asks for 3 (a + r)^2 > side^2 + 3 r^2.
+  const std::array<std::array<double, 3>, 4> cases = {
+      {{1.7, 4.0, 1.0}, {1.7, 4.2, 1.0}, {1.7, 4.0, 1.2}, {1.2, 3.2, 0.9}}};
+
+  for (const std::array<double, 3>& one : cases)
+  {
+    const double bare = one[0];
+    const double side = one[1];
+    const double probe = one[2];
+    const double inflated = bare + probe;
+
+    const double reach = side / std::sqrt(3.0);
+    std::vector<double3> positions;
+    for (std::size_t k = 0; k < 3; ++k)
+    {
+      double angle = 2.0 * std::numbers::pi * static_cast<double>(k) / 3.0;
+      positions.push_back(double3(30.0 + reach * std::cos(angle), 30.0 + reach * std::sin(angle), 30.0));
+    }
+
+    SolventExcludedGeometry geometry =
+        solventExcludedGeometry(inflatedGeometry(box, positions, {bare, bare, bare}, probe), probe);
+    ASSERT_EQ(geometry.numberOfVertices, 2uz) << "bare " << bare << " side " << side << " probe " << probe;
+    ASSERT_EQ(geometry.clippedVertices, 0uz) << "bare " << bare << " side " << side << " probe " << probe;
+
+    // The angular side of the spherical triangle, from the two directions subtending the atoms' separation, and
+    // the angle at a corner of an equilateral one.
+    const double cosineSide = 1.0 - 0.5 * side * side / (inflated * inflated);
+    const double corner = std::acos(std::clamp(cosineSide / (1.0 + cosineSide), -1.0, 1.0));
+    const double expected = 2.0 * probe * probe * (3.0 * corner - std::numbers::pi);
+
+    // To the quadrature of the sweep, which is what the region of the sphere is measured by rather than by
+    // Girard's theorem: the two agree here because the region happens to be a triangle, and only here.
+    EXPECT_NEAR(geometry.area.concave, expected, 1.0e-7 * expected)
+        << "bare " << bare << " side " << side << " probe " << probe;
+  }
+}
+
+
+// At zero probe radius the excluded surface is the surface of the bare atoms themselves, so it is all convex
+// and its area is the area of the union, which the same sweep returns by the route the surface area uses. As
+// the probe grows from there the creases and the wedges take over, and what they take is continuous: they eat
+// into the convex area and give back their own, so the total leaves the union's area smoothly.
+TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_surface_of_the_atoms)
+{
+  double a = 12.0;
+  SimulationBox box(a, a, a);
+
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    for (std::size_t j = 0; j < 3; ++j)
+    {
+      for (std::size_t k = 0; k < 3; ++k)
+      {
+        positions.push_back(double3(static_cast<double>(i) * 4.0 + 0.7, static_cast<double>(j) * 4.0 + 1.3,
+                                    static_cast<double>(k) * 4.0 + 2.1));
+        radii.push_back(1.5 + 0.1 * static_cast<double>((i + j + k) % 3));
+      }
+    }
+  }
+
+  const double union0 = exactAccessibleSurfaceArea(inflatedGeometry(box, positions, radii, 0.0), 1, false).area;
+
+  SolventExcludedGeometry bare = solventExcludedGeometry(inflatedGeometry(box, positions, radii, 0.0), 0.0);
+  EXPECT_NEAR(bare.area.convex, union0, 1.0e-9 * union0);
+  EXPECT_NEAR(bare.area.reentrant(), 0.0, 1.0e-12);
+
+  // The reentrant area appears at first order in the probe, the creases being lines and the wedges points, so
+  // it goes with the probe rather than with its square: halving the probe halves the fraction.
+  double previous = 0.0;
+  for (double probe : {0.08, 0.04, 0.02})
+  {
+    SolventExcludedGeometry geometry = solventExcludedGeometry(inflatedGeometry(box, positions, radii, probe), probe);
+    EXPECT_LT(std::abs(geometry.area.total() - union0), 0.1 * union0) << "probe " << probe;
+    if (previous > 0.0) EXPECT_LT(geometry.area.reentrantFraction(), previous) << "probe " << probe;
+    previous = geometry.area.reentrantFraction();
+  }
+}
+
+
+// The three kinds account for the wall and no more, and so do the sides, whatever the arrangement. Both are
+// bookkeeping rather than geometry, and both are the sort of thing that a patch counted on two sides or left off
+// one would break silently.
+TEST(exact_solvent_excluded, the_kinds_and_the_sides_each_account_for_the_whole_wall)
+{
+  double a = 11.0;
+  SimulationBox box(a, a, a);
+
+  // A lattice with one atom left out, which leaves a pocket the probe cannot reach from outside, so that the
+  // sides being added up is a test of something rather than of one side being everything.
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    for (std::size_t j = 0; j < 4; ++j)
+    {
+      for (std::size_t k = 0; k < 4; ++k)
+      {
+        if (i == 1 && j == 1 && k == 1) continue;
+        positions.push_back(double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k)) * 2.75);
+        radii.push_back(1.4);
+      }
+    }
+  }
+
+  for (double probe : {0.3, 0.7, 1.1})
+  {
+    SolventExcludedGeometry geometry = solventExcludedGeometry(inflatedGeometry(box, positions, radii, probe), probe);
+    const double total = geometry.area.total();
+    ASSERT_GT(total, 0.0) << "probe " << probe;
+
+    EXPECT_NEAR(geometry.area.convexFraction() + geometry.area.saddleFraction() + geometry.area.concaveFraction(), 1.0,
+                1.0e-12)
+        << "probe " << probe;
+
+    const double bySide =
+        geometry.accessibleArea.total() + geometry.inaccessibleArea.total() + geometry.undecidedArea.total();
+    EXPECT_NEAR(bySide, total, 1.0e-9 * total) << "probe " << probe;
+
+    for (double ExcludedSurfaceAreas::*kind :
+         {&ExcludedSurfaceAreas::convex, &ExcludedSurfaceAreas::saddle, &ExcludedSurfaceAreas::concave})
+    {
+      double sum = geometry.accessibleArea.*kind + geometry.inaccessibleArea.*kind + geometry.undecidedArea.*kind;
+      EXPECT_NEAR(sum, geometry.area.*kind, 1.0e-9 * total) << "probe " << probe;
+    }
+
+    // Nothing negative, and the concave patches are on the probe's own sphere so they cannot exceed one whole
+    // sphere apiece.
+    EXPECT_GE(geometry.area.convex, 0.0);
+    EXPECT_GE(geometry.area.saddle, 0.0);
+    EXPECT_GE(geometry.area.concave, 0.0);
+    EXPECT_LE(geometry.area.concave, 4.0 * std::numbers::pi * probe * probe *
+                                         static_cast<double>(geometry.numberOfVertices) + 1.0e-9);
+  }
 }
 
 

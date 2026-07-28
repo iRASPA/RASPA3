@@ -11,6 +11,8 @@ import forcefield;
 import units;
 import apollonius_accessibility;
 import exact_surface_patches;
+import exact_boundary_components;
+import exact_solvent_excluded;
 import voronoi_surface_area;
 
 void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& framework,
@@ -47,10 +49,18 @@ void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& f
 
   if (method == Method::Exact)
   {
-    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, panels);
+    // Decomposed once, used twice: for the accessible area surface by surface, and for the excluded surface
+    // behind it, whose convex, saddle and concave pieces hang off the same patches, creases and wedges.
+    BoundaryComponents components = boundaryComponents(classifier.accessibility);
+    std::vector<ComponentLabel> labels = labelBoundaryComponents(classifier.accessibility, components);
+
+    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, labels, panels);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
+
+    excludedSurface =
+        solventExcludedGeometry(classifier.accessibility, probeRadius, components, labels, measured, panels);
   }
   else
   {
@@ -124,5 +134,9 @@ void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& f
   }
   std::print(myfile, "Total surface area:        {} [Å²]\n",
              accessibleSurfaceArea + inaccessibleSurfaceArea + undecidedSurfaceArea);
+  if (method == Method::Exact)
+  {
+    writeExcludedSurfaceAreas(myfile, excludedSurface);
+  }
   myfile.close();
 }
