@@ -6,6 +6,7 @@ import std;
 
 import double2;
 import voronoi_accessibility;
+import exact_boundary_components;
 import exact_surface_patches;
 
 // The volume of the union of the probe-inflated atoms, measured rather than sampled.
@@ -42,6 +43,18 @@ export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std:
 // weighted area, so a caller that has measured the surface, and had to classify it for other reasons,
 // need not sweep a second time.
 export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches);
+
+// The same again, taking the planes of each cell from a decomposition already made rather than querying the
+// neighbours afresh.
+//
+// A plane of the cell of atom i and a circle in which a neighbour cuts its sphere are the same thing written
+// twice: the plane at signed distance h from the centre meets the sphere in the circle at cos(theta) = h/R,
+// and a neighbour that puts a plane outside the ball cuts no circle and bounds no face either. The
+// decomposition has already found those circles and dropped the ones whose discs lie inside another's, and
+// that prune carries over: a plane whose cap is contained in another's is redundant inside the ball, so the
+// faces come out the same and there are fewer lines to clip each of them against.
+export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
+                                 const BoundaryComponents& components);
 
 // The area of a disc of radius `radius` about the origin of its own plane, cut back by the half planes
 // `dot(normals[k], p) <= offsets[k]`. It is the face above, and it is exported because the same shape turns

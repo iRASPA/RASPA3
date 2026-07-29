@@ -2178,6 +2178,12 @@ ForceField ForceField::makeZeoPlusPlusForceField(double rc, bool shifted, bool t
        {"Hs", false, 1.0, 0.0, 0.0, 1, false},
        {"Mt", false, 1.0, 0.0, 0.0, 1, false},
        {"Ds", false, 1.0, 0.0, 0.0, 1, false},
+       // The probes of the other force fields, unchanged. What this set substitutes is the radii of the atoms
+       // of a framework, and a probe is not one of those: it is the molecule the framework is measured with,
+       // and its size is its own whichever table the framework's radii were read from.
+       {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
+       {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
+       {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
        {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
       {{1.0, 2.0 * 1.00},  // custom
        {1.0, 2.0 * 1.09}, {1.0, 2.0 * 1.09}, {1.0, 2.0 * 1.40}, {1.0, 2.0 * 1.82}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00},
@@ -2198,6 +2204,10 @@ ForceField ForceField::makeZeoPlusPlusForceField(double rc, bool shifted, bool t
        {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 1.86}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00},
        {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00},
        {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00},
-       {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {91.5, 3.681}},  // N2
+       {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00}, {1.0, 2.0 * 2.00},
+       {10.9, 2.64},      // probe-He
+       {124.070, 3.38},   // probe-Ar
+       {158.5, 3.72},     // probe-CH4
+       {91.5, 3.681}},    // probe-N2
       ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }

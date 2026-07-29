@@ -381,10 +381,10 @@ void CommandLine::run(int argc, char *argv[])
       probe_atom_name = "-";
     }
 
-    // The probe the geometric analyses sample with. Not every force field defines every probe: the
-    // zeo++ radii set has nitrogen only, so an unchosen default falls back to it rather than aborting
-    // the run over a name the user never asked for. A probe named on the command line is passed
-    // through, and the analysis says so if it does not exist.
+    // The probe the geometric analyses sample with. Not every force field defines every probe, a
+    // custom one read from a file need define none of them, so an unchosen default falls back to
+    // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
+    // the command line is passed through, and the analysis says so if it does not exist.
     auto geometricProbe = [&](const std::string &preferred) -> std::string
     {
       if (probe_atom_name.has_value()) return probe_atom_name.value();
@@ -567,20 +567,22 @@ void CommandLine::run(int argc, char *argv[])
       // the curve is divided between the void a probe can reach and the void it cannot.
       //
       // The probe named is the one the accessible distribution is reported for, beside the distribution of the
-      // whole of the void. Nitrogen by default, as for the surface area: an adsorption isotherm is measured
-      // with it, so the pore sizes it can get to are the ones such an experiment has anything to say about.
+      // whole of the void. Helium by default, as for the accessible volume: it is the molecule a void volume is
+      // measured with, and being the smallest of the probes it is the one that separates the pores a molecule
+      // cannot enter at all from the pores it merely finds narrow. A larger probe answers a narrower question,
+      // and answers nothing whatever in a framework whose windows it cannot pass.
       if (use_apollonius)
       {
         std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
         ApolloniusPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, geometricProbe("probe-N2"), maximum_range, number_of_bins,
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
                 number_of_slices.value_or(1));
       }
       else if (use_voronoi)
       {
         std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
         VoronoiPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, geometricProbe("probe-N2"), maximum_range, number_of_bins,
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
                 number_of_slices.value_or(1));
       }
 

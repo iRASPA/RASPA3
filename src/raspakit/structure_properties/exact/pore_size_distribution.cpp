@@ -106,12 +106,14 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
   const std::size_t bins = std::max<std::size_t>(1, numberOfBins);
   const double step = maximumDiameter / static_cast<double>(bins);
 
+  std::size_t evaluations = 0;
+
   // The void volume, which the whole curve is normalised by. It is the pore volume at zero probe radius, where
   // the excluded surface is the surface of the bare atoms and the sweep is the void fraction's own.
   {
     VoronoiAccessibility bare = build(0.0);
     curve.voidVolume = cellVolume - unionOfBallsVolume(bare, subdivisions);
-    ++curve.numberOfEvaluations;
+    ++evaluations;
   }
   const double scale = (curve.voidVolume > 0.0) ? 1.0 / curve.voidVolume : 0.0;
 
@@ -128,7 +130,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
     BoundaryComponents components = boundaryComponents(accessibility);
     std::vector<ComponentLabel> labels = labelBoundaryComponents(accessibility, components);
     SolventExcludedGeometry geometry = solventExcludedGeometry(accessibility, radius, components, labels, subdivisions);
-    ++curve.numberOfEvaluations;
+    ++evaluations;
 
     // The same boundary, divided by the pores of the fixed probe instead of by the pores of this diameter.
     // Above the probe's radius the two questions are different ones: a surface may close on a pore nothing of
@@ -219,7 +221,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
     std::vector<ComponentLabel> labels = labelBoundaryComponents(reference, components);
     SolventExcludedGeometry geometry =
         solventExcludedGeometry(reference, curve.probeRadius, components, labels, subdivisions);
-    ++curve.numberOfEvaluations;
+    ++evaluations;
 
     // A volume this small is the round-off left by subtracting the sealed pores from a total they make up the
     // whole of, and not a pore anything could be in: a framework whose void is nothing but sealed cages ends
@@ -251,25 +253,31 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
   origin.reachable.cumulative = (curve.probeAccessibleVolume > 0.0) ? 1.0 : 0.0;
   origin.reachable.distribution = 0.0;
 
-  curve.points.reserve(bins);
+  // The rows asked for, at the midpoint of each step. No evaluation reads anything another one writes: each
+  // builds its own network from the same fixed input and fills its own row, so the loop is over independent
+  // work and nothing but the order of the rows ties them together.
+  curve.points.assign(bins, PoreSizeDistributionPoint{});
+  std::vector<Sample> rows(bins);
+  for (std::size_t bin = 0; bin < bins; ++bin)
+  {
+    rows[bin] = evaluate(step * (static_cast<double>(bin) + 0.5), &curve.points[bin]);
+  }
+
+  // The samples in order of diameter, with the probe's own put in its place among them. It is a point of the
+  // sweep and not a row of the table, the rows being the evenly spaced ones the caller asked for; where a row
+  // falls on it already there is nothing to insert.
   std::vector<Sample> grid;
   grid.reserve(bins + 2);
   grid.push_back(origin);
-
-  // The rows asked for, at the midpoint of each step, with the probe's diameter put in its place among them. It
-  // is a point of the sweep and not a row of the table, the rows being the evenly spaced ones the caller asked
-  // for; where a row falls on it already there is nothing to insert.
   bool probePlaced = !(probeDiameter > 0.0 && probeDiameter < maximumDiameter);
   for (std::size_t bin = 0; bin < bins; ++bin)
   {
-    const double diameter = step * (static_cast<double>(bin) + 0.5);
-    if (!probePlaced && probeDiameter <= diameter)
+    if (!probePlaced && probeDiameter <= rows[bin].diameter)
     {
-      if (probeDiameter < diameter) grid.push_back(probeSample);
+      if (probeDiameter < rows[bin].diameter) grid.push_back(probeSample);
       probePlaced = true;
     }
-    curve.points.emplace_back();
-    grid.push_back(evaluate(diameter, &curve.points.back()));
+    grid.push_back(rows[bin]);
   }
 
   // A spike has to be worth something to be worth looking for, and below this it would be lost in the
@@ -284,6 +292,12 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
   Collector whole;
   Collector reachable;
 
+  // Narrowing an interval towards a cliff needs nothing from outside that interval, so the intervals are
+  // narrowed one at a time and independently. What could not be done that way is the collection below, which
+  // carries a running account of the spikes from one interval into the next and so has to see them in order;
+  // it does no geometry and costs nothing. Keeping the two apart is what leaves all of the expense here in
+  // work that has nothing shared in it.
+  std::vector<std::vector<Sample>> narrowed(grid.size() - 1);
   for (std::size_t i = 0; i + 1 < grid.size(); ++i)
   {
     // The refinement follows the whole void. It does not need following twice: volume that goes over a cliff
@@ -314,7 +328,11 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
         if (!refined) break;
       }
     }
+    narrowed[i] = std::move(pending);
+  }
 
+  for (const std::vector<Sample>& pending : narrowed)
+  {
     for (std::size_t k = 0; k + 1 < pending.size(); ++k)
     {
       const double cliff = collect(whole, pending[k], pending[k + 1], &Sample::whole, floor, unbounded);
@@ -345,6 +363,8 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<VoronoiA
   curve.probeAccessibleTruncatedWeight = std::max(0.0, grid.back().reachable.cumulative);
   curve.probeAccessibleLargestDiameter =
       curve.probeAccessibleSpikes.empty() ? 0.0 : curve.probeAccessibleSpikes.back().diameter;
+
+  curve.numberOfEvaluations = evaluations;
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - begin;
   curve.seconds = elapsed.count();

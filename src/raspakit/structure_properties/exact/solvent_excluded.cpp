@@ -10,14 +10,9 @@ import int3;
 import simulationbox;
 import voronoi_accessibility;
 import exact_boundary_components;
+import exact_sphere_sweep;
 import exact_surface_patches;
 import exact_union_volume;
-
-constexpr std::size_t gaussOrder = exactQuadratureOrder;
-
-// Gaps in a circle of latitude shorter than this are dropped: they are the seams where two caps meet almost
-// tangentially and carry no solid angle worth the trigonometry.
-constexpr double gapTolerance = 1.0e-12;
 
 // How near a sphere has to pass to a vertex to count as touching it. The three spheres that put the vertex
 // there pass through it to round-off, and a fourth either passes through it exactly, which a framework's own
@@ -30,108 +25,6 @@ constexpr double touchTolerance = 1.0e-7;
 constexpr double vertexTolerance = 1.0e-7;
 
 
-// Gauss-Legendre nodes and weights on the unit interval, by Newton's method on the Legendre polynomial.
-struct GaussRule
-{
-  std::array<double, gaussOrder> nodes{};
-  std::array<double, gaussOrder> weights{};
-};
-
-const GaussRule& unitIntervalGaussRule()
-{
-  static const GaussRule rule = []()
-  {
-    GaussRule constructed;
-    for (std::size_t i = 0; i < gaussOrder; ++i)
-    {
-      double abscissa =
-          std::cos(std::numbers::pi * (static_cast<double>(i) + 0.75) / (static_cast<double>(gaussOrder) + 0.5));
-      double derivative = 0.0;
-      for (std::size_t iteration = 0; iteration < 100; ++iteration)
-      {
-        double previous = 1.0;
-        double current = abscissa;
-        for (std::size_t k = 2; k <= gaussOrder; ++k)
-        {
-          double next =
-              ((2.0 * static_cast<double>(k) - 1.0) * abscissa * current - (static_cast<double>(k) - 1.0) * previous) /
-              static_cast<double>(k);
-          previous = current;
-          current = next;
-        }
-        derivative = static_cast<double>(gaussOrder) * (abscissa * current - previous) / (abscissa * abscissa - 1.0);
-        double step = current / derivative;
-        abscissa -= step;
-        if (std::abs(step) < 1.0e-15) break;
-      }
-      constructed.nodes[i] = 0.5 * (1.0 - abscissa);
-      constructed.weights[i] = 1.0 / ((1.0 - abscissa * abscissa) * derivative * derivative);
-    }
-    return constructed;
-  }();
-  return rule;
-}
-
-
-double foldedPolarAngle(double angle)
-{
-  double wrapped = std::fmod(std::abs(angle), 2.0 * std::numbers::pi);
-  return (wrapped > std::numbers::pi) ? 2.0 * std::numbers::pi - wrapped : wrapped;
-}
-
-
-// The frame the sphere is swept in, chosen so that no cap's axis sits on the polar axis, where latitude
-// slicing degenerates. Out of a fixed set of candidates, so that the answer does not depend on the run.
-std::array<double3, 3> sweepFrame(const std::vector<double3>& axes)
-{
-  static const std::array<double3, 6> candidates = {double3(1.0, 2.0, 3.0),   double3(-3.0, 1.0, 2.0),
-                                                    double3(2.0, -3.0, 1.0),  double3(3.0, 2.0, -1.0),
-                                                    double3(1.0, -3.0, -2.0), double3(-2.0, 3.0, -1.0)};
-
-  double3 polarAxis = candidates.front() * (1.0 / candidates.front().length());
-  double bestSeparation = -1.0;
-  for (const double3& candidate : candidates)
-  {
-    double3 direction = candidate * (1.0 / candidate.length());
-    double separation = 1.0;
-    for (const double3& axis : axes) separation = std::min(separation, 1.0 - std::abs(double3::dot(direction, axis)));
-    if (separation > bestSeparation)
-    {
-      bestSeparation = separation;
-      polarAxis = direction;
-    }
-    if (bestSeparation > 0.01) break;
-  }
-
-  double3 helper(1.0, 0.0, 0.0);
-  if (std::abs(polarAxis.y) < std::abs(polarAxis.x)) helper = double3(0.0, 1.0, 0.0);
-  if (std::abs(polarAxis.z) < std::min(std::abs(polarAxis.x), std::abs(polarAxis.y))) helper = double3(0.0, 0.0, 1.0);
-  double3 first = double3::cross(helper, polarAxis);
-  first = first * (1.0 / first.length());
-  double3 second = double3::cross(polarAxis, first);
-  second = second * (1.0 / second.length());
-
-  return {first, second, polarAxis};
-}
-
-
-// One cap, in the frame the sweep is done in.
-struct SweepCircle
-{
-  double3 axis;
-  double cosineHalfAngle{0.0};
-  double halfAngle{0.0};
-  double polarAngle{0.0};
-  double cosinePolar{0.0};
-  double sinePolar{0.0};
-  double azimuth{0.0};
-  double lowestLatitude{0.0};
-  double highestLatitude{0.0};
-  bool reachesOverPole{false};
-  bool reachesOverAntipole{false};
-};
-
-
 SphericalRegion regionOutsideCaps(const std::vector<SphericalCap>& caps, std::size_t subdivisions)
 {
   SphericalRegion region;
@@ -140,15 +33,12 @@ SphericalRegion regionOutsideCaps(const std::vector<SphericalCap>& caps, std::si
   std::vector<double3> axes;
   for (const SphericalCap& cap : caps)
   {
-    if (cap.cosineHalfAngle >= 1.0) continue;        // covers nothing
-    if (cap.cosineHalfAngle <= -1.0) return region;  // covers the whole sphere, and the region is empty
+    std::optional<SweepCircle> circle = makeSweepCircle(cap.axis, cap.cosineHalfAngle);
+    if (!circle.has_value()) continue;                        // the cap covers nothing
+    if (circle->cosineHalfAngle <= -1.0) return region;       // it covers the whole sphere, leaving nothing
 
-    SweepCircle circle;
-    circle.axis = cap.axis;
-    circle.cosineHalfAngle = cap.cosineHalfAngle;
-    circle.halfAngle = std::acos(cap.cosineHalfAngle);
-    circles.push_back(circle);
-    axes.push_back(circle.axis);
+    circles.push_back(circle.value());
+    axes.push_back(circle->axis);
   }
 
   if (circles.empty())
@@ -160,26 +50,7 @@ SphericalRegion regionOutsideCaps(const std::vector<SphericalCap>& caps, std::si
   // A cap inside another covers nothing of its own and only adds latitudes at which nothing happens.
   if (circles.size() > 1)
   {
-    std::vector<bool> redundant(circles.size(), false);
-    for (std::size_t i = 0; i < circles.size(); ++i)
-    {
-      for (std::size_t j = 0; j < circles.size(); ++j)
-      {
-        if (i == j || redundant[j]) continue;
-        double separation = std::acos(std::clamp(double3::dot(circles[i].axis, circles[j].axis), -1.0, 1.0));
-        if (separation + circles[i].halfAngle <= circles[j].halfAngle)
-        {
-          redundant[i] = true;
-          break;
-        }
-      }
-    }
-    std::size_t kept = 0;
-    for (std::size_t i = 0; i < circles.size(); ++i)
-    {
-      if (!redundant[i]) circles[kept++] = circles[i];
-    }
-    circles.resize(kept);
+    pruneContainedDiscs(circles);
     axes.clear();
     for (const SweepCircle& circle : circles) axes.push_back(circle.axis);
   }
@@ -189,162 +60,19 @@ SphericalRegion regionOutsideCaps(const std::vector<SphericalCap>& caps, std::si
   const double3 secondAxis = frame[1];
   const double3 polarAxis = frame[2];
 
-  std::vector<double> breakpoints{0.0, std::numbers::pi};
-  for (SweepCircle& circle : circles)
-  {
-    circle.polarAngle = std::acos(std::clamp(double3::dot(circle.axis, polarAxis), -1.0, 1.0));
-    circle.cosinePolar = std::cos(circle.polarAngle);
-    circle.sinePolar = std::sin(circle.polarAngle);
-    circle.azimuth = std::atan2(double3::dot(circle.axis, secondAxis), double3::dot(circle.axis, firstAxis));
-    if (circle.azimuth < 0.0) circle.azimuth += 2.0 * std::numbers::pi;
-
-    circle.lowestLatitude = foldedPolarAngle(circle.polarAngle - circle.halfAngle);
-    circle.highestLatitude = foldedPolarAngle(circle.polarAngle + circle.halfAngle);
-    circle.reachesOverPole = circle.polarAngle < circle.halfAngle;
-    circle.reachesOverAntipole = std::numbers::pi - circle.polarAngle < circle.halfAngle;
-
-    breakpoints.push_back(circle.lowestLatitude);
-    breakpoints.push_back(circle.highestLatitude);
-  }
-
-  // Where two caps cross uncovered the boundary of the region turns a corner, and the uncovered length of a
-  // latitude is analytic only between such latitudes. A crossing a third cap covers is not a corner.
-  for (std::size_t j = 0; j + 1 < circles.size(); ++j)
-  {
-    for (std::size_t k = j + 1; k < circles.size(); ++k)
-    {
-      const SweepCircle& first = circles[j];
-      const SweepCircle& second = circles[k];
-      double alignment = double3::dot(first.axis, second.axis);
-      double denominator = 1.0 - alignment * alignment;
-      if (denominator < 1.0e-14) continue;
-
-      double alongFirst = (first.cosineHalfAngle - alignment * second.cosineHalfAngle) / denominator;
-      double alongSecond = (second.cosineHalfAngle - alignment * first.cosineHalfAngle) / denominator;
-      double outOfPlaneSquared =
-          (1.0 - alongFirst * first.cosineHalfAngle - alongSecond * second.cosineHalfAngle) / denominator;
-      if (outOfPlaneSquared <= 0.0) continue;
-
-      double3 inPlane = first.axis * alongFirst + second.axis * alongSecond;
-      double3 outOfPlane = double3::cross(first.axis, second.axis) * std::sqrt(outOfPlaneSquared);
-      for (std::size_t side = 0; side < 2; ++side)
-      {
-        double3 corner = (side == 0) ? inPlane + outOfPlane : inPlane - outOfPlane;
-        bool covered = false;
-        for (std::size_t l = 0; l < circles.size() && !covered; ++l)
-        {
-          if (l == j || l == k) continue;
-          covered = double3::dot(corner, circles[l].axis) > circles[l].cosineHalfAngle + 1.0e-9;
-        }
-        if (!covered) breakpoints.push_back(std::acos(std::clamp(double3::dot(corner, polarAxis), -1.0, 1.0)));
-      }
-    }
-  }
-
-  std::sort(breakpoints.begin(), breakpoints.end());
-
-  const GaussRule& rule = unitIntervalGaussRule();
-  const double twoPi = 2.0 * std::numbers::pi;
-  const std::size_t parts = std::max<std::size_t>(1, subdivisions);
-
-  std::vector<std::size_t> cutting;
-  std::vector<std::pair<double, double>> covered;
-
-  for (std::size_t piece = 0; piece + 1 < breakpoints.size(); ++piece)
-  {
-    double pieceBegin = breakpoints[piece];
-    double pieceEnd = breakpoints[piece + 1];
-    if (pieceEnd - pieceBegin < 1.0e-14) continue;
-
-    // Which caps cut the latitudes of this piece, and whether one of them covers them outright. Both can
-    // change only at the ends of the piece, so both are settled once here.
-    double interior = 0.5 * (pieceBegin + pieceEnd);
-    cutting.clear();
-    bool buried = false;
-    for (std::size_t i = 0; i < circles.size(); ++i)
-    {
-      const SweepCircle& circle = circles[i];
-      if (interior > circle.lowestLatitude && interior < circle.highestLatitude)
-        cutting.push_back(i);
-      else if ((interior <= circle.lowestLatitude && circle.reachesOverPole) ||
-               (interior >= circle.highestLatitude && circle.reachesOverAntipole))
-      {
-        buried = true;
-        break;
-      }
-    }
-    if (buried) continue;
-
-    for (std::size_t part = 0; part < parts; ++part)
-    {
-      double begin = pieceBegin + (pieceEnd - pieceBegin) * static_cast<double>(part) / static_cast<double>(parts);
-      double end = pieceBegin + (pieceEnd - pieceBegin) * static_cast<double>(part + 1) / static_cast<double>(parts);
-      double middle = 0.5 * (begin + end);
-
-      // The uncovered length leaves the end of a piece like the square root of the distance to it, a cap
-      // appearing there with that shape, so each half is anchored at its end and a square substituted.
-      for (std::size_t half = 0; half < 2; ++half)
-      {
-        double anchor = (half == 0) ? begin : end;
-        double span = (half == 0) ? middle - begin : end - middle;
-        double direction = (half == 0) ? 1.0 : -1.0;
-
-        for (std::size_t node = 0; node < gaussOrder; ++node)
-        {
-          double parameter = rule.nodes[node];
-          double latitude = anchor + direction * span * parameter * parameter;
-          double weight = 2.0 * span * parameter * rule.weights[node];
-          double sineLatitude = std::sin(latitude);
-          double cosineLatitude = std::cos(latitude);
-          if (sineLatitude <= 0.0) continue;
-
-          covered.clear();
-          for (std::size_t i : cutting)
-          {
-            const SweepCircle& circle = circles[i];
-            double cosineHalfWidth =
-                (circle.cosineHalfAngle - cosineLatitude * circle.cosinePolar) / (sineLatitude * circle.sinePolar);
-            if (cosineHalfWidth >= 1.0) continue;
-            double halfWidth = (cosineHalfWidth <= -1.0) ? std::numbers::pi : std::acos(cosineHalfWidth);
-
-            double arcBegin = circle.azimuth - halfWidth;
-            double arcEnd = circle.azimuth + halfWidth;
-            if (arcBegin < 0.0)
-            {
-              covered.emplace_back(arcBegin + twoPi, twoPi);
-              covered.emplace_back(0.0, arcEnd);
-            }
-            else if (arcEnd > twoPi)
-            {
-              covered.emplace_back(arcBegin, twoPi);
-              covered.emplace_back(0.0, arcEnd - twoPi);
-            }
-            else
-            {
-              covered.emplace_back(arcBegin, arcEnd);
-            }
-          }
-          std::sort(covered.begin(), covered.end());
-
-          double cursor = 0.0;
-          for (std::size_t arc = 0; arc <= covered.size(); ++arc)
-          {
-            double gapEnd = (arc < covered.size()) ? covered[arc].first : twoPi;
-            double gap = gapEnd - cursor;
-            if (gap > gapTolerance)
-            {
-              region.solidAngle += sineLatitude * gap * weight;
-              double3 direction3 = firstAxis * (sineLatitude * (std::sin(gapEnd) - std::sin(cursor))) +
-                                   secondAxis * (sineLatitude * (std::cos(cursor) - std::cos(gapEnd))) +
-                                   polarAxis * (cosineLatitude * gap);
-              region.moment += direction3 * (sineLatitude * weight);
-            }
-            if (arc < covered.size()) cursor = std::max(cursor, covered[arc].second);
-          }
-        }
-      }
-    }
-  }
+  // Nothing has been over these caps before: they are the hull planes of one vertex and the probes around it,
+  // assembled here and thrown away again, so the crossings among them have to be looked for.
+  SweepWorkspace work;
+  sweepExposedLatitudes(circles, frame, nullptr, subdivisions, work,
+                        [&](const LatitudeGap& gap)
+                        {
+                          region.solidAngle += gap.sineLatitude * gap.span * gap.weight;
+                          double3 normalIntegral =
+                              firstAxis * (gap.sineLatitude * (gap.sineEnd - gap.sineBegin)) +
+                              secondAxis * (gap.sineLatitude * (gap.cosineBegin - gap.cosineEnd)) +
+                              polarAxis * (gap.cosineLatitude * gap.span);
+                          region.moment += normalIntegral * (gap.sineLatitude * gap.weight);
+                        });
 
   return region;
 }
@@ -1009,11 +737,7 @@ VertexTerms vertexTerms(const SasVertex& vertex, double probeRadius, const std::
     if (discRadius <= 0.0) continue;
 
     double3 axis = delta * (1.0 / separation);
-    double3 helper(1.0, 0.0, 0.0);
-    if (std::abs(axis.y) < std::abs(axis.x)) helper = double3(0.0, 1.0, 0.0);
-    if (std::abs(axis.z) < std::min(std::abs(axis.x), std::abs(axis.y))) helper = double3(0.0, 0.0, 1.0);
-    double3 first = double3::cross(helper, axis);
-    first = first * (1.0 / first.length());
+    double3 first = perpendicularTo(axis);
     double3 second = double3::cross(axis, first);
 
     const double3 discCentre = vertex.position + axis * half;
@@ -1089,7 +813,7 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
 {
   SolventExcludedGeometry result;
   result.probeRadius = probeRadius;
-  result.accessibleVolume = unionOfBallsVolume(accessibility, patches);
+  result.accessibleVolume = unionOfBallsVolume(accessibility, patches, components);
 
   const std::vector<int> sides = componentSides(components, patches, labels);
   result.componentSide = sides;

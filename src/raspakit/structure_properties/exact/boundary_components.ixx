@@ -82,6 +82,15 @@ export struct SphereBoundary
   std::vector<SphereCircle> circles;
   std::size_t numberOfPatches{0};
 
+  // The crossings of two of the circles that no third sphere covers, as unit directions from the centre.
+  //
+  // These are the corners of the patches, and they are also exactly the latitudes at which the exposed
+  // length of a circle of latitude stops being analytic, which is what the surface sweep has to break its
+  // quadrature at. Finding them is cubic in the number of circles --- a pair at a time, each tested against
+  // all the rest --- and the sweep would otherwise find the same ones over again from the same circles, so
+  // they are kept here for it.
+  std::vector<double3> crossings;
+
   // A direction inside each patch, a little way in from one of its edges. It is where the patch is asked
   // which pore it faces, and it is what a point of the patch is joined to when one is looked up.
   std::vector<double3> patchRepresentative;

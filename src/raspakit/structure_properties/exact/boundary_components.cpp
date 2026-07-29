@@ -9,15 +9,14 @@ import double3;
 import simulationbox;
 import voronoi_accessibility;
 import voronoi_channels;
+import exact_sphere_sweep;
 
 namespace
 {
 
-// A crossing is only hidden by a third sphere if it is hidden with room to spare. A framework is
-// symmetric, so three spheres meeting in one point is the ordinary case rather than a coincidence, and
-// deciding on the sign of a rounding error whether the third one hides the crossing loses an edge of the
-// patch. The same allowance is made in the sweep, and for the same reason.
-constexpr double coverTolerance = 1.0e-9;
+// A crossing is only hidden by a third sphere if it is hidden with room to spare, which is the allowance the
+// sweep makes and for the same reason.
+constexpr double coverTolerance = capCoverTolerance;
 
 // Crossings closer together than this along a circle are the same crossing. Several circles through one
 // point is again the ordinary case, and left alone it would leave arcs of no length between them.
@@ -37,17 +36,6 @@ bool coveredDirection(const std::vector<SphereCircle>& circles, const double3& d
     if (double3::dot(direction, circles[c].axis) > circles[c].cosineHalfAngle + coverTolerance) return true;
   }
   return false;
-}
-
-
-// A unit vector perpendicular to `axis`, chosen so that the cross product behind it is well conditioned.
-double3 perpendicularTo(const double3& axis)
-{
-  double3 helper(1.0, 0.0, 0.0);
-  if (std::abs(axis.y) < std::abs(axis.x)) helper = double3(0.0, 1.0, 0.0);
-  if (std::abs(axis.z) < std::min(std::abs(axis.x), std::abs(axis.y))) helper = double3(0.0, 0.0, 1.0);
-  double3 perpendicular = double3::cross(helper, axis);
-  return perpendicular * (1.0 / perpendicular.length());
 }
 
 
@@ -130,73 +118,8 @@ bool boundingCircles(const VoronoiAccessibility& accessibility, std::size_t atom
   // A circle whose disc lies inside another's bounds nothing and covers nothing of its own. Dropping it is
   // no loss of an edge: the surface the two atoms share is buried under the third, on both of their spheres
   // alike, so there is no piece of boundary there to join anything across.
-  if (circles.size() > 1)
-  {
-    std::vector<bool> redundant(circles.size(), false);
-    for (std::size_t i = 0; i < circles.size(); ++i)
-    {
-      for (std::size_t j = 0; j < circles.size(); ++j)
-      {
-        if (i == j || redundant[j]) continue;
-        double separation = std::acos(std::clamp(double3::dot(circles[i].axis, circles[j].axis), -1.0, 1.0));
-        if (separation + circles[i].halfAngle <= circles[j].halfAngle)
-        {
-          redundant[i] = true;
-          break;
-        }
-      }
-    }
-    std::size_t kept = 0;
-    for (std::size_t i = 0; i < circles.size(); ++i)
-    {
-      if (!redundant[i]) circles[kept++] = circles[i];
-    }
-    circles.resize(kept);
-  }
+  pruneContainedDiscs(circles);
   return true;
-}
-
-
-// One uncovered crossing of two of the circles: a corner of the patches that meet there.
-struct Crossing
-{
-  std::size_t firstCircle{0};
-  std::size_t secondCircle{0};
-  double3 direction{0.0, 0.0, 0.0};
-};
-
-
-std::vector<Crossing> uncoveredCrossings(const std::vector<SphereCircle>& circles)
-{
-  std::vector<Crossing> crossings;
-  for (std::size_t j = 0; j + 1 < circles.size(); ++j)
-  {
-    for (std::size_t k = j + 1; k < circles.size(); ++k)
-    {
-      const SphereCircle& first = circles[j];
-      const SphereCircle& second = circles[k];
-      double alignment = double3::dot(first.axis, second.axis);
-      double denominator = 1.0 - alignment * alignment;
-      if (denominator < 1.0e-14) continue;  // parallel axes never cross
-
-      double alongFirst = (first.cosineHalfAngle - alignment * second.cosineHalfAngle) / denominator;
-      double alongSecond = (second.cosineHalfAngle - alignment * first.cosineHalfAngle) / denominator;
-      double outOfPlaneSquared =
-          (1.0 - alongFirst * first.cosineHalfAngle - alongSecond * second.cosineHalfAngle) / denominator;
-      if (outOfPlaneSquared <= 0.0) continue;  // the circles miss one another
-
-      double3 inPlane = first.axis * alongFirst + second.axis * alongSecond;
-      double3 outOfPlane = double3::cross(first.axis, second.axis) * std::sqrt(outOfPlaneSquared);
-      for (std::size_t side = 0; side < 2; ++side)
-      {
-        double3 direction = (side == 0) ? inPlane + outOfPlane : inPlane - outOfPlane;
-        direction = direction * (1.0 / direction.length());
-        if (coveredDirection(circles, direction, j, k)) continue;
-        crossings.push_back(Crossing{j, k, direction});
-      }
-    }
-  }
-  return crossings;
 }
 
 
@@ -645,11 +568,14 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
       continue;
     }
 
-    std::vector<Crossing> crossings = uncoveredCrossings(boundary.circles);
+    std::vector<CapCrossing> crossings = uncoveredCrossings(boundary.circles);
+
+    boundary.crossings.reserve(crossings.size());
+    for (const CapCrossing& crossing : crossings) boundary.crossings.push_back(crossing.direction);
 
     // The crossings on each circle, merged where they coincide and sorted, cut it into arcs.
     for (SphereCircle& circle : boundary.circles) circle.cornerAngles.clear();
-    for (const Crossing& crossing : crossings)
+    for (const CapCrossing& crossing : crossings)
     {
       boundary.circles[crossing.firstCircle].cornerAngles.push_back(
           boundary.circles[crossing.firstCircle].angleOf(crossing.direction));
@@ -695,7 +621,7 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
     // At an uncovered crossing the exposed region takes exactly one of the four quadrants, so of the two
     // arcs of each circle that end there exactly one is exposed, and those two bound the same patch.
     UnionFind patches(totalArcs);
-    for (const Crossing& crossing : crossings)
+    for (const CapCrossing& crossing : crossings)
     {
       std::array<std::optional<std::size_t>, 2> incident;
       const std::array<std::size_t, 2> circleIndices = {crossing.firstCircle, crossing.secondCircle};

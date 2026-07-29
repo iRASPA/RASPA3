@@ -8,6 +8,10 @@ import double3;
 import voronoi_accessibility;
 import exact_boundary_components;
 
+// The order of the Gauss-Legendre rule used on each half of a smooth piece of the latitude integral, and the
+// rest of the machinery for sweeping a sphere. Re-exported because the order is reported with the result.
+export import exact_sphere_sweep;
+
 // The surface of the union of the probe-inflated atoms, measured patch by patch instead of by throwing
 // points at it.
 //
@@ -26,13 +30,6 @@ import exact_boundary_components;
 //
 // A classifier is taken all the same, for two things it alone can say: which neighbours there are, and,
 // if asked, which pore each patch faces.
-
-// The order of the Gauss-Legendre rule used on each half of a smooth piece of the latitude integral. Ten
-// nodes integrate a polynomial of degree nineteen exactly, and what the pieces and the endpoint
-// substitution leave to integrate is analytic on each of them, so ten already puts the error at
-// round-off. Raising it buys nothing and costs a classifier call per node. It is exported to be reported
-// with the result rather than to be chosen by a caller.
-export inline constexpr std::size_t exactQuadratureOrder = 10uz;
 
 // What one pore's share of the boundary carries, beyond its area: enough to measure the volume the pore
 // encloses, if it encloses one.

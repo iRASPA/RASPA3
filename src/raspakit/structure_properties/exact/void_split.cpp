@@ -218,7 +218,7 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
                                           const ExactSurfaceAreaSample& patches, double cellVolume)
 {
   ExactVoidSplit split;
-  split.voidVolume = cellVolume - unionOfBallsVolume(accessibility, patches);
+  split.voidVolume = cellVolume - unionOfBallsVolume(accessibility, patches, components);
   split.undecidedArea = patches.undecided;
   split.numberOfSurfaces = components.numberOfComponents;
 

@@ -148,7 +148,7 @@ export struct PoreSizeDistributionCurve
 //
 // The second is not the accessible share of the first row by row. At a diameter d the first divides the volume
 // leaving there by what a probe of that same diameter can reach, which moves along the curve; the second holds
-// the probe still. So a cage that a nitrogen molecule cannot enter is outside the accessible curve at every
+// the probe still. So a cage that the fixed probe cannot enter is outside the accessible curve at every
 // diameter, and a bulge in a channel that only a larger sphere fits into is inside it, though at that diameter
 // it is a pore of its own that nothing can get into.
 //
