@@ -19,10 +19,12 @@ export struct VoronoiPoreSizeDistribution
 {
   PoreSizeDistributionCurve curve;
 
-  void run(const ForceField& forceField, const Framework& framework, std::optional<double> maximumDiameter,
-           std::optional<std::size_t> numberOfBins, std::size_t subdivisions = 1);
+  // `probePseudoAtom` is the probe the accessible curve is reported for, beside the curve of the whole void.
+  void run(const ForceField& forceField, const Framework& framework, std::string probePseudoAtom,
+           std::optional<double> maximumDiameter, std::optional<std::size_t> numberOfBins,
+           std::size_t subdivisions = 1);
 };
 
 // The report both diagrams write, the two differing only in the name in it.
 export void writePoreSizeDistribution(const Framework& framework, const std::string& diagramName,
-                                      const PoreSizeDistributionCurve& curve);
+                                      const std::string& probePseudoAtom, const PoreSizeDistributionCurve& curve);

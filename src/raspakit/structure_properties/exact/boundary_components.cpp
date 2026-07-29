@@ -546,7 +546,8 @@ std::int32_t BoundaryComponents::patchOfCirclePoint(std::size_t atomIndex, const
 
 
 std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& accessibility,
-                                                    const BoundaryComponents& components)
+                                                    const BoundaryComponents& components,
+                                                    const VoronoiAccessibility* reference)
 {
   // The walk out from the surface. Each step is kept inside the free ball about the point it starts from,
   // so the whole of it is void: a node ball reached this way holds a point connected to the surface through
@@ -555,6 +556,12 @@ std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& 
   constexpr double stepFraction = 0.9;   // of the room at each point, leaving the step strictly inside
   constexpr std::size_t stepLimit = 64;
   constexpr double reachLimit = 32.0;    // no cavity in a framework is wider than this
+
+  // The walk is taken through the void these surfaces bound, so it is this accessibility's atoms it has to
+  // stay clear of. Which pore the point it arrives at belongs to is a separate question, and a caller after
+  // the pores of another probe asks it of that probe's network instead: a point clear of these atoms is clear
+  // of the smaller ones of a smaller probe too, so the same walk answers for either.
+  const VoronoiAccessibility& pores = (reference != nullptr) ? *reference : accessibility;
 
   std::vector<ComponentLabel> labels(components.numberOfComponents);
   for (std::size_t label = 0; label < components.numberOfComponents; ++label)
@@ -585,13 +592,13 @@ std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& 
 
         answer.steps = step + 1;
         answer.walked = walked;
-        if (std::optional<std::size_t> holder = accessibility.containingNode(point); holder.has_value())
+        if (std::optional<std::size_t> holder = pores.containingNode(point); holder.has_value())
         {
           std::size_t node = holder.value();
           answer.decided = true;
           answer.proved = true;
-          answer.poreId = accessibility.channels.nodePoreId[node];
-          answer.accessible = accessibility.nodeAccessible[node] != 0;
+          answer.poreId = pores.channels.nodePoreId[node];
+          answer.accessible = pores.nodeAccessible[node] != 0;
           break;
         }
         walked += stepFraction * room;
@@ -604,7 +611,7 @@ std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& 
     // No ball was reached from any of them: fall back on what the classifier makes of a point on the
     // surface. This is the per-arc route, but taken once for the whole surface, so it can still be wrong
     // about which pore and no longer wrong about only part of a pocket's boundary.
-    PointClassification classification = accessibility.classify(bestSurface);
+    PointClassification classification = pores.classify(bestSurface);
     if (classification.inside || classification.resample) continue;
     answer.decided = true;
     answer.accessible = classification.accessible;

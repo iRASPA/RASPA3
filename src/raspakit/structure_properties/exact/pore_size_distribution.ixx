@@ -28,12 +28,26 @@ export struct PoreSizeDistributionPoint
   double cumulative{0.0};      // that volume over the void volume, so one at zero diameter and zero beyond D_i
   double distribution{0.0};    // 1/Å, minus the derivative of the cumulative in the diameter
 
-  // The share of the distribution carried on surfaces the probe can reach, on surfaces sealed off from it, and
-  // on surfaces the network could not place. Every reentrant patch belongs to one connected surface and that
-  // surface faces one pore, so this is a division of the boundary and not a classification of samples.
+  // The share of the distribution on surfaces a probe of this row's own diameter can reach, on surfaces sealed
+  // off from it, and on surfaces the network could not place. Every reentrant patch belongs to one connected
+  // surface and that surface faces one pore, so this is a division of the boundary and not a classification of
+  // samples. The probe here moves with the row: what these three divide is the volume leaving at diameter d
+  // between the pores a probe of that same diameter d can get into and the ones it cannot.
   double accessible{0.0};
   double inaccessible{0.0};
   double undecided{0.0};
+
+  // The same row for one fixed probe instead: the pore volume, at this diameter, of the part of the void that
+  // probe can reach, and the derivative of it. The probe is the one the analysis was given, so these are the
+  // distribution of the pore sizes a molecule of that size actually meets, where the three above are a
+  // property of the geometry at every diameter separately.
+  //
+  // Below the probe's own diameter they are constant and zero respectively: the region the probe can occupy is
+  // a union of balls of its radius, so every point of it has a pore size of at least that diameter and none of
+  // it has left yet.
+  double probeAccessiblePoreVolume{0.0};    // Å³
+  double probeAccessibleCumulative{0.0};    // over the pore volume the probe can reach, so one below 2 r_p
+  double probeAccessibleDistribution{0.0};  // 1/Å, normalised by the same volume
 
   // What the boundary was made of at this diameter, kept to be looked at rather than plotted.
   std::size_t numberOfArcs{0};
@@ -43,7 +57,7 @@ export struct PoreSizeDistributionPoint
   std::size_t degenerateVertices{0};
 };
 
-// A pore size that carries volume of its own.
+// A pore size that holds volume of its own.
 //
 // The cumulative volume does not only slide down, it also falls off cliffs, and it is worth being clear that
 // this is the definition speaking and not the arithmetic. Take a cavity that is a single ball of radius a. The
@@ -73,6 +87,12 @@ export struct PoreSizeDistributionCurve
   double cellVolume{0.0};  // Å³
   double voidVolume{0.0};  // Å³, the pore volume at zero diameter, which normalises the distribution
 
+  // The probe the accessible curve belongs to, and the volume that probe can reach: the pore volume at its own
+  // diameter, less the pores it cannot get into. It is what normalises the accessible curve, so that curve
+  // integrates to one over the region it describes rather than to the accessible share of the void.
+  double probeRadius{0.0};            // Å
+  double probeAccessibleVolume{0.0};  // Å³
+
   // The integral of the continuous part of the distribution, and the spikes, whose weights make up the rest.
   //
   // These come by two routes with no term in common: the first is the derivative, integrated over the
@@ -83,6 +103,13 @@ export struct PoreSizeDistributionCurve
   double singularWeight{0.0};
   std::vector<PoreSizeSpike> spikes;
 
+  // The same two, and the same spikes, for the part of the void the fixed probe can reach. They are found in
+  // the same refinement of the same intervals, a volume that goes over at one size in a reachable pore doing so
+  // in the total as well, and they are weights of the reachable volume rather than of the void.
+  double probeAccessibleIntegral{0.0};
+  double probeAccessibleSingularWeight{0.0};
+  std::vector<PoreSizeSpike> probeAccessibleSpikes;
+
   // What is left at the end of the range, which ought to be nothing: a range that stops short of the largest
   // sphere in the void leaves volume unaccounted, and this is how much.
   double truncatedWeight{0.0};
@@ -91,6 +118,12 @@ export struct PoreSizeDistributionCurve
   // in the void. It is the position of the last spike, so it is resolved to that spike's bracket and not to
   // the spacing of the rows.
   double largestDiameter{0.0};
+
+  // The same two for the accessible curve: what is left of the reachable volume at the end of the range, and the
+  // largest sphere that fits anywhere the probe can reach, which is the largest pore of the framework a molecule
+  // of that size ever meets.
+  double probeAccessibleTruncatedWeight{0.0};
+  double probeAccessibleLargestDiameter{0.0};
 
   double seconds{0.0};
   std::size_t numberOfEvaluations{0};
@@ -107,8 +140,22 @@ export struct PoreSizeDistributionCurve
 // the same excess however far the step is narrowed, and what survives `refinements` of them is a spike, its
 // weight known to the trapezium error over an interval that narrow.
 //
+// Two curves come out of the one sweep. The first is the whole void: every pore of the framework, whether or
+// not anything can get into it, which is the distribution the volume of the cell is made of. The second is the
+// void one fixed probe can reach, `probeRadius` being that probe, which is the distribution a molecule of that
+// size meets. They differ by the pores that are sealed off from that probe, and the difference is not a
+// rescaling: a sealed cage can be the largest pore in a framework.
+//
+// The second is not the accessible share of the first row by row. At a diameter d the first divides the volume
+// leaving there by what a probe of that same diameter can reach, which moves along the curve; the second holds
+// the probe still. So a cage that a nitrogen molecule cannot enter is outside the accessible curve at every
+// diameter, and a bulge in a channel that only a larger sphere fits into is inside it, though at that diameter
+// it is a pore of its own that nothing can get into.
+//
 // `build` makes the accessibility for a given probe radius: it is a callback because which diagram the pores
-// are taken from is the caller's business and the geometry here is the same either way.
+// are taken from is the caller's business and the geometry here is the same either way. It is called at
+// `probeRadius` as well, the pores of that one network being what the accessible curve is divided by at every
+// diameter above it.
 export PoreSizeDistributionCurve exactPoreSizeDistribution(
     const std::function<VoronoiAccessibility(double)>& build, double cellVolume, double maximumDiameter,
-    std::size_t numberOfBins, std::size_t subdivisions, std::size_t refinements = 12);
+    std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, std::size_t refinements = 12);

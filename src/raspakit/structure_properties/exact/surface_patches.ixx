@@ -72,6 +72,13 @@ export struct PoreBoundaryMoments
   // not: a sum over patches cannot be rescaled after the fact.
   double convexArea{0.0};  // Å²
 
+  // Å³, the volume between this share of the accessible surface and the convex patch below it, which is the
+  // part of the shell R_s standing over these patches: the area of each of them times R_i/3 (1 - (r_i/R_i)³).
+  // With it, the volume a probe of this radius opens up in the region this surface bounds is the volume the
+  // surface encloses plus this, so a bounded pore's own share of the pore volume is available surface by
+  // surface and not only as a total.
+  double shellVolume{0.0};
+
   // Å⁴, the integral of x - c over the region the surface encloses, so the centroid is c plus this over the
   // enclosed volume. It carries the volume's sign with it, and so is meaningless for a surface that does not
   // close, exactly as the volume is.
@@ -100,6 +107,10 @@ export struct ExactSurfaceAreaSample
   // The whole area again, projected down onto the bare spheres, which is the convex part of the solvent
   // excluded surface. Zero probe radius makes it the area itself.
   double convexArea{0.0};  // Å²
+
+  // Å³, the whole shell over the patches, i.e. the same sum as `PoreBoundaryMoments::shellVolume` taken over
+  // every patch of every atom.
+  double shellVolume{0.0};
 
   // Per atom, the area of its own exposed patch. The whole-surface total says nothing about how the area is
   // spread over the spheres, and a weighting that is neither the radius nor a constant --- the shell between

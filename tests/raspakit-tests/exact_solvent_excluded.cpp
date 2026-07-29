@@ -622,6 +622,84 @@ TEST(exact_solvent_excluded, the_kinds_and_the_sides_each_account_for_the_whole_
 }
 
 
+// A shell of overlapping atoms with room inside it, which is a cage nothing can get into and out of: twelve
+// atoms at the vertices of an icosahedron, large enough that the shell closes over the faces as well as the
+// edges. Whatever the probe, the room inside is a pore of its own, walled by one closed surface and sealed off
+// from the void outside.
+std::pair<std::vector<double3>, std::vector<double>> icosahedralCage(const double3& centre, double shellRadius,
+                                                                    double atomRadius)
+{
+  const double golden = 0.5 * (1.0 + std::sqrt(5.0));
+  const double scale = shellRadius / std::sqrt(1.0 + golden * golden);
+
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (double first : {-1.0, 1.0})
+  {
+    for (double second : {-golden, golden})
+    {
+      positions.push_back(centre + double3(0.0, first, second) * scale);
+      positions.push_back(centre + double3(first, second, 0.0) * scale);
+      positions.push_back(centre + double3(second, 0.0, first) * scale);
+    }
+  }
+  radii.assign(positions.size(), atomRadius);
+  return {positions, radii};
+}
+
+
+// What a sealed cage holds is its own share of the pore volume, and it has to behave as a pore volume does:
+// fall as the probe grows, and go to nothing when the probe no longer fits inside.
+//
+// The cage's share is not measured the way the total is. The total is the cell less the excluded volume; the
+// cage's is what its own closed surface encloses, by the divergence theorem over the surface's own arcs, plus
+// the shell standing over that surface, which is a sum over the patches, creases and corners belonging to it.
+// So this holds a decomposition against a property of the thing decomposed, and it is what a piece of the
+// shell put behind the wrong surface breaks: the wall of a cage has patches facing the cage and patches facing
+// the void outside, and a corner attributed across it moves volume from the one pore to the other. That shows
+// up here and nowhere else, the total being right either way.
+TEST(exact_solvent_excluded, a_sealed_cage_holds_a_pore_volume_that_only_falls)
+{
+  const double a = 10.0;
+  SimulationBox box(a, a, a);
+
+  // Room for a probe of radius 0.9 inside, and sealed to any probe at all: the nearest a face of the shell
+  // comes to being open is 2.5 sin(37.377 degrees) = 1.518, which is inside the atoms.
+  const double shellRadius = 2.5;
+  const double atomRadius = 1.6;
+  auto [positions, radii] = icosahedralCage(double3(0.5 * a, 0.5 * a, 0.5 * a), shellRadius, atomRadius);
+
+  double previous = std::numeric_limits<double>::max();
+  for (double probe = 0.1; probe < 0.9; probe += 0.05)
+  {
+    VoronoiAccessibility accessibility = inflatedGeometry(box, positions, radii, probe);
+    SolventExcludedGeometry geometry = solventExcludedGeometry(accessibility, probe);
+
+    // The cage is the only pore shut off from the void running past it outside, and the room in it is worth
+    // something at every probe up to the one that fills it.
+    EXPECT_GT(geometry.inaccessiblePoreVolume, 0.0) << "probe " << probe;
+    EXPECT_NEAR(geometry.undecidedPoreVolume, 0.0, 1.0e-9) << "probe " << probe;
+    EXPECT_LT(geometry.inaccessiblePoreVolume, geometry.poreVolume) << "probe " << probe;
+
+    // The room the cage opens to a larger probe is room it opens to a smaller one, so this cannot rise. A
+    // corner of the shell attributed through the wall moves several cubic Angstrom at a step and is caught
+    // here by a margin of orders of magnitude rather than by a tolerance.
+    EXPECT_LE(geometry.inaccessiblePoreVolume, previous + 1.0e-8) << "probe " << probe;
+    previous = geometry.inaccessiblePoreVolume;
+
+    // Every piece of the shell belongs to one of the surfaces, so the pieces add up to the whole of it.
+    double byComponent = 0.0;
+    for (double piece : geometry.componentShellVolume) byComponent += piece;
+    EXPECT_NEAR(byComponent, geometry.shellVolume, 1.0e-8 * std::max(1.0, geometry.shellVolume)) << "probe " << probe;
+  }
+
+  // Past the room inside there is nowhere in the cage for the probe's centre, and the cage holds nothing.
+  VoronoiAccessibility filled = inflatedGeometry(box, positions, radii, shellRadius - atomRadius + 0.05);
+  SolventExcludedGeometry sealed = solventExcludedGeometry(filled, shellRadius - atomRadius + 0.05);
+  EXPECT_NEAR(sealed.inaccessiblePoreVolume, 0.0, 1.0e-8);
+}
+
+
 // A probe too large to fit anywhere leaves no pore volume at all, and none of it is negative on the way
 // there: the volume a probe opens up cannot grow as the probe does.
 TEST(exact_solvent_excluded, the_pore_volume_falls_to_nothing_and_never_rises)

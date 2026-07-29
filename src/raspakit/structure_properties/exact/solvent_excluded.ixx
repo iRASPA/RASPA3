@@ -118,12 +118,33 @@ export struct SolventExcludedGeometry
   // pore volume at r = 0, normalises it to integrate to one over all r.
   double distribution{0.0};
 
-  // The same, split by which pore the piece of reentrant surface it is carried on faces. Every toroidal and
-  // concave patch belongs to one connected surface of the boundary, and that surface faces one pore, so the
-  // split is geometry rather than a classification of samples.
+  // The same, split by which pore the piece of reentrant surface it is on faces. Every toroidal and concave
+  // patch belongs to one connected surface of the boundary, and that surface faces one pore, so the split is
+  // geometry rather than a classification of samples.
   double accessibleDistribution{0.0};
   double inaccessibleDistribution{0.0};
   double undecidedDistribution{0.0};
+
+  // The pore volume divided the same way. A surface that closes bounds a region of its own, and the volume
+  // this probe opens up inside that region is the volume the surface encloses plus the shell standing over
+  // it, both of which the same arcs give. The channels then take the rest, so nothing is measured twice and
+  // the three add to `poreVolume`.
+  double accessiblePoreVolume{0.0};
+  double inaccessiblePoreVolume{0.0};
+  double undecidedPoreVolume{0.0};
+
+  // Per connected surface of the boundary: which side it faces, its share of the derivative, and the two parts
+  // of the volume opened up in the region it bounds, which is what it encloses plus the shell over it. The
+  // enclosed part means nothing for a surface that runs away through the crystal and is left at zero there.
+  //
+  // These are here for a caller that has to divide the curve by something other than what this probe can
+  // reach --- the pore-size distribution divides it by a fixed probe while sweeping the diameter, so at every
+  // diameter but one the two questions have different answers --- and such a caller needs the pieces rather
+  // than the totals.
+  std::vector<int> componentSide;
+  std::vector<double> componentDistribution;    // Å²
+  std::vector<double> componentEnclosedVolume;  // Å³, room for the probe's centre, zero if it does not close
+  std::vector<double> componentShellVolume;     // Å³, the shell standing over it, on the pore's side of it
 
   // Where it comes from, the two families of reentrant patch.
   double toroidalDistribution{0.0};

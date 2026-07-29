@@ -200,8 +200,15 @@ export struct ComponentLabel
 // normal in steps no longer than the room at each: every step then stays inside a free ball about the
 // previous point, so the whole path is in the void and whatever node ball it reaches is provably on the
 // same side of the surface. Falls back to the classifier where no ball is reached.
+//
+// `reference`, where it is given, is the network the pore is read from, the surfaces and the walk staying
+// with `accessibility`. The two differ when a boundary taken at one probe radius is to be divided by what
+// another probe can reach: a surface enclosing a pore that a large probe cannot get out of may still stand
+// in a channel a small one moves freely along, and it is the smaller probe's network that says so. It has to
+// be built from the same atoms at a probe radius no larger, since the walk is clear of the larger atoms only.
 export std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& accessibility,
-                                                           const BoundaryComponents& components);
+                                                           const BoundaryComponents& components,
+                                                           const VoronoiAccessibility* reference = nullptr);
 
 // How two loops of edges on one sphere are shown to bound the same patch. Walking the edges settles a patch
 // bounded by a single loop; a patch with a hole in it has more than one, and those have to be recognised as

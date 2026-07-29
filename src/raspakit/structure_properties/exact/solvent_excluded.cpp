@@ -591,6 +591,66 @@ bool solveThreeByThree(const std::array<double3, 3>& rows, const double3& right,
 }
 
 
+// Which connected surface a vertex is on, as far as one of the atoms it touches can say, added to `votes`.
+//
+// `direction` is the vertex as a unit direction from that atom's centre, and the vertex is a corner of the
+// atom's exposed region: a crossing of two of its bounding circles that no third sphere covers. Of the two
+// stretches of a circle meeting at such a crossing exactly one is exposed, since crossing the second circle
+// takes the first into that sphere or out of it, and the exposed one carries the patch the corner belongs to.
+// That is index arithmetic on the stretches of one circle, with no angle compared against another.
+//
+// The reason to ask every atom and every circle through the point rather than one of them is symmetry. Where
+// four or more spheres meet in a point, as a framework's own symmetry arranges over and over, several
+// crossings coincide there, and a stretch on either side of one of them can be covered by one of the others:
+// that corner then names no patch at all. The probe resting in a six-ring of LTA touches six atoms and is
+// such a corner on thirty circles, of which twelve answer.
+//
+// The answers agree, and not by luck: every patch meeting at a vertex is joined to the others across the arcs
+// running into it, so they are all one surface and any of them names it. Placing the vertex from its position
+// instead, as the fallback at the caller does, is not the same thing and not as good. That asks which stretch
+// of a circle holds an angle which is the endpoint of two of them, so round-off decides, and an atom in the
+// wall of a cage has one patch facing the cage and another facing the pore outside it: the decision can put a
+// vertex of the one on the other, carrying the whole of that vertex's shell through the wall.
+void gatherComponentVotes(const BoundaryComponents& components, std::size_t atomIndex, const double3& direction,
+                          std::vector<std::pair<std::int32_t, std::size_t>>& votes)
+{
+  const SphereBoundary& boundary = components.atoms[atomIndex];
+  if (boundary.buried) return;
+
+  for (const SphereCircle& circle : boundary.circles)
+  {
+    if (circle.arcPatch.empty()) continue;
+
+    // On this circle, and then at a corner of it. Both comparisons rest on the argument the tolerances are
+    // named for: a point of the surface is on a circle of an atom it touches, and at a corner of it, either
+    // exactly to round-off or not at all.
+    if (std::abs(double3::dot(direction, circle.axis) - circle.cosineHalfAngle) > touchTolerance) continue;
+
+    const double angle = circle.angleOf(direction);
+    for (std::size_t corner = 0; corner < circle.cornerAngles.size(); ++corner)
+    {
+      double difference = std::abs(circle.cornerAngles[corner] - angle);
+      difference = std::min(difference, 2.0 * std::numbers::pi - difference);
+      if (difference > vertexTolerance) continue;
+
+      // Stretch `corner` begins at this angle and the one before it ends there.
+      const std::size_t stretches = circle.arcPatch.size();
+      const std::int32_t after = circle.arcPatch[corner];
+      const std::int32_t patch = (after >= 0) ? after : circle.arcPatch[(corner + stretches - 1) % stretches];
+      if (patch < 0) continue;
+
+      const std::int32_t component = components.componentOfPatch[atomIndex][static_cast<std::size_t>(patch)];
+      if (component < 0) continue;
+      auto found = std::find_if(votes.begin(), votes.end(), [&](const auto& vote) { return vote.first == component; });
+      if (found != votes.end())
+        ++found->second;
+      else
+        votes.emplace_back(component, 1uz);
+    }
+  }
+}
+
+
 // The vertices of the accessible surface, one per position rather than one per description of it.
 //
 // The corners the decomposition already found are the vertices: a corner is a crossing of two of the circles
@@ -676,9 +736,11 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
   // corner it came from, and the hull of the directions to them.
   std::vector<SasVertex> kept;
   kept.reserve(vertices.size());
+  std::vector<std::pair<std::int32_t, std::size_t>> votes;
   for (SasVertex& vertex : vertices)
   {
     bool inside = false;
+    votes.clear();
     for (const NeighbourImage& image :
          accessibility.neighbourAtomImages(vertex.position, accessibility.maximumAtomRadius + touchTolerance))
     {
@@ -691,6 +753,7 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
       if (distance < image.radius + touchTolerance && distance > 1.0e-12)
       {
         vertex.tangents.push_back(image.delta * (1.0 / distance));
+        gatherComponentVotes(components, image.index, image.delta * (-1.0 / distance), votes);
       }
     }
     if (inside || vertex.tangents.size() < 3)
@@ -762,12 +825,24 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
       continue;
     }
 
-    // Which connected surface the vertex is on. It lies on one of the bounding circles of its own atom, and
-    // the arcs of those circles carry the patch they bound, so this is a search along a circle.
-    const double radius = accessibility.atomRadii[vertex.owner];
-    double3 direction = (vertex.position - accessibility.atomPositions[vertex.owner]) * (1.0 / radius);
-    std::int32_t patch = components.patchOfCirclePoint(vertex.owner, direction);
-    if (patch >= 0) vertex.component = components.componentOfPatch[vertex.owner][static_cast<std::size_t>(patch)];
+    // Which connected surface the vertex is on: the surface the atoms it touches agree that it is on, and
+    // failing that the one a search from its position lands on.
+    std::size_t best = 0;
+    for (const auto& [component, count] : votes)
+    {
+      if (count > best)
+      {
+        best = count;
+        vertex.component = component;
+      }
+    }
+    if (vertex.component < 0)
+    {
+      const double radius = accessibility.atomRadii[vertex.owner];
+      double3 direction = (vertex.position - accessibility.atomPositions[vertex.owner]) * (1.0 / radius);
+      std::int32_t patch = components.patchOfCirclePoint(vertex.owner, direction);
+      if (patch >= 0) vertex.component = components.componentOfPatch[vertex.owner][static_cast<std::size_t>(patch)];
+    }
 
     kept.push_back(std::move(vertex));
   }
@@ -1017,6 +1092,19 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
   result.accessibleVolume = unionOfBallsVolume(accessibility, patches);
 
   const std::vector<int> sides = componentSides(components, patches, labels);
+  result.componentSide = sides;
+  result.componentDistribution.assign(components.numberOfComponents, 0.0);
+  result.componentEnclosedVolume.assign(components.numberOfComponents, 0.0);
+
+  // The shell over each surface's own patches, which the sweep accumulated patch by patch. The arcs and the
+  // vertices add theirs below, where they are visited anyway.
+  result.componentShellVolume.assign(components.numberOfComponents, 0.0);
+  std::vector<double>& componentShell = result.componentShellVolume;
+  for (std::size_t label = 0; label < components.numberOfComponents && label < patches.components.size(); ++label)
+  {
+    componentShell[label] = patches.components[label].shellVolume;
+  }
+
   auto sideOf = [&](std::int32_t component)
   {
     return (component >= 0 && static_cast<std::size_t>(component) < sides.size())
@@ -1026,6 +1114,10 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
   auto addToSide = [&](std::int32_t component, double amount)
   {
     result.distribution += amount;
+    if (component >= 0 && static_cast<std::size_t>(component) < result.componentDistribution.size())
+    {
+      result.componentDistribution[static_cast<std::size_t>(component)] += amount;
+    }
     int side = sideOf(component);
     if (side > 0)
       result.accessibleDistribution += amount;
@@ -1033,6 +1125,13 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
       result.inaccessibleDistribution += amount;
     else
       result.undecidedDistribution += amount;
+  };
+  auto addShellTo = [&](std::int32_t component, double amount)
+  {
+    if (component >= 0 && static_cast<std::size_t>(component) < componentShell.size())
+    {
+      componentShell[static_cast<std::size_t>(component)] += amount;
+    }
   };
 
   // The same routing for area, given which of the three kinds of patch it is on.
@@ -1073,7 +1172,9 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
   for (const ExposedArc& arc : arcs)
   {
     if (arc.radius <= probeRadius) ++result.cuspedArcs;
-    shell += shellArcVolume(arc, probeRadius);
+    const double arcShell = shellArcVolume(arc, probeRadius);
+    shell += arcShell;
+    addShellTo(arc.component, arcShell);
     double speed = toroidalNormalSpeed(arc, probeRadius);
     result.toroidalDistribution += speed;
     addToSide(arc.component, speed);
@@ -1094,6 +1195,7 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
     if (terms.vanished) ++result.vanishedVertices;
 
     shell += terms.shell;
+    addShellTo(vertex.component, terms.shell);
     result.concaveDistribution += terms.normalSpeed;
     addToSide(vertex.component, terms.normalSpeed);
     addAreaToSide(vertex.component, &ExcludedSurfaceAreas::concave, terms.area);
@@ -1102,6 +1204,27 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
   result.shellVolume = shell;
   result.excludedVolume = result.accessibleVolume - shell;
   result.poreVolume = accessibility.simulationBox.volume - result.excludedVolume;
+
+  // What each bounded surface holds, and with it the division of the pore volume. A surface that closes
+  // encloses room for the probe's centre, which the divergence theorem gives from the same arcs, and the probe
+  // reaches out from that room as far as the shell over the surface: the two together are the volume this
+  // probe opens up behind that surface. A surface that runs away encloses nothing and is left at zero, its
+  // pore's volume being what the sealed ones leave of the total.
+  for (std::size_t label = 0; label < components.numberOfComponents; ++label)
+  {
+    if (label >= patches.components.size()) continue;
+    const PoreBoundaryMoments& moments = patches.components[label];
+    if (moments.area <= 0.0 || components.componentPercolates[label] != 0) continue;
+
+    const double enclosed = -(moments.radiusWeightedArea + moments.originWeighted) / 3.0;
+    result.componentEnclosedVolume[label] = enclosed;
+
+    if (sides[label] < 0)
+      result.inaccessiblePoreVolume += enclosed + componentShell[label];
+    else if (sides[label] == 0)
+      result.undecidedPoreVolume += enclosed + componentShell[label];
+  }
+  result.accessiblePoreVolume = result.poreVolume - result.inaccessiblePoreVolume - result.undecidedPoreVolume;
   return result;
 }
 

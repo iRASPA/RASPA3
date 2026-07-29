@@ -565,17 +565,23 @@ void CommandLine::run(int argc, char *argv[])
       // The distribution itself is a closed form over the surface of the framework, so it is evaluated rather
       // than sampled unless the sampled estimate is asked for by name. Which diagram is named decides only how
       // the curve is divided between the void a probe can reach and the void it cannot.
+      //
+      // The probe named is the one the accessible distribution is reported for, beside the distribution of the
+      // whole of the void. Nitrogen by default, as for the surface area: an adsorption isotherm is measured
+      // with it, so the pore sizes it can get to are the ones such an experiment has anything to say about.
       if (use_apollonius)
       {
         std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
         ApolloniusPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, maximum_range, number_of_bins, number_of_slices.value_or(1));
+        psd.run(forceField.value(), framework, geometricProbe("probe-N2"), maximum_range, number_of_bins,
+                number_of_slices.value_or(1));
       }
       else if (use_voronoi)
       {
         std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
         VoronoiPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, maximum_range, number_of_bins, number_of_slices.value_or(1));
+        psd.run(forceField.value(), framework, geometricProbe("probe-N2"), maximum_range, number_of_bins,
+                number_of_slices.value_or(1));
       }
 
       if (use_monte_carlo_methods)

@@ -13,9 +13,16 @@ import exact_pore_size_distribution;
 import voronoi_pore_size_distribution;
 
 void ApolloniusPoreSizeDistribution::run(const ForceField& forceField, const Framework& framework,
-                                         std::optional<double> maximumDiameter,
+                                         std::string probePseudoAtom, std::optional<double> maximumDiameter,
                                          std::optional<std::size_t> numberOfBins, std::size_t subdivisions)
 {
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
+  if (!probeType.has_value())
+  {
+    throw std::runtime_error("ApolloniusPoreSizeDistribution: Unknown probe-atom type\n");
+  }
+  const double probeRadius = 0.5 * forceField[probeType.value()].sizeParameter();
+
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
   fractionalPositions.reserve(framework.unitCellAtoms.size());
@@ -34,7 +41,7 @@ void ApolloniusPoreSizeDistribution::run(const ForceField& forceField, const Fra
   };
 
   curve = exactPoreSizeDistribution(build, framework.simulationBox.volume, maximumDiameter.value_or(20.0),
-                                    numberOfBins.value_or(100), subdivisions);
+                                    numberOfBins.value_or(100), subdivisions, probeRadius);
 
-  writePoreSizeDistribution(framework, "apollonius", curve);
+  writePoreSizeDistribution(framework, "apollonius", probePseudoAtom, curve);
 }
