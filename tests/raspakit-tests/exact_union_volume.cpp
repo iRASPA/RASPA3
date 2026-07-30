@@ -6,7 +6,7 @@ import double3;
 import simulationbox;
 import randomnumbers;
 import voronoi_network;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_union_volume;
 
 // The measured volume of the union of the probe-inflated atoms, which is the cell less its void.
@@ -26,7 +26,7 @@ import exact_union_volume;
 namespace
 {
 
-VoronoiAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+PoreAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
                                  const std::vector<double>& radii)
 {
   VoronoiNetwork network;
@@ -37,7 +37,7 @@ VoronoiAccessibility bareGeometry(const SimulationBox& box, const std::vector<do
     network.atomPositionsFractional.push_back(double3::fract(fractional));
   }
   network.atomNodeVectors.assign(fractionalPositions.size(), {});
-  return VoronoiAccessibility::createFromNetwork(std::move(network), VoronoiAccessibility::Metric::Clearance);
+  return PoreAccessibility::createFromNetwork(std::move(network), PoreAccessibility::Metric::Clearance);
 }
 
 
@@ -95,7 +95,7 @@ TEST(exact_union_volume, lone_sphere)
   SimulationBox box(a, a, a);
   const double radius = 1.7;
 
-  VoronoiAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
+  PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
 
   EXPECT_NEAR(unionOfBallsVolume(geometry), ballVolume(radius), 1.0e-9 * ballVolume(radius));
 }
@@ -121,7 +121,7 @@ TEST(exact_union_volume, two_spheres_against_the_closed_form)
     double secondRadius = one[1];
     double distance = one[2];
 
-    VoronoiAccessibility geometry = bareGeometry(
+    PoreAccessibility geometry = bareGeometry(
         box, {double3(0.5, 0.5, 0.5), double3(0.5 + distance / a, 0.5, 0.5)}, {firstRadius, secondRadius});
 
     double expected = unionVolumeOfTwoSpheres(firstRadius, secondRadius, distance);
@@ -140,7 +140,7 @@ TEST(exact_union_volume, a_buried_sphere_adds_nothing)
   const double large = 3.0;
   const double small = 0.8;
 
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       bareGeometry(box, {double3(0.5, 0.5, 0.5), double3(0.5 + 1.0 / a, 0.5, 0.5)}, {large, small});
 
   EXPECT_NEAR(unionOfBallsVolume(geometry), ballVolume(large), 1.0e-9 * ballVolume(large));
@@ -157,7 +157,7 @@ TEST(exact_union_volume, a_cell_packed_solid_is_the_cell)
 
   // Half the body diagonal is the farthest a corner of the cell can be from the atom at its centre.
   const double radius = 0.5 * std::sqrt(3.0) * a + 0.2;
-  VoronoiAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
+  PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
 
   EXPECT_NEAR(unionOfBallsVolume(geometry), box.volume, 1.0e-9 * box.volume);
 }
@@ -171,7 +171,7 @@ TEST(exact_union_volume, images_fill_the_cell_too)
   SimulationBox box(a, a, a);
   const double radius = 0.5 * std::sqrt(3.0) * a;
 
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       bareGeometry(box, {double3(0.2, 0.3, 0.7), double3(0.6, 0.8, 0.1)}, {radius, radius});
 
   EXPECT_NEAR(unionOfBallsVolume(geometry), box.volume, 1.0e-9 * box.volume);
@@ -189,7 +189,7 @@ TEST(exact_union_volume, an_atom_is_cut_by_its_own_images)
 
   std::vector<double3> positions = {double3(0.5, 0.5, 0.5)};
   std::vector<double> radii = {radius};
-  VoronoiAccessibility geometry = bareGeometry(box, positions, radii);
+  PoreAccessibility geometry = bareGeometry(box, positions, radii);
 
   double measured = unionOfBallsVolume(geometry);
   double sampled = sampledUnionVolume(box, positions, radii, 4000000, 17);
@@ -219,7 +219,7 @@ TEST(exact_union_volume, agrees_with_the_sampled_volume)
       radii.push_back(0.9 + 1.2 * random.uniform());
     }
 
-    VoronoiAccessibility geometry = bareGeometry(box, positions, radii);
+    PoreAccessibility geometry = bareGeometry(box, positions, radii);
     double measured = unionOfBallsVolume(geometry);
     double sampled = sampledUnionVolume(box, positions, radii, 2000000, 991 + trial);
 
@@ -248,7 +248,7 @@ TEST(exact_union_volume, refining_the_quadrature_does_not_move_the_answer)
   }
 
   {
-    VoronoiAccessibility geometry = bareGeometry(box, positions, radii);
+    PoreAccessibility geometry = bareGeometry(box, positions, radii);
     double coarse = unionOfBallsVolume(geometry, 1);
     double fine = unionOfBallsVolume(geometry, 4);
     EXPECT_NEAR(coarse, fine, 1.0e-8 * std::abs(fine));
@@ -267,7 +267,7 @@ TEST(exact_union_volume, refining_the_quadrature_does_not_move_the_answer)
       equal.push_back(1.2);
     }
 
-    VoronoiAccessibility geometry = bareGeometry(box, corners, equal);
+    PoreAccessibility geometry = bareGeometry(box, corners, equal);
     double coarse = unionOfBallsVolume(geometry, 1);
     double fine = unionOfBallsVolume(geometry, 6);
     EXPECT_NEAR(coarse, fine, 1.0e-8 * std::abs(fine));

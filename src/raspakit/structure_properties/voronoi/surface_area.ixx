@@ -6,7 +6,7 @@ import std;
 
 import framework;
 import forcefield;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_solvent_excluded;
 
 // Monte-Carlo accessible surface area split into accessible and inaccessible parts,
@@ -22,7 +22,7 @@ export struct SurfaceAreaSample
 // The sampling itself, over whatever accessibility classifier is handed to it, so that the same
 // estimate can be made of a network taken from the radical diagram or from the Apollonius diagram.
 // `density` is the number of sample points per Å² of inflated sphere surface.
-export SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& accessibility, std::size_t density);
+export SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density);
 
 // The excluded surface's area, written out as a table of the three kinds of patch against the side each faces,
 // for whichever diagram divided the sides. Shared so that the two reports say the same thing in the same words.

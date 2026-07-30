@@ -100,17 +100,17 @@ void CommandLine::run(int argc, char *argv[])
            "NUM_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of iterations",  // will be displayed in help
-           [&number_of_iterations](std::string const &arg) { std::print("arg: {}\n",arg); number_of_iterations = std::stoul(arg); std::print("arg: {}\n",arg); })
+           [&number_of_iterations](std::string const &arg) { number_of_iterations = std::stoul(arg); })
       .reg({"-M", "--number-of-inner-steps"},
            "NUM_INNER_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of inner steps",  // will be displayed in help
-           [&number_of_inner_steps](std::string const &arg) { std::print("arg: {}\n",arg); number_of_inner_steps = std::stoul(arg); std::print("arg: {}\n",arg); })
+           [&number_of_inner_steps](std::string const &arg) { number_of_inner_steps = std::stoul(arg); })
       .reg({"--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
-           "Set number of threads",  // will be displayed in help
-           [&num_threads](std::string const &arg) { std::print("arg: {}\n",arg); num_threads = std::stoul(arg); })
+           "Set number of threads the analyses may run on (default 1, one thread)",  // will be displayed in help
+           [&num_threads](std::string const &arg) { num_threads = std::stoul(arg); })
       .reg({"-f", "--force-field"},
            "FILE_NAME",  // will be used in help to illustrate the argument
            argparser::required_argument,
@@ -153,11 +153,14 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
            [&state](std::string const &) { state.set(State::TessellationComputation); })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
-           [&forceField](std::string const &) { forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);; })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeZeoliteForceField(12.0, true, false, false); })
       .reg({"--mof"}, argparser::no_argument, "Use generic MOF model (TraPPE zeo)",
-           [&forceField](std::string const &) { forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false); })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false); })
       .reg({"--zeo++"}, argparser::no_argument, "Use zeo++ radii",
-           [&forceField](std::string const &) { forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false); })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false); })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
       .reg({"--geometric"}, argparser::no_argument, "Use geometric methods",
@@ -302,6 +305,12 @@ void CommandLine::run(int argc, char *argv[])
 
   if (!use_cpu && !use_gpu) use_cpu = true;
 
+  // Serial unless threads were asked for. An analysis that can use them looks the pool up and finds it empty
+  // otherwise, and takes the route it has always taken; see `exact_parallel` for what the threaded routes are
+  // and are not promised to agree with.
+  ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance().init(
+      num_threads, num_threads > 1 ? ThreadPool::ThreadingType::ThreadPool : ThreadPool::ThreadingType::Serial);
+
   // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
   // without saying what to do with it is asking for the pore analysis.
   if ((use_apollonius || use_voronoi) && !state.test(State::SurfaceArea) && !state.test(State::VoidFraction) &&
@@ -330,7 +339,8 @@ void CommandLine::run(int argc, char *argv[])
     if(forceField.has_value())
     {
       // Case: force field has been manually selected
-      if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(), CIFReader::UseChargesFrom::CIF_File); cif.has_value())
+      if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(),
+                                                   CIFReader::UseChargesFrom::CIF_File); cif.has_value())
       {
         auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
         framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
@@ -347,7 +357,9 @@ void CommandLine::run(int argc, char *argv[])
       // Case: auto-detect force field
       // First: try with zeolite force field
       ForceField trial_zeolite_force_field = ForceField::makeZeoliteForceField(12.0, true, false, false);
-      if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field, CIFReader::UseChargesFrom::CIF_File); zeolite_cif.has_value())
+      if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field,
+                                                           CIFReader::UseChargesFrom::CIF_File);
+         zeolite_cif.has_value())
       {
         forceField = trial_zeolite_force_field;
         auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = zeolite_cif.value();
@@ -357,8 +369,10 @@ void CommandLine::run(int argc, char *argv[])
       else if (zeolite_cif.error() == CIFReader::ParseError::invalidForceField)
       {
         // Second: try with general MOF force field
-        ForceField trial_mof_force_field = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
-        if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field, CIFReader::UseChargesFrom::CIF_File); mof_cif.has_value())
+        ForceField trial_mof_force_field =
+            ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+        if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field,
+                                                        CIFReader::UseChargesFrom::CIF_File); mof_cif.has_value())
         {
           forceField = trial_mof_force_field;
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
@@ -460,14 +474,15 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             MC_SurfaceArea sa;
-
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_iterations, number_of_inner_steps);
           }
         }
 
@@ -476,13 +491,15 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_slices);
           }
         }
       }
@@ -534,7 +551,8 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_VoidFraction vf;
-          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
+          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"),
+          //       number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
@@ -549,7 +567,8 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergyVoidFraction vf;
-          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
+          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations,
+                 number_of_inner_steps);
         }
 
         if (use_gpu)
@@ -591,13 +610,15 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
+                  maximum_range);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
+                  maximum_range);
         }
       }
 

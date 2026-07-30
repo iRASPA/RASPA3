@@ -10,7 +10,7 @@ import atom;
 import framework;
 import forcefield;
 import skspacegroupdatabase;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_pore_size_distribution;
 
 // The bare radii of the framework's atoms, and where they are in fractional coordinates.
@@ -28,6 +28,21 @@ std::pair<std::vector<double3>, std::vector<double>> frameworkSpheres(const Forc
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
   return {fractionalPositions, radii};
+}
+
+
+// A quantity that rounds away to nothing, printed as nothing rather than as a signed nothing.
+//
+// Past the largest pore of a framework there is no volume left, and what the arithmetic hands back there is the
+// difference of two numbers some twelve orders of magnitude larger: a few parts in 1e11, of either sign,
+// according to which way the last bits of the two fell. Every column below is printed to eight decimals at the
+// finest, so such a number is already nothing in the table; all that reaches the reader is the minus sign in
+// front of it, which is round-off wearing the look of a measurement. Nothing else is touched, the threshold
+// being smaller than the least the table can show.
+double asPrinted(double value)
+{
+  constexpr double finestColumn = 1.0e-8;
+  return (std::abs(value) < 0.5 * finestColumn) ? 0.0 : value;
 }
 
 
@@ -161,11 +176,13 @@ void writePoreSizeDistribution(const Framework& framework, const std::string& di
     std::print(report,
                "{:11.6f} {:14.8f} {:12.8f} {:14.5f} {:12.6f} {:14.8f} {:14.8f} {:14.8f} {:8} {:8} {:8} {:8} {:8}"
                " {:14.8f} {:12.8f} {:14.5f} {:12.6f}\n",
-               point.diameter, point.distribution, point.cumulative, point.poreVolume,
-               point.poreVolume * toVolumePerMass, point.accessible, point.inaccessible, point.undecided,
+               point.diameter, asPrinted(point.distribution), asPrinted(point.cumulative),
+               asPrinted(point.poreVolume), asPrinted(point.poreVolume * toVolumePerMass),
+               asPrinted(point.accessible), asPrinted(point.inaccessible), asPrinted(point.undecided),
                point.numberOfArcs, point.cuspedArcs, point.numberOfVertices, point.clippedVertices,
-               point.degenerateVertices, point.probeAccessibleDistribution, point.probeAccessibleCumulative,
-               point.probeAccessiblePoreVolume, point.probeAccessiblePoreVolume * toVolumePerMass);
+               point.degenerateVertices, asPrinted(point.probeAccessibleDistribution),
+               asPrinted(point.probeAccessibleCumulative), asPrinted(point.probeAccessiblePoreVolume),
+               asPrinted(point.probeAccessiblePoreVolume * toVolumePerMass));
   }
   report.close();
 }
@@ -185,7 +202,7 @@ void VoronoiPoreSizeDistribution::run(const ForceField& forceField, const Framew
   auto [fractionalPositions, radii] = frameworkSpheres(forceField, framework);
 
   auto build = [&](double inflation)
-  { return VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, inflation); };
+  { return PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, inflation); };
 
   curve = exactPoreSizeDistribution(build, framework.simulationBox.volume, maximumDiameter.value_or(20.0),
                                     numberOfBins.value_or(100), subdivisions, probeRadius);

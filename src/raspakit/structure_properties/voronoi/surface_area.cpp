@@ -12,12 +12,12 @@ import framework;
 import forcefield;
 import units;
 import voronoi_network;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_surface_patches;
 import exact_boundary_components;
 import exact_solvent_excluded;
 
-SurfaceAreaSample sampleAccessibleSurfaceArea(const VoronoiAccessibility& accessibility, std::size_t density)
+SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density)
 {
   RandomNumber random{samplingSeed};
   SurfaceAreaSample sample;
@@ -93,8 +93,9 @@ void writeExcludedSurfaceAreas(std::ostream& stream, const SolventExcludedGeomet
   row("  facing pockets:", geometry.inaccessibleArea);
   row("  undecided:", geometry.undecidedArea);
 
+  const SolventExcludedGeometry::Diagnostics& counts = geometry.diagnostics;
   std::print(stream, "# Pieces: {} creases, {} of them folded back on themselves at a cusp, and {} wedges, {} of\n",
-             geometry.numberOfArcs, geometry.cuspedArcs, geometry.numberOfVertices, geometry.clippedVertices);
+             counts.numberOfArcs, counts.cuspedArcs, counts.numberOfVertices, counts.clippedVertices);
   std::print(stream, "# them cut into by a neighbouring probe. Excluded volume: {} [Å³]\n", geometry.excludedVolume);
 }
 
@@ -121,26 +122,26 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiAccessibility accessibility =
-      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+  PoreAccessibility accessibility =
+      PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
 
   const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
   const std::size_t panels = std::max<std::size_t>(1, subdivisions.value_or(1));
-  ExactSurfaceAreaSample measured;
+  MeasuredPatches measured;
 
   if (method == Method::Exact)
   {
     // The boundary is decomposed once and used twice: for the accessible area, surface by surface, and for the
     // excluded surface behind it, whose three kinds of patch hang off the same patches, creases and wedges.
     BoundaryComponents components = boundaryComponents(accessibility);
-    std::vector<ComponentLabel> labels = labelBoundaryComponents(accessibility, components);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components);
 
-    measured = exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, panels);
+    measured = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, panels);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
 
-    excludedSurface = solventExcludedGeometry(accessibility, probeRadius, components, labels, measured, panels);
+    excludedSurface = solventExcludedGeometry(accessibility, probeRadius, components, verdicts, measured, panels);
   }
   else
   {
@@ -164,7 +165,7 @@ void VoronoiSurfaceArea::run(const ForceField& forceField, const Framework& fram
   if (method == Method::Exact)
   {
     std::print(myfile, "# Quadrature: {} panel(s) per smooth piece\n", panels);
-    std::print(myfile, "# Surface patches measured: {} arcs\n", measured.numberOfArcs);
+    std::print(myfile, "# Surface patches measured: {} arcs\n", measured.diagnostics.numberOfArcs);
     std::print(myfile,
                "# Connected surfaces: {}, of which {} run away through the crystal, {} seal off void and {} "
                "are clusters of atoms the network was asked about\n",

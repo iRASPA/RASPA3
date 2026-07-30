@@ -6,7 +6,7 @@ import std;
 
 import double2;
 import double3;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_boundary_components;
 import exact_sphere_sweep;
 import exact_surface_patches;
@@ -175,11 +175,11 @@ double clippedDiscArea(double radius, const std::vector<double2>& normals, const
   return faceArea(radius, lines, polygon, scratch);
 }
 
-double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std::size_t subdivisions)
+double unionOfBallsVolume(const PoreAccessibility& accessibility, std::size_t subdivisions)
 {
   // The spheres. Each atom's exposed patch enters weighted by its own radius, which is what the field
   // x - p_i contributes there, and the classifier is not needed for a volume.
-  return unionOfBallsVolume(accessibility, exactAccessibleSurfaceArea(accessibility, subdivisions, false));
+  return unionOfBallsVolume(accessibility, exactSurfaceArea(accessibility, subdivisions));
 }
 
 // The volume of the union, given something that says which planes bound each atom's cell.
@@ -187,7 +187,7 @@ double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std::size_t
 // `cellPlanes(i, planes)` fills `planes` for atom i and returns false where the atom's cell holds none of it,
 // which is the one thing the two routes below have to answer and the only thing they differ in.
 template <typename Planes>
-double sumOverCells(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
+double sumOverCells(const PoreAccessibility& accessibility, const MeasuredPatches& patches,
                     Planes&& cellPlanes)
 {
   double total = patches.radiusWeightedArea;
@@ -246,7 +246,7 @@ double sumOverCells(const VoronoiAccessibility& accessibility, const ExactSurfac
   return total / 3.0;
 }
 
-double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches)
+double unionOfBallsVolume(const PoreAccessibility& accessibility, const MeasuredPatches& patches)
 {
   // Every plane that cuts an atom bounds that atom's cell there, and a plane that misses the atom cannot cut
   // a face either, since a face lies inside the atom, so the planes collected here are all the ones any face
@@ -288,7 +288,7 @@ double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const Exact
       });
 }
 
-double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
+double unionOfBallsVolume(const PoreAccessibility& accessibility, const MeasuredPatches& patches,
                           const BoundaryComponents& components)
 {
   return sumOverCells(accessibility, patches,

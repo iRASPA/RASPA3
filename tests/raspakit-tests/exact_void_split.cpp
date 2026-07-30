@@ -5,7 +5,7 @@ import std;
 import double3;
 import simulationbox;
 import randomnumbers;
-import voronoi_accessibility;
+import pore_accessibility;
 import voronoi_accessible_volume;
 import exact_surface_patches;
 import exact_union_volume;
@@ -45,7 +45,7 @@ std::vector<double3> cageCentres(const double3& centre, double shellRadius, std:
 }
 
 
-VoronoiAccessibility geometryWithRadii(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
+PoreAccessibility geometryWithRadii(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
                                        const std::vector<double>& radii)
 {
   std::vector<double3> fractionalPositions;
@@ -56,11 +56,11 @@ VoronoiAccessibility geometryWithRadii(const SimulationBox& box, const std::vect
 
   // The radii are already the inflated ones, so the probe adds nothing: what is wanted here is the void
   // of this arrangement and not of a smaller one seen by a probe.
-  return VoronoiAccessibility::create(box, fractionalPositions, radii, 0.0);
+  return PoreAccessibility::create(box, fractionalPositions, radii, 0.0);
 }
 
 
-VoronoiAccessibility cageGeometry(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
+PoreAccessibility cageGeometry(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
                                   double ballRadius)
 {
   return geometryWithRadii(box, cartesianPositions, std::vector<double>(cartesianPositions.size(), ballRadius));
@@ -175,7 +175,7 @@ TEST(exact_void_split, a_sealed_cage_gives_its_cavity)
   const double ballRadius = 1.8;
 
   std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
-  VoronoiAccessibility geometry = cageGeometry(box, positions, ballRadius);
+  PoreAccessibility geometry = cageGeometry(box, positions, ballRadius);
 
   ExactVoidSplit split = exactVoidSplit(geometry, box.volume);
 
@@ -272,7 +272,7 @@ TEST(exact_void_split, two_cages_give_two_pockets)
     positions.push_back(position);
   }
 
-  VoronoiAccessibility geometry = cageGeometry(box, positions, ballRadius);
+  PoreAccessibility geometry = cageGeometry(box, positions, ballRadius);
   ExactVoidSplit split = exactVoidSplit(geometry, box.volume);
 
   ASSERT_TRUE(split.reliable) << split.rejection;
@@ -292,7 +292,7 @@ TEST(exact_void_split, an_open_structure_has_no_pockets)
   const double a = 12.0;
   SimulationBox box(a, a, a);
 
-  VoronoiAccessibility geometry = cageGeometry(box, {double3(6.0, 6.0, 6.0)}, 2.0);
+  PoreAccessibility geometry = cageGeometry(box, {double3(6.0, 6.0, 6.0)}, 2.0);
   ExactVoidSplit split = exactVoidSplit(geometry, box.volume);
 
   EXPECT_EQ(split.numberOfPockets, 0uz);
@@ -309,7 +309,7 @@ TEST(exact_void_split, refining_the_quadrature_does_not_move_the_pocket)
   SimulationBox box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
-  VoronoiAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
+  PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
 
   ExactVoidSplit coarse = exactVoidSplit(geometry, box.volume, 1);
   ExactVoidSplit fine = exactVoidSplit(geometry, box.volume, 4);
@@ -330,7 +330,7 @@ TEST(exact_void_split, agrees_with_the_sampled_split)
   SimulationBox box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
-  VoronoiAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
+  PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
 
   ExactVoidSplit split = exactVoidSplit(geometry, box.volume);
   VolumeSample sampled = sampleAccessibleVolume(geometry, 4000000);
@@ -360,18 +360,19 @@ TEST(exact_void_split, by_components_a_sealed_cage_gives_its_cavity)
   const double ballRadius = 1.8;
 
   std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
-  VoronoiAccessibility geometry = cageGeometry(box, positions, ballRadius);
+  PoreAccessibility geometry = cageGeometry(box, positions, ballRadius);
 
   BoundaryComponents components = boundaryComponents(geometry);
-  std::vector<ComponentLabel> labels = labelBoundaryComponents(geometry, components);
-  ExactSurfaceAreaSample patches = exactAccessibleSurfaceAreaByComponent(geometry, components, labels, 1);
+  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(geometry, components);
+  MeasuredPatches patches =
+      exactAccessibleSurfaceAreaByComponent(geometry, components, verdicts, 1, SurfaceMoments::andCentre);
 
   // Every arc was placed on a patch. This is the whole of what the lookup has to do, and it is exact: an
   // arc ends where a bounding circle crosses the latitude, and the arcs of the circles carry their patch.
-  EXPECT_EQ(patches.unplacedArcs, 0uz);
-  EXPECT_EQ(patches.unplacedArea, 0.0);
+  EXPECT_EQ(patches.diagnostics.unplacedArcs, 0uz);
+  EXPECT_EQ(patches.diagnostics.unplacedArea, 0.0);
 
-  ExactVoidSplit split = exactVoidSplitByComponents(geometry, components, labels, patches, box.volume);
+  ExactVoidSplit split = exactVoidSplitByComponents(geometry, components, verdicts, patches, box.volume);
 
   ASSERT_TRUE(split.reliable) << split.rejection;
   EXPECT_EQ(split.numberOfSurfaces, 2uz);
@@ -392,7 +393,7 @@ TEST(exact_void_split, by_components_a_sealed_cage_gives_its_cavity)
   EXPECT_NEAR(split.voidVolume, byPore.voidVolume, 1.0e-12 * byPore.voidVolume);
 
   // The area divides the same way too, the cavity's wall being the inaccessible part of the surface.
-  ExactSurfaceAreaSample byArc = exactAccessibleSurfaceArea(geometry);
+  MeasuredPatches byArc = exactAccessibleSurfaceAreaByPore(geometry);
   EXPECT_NEAR(patches.inaccessible, byArc.inaccessible, 1.0e-9 * byArc.inaccessible);
   EXPECT_NEAR(patches.accessible, byArc.accessible, 1.0e-9 * byArc.accessible);
 }
@@ -432,7 +433,7 @@ TEST(exact_void_split, by_components_a_cage_that_nearly_fills_its_cell)
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
-  VoronoiAccessibility geometry = cageGeometry(box, positions, ballRadius);
+  PoreAccessibility geometry = cageGeometry(box, positions, ballRadius);
 
   ExactVoidSplit split = exactVoidSplitByComponents(geometry, box.volume);
 
@@ -524,16 +525,16 @@ TEST(exact_void_split, by_components_the_area_of_a_sealed_cluster_is_out_of_reac
   positions.push_back(centre);
   radii.push_back(innerRadius);
 
-  VoronoiAccessibility geometry = geometryWithRadii(box, positions, radii);
-  ExactSurfaceAreaSample patches = exactAccessibleSurfaceAreaByComponent(geometry);
+  PoreAccessibility geometry = geometryWithRadii(box, positions, radii);
+  MeasuredPatches patches = exactAccessibleSurfaceAreaByComponent(geometry);
 
-  EXPECT_EQ(patches.unplacedArcs, 0uz);
+  EXPECT_EQ(patches.diagnostics.unplacedArcs, 0uz);
   EXPECT_EQ(patches.undecided, 0.0);
   EXPECT_NEAR(patches.accessible + patches.inaccessible, patches.area, 1.0e-9 * patches.area);
 
   // The ball is a sphere on its own, so the area it adds is known in closed form, and it has to land on the
   // unreachable side along with the wall that seals it in.
-  ExactSurfaceAreaSample empty = exactAccessibleSurfaceAreaByComponent(cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8));
+  MeasuredPatches empty = exactAccessibleSurfaceAreaByComponent(cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8));
   const double ballArea = 4.0 * std::numbers::pi * innerRadius * innerRadius;
   EXPECT_NEAR(patches.inaccessible, empty.inaccessible + ballArea, 1.0e-9 * patches.inaccessible);
   EXPECT_NEAR(patches.accessible, empty.accessible, 1.0e-9 * empty.accessible);
@@ -591,7 +592,7 @@ TEST(exact_void_split, by_components_refining_the_quadrature_does_not_move_the_p
   SimulationBox box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
-  VoronoiAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
+  PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
 
   ExactVoidSplit coarse = exactVoidSplitByComponents(geometry, box.volume, 1);
   ExactVoidSplit fine = exactVoidSplitByComponents(geometry, box.volume, 4);
@@ -735,7 +736,7 @@ TEST(exact_void_split, by_components_a_blocking_sphere_holds_no_accessible_point
     for (const double3& position : cageCentres(centre, shellRadius, 32)) positions.push_back(position);
   }
 
-  VoronoiAccessibility geometry = cageGeometry(box, positions, 1.8);
+  PoreAccessibility geometry = cageGeometry(box, positions, 1.8);
   ExactVoidSplit split = exactVoidSplitByComponents(geometry, box.volume);
 
   ASSERT_TRUE(split.reliable) << split.rejection;

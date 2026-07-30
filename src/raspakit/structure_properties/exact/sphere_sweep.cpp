@@ -136,6 +136,41 @@ void prepareSweep(std::vector<SweepCircle>& circles, const std::array<double3, 3
 }
 
 
+void panelBoundaries(double begin, double end, std::size_t subdivisions, bool cut, std::vector<double>& panels)
+{
+  const std::size_t parts = std::max<std::size_t>(1, subdivisions);
+
+  panels.clear();
+  for (std::size_t part = 0; part <= parts; ++part)
+  {
+    panels.push_back(begin + (end - begin) * static_cast<double>(part) / static_cast<double>(parts));
+  }
+  panels.front() = begin;
+  panels.back() = end;
+
+  if (!cut) return;
+
+  // However little room is left, halving reaches it in a few dozen steps; the bound is there so that a
+  // degenerate piece ending on a pole exactly cannot spin here.
+  constexpr std::size_t halvingLimit = 60uz;
+
+  const double roomBelow = begin;
+  for (std::size_t halving = 0; halving < halvingLimit; ++halving)
+  {
+    if (panels[1] - panels[0] <= poleClearance * roomBelow) break;
+    panels.insert(panels.begin() + 1, 0.5 * (panels[0] + panels[1]));
+  }
+
+  const double roomAbove = std::numbers::pi - end;
+  for (std::size_t halving = 0; halving < halvingLimit; ++halving)
+  {
+    const std::size_t last = panels.size() - 1;
+    if (panels[last] - panels[last - 1] <= poleClearance * roomAbove) break;
+    panels.insert(panels.end() - 1, 0.5 * (panels[last - 1] + panels[last]));
+  }
+}
+
+
 const GaussRule& unitIntervalGaussRule()
 {
   static const GaussRule rule = []()

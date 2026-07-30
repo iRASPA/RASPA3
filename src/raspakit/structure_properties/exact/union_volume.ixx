@@ -5,7 +5,7 @@ export module exact_union_volume;
 import std;
 
 import double2;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_boundary_components;
 import exact_surface_patches;
 
@@ -37,12 +37,12 @@ import exact_surface_patches;
 //
 // Each face is then a disc cut by half planes, whose area is elementary, so the only quadrature
 // anywhere in the result is the latitude integral behind |S_i|.
-export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, std::size_t subdivisions = 1);
+export double unionOfBallsVolume(const PoreAccessibility& accessibility, std::size_t subdivisions = 1);
 
 // The same, from a sweep of the patches already done. The spheres enter only through their radius
 // weighted area, so a caller that has measured the surface, and had to classify it for other reasons,
 // need not sweep a second time.
-export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches);
+export double unionOfBallsVolume(const PoreAccessibility& accessibility, const MeasuredPatches& patches);
 
 // The same again, taking the planes of each cell from a decomposition already made rather than querying the
 // neighbours afresh.
@@ -53,7 +53,7 @@ export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, cons
 // decomposition has already found those circles and dropped the ones whose discs lie inside another's, and
 // that prune carries over: a plane whose cap is contained in another's is redundant inside the ball, so the
 // faces come out the same and there are fewer lines to clip each of them against.
-export double unionOfBallsVolume(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
+export double unionOfBallsVolume(const PoreAccessibility& accessibility, const MeasuredPatches& patches,
                                  const BoundaryComponents& components);
 
 // The area of a disc of radius `radius` about the origin of its own plane, cut back by the half planes

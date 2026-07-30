@@ -7,7 +7,7 @@ import std;
 import int3;
 import double3;
 import voronoi_channels;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_surface_patches;
 import exact_union_volume;
 import exact_boundary_components;
@@ -40,8 +40,44 @@ struct SurfaceDistances
   double channel{std::numeric_limits<double>::max()};  // no infinities: the build turns them off
 };
 
-SurfaceDistances surfaceDistances(const VoronoiAccessibility& accessibility, const BoundaryComponents& components,
-                                  const std::vector<std::uint8_t>& facesChannel, std::int32_t label,
+// What the two routes below settle in the same way, once each has said the piece only it can say.
+//
+// `reason` is that piece: the route's own objection to its own division, and empty where it has none. What is
+// left is the same question either way. A pocket volume can only come out negative, or larger than the void
+// it is part of, through a boundary that did not close, which the defect should already have caught; both are
+// checked because either makes the answer useless and neither should pass silently. The comparison against
+// the void is given the slack the two carry themselves, a structure whose void is all pockets having them
+// equal and not deserving to be rejected over the last digits of either.
+void settleSplit(ExactVoidSplit& split, std::string reason)
+{
+  split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
+
+  const double slack = 1.0e-6 * std::max(split.voidVolume, 1.0);
+  if (!reason.empty())
+  {
+    split.rejection = std::move(reason);
+  }
+  else if (split.inaccessibleVolume < -slack)
+  {
+    split.rejection = std::format("a pocket volume came out negative, {} Å³", split.inaccessibleVolume);
+  }
+  else if (split.inaccessibleVolume > split.voidVolume + slack)
+  {
+    split.rejection = std::format("the pockets hold more than the void, {} against {} Å³", split.inaccessibleVolume,
+                                  split.voidVolume);
+  }
+  split.reliable = split.rejection.empty();
+
+  // Within the slack above, which is round-off rather than disagreement.
+  if (split.reliable)
+  {
+    split.inaccessibleVolume = std::clamp(split.inaccessibleVolume, 0.0, split.voidVolume);
+    split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
+  }
+}
+
+SurfaceDistances surfaceDistances(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                                  const std::vector<std::uint8_t>& facesChannel, std::int32_t component,
                                   const double3& centre)
 {
   SurfaceDistances result;
@@ -63,7 +99,7 @@ SurfaceDistances surfaceDistances(const VoronoiAccessibility& accessibility, con
     for (std::size_t patch = 0; patch < components.componentOfPatch[atomIndex].size(); ++patch)
     {
       const std::int32_t of = components.componentOfPatch[atomIndex][patch];
-      const bool onSurface = (of == label);
+      const bool onSurface = (of == component);
       const bool onChannel = of >= 0 && facesChannel[static_cast<std::size_t>(of)] != 0 && sphereFloor < result.channel;
       if (!onSurface && !onChannel) continue;
 
@@ -135,19 +171,19 @@ SurfaceDistances surfaceDistances(const VoronoiAccessibility& accessibility, con
   return result;
 }
 
-ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, const ExactSurfaceAreaSample& patches,
+ExactVoidSplit exactVoidSplit(const PoreAccessibility& accessibility, const MeasuredPatches& patches,
                               double cellVolume)
 {
   ExactVoidSplit split;
   split.voidVolume = cellVolume - unionOfBallsVolume(accessibility, patches);
   split.undecidedArea = patches.undecided;
 
-  std::size_t openPockets = 0;
+  std::size_t openBoundaries = 0;
   double worstArea = 0.0;
   for (std::size_t poreId = 0; poreId < patches.pores.size(); ++poreId)
   {
     const VoronoiPore& pore = accessibility.channels.pores[poreId];
-    const PoreBoundaryMoments& moments = patches.pores[poreId];
+    const BoundaryMoments& moments = patches.pores[poreId];
     if (pore.isChannel || moments.area <= 0.0) continue;
 
     split.inaccessibleVolume -= (moments.radiusWeightedArea + moments.originWeighted) / 3.0;
@@ -156,7 +192,7 @@ ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, const E
     double defect = moments.vectorArea.length() / moments.area;
     if (defect > closureTolerance)
     {
-      ++openPockets;
+      ++openBoundaries;
       if (defect > split.closureDefect) worstArea = moments.area;
     }
     split.closureDefect = std::max(split.closureDefect, defect);
@@ -164,59 +200,44 @@ ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, const E
 
   // The channels take the rest. Nothing is measured twice, the void being what the union leaves and the
   // pockets being what the classifier sealed off within it.
-  split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
-
-  // A pocket volume can only come out negative, or larger than the void it is part of, through a boundary
-  // that did not close, which the defect should already have caught; both are checked because either makes
-  // the answer useless and neither should pass silently. The comparison against the void is given the slack
-  // the two carry themselves, a structure whose void is all pockets having them equal and not deserving to
-  // be rejected over the last digits of either.
-  const double slack = 1.0e-6 * std::max(split.voidVolume, 1.0);
+  std::string reason;
   if (split.undecidedArea > 0.0)
   {
-    split.rejection = std::format("{} Å² of surface faces no pore", split.undecidedArea);
+    reason = std::format("{} Å² of surface faces no pore", split.undecidedArea);
   }
-  else if (openPockets > 0)
+  else if (openBoundaries > 0)
   {
     // The defect localises the disagreement, which is its use: it names the pocket whose boundary is
     // incomplete, and the area of that boundary says how much of the surface went to the wrong pore.
-    split.rejection =
-        std::format("{} of {} pocket boundaries do not close, the worst by {} of its {} Å²", openPockets,
-                    split.numberOfPockets, split.closureDefect, worstArea);
+    reason = std::format("{} of {} pocket boundaries do not close, the worst by {} of its {} Å²", openBoundaries,
+                         split.numberOfPockets, split.closureDefect, worstArea);
   }
-  else if (split.inaccessibleVolume < -slack)
-  {
-    split.rejection = std::format("a pocket volume came out negative, {} Å³", split.inaccessibleVolume);
-  }
-  else if (split.inaccessibleVolume > split.voidVolume + slack)
-  {
-    split.rejection = std::format("the pockets hold more than the void, {} against {} Å³", split.inaccessibleVolume,
-                                  split.voidVolume);
-  }
-  split.reliable = split.rejection.empty();
-
-  // Within the slack above, which is round-off rather than disagreement.
-  if (split.reliable)
-  {
-    split.inaccessibleVolume = std::clamp(split.inaccessibleVolume, 0.0, split.voidVolume);
-    split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
-  }
-
+  settleSplit(split, std::move(reason));
   return split;
 }
 
-ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, double cellVolume,
+ExactVoidSplit exactVoidSplit(const PoreAccessibility& accessibility, double cellVolume,
                               std::size_t subdivisions)
 {
-  return exactVoidSplit(accessibility, exactAccessibleSurfaceArea(accessibility, subdivisions, true), cellVolume);
+  return exactVoidSplit(accessibility, exactAccessibleSurfaceAreaByPore(accessibility, subdivisions), cellVolume);
 }
 
 
-ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibility,
+ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility,
                                           const BoundaryComponents& components,
-                                          const std::vector<ComponentLabel>& labels,
-                                          const ExactSurfaceAreaSample& patches, double cellVolume)
+                                          const std::vector<ComponentVerdict>& verdicts,
+                                          const MeasuredPatches& patches, double cellVolume)
 {
+  // Every pocket here is reported with a centre, and the centre is the first moment of the region divided by
+  // its volume, so patches measured without one have nothing to give and would report every pocket at the
+  // point its moments were taken about. Said here rather than discovered there.
+  if (patches.moments != SurfaceMoments::andCentre)
+  {
+    throw std::runtime_error(
+        "exactVoidSplitByComponents: the patches were measured without the first moment, so the pockets have no "
+        "centre; sweep them with SurfaceMoments::andCentre\n");
+  }
+
   ExactVoidSplit split;
   split.voidVolume = cellVolume - unionOfBallsVolume(accessibility, patches, components);
   split.undecidedArea = patches.undecided;
@@ -225,45 +246,35 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
   // The same points the sweep took its moments about, since the centroid below is read back against them.
   const std::vector<double3> origins = surfaceMomentOrigins(accessibility, components);
 
-  // Which surfaces have the accessible void on their far side, by the same argument the area is divided by: a
-  // surface that runs away through the crystal has the void running away with it, one that closes around void
-  // seals it in, and one that closes around solid is a cluster whose surroundings only the network can place.
-  // Taken first because a pocket needs it about every surface but its own.
+  // Which surfaces have the accessible void on their far side, by the same division the area and the excluded
+  // volume use. Taken first because a pocket needs it about every surface but its own.
+  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts);
   std::vector<std::uint8_t> facesChannel(components.numberOfComponents, 0);
-  for (std::size_t label = 0; label < patches.components.size(); ++label)
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
-    const PoreBoundaryMoments& moments = patches.components[label];
-    if (moments.area <= 0.0) continue;
-    if (components.componentPercolates[label] != 0)
-    {
-      facesChannel[label] = 1;
-    }
-    else if (-(moments.radiusWeightedArea + moments.originWeighted) <= 0.0)
-    {
-      facesChannel[label] = (labels[label].decided && labels[label].accessible) ? 1 : 0;
-    }
+    facesChannel[component] = (sides[component].side > 0) ? 1 : 0;
   }
 
-  std::size_t openPockets = 0;
+  std::size_t openBoundaries = 0;
   double worstArea = 0.0;
-  for (std::size_t label = 0; label < patches.components.size(); ++label)
+  for (std::size_t component = 0; component < patches.components.size(); ++component)
   {
-    const ComponentLabel& answer = labels[label];
+    const ComponentVerdict& answer = verdicts[component];
     if (answer.proved) ++split.provedSurfaces;
 
-    const PoreBoundaryMoments& moments = patches.components[label];
+    const BoundaryMoments& moments = patches.components[component];
     if (moments.area <= 0.0) continue;
 
     // A surface that closes on a translate of itself bounds nothing at all, so it is neither a pocket nor a
     // correction to one, and there is nothing about it to check.
-    if (components.componentPercolates[label] != 0) continue;
+    if (components.componentPercolates[component] != 0) continue;
 
     // Whether it closes comes first, since the volume it encloses and even the sign of that volume mean
     // nothing until it does.
     double defect = moments.vectorArea.length() / moments.area;
     if (defect > closureTolerance)
     {
-      ++openPockets;
+      ++openBoundaries;
       if (defect > split.closureDefect) worstArea = moments.area;
     }
     split.closureDefect = std::max(split.closureDefect, defect);
@@ -289,7 +300,7 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
       pocket.area = moments.area;
       pocket.equivalentRadius = std::cbrt(3.0 * enclosed / (4.0 * std::numbers::pi));
 
-      double3 centre = origins[label] + moments.enclosedFirstMoment * (1.0 / enclosed);
+      double3 centre = origins[component] + moments.enclosedFirstMoment * (1.0 / enclosed);
       pocket.centreFractional = double3::fract(accessibility.simulationBox.inverseCell * centre);
       pocket.centre = accessibility.simulationBox.cell * pocket.centreFractional;
 
@@ -303,7 +314,7 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
           pocket.centreInChannel ? 0.0 : std::max(0.0, accessibility.clearance(pocket.centre));
 
       SurfaceDistances distances =
-          surfaceDistances(accessibility, components, facesChannel, static_cast<std::int32_t>(label), centre);
+          surfaceDistances(accessibility, components, facesChannel, static_cast<std::int32_t>(component), centre);
       pocket.coveringRadius = distances.reach;
       pocket.channelRadius = distances.channel;
       split.pockets.push_back(pocket);
@@ -319,50 +330,31 @@ ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibil
     split.inaccessibleVolume += enclosed;
   }
 
-  split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
-
-  const double slack = 1.0e-6 * std::max(split.voidVolume, 1.0);
+  std::string reason;
   if (split.undecidedArea > 0.0)
   {
     // Only a cluster of atoms standing in the void leaves the question to the network, so this is a cluster
     // the network could not place rather than an arc it could not place.
-    split.rejection = std::format("{} Å² of surface stands round a cluster the network cannot place",
-                                  split.undecidedArea);
+    reason = std::format("{} Å² of surface stands round a cluster the network cannot place", split.undecidedArea);
   }
-  else if (openPockets > 0)
+  else if (openBoundaries > 0)
   {
-    // Where the surfaces are the pieces, a defect is no longer a disagreement between labels: it is either
+    // Where the surfaces are the pieces, a defect is no longer a disagreement between verdicts: it is either
     // quadrature or a surface the decomposition failed to join up, and the area names which one.
-    split.rejection = std::format("{} bounded surfaces do not close, the worst by {} of its {} Å²", openPockets,
-                                  split.closureDefect, worstArea);
+    reason = std::format("{} bounded surfaces do not close, the worst by {} of its {} Å²", openBoundaries,
+                         split.closureDefect, worstArea);
   }
-  else if (split.inaccessibleVolume < -slack)
-  {
-    split.rejection = std::format("a pocket volume came out negative, {} Å³", split.inaccessibleVolume);
-  }
-  else if (split.inaccessibleVolume > split.voidVolume + slack)
-  {
-    split.rejection = std::format("the pockets hold more than the void, {} against {} Å³", split.inaccessibleVolume,
-                                  split.voidVolume);
-  }
-  split.reliable = split.rejection.empty();
-
-  if (split.reliable)
-  {
-    split.inaccessibleVolume = std::clamp(split.inaccessibleVolume, 0.0, split.voidVolume);
-    split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
-  }
-
+  settleSplit(split, std::move(reason));
   return split;
 }
 
 
-ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibility, double cellVolume,
+ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility, double cellVolume,
                                           std::size_t subdivisions)
 {
   BoundaryComponents components = boundaryComponents(accessibility);
-  std::vector<ComponentLabel> labels = labelBoundaryComponents(accessibility, components);
-  ExactSurfaceAreaSample patches =
-      exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, subdivisions);
-  return exactVoidSplitByComponents(accessibility, components, labels, patches, cellVolume);
+  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components);
+  MeasuredPatches patches = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts,
+                                                                  subdivisions, SurfaceMoments::andCentre);
+  return exactVoidSplitByComponents(accessibility, components, verdicts, patches, cellVolume);
 }

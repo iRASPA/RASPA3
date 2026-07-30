@@ -4,7 +4,7 @@ import std;
 
 import double3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_union_volume;
 import exact_surface_patches;
 import exact_solvent_excluded;
@@ -31,7 +31,7 @@ namespace
 double ballVolume(double radius) { return 4.0 / 3.0 * std::numbers::pi * radius * radius * radius; }
 
 
-VoronoiAccessibility inflatedGeometry(const SimulationBox& box, const std::vector<double3>& positions,
+PoreAccessibility inflatedGeometry(const SimulationBox& box, const std::vector<double3>& positions,
                                       const std::vector<double>& bareRadii, double probeRadius)
 {
   std::vector<double3> fractionalPositions;
@@ -41,7 +41,7 @@ VoronoiAccessibility inflatedGeometry(const SimulationBox& box, const std::vecto
   }
   // The bare radii and the probe go in separately, so that the structure carries both: the boundary is taken on
   // the inflated spheres, and the excluded surface behind it on the bare ones.
-  return VoronoiAccessibility::create(box, fractionalPositions, bareRadii, probeRadius);
+  return PoreAccessibility::create(box, fractionalPositions, bareRadii, probeRadius);
 }
 
 
@@ -130,8 +130,9 @@ DifferencedSlope differencedDistribution(const SimulationBox& box, const std::ve
   {
     SolventExcludedGeometry geometry =
         solventExcludedGeometry(inflatedGeometry(box, positions, bareRadii, probe), probe);
-    std::array<std::size_t, 4> shape = {geometry.numberOfArcs, geometry.cuspedArcs, geometry.numberOfVertices,
-                                        geometry.clippedVertices};
+    const SolventExcludedGeometry::Diagnostics& counts = geometry.diagnostics;
+    std::array<std::size_t, 4> shape = {counts.numberOfArcs, counts.cuspedArcs, counts.numberOfVertices,
+                                        counts.clippedVertices};
     return std::make_pair(geometry.excludedVolume, shape);
   };
 
@@ -208,8 +209,8 @@ TEST(exact_solvent_excluded, a_lone_atom_excludes_itself)
 
     EXPECT_NEAR(geometry.excludedVolume, ballVolume(bare), 1.0e-9 * ballVolume(bare)) << "probe " << probe;
     EXPECT_NEAR(geometry.distribution, 0.0, 1.0e-9) << "probe " << probe;
-    EXPECT_EQ(geometry.numberOfArcs, 0uz);
-    EXPECT_EQ(geometry.numberOfVertices, 0uz);
+    EXPECT_EQ(geometry.diagnostics.numberOfArcs, 0uz);
+    EXPECT_EQ(geometry.diagnostics.numberOfVertices, 0uz);
   }
 }
 
@@ -264,8 +265,8 @@ TEST(exact_solvent_excluded, two_atoms_against_the_solid_of_revolution)
         << "bare " << bare << " separation " << separation << " probe " << probe;
 
     // The pair has one circle of intersection and no vertex, so this is the toroidal term on its own.
-    EXPECT_EQ(geometry.numberOfVertices, 0uz);
-    EXPECT_GT(geometry.numberOfArcs, 0uz);
+    EXPECT_EQ(geometry.diagnostics.numberOfVertices, 0uz);
+    EXPECT_GT(geometry.diagnostics.numberOfArcs, 0uz);
   }
 }
 
@@ -287,7 +288,7 @@ TEST(exact_solvent_excluded, the_distribution_of_a_pair_is_the_slope_of_its_volu
                                         double3(30.0 + 0.5 * separation, 30.0, 30.0)};
       SolventExcludedGeometry geometry =
           solventExcludedGeometry(inflatedGeometry(box, positions, {bare, bare}, probe), probe);
-      if (geometry.numberOfArcs == 0) continue;  // out of reach at this probe, and both sides are zero
+      if (geometry.diagnostics.numberOfArcs == 0) continue;  // out of reach at this probe, and both sides are zero
 
       DifferencedSlope differenced = differencedDistribution(box, positions, {bare, bare}, probe, 0.01);
       if (!differenced.comparable) continue;
@@ -343,17 +344,18 @@ TEST(exact_solvent_excluded, the_distribution_of_a_triangle_is_the_slope_of_its_
     std::vector<double> radii = {bare, bare, bare};
 
     SolventExcludedGeometry geometry = solventExcludedGeometry(inflatedGeometry(box, positions, radii, probe), probe);
-    ASSERT_GT(geometry.numberOfVertices, 0uz) << "bare " << bare << " side " << side << " probe " << probe;
+    ASSERT_GT(geometry.diagnostics.numberOfVertices, 0uz) << "bare " << bare << " side " << side << " probe " << probe;
 
     DifferencedSlope differenced = differencedDistribution(box, positions, radii, probe, 0.01);
     if (!differenced.comparable) continue;
 
     ++compared;
-    if (geometry.clippedVertices > 0) ++withClipping;
-    if (geometry.cuspedArcs > 0) ++withCusps;
+    if (geometry.diagnostics.clippedVertices > 0) ++withClipping;
+    if (geometry.diagnostics.cuspedArcs > 0) ++withCusps;
     EXPECT_NEAR(geometry.distribution, differenced.slope, 2.0e-4 * std::max(1.0, std::abs(differenced.slope)))
-        << "bare " << bare << " side " << side << " probe " << probe << ", vertices " << geometry.numberOfVertices
-        << " of them " << geometry.clippedVertices << " clipped, cusped arcs " << geometry.cuspedArcs;
+        << "bare " << bare << " side " << side << " probe " << probe << ", vertices "
+        << geometry.diagnostics.numberOfVertices << " of them " << geometry.diagnostics.clippedVertices
+        << " clipped, cusped arcs " << geometry.diagnostics.cuspedArcs;
   }
 
   // Both of the things the reentrant surface has to cope with have to have been met along the way, or the
@@ -388,7 +390,7 @@ TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_union_of_the_atoms)
     }
   }
 
-  VoronoiAccessibility geometry = inflatedGeometry(box, positions, radii, 0.0);
+  PoreAccessibility geometry = inflatedGeometry(box, positions, radii, 0.0);
   SolventExcludedGeometry excluded = solventExcludedGeometry(geometry, 0.0);
 
   double expected = unionOfBallsVolume(geometry);
@@ -459,7 +461,7 @@ TEST(exact_solvent_excluded, two_atoms_against_the_surface_of_revolution)
     const double expected = excludedAreaOfTwoAtoms(bare, separation, probe);
     const double caps = 2.0 * (2.0 * std::numbers::pi * bare * bare * (1.0 + 0.5 * separation / (bare + probe)));
 
-    if (geometry.cuspedArcs > 0) ++withCusps;
+    if (geometry.diagnostics.cuspedArcs > 0) ++withCusps;
     EXPECT_NEAR(geometry.area.total(), expected, 1.0e-9 * expected)
         << "bare " << bare << " separation " << separation << " probe " << probe;
     EXPECT_NEAR(geometry.area.convex, caps, 1.0e-9 * caps)
@@ -505,8 +507,8 @@ TEST(exact_solvent_excluded, a_triangle_leaves_two_spherical_triangles)
 
     SolventExcludedGeometry geometry =
         solventExcludedGeometry(inflatedGeometry(box, positions, {bare, bare, bare}, probe), probe);
-    ASSERT_EQ(geometry.numberOfVertices, 2uz) << "bare " << bare << " side " << side << " probe " << probe;
-    ASSERT_EQ(geometry.clippedVertices, 0uz) << "bare " << bare << " side " << side << " probe " << probe;
+    ASSERT_EQ(geometry.diagnostics.numberOfVertices, 2uz) << "bare " << bare << " side " << side << " probe " << probe;
+    ASSERT_EQ(geometry.diagnostics.clippedVertices, 0uz) << "bare " << bare << " side " << side << " probe " << probe;
 
     // The angular side of the spherical triangle, from the two directions subtending the atoms' separation, and
     // the angle at a corner of an equilateral one.
@@ -546,7 +548,7 @@ TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_surface_of_the_atoms)
     }
   }
 
-  const double union0 = exactAccessibleSurfaceArea(inflatedGeometry(box, positions, radii, 0.0), 1, false).area;
+  const double union0 = exactSurfaceArea(inflatedGeometry(box, positions, radii, 0.0), 1).area;
 
   SolventExcludedGeometry bare = solventExcludedGeometry(inflatedGeometry(box, positions, radii, 0.0), 0.0);
   EXPECT_NEAR(bare.area.convex, union0, 1.0e-9 * union0);
@@ -617,7 +619,7 @@ TEST(exact_solvent_excluded, the_kinds_and_the_sides_each_account_for_the_whole_
     EXPECT_GE(geometry.area.saddle, 0.0);
     EXPECT_GE(geometry.area.concave, 0.0);
     EXPECT_LE(geometry.area.concave, 4.0 * std::numbers::pi * probe * probe *
-                                         static_cast<double>(geometry.numberOfVertices) + 1.0e-9);
+                                         static_cast<double>(geometry.diagnostics.numberOfVertices) + 1.0e-9);
   }
 }
 
@@ -672,7 +674,7 @@ TEST(exact_solvent_excluded, a_sealed_cage_holds_a_pore_volume_that_only_falls)
   double previous = std::numeric_limits<double>::max();
   for (double probe = 0.1; probe < 0.9; probe += 0.05)
   {
-    VoronoiAccessibility accessibility = inflatedGeometry(box, positions, radii, probe);
+    PoreAccessibility accessibility = inflatedGeometry(box, positions, radii, probe);
     SolventExcludedGeometry geometry = solventExcludedGeometry(accessibility, probe);
 
     // The cage is the only pore shut off from the void running past it outside, and the room in it is worth
@@ -694,7 +696,7 @@ TEST(exact_solvent_excluded, a_sealed_cage_holds_a_pore_volume_that_only_falls)
   }
 
   // Past the room inside there is nowhere in the cage for the probe's centre, and the cage holds nothing.
-  VoronoiAccessibility filled = inflatedGeometry(box, positions, radii, shellRadius - atomRadius + 0.05);
+  PoreAccessibility filled = inflatedGeometry(box, positions, radii, shellRadius - atomRadius + 0.05);
   SolventExcludedGeometry sealed = solventExcludedGeometry(filled, shellRadius - atomRadius + 0.05);
   EXPECT_NEAR(sealed.inaccessiblePoreVolume, 0.0, 1.0e-8);
 }

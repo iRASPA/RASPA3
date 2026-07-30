@@ -13,7 +13,7 @@ import apollonius_accessibility;
 import voronoi_network;
 import voronoi_pore_diameters;
 import voronoi_channels;
-import voronoi_accessibility;
+import pore_accessibility;
 import voronoi_accessible_volume;
 import voronoi_surface_area;
 import pore_window;
@@ -268,7 +268,7 @@ TEST(apollonius_pore_analysis, sampled_area_and_volume_match_the_radical_ones_fo
 
   ApolloniusAccessibility apollonius = ApolloniusAccessibility::create(box, fractionalPositions, radii, probe);
   ASSERT_TRUE(apollonius.diagram.networkIsComplete());
-  VoronoiAccessibility radical = VoronoiAccessibility::create(box, fractionalPositions, radii, probe);
+  PoreAccessibility radical = PoreAccessibility::create(box, fractionalPositions, radii, probe);
 
   VolumeSample apolloniusVolume = sampleAccessibleVolume(apollonius.accessibility, 200000);
   VolumeSample radicalVolume = sampleAccessibleVolume(radical, 200000);
@@ -444,7 +444,7 @@ TEST(apollonius_pore_analysis, DISABLED_compare_p1_cifs_apollonius_vs_radical)
   auto ms = [](auto d) { return std::chrono::duration<double, std::milli>(d).count(); };
 
   // The area and volume estimates, over whichever classifier is handed in, from the same points.
-  auto sample = [&](const VoronoiAccessibility& accessibility, const SimulationBox& box)
+  auto sample = [&](const PoreAccessibility& accessibility, const SimulationBox& box)
   {
     RandomNumber random{std::optional<std::size_t>(42)};
     double accessibleArea = 0.0;
@@ -548,10 +548,10 @@ TEST(apollonius_pore_analysis, DISABLED_compare_p1_cifs_apollonius_vs_radical)
       auto t2 = clock();
 
       // The area and volume are read off a second diagram, of the atoms inflated by the probe.
-      VoronoiAccessibility accessibility =
+      PoreAccessibility accessibility =
           useApollonius
               ? ApolloniusAccessibility::create(box, fractionalPositions, radii, probeRadius).accessibility
-              : VoronoiAccessibility::create(box, fractionalPositions, radii, probeRadius);
+              : PoreAccessibility::create(box, fractionalPositions, radii, probeRadius);
       auto t3 = clock();
       auto [asa, nasa, av, nav] = sample(accessibility, box);
       auto t4 = clock();

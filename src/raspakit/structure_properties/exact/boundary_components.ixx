@@ -6,7 +6,7 @@ import std;
 
 import int3;
 import double3;
-import voronoi_accessibility;
+import pore_accessibility;
 
 // The boundary of the union of the probe-inflated atoms, cut into its connected surfaces.
 //
@@ -33,6 +33,46 @@ import voronoi_accessibility;
 // needs of an arc, and it is what decides whether a surface closes on itself or on a translate of itself:
 // a component with a cycle whose translations do not cancel is the wall of a channel, and one without is
 // the boundary of something bounded.
+
+// Every sphere reaching the sphere of one atom, as the cap it cuts on it: `take(axis, cosineHalfAngle,
+// neighbourIndex, neighbourImage)` for each of them, `axis` being the unit direction from this atom's centre
+// towards that neighbour's and `cosineHalfAngle` the circle the two spheres meet in. False where a
+// neighbour swallows this sphere whole, in which case the atom carries no exposed surface at all and what
+// has been taken so far is to be thrown away rather than used.
+//
+// There is one of these because the decomposition and the sweep have to agree about which caps a sphere
+// has and in what order they come. The sweep is allowed to take the decomposition's crossings rather than
+// search for them again, and they are the same crossings only if these are the same caps; two spellings of
+// the same law of cosines in two files, agreeing by inspection today, is not something that stays true.
+export template <typename Take>
+bool eachCapCoveringAtom(const PoreAccessibility& accessibility, std::size_t atomIndex, Take&& take)
+{
+  const double radius = accessibility.atomRadii[atomIndex];
+  const double3 centre = accessibility.atomPositions[atomIndex];
+
+  for (const NeighbourImage& neighbour :
+       accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius))
+  {
+    const double distance = neighbour.delta.length();
+    if (distance < 1.0e-12)
+    {
+      // This sphere itself, which the query returns along with the rest, or another sitting exactly on it:
+      // only a strictly larger one covers anything, and then it covers all of it.
+      if (neighbour.radius > radius) return false;
+      continue;
+    }
+
+    // The circle of intersection sits at this polar angle from the neighbour's direction. At least one
+    // means the neighbour reaches nothing of this sphere; at most minus one means it swallows it whole.
+    const double cosineHalfAngle =
+        (radius * radius + distance * distance - neighbour.radius * neighbour.radius) / (2.0 * radius * distance);
+    if (cosineHalfAngle >= 1.0) continue;
+    if (cosineHalfAngle <= -1.0) return false;
+
+    take(neighbour.delta * (1.0 / distance), cosineHalfAngle, neighbour.index, neighbour.image);
+  }
+  return true;
+}
 
 // One of the circles in which a neighbouring sphere cuts the sphere of one atom, with the identity of that
 // neighbour: the same circle lies on the neighbour's sphere too, and joining a patch to the one across it
@@ -188,7 +228,7 @@ export struct BoundaryComponents
 };
 
 // What one connected surface faces, asked once for the whole of it.
-export struct ComponentLabel
+export struct ComponentVerdict
 {
   bool decided{false};
   bool accessible{false};
@@ -215,9 +255,9 @@ export struct ComponentLabel
 // another probe can reach: a surface enclosing a pore that a large probe cannot get out of may still stand
 // in a channel a small one moves freely along, and it is the smaller probe's network that says so. It has to
 // be built from the same atoms at a probe radius no larger, since the walk is clear of the larger atoms only.
-export std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& accessibility,
-                                                           const BoundaryComponents& components,
-                                                           const VoronoiAccessibility* reference = nullptr);
+export std::vector<ComponentVerdict> boundaryComponentVerdicts(const PoreAccessibility& accessibility,
+                                                               const BoundaryComponents& components,
+                                                               const PoreAccessibility* reference = nullptr);
 
 // How two loops of edges on one sphere are shown to bound the same patch. Walking the edges settles a patch
 // bounded by a single loop; a patch with a hole in it has more than one, and those have to be recognised as
@@ -239,7 +279,7 @@ export enum class LoopMerge : std::uint8_t
 };
 
 // Cuts the boundary of the union of `accessibility`'s inflated atoms into its connected surfaces.
-export BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
+export BoundaryComponents boundaryComponents(const PoreAccessibility& accessibility,
                                              LoopMerge rule = LoopMerge::nesting);
 
 // Whether the arc of the great circle from `from` to `to` stays outside every one of `circles`, which for

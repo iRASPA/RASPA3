@@ -7,7 +7,7 @@ import std;
 import double3;
 import simulationbox;
 import apollonius_network;
-import voronoi_accessibility;
+import pore_accessibility;
 
 ApolloniusAccessibility ApolloniusAccessibility::create(const SimulationBox& simulationBox,
                                                         const std::vector<double3>& fractionalPositions,
@@ -18,7 +18,7 @@ ApolloniusAccessibility ApolloniusAccessibility::create(const SimulationBox& sim
 
   ApolloniusAccessibility result;
   result.diagram = ApolloniusPoreNetwork::create(simulationBox, fractionalPositions, inflatedRadii);
-  result.accessibility = VoronoiAccessibility::createFromNetwork(std::move(result.diagram.network),
-                                                                 VoronoiAccessibility::Metric::Clearance, probeRadius);
+  result.accessibility = PoreAccessibility::createFromNetwork(std::move(result.diagram.network),
+                                                                 PoreAccessibility::Metric::Clearance, probeRadius);
   return result;
 }

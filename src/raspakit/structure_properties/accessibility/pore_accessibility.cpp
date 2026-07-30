@@ -1,6 +1,6 @@
 module;
 
-module voronoi_accessibility;
+module pore_accessibility;
 
 import std;
 
@@ -26,7 +26,7 @@ int3 binOfFractional(const double3& fractional, const int3& gridSize)
               std::min(gridSize.z - 1, static_cast<int>(fractional.z * static_cast<double>(gridSize.z))));
 }
 
-VoronoiAccessibility VoronoiAccessibility::create(const SimulationBox& simulationBox,
+PoreAccessibility PoreAccessibility::create(const SimulationBox& simulationBox,
                                                   const std::vector<double3>& fractionalPositions,
                                                   const std::vector<double>& radii, double probeRadius)
 {
@@ -39,9 +39,9 @@ VoronoiAccessibility VoronoiAccessibility::create(const SimulationBox& simulatio
                            probeRadius);
 }
 
-VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius)
+PoreAccessibility PoreAccessibility::createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius)
 {
-  VoronoiAccessibility accessibility;
+  PoreAccessibility accessibility;
   const SimulationBox simulationBox = network.simulationBox;
   accessibility.simulationBox = simulationBox;
   accessibility.metric = metric;
@@ -127,7 +127,7 @@ VoronoiAccessibility VoronoiAccessibility::createFromNetwork(VoronoiNetwork netw
   return accessibility;
 }
 
-PointClassification VoronoiAccessibility::classify(const double3& point) const
+PointClassification PoreAccessibility::classify(const double3& point) const
 {
   PointClassification classification;
 
@@ -295,7 +295,7 @@ PointClassification VoronoiAccessibility::classify(const double3& point) const
   return classification;
 }
 
-std::optional<std::size_t> VoronoiAccessibility::containingNode(const double3& point, bool accessibleOnly) const
+std::optional<std::size_t> PoreAccessibility::containingNode(const double3& point, bool accessibleOnly) const
 {
   double3 fractional = double3::fract(simulationBox.inverseCell * point);
   double3 wrappedPoint = simulationBox.cell * fractional;
@@ -346,7 +346,7 @@ std::optional<std::size_t> VoronoiAccessibility::containingNode(const double3& p
   return best;
 }
 
-int3 VoronoiAccessibility::nearestLift(const double3& point, std::int32_t poreId) const
+int3 PoreAccessibility::nearestLift(const double3& point, std::int32_t poreId) const
 {
   if (poreId < 0) return int3(0, 0, 0);
   const VoronoiPore& pore = channels.pores[static_cast<std::size_t>(poreId)];
@@ -377,12 +377,12 @@ int3 VoronoiAccessibility::nearestLift(const double3& point, std::int32_t poreId
   return best;
 }
 
-bool VoronoiAccessibility::provablyAccessible(const double3& point) const
+bool PoreAccessibility::provablyAccessible(const double3& point) const
 {
   return containingNode(point, true).has_value();
 }
 
-double VoronoiAccessibility::clearance(const double3& point) const
+double PoreAccessibility::clearance(const double3& point) const
 {
   double3 fractional = double3::fract(simulationBox.inverseCell * point);
   double3 wrappedPoint = simulationBox.cell * fractional;
@@ -426,7 +426,7 @@ double VoronoiAccessibility::clearance(const double3& point) const
   return found ? best : std::numeric_limits<double>::max();
 }
 
-std::vector<std::pair<double3, double>> VoronoiAccessibility::neighbourAtoms(const double3& point, double reach) const
+std::vector<std::pair<double3, double>> PoreAccessibility::neighbourAtoms(const double3& point, double reach) const
 {
   double3 fractional = double3::fract(simulationBox.inverseCell * point);
   double3 wrappedPoint = simulationBox.cell * fractional;
@@ -470,7 +470,7 @@ std::vector<std::pair<double3, double>> VoronoiAccessibility::neighbourAtoms(con
 }
 
 
-std::vector<NeighbourImage> VoronoiAccessibility::neighbourAtomImages(const double3& point, double reach) const
+std::vector<NeighbourImage> PoreAccessibility::neighbourAtomImages(const double3& point, double reach) const
 {
   // The same walk as `neighbourAtoms`, keeping what that one drops: which atom each image is of, and
   // which image. The bin walk knows both -- the atom by its index in the bin, the image by how far the
@@ -525,7 +525,7 @@ std::vector<NeighbourImage> VoronoiAccessibility::neighbourAtomImages(const doub
   return neighbours;
 }
 
-bool VoronoiAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
+bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
 {
   double3 fractional = double3::fract(simulationBox.inverseCell * point);
   double3 wrappedPoint = simulationBox.cell * fractional;

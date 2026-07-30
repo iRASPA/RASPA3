@@ -5,7 +5,7 @@ export module exact_solvent_excluded;
 import std;
 
 import double3;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_boundary_components;
 import exact_surface_patches;
 
@@ -159,39 +159,51 @@ export struct SolventExcludedGeometry
   ExcludedSurfaceAreas inaccessibleArea;
   ExcludedSurfaceAreas undecidedArea;
 
-  // What the boundary was made of. `cuspedArcs` are the toroidal patches whose rolling circle is smaller than
-  // the probe, which are the ones that fold back on themselves and have to be cut at the cusp;
-  // `clippedVertices` are the concave patches that a neighbouring probe position reaches into.
-  std::size_t numberOfArcs{0};
-  std::size_t cuspedArcs{0};
-  std::size_t numberOfVertices{0};
-  std::size_t clippedVertices{0};
+  // What the surface was made of, and which of the awkward cases the geometry turned out to hold. None of
+  // this enters any of the numbers above; it is what a caller looks at to decide whether to believe them, and
+  // it is kept apart from them so that the two are not mistaken for one another.
+  struct Diagnostics
+  {
+    // `cuspedArcs` are the toroidal patches whose rolling circle is smaller than the probe, which are the ones
+    // that fold back on themselves and have to be cut at the cusp; `clippedVertices` are the concave patches
+    // that a neighbouring probe position reaches into.
+    std::size_t numberOfArcs{0};
+    std::size_t cuspedArcs{0};
+    std::size_t numberOfVertices{0};
+    std::size_t clippedVertices{0};
 
-  // Vertices where more than three inflated spheres meet, which a framework's own symmetry produces rather
-  // than a coincidence, and vertices whose concave patch was clipped away entirely. Both are handled and both
-  // are counted, a structure that is full of them being one to look at twice.
-  std::size_t degenerateVertices{0};
-  std::size_t vanishedVertices{0};
+    // Vertices where more than three inflated spheres meet, which a framework's own symmetry produces rather
+    // than a coincidence, and vertices whose concave patch a neighbouring probe clipped away entirely. Both
+    // are handled and both are counted, a structure that is full of them being one to look at twice.
+    std::size_t degenerateVertices{0};
+    std::size_t vanishedVertices{0};
+
+    // Corners of the decomposition that turned out not to be vertices of the surface at all. Counted apart
+    // from the two above because it is a different thing being reported: those two are vertices the geometry
+    // really has and this is the decomposition offering something the geometry does not.
+    std::size_t discardedCorners{0};
+  };
+  Diagnostics diagnostics;
 };
 
 // The excluded volume and the distribution at one probe radius, against a boundary already decomposed and
-// labelled. `probeRadius` has to be the radius the accessibility's atoms were inflated by, the bare radii
+// judged. `probeRadius` has to be the radius the accessibility's atoms were inflated by, the bare radii
 // being read back from it, and it is the radius the accessibility itself records: building it from bare radii
 // and a probe and passing the same probe here is the only consistent use.
-export SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility,
+export SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility,
                                                        double probeRadius, const BoundaryComponents& components,
-                                                       const std::vector<ComponentLabel>& labels,
+                                                       const std::vector<ComponentVerdict>& verdicts,
                                                        std::size_t subdivisions = 1);
 
 // The same again, for a caller that has already swept the spheres. The sweep is the cost of the whole
 // calculation, and a caller reporting the accessible surface area alongside the excluded one has done it
-// already: `patches` has to be the one that sweep returned, against these components and labels.
-export SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility,
+// already: `patches` has to be the one that sweep returned, against these components and verdicts.
+export SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility,
                                                        double probeRadius, const BoundaryComponents& components,
-                                                       const std::vector<ComponentLabel>& labels,
-                                                       const ExactSurfaceAreaSample& patches,
+                                                       const std::vector<ComponentVerdict>& verdicts,
+                                                       const MeasuredPatches& patches,
                                                        std::size_t subdivisions = 1);
 
-// The same, decomposing and labelling the boundary itself.
-export SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility,
+// The same, decomposing the boundary and judging it itself.
+export SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility,
                                                        double probeRadius, std::size_t subdivisions = 1);

@@ -7,16 +7,12 @@ import std;
 import int3;
 import double3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import voronoi_channels;
 import exact_sphere_sweep;
 
 namespace
 {
-
-// A crossing is only hidden by a third sphere if it is hidden with room to spare, which is the allowance the
-// sweep makes and for the same reason.
-constexpr double coverTolerance = capCoverTolerance;
 
 // Crossings closer together than this along a circle are the same crossing. Several circles through one
 // point is again the ordinary case, and left alone it would leave arcs of no length between them.
@@ -33,7 +29,7 @@ bool coveredDirection(const std::vector<SphereCircle>& circles, const double3& d
   for (std::size_t c = 0; c < circles.size(); ++c)
   {
     if (c == skipFirst || c == skipSecond) continue;
-    if (double3::dot(direction, circles[c].axis) > circles[c].cosineHalfAngle + coverTolerance) return true;
+    if (double3::dot(direction, circles[c].axis) > circles[c].cosineHalfAngle + capCoverTolerance) return true;
   }
   return false;
 }
@@ -77,43 +73,29 @@ struct UnionFind
 };
 
 
-// The circles cutting one atom's sphere, with the neighbour each belongs to. Returns false when some
-// neighbour swallows the sphere whole, in which case the atom carries no surface at all.
-bool boundingCircles(const VoronoiAccessibility& accessibility, std::size_t atomIndex,
+// The circles cutting one atom's sphere, with the neighbour each belongs to, and the frame each is
+// parameterised in. Returns false when some neighbour swallows the sphere whole, in which case the atom
+// carries no surface at all.
+bool boundingCircles(const PoreAccessibility& accessibility, std::size_t atomIndex,
                      std::vector<SphereCircle>& circles)
 {
-  const double radius = accessibility.atomRadii[atomIndex];
-  const double3 centre = accessibility.atomPositions[atomIndex];
-
   circles.clear();
-  for (const NeighbourImage& neighbour :
-       accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius))
-  {
-    double distance = neighbour.delta.length();
-    if (distance < 1.0e-12)
-    {
-      // This sphere itself, or another sitting exactly on it: only a strictly larger one covers anything,
-      // and then it covers all of it.
-      if (neighbour.radius > radius) return false;
-      continue;
-    }
-
-    double cosineHalfAngle =
-        (radius * radius + distance * distance - neighbour.radius * neighbour.radius) / (2.0 * radius * distance);
-    if (cosineHalfAngle >= 1.0) continue;   // reaches nothing of this sphere
-    if (cosineHalfAngle <= -1.0) return false;  // swallows it
-
-    SphereCircle circle;
-    circle.axis = neighbour.delta * (1.0 / distance);
-    circle.cosineHalfAngle = cosineHalfAngle;
-    circle.halfAngle = std::acos(cosineHalfAngle);
-    circle.sineHalfAngle = std::sin(circle.halfAngle);
-    circle.neighbourIndex = neighbour.index;
-    circle.neighbourImage = neighbour.image;
-    circle.first = perpendicularTo(circle.axis);
-    circle.second = double3::cross(circle.axis, circle.first);
-    circles.push_back(circle);
-  }
+  const bool exposed =
+      eachCapCoveringAtom(accessibility, atomIndex,
+                          [&](const double3& axis, double cosineHalfAngle, std::size_t neighbourIndex, int3 image)
+                          {
+                            SphereCircle circle;
+                            circle.axis = axis;
+                            circle.cosineHalfAngle = cosineHalfAngle;
+                            circle.halfAngle = std::acos(cosineHalfAngle);
+                            circle.sineHalfAngle = std::sin(circle.halfAngle);
+                            circle.neighbourIndex = neighbourIndex;
+                            circle.neighbourImage = image;
+                            circle.first = perpendicularTo(circle.axis);
+                            circle.second = double3::cross(circle.axis, circle.first);
+                            circles.push_back(circle);
+                          });
+  if (!exposed) return false;
 
   // A circle whose disc lies inside another's bounds nothing and covers nothing of its own. Dropping it is
   // no loss of an edge: the surface the two atoms share is buried under the third, on both of their spheres
@@ -199,7 +181,7 @@ std::vector<double3> exposedWayPoints(const std::vector<SphereCircle>& circles)
   for (const double3& candidate : candidates)
   {
     double margin = exposureMargin(circles, candidate);
-    if (margin > coverTolerance) ranked.emplace_back(margin, candidate);
+    if (margin > capCoverTolerance) ranked.emplace_back(margin, candidate);
   }
   std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
   if (ranked.size() > limit) ranked.resize(limit);
@@ -468,9 +450,9 @@ std::int32_t BoundaryComponents::patchOfCirclePoint(std::size_t atomIndex, const
 }
 
 
-std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& accessibility,
-                                                    const BoundaryComponents& components,
-                                                    const VoronoiAccessibility* reference)
+std::vector<ComponentVerdict> boundaryComponentVerdicts(const PoreAccessibility& accessibility,
+                                                        const BoundaryComponents& components,
+                                                        const PoreAccessibility* reference)
 {
   // The walk out from the surface. Each step is kept inside the free ball about the point it starts from,
   // so the whole of it is void: a node ball reached this way holds a point connected to the surface through
@@ -484,16 +466,16 @@ std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& 
   // stay clear of. Which pore the point it arrives at belongs to is a separate question, and a caller after
   // the pores of another probe asks it of that probe's network instead: a point clear of these atoms is clear
   // of the smaller ones of a smaller probe too, so the same walk answers for either.
-  const VoronoiAccessibility& pores = (reference != nullptr) ? *reference : accessibility;
+  const PoreAccessibility& pores = (reference != nullptr) ? *reference : accessibility;
 
-  std::vector<ComponentLabel> labels(components.numberOfComponents);
-  for (std::size_t label = 0; label < components.numberOfComponents; ++label)
+  std::vector<ComponentVerdict> verdicts(components.numberOfComponents);
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
-    ComponentLabel& answer = labels[label];
+    ComponentVerdict& answer = verdicts[component];
     double3 bestSurface(0.0, 0.0, 0.0);
     bool haveSurface = false;
 
-    for (const auto& [atomIndex, patch] : components.componentCandidates[label])
+    for (const auto& [atomIndex, patch] : components.componentCandidates[component])
     {
       const SphereBoundary& boundary = components.atoms[atomIndex];
       if (patch >= boundary.patchRepresentative.size()) continue;
@@ -540,265 +522,335 @@ std::vector<ComponentLabel> labelBoundaryComponents(const VoronoiAccessibility& 
     answer.accessible = classification.accessible;
     answer.poreId = classification.poreId;
   }
-  return labels;
+  return verdicts;
 }
 
 
-BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility, LoopMerge rule)
+namespace
 {
-  const std::size_t numberOfAtoms = accessibility.atomPositions.size();
-  BoundaryComponents result;
-  result.atoms.assign(numberOfAtoms, SphereBoundary{});
 
-  // ---- the patches of each sphere ------------------------------------------------------------------
-  for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
+// Cutting one sphere into its patches, step by step. The steps run in the order they are declared below and
+// each reads what the ones before it left; what they share is the numbering of the arcs, which is why they
+// are gathered here rather than passed a handful of vectors each.
+struct SphereDecomposition
+{
+  SphereBoundary& boundary;
+  const std::vector<CapCrossing>& crossings;
+
+  // The arcs are numbered across the whole sphere, circle `c`'s own beginning at `arcBase[c]`, so that one
+  // union-find over the numbers settles which of them bound the same patch whichever circles they lie on.
+  std::vector<std::size_t> arcBase;
+  std::size_t totalArcs{0};
+  std::vector<std::uint8_t> exposed;
+  UnionFind bound{0};
+
+  // One arc out of each loop of edges the walk left separate, and a point just inside each of them.
+  std::vector<std::size_t> roots;
+  std::unordered_map<std::size_t, std::size_t> loopRepresentative;
+  std::vector<double3> loopPoint;
+
+  SphereDecomposition(SphereBoundary& sphere, const std::vector<CapCrossing>& uncovered)
+      : boundary(sphere), crossings(uncovered)
   {
-    SphereBoundary& boundary = result.atoms[atomIndex];
-    if (!boundingCircles(accessibility, atomIndex, boundary.circles))
-    {
-      boundary.buried = true;
-      continue;
-    }
-
-    // A sphere no neighbour reaches is one patch with no edges at all.
-    if (boundary.circles.empty())
-    {
-      boundary.numberOfPatches = 1;
-      boundary.patchRepresentative.push_back(double3(0.0, 0.0, 1.0));
-      continue;
-    }
-
-    std::vector<CapCrossing> crossings = uncoveredCrossings(boundary.circles);
-
-    boundary.crossings.reserve(crossings.size());
-    for (const CapCrossing& crossing : crossings) boundary.crossings.push_back(crossing.direction);
-
-    // The crossings on each circle, merged where they coincide and sorted, cut it into arcs.
-    for (SphereCircle& circle : boundary.circles) circle.cornerAngles.clear();
-    for (const CapCrossing& crossing : crossings)
-    {
-      boundary.circles[crossing.firstCircle].cornerAngles.push_back(
-          boundary.circles[crossing.firstCircle].angleOf(crossing.direction));
-      boundary.circles[crossing.secondCircle].cornerAngles.push_back(
-          boundary.circles[crossing.secondCircle].angleOf(crossing.direction));
-    }
-    for (SphereCircle& circle : boundary.circles)
-    {
-      std::sort(circle.cornerAngles.begin(), circle.cornerAngles.end());
-      circle.cornerAngles.erase(std::unique(circle.cornerAngles.begin(), circle.cornerAngles.end(),
-                                            [](double a, double b) { return std::abs(a - b) < angleTolerance; }),
-                                circle.cornerAngles.end());
-      // The first and last can also be the same crossing, the circle closing on itself.
-      if (circle.cornerAngles.size() > 1 &&
-          2.0 * std::numbers::pi - (circle.cornerAngles.back() - circle.cornerAngles.front()) < angleTolerance)
-      {
-        circle.cornerAngles.pop_back();
-      }
-    }
-
-    // Which arcs are exposed, judged in the middle: between two consecutive crossings the answer cannot
-    // change, a crossing being the only place where the boundary of the covered part can cross the circle.
-    std::vector<std::size_t> arcBase(boundary.circles.size(), 0);
-    std::size_t totalArcs = 0;
-    for (std::size_t c = 0; c < boundary.circles.size(); ++c)
-    {
-      arcBase[c] = totalArcs;
-      totalArcs += boundary.circles[c].numberOfArcs();
-    }
-
-    std::vector<std::uint8_t> exposed(totalArcs, 0);
-    for (std::size_t c = 0; c < boundary.circles.size(); ++c)
-    {
-      SphereCircle& circle = boundary.circles[c];
-      circle.arcPatch.assign(circle.numberOfArcs(), -1);
-      for (std::size_t k = 0; k < circle.numberOfArcs(); ++k)
-      {
-        double3 middle = circle.direction(arcMidAngle(circle, k));
-        if (!coveredDirection(boundary.circles, middle, c, c)) exposed[arcBase[c] + k] = 1;
-      }
-    }
-
-    // At an uncovered crossing the exposed region takes exactly one of the four quadrants, so of the two
-    // arcs of each circle that end there exactly one is exposed, and those two bound the same patch.
-    UnionFind patches(totalArcs);
-    for (const CapCrossing& crossing : crossings)
-    {
-      std::array<std::optional<std::size_t>, 2> incident;
-      const std::array<std::size_t, 2> circleIndices = {crossing.firstCircle, crossing.secondCircle};
-      for (std::size_t side = 0; side < 2; ++side)
-      {
-        const SphereCircle& circle = boundary.circles[circleIndices[side]];
-        std::optional<std::size_t> corner = cornerIndex(circle, crossing.direction);
-        if (!corner.has_value()) continue;
-
-        std::size_t after = corner.value();
-        std::size_t before = (after + circle.cornerAngles.size() - 1) % circle.cornerAngles.size();
-        bool afterExposed = exposed[arcBase[circleIndices[side]] + after] != 0;
-        bool beforeExposed = exposed[arcBase[circleIndices[side]] + before] != 0;
-        if (afterExposed && !beforeExposed) incident[side] = arcBase[circleIndices[side]] + after;
-        else if (beforeExposed && !afterExposed) incident[side] = arcBase[circleIndices[side]] + before;
-      }
-      if (incident[0].has_value() && incident[1].has_value())
-      {
-        patches.join(incident[0].value(), incident[1].value());
-      }
-    }
-
-    // What the walk round the edges leaves separate is either a patch of its own or another loop of the
-    // same patch, a patch with a hole in it having more than one. Which of the two it is is what `rule`
-    // decides; where it cannot, the patch is left cut in two, which costs a second classification of the
-    // same surface but cannot mislabel it.
-    std::vector<std::size_t> roots;
-    std::unordered_map<std::size_t, std::size_t> loopRepresentative;
-    for (std::size_t arc = 0; arc < totalArcs; ++arc)
-    {
-      if (exposed[arc] == 0) continue;
-      std::size_t root = patches.find(arc);
-      if (loopRepresentative.emplace(root, arc).second) roots.push_back(root);
-    }
-
-    auto insetOfArc = [&](std::size_t arc)
-    {
-      std::size_t c =
-          static_cast<std::size_t>(std::upper_bound(arcBase.begin(), arcBase.end(), arc) - arcBase.begin() - 1);
-      return insetFromCircle(boundary.circles[c], arcMidAngle(boundary.circles[c], arc - arcBase[c]));
-    };
-
-    std::vector<double3> loopPoint;
-    loopPoint.reserve(roots.size());
-    for (std::size_t root : roots) loopPoint.push_back(insetOfArc(loopRepresentative[root]));
-
-    auto circleOfArc = [&](std::size_t arc)
-    {
-      return static_cast<std::size_t>(std::upper_bound(arcBase.begin(), arcBase.end(), arc) - arcBase.begin() - 1);
-    };
-
-    const std::chrono::steady_clock::time_point mergeBegan = std::chrono::steady_clock::now();
-
-    if (roots.size() > 1 && rule == LoopMerge::paths)
-    {
-      // A little way in from every exposed edge, along with the most open directions of the region. The edge
-      // points are what a region that winds through a crevice needs: it may hold none of the open directions
-      // at all, but it is bounded by its own edges everywhere, so consecutive points along them are a leg
-      // apart. These are found only where there is something to merge, the walk round the edges having
-      // already settled a region bounded by a single loop.
-      boundary.wayPoints = exposedWayPoints(boundary.circles);
-      for (std::size_t arc = 0; arc < totalArcs; ++arc)
-      {
-        if (exposed[arc] != 0) boundary.wayPoints.push_back(insetOfArc(arc));
-      }
-      groupWayPoints(boundary);
-
-      for (std::size_t i = 0; i < roots.size(); ++i)
-      {
-        for (std::size_t j = i + 1; j < roots.size(); ++j)
-        {
-          if (patches.find(loopRepresentative[roots[i]]) == patches.find(loopRepresentative[roots[j]])) continue;
-          if (connectedOnSphere(boundary, loopPoint[i], loopPoint[j]))
-          {
-            patches.join(loopRepresentative[roots[i]], loopRepresentative[roots[j]]);
-          }
-        }
-      }
-    }
-    else if (roots.size() > 1)
-    {
-      // The loops as the walk round the edges left them, which is what the nesting test is about and has to
-      // be taken down before any merging moves the roots.
-      constexpr std::size_t sampleLimit = 8;
-
-      std::unordered_map<std::size_t, std::int32_t> loopOfRoot;
-      for (std::size_t i = 0; i < roots.size(); ++i) loopOfRoot.emplace(roots[i], static_cast<std::int32_t>(i));
-
-      std::vector<std::int32_t> loopOfArc(totalArcs, -1);
-      std::vector<std::vector<std::size_t>> loopCircles(roots.size());
-      std::vector<std::vector<double3>> loopSamples(roots.size());
-      for (std::size_t arc = 0; arc < totalArcs; ++arc)
-      {
-        if (exposed[arc] == 0) continue;
-        std::int32_t loop = loopOfRoot.at(patches.find(arc));
-        loopOfArc[arc] = loop;
-        loopCircles[static_cast<std::size_t>(loop)].push_back(circleOfArc(arc));
-        loopSamples[static_cast<std::size_t>(loop)].push_back(insetOfArc(arc));
-      }
-      for (std::size_t i = 0; i < roots.size(); ++i)
-      {
-        std::sort(loopCircles[i].begin(), loopCircles[i].end());
-        loopCircles[i].erase(std::unique(loopCircles[i].begin(), loopCircles[i].end()), loopCircles[i].end());
-      }
-
-      // One point of a loop decides it, the two loops not crossing, except where they run along a circle they
-      // share: there the nearest point of it is the asking loop's own arc rather than the asked loop's, and
-      // the test says no to a pair it has nothing to say about. Asking at a few points round the loop rather
-      // than at one costs a few more of a cheap test and leaves that case to the points elsewhere on it.
-      auto anyPointInside = [&](std::int32_t loop, std::int32_t of)
-      {
-        const std::vector<double3>& samples = loopSamples[static_cast<std::size_t>(of)];
-        const std::size_t stride = std::max<std::size_t>(1, samples.size() / sampleLimit);
-        for (std::size_t s = 0; s < samples.size(); s += stride)
-        {
-          if (insideLoop(boundary, arcBase, loopOfArc, loopCircles[static_cast<std::size_t>(loop)], loop,
-                         samples[s]))
-          {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      for (std::size_t i = 0; i < roots.size(); ++i)
-      {
-        for (std::size_t j = i + 1; j < roots.size(); ++j)
-        {
-          if (patches.find(loopRepresentative[roots[i]]) == patches.find(loopRepresentative[roots[j]])) continue;
-          if (anyPointInside(static_cast<std::int32_t>(i), static_cast<std::int32_t>(j)) &&
-              anyPointInside(static_cast<std::int32_t>(j), static_cast<std::int32_t>(i)))
-          {
-            patches.join(loopRepresentative[roots[i]], loopRepresentative[roots[j]]);
-          }
-        }
-      }
-    }
-
-    result.mergeSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - mergeBegan).count();
-    result.loopsToMerge += (roots.size() > 1) ? roots.size() : 0;
-
-    // Number the patches and record where each is to be asked about.
-    std::unordered_map<std::size_t, std::int32_t> patchOfRoot;
-    for (std::size_t arc = 0; arc < totalArcs; ++arc)
-    {
-      if (exposed[arc] == 0) continue;
-      std::size_t root = patches.find(arc);
-      auto [entry, inserted] = patchOfRoot.try_emplace(root, static_cast<std::int32_t>(boundary.numberOfPatches));
-      if (inserted)
-      {
-        ++boundary.numberOfPatches;
-        std::size_t c = static_cast<std::size_t>(std::upper_bound(arcBase.begin(), arcBase.end(), arc) -
-                                                 arcBase.begin() - 1);
-        boundary.patchRepresentative.push_back(
-            insetFromCircle(boundary.circles[c], arcMidAngle(boundary.circles[c], arc - arcBase[c])));
-      }
-      std::size_t c =
-          static_cast<std::size_t>(std::upper_bound(arcBase.begin(), arcBase.end(), arc) - arcBase.begin() - 1);
-      boundary.circles[c].arcPatch[arc - arcBase[c]] = entry->second;
-    }
   }
 
-  // ---- the graph of patches, joined across the circles they share ----------------------------------
-  std::vector<std::size_t> patchBase(numberOfAtoms + 1, 0);
-  for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
+  std::size_t circleOfArc(std::size_t arc) const
   {
-    patchBase[atomIndex + 1] = patchBase[atomIndex] + result.atoms[atomIndex].numberOfPatches;
+    return static_cast<std::size_t>(std::upper_bound(arcBase.begin(), arcBase.end(), arc) - arcBase.begin() - 1);
   }
-  const std::size_t totalPatches = patchBase[numberOfAtoms];
-  result.numberOfPatches = totalPatches;
 
-  struct Edge
+  double3 insetOfArc(std::size_t arc) const
   {
-    std::size_t to{0};
-    int3 offset{0, 0, 0};
+    const std::size_t c = circleOfArc(arc);
+    return insetFromCircle(boundary.circles[c], arcMidAngle(boundary.circles[c], arc - arcBase[c]));
+  }
+
+  void cutCirclesAtCrossings();
+  void numberAndMarkArcs();
+  void joinArcsAcrossCrossings();
+  void collectLoops();
+  void mergeLoopsByPaths();
+  void mergeLoopsByNesting();
+  void numberPatches();
+};
+
+
+// The crossings on each circle, merged where they coincide and sorted, cut it into arcs.
+void SphereDecomposition::cutCirclesAtCrossings()
+{
+  for (SphereCircle& circle : boundary.circles) circle.cornerAngles.clear();
+  for (const CapCrossing& crossing : crossings)
+  {
+    boundary.circles[crossing.firstCircle].cornerAngles.push_back(
+        boundary.circles[crossing.firstCircle].angleOf(crossing.direction));
+    boundary.circles[crossing.secondCircle].cornerAngles.push_back(
+        boundary.circles[crossing.secondCircle].angleOf(crossing.direction));
+  }
+  for (SphereCircle& circle : boundary.circles)
+  {
+    std::sort(circle.cornerAngles.begin(), circle.cornerAngles.end());
+    circle.cornerAngles.erase(std::unique(circle.cornerAngles.begin(), circle.cornerAngles.end(),
+                                          [](double a, double b) { return std::abs(a - b) < angleTolerance; }),
+                              circle.cornerAngles.end());
+    // The first and last can also be the same crossing, the circle closing on itself.
+    if (circle.cornerAngles.size() > 1 &&
+        2.0 * std::numbers::pi - (circle.cornerAngles.back() - circle.cornerAngles.front()) < angleTolerance)
+    {
+      circle.cornerAngles.pop_back();
+    }
+  }
+}
+
+
+// The arcs numbered across the sphere, and which of them are exposed. Exposure is judged in the middle of an
+// arc: between two consecutive crossings the answer cannot change, a crossing being the only place where the
+// boundary of the covered part can cross the circle.
+void SphereDecomposition::numberAndMarkArcs()
+{
+  arcBase.assign(boundary.circles.size(), 0);
+  totalArcs = 0;
+  for (std::size_t c = 0; c < boundary.circles.size(); ++c)
+  {
+    arcBase[c] = totalArcs;
+    totalArcs += boundary.circles[c].numberOfArcs();
+  }
+
+  exposed.assign(totalArcs, 0);
+  bound = UnionFind(totalArcs);
+  for (std::size_t c = 0; c < boundary.circles.size(); ++c)
+  {
+    SphereCircle& circle = boundary.circles[c];
+    circle.arcPatch.assign(circle.numberOfArcs(), -1);
+    for (std::size_t k = 0; k < circle.numberOfArcs(); ++k)
+    {
+      double3 middle = circle.direction(arcMidAngle(circle, k));
+      if (!coveredDirection(boundary.circles, middle, c, c)) exposed[arcBase[c] + k] = 1;
+    }
+  }
+}
+
+
+// At an uncovered crossing the exposed region takes exactly one of the four quadrants, so of the two arcs of
+// each circle that end there exactly one is exposed, and those two bound the same patch.
+void SphereDecomposition::joinArcsAcrossCrossings()
+{
+  for (const CapCrossing& crossing : crossings)
+  {
+    std::array<std::optional<std::size_t>, 2> incident;
+    const std::array<std::size_t, 2> circleIndices = {crossing.firstCircle, crossing.secondCircle};
+    for (std::size_t side = 0; side < 2; ++side)
+    {
+      const SphereCircle& circle = boundary.circles[circleIndices[side]];
+      std::optional<std::size_t> corner = cornerIndex(circle, crossing.direction);
+      if (!corner.has_value()) continue;
+
+      std::size_t after = corner.value();
+      std::size_t before = (after + circle.cornerAngles.size() - 1) % circle.cornerAngles.size();
+      bool afterExposed = exposed[arcBase[circleIndices[side]] + after] != 0;
+      bool beforeExposed = exposed[arcBase[circleIndices[side]] + before] != 0;
+      if (afterExposed && !beforeExposed) incident[side] = arcBase[circleIndices[side]] + after;
+      else if (beforeExposed && !afterExposed) incident[side] = arcBase[circleIndices[side]] + before;
+    }
+    if (incident[0].has_value() && incident[1].has_value())
+    {
+      bound.join(incident[0].value(), incident[1].value());
+    }
+  }
+}
+
+
+// What the walk round the edges left separate, one arc standing for each of them.
+void SphereDecomposition::collectLoops()
+{
+  for (std::size_t arc = 0; arc < totalArcs; ++arc)
+  {
+    if (exposed[arc] == 0) continue;
+    std::size_t root = bound.find(arc);
+    if (loopRepresentative.emplace(root, arc).second) roots.push_back(root);
+  }
+
+  loopPoint.reserve(roots.size());
+  for (std::size_t root : roots) loopPoint.push_back(insetOfArc(loopRepresentative[root]));
+}
+
+
+// Two loops bound the same patch where a path through the exposed region joins them. Finding one is a proof;
+// not finding one is not a proof of the contrary, so this can leave a patch cut in two.
+void SphereDecomposition::mergeLoopsByPaths()
+{
+  // A little way in from every exposed edge, along with the most open directions of the region. The edge
+  // points are what a region that winds through a crevice needs: it may hold none of the open directions at
+  // all, but it is bounded by its own edges everywhere, so consecutive points along them are a leg apart.
+  // These are found only where there is something to merge, the walk round the edges having already settled a
+  // region bounded by a single loop.
+  boundary.wayPoints = exposedWayPoints(boundary.circles);
+  for (std::size_t arc = 0; arc < totalArcs; ++arc)
+  {
+    if (exposed[arc] != 0) boundary.wayPoints.push_back(insetOfArc(arc));
+  }
+  groupWayPoints(boundary);
+
+  for (std::size_t i = 0; i < roots.size(); ++i)
+  {
+    for (std::size_t j = i + 1; j < roots.size(); ++j)
+    {
+      if (bound.find(loopRepresentative[roots[i]]) == bound.find(loopRepresentative[roots[j]])) continue;
+      if (connectedOnSphere(boundary, loopPoint[i], loopPoint[j]))
+      {
+        bound.join(loopRepresentative[roots[i]], loopRepresentative[roots[j]]);
+      }
+    }
+  }
+}
+
+
+// Two loops bound the same patch where each lies inside the other, in the sense of Quan and Stamm. This
+// decides rather than searches; see `LoopMerge::nesting`.
+void SphereDecomposition::mergeLoopsByNesting()
+{
+  constexpr std::size_t sampleLimit = 8;
+
+  // The loops as the walk round the edges left them, which is what the nesting test is about and has to be
+  // taken down before any merging moves the roots.
+  std::unordered_map<std::size_t, std::int32_t> loopOfRoot;
+  for (std::size_t i = 0; i < roots.size(); ++i) loopOfRoot.emplace(roots[i], static_cast<std::int32_t>(i));
+
+  std::vector<std::int32_t> loopOfArc(totalArcs, -1);
+  std::vector<std::vector<std::size_t>> loopCircles(roots.size());
+  std::vector<std::vector<double3>> loopSamples(roots.size());
+  for (std::size_t arc = 0; arc < totalArcs; ++arc)
+  {
+    if (exposed[arc] == 0) continue;
+    std::int32_t loop = loopOfRoot.at(bound.find(arc));
+    loopOfArc[arc] = loop;
+    loopCircles[static_cast<std::size_t>(loop)].push_back(circleOfArc(arc));
+    loopSamples[static_cast<std::size_t>(loop)].push_back(insetOfArc(arc));
+  }
+  for (std::size_t i = 0; i < roots.size(); ++i)
+  {
+    std::sort(loopCircles[i].begin(), loopCircles[i].end());
+    loopCircles[i].erase(std::unique(loopCircles[i].begin(), loopCircles[i].end()), loopCircles[i].end());
+  }
+
+  // One point of a loop decides it, the two loops not crossing, except where they run along a circle they
+  // share: there the nearest point of it is the asking loop's own arc rather than the asked loop's, and the
+  // test says no to a pair it has nothing to say about. Asking at a few points round the loop rather than at
+  // one costs a few more of a cheap test and leaves that case to the points elsewhere on it.
+  auto anyPointInside = [&](std::int32_t loop, std::int32_t of)
+  {
+    const std::vector<double3>& samples = loopSamples[static_cast<std::size_t>(of)];
+    const std::size_t stride = std::max<std::size_t>(1, samples.size() / sampleLimit);
+    for (std::size_t s = 0; s < samples.size(); s += stride)
+    {
+      if (insideLoop(boundary, arcBase, loopOfArc, loopCircles[static_cast<std::size_t>(loop)], loop, samples[s]))
+      {
+        return true;
+      }
+    }
+    return false;
   };
-  std::vector<std::vector<Edge>> adjacency(totalPatches);
+
+  for (std::size_t i = 0; i < roots.size(); ++i)
+  {
+    for (std::size_t j = i + 1; j < roots.size(); ++j)
+    {
+      if (bound.find(loopRepresentative[roots[i]]) == bound.find(loopRepresentative[roots[j]])) continue;
+      if (anyPointInside(static_cast<std::int32_t>(i), static_cast<std::int32_t>(j)) &&
+          anyPointInside(static_cast<std::int32_t>(j), static_cast<std::int32_t>(i)))
+      {
+        bound.join(loopRepresentative[roots[i]], loopRepresentative[roots[j]]);
+      }
+    }
+  }
+}
+
+
+// Number the patches and record where each is to be asked about.
+void SphereDecomposition::numberPatches()
+{
+  std::unordered_map<std::size_t, std::int32_t> patchOfRoot;
+  for (std::size_t arc = 0; arc < totalArcs; ++arc)
+  {
+    if (exposed[arc] == 0) continue;
+    std::size_t root = bound.find(arc);
+    auto [entry, inserted] = patchOfRoot.try_emplace(root, static_cast<std::int32_t>(boundary.numberOfPatches));
+    if (inserted)
+    {
+      ++boundary.numberOfPatches;
+      boundary.patchRepresentative.push_back(insetOfArc(arc));
+    }
+    const std::size_t c = circleOfArc(arc);
+    boundary.circles[c].arcPatch[arc - arcBase[c]] = entry->second;
+  }
+}
+
+
+// The exposed surface of one atom's sphere, cut into its patches.
+void decomposeSphere(const PoreAccessibility& accessibility, std::size_t atomIndex, LoopMerge rule,
+                     BoundaryComponents& result)
+{
+  SphereBoundary& boundary = result.atoms[atomIndex];
+  if (!boundingCircles(accessibility, atomIndex, boundary.circles))
+  {
+    boundary.buried = true;
+    return;
+  }
+
+  // A sphere no neighbour reaches is one patch with no edges at all.
+  if (boundary.circles.empty())
+  {
+    boundary.numberOfPatches = 1;
+    boundary.patchRepresentative.push_back(double3(0.0, 0.0, 1.0));
+    return;
+  }
+
+  const std::vector<CapCrossing> crossings = uncoveredCrossings(boundary.circles);
+  boundary.crossings.reserve(crossings.size());
+  for (const CapCrossing& crossing : crossings) boundary.crossings.push_back(crossing.direction);
+
+  SphereDecomposition sphere(boundary, crossings);
+  sphere.cutCirclesAtCrossings();
+  sphere.numberAndMarkArcs();
+  sphere.joinArcsAcrossCrossings();
+  sphere.collectLoops();
+
+  // What the walk round the edges leaves separate is either a patch of its own or another loop of the same
+  // patch, a patch with a hole in it having more than one. Which of the two it is is what `rule` decides;
+  // where it cannot, the patch is left cut in two, which costs a second classification of the same surface
+  // but cannot mislabel it. It is the one step here that can be done in more than one way, so it is the one
+  // worth timing.
+  const std::chrono::steady_clock::time_point mergeBegan = std::chrono::steady_clock::now();
+  if (sphere.roots.size() > 1)
+  {
+    if (rule == LoopMerge::paths)
+      sphere.mergeLoopsByPaths();
+    else
+      sphere.mergeLoopsByNesting();
+  }
+  result.mergeSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - mergeBegan).count();
+  result.loopsToMerge += (sphere.roots.size() > 1) ? sphere.roots.size() : 0;
+
+  sphere.numberPatches();
+}
+
+
+// One side of an edge between two patches: the patch across it, and the translation carrying this patch's
+// frame into that one's.
+struct PatchEdge
+{
+  std::size_t to{0};
+  int3 offset{0, 0, 0};
+};
+
+
+// The graph of patches, joined across the circles they share. Patches are numbered over all the atoms at
+// once, atom i's own beginning at `patchBase[i]`.
+std::vector<std::vector<PatchEdge>> patchAdjacency(const PoreAccessibility& accessibility,
+                                                   const std::vector<std::size_t>& patchBase,
+                                                   BoundaryComponents& result)
+{
+  const std::size_t numberOfAtoms = result.atoms.size();
+  std::vector<std::vector<PatchEdge>> adjacency(patchBase[numberOfAtoms]);
 
   for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
   {
@@ -863,13 +915,22 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
 
         // The neighbour's home sphere carries this piece of surface a translation `image` away from where
         // this atom carries it, so bringing the two into one frame is that translation.
-        adjacency[here].push_back(Edge{there, image});
-        adjacency[there].push_back(Edge{here, int3(-image.x, -image.y, -image.z)});
+        adjacency[here].push_back(PatchEdge{there, image});
+        adjacency[there].push_back(PatchEdge{here, int3(-image.x, -image.y, -image.z)});
       }
     }
   }
+  return adjacency;
+}
 
-  // ---- the connected surfaces, and the translations around them ------------------------------------
+
+// The connected surfaces of the patch graph, and the translations each of them closes on itself by.
+void assignComponents(const std::vector<std::size_t>& patchBase,
+                      const std::vector<std::vector<PatchEdge>>& adjacency, BoundaryComponents& result)
+{
+  const std::size_t numberOfAtoms = result.atoms.size();
+  const std::size_t totalPatches = patchBase[numberOfAtoms];
+
   result.componentOfPatch.assign(numberOfAtoms, {});
   result.offsetOfPatch.assign(numberOfAtoms, {});
   for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
@@ -878,18 +939,15 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
     result.offsetOfPatch[atomIndex].assign(result.atoms[atomIndex].numberOfPatches, int3(0, 0, 0));
   }
 
-  auto atomOfPatch = [&](std::size_t patch)
-  {
-    return static_cast<std::size_t>(std::upper_bound(patchBase.begin(), patchBase.end(), patch) - patchBase.begin() -
-                                    1);
-  };
-
-  std::vector<std::int32_t> component(totalPatches, -1);
-  std::vector<int3> offset(totalPatches, int3(0, 0, 0));
+  // Over every patch of every atom at once, which is what the walk runs on; `result` keeps the same two per
+  // atom, and they are copied across once the walk is done. The lift of a patch is the translation carrying
+  // it into the frame its own surface closes in.
+  std::vector<std::int32_t> surfaceOfPatch(totalPatches, -1);
+  std::vector<int3> liftOfPatch(totalPatches, int3(0, 0, 0));
   for (std::size_t seed = 0; seed < totalPatches; ++seed)
   {
-    if (component[seed] >= 0) continue;
-    std::int32_t label = static_cast<std::int32_t>(result.numberOfComponents++);
+    if (surfaceOfPatch[seed] >= 0) continue;
+    std::int32_t component = static_cast<std::int32_t>(result.numberOfComponents++);
     result.componentPercolates.push_back(0);
     result.componentTranslations.emplace_back();
 
@@ -905,32 +963,32 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
       if (latticeVectorRank(extended) > latticeVectorRank(translations)) translations.push_back(translation);
     };
 
-    component[seed] = label;
-    offset[seed] = int3(0, 0, 0);
+    surfaceOfPatch[seed] = component;
+    liftOfPatch[seed] = int3(0, 0, 0);
     std::vector<std::size_t> queue{seed};
     while (!queue.empty())
     {
       std::size_t patch = queue.back();
       queue.pop_back();
-      for (const Edge& edge : adjacency[patch])
+      for (const PatchEdge& edge : adjacency[patch])
       {
-        int3 carried(offset[patch].x + edge.offset.x, offset[patch].y + edge.offset.y,
-                     offset[patch].z + edge.offset.z);
-        if (component[edge.to] < 0)
+        int3 carried(liftOfPatch[patch].x + edge.offset.x, liftOfPatch[patch].y + edge.offset.y,
+                     liftOfPatch[patch].z + edge.offset.z);
+        if (surfaceOfPatch[edge.to] < 0)
         {
-          component[edge.to] = label;
-          offset[edge.to] = carried;
+          surfaceOfPatch[edge.to] = component;
+          liftOfPatch[edge.to] = carried;
           queue.push_back(edge.to);
         }
-        else if (offset[edge.to].x != carried.x || offset[edge.to].y != carried.y ||
-                 offset[edge.to].z != carried.z)
+        else if (liftOfPatch[edge.to].x != carried.x || liftOfPatch[edge.to].y != carried.y ||
+                 liftOfPatch[edge.to].z != carried.z)
         {
           // The surface has come back to a patch it had already reached, in a different copy of the cell: it
           // closes on a translate of itself and so runs away in that direction. The disagreement is that
           // translation, and over all such edges these generate every translation the surface has.
-          result.componentPercolates[static_cast<std::size_t>(label)] = 1;
-          remember(int3(carried.x - offset[edge.to].x, carried.y - offset[edge.to].y,
-                        carried.z - offset[edge.to].z));
+          result.componentPercolates[static_cast<std::size_t>(component)] = 1;
+          remember(int3(carried.x - liftOfPatch[edge.to].x, carried.y - liftOfPatch[edge.to].y,
+                        carried.z - liftOfPatch[edge.to].z));
         }
       }
     }
@@ -942,33 +1000,43 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
     result.componentDimensionality.push_back(latticeVectorRank(translations));
   }
 
+  auto atomOfPatch = [&](std::size_t patch)
+  {
+    return static_cast<std::size_t>(std::upper_bound(patchBase.begin(), patchBase.end(), patch) - patchBase.begin() -
+                                    1);
+  };
+
   for (std::size_t patch = 0; patch < totalPatches; ++patch)
   {
     std::size_t atomIndex = atomOfPatch(patch);
     std::size_t local = patch - patchBase[atomIndex];
-    result.componentOfPatch[atomIndex][local] = component[patch];
-    result.offsetOfPatch[atomIndex][local] = offset[patch];
+    result.componentOfPatch[atomIndex][local] = surfaceOfPatch[patch];
+    result.offsetOfPatch[atomIndex][local] = liftOfPatch[patch];
     if (adjacency[patch].empty()) ++result.unjoinedPatches;
   }
+}
 
-  // ---- where to ask each surface which pore it faces ------------------------------------------------
-  //
-  // Any patch of the surface would answer for all of it, but not equally well: a patch in a crevice has
-  // little room in front of it and the room is what a classification can be proved from. So the patch with
-  // the most room is taken, measured by stepping out along the normal and asking how large a free ball fits.
-  // A handful are kept rather than one: the room in front of a patch says how likely a free ball is to be
-  // reachable from it, but not that it is, and trying the next costs one more walk.
+
+// Where each surface is to be asked which pore it faces.
+//
+// Any patch of the surface would answer for all of it, but not equally well: a patch in a crevice has little
+// room in front of it and the room is what a classification can be proved from. So the patch with the most
+// room is taken, measured by stepping out along the normal and asking how large a free ball fits. A handful
+// are kept rather than one: the room in front of a patch says how likely a free ball is to be reachable from
+// it, but not that it is, and trying the next costs one more walk.
+void chooseComponentRepresentatives(const PoreAccessibility& accessibility, BoundaryComponents& result)
+{
   constexpr std::size_t candidateLimit = 6;
 
   std::vector<std::vector<std::pair<double, std::pair<std::size_t, std::size_t>>>> ranked(
       result.numberOfComponents);
-  for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
+  for (std::size_t atomIndex = 0; atomIndex < result.atoms.size(); ++atomIndex)
   {
     const SphereBoundary& boundary = result.atoms[atomIndex];
     for (std::size_t patch = 0; patch < boundary.numberOfPatches; ++patch)
     {
-      std::int32_t label = result.componentOfPatch[atomIndex][patch];
-      if (label < 0) continue;
+      std::int32_t component = result.componentOfPatch[atomIndex][patch];
+      if (component < 0) continue;
 
       double3 outward = boundary.patchRepresentative[patch];
       double3 point = accessibility.atomPositions[atomIndex] + outward * accessibility.atomRadii[atomIndex];
@@ -978,7 +1046,7 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
         room = std::max(room, accessibility.clearance(point + outward * step));
       }
 
-      auto& candidates = ranked[static_cast<std::size_t>(label)];
+      auto& candidates = ranked[static_cast<std::size_t>(component)];
       candidates.emplace_back(room, std::pair<std::size_t, std::size_t>{atomIndex, patch});
 
       // Kept sorted and short, so that this stays linear in the patches rather than in their number times
@@ -994,14 +1062,39 @@ BoundaryComponents boundaryComponents(const VoronoiAccessibility& accessibility,
 
   result.componentRepresentative.assign(result.numberOfComponents, {0, 0});
   result.componentCandidates.assign(result.numberOfComponents, {});
-  for (std::size_t label = 0; label < result.numberOfComponents; ++label)
+  for (std::size_t component = 0; component < result.numberOfComponents; ++component)
   {
-    auto& candidates = ranked[label];
+    auto& candidates = ranked[component];
     std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
     if (candidates.size() > candidateLimit) candidates.resize(candidateLimit);
-    for (const auto& [room, where] : candidates) result.componentCandidates[label].push_back(where);
-    if (!candidates.empty()) result.componentRepresentative[label] = candidates.front().second;
+    for (const auto& [room, where] : candidates) result.componentCandidates[component].push_back(where);
+    if (!candidates.empty()) result.componentRepresentative[component] = candidates.front().second;
+  }
+}
+
+}  // namespace
+
+
+BoundaryComponents boundaryComponents(const PoreAccessibility& accessibility, LoopMerge rule)
+{
+  const std::size_t numberOfAtoms = accessibility.atomPositions.size();
+  BoundaryComponents result;
+  result.atoms.assign(numberOfAtoms, SphereBoundary{});
+
+  for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
+  {
+    decomposeSphere(accessibility, atomIndex, rule, result);
   }
 
+  std::vector<std::size_t> patchBase(numberOfAtoms + 1, 0);
+  for (std::size_t atomIndex = 0; atomIndex < numberOfAtoms; ++atomIndex)
+  {
+    patchBase[atomIndex + 1] = patchBase[atomIndex] + result.atoms[atomIndex].numberOfPatches;
+  }
+  result.numberOfPatches = patchBase[numberOfAtoms];
+
+  const std::vector<std::vector<PatchEdge>> adjacency = patchAdjacency(accessibility, patchBase, result);
+  assignComponents(patchBase, adjacency, result);
+  chooseComponentRepresentatives(accessibility, result);
   return result;
 }

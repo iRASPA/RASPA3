@@ -39,6 +39,10 @@ export inline constexpr double sweepGapTolerance = 1.0e-12;
 // quadrature; a crossing wrongly dropped costs digits.
 export inline constexpr double capCoverTolerance = 1.0e-9;
 
+// How long a panel of the latitude rule may be where it sits next to a pole, as a multiple of the room
+// between the piece it belongs to and that pole. See `panelBoundaries`, where the number is used and argued.
+export inline constexpr double poleClearance = 4.0;
+
 // A unit vector perpendicular to `axis`, chosen so that the cross product behind it is well conditioned.
 export double3 perpendicularTo(const double3& axis);
 
@@ -251,6 +255,7 @@ export struct SweepWorkspace
   std::vector<CapCrossing> crossings;   // where two of them cross uncovered
   std::vector<double> breakpoints;      // the latitudes between which the integrand is analytic
   std::vector<std::size_t> cutting;     // the caps that cut the piece being integrated
+  std::vector<double> panels;           // the latitudes that piece is cut at for the quadrature
   std::vector<CoveredArc> covered;      // of one circle of latitude
 };
 
@@ -281,6 +286,36 @@ export struct GaussRule
 
 export const GaussRule& unitIntervalGaussRule();
 
+// The latitudes one smooth piece is cut at, into `subdivisions` panels of equal length and then graded
+// towards an end that stands close to a pole. Left in `panels`, first entry `begin` and last `end`.
+//
+// Each half of a panel is anchored at an end and integrated against a squared variable, which is what makes
+// the square root a cap's width leaves at that end smooth, and it is why one panel per piece is enough
+// nearly everywhere. What the substitution cannot reach is a singularity lying just outside the panel, and
+// there is one at each pole: the half width of an arc is a ratio with the sine of the latitude beneath it,
+// so the integrand carries on past the end of a piece towards a pole the piece never reaches and turns
+// singular where that sine vanishes.
+//
+// A piece can end very close to a pole. The frame keeps the pole away from the cap axes, but a cap turns
+// back at its axis give or take its half angle, and nothing in the choice of frame looks at the half angle:
+// a cap whose axis stands a radian and a half off the pole can still turn back a fortieth of a radian from
+// it. A panel reaching from there across the whole piece is then integrating a function whose nearest
+// singularity is thirty times nearer than the panel is long, and that costs three or four digits of the
+// thirteen the rule otherwise gives.
+//
+// Halving the end panel until it is no longer than `poleClearance` times the room left to the pole puts the
+// singularity back out of the rule's reach, and it does so for the panels behind it too: each is about as
+// long as its own distance from the pole, so the ratio that matters is the same on all of them. It is
+// geometric in the room left, so a few halvings settle it however little there is, and it is done only
+// where the room is small --- a piece clear of both poles keeps exactly the panels the caller asked for and
+// the arithmetic it had before. `cut` says whether any cap cuts this piece; where none does there is
+// nothing but the sine of the latitude to integrate and that is analytic at the poles as anywhere else.
+//
+// Four is the multiple because the loss sets in below about eight and is gone by four, measured against the
+// closed form for a single cap turned to put a turning latitude at every distance from a pole.
+export void panelBoundaries(double begin, double end, std::size_t subdivisions, bool cut,
+                            std::vector<double>& panels);
+
 // The covered arcs of one latitude, ordered by where they begin.
 //
 // They arrive very nearly in that order already: the caps are taken in order of their own azimuth and each
@@ -303,8 +338,10 @@ export inline void sortByBeginning(std::vector<CoveredArc>& arcs)
 }
 
 // Walks the exposed part of the sphere and calls `measure(gap)` for every exposed stretch of every circle of
-// latitude the quadrature visits. `subdivisions` cuts each smooth piece into that many panels; one settles an
-// area to some ten digits, and raising it is a check on that rather than an improvement to it.
+// latitude the quadrature visits. `subdivisions` cuts each smooth piece into that many panels of equal
+// length; one settles an area to some thirteen digits and raising it is a check on that rather than an
+// improvement to it. Panels beyond those are added where a piece ends near a pole, whatever the caller asks
+// for, since there one long panel is not enough on its own: see `panelBoundaries`.
 // `knownCrossings` is as in `prepareSweep`, and null for a caller with nothing already found.
 //
 // The whole of the geometry is here and none of what is being measured: the area of a gap is
@@ -349,12 +386,12 @@ void sweepExposedLatitudes(std::vector<SweepCircle>& circles, const std::array<d
     }
     if (buried) continue;
 
-    for (std::size_t part = 0; part < parts; ++part)
+    panelBoundaries(pieceBegin, pieceEnd, parts, !work.cutting.empty(), work.panels);
+
+    for (std::size_t panel = 0; panel + 1 < work.panels.size(); ++panel)
     {
-      const double begin =
-          pieceBegin + (pieceEnd - pieceBegin) * static_cast<double>(part) / static_cast<double>(parts);
-      const double end =
-          pieceBegin + (pieceEnd - pieceBegin) * static_cast<double>(part + 1) / static_cast<double>(parts);
+      const double begin = work.panels[panel];
+      const double end = work.panels[panel + 1];
       const double middle = 0.5 * (begin + end);
 
       // The uncovered length of a latitude leaves a piece end like the square root of the distance to it, a

@@ -7,7 +7,7 @@ import std;
 import double3;
 import simulationbox;
 import apollonius_network;
-import voronoi_accessibility;
+import pore_accessibility;
 
 // The accessibility classifier of the Voronoi analyses, built on the Apollonius diagram.
 //
@@ -19,7 +19,7 @@ import voronoi_accessibility;
 // and the nodes it is then tested against are the true maxima of the clearance around it.
 export struct ApolloniusAccessibility
 {
-  VoronoiAccessibility accessibility;
+  PoreAccessibility accessibility;
 
   // What the diagram came to. Its network has been handed to `accessibility`, which owns it now, so
   // only the counts and the verification are left here, for the header of an output file.

@@ -1,6 +1,6 @@
 module;
 
-export module voronoi_accessibility;
+export module pore_accessibility;
 
 import std;
 
@@ -11,14 +11,20 @@ import voronoi_network;
 import voronoi_channels;
 
 // Classifies arbitrary sample points as solid / accessible-void / inaccessible-void, the
-// machinery shared by the accessible surface-area, accessible-volume and blocking-sphere
-// analyses.
+// machinery shared by the accessible surface-area, accessible-volume, pore-size and
+// blocking-sphere analyses.
 //
-// Following zeo++, the atoms are inflated by the probe radius, a Voronoi network is built
-// on the inflated atoms, and its nodes are labelled as belonging to channels (accessible)
-// or pockets (inaccessible). A sample point is assigned to the nearest atom; if it lies
-// inside that atom's inflated sphere it is solid, otherwise the nearest Voronoi node of
-// that atom's cell that is in line of sight decides accessible vs inaccessible.
+// Following zeo++, the atoms are inflated by the probe radius, a pore network is built on
+// the inflated atoms, and its nodes are labelled as belonging to channels (accessible) or
+// pockets (inaccessible). A sample point is assigned to the cell it falls in; if it lies
+// inside that atom's inflated sphere it is solid, otherwise the nearest node of that cell
+// that is in line of sight decides accessible vs inaccessible.
+//
+// Which diagram the network came from is not this classifier's business, and the name says
+// so. `create` builds the radical diagram, which is zeo++'s own; `createFromNetwork` takes
+// one already built, which is how the Apollonius analyses reach the same classifier. All
+// that changes between them is the metric the cells are cut by, and the classifier is told
+// which one so that it attributes a point to the cell that diagram would put it in.
 
 export struct PointClassification
 {
@@ -63,7 +69,7 @@ export constexpr std::size_t samplingSeed = 1400uz;
 // cannot spin.
 export constexpr std::size_t resampleLimit = 8uz;
 
-export struct VoronoiAccessibility
+export struct PoreAccessibility
 {
   // Which distance decides the cell a sample point falls in. It has to be the one the network's cells
   // are cut by, since the point is attributed to a cell before that cell's nodes are consulted: the
@@ -114,17 +120,17 @@ export struct VoronoiAccessibility
   std::vector<double> nodeBinMaximumClearance;
   double maximumNodeClearance{0.0};
 
-  // Builds the accessibility structure. `radii` are the bare atom radii; atoms are
+  // Builds the accessibility structure on the radical diagram. `radii` are the bare atom radii; atoms are
   // inflated internally by `probeRadius`.
-  static VoronoiAccessibility create(const SimulationBox& simulationBox,
-                                     const std::vector<double3>& fractionalPositions,
-                                     const std::vector<double>& radii, double probeRadius);
+  static PoreAccessibility create(const SimulationBox& simulationBox,
+                                  const std::vector<double3>& fractionalPositions, const std::vector<double>& radii,
+                                  double probeRadius);
 
   // Builds it from a pore network already constructed on the inflated atoms, for a caller that takes
   // its network from somewhere other than the radical diagram. The network carries the cell, the atom
   // positions and the inflated radii, so it is all that is needed besides the metric its cells are
   // cut by.
-  static VoronoiAccessibility createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius = 0.0);
+  static PoreAccessibility createFromNetwork(VoronoiNetwork network, Metric metric, double probeRadius = 0.0);
 
   PointClassification classify(const double3& point) const;
 

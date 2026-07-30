@@ -6,7 +6,7 @@ import std;
 
 import double3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_solvent_excluded;
 
 // The pore-size distribution of Gelb and Gubbins, evaluated rather than sampled.
@@ -155,7 +155,9 @@ export struct PoreSizeDistributionCurve
 // `build` makes the accessibility for a given probe radius: it is a callback because which diagram the pores
 // are taken from is the caller's business and the geometry here is the same either way. It is called at
 // `probeRadius` as well, the pores of that one network being what the accessible curve is divided by at every
-// diameter above it.
+// diameter above it, and once at vanishing probe for the void volume. The diameter of the largest sphere in
+// that vanishing-probe network is where the cumulative hits zero, so rows of the report past it plus one bin
+// are left at zero without being evaluated.
 export PoreSizeDistributionCurve exactPoreSizeDistribution(
-    const std::function<VoronoiAccessibility(double)>& build, double cellVolume, double maximumDiameter,
+    const std::function<PoreAccessibility(double)>& build, double cellVolume, double maximumDiameter,
     std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, std::size_t refinements = 12);

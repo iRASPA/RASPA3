@@ -5,7 +5,7 @@ export module exact_void_split;
 import std;
 
 import double3;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_surface_patches;
 import exact_boundary_components;
 
@@ -157,13 +157,18 @@ export struct ExactVoidSplit
   std::string rejection;
 };
 
-// The split, from a classified sweep of the patches. `patches` must come from a sweep with the arcs
-// classified, or there is nothing here to divide.
-export ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility,
-                                     const ExactSurfaceAreaSample& patches, double cellVolume);
+// The split, from a sweep that classified its arcs. `patches` must come from such a sweep, or there is
+// nothing here to divide.
+//
+// The reference route, as the arc-by-arc sweep it is built on is: nothing outside the tests calls it, and
+// what it is for is to reach the same numbers as the route below from an argument with nothing in common
+// with it. Where the two agree the split is as good as the geometry; where they do not, the closure defect
+// each reports says which of them failed and on which pocket.
+export ExactVoidSplit exactVoidSplit(const PoreAccessibility& accessibility,
+                                     const MeasuredPatches& patches, double cellVolume);
 
 // The same, sweeping the patches itself.
-export ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, double cellVolume,
+export ExactVoidSplit exactVoidSplit(const PoreAccessibility& accessibility, double cellVolume,
                                      std::size_t subdivisions = 1);
 
 // The split taken over the connected surfaces of the boundary instead of over the classifier's pores.
@@ -184,11 +189,11 @@ export ExactVoidSplit exactVoidSplit(const VoronoiAccessibility& accessibility, 
 // contribution comes out negative -- which is right, that volume being solid and not part of the pocket. A
 // bounded surface facing a channel is the outside of a cluster in open void and encloses no void at all, so
 // it is left out; the channels take what the subtraction leaves, as before.
-export ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibility,
+export ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility,
                                                  const BoundaryComponents& components,
-                                                 const std::vector<ComponentLabel>& labels,
-                                                 const ExactSurfaceAreaSample& patches, double cellVolume);
+                                                 const std::vector<ComponentVerdict>& verdicts,
+                                                 const MeasuredPatches& patches, double cellVolume);
 
 // The same, decomposing the boundary and sweeping it itself.
-export ExactVoidSplit exactVoidSplitByComponents(const VoronoiAccessibility& accessibility, double cellVolume,
+export ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility, double cellVolume,
                                                  std::size_t subdivisions = 1);

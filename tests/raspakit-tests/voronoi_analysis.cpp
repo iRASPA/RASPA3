@@ -12,7 +12,7 @@ import framework;
 import voronoi_network;
 import voronoi_pore_diameters;
 import voronoi_channels;
-import voronoi_accessibility;
+import pore_accessibility;
 
 // Simple-cubic lattice of one atom per cell (lattice a, atom radius r). The Voronoi cell
 // is a cube; all corners are periodic images of a single node at the cube centre.
@@ -71,7 +71,7 @@ TEST(voronoi_analysis, accessibility_classification)
   double r = 1.0;
   double probe = 0.5;
   SimulationBox box(a, a, a);
-  VoronoiAccessibility accessibility = VoronoiAccessibility::create(box, {double3(0.0, 0.0, 0.0)}, {r}, probe);
+  PoreAccessibility accessibility = PoreAccessibility::create(box, {double3(0.0, 0.0, 0.0)}, {r}, probe);
 
   // Point well inside the inflated atom.
   PointClassification insidePoint = accessibility.classify(double3(0.2, 0.0, 0.0));
@@ -333,7 +333,7 @@ TEST(voronoi_analysis, classify_decides_every_point_with_heterogeneous_radii)
 
   ASSERT_LT(separation, std::sqrt(std::pow(largeRadius + probe, 2.0) - std::pow(smallRadius + probe, 2.0)));
 
-  VoronoiAccessibility accessibility = VoronoiAccessibility::create(box, fractionalPositions, radii, probe);
+  PoreAccessibility accessibility = PoreAccessibility::create(box, fractionalPositions, radii, probe);
 
   // Guard against the test going vacuous: the configuration must really produce empty cells.
   std::size_t atomsWithoutNodes = 0;
@@ -414,8 +414,8 @@ TEST(voronoi_analysis, DISABLED_fau_timing_vs_zeopp)
   auto t2 = clock();
   ChannelAnalysis channels = ChannelAnalysis::compute(network, probeRadius);
   auto t3 = clock();
-  VoronoiAccessibility accessibility =
-      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+  PoreAccessibility accessibility =
+      PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
   auto t4 = clock();
 
   RandomNumber random{std::nullopt};
@@ -591,8 +591,8 @@ TEST(voronoi_analysis, DISABLED_compare_p1_cifs_vs_zeopp)
     PoreDiameters diameters = PoreDiameters::compute(network);
     ChannelAnalysis channels = ChannelAnalysis::compute(network, probeRadius);
     auto t2 = clock();
-    VoronoiAccessibility accessibility =
-        VoronoiAccessibility::create(simulationBox, fractionalPositions, radii, probeRadius);
+    PoreAccessibility accessibility =
+        PoreAccessibility::create(simulationBox, fractionalPositions, radii, probeRadius);
     auto t3 = clock();
 
     RandomNumber random{std::optional<std::size_t>(42)};
@@ -723,8 +723,8 @@ TEST(voronoi_analysis, DISABLED_compare_all_cifs_vs_zeopp)
     for (const VoronoiPore& pore : channels.pores)
       if (pore.isChannel) dims += std::format("{} ", pore.dimensionality);
 
-    VoronoiAccessibility accessibility =
-        VoronoiAccessibility::create(simulationBox, fractionalPositions, radii, probeRadius);
+    PoreAccessibility accessibility =
+        PoreAccessibility::create(simulationBox, fractionalPositions, radii, probeRadius);
 
     RandomNumber random{std::optional<std::size_t>(42)};
 

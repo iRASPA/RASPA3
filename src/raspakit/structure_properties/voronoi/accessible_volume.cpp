@@ -11,11 +11,11 @@ import atom;
 import framework;
 import forcefield;
 import units;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_union_volume;
 import exact_void_split;
 
-VolumeSample sampleAccessibleVolume(const VoronoiAccessibility& accessibility, std::size_t numberOfSamples)
+VolumeSample sampleAccessibleVolume(const PoreAccessibility& accessibility, std::size_t numberOfSamples)
 {
   RandomNumber random{samplingSeed};
 
@@ -65,8 +65,8 @@ void VoronoiAccessibleVolume::run(const ForceField& forceField, const Framework&
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiAccessibility accessibility =
-      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+  PoreAccessibility accessibility =
+      PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
 
   double volume = framework.simulationBox.volume;
   std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));  // 200 per Å³

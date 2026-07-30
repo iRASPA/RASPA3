@@ -6,7 +6,7 @@ import double3;
 import simulationbox;
 import randomnumbers;
 import voronoi_network;
-import voronoi_accessibility;
+import pore_accessibility;
 import voronoi_surface_area;
 import apollonius_accessibility;
 import apollonius_surface_area;
@@ -26,7 +26,7 @@ namespace
 // back undecided, which is what is wanted here -- the area is all in `total()` and none of it has been
 // through a diagram -- and it keeps these cases free of the question of whether a diagram of four atoms
 // in a large box has any vertices.
-VoronoiAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+PoreAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
                                  const std::vector<double>& radii)
 {
   VoronoiNetwork network;
@@ -37,7 +37,7 @@ VoronoiAccessibility bareGeometry(const SimulationBox& box, const std::vector<do
     network.atomPositionsFractional.push_back(double3::fract(fractional));
   }
   network.atomNodeVectors.assign(fractionalPositions.size(), {});
-  return VoronoiAccessibility::createFromNetwork(std::move(network), VoronoiAccessibility::Metric::Clearance);
+  return PoreAccessibility::createFromNetwork(std::move(network), PoreAccessibility::Metric::Clearance);
 }
 
 
@@ -65,8 +65,8 @@ TEST(apollonius_surface_area, lone_sphere)
   SimulationBox box(a, a, a);
   const double radius = 1.7;
 
-  VoronoiAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
-  ExactSurfaceAreaSample area = exactAccessibleSurfaceArea(geometry);
+  PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
+  MeasuredPatches area = exactAccessibleSurfaceAreaByPore(geometry);
 
   EXPECT_NEAR(area.total(), 4.0 * std::numbers::pi * radius * radius, 1.0e-11);
 }
@@ -93,9 +93,9 @@ TEST(apollonius_surface_area, two_spheres_against_the_closed_form)
 
     double3 first = double3(0.5, 0.5, 0.5);
     double3 second = first + double3(distance / a, 0.0, 0.0);
-    VoronoiAccessibility geometry = bareGeometry(box, {first, second}, {firstRadius, secondRadius});
+    PoreAccessibility geometry = bareGeometry(box, {first, second}, {firstRadius, secondRadius});
 
-    ExactSurfaceAreaSample area = exactAccessibleSurfaceArea(geometry);
+    MeasuredPatches area = exactAccessibleSurfaceAreaByPore(geometry);
     double expected = unionAreaOfTwoSpheres(firstRadius, secondRadius, distance);
     EXPECT_NEAR(area.total(), expected, 1.0e-10 * expected);
   }
@@ -112,9 +112,9 @@ TEST(apollonius_surface_area, a_buried_sphere_carries_no_area)
   const double large = 3.0;
   const double small = 0.5;
 
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       bareGeometry(box, {double3(0.5, 0.5, 0.5), double3(0.5 + 1.0 / a, 0.5, 0.5)}, {large, small});
-  ExactSurfaceAreaSample area = exactAccessibleSurfaceArea(geometry);
+  MeasuredPatches area = exactAccessibleSurfaceAreaByPore(geometry);
 
   EXPECT_NEAR(area.total(), 4.0 * std::numbers::pi * large * large, 1.0e-11);
 }
@@ -131,8 +131,8 @@ TEST(apollonius_surface_area, an_atom_is_cut_by_its_own_images)
   const double radius = 6.0;  // between a/2 and a/sqrt(2), so exactly the six face images cut it
   SimulationBox box(a, a, a);
 
-  VoronoiAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
-  ExactSurfaceAreaSample area = exactAccessibleSurfaceArea(geometry);
+  PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
+  MeasuredPatches area = exactAccessibleSurfaceAreaByPore(geometry);
 
   double capHeight = radius - 0.5 * a;
   double expected = 4.0 * std::numbers::pi * radius * radius -
@@ -160,9 +160,9 @@ TEST(apollonius_surface_area, refining_the_quadrature_does_not_move_the_answer)
     radii.push_back(1.4 + 1.4 * random.uniform());
   }
 
-  VoronoiAccessibility packing = bareGeometry(box, fractionalPositions, radii);
-  double coarse = exactAccessibleSurfaceArea(packing, 1).total();
-  double fine = exactAccessibleSurfaceArea(packing, 5).total();
+  PoreAccessibility packing = bareGeometry(box, fractionalPositions, radii);
+  double coarse = exactAccessibleSurfaceAreaByPore(packing, 1).total();
+  double fine = exactAccessibleSurfaceAreaByPore(packing, 5).total();
   EXPECT_GT(coarse, 0.0);
   EXPECT_NEAR(coarse, fine, 1.0e-8 * coarse);
 
@@ -180,9 +180,9 @@ TEST(apollonius_surface_area, refining_the_quadrature_does_not_move_the_answer)
       }
     }
   }
-  VoronoiAccessibility crystal = bareGeometry(box, lattice, equalRadii);
-  double coarseCrystal = exactAccessibleSurfaceArea(crystal, 1).total();
-  double fineCrystal = exactAccessibleSurfaceArea(crystal, 5).total();
+  PoreAccessibility crystal = bareGeometry(box, lattice, equalRadii);
+  double coarseCrystal = exactAccessibleSurfaceAreaByPore(crystal, 1).total();
+  double fineCrystal = exactAccessibleSurfaceAreaByPore(crystal, 5).total();
   EXPECT_GT(coarseCrystal, 0.0);
   EXPECT_NEAR(coarseCrystal, fineCrystal, 1.0e-8 * coarseCrystal);
 }
@@ -211,7 +211,7 @@ TEST(apollonius_surface_area, agrees_with_the_sampled_estimate)
   ApolloniusAccessibility classifier = ApolloniusAccessibility::create(box, fractionalPositions, radii, probe);
   ASSERT_TRUE(classifier.diagram.networkIsComplete());
 
-  ExactSurfaceAreaSample measured = exactAccessibleSurfaceArea(classifier.accessibility);
+  MeasuredPatches measured = exactAccessibleSurfaceAreaByPore(classifier.accessibility);
   SurfaceAreaSample sampled = sampleAccessibleSurfaceArea(classifier.accessibility, 400);
 
   double total = measured.total();
@@ -245,13 +245,13 @@ TEST(apollonius_surface_area, the_parts_add_up_to_the_whole)
   }
 
   ApolloniusAccessibility classifier = ApolloniusAccessibility::create(box, fractionalPositions, radii, 0.5);
-  ExactSurfaceAreaSample split = exactAccessibleSurfaceArea(classifier.accessibility);
+  MeasuredPatches split = exactAccessibleSurfaceAreaByPore(classifier.accessibility);
 
   // The bare geometry inflates nothing of its own, so it is handed the inflated radii directly, and then
   // it is the same surface the classifier's is.
   std::vector<double> inflated(radii.size());
   for (std::size_t i = 0; i < radii.size(); ++i) inflated[i] = radii[i] + 0.5;
-  ExactSurfaceAreaSample whole = exactAccessibleSurfaceArea(bareGeometry(box, fractionalPositions, inflated));
+  MeasuredPatches whole = exactAccessibleSurfaceAreaByPore(bareGeometry(box, fractionalPositions, inflated));
 
   ASSERT_GT(whole.total(), 0.0);
   EXPECT_NEAR(split.accessible + split.inaccessible + split.undecided, whole.total(), 1.0e-9 * whole.total());
@@ -281,15 +281,15 @@ TEST(apollonius_surface_area, the_total_is_the_same_on_either_network)
   }
 
   ApolloniusAccessibility apollonius = ApolloniusAccessibility::create(box, fractionalPositions, radii, probe);
-  VoronoiAccessibility radical = VoronoiAccessibility::create(box, fractionalPositions, radii, probe);
+  PoreAccessibility radical = PoreAccessibility::create(box, fractionalPositions, radii, probe);
 
-  ExactSurfaceAreaSample fromApollonius = exactAccessibleSurfaceArea(apollonius.accessibility);
-  ExactSurfaceAreaSample fromRadical = exactAccessibleSurfaceArea(radical);
+  MeasuredPatches fromApollonius = exactAccessibleSurfaceAreaByPore(apollonius.accessibility);
+  MeasuredPatches fromRadical = exactAccessibleSurfaceAreaByPore(radical);
 
   ASSERT_GT(fromApollonius.total(), 0.0);
 
   // The same geometry measured the same way: the totals are equal to round-off, not to a tolerance.
   EXPECT_NEAR(fromRadical.area, fromApollonius.area, 1.0e-12 * fromApollonius.area);
   EXPECT_NEAR(fromRadical.total(), fromApollonius.total(), 1.0e-12 * fromApollonius.total());
-  EXPECT_EQ(fromRadical.numberOfArcs, fromApollonius.numberOfArcs);
+  EXPECT_EQ(fromRadical.diagnostics.numberOfArcs, fromApollonius.diagnostics.numberOfArcs);
 }

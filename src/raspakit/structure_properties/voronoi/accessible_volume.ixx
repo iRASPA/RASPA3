@@ -6,7 +6,7 @@ import std;
 
 import framework;
 import forcefield;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_void_split;
 
 // Monte-Carlo accessible volume split into accessible and inaccessible (pocket) void,
@@ -21,7 +21,7 @@ export struct VolumeSample
 
 // The sampling itself, over whatever accessibility classifier is handed to it, so that the same
 // estimate can be made of a network taken from the radical diagram or from the Apollonius diagram.
-export VolumeSample sampleAccessibleVolume(const VoronoiAccessibility& accessibility, std::size_t numberOfSamples);
+export VolumeSample sampleAccessibleVolume(const PoreAccessibility& accessibility, std::size_t numberOfSamples);
 
 // Void volume against the radical network: how much of it there is, and how much of that a molecule can
 // reach.

@@ -45,22 +45,22 @@ void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& f
 
   const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
   const std::size_t panels = std::max<std::size_t>(1, subdivisions.value_or(1));
-  ExactSurfaceAreaSample measured;
+  MeasuredPatches measured;
 
   if (method == Method::Exact)
   {
     // Decomposed once, used twice: for the accessible area surface by surface, and for the excluded surface
     // behind it, whose convex, saddle and concave pieces hang off the same patches, creases and wedges.
     BoundaryComponents components = boundaryComponents(classifier.accessibility);
-    std::vector<ComponentLabel> labels = labelBoundaryComponents(classifier.accessibility, components);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(classifier.accessibility, components);
 
-    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, labels, panels);
+    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
 
     excludedSurface =
-        solventExcludedGeometry(classifier.accessibility, probeRadius, components, labels, measured, panels);
+        solventExcludedGeometry(classifier.accessibility, probeRadius, components, verdicts, measured, panels);
   }
   else
   {
@@ -91,7 +91,7 @@ void ApolloniusSurfaceArea::run(const ForceField& forceField, const Framework& f
   {
     std::print(myfile, "# Quadrature: {}-point Gauss-Legendre per half panel, {} panel(s) per smooth piece\n",
                exactQuadratureOrder, panels);
-    std::print(myfile, "# Surface patches measured: {} arcs\n", measured.numberOfArcs);
+    std::print(myfile, "# Surface patches measured: {} arcs\n", measured.diagnostics.numberOfArcs);
     std::print(myfile,
                "# Connected surfaces: {}, of which {} run away through the crystal, {} seal off void and {} "
                "are clusters of atoms the network was asked about\n",

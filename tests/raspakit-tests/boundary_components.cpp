@@ -5,7 +5,7 @@ import std;
 import int3;
 import double3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_boundary_components;
 
 // The boundary of the union of the balls, cut into its connected surfaces.
@@ -14,6 +14,13 @@ import exact_boundary_components;
 // sealed cage has an inside and an outside and nothing else, so its boundary is two surfaces and every one
 // of its atoms carries one patch of each; a chain of balls round the periodic boundary is one surface that
 // closes on a translate of itself; and moving any of it about the cell changes none of that.
+//
+// The last group of tests goes underneath those and asks the two predicates the cutting is built on directly.
+// `exposedGreatCircleArc` is the closed form for whether the shortest path between two directions stays clear
+// of every cap, and it is the only geometry in the whole of the patch merging; `connectedOnSphere` is that
+// predicate extended to paths of several legs. A true answer from either is meant to be a proof, so what
+// matters is not only that they say yes where they should but that they never say yes where they should not:
+// an arc wrongly called exposed merges two patches that are not one, and no later step can undo it.
 
 namespace
 {
@@ -38,7 +45,7 @@ std::vector<double3> cageCentres(const double3& centre, double shellRadius, std:
 }
 
 
-VoronoiAccessibility geometryOf(const SimulationBox& box, const std::vector<double3>& positions, double ballRadius)
+PoreAccessibility geometryOf(const SimulationBox& box, const std::vector<double3>& positions, double ballRadius)
 {
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
@@ -47,7 +54,7 @@ VoronoiAccessibility geometryOf(const SimulationBox& box, const std::vector<doub
     fractionalPositions.push_back(double3::fract(box.inverseCell * position));
     radii.push_back(ballRadius);
   }
-  return VoronoiAccessibility::create(box, fractionalPositions, radii, 0.0);
+  return PoreAccessibility::create(box, fractionalPositions, radii, 0.0);
 }
 
 
@@ -58,7 +65,7 @@ VoronoiAccessibility geometryOf(const SimulationBox& box, const std::vector<doub
 std::vector<std::int32_t> lastFloodFill;
 std::size_t lastFloodFillLatitudes = 0;
 
-std::size_t patchesByFloodFill(const VoronoiAccessibility& accessibility, std::size_t atomIndex,
+std::size_t patchesByFloodFill(const PoreAccessibility& accessibility, std::size_t atomIndex,
                                std::size_t latitudes = 400)
 {
   const double radius = accessibility.atomRadii[atomIndex];
@@ -139,6 +146,24 @@ std::int32_t floodFillRegionOf(const double3& unitDirection)
   return lastFloodFill[i * longitudes + j];
 }
 
+
+// A cap of this half angle about this direction, for the predicates below. Only the axis and the cosine
+// are read by them, but the rest is filled so that the circles are the ones the decomposition would build.
+SphereCircle capOf(const double3& axis, double halfAngle)
+{
+  SphereCircle circle;
+  circle.axis = double3::normalize(axis);
+  circle.halfAngle = halfAngle;
+  circle.cosineHalfAngle = std::cos(halfAngle);
+  circle.sineHalfAngle = std::sin(halfAngle);
+  return circle;
+}
+
+double3 fromPolar(double polar, double azimuth)
+{
+  return double3(std::sin(polar) * std::cos(azimuth), std::sin(polar) * std::sin(azimuth), std::cos(polar));
+}
+
 }  // namespace
 
 
@@ -148,7 +173,7 @@ std::int32_t floodFillRegionOf(const double3& unitDirection)
 TEST(boundary_components, separate_balls_are_separate_surfaces)
 {
   SimulationBox box(30.0, 30.0, 30.0);
-  VoronoiAccessibility geometry = geometryOf(box, {double3(8.0, 8.0, 8.0), double3(20.0, 20.0, 20.0)}, 2.0);
+  PoreAccessibility geometry = geometryOf(box, {double3(8.0, 8.0, 8.0), double3(20.0, 20.0, 20.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -166,7 +191,7 @@ TEST(boundary_components, separate_balls_are_separate_surfaces)
 TEST(boundary_components, overlapping_balls_are_one_surface)
 {
   SimulationBox box(30.0, 30.0, 30.0);
-  VoronoiAccessibility geometry = geometryOf(box, {double3(14.0, 15.0, 15.0), double3(16.0, 15.0, 15.0)}, 2.0);
+  PoreAccessibility geometry = geometryOf(box, {double3(14.0, 15.0, 15.0), double3(16.0, 15.0, 15.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -183,7 +208,7 @@ TEST(boundary_components, overlapping_balls_are_one_surface)
 TEST(boundary_components, a_band_between_two_caps_is_one_patch)
 {
   SimulationBox box(30.0, 30.0, 30.0);
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       geometryOf(box, {double3(15.0, 15.0, 15.0), double3(12.5, 15.0, 15.0), double3(17.5, 15.0, 15.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry);
@@ -220,7 +245,7 @@ TEST(boundary_components, a_region_winding_round_the_sphere_is_not_cut_up)
     double3 axis(std::sin(polar) * std::cos(azimuth), std::sin(polar) * std::sin(azimuth), std::cos(polar));
     positions.push_back(centre + axis * (radius + 1.4));
   }
-  VoronoiAccessibility geometry = geometryOf(box, positions, radius);
+  PoreAccessibility geometry = geometryOf(box, positions, radius);
 
   BoundaryComponents components = boundaryComponents(geometry);
   patchesByFloodFill(geometry, 0, 1600);
@@ -246,7 +271,7 @@ TEST(boundary_components, a_sealed_cage_has_an_inside_and_an_outside)
   SimulationBox box(a, a, a);
   const std::size_t count = 32;
   std::vector<double3> positions = cageCentres(double3(0.5 * a, 0.5 * a, 0.5 * a), 3.0, count);
-  VoronoiAccessibility geometry = geometryOf(box, positions, 1.8);
+  PoreAccessibility geometry = geometryOf(box, positions, 1.8);
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -284,7 +309,7 @@ TEST(boundary_components, a_direction_is_looked_up_on_the_patch_it_lies_on)
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const std::size_t count = 32;
   std::vector<double3> positions = cageCentres(centre, 3.0, count);
-  VoronoiAccessibility geometry = geometryOf(box, positions, 1.8);
+  PoreAccessibility geometry = geometryOf(box, positions, 1.8);
 
   BoundaryComponents components = boundaryComponents(geometry);
   ASSERT_EQ(components.numberOfComponents, 2uz);
@@ -328,7 +353,7 @@ TEST(boundary_components, a_cage_on_the_boundary_is_the_same_cage)
   const double a = 14.0;
   SimulationBox box(a, a, a);
   const std::size_t count = 32;
-  VoronoiAccessibility geometry = geometryOf(box, cageCentres(double3(0.0, 0.0, 0.0), 3.0, count), 1.8);
+  PoreAccessibility geometry = geometryOf(box, cageCentres(double3(0.0, 0.0, 0.0), 3.0, count), 1.8);
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -347,7 +372,7 @@ TEST(boundary_components, two_cages_give_four_surfaces)
   SimulationBox box(a, a, a);
   std::vector<double3> positions = cageCentres(double3(6.0, 6.0, 6.0), 3.0, 32);
   for (const double3& position : cageCentres(double3(18.0, 18.0, 18.0), 3.0, 32)) positions.push_back(position);
-  VoronoiAccessibility geometry = geometryOf(box, positions, 1.8);
+  PoreAccessibility geometry = geometryOf(box, positions, 1.8);
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -370,7 +395,7 @@ TEST(boundary_components, a_chain_round_the_cell_closes_on_a_translate)
   {
     positions.push_back(double3(a * static_cast<double>(i) / static_cast<double>(count), 10.0, 10.0));
   }
-  VoronoiAccessibility geometry = geometryOf(box, positions, 1.5);  // spacing 2.0, so consecutive balls overlap
+  PoreAccessibility geometry = geometryOf(box, positions, 1.5);  // spacing 2.0, so consecutive balls overlap
 
   BoundaryComponents components = boundaryComponents(geometry);
 
@@ -386,7 +411,7 @@ TEST(boundary_components, a_chain_round_the_cell_closes_on_a_translate)
 TEST(boundary_components, the_nesting_rule_makes_the_band_one_patch)
 {
   SimulationBox box(30.0, 30.0, 30.0);
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       geometryOf(box, {double3(15.0, 15.0, 15.0), double3(12.5, 15.0, 15.0), double3(17.5, 15.0, 15.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry, LoopMerge::nesting);
@@ -417,7 +442,7 @@ TEST(boundary_components, the_nesting_rule_follows_a_winding_region)
     double3 axis(std::sin(polar) * std::cos(azimuth), std::sin(polar) * std::sin(azimuth), std::cos(polar));
     positions.push_back(centre + axis * (radius + 1.4));
   }
-  VoronoiAccessibility geometry = geometryOf(box, positions, radius);
+  PoreAccessibility geometry = geometryOf(box, positions, radius);
 
   BoundaryComponents byNesting = boundaryComponents(geometry, LoopMerge::nesting);
   BoundaryComponents byPaths = boundaryComponents(geometry, LoopMerge::paths);
@@ -447,7 +472,7 @@ TEST(boundary_components, the_two_merge_rules_agree)
   SimulationBox box(a, a, a);
   const std::size_t count = 32;
 
-  std::vector<std::pair<std::string, VoronoiAccessibility>> cases;
+  std::vector<std::pair<std::string, PoreAccessibility>> cases;
   cases.emplace_back("sealed cage", geometryOf(box, cageCentres(double3(0.5 * a, 0.5 * a, 0.5 * a), 3.0, count), 1.8));
   cases.emplace_back("cage on the corner", geometryOf(box, cageCentres(double3(0.0, 0.0, 0.0), 3.0, count), 1.8));
 
@@ -479,7 +504,7 @@ TEST(boundary_components, neighbour_images_are_consistent_and_symmetric)
 {
   const double a = 9.0;  // small enough that the images of an atom reach its own sphere
   SimulationBox box(a, a, a);
-  VoronoiAccessibility geometry =
+  PoreAccessibility geometry =
       geometryOf(box, {double3(1.0, 2.0, 3.0), double3(5.0, 6.0, 7.0), double3(8.5, 0.5, 4.0)}, 2.2);
 
   for (std::size_t i = 0; i < geometry.atomPositions.size(); ++i)
@@ -616,4 +641,199 @@ TEST(boundary_components, a_rod_in_open_void_bounds_more_than_it_says)
   ASSERT_EQ(rod.numberOfComponents, 1uz);
   EXPECT_EQ(rod.componentDimensionality[0], 1);
   EXPECT_EQ(rod.componentPercolates[0], 1);
+}
+
+TEST(boundary_components, a_sphere_with_no_caps_joins_everything)
+{
+  const std::vector<SphereCircle> none;
+  EXPECT_TRUE(exposedGreatCircleArc(none, double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0)));
+  EXPECT_TRUE(exposedGreatCircleArc(none, double3(1.0, 0.0, 0.0), double3(0.0, 0.0, 1.0)));
+}
+
+TEST(boundary_components, a_direction_is_joined_to_itself)
+{
+  const std::vector<SphereCircle> circles = {capOf(double3(0.0, 0.0, 1.0), 0.5)};
+  const double3 point = fromPolar(2.0, 0.3);
+  EXPECT_TRUE(exposedGreatCircleArc(circles, point, point));
+
+  // And so is a direction inside a cap, the arc between the two being of no length at all. The predicate is
+  // asked only about points of the exposed region, so this is a statement about the degenerate case and not
+  // about coverage.
+  EXPECT_TRUE(exposedGreatCircleArc(circles, double3(0.0, 0.0, 1.0), double3(0.0, 0.0, 1.0)));
+}
+
+TEST(boundary_components, two_antipodal_directions_are_joined_by_no_arc_at_all)
+{
+  // No great circle through them is determined, so there is no arc to test and the answer has to be no.
+  const std::vector<SphereCircle> none;
+  EXPECT_FALSE(exposedGreatCircleArc(none, double3(1.0, 0.0, 0.0), double3(-1.0, 0.0, 0.0)));
+}
+
+TEST(boundary_components, an_arc_running_into_a_cap_is_not_exposed)
+{
+  // A cap over the north pole, and two points of the equator a third of the way round from one another. The
+  // arc between them stays on the equator, which the cap does not reach.
+  const std::vector<SphereCircle> circles = {capOf(double3(0.0, 0.0, 1.0), 0.5)};
+  EXPECT_TRUE(exposedGreatCircleArc(circles, fromPolar(0.5 * std::numbers::pi, 0.0),
+                                    fromPolar(0.5 * std::numbers::pi, 2.0)));
+
+  // The same two points, but with the cap grown until it swallows the equator: now nothing of the arc is
+  // exposed, its own ends least of all.
+  const std::vector<SphereCircle> swallowed = {capOf(double3(0.0, 0.0, 1.0), 2.0)};
+  EXPECT_FALSE(exposedGreatCircleArc(swallowed, fromPolar(0.5 * std::numbers::pi, 0.0),
+                                     fromPolar(0.5 * std::numbers::pi, 2.0)));
+}
+
+TEST(boundary_components, an_arc_over_a_cap_that_neither_end_touches_is_caught)
+{
+  // The case the interior turning point is there for. Both ends stand clear of a cap on the equator, and the
+  // arc between them passes straight over it: testing the ends alone would call this exposed.
+  const std::vector<SphereCircle> circles = {capOf(double3(1.0, 0.0, 0.0), 0.4)};
+  const double3 from = fromPolar(0.5 * std::numbers::pi, -1.0);
+  const double3 to = fromPolar(0.5 * std::numbers::pi, 1.0);
+
+  EXPECT_GT(std::acos(double3::dot(from, double3(1.0, 0.0, 0.0))), 0.4);
+  EXPECT_GT(std::acos(double3::dot(to, double3(1.0, 0.0, 0.0))), 0.4);
+  EXPECT_FALSE(exposedGreatCircleArc(circles, from, to));
+
+  // Turned the long way round instead, the same two points are joined: the arc is the short one, so the pair
+  // has to be taken past the cap rather than round it.
+  const double3 far = fromPolar(0.5 * std::numbers::pi, std::numbers::pi);
+  EXPECT_TRUE(exposedGreatCircleArc(circles, from, far));
+  EXPECT_TRUE(exposedGreatCircleArc(circles, far, to));
+}
+
+TEST(boundary_components, the_predicate_does_not_depend_on_which_end_the_arc_is_taken_from)
+{
+  const std::vector<SphereCircle> circles = {capOf(double3(1.0, 0.0, 0.0), 0.4), capOf(double3(0.0, 1.0, 1.0), 0.6),
+                                             capOf(double3(-1.0, 0.3, -0.2), 0.9)};
+
+  // Over a grid of pairs, in both directions. The height along the arc is written from one end and swept
+  // towards the other, so the two are different arithmetic on the same geometry.
+  std::size_t exposed = 0;
+  for (std::size_t i = 0; i < 12; ++i)
+  {
+    for (std::size_t j = 0; j < 12; ++j)
+    {
+      const double3 from = fromPolar(0.2 + 0.25 * static_cast<double>(i), 0.5 * static_cast<double>(j));
+      const double3 to = fromPolar(0.3 + 0.2 * static_cast<double>(j), 0.4 * static_cast<double>(i) + 1.1);
+      const bool forwards = exposedGreatCircleArc(circles, from, to);
+      EXPECT_EQ(forwards, exposedGreatCircleArc(circles, to, from));
+      if (forwards) ++exposed;
+    }
+  }
+
+  // And the configuration is one where both answers occur, or the agreement above would say nothing.
+  EXPECT_GT(exposed, 0uz);
+  EXPECT_LT(exposed, 144uz);
+}
+
+TEST(boundary_components, an_arc_called_exposed_is_clear_of_every_cap_along_its_whole_length)
+{
+  // The claim the merging rests on, checked by walking the arc. Where the predicate says yes, no point of the
+  // arc may lie inside a cap; where it says no, some point has to.
+  const std::vector<SphereCircle> circles = {capOf(double3(1.0, 0.2, 0.0), 0.5), capOf(double3(0.1, 1.0, 0.4), 0.7),
+                                             capOf(double3(-0.4, 0.2, 1.0), 0.45), capOf(double3(0.0, -1.0, 0.3), 0.8)};
+
+  auto coveredSomewhere = [&](const double3& from, const double3& to)
+  {
+    constexpr std::size_t steps = 4000;
+    for (std::size_t s = 0; s <= steps; ++s)
+    {
+      const double t = static_cast<double>(s) / static_cast<double>(steps);
+      const double3 along = double3::normalize(from * (1.0 - t) + to * t);
+      for (const SphereCircle& circle : circles)
+      {
+        if (double3::dot(along, circle.axis) > circle.cosineHalfAngle) return true;
+      }
+    }
+    return false;
+  };
+
+  std::size_t agreed = 0;
+  std::size_t checked = 0;
+  for (std::size_t i = 0; i < 10; ++i)
+  {
+    for (std::size_t j = 0; j < 10; ++j)
+    {
+      const double3 from = fromPolar(0.15 + 0.3 * static_cast<double>(i), 0.6 * static_cast<double>(j));
+      const double3 to = fromPolar(0.25 + 0.28 * static_cast<double>(j), 0.55 * static_cast<double>(i) + 2.0);
+
+      // The endpoints have to be exposed for the question to be the one the merging asks.
+      bool endsExposed = true;
+      for (const SphereCircle& circle : circles)
+      {
+        if (double3::dot(from, circle.axis) > circle.cosineHalfAngle) endsExposed = false;
+        if (double3::dot(to, circle.axis) > circle.cosineHalfAngle) endsExposed = false;
+      }
+      if (!endsExposed) continue;
+
+      ++checked;
+      if (exposedGreatCircleArc(circles, from, to) == !coveredSomewhere(from, to)) ++agreed;
+    }
+  }
+
+  EXPECT_GT(checked, 20uz);
+  EXPECT_EQ(agreed, checked);
+}
+
+TEST(boundary_components, a_path_through_a_way_point_joins_what_one_arc_cannot)
+{
+  // Two points either side of a cap, so that no arc between them is exposed, and a way point standing clear
+  // of the cap on the other side. The path through it is two legs, and both of them are exposed.
+  SphereBoundary boundary;
+  boundary.circles = {capOf(double3(1.0, 0.0, 0.0), 0.4)};
+
+  const double3 from = fromPolar(0.5 * std::numbers::pi, -1.0);
+  const double3 to = fromPolar(0.5 * std::numbers::pi, 1.0);
+  ASSERT_FALSE(exposedGreatCircleArc(boundary.circles, from, to));
+
+  // With no way points there is nothing to go through, and the pair stays unjoined. That is the fallback the
+  // nesting rule leaves behind, and it is allowed to prove less.
+  EXPECT_FALSE(connectedOnSphere(boundary, from, to));
+
+  boundary.wayPoints = {fromPolar(0.5 * std::numbers::pi, std::numbers::pi)};
+  boundary.wayPointGroup = {0};
+  EXPECT_TRUE(connectedOnSphere(boundary, from, to));
+}
+
+TEST(boundary_components, two_ends_reaching_different_groups_of_way_points_are_not_joined)
+{
+  // Caps over both poles leave a band round the equator, and two more cut that band in two at azimuth zero
+  // and at azimuth pi. So there are two exposed regions with nothing joining them, one either side.
+  const double equator = 0.5 * std::numbers::pi;
+  SphereBoundary boundary;
+  boundary.circles = {capOf(double3(0.0, 0.0, 1.0), 1.4), capOf(double3(0.0, 0.0, -1.0), 1.4),
+                      capOf(double3(1.0, 0.0, 0.0), 0.3), capOf(double3(-1.0, 0.0, 0.0), 0.3)};
+
+  const double3 from = fromPolar(equator, equator);
+  const double3 to = fromPolar(equator, 3.0 * equator + 0.05);
+  boundary.wayPoints = {fromPolar(equator, equator + 0.15), fromPolar(equator, 3.0 * equator - 0.15)};
+  boundary.wayPointGroup = {0, 1};
+
+  // Each end reaches the way point of its own region and neither reaches the other's, so the two groups are
+  // reached one apiece and there is no path through them.
+  ASSERT_FALSE(exposedGreatCircleArc(boundary.circles, from, to));
+  ASSERT_TRUE(exposedGreatCircleArc(boundary.circles, from, boundary.wayPoints[0]));
+  ASSERT_TRUE(exposedGreatCircleArc(boundary.circles, to, boundary.wayPoints[1]));
+  ASSERT_FALSE(exposedGreatCircleArc(boundary.circles, from, boundary.wayPoints[1]));
+  ASSERT_FALSE(exposedGreatCircleArc(boundary.circles, to, boundary.wayPoints[0]));
+
+  EXPECT_FALSE(connectedOnSphere(boundary, from, to));
+}
+
+TEST(boundary_components, the_single_arc_is_tried_before_the_way_points)
+{
+  // Way points that are of no use, on a pair that one arc already joins. The answer is yes either way; what
+  // this pins down is that a boundary carrying no way points is not thereby weaker on the easy case.
+  SphereBoundary boundary;
+  boundary.circles = {capOf(double3(0.0, 0.0, 1.0), 0.3)};
+
+  const double3 from = fromPolar(0.5 * std::numbers::pi, 0.0);
+  const double3 to = fromPolar(0.5 * std::numbers::pi, 0.5);
+  EXPECT_TRUE(connectedOnSphere(boundary, from, to));
+
+  boundary.wayPoints = {double3(0.0, 0.0, 1.0)};
+  boundary.wayPointGroup = {0};
+  EXPECT_TRUE(connectedOnSphere(boundary, from, to));
 }

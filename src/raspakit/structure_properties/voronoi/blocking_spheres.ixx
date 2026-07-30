@@ -8,7 +8,7 @@ import double3;
 import simulationbox;
 import framework;
 import forcefield;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_void_split;
 
 // Spheres covering the pockets a probe cannot reach, for a simulation to reject insertions in.
@@ -66,7 +66,7 @@ export std::string measuredSpheresRefused(const ExactVoidSplit& split);
 // It runs over whatever accessibility classifier is handed to it, so that the same spheres can be found from a
 // network taken from the radical diagram or from the Apollonius diagram. The probe radius is not a parameter: it
 // is already in the inflated radii the classifier carries, which is what the clearance is measured against.
-export std::vector<BlockingSphere> computeBlockingSpheres(const VoronoiAccessibility& accessibility,
+export std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
                                                           std::size_t numberOfSamples);
 
 // Writes the `.block` file a simulation reads back, which is a count and one line of fractional centre and

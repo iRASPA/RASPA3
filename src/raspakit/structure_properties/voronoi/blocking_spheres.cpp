@@ -10,7 +10,7 @@ import randomnumbers;
 import atom;
 import framework;
 import forcefield;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_void_split;
 
 std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& split)
@@ -47,7 +47,7 @@ double periodicDistance(const SimulationBox& simulationBox, const double3& a, co
   return delta.length();
 }
 
-std::vector<BlockingSphere> computeBlockingSpheres(const VoronoiAccessibility& accessibility,
+std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
                                                    std::size_t numberOfSamples)
 {
   RandomNumber random{samplingSeed};
@@ -264,8 +264,8 @@ void VoronoiBlockingSpheres::run(const ForceField& forceField, const Framework& 
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiAccessibility accessibility =
-      VoronoiAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+  PoreAccessibility accessibility =
+      PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
 
   double volume = framework.simulationBox.volume;
 

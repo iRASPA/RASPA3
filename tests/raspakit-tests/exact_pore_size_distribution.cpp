@@ -4,7 +4,7 @@ import std;
 
 import double3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_pore_size_distribution;
 
 // The pore-size distribution as a curve: the sweep over probe sizes, the spikes at the sizes that carry
@@ -68,7 +68,7 @@ PoreSizeDistributionCurve curveOf(const Lattice& lattice, double maximumDiameter
 {
   auto build = [&](double probeRadius)
   {
-    return VoronoiAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius);
+    return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius);
   };
   return exactPoreSizeDistribution(build, lattice.box.volume, maximumDiameter, bins, 1, probe);
 }

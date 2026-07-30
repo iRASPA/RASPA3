@@ -64,10 +64,13 @@ add_executable(unit_tests_raspakit
   voronoi_analysis.cpp
   apollonius_pore_analysis.cpp
   apollonius_surface_area.cpp
+  exact_sphere_sweep.cpp
+  exact_parallel.cpp
   exact_union_volume.cpp
   exact_void_split.cpp
   exact_solvent_excluded.cpp
   exact_pore_size_distribution.cpp
+  exact_regression.cpp
   boundary_components.cpp
   main.cpp)
 

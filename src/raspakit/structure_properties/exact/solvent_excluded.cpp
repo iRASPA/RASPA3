@@ -8,7 +8,7 @@ import double2;
 import double3;
 import int3;
 import simulationbox;
-import voronoi_accessibility;
+import pore_accessibility;
 import exact_boundary_components;
 import exact_sphere_sweep;
 import exact_surface_patches;
@@ -107,7 +107,7 @@ bool ownsCircle(std::size_t atom, std::size_t neighbour, const int3& image)
 }
 
 
-std::vector<ExposedArc> exposedArcs(const VoronoiAccessibility& accessibility, double probeRadius,
+std::vector<ExposedArc> exposedArcs(const PoreAccessibility& accessibility, double probeRadius,
                                     const BoundaryComponents& components)
 {
   std::vector<ExposedArc> arcs;
@@ -379,16 +379,16 @@ void gatherComponentVotes(const BoundaryComponents& components, std::size_t atom
 }
 
 
-// The vertices of the accessible surface, one per position rather than one per description of it.
+// Every corner of the decomposition, once each rather than once per description of it, with nothing filled in
+// but where it is and which atom's sweep found it.
 //
-// The corners the decomposition already found are the vertices: a corner is a crossing of two of the circles
-// bounding one sphere that no third sphere covers, which is exactly a point on three spheres and inside none.
-// Each is found once from every sphere it lies on and every circle through it, in as many lifts of the cell,
-// so the descriptions are gathered by position, and the atoms the surviving vertex touches are then asked for
-// afresh. That last step is what makes a vertex on four spheres or more come out right without being a case:
-// it is one vertex with four tangent directions, and the concave patch there is bounded by the hull of them.
-std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility, const BoundaryComponents& components,
-                                       std::size_t& degenerate, std::size_t& rejected)
+// A corner is a crossing of two of the circles bounding one sphere that no third sphere covers, which is
+// exactly a point on three spheres and inside none: a vertex of the accessible surface. Each is found once
+// from every sphere it lies on and every circle through it, in as many lifts of the cell, so the copies are
+// gathered here by position. They agree to round-off, so only the bins around a candidate are searched, and
+// the search wraps because a corner on the face of the cell folds to either side of it.
+std::vector<SasVertex> distinctCorners(const PoreAccessibility& accessibility,
+                                       const BoundaryComponents& components)
 {
   const SimulationBox& simulationBox = accessibility.simulationBox;
   const int3 gridSize = accessibility.gridSize;
@@ -405,7 +405,7 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
       static_cast<std::size_t>(gridSize.x) * static_cast<std::size_t>(gridSize.y) * static_cast<std::size_t>(gridSize.z);
   std::vector<std::vector<std::size_t>> bins(numberOfBins);
 
-  std::vector<SasVertex> vertices;
+  std::vector<SasVertex> corners;
   std::vector<double3> wrapped;  // the same positions folded into the cell, for the comparison
 
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
@@ -424,8 +424,6 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
         double3 folded = simulationBox.cell * fractional;
         auto [bin, index] = binIndex(fractional);
 
-        // Already known? The copies of one vertex agree to round-off, so only the bins around it are
-        // searched, and the search wraps because a vertex on the face of the cell folds to either side.
         bool seen = false;
         for (int ox = -1; ox <= 1 && !seen; ++ox)
         {
@@ -453,129 +451,180 @@ std::vector<SasVertex> surfaceVertices(const VoronoiAccessibility& accessibility
         SasVertex vertex;
         vertex.position = position;
         vertex.owner = i;
-        bins[index].push_back(vertices.size());
-        vertices.push_back(vertex);
+        bins[index].push_back(corners.size());
+        corners.push_back(vertex);
         wrapped.push_back(folded);
       }
     }
   }
 
-  // Which atoms each surviving vertex touches, asked of the structure rather than remembered from the
-  // corner it came from, and the hull of the directions to them.
-  std::vector<SasVertex> kept;
-  kept.reserve(vertices.size());
-  std::vector<std::pair<std::int32_t, std::size_t>> votes;
-  for (SasVertex& vertex : vertices)
+  return corners;
+}
+
+
+// The directions from a vertex to the centres of the atoms it touches, asked of the structure rather than
+// remembered from the corner the vertex came from. That is what makes a vertex on four spheres or more come
+// out right without being a case of its own: it is one vertex with four tangent directions.
+//
+// False where the point is not on the surface after all --- buried under an atom, or touching fewer than
+// three. `votes` collects what each touching atom can say about which connected surface the vertex is on.
+bool gatherTangents(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                    SasVertex& vertex, std::vector<std::pair<std::int32_t, std::size_t>>& votes)
+{
+  votes.clear();
+  for (const NeighbourImage& image :
+       accessibility.neighbourAtomImages(vertex.position, accessibility.maximumAtomRadius + touchTolerance))
   {
-    bool inside = false;
-    votes.clear();
-    for (const NeighbourImage& image :
-         accessibility.neighbourAtomImages(vertex.position, accessibility.maximumAtomRadius + touchTolerance))
-    {
-      double distance = image.delta.length();
-      if (distance < image.radius - touchTolerance)
-      {
-        inside = true;  // the point is buried after all, and is on no surface
-        break;
-      }
-      if (distance < image.radius + touchTolerance && distance > 1.0e-12)
-      {
-        vertex.tangents.push_back(image.delta * (1.0 / distance));
-        gatherComponentVotes(components, image.index, image.delta * (-1.0 / distance), votes);
-      }
-    }
-    if (inside || vertex.tangents.size() < 3)
-    {
-      ++rejected;
-      continue;
-    }
-    if (vertex.tangents.size() > 3) ++degenerate;
+    double distance = image.delta.length();
+    if (distance < image.radius - touchTolerance) return false;  // buried after all, and on no surface
 
-    // The concave patch is bounded by the great circles through pairs of tangent directions, and for more
-    // than three of them by those pairs that are edges of their spherical convex hull: the pair whose plane
-    // leaves every other direction on one side.
-    const std::size_t count = vertex.tangents.size();
-    for (std::size_t a = 0; a + 1 < count; ++a)
+    if (distance < image.radius + touchTolerance && distance > 1.0e-12)
     {
-      for (std::size_t b = a + 1; b < count; ++b)
-      {
-        double3 normal = double3::cross(vertex.tangents[a], vertex.tangents[b]);
-        double length = normal.length();
-        if (length < 1.0e-9) continue;
-        normal = normal * (1.0 / length);
-
-        bool anyPositive = false;
-        bool anyNegative = false;
-        for (std::size_t c = 0; c < count; ++c)
-        {
-          if (c == a || c == b) continue;
-          double side = double3::dot(normal, vertex.tangents[c]);
-          if (side > 1.0e-9) anyPositive = true;
-          if (side < -1.0e-9) anyNegative = true;
-        }
-        if (anyPositive && anyNegative) continue;  // not an edge of the hull
-        vertex.hullNormals.push_back(anyNegative ? -normal : normal);
-      }
+      vertex.tangents.push_back(image.delta * (1.0 / distance));
+      gatherComponentVotes(components, image.index, image.delta * (-1.0 / distance), votes);
     }
-    if (vertex.hullNormals.size() < 3)
-    {
-      ++rejected;
-      continue;
-    }
-
-    // How the vertex moves as the probe grows, from |x - c_m|^2 = (r_m + r)^2 differentiated: the tangency
-    // conditions (x - c_m).x' = R_m, three of which fix it. Where more than three atoms meet they are
-    // consistent, so the best conditioned triple is taken.
-    bool moves = false;
-    double bestScale = 0.0;
-    for (std::size_t a = 0; a + 2 < count; ++a)
-    {
-      for (std::size_t b = a + 1; b + 1 < count; ++b)
-      {
-        for (std::size_t c = b + 1; c < count; ++c)
-        {
-          std::array<double3, 3> rows = {vertex.tangents[a], vertex.tangents[b], vertex.tangents[c]};
-          double scale = std::abs(double3::dot(rows[0], double3::cross(rows[1], rows[2])));
-          if (scale <= bestScale) continue;
-          // Dividing (x - c_m).x' = R_m through by R_m turns each row into the unit direction from the vertex
-          // toward that centre, which points the other way, so the right-hand side is minus one.
-          double3 velocity;
-          if (!solveThreeByThree(rows, double3(-1.0, -1.0, -1.0), velocity)) continue;
-          bestScale = scale;
-          vertex.velocity = velocity;
-          moves = true;
-        }
-      }
-    }
-    if (!moves)
-    {
-      ++rejected;
-      continue;
-    }
-
-    // Which connected surface the vertex is on: the surface the atoms it touches agree that it is on, and
-    // failing that the one a search from its position lands on.
-    std::size_t best = 0;
-    for (const auto& [component, count] : votes)
-    {
-      if (count > best)
-      {
-        best = count;
-        vertex.component = component;
-      }
-    }
-    if (vertex.component < 0)
-    {
-      const double radius = accessibility.atomRadii[vertex.owner];
-      double3 direction = (vertex.position - accessibility.atomPositions[vertex.owner]) * (1.0 / radius);
-      std::int32_t patch = components.patchOfCirclePoint(vertex.owner, direction);
-      if (patch >= 0) vertex.component = components.componentOfPatch[vertex.owner][static_cast<std::size_t>(patch)];
-    }
-
-    kept.push_back(std::move(vertex));
   }
+  return vertex.tangents.size() >= 3;
+}
 
-  return kept;
+
+// The planes bounding the concave patch on the probe's sphere. It is bounded by the great circles through
+// pairs of tangent directions, and for more than three of them by those pairs that are edges of their
+// spherical convex hull: the pair whose plane leaves every other direction on one side. False where fewer
+// than three such planes are found, which leaves no patch to bound.
+bool gatherHullNormals(SasVertex& vertex)
+{
+  constexpr double coplanarTolerance = 1.0e-9;
+
+  const std::size_t touching = vertex.tangents.size();
+  for (std::size_t a = 0; a + 1 < touching; ++a)
+  {
+    for (std::size_t b = a + 1; b < touching; ++b)
+    {
+      double3 normal = double3::cross(vertex.tangents[a], vertex.tangents[b]);
+      double length = normal.length();
+      if (length < coplanarTolerance) continue;
+      normal = normal * (1.0 / length);
+
+      bool anyPositive = false;
+      bool anyNegative = false;
+      for (std::size_t c = 0; c < touching; ++c)
+      {
+        if (c == a || c == b) continue;
+        double side = double3::dot(normal, vertex.tangents[c]);
+        if (side > coplanarTolerance) anyPositive = true;
+        if (side < -coplanarTolerance) anyNegative = true;
+      }
+      if (anyPositive && anyNegative) continue;  // not an edge of the hull
+      vertex.hullNormals.push_back(anyNegative ? -normal : normal);
+    }
+  }
+  return vertex.hullNormals.size() >= 3;
+}
+
+
+// How the vertex moves as the probe grows, from |x - c_m|^2 = (r_m + r)^2 differentiated: the tangency
+// conditions (x - c_m).x' = R_m, three of which fix it. Where more than three atoms meet they are consistent,
+// so the best conditioned triple is taken. False where no triple is far enough from coplanar to solve.
+bool solveVertexVelocity(SasVertex& vertex)
+{
+  const std::size_t touching = vertex.tangents.size();
+  bool moves = false;
+  double bestScale = 0.0;
+  for (std::size_t a = 0; a + 2 < touching; ++a)
+  {
+    for (std::size_t b = a + 1; b + 1 < touching; ++b)
+    {
+      for (std::size_t c = b + 1; c < touching; ++c)
+      {
+        std::array<double3, 3> rows = {vertex.tangents[a], vertex.tangents[b], vertex.tangents[c]};
+        double scale = std::abs(double3::dot(rows[0], double3::cross(rows[1], rows[2])));
+        if (scale <= bestScale) continue;
+        // Dividing (x - c_m).x' = R_m through by R_m turns each row into the unit direction from the vertex
+        // toward that centre, which points the other way, so the right-hand side is minus one.
+        double3 velocity;
+        if (!solveThreeByThree(rows, double3(-1.0, -1.0, -1.0), velocity)) continue;
+        bestScale = scale;
+        vertex.velocity = velocity;
+        moves = true;
+      }
+    }
+  }
+  return moves;
+}
+
+
+// Which connected surface the vertex is on: the surface the atoms it touches agree that it is on, and failing
+// that the one a search from its own position lands on. See `gatherComponentVotes` for why the first is both
+// the usual answer and the better one.
+void placeOnSurface(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                    const std::vector<std::pair<std::int32_t, std::size_t>>& votes, SasVertex& vertex)
+{
+  std::size_t mostVotes = 0;
+  for (const auto& [component, votesFor] : votes)
+  {
+    if (votesFor > mostVotes)
+    {
+      mostVotes = votesFor;
+      vertex.component = component;
+    }
+  }
+  if (vertex.component >= 0) return;
+
+  const double radius = accessibility.atomRadii[vertex.owner];
+  double3 direction = (vertex.position - accessibility.atomPositions[vertex.owner]) * (1.0 / radius);
+  std::int32_t patch = components.patchOfCirclePoint(vertex.owner, direction);
+  if (patch >= 0) vertex.component = components.componentOfPatch[vertex.owner][static_cast<std::size_t>(patch)];
+}
+
+
+// The vertices of the accessible surface, one per position rather than one per description of it, each with
+// the concave patch of the excluded surface it carries.
+struct SurfaceVertices
+{
+  std::vector<SasVertex> vertices;
+
+  // Vertices where more than three inflated spheres meet, which a framework's own symmetry produces rather
+  // than a coincidence. Handled like any other and counted because a structure full of them is one to look
+  // at twice.
+  std::size_t onManySpheres{0};
+
+  // Corners that turned out not to be vertices of the surface at all: buried under an atom after all, or
+  // touching too few, or with the directions to them too nearly coplanar for the patch or for the way the
+  // vertex moves to mean anything.
+  std::size_t discarded{0};
+};
+
+
+SurfaceVertices surfaceVertices(const PoreAccessibility& accessibility, const BoundaryComponents& components)
+{
+  SurfaceVertices result;
+  std::vector<SasVertex> corners = distinctCorners(accessibility, components);
+  result.vertices.reserve(corners.size());
+
+  std::vector<std::pair<std::int32_t, std::size_t>> votes;
+  for (SasVertex& vertex : corners)
+  {
+    if (!gatherTangents(accessibility, components, vertex, votes))
+    {
+      ++result.discarded;
+      continue;
+    }
+
+    // Counted here rather than below, so that the count is of the vertices a structure has and not of the
+    // ones that also came through the two steps after this.
+    if (vertex.tangents.size() > 3) ++result.onManySpheres;
+
+    if (!gatherHullNormals(vertex) || !solveVertexVelocity(vertex))
+    {
+      ++result.discarded;
+      continue;
+    }
+
+    placeOnSurface(accessibility, components, votes, vertex);
+    result.vertices.push_back(std::move(vertex));
+  }
+  return result;
 }
 
 
@@ -641,7 +690,7 @@ struct VertexGrid
 };
 
 
-VertexGrid buildVertexGrid(const VoronoiAccessibility& accessibility, const std::vector<SasVertex>& vertices)
+VertexGrid buildVertexGrid(const PoreAccessibility& accessibility, const std::vector<SasVertex>& vertices)
 {
   VertexGrid grid;
   grid.simulationBox = &accessibility.simulationBox;
@@ -769,164 +818,178 @@ VertexTerms vertexTerms(const SasVertex& vertex, double probeRadius, const std::
 }
 
 
-// Which side of the structure each connected surface faces, by the same argument the area is divided by: a
-// surface that closes on a translate of itself has the void running away along it, one that closes on itself
-// around void seals it, and only a surface standing round a cluster of atoms leaves the network anything to
-// answer. Plus one is reachable, minus one is not, zero is undecided.
-std::vector<int> componentSides(const BoundaryComponents& components, const ExactSurfaceAreaSample& patches,
-                                const std::vector<ComponentLabel>& labels)
+namespace
 {
-  std::vector<int> sides(components.numberOfComponents, 0);
-  for (std::size_t label = 0; label < components.numberOfComponents; ++label)
-  {
-    const PoreBoundaryMoments& moments = patches.components[label];
-    if (moments.area <= 0.0) continue;
 
-    if (components.componentPercolates[label] != 0)
-      sides[label] = 1;
-    else if (-(moments.radiusWeightedArea + moments.originWeighted) > 0.0)
-      sides[label] = -1;
-    else if (labels[label].decided)
-      sides[label] = labels[label].accessible ? 1 : -1;
-  }
-  return sides;
-}
-
-
-SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility, double probeRadius,
-                                                const BoundaryComponents& components,
-                                                const std::vector<ComponentLabel>& labels, std::size_t subdivisions)
+// Where a piece of the excluded surface puts what it measures.
+//
+// The surface is made of three kinds of piece --- the convex patches on the atoms, the toroidal ones along the
+// arcs, the concave ones at the vertices --- and each of them contributes an area, a volume of shell, and a
+// derivative in the probe radius. Every one of those has to land in three places at once: the total, the
+// surface the piece belongs to, and the side of the structure that surface faces. This is that routing, in one
+// place rather than repeated at each of the three sites.
+//
+// A piece whose surface is not known, which is what a negative component means, still counts towards the
+// totals. It is the per-surface accounts it cannot be entered in.
+struct SurfaceTotals
 {
-  // One sweep of the spheres serves four purposes: the area of each atom's own patch, which the shell wants; the
-  // radius weighted area, which the volume of the union wants; the same patches on the bare spheres, which are
-  // the convex part of the excluded surface; and the moments of each surface, which say which side it faces.
-  return solventExcludedGeometry(
-      accessibility, probeRadius, components, labels,
-      exactAccessibleSurfaceAreaByComponent(accessibility, components, labels, subdivisions), subdivisions);
-}
+  SolventExcludedGeometry& result;
+  const std::vector<SurfaceSide>& sides;
 
-
-SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility, double probeRadius,
-                                                const BoundaryComponents& components,
-                                                const std::vector<ComponentLabel>& labels,
-                                                const ExactSurfaceAreaSample& patches, std::size_t subdivisions)
-{
-  SolventExcludedGeometry result;
-  result.probeRadius = probeRadius;
-  result.accessibleVolume = unionOfBallsVolume(accessibility, patches, components);
-
-  const std::vector<int> sides = componentSides(components, patches, labels);
-  result.componentSide = sides;
-  result.componentDistribution.assign(components.numberOfComponents, 0.0);
-  result.componentEnclosedVolume.assign(components.numberOfComponents, 0.0);
-
-  // The shell over each surface's own patches, which the sweep accumulated patch by patch. The arcs and the
-  // vertices add theirs below, where they are visited anyway.
-  result.componentShellVolume.assign(components.numberOfComponents, 0.0);
-  std::vector<double>& componentShell = result.componentShellVolume;
-  for (std::size_t label = 0; label < components.numberOfComponents && label < patches.components.size(); ++label)
-  {
-    componentShell[label] = patches.components[label].shellVolume;
-  }
-
-  auto sideOf = [&](std::int32_t component)
+  int sideOf(std::int32_t component) const
   {
     return (component >= 0 && static_cast<std::size_t>(component) < sides.size())
-               ? sides[static_cast<std::size_t>(component)]
+               ? sides[static_cast<std::size_t>(component)].side
                : 0;
-  };
-  auto addToSide = [&](std::int32_t component, double amount)
+  }
+
+  // The derivative of the excluded volume in the probe radius.
+  void addDistribution(std::int32_t component, double amount)
   {
     result.distribution += amount;
     if (component >= 0 && static_cast<std::size_t>(component) < result.componentDistribution.size())
     {
       result.componentDistribution[static_cast<std::size_t>(component)] += amount;
     }
-    int side = sideOf(component);
+    const int side = sideOf(component);
     if (side > 0)
       result.accessibleDistribution += amount;
     else if (side < 0)
       result.inaccessibleDistribution += amount;
     else
       result.undecidedDistribution += amount;
-  };
-  auto addShellTo = [&](std::int32_t component, double amount)
-  {
-    if (component >= 0 && static_cast<std::size_t>(component) < componentShell.size())
-    {
-      componentShell[static_cast<std::size_t>(component)] += amount;
-    }
-  };
+  }
 
-  // The same routing for area, given which of the three kinds of patch it is on.
-  auto addAreaToSide = [&](std::int32_t component, double ExcludedSurfaceAreas::*kind, double amount)
+  // The volume between the accessible surface and the excluded one over this piece.
+  void addShell(std::int32_t component, double amount)
+  {
+    result.shellVolume += amount;
+    if (component >= 0 && static_cast<std::size_t>(component) < result.componentShellVolume.size())
+    {
+      result.componentShellVolume[static_cast<std::size_t>(component)] += amount;
+    }
+  }
+
+  // Area, of whichever of the three kinds this piece is.
+  void addArea(std::int32_t component, double ExcludedSurfaceAreas::* kind, double amount)
   {
     result.area.*kind += amount;
-    int side = sideOf(component);
+    const int side = sideOf(component);
     if (side > 0)
       result.accessibleArea.*kind += amount;
     else if (side < 0)
       result.inaccessibleArea.*kind += amount;
     else
       result.undecidedArea.*kind += amount;
-  };
+  }
+};
+
+}  // namespace
+
+
+SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility, double probeRadius,
+                                                const BoundaryComponents& components,
+                                                const std::vector<ComponentVerdict>& verdicts, std::size_t subdivisions)
+{
+  // One sweep of the spheres serves four purposes: the area of each atom's own patch, which the shell wants; the
+  // radius weighted area, which the volume of the union wants; the same patches on the bare spheres, which are
+  // the convex part of the excluded surface; and the moments of each surface, which say which side it faces.
+  return solventExcludedGeometry(
+      accessibility, probeRadius, components, verdicts,
+      exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, subdivisions), subdivisions);
+}
+
+
+SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility, double probeRadius,
+                                                const BoundaryComponents& components,
+                                                const std::vector<ComponentVerdict>& verdicts,
+                                                const MeasuredPatches& patches, std::size_t subdivisions)
+{
+  SolventExcludedGeometry result;
+  result.probeRadius = probeRadius;
+  result.accessibleVolume = unionOfBallsVolume(accessibility, patches, components);
+
+  // The same division of the surfaces the area was split by, so that a volume and an area of this structure
+  // never disagree about which side a surface is on.
+  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts);
+  result.componentSide.assign(components.numberOfComponents, 0);
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
+  {
+    result.componentSide[component] = sides[component].side;
+  }
+  result.componentDistribution.assign(components.numberOfComponents, 0.0);
+  result.componentEnclosedVolume.assign(components.numberOfComponents, 0.0);
+
+  // The shell over each surface's own patches, which the sweep accumulated patch by patch. The arcs and the
+  // vertices add theirs below, where they are visited anyway.
+  result.componentShellVolume.assign(components.numberOfComponents, 0.0);
+  const std::size_t measured = std::min(components.numberOfComponents, patches.components.size());
+  for (std::size_t component = 0; component < measured; ++component)
+  {
+    result.componentShellVolume[component] = patches.components[component].shellVolume;
+  }
+
+  SurfaceTotals totals{result, sides};
 
   // The patches. Each contributes the shell between the bare sphere and the inflated one over its own solid
   // angle, and nothing to the derivative: the bare spheres do not move as the probe grows. Its area on the
   // excluded surface is its own accessible area brought down onto the bare sphere, which the sweep has already
   // done atom by atom and surface by surface.
-  double shell = 0.0;
+  //
+  // Summed over the atoms rather than over the arcs. The bare radius is the one the sweep itself carried the
+  // patches down by, taken from `accessibility` rather than from `probeRadius`: the two say the same thing
+  // for any caller that inflated these atoms by this probe, and reading it from the same place as the sweep
+  // is what leaves this total and the per-surface ones the sweep accumulated in step by construction.
+  double patchShell = 0.0;
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
   {
     const double inflated = accessibility.atomRadii[i];
     if (inflated <= 0.0 || i >= patches.atomArea.size()) continue;
-    const double bare = std::max(0.0, inflated - probeRadius);
-    const double ratio = bare / inflated;
-    shell += patches.atomArea[i] * inflated / 3.0 * (1.0 - ratio * ratio * ratio);
+    const double ratio = accessibility.bareRadius(i) / inflated;
+    patchShell += patches.atomArea[i] * inflated / 3.0 * (1.0 - ratio * ratio * ratio);
   }
-  for (std::size_t label = 0; label < patches.components.size(); ++label)
+  result.shellVolume = patchShell;
+  for (std::size_t component = 0; component < patches.components.size(); ++component)
   {
-    addAreaToSide(static_cast<std::int32_t>(label), &ExcludedSurfaceAreas::convex,
-                  patches.components[label].convexArea);
+    totals.addArea(static_cast<std::int32_t>(component), &ExcludedSurfaceAreas::convex,
+                   patches.components[component].convexArea);
   }
 
   // The arcs, which carry the toroidal patches.
   const std::vector<ExposedArc> arcs = exposedArcs(accessibility, probeRadius, components);
-  result.numberOfArcs = arcs.size();
+  result.diagnostics.numberOfArcs = arcs.size();
   for (const ExposedArc& arc : arcs)
   {
-    if (arc.radius <= probeRadius) ++result.cuspedArcs;
-    const double arcShell = shellArcVolume(arc, probeRadius);
-    shell += arcShell;
-    addShellTo(arc.component, arcShell);
+    if (arc.radius <= probeRadius) ++result.diagnostics.cuspedArcs;
+    totals.addShell(arc.component, shellArcVolume(arc, probeRadius));
     double speed = toroidalNormalSpeed(arc, probeRadius);
     result.toroidalDistribution += speed;
-    addToSide(arc.component, speed);
-    addAreaToSide(arc.component, &ExcludedSurfaceAreas::saddle, toroidalPatchArea(arc, probeRadius));
+    totals.addDistribution(arc.component, speed);
+    totals.addArea(arc.component, &ExcludedSurfaceAreas::saddle, toroidalPatchArea(arc, probeRadius));
   }
 
   // The vertices, which carry the concave patches.
-  const std::vector<SasVertex> vertices =
-      surfaceVertices(accessibility, components, result.degenerateVertices, result.vanishedVertices);
-  result.numberOfVertices = vertices.size();
+  const SurfaceVertices found = surfaceVertices(accessibility, components);
+  const std::vector<SasVertex>& vertices = found.vertices;
+  result.diagnostics.degenerateVertices = found.onManySpheres;
+  result.diagnostics.discardedCorners = found.discarded;
+  result.diagnostics.numberOfVertices = vertices.size();
   const VertexGrid grid = buildVertexGrid(accessibility, vertices);
 
   for (const SasVertex& vertex : vertices)
   {
     std::vector<double3> neighbours = grid.within(vertex.position, 2.0 * probeRadius);
     VertexTerms terms = vertexTerms(vertex, probeRadius, neighbours, subdivisions);
-    if (terms.clipped) ++result.clippedVertices;
-    if (terms.vanished) ++result.vanishedVertices;
+    if (terms.clipped) ++result.diagnostics.clippedVertices;
+    if (terms.vanished) ++result.diagnostics.vanishedVertices;
 
-    shell += terms.shell;
-    addShellTo(vertex.component, terms.shell);
+    totals.addShell(vertex.component, terms.shell);
     result.concaveDistribution += terms.normalSpeed;
-    addToSide(vertex.component, terms.normalSpeed);
-    addAreaToSide(vertex.component, &ExcludedSurfaceAreas::concave, terms.area);
+    totals.addDistribution(vertex.component, terms.normalSpeed);
+    totals.addArea(vertex.component, &ExcludedSurfaceAreas::concave, terms.area);
   }
 
-  result.shellVolume = shell;
-  result.excludedVolume = result.accessibleVolume - shell;
+  result.excludedVolume = result.accessibleVolume - result.shellVolume;
   result.poreVolume = accessibility.simulationBox.volume - result.excludedVolume;
 
   // What each bounded surface holds, and with it the division of the pore volume. A surface that closes
@@ -934,29 +997,29 @@ SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& acce
   // reaches out from that room as far as the shell over the surface: the two together are the volume this
   // probe opens up behind that surface. A surface that runs away encloses nothing and is left at zero, its
   // pore's volume being what the sealed ones leave of the total.
-  for (std::size_t label = 0; label < components.numberOfComponents; ++label)
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
-    if (label >= patches.components.size()) continue;
-    const PoreBoundaryMoments& moments = patches.components[label];
-    if (moments.area <= 0.0 || components.componentPercolates[label] != 0) continue;
+    if (component >= patches.components.size()) continue;
+    const BoundaryMoments& moments = patches.components[component];
+    if (moments.area <= 0.0 || components.componentPercolates[component] != 0) continue;
 
     const double enclosed = -(moments.radiusWeightedArea + moments.originWeighted) / 3.0;
-    result.componentEnclosedVolume[label] = enclosed;
+    result.componentEnclosedVolume[component] = enclosed;
 
-    if (sides[label] < 0)
-      result.inaccessiblePoreVolume += enclosed + componentShell[label];
-    else if (sides[label] == 0)
-      result.undecidedPoreVolume += enclosed + componentShell[label];
+    if (sides[component].side < 0)
+      result.inaccessiblePoreVolume += enclosed + result.componentShellVolume[component];
+    else if (sides[component].side == 0)
+      result.undecidedPoreVolume += enclosed + result.componentShellVolume[component];
   }
   result.accessiblePoreVolume = result.poreVolume - result.inaccessiblePoreVolume - result.undecidedPoreVolume;
   return result;
 }
 
 
-SolventExcludedGeometry solventExcludedGeometry(const VoronoiAccessibility& accessibility, double probeRadius,
+SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessibility, double probeRadius,
                                                 std::size_t subdivisions)
 {
   BoundaryComponents components = boundaryComponents(accessibility);
-  std::vector<ComponentLabel> labels = labelBoundaryComponents(accessibility, components);
-  return solventExcludedGeometry(accessibility, probeRadius, components, labels, subdivisions);
+  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components);
+  return solventExcludedGeometry(accessibility, probeRadius, components, verdicts, subdivisions);
 }
