@@ -388,8 +388,9 @@ std::vector<std::vector<Sample>> narrowIntervals(Sampler& sampler, const std::ve
 void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double probeDiameter, double allowance,
                    Collector& whole, Collector& reachable)
 {
-  // No bound at all for the whole void, which is the series the other one is held to.
-  const double unbounded = std::numeric_limits<double>::infinity();
+  // No bound at all for the whole void, which is the series the other one is held to. The largest finite double
+  // rather than an infinity: the build turns infinities off, and a cap no excess can reach is a cap of none.
+  const double unbounded = std::numeric_limits<double>::max();
 
   for (const std::vector<Sample>& pending : narrowed)
   {

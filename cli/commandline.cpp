@@ -31,9 +31,15 @@ import energy_surface_area;
 import integration_surface_area;
 import integration_opencl_surface_area;
 import getopt;
-import tessellation;
 import interpolation_energy_grid;
 import pore_size_distribution_ban_vlugt;
+import opencl_clearance_grid;
+import opencl_connected_components;
+import opencl_pore_analysis;
+import opencl_void_fraction;
+import opencl_surface_area;
+import opencl_pore_size_distribution;
+import opencl_blocking_spheres;
 import voronoi_pore_diameters;
 import voronoi_channels;
 import voronoi_surface_area;
@@ -412,14 +418,12 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_gridbased_methods)
       {
-        if (use_cpu)
-        {
-        }
-
         if (use_gpu)
         {
-          Tessellation s(gridSize);
-          s.run(forceField.value(), framework);
+          // The clearance field already names the nearest atom at every point, that being what its distance is
+          // measured to, so the tessellation is a report on the field rather than a computation of its own.
+          ClearanceGrid grid = ClearanceGrid::compute(forceField.value(), framework, gridSize);
+          grid.writeTessellation(framework);
         }
       }
     }
@@ -445,6 +449,14 @@ void CommandLine::run(int argc, char *argv[])
     if (state.test(CommandLine::State::SurfaceArea))
     {
       std::cout << "Compute surface area" << std::endl;
+
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the accessible surface area from the clearance grid" << std::endl;
+
+        GridSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"), gridSize);
+      }
 
       if (use_apollonius)
       {
@@ -526,6 +538,14 @@ void CommandLine::run(int argc, char *argv[])
 
       // The geometric void fraction is the probe-accessible void, split from the void closed off in
       // pockets, which is what zeo++ reports as the accessible volume.
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the void volume from the clearance grid" << std::endl;
+
+        GridVoidFraction vf;
+        vf.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize);
+      }
+
       if (use_apollonius)
       {
         // Both how much void there is and how it divides between channels and pockets are measured
@@ -590,6 +610,14 @@ void CommandLine::run(int argc, char *argv[])
       // measured with, and being the smallest of the probes it is the one that separates the pores a molecule
       // cannot enter at all from the pores it merely finds narrow. A larger probe answers a narrower question,
       // and answers nothing whatever in a framework whose windows it cannot pass.
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
+
+        GridPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize, maximum_range, number_of_bins);
+      }
+
       if (use_apollonius)
       {
         std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
@@ -632,6 +660,16 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::string probe = geometricProbe("probe-N2");
 
+      bool onTheGrid = use_gridbased_methods && use_gpu;
+
+      if (onTheGrid)
+      {
+        std::cout << "Compute pore diameters and channels from the clearance grid" << std::endl;
+
+        GridPoreAnalysis analysis;
+        analysis.run(forceField.value(), framework, probe, gridSize);
+      }
+
       if (use_apollonius)
       {
         std::cout << "Compute pore diameters and channels from the Apollonius diagram" << std::endl;
@@ -639,7 +677,7 @@ void CommandLine::run(int argc, char *argv[])
         ApolloniusPoreAnalysis analysis;
         analysis.run(forceField.value(), framework, probe);
       }
-      else
+      else if (!onTheGrid)
       {
         std::cout << "Compute pore diameters and channels from the Voronoi network" << std::endl;
 
@@ -665,6 +703,18 @@ void CommandLine::run(int argc, char *argv[])
                   << std::endl;
       };
 
+      bool onTheGrid = use_gridbased_methods && use_gpu;
+
+      if (onTheGrid)
+      {
+        std::cout << "Compute blocking spheres from the clearance grid" << std::endl;
+
+        GridBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe, gridSize);
+        std::cout << blocks.spheres.size() << " spheres, covering " << blocks.numberOfPockets << " pockets"
+                  << std::endl;
+      }
+
       if (use_apollonius)
       {
         std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
@@ -673,7 +723,7 @@ void CommandLine::run(int argc, char *argv[])
         blocks.run(forceField.value(), framework, probe);
         report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
-      else
+      else if (!onTheGrid)
       {
         std::cout << "Compute blocking spheres from the Voronoi network" << std::endl;
 
