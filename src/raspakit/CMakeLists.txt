@@ -2,8 +2,7 @@ project(raspakit)
 
 # The simulation engine: systems, components and molecules, the force field and the interactions between
 # atoms, the Monte Carlo moves and the CBMC growth behind them, the dynamics integrators and thermostats,
-# minimisation, the equations of state and the breakthrough solver, and the properties and averages a run
-# reports.
+# minimisation, the equations of state, and the properties and averages a run reports.
 #
 # It stands on the three kits below it and is what the executables, the Python module and the tests are built
 # against. The structural analysis beside it is not part of it and must not become part of it.
@@ -27,7 +26,6 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/properties/*.cpp
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.cpp
   ${PROJECT_SOURCE_DIR}/integrators/*.cpp
-  ${PROJECT_SOURCE_DIR}/ruptura/*.cpp
   ${PROJECT_SOURCE_DIR}/utilities/*.cpp)
 
 file(GLOB RASPAKIT_IXX_FILES
@@ -49,7 +47,6 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/properties/*.ixx
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.ixx
   ${PROJECT_SOURCE_DIR}/integrators/*.ixx
-  ${PROJECT_SOURCE_DIR}/ruptura/*.ixx
   ${PROJECT_SOURCE_DIR}/utilities/*.ixx)
 
 # One library, and no -march anywhere below it: the released packages have to run on any processor of the
