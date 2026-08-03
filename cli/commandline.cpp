@@ -18,28 +18,54 @@ import forcefield;
 import cif_reader;
 import atom;
 import opencl;
+import structure_input;
+import crystal;
+import pair_interactions;
+import sampled_structure;
 import mc_void_fraction;
 import mc_surface_area;
 import mc_pore_size_distribution;
+import mc_pore_diameters;
+import mc_pore_volume;
+import mc_channels;
+import mc_window_shape;
+import mc_blocking_pockets;
+import sampled_roadmap;
+import sampling_backend;
+import mc_backend;
+import mc_opencl_backend;
 import mc_opencl_void_fraction;
 import mc_opencl_surface_area;
 import mc_opencl_pore_size_distribution;
 import energy_opencl_void_fraction;
 import energy_opencl_surface_area;
 import energy_void_fraction;
-import energy_surface_area;
 import integration_surface_area;
 import integration_opencl_surface_area;
 import getopt;
 import interpolation_energy_grid;
 import pore_size_distribution_ban_vlugt;
 import opencl_clearance_grid;
-import opencl_connected_components;
+import grid_connected_components;
 import opencl_pore_analysis;
 import opencl_void_fraction;
 import opencl_surface_area;
 import opencl_pore_size_distribution;
 import opencl_blocking_spheres;
+import energy_backend;
+import energy_opencl_backend;
+import energy_opencl_probe_energy_grid;
+import energy_shared_energy_barrier;
+import energy_shared_linear_probe;
+import energy_shared_molecular_energy_barrier;
+import energy_shared_molecular_void_fraction;
+import energy_shared_molecular_surface_area;
+import energy_shared_pore_size_distribution;
+import energy_shared_pore_analysis;
+import energy_shared_pore_volume;
+import energy_shared_blocking_spheres;
+import energy_shared_tessellation;
+import units;
 import voronoi_pore_diameters;
 import voronoi_channels;
 import voronoi_surface_area;
@@ -51,6 +77,7 @@ import apollonius_pore_size_distribution;
 import apollonius_surface_area;
 import apollonius_accessible_volume;
 import apollonius_blocking_spheres;
+import brute_force_validation;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
 #endif
@@ -83,6 +110,15 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<double> probe_strength{};
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
+  double temperature{ 298.0 };
+  double blocking_threshold{ 30.0 };
+  double brute_force_spacing{ 0.15 };
+  std::size_t brute_force_samples{ 20000 };
+  std::size_t brute_force_points{ 4000000 };
+  bool brute_force_skip_excluded{ false };
+  std::optional<std::string> molecule_name{};
+  std::size_t number_of_orientations{ 128 };
+  CIFReader::UseChargesFrom charges_from{CIFReader::UseChargesFrom::CIF_File};
   uint3 gridSize{128, 128, 128};
   std::optional<std::size_t> number_of_slices{ };
   std::optional<std::size_t> number_of_bins{ };
@@ -149,6 +185,48 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--blocking-spheres"}, argparser::no_argument,
            "Compute spheres covering the pockets the probe cannot reach, in RASPA .block format",
            [&state](std::string const &) { state.set(State::BlockingSpheres); })
+      .reg({"--energy-barrier"}, argparser::no_argument,
+           "Compute the lowest energy at which the probe percolates, the energetic counterpart of Df",
+           [&state](std::string const &) { state.set(State::PercolationBarrier); })
+      .reg({"--brute-force"}, argparser::no_argument,
+           "Work the exact geometric properties out again from the atom positions and radii alone, on a grid "
+           "and with random points, and report the two side by side",
+           [&state](std::string const &) { state.set(State::BruteForce); })
+      .reg({"--brute-force-spacing"}, argparser::required_argument,
+           "Spacing of the grid the brute-force check floods the void on [Å], default 0.15. What Df and Dif "
+           "can resolve is set by this",
+           [&brute_force_spacing](std::string const &arg) { brute_force_spacing = std::stod(arg); })
+      .reg({"--brute-force-samples"}, argparser::required_argument,
+           "Directions thrown at each atom by the brute-force check, default 20000. The surface areas converge "
+           "as one over the root of this",
+           [&brute_force_samples](std::string const &arg) { brute_force_samples = std::stoul(arg); })
+      .reg({"--brute-force-points"}, argparser::required_argument,
+           "Points thrown at the cell by the brute-force check, default 4000000",
+           [&brute_force_points](std::string const &arg) { brute_force_points = std::stoul(arg); })
+      .reg({"--brute-force-skip-excluded"}, argparser::no_argument,
+           "Leave the convex/saddle/concave decomposition out of the brute-force check, which is the slowest "
+           "part of it",
+           [&brute_force_skip_excluded](std::string const &) { brute_force_skip_excluded = true; })
+      .reg({"--temperature"}, argparser::required_argument,
+           "Set the temperature the energy barrier is reported against [K], default 298",
+           [&temperature](std::string const &arg) { temperature = std::stod(arg); })
+      .reg({"--molecule"}, argparser::required_argument,
+           "Use a rigid molecule with a shape of its own, such as CO2, for the energy barrier, the void "
+           "fraction or the surface area",
+           [&molecule_name](std::string const &arg) { molecule_name = arg; })
+      .reg({"--orientations"}, argparser::required_argument,
+           "Number of orientations to average a molecular property over, default 128. An area needs more of "
+           "them than a barrier does",
+           [&number_of_orientations](std::string const &arg) { number_of_orientations = std::stoul(arg); })
+      .reg({"--charges-from"}, argparser::required_argument,
+           "Where framework charges come from: 'cif' (default) or 'pseudo-atoms'. A CIF without a charge "
+           "column leaves every atom neutral, so a charged guest needs 'pseudo-atoms' to feel anything",
+           [&charges_from](std::string const &arg)
+           {
+             if (arg == "cif") charges_from = CIFReader::UseChargesFrom::CIF_File;
+             else if (arg == "pseudo-atoms") charges_from = CIFReader::UseChargesFrom::PseudoAtoms;
+             else throw std::runtime_error(std::format("Unknown charge source '{}', expected 'cif' or 'pseudo-atoms'\n", arg));
+           })
       .reg({"--voronoi"}, argparser::no_argument,
            "Use the Voronoi (radical) pore network for the geometric analyses",
            [&use_voronoi](std::string const &) { use_voronoi = true; })
@@ -223,6 +301,11 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "Sets the isovalue for the iso-surface energy surfaces", 
            [&iso_value](std::string const &arg) { iso_value = std::stod(arg); })
+      .reg({"--blocking-threshold"},
+           argparser::required_argument,
+           "How many kT a region must cost a molecule to leave before the energy route blocks it (default 30, "
+           "which holds it about ten seconds at a lattice frequency of 1e12 per second)",
+           [&blocking_threshold](std::string const &arg) { blocking_threshold = std::stod(arg); })
       .reg({"--number-of-slices"}, argparser::required_argument,
            "Set number of slices: of the energy integration, or of each smooth piece of the exact surface area",
            [&number_of_slices](std::string const &arg)
@@ -311,6 +394,11 @@ void CommandLine::run(int argc, char *argv[])
 
   if (!use_cpu && !use_gpu) use_cpu = true;
 
+  // The energy-based properties are the same arithmetic on a field whichever machine filled the field in, so
+  // the backend is chosen once here and handed down. Asking for the other one changes nothing but the
+  // precision of the field and the time it takes to build.
+  auto energyBackend = [&] { return use_gpu ? openCLEnergyBackend() : cpuEnergyBackend(); };
+
   // Serial unless threads were asked for. An analysis that can use them looks the pool up and finds it empty
   // otherwise, and takes the route it has always taken; see `exact_parallel` for what the threaded routes are
   // and are not promised to agree with.
@@ -346,7 +434,7 @@ void CommandLine::run(int argc, char *argv[])
     {
       // Case: force field has been manually selected
       if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(),
-                                                   CIFReader::UseChargesFrom::CIF_File); cif.has_value())
+                                                   charges_from); cif.has_value())
       {
         auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
         framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
@@ -364,7 +452,7 @@ void CommandLine::run(int argc, char *argv[])
       // First: try with zeolite force field
       ForceField trial_zeolite_force_field = ForceField::makeZeoliteForceField(12.0, true, false, false);
       if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field,
-                                                           CIFReader::UseChargesFrom::CIF_File);
+                                                           charges_from);
          zeolite_cif.has_value())
       {
         forceField = trial_zeolite_force_field;
@@ -401,6 +489,14 @@ void CommandLine::run(int argc, char *argv[])
       probe_atom_name = "-";
     }
 
+    // The structural analysis is a library of its own, built on the same foundations as the simulation
+    // engine rather than on the engine, so it is handed neither a framework nor a force field. This is where
+    // the two become what it does take: a cell with a set of typed and charged atom centres in it, and a
+    // table of what a pair of types does to one another. It happens once, after any custom probe has been
+    // put into the force field above, so that everything below measures the same structure.
+    Crystal crystal = StructureInput::makeCrystal(framework);
+    PairInteractions interactions = StructureInput::makeInteractions(forceField.value());
+
     // The probe the geometric analyses sample with. Not every force field defines every probe, a
     // custom one read from a file need define none of them, so an unchosen default falls back to
     // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
@@ -410,6 +506,98 @@ void CommandLine::run(int argc, char *argv[])
       if (probe_atom_name.has_value()) return probe_atom_name.value();
       if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
       return "probe-N2";
+    };
+
+    // The molecule the energy routes answer for. A name given with --molecule is looked for among the ones
+    // with a shape of their own first and among the pseudo-atoms after, so that a single site can be sent
+    // the long way round and held against the direct route; with no name it is the probe atom, as one site.
+    auto energyMolecule = [&](const std::string &what, const std::string &preferred) -> LinearProbe
+    {
+      std::string name = molecule_name.value_or(geometricProbe(preferred));
+      std::optional<LinearProbe> molecule = LinearProbe::named(interactions, name);
+      if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, name);
+      if (!molecule.has_value())
+      {
+        throw std::runtime_error(std::format("Unknown molecule '{}' for the {}\n", name, what));
+      }
+      return molecule.value();
+    };
+
+    // A molecule with a shape has to be averaged over its orientations; a single site has only the one.
+    auto energyOrientations = [&] { return molecule_name.has_value() ? number_of_orientations : std::size_t{1}; };
+
+    // The sampling routines go further still and ask for no types at all, only a cell, a set of atom centres
+    // and the radius of each atom's contact sphere. This is where the mixing rule becomes those radii, once
+    // and in one place rather than repeated in each of them.
+    auto sampledStructure = [&](std::vector<double> radii) -> SampledStructure
+    {
+      return SampledStructure{.name = crystal.name,
+                              .spaceGroupHallNumber = crystal.spaceGroupHallNumber,
+                              .unitCell = crystal.unitCell,
+                              .positions = crystal.cartesianPositions(),
+                              .radii = std::move(radii),
+                              .mass = crystal.mass};
+    };
+
+    // For the routines that measure the wall: a point is in contact when the probe's centre is a mixed
+    // diameter from the atom's, so that is the radius of each atom's sphere. An unknown probe is refused
+    // here rather than after the structure has been assembled.
+    auto sampledSurface = [&](const std::string &probeName) -> std::pair<SampledStructure, SampledProbe>
+    {
+      std::optional<std::size_t> probeType = interactions.findType(probeName);
+      if (!probeType.has_value())
+      {
+        throw std::runtime_error(std::format("Unknown probe atom '{}' for the surface area\n", probeName));
+      }
+
+      std::vector<double> radii;
+      radii.reserve(crystal.size());
+      for (const CrystalAtom &atom : crystal.atoms)
+      {
+        radii.push_back(well_depth_factor * interactions(probeType.value(), atom.type).sizeParameter);
+      }
+
+      SampledProbe probe{.name = probeName,
+                         .sizeParameter = interactions[probeType.value()].sizeParameter,
+                         .wellDepthFactor = well_depth_factor};
+
+      return {sampledStructure(std::move(radii)), probe};
+    };
+
+    // For the routines that measure the void: the probe is a point there and what it is kept out of is the
+    // atom's own sphere, so the radius is half the atom's own diameter.
+    auto sampledVoid = [&]() -> SampledStructure
+    {
+      std::vector<double> radii;
+      radii.reserve(crystal.size());
+      for (const CrystalAtom &atom : crystal.atoms)
+      {
+        radii.push_back(0.5 * well_depth_factor * interactions[atom.type].sizeParameter);
+      }
+
+      return sampledStructure(std::move(radii));
+    };
+
+    // And for the routines that ask what a probe of a size of its own can reach. The probe's centre is kept
+    // the two radii apart from the atom's centre, which under the Lorentz-Berthelot rule is the mixed
+    // diameter of the pair -- the same inflation the diagram routes apply to their atoms before building
+    // anything, so the two are measuring the same void.
+    auto sampledVoidFor = [&](const std::string &probeName) -> SampledStructure
+    {
+      std::optional<std::size_t> probeType = interactions.findType(probeName);
+      if (!probeType.has_value())
+      {
+        throw std::runtime_error(std::format("Unknown probe atom '{}' for the sampled void\n", probeName));
+      }
+
+      std::vector<double> radii;
+      radii.reserve(crystal.size());
+      for (const CrystalAtom &atom : crystal.atoms)
+      {
+        radii.push_back(well_depth_factor * interactions(probeType.value(), atom.type).sizeParameter);
+      }
+
+      return sampledStructure(std::move(radii));
     };
 
     if (state.test(CommandLine::State::TessellationComputation))
@@ -422,9 +610,31 @@ void CommandLine::run(int argc, char *argv[])
         {
           // The clearance field already names the nearest atom at every point, that being what its distance is
           // measured to, so the tessellation is a report on the field rather than a computation of its own.
-          ClearanceGrid grid = ClearanceGrid::compute(forceField.value(), framework, gridSize);
-          grid.writeTessellation(framework);
+          ClearanceGrid grid = ClearanceGrid::compute(interactions, crystal, gridSize);
+          grid.writeTessellation(crystal);
         }
+      }
+
+      if (use_energy_methods)
+      {
+        // The same division, by strongest attraction rather than by nearest surface. It depends on the probe
+        // in a way the geometric one does not, so which probe was used is part of the answer and goes in the
+        // name of the file.
+        EnergyTessellation tessellation;
+        if (molecule_name.has_value())
+        {
+          tessellation.run(energyBackend(), interactions, crystal,
+                           energyMolecule("tessellation", "probe-He"), iso_value, gridSize, energyOrientations(),
+                           temperature);
+        }
+        else
+        {
+          tessellation.run(energyBackend(), interactions, crystal, geometricProbe("probe-He"), iso_value,
+                           gridSize);
+        }
+        std::cout << "iso-surface " << tessellation.totalGravimetricArea << " m^2/g divided among "
+                  << tessellation.atoms.size() << " atoms, " << tessellation.undecidedArea
+                  << " A^2 of it in no atom's cell" << std::endl;
       }
     }
 
@@ -455,7 +665,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the accessible surface area from the clearance grid" << std::endl;
 
         GridSurfaceArea sa;
-        sa.run(forceField.value(), framework, geometricProbe("probe-N2"), gridSize);
+        sa.run(interactions, crystal, geometricProbe("probe-N2"), gridSize);
       }
 
       if (use_apollonius)
@@ -463,7 +673,7 @@ void CommandLine::run(int argc, char *argv[])
         // The area itself is measured rather than sampled unless the sampled estimate is asked for by
         // name, there being no reason to prefer a statistical answer to an exact one at the same cost.
         ApolloniusSurfaceArea sa;
-        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+        sa.run(interactions, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
                                        : ApolloniusSurfaceArea::Method::Exact,
                number_of_iterations, number_of_slices);
@@ -473,7 +683,7 @@ void CommandLine::run(int argc, char *argv[])
         // The area is measured against the radical network too: it is the same union of atoms and comes
         // to the same total, and what the network then decides is only how that total divides.
         VoronoiSurfaceArea sa;
-        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+        sa.run(interactions, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
                                        : VoronoiSurfaceArea::Method::Exact,
                number_of_iterations, number_of_slices);
@@ -481,20 +691,20 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_geometric_methods)
       {
+        auto [structure, probe] = sampledSurface(probe_atom_name.value_or("probe-N2"));
+
         if (use_monte_carlo_methods)
         {
           if (use_cpu)
           {
             MC_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
-                   number_of_iterations, number_of_inner_steps);
+            sa.run(structure, probe, number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
-                   number_of_iterations, number_of_inner_steps);
+            sa.run(structure, probe, number_of_iterations, number_of_inner_steps);
           }
         }
 
@@ -503,31 +713,61 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
-                   number_of_slices);
+            sa.run(structure, probe, number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
-                   number_of_slices);
+            sa.run(structure, probe, number_of_slices);
           }
         }
       }
 
       if (use_energy_methods)
       {
-        if (use_cpu)
+        // As with the void fraction: a molecule with a shape of its own goes through the orientational
+        // landscape, anything else is a single site and takes the cheaper route.
+        std::optional<LinearProbe> molecule{};
+        if (molecule_name.has_value())
         {
-          EnergySurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("probe-N2"));
+          molecule = LinearProbe::named(interactions, molecule_name.value());
+          if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, molecule_name.value());
+          if (!molecule.has_value())
+          {
+            throw std::runtime_error(
+                std::format("Unknown molecule '{}' for the surface area\n", molecule_name.value()));
+          }
         }
 
-        if (use_gpu)
+        if (molecule.has_value())
+        {
+          MolecularSurfaceArea sa;
+          sa.run(energyBackend(), interactions, crystal, molecule.value(), iso_value, gridSize,
+                 number_of_orientations, temperature);
+          std::cout << "free-energy surface: " << sa.gravimetricArea << " m^2/g, minimum-energy surface: "
+                    << sa.minimumEnergyGravimetricArea << " m^2/g (orientational excess "
+                    << sa.orientationalExcess() << ")" << std::endl;
+        }
+        else if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework, iso_value, probe_atom_name.value_or("probe-N2"), gridSize);
+          sa.run(interactions, crystal, iso_value, probe_atom_name.value_or("probe-N2"), gridSize);
+        }
+        else
+        {
+          // The single-site route has no processor version of its own, so the probe is sent round as a
+          // molecule of one site. The two agree exactly, which is what makes the substitution honest.
+          std::string probe = probe_atom_name.value_or("probe-N2");
+          std::optional<LinearProbe> single = LinearProbe::singleSite(interactions, probe);
+          if (!single.has_value())
+          {
+            throw std::runtime_error(std::format("Unknown probe atom '{}' for the surface area\n", probe));
+          }
+
+          MolecularSurfaceArea sa;
+          sa.run(energyBackend(), interactions, crystal, single.value(), iso_value, gridSize, 1, temperature);
+          std::cout << "surface: " << sa.gravimetricArea << " m^2/g" << std::endl;
         }
       }
     }
@@ -543,7 +783,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the void volume from the clearance grid" << std::endl;
 
         GridVoidFraction vf;
-        vf.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize);
+        vf.run(interactions, crystal, geometricProbe("probe-He"), gridSize);
       }
 
       if (use_apollonius)
@@ -552,7 +792,7 @@ void CommandLine::run(int argc, char *argv[])
         // rather than sampled, unless the sampled estimate is asked for by name. The division falls
         // back on sampling only where the surface cannot supply it, and says so when it does.
         ApolloniusAccessibleVolume av;
-        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+        av.run(interactions, crystal, geometricProbe("probe-He"),
                use_monte_carlo_methods ? ApolloniusAccessibleVolume::Method::Sampled
                                        : ApolloniusAccessibleVolume::Method::Exact,
                number_of_iterations, number_of_slices);
@@ -560,42 +800,102 @@ void CommandLine::run(int argc, char *argv[])
       else if (use_voronoi)
       {
         VoronoiAccessibleVolume av;
-        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+        av.run(interactions, crystal, geometricProbe("probe-He"),
                use_monte_carlo_methods ? VoronoiAccessibleVolume::Method::Sampled
                                        : VoronoiAccessibleVolume::Method::Exact,
                number_of_iterations, number_of_slices);
       }
 
-      if (use_monte_carlo_methods)
+      if (use_monte_carlo_methods && !use_energy_methods)
       {
-        if (use_cpu)
-        {
-          MC_VoidFraction vf;
-          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"),
-          //       number_of_iterations, number_of_inner_steps);
-        }
+        // Throwing points at the cell and counting the ones that land clear of every atom. The fraction
+        // needs nothing else and is unbiased; splitting it into the part a probe can reach and the part
+        // shut away needs to know what is connected to what, which is what the roadmap is for.
+        std::cout << "Compute the void fraction and pore volume by sampling the void" << std::endl;
 
-        if (use_gpu)
-        {
-          EnergyOpenCLVoidFraction vf;
-          //vf.run(forceField.value(), framework);
-        }
+        SamplingBackend sampling = use_gpu ? samplingBackendOpenCL() : samplingBackendCPU();
+        SampledStructure probedVoid = sampledVoidFor(geometricProbe("probe-He"));
+
+        MC_PoreVolume volume;
+        volume.run(probedVoid,
+                   SampledRoadmap::build(probedVoid, sampling, number_of_iterations, number_of_inner_steps));
+
+        std::cout << "void fraction " << volume.voidFraction << " +/- " << volume.voidFractionError << ", of which "
+                  << volume.accessibleVolumeFraction << " accessible and " << volume.inaccessibleVolumeFraction
+                  << " shut in " << volume.numberOfPockets << " pocket(s)" << std::endl;
+        std::cout << "pore volume " << volume.gravimetricVoidVolume << " cm^3/g, of which "
+                  << volume.gravimetricAccessibleVolume << " cm^3/g a probe can reach" << std::endl;
       }
 
-      if (use_energy_methods)
+      if (use_energy_methods && use_monte_carlo_methods)
       {
-        if (use_cpu)
+        // Widom insertion samples the same average the grid route sums, at random points rather than on a
+        // lattice, and --monte-carlo asks for the sampled estimate here as it does for the geometric
+        // properties. It shares no arithmetic with the field routes, so its agreeing with them is worth
+        // something.
+        EnergyVoidFraction vf;
+        vf.run(interactions, crystal, probe_atom_name.value_or("probe-He"), number_of_iterations,
+               number_of_inner_steps);
+      }
+      else if (use_energy_methods)
+      {
+        // A molecule with a shape of its own goes through the orientational landscape; anything else is a
+        // single site and takes the cheaper route, the two agreeing when the molecule named is one site.
+        std::optional<LinearProbe> molecule{};
+        if (molecule_name.has_value())
         {
-          EnergyVoidFraction vf;
-          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations,
-                 number_of_inner_steps);
+          molecule = LinearProbe::named(interactions, molecule_name.value());
+          if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, molecule_name.value());
+          if (!molecule.has_value())
+          {
+            throw std::runtime_error(std::format("Unknown molecule '{}' for the void fraction\n",
+                                                 molecule_name.value()));
+          }
         }
 
-        if (use_gpu)
+        if (molecule.has_value())
+        {
+          MolecularVoidFraction vf;
+          vf.run(energyBackend(), interactions, crystal, molecule.value(), gridSize, number_of_orientations,
+                 temperature);
+          std::cout << "average of exp(-A/kT): " << vf.boltzmannAverage
+                    << (vf.readsAsFraction ? " (reads as a void fraction)"
+                                           : " (above one, so a Henry coefficient rather than a fraction)")
+                    << ", K_H = " << vf.henryCoefficient << " mol/kg/Pa" << std::endl;
+        }
+        else if (use_gpu)
         {
           EnergyOpenCLVoidFraction vf;
-          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), gridSize);
+          vf.run(interactions, crystal, probe_atom_name.value_or("probe-He"), gridSize, temperature);
         }
+        else
+        {
+          // The single-site route has no processor version of its own, so the probe is sent round as a
+          // molecule of one site. The two agree exactly, which is what makes the substitution honest.
+          std::string probe = probe_atom_name.value_or("probe-He");
+          std::optional<LinearProbe> single = LinearProbe::singleSite(interactions, probe);
+          if (!single.has_value())
+          {
+            throw std::runtime_error(std::format("Unknown probe atom '{}' for the void fraction\n", probe));
+          }
+
+          MolecularVoidFraction vf;
+          vf.run(energyBackend(), interactions, crystal, single.value(), gridSize, 1, temperature);
+          std::cout << "average of exp(-U/kT): " << vf.boltzmannAverage
+                    << (vf.readsAsFraction ? " (reads as a void fraction)"
+                                           : " (above one, so a Henry coefficient rather than a fraction)")
+                    << ", K_H = " << vf.henryCoefficient << " mol/kg/Pa" << std::endl;
+        }
+
+        // The average above is one reading of how much room there is and it is not a volume. Counting the
+        // region the molecule can occupy is the other, and it is the one that comes out in Å³ and cm³/g and
+        // can be set beside a geometric table. Both are read off the same landscape, which is built once.
+        EnergyPoreVolume pv;
+        pv.run(energyBackend(), interactions, crystal, energyMolecule("pore volume", "probe-He"), iso_value,
+               gridSize, energyOrientations(), temperature, blocking_threshold);
+        std::cout << "pore volume " << pv.gravimetricVoidVolume << " cm^3/g, of which "
+                  << pv.gravimetricReachableVolume << " cm^3/g the molecule can reach; by Boltzmann weight "
+                  << pv.gravimetricBoltzmannVolume << " cm^3/g" << std::endl;
       }
     }
 
@@ -615,44 +915,65 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
 
         GridPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize, maximum_range, number_of_bins);
+        psd.run(interactions, crystal, geometricProbe("probe-He"), gridSize, maximum_range, number_of_bins);
       }
 
       if (use_apollonius)
       {
         std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
         ApolloniusPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
+        psd.run(interactions, crystal, geometricProbe("probe-He"), maximum_range, number_of_bins,
                 number_of_slices.value_or(1));
       }
       else if (use_voronoi)
       {
         std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
         VoronoiPoreSizeDistribution psd;
-        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
+        psd.run(interactions, crystal, geometricProbe("probe-He"), maximum_range, number_of_bins,
                 number_of_slices.value_or(1));
       }
 
       if (use_monte_carlo_methods)
       {
+        SampledStructure structure = sampledVoid();
+
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
-                  maximum_range);
+          psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
-                  maximum_range);
+          psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
         }
       }
 
       if (use_energy_methods)
       {
-        std::print("TODO: not implemented yet\n");
+        // As with the surface area: a molecule with a shape of its own goes through the orientational
+        // landscape, and anything else is sent round as a molecule of one site, which the landscape
+        // reproduces exactly.
+        std::string probe = molecule_name.value_or(probe_atom_name.value_or("probe-N2"));
+        std::optional<LinearProbe> molecule = LinearProbe::named(interactions, probe);
+        if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, probe);
+        if (!molecule.has_value())
+        {
+          throw std::runtime_error(
+              std::format("Unknown molecule '{}' for the pore-size distribution\n", probe));
+        }
+
+        std::size_t orientations = molecule_name.has_value() ? number_of_orientations : 1;
+
+        EnergyPoreSizeDistribution psd;
+        psd.run(energyBackend(), interactions, crystal, molecule.value(), iso_value, gridSize, orientations,
+                temperature, blocking_threshold, true, 1e-6, maximum_range, number_of_bins);
+        std::cout << "largest sphere the void holds: " << psd.largestDiameter << " A, void fraction at this level "
+                  << psd.voidFraction << ", running in " << psd.dimensionality << " directions" << std::endl;
+        std::cout << "mean pore per unit volume " << psd.volumetricMeanDiameter << " A, per molecule "
+                  << psd.occupancyMeanDiameter << " A, with " << psd.reachableOccupancyFraction
+                  << " of the molecules in reachable void" << std::endl;
       }
     }
 
@@ -667,7 +988,92 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute pore diameters and channels from the clearance grid" << std::endl;
 
         GridPoreAnalysis analysis;
-        analysis.run(forceField.value(), framework, probe, gridSize);
+        analysis.run(interactions, crystal, probe, gridSize);
+      }
+
+      if (use_energy_methods)
+      {
+        LinearProbe molecule = energyMolecule("pore analysis", "probe-N2");
+        std::cout << "Compute pore diameters and channels from the energy landscape for " << molecule.name
+                  << std::endl;
+
+        EnergyPoreAnalysis analysis;
+        analysis.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize,
+                     energyOrientations(), temperature);
+
+        // The levels are the answers with no parameter in them, so they are the ones worth putting on the
+        // screen; the lengths need the iso-value and are left to the file.
+        std::cout << "Di " << analysis.levels.deepestWell * Units::EnergyToKelvin << " K";
+        if (analysis.levels.percolates)
+        {
+          std::cout << ", Df " << analysis.levels.percolationBarrier * Units::EnergyToKelvin << " K ("
+                    << analysis.levels.percolationBarrier / (Units::KB * temperature) << " kT), Dif "
+                    << analysis.levels.deepestWellOnPath * Units::EnergyToKelvin << " K, running in "
+                    << analysis.levels.dimensionalityWithin(Units::KB * temperature).first << " direction(s)";
+        }
+        else
+        {
+          std::cout << ", and no path through the crystal at any energy";
+        }
+        std::cout << std::endl;
+        std::cout << "on the contour: Di " << analysis.diameters.includedSphereDiameter << " A, Df "
+                  << analysis.diameters.freeSphereDiameter << " A, Dif "
+                  << analysis.diameters.includedAlongFreePathDiameter << " A" << std::endl;
+      }
+
+      if (use_monte_carlo_methods)
+      {
+        std::cout << "Compute pore diameters, channels and window shapes by sampling the void" << std::endl;
+
+        // The diameters and the windows are measured with a point probe, as the diagram routes measure
+        // theirs; the channels are what the named probe can travel, so they are sampled against its own
+        // contact radii. Each of the two roadmaps is built once and read three times over.
+        SamplingBackend sampling = use_gpu ? samplingBackendOpenCL() : samplingBackendCPU();
+
+        SampledStructure pointProbe = sampledVoid();
+        SampledRoadmap voidMap =
+            SampledRoadmap::build(pointProbe, sampling, number_of_iterations, number_of_inner_steps);
+
+        MC_PoreDiameters diameters;
+        diameters.run(pointProbe, voidMap);
+
+        MC_WindowShape windows;
+        windows.run(pointProbe, voidMap);
+
+        SampledStructure probedVoid = sampledVoidFor(probe);
+        MC_Channels channels;
+        channels.run(probedVoid,
+                     SampledRoadmap::build(probedVoid, sampling, number_of_iterations, number_of_inner_steps));
+
+        // Every one of these is a lower bound, so it is worth saying what it was read from: a run whose
+        // sample is too small says so by finding too few points in the void, not by scattering.
+        std::cout << "Di " << diameters.result.includedSphereDiameter << " A";
+        if (diameters.percolates)
+        {
+          std::cout << ", Df " << diameters.result.freeSphereDiameter << " A, Dif "
+                    << diameters.result.includedAlongFreePathDiameter << " A";
+        }
+        else
+        {
+          std::cout << ", and no path through the crystal was found";
+        }
+        std::cout << std::endl;
+        std::cout << "from " << voidMap.numberOfVoidSamples << " points in the void of " << voidMap.numberOfSamples
+                  << " thrown (void fraction " << voidMap.voidFraction << "), " << voidMap.numberOfLinks
+                  << " links, " << voidMap.numberOfPocketCentres << " pocket centres, on " << voidMap.backend
+                  << std::endl;
+
+        if (windows.freeSphere.measured)
+        {
+          std::cout << "Df window: free width " << windows.freeSphere.smallestFreeWidth << " - "
+                    << windows.freeSphere.largestFreeWidth << " A, ellipse " << windows.freeSphere.minorAxis
+                    << " x " << windows.freeSphere.majorAxis << " A, ring of "
+                    << windows.freeSphere.boundingAtoms << " atoms" << std::endl;
+        }
+
+        std::cout << channels.numberOfChannels << " channel(s) and " << channels.numberOfPockets
+                  << " pocket(s) for " << probe << ", running in " << channels.dimensionality
+                  << " direction(s), holding " << channels.channelShareOfVoid << " of the void" << std::endl;
       }
 
       if (use_apollonius)
@@ -675,18 +1081,20 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute pore diameters and channels from the Apollonius diagram" << std::endl;
 
         ApolloniusPoreAnalysis analysis;
-        analysis.run(forceField.value(), framework, probe);
+        analysis.run(interactions, crystal, probe);
       }
-      else if (!onTheGrid)
+      else if (!onTheGrid && (use_voronoi || !(use_energy_methods || use_monte_carlo_methods)))
       {
+        // The Voronoi route is what a run that named no route at all gets. Asking for the energy one counts
+        // as naming a route, so it is not also given this one behind its back.
         std::cout << "Compute pore diameters and channels from the Voronoi network" << std::endl;
 
         VoronoiPoreDiameters diameters;
-        diameters.run(forceField.value(), framework);
+        diameters.run(interactions, crystal);
 
         // Both analyses read the same network, and building it costs more than either of them.
         VoronoiChannels channels;
-        channels.run(forceField.value(), framework, probe, diameters.network);
+        channels.run(interactions, crystal, probe, diameters.network);
       }
     }
 
@@ -710,9 +1118,47 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the clearance grid" << std::endl;
 
         GridBlockingSpheres blocks;
-        blocks.run(forceField.value(), framework, probe, gridSize);
+        blocks.run(interactions, crystal, probe, gridSize);
         std::cout << blocks.spheres.size() << " spheres, covering " << blocks.numberOfPockets << " pockets"
                   << std::endl;
+      }
+
+      if (use_energy_methods)
+      {
+        LinearProbe molecule = energyMolecule("blocking spheres", "probe-N2");
+        std::cout << "Compute blocking spheres from the energy landscape for " << molecule.name << std::endl;
+
+        EnergyBlockingSpheres blocks;
+        blocks.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize,
+                   energyOrientations(), temperature, blocking_threshold);
+
+        std::cout << blocks.spheres.size() << " spheres over " << blocks.numberOfBlockedCavities
+                  << " pieces too deep to leave, at " << blocking_threshold << " kT" << std::endl;
+        if (blocks.numberOfLeakyCavities > 0)
+        {
+          std::cout << blocks.numberOfLeakyCavities << " further piece(s), holding " << blocks.leakyFraction
+                    << " of the cell, do not run anywhere but are left open: the molecule gets out of them"
+                    << std::endl;
+        }
+      }
+
+      if (use_monte_carlo_methods)
+      {
+        // The pockets are the pieces of the roadmap that run nowhere, and the spheres are grown over the
+        // points in them. Unlike the surface routes this one can miss a cavity no point landed in, so what
+        // it found is printed beside what it wrote.
+        std::cout << "Compute blocking spheres by sampling the void" << std::endl;
+
+        SamplingBackend sampling = use_gpu ? samplingBackendOpenCL() : samplingBackendCPU();
+        SampledStructure probedVoid = sampledVoidFor(probe);
+
+        MC_BlockingPockets blocks;
+        blocks.run(probedVoid,
+                   SampledRoadmap::build(probedVoid, sampling, number_of_iterations, number_of_inner_steps));
+
+        std::cout << blocks.spheres.size() << " spheres over " << blocks.numberOfCoveredPockets << " of "
+                  << blocks.numberOfPockets << " pocket(s), holding " << blocks.blockedFractionOfVoid
+                  << " of the sampled void" << std::endl;
       }
 
       if (use_apollonius)
@@ -720,16 +1166,125 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
 
         ApolloniusBlockingSpheres blocks;
-        blocks.run(forceField.value(), framework, probe);
+        blocks.run(interactions, crystal, probe);
         report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
-      else if (!onTheGrid)
+      else if (!onTheGrid && !use_monte_carlo_methods && (use_voronoi || !use_energy_methods))
       {
+        // As with the pore analysis: this is the route a run that named none gets, and asking for the energy
+        // one is naming one.
         std::cout << "Compute blocking spheres from the Voronoi network" << std::endl;
 
         VoronoiBlockingSpheres blocks;
-        blocks.run(forceField.value(), framework, probe);
+        blocks.run(interactions, crystal, probe);
         report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
+      }
+    }
+
+    if (state.test(CommandLine::State::BruteForce))
+    {
+      std::cout << "Check the exact geometry against brute force" << std::endl;
+
+      BruteForceSettings settings{.spacing = brute_force_spacing,
+                                  .samplesPerAtom = brute_force_samples,
+                                  .volumePoints = brute_force_points,
+                                  .subdivisions = number_of_slices.value_or(1),
+                                  .skipSolventExcluded = brute_force_skip_excluded};
+
+      // The same probes the routes being checked use by default, so that what comes out is comparable with
+      // what those routes wrote rather than with a third convention invented here.
+      BruteForceValidation validation;
+      validation.run(interactions, crystal, geometricProbe("probe-N2"), geometricProbe("probe-He"),
+                     settings);
+
+      std::size_t disagreements = validation.numberOfDisagreements();
+      std::cout << validation.checks.size() - disagreements << " of " << validation.checks.size()
+                << " checks agree";
+      if (disagreements > 0)
+      {
+        std::cout << "; see " << framework.name << ".brute-force.txt for which";
+      }
+      std::cout << std::endl;
+    }
+
+    if (state.test(CommandLine::State::PercolationBarrier))
+    {
+      // The barrier is a property of a molecule in a framework rather than of the framework alone, so the
+      // probe is the one the energy routes use rather than the geometric stand-in, and it is not swapped for
+      // a bare radius when the run is asked for zeo++ conventions.
+      // A molecule named here is one with a shape of its own, and it is carried through the orientational
+      // route. Anything else is a single site and goes the cheaper way, the two agreeing exactly when the
+      // molecule named happens to be a single site.
+      // A name is looked for among the molecules with a shape first, and failing that among the pseudo-atoms,
+      // so that a single site can be sent the long way round. That is not only a convenience: a single site
+      // has to come back from the orientational route with exactly what the direct route gives, and being
+      // able to ask for it is what makes that comparable.
+      std::optional<LinearProbe> molecule{};
+      if (molecule_name.has_value())
+      {
+        molecule = LinearProbe::named(interactions, molecule_name.value());
+        if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, molecule_name.value());
+      }
+
+      if (molecule_name.has_value() && !molecule.has_value())
+      {
+        throw std::runtime_error(
+            std::format("Unknown molecule '{}' for the energy barrier; the ones with a shape of their own are {}, "
+                        "and any pseudo-atom may be named with --probe-atom-name instead\n",
+                        molecule_name.value(), [] {
+                          std::string names;
+                          for (const std::string &name : LinearProbe::builtInNames())
+                            names += (names.empty() ? "" : ", ") + name;
+                          return names;
+                        }()));
+      }
+
+      if (molecule.has_value())
+      {
+        std::cout << "Compute the percolation barrier for " << molecule->name << " over " << number_of_orientations
+                  << " orientations" << std::endl;
+
+        MolecularEnergyBarrier barrier;
+        barrier.run(energyBackend(), interactions, crystal, molecule.value(), gridSize,
+                    number_of_orientations, temperature);
+
+        if (barrier.fromFreeEnergy.percolates)
+        {
+          std::cout << "barrier " << barrier.fromFreeEnergy.percolationBarrier * Units::EnergyToKelvin << " K ("
+                    << barrier.fromFreeEnergy.percolationBarrier / (Units::KB * temperature) << " kT at "
+                    << temperature << " K), running in "
+                    << barrier.fromFreeEnergy.dimensionalityWithin(Units::KB * temperature).first
+                    << " direction(s); orientation costs "
+                    << barrier.orientationalPenalty * Units::EnergyToKelvin << " K of it" << std::endl;
+        }
+        if (barrier.grid.chargesIgnored)
+        {
+          std::cout << "warning: " << molecule->name
+                    << " carries partial charges that this landscape does not act on" << std::endl;
+        }
+        else if (barrier.grid.chargesIncluded && barrier.potential.largestFrameworkCharge == 0.0)
+        {
+          std::cout << "warning: every framework atom is neutral, so the electrostatics did nothing; pass "
+                       "--charges-from pseudo-atoms to take charges from the force field"
+                    << std::endl;
+        }
+      }
+      else
+      {
+        std::string probe = probe_atom_name.value_or("probe-N2");
+
+        std::cout << "Compute the percolation barrier from the probe energy grid" << std::endl;
+
+        EnergyBarrier barrier;
+        barrier.run(energyBackend(), interactions, crystal, probe, gridSize, temperature);
+
+        if (barrier.percolates)
+        {
+          std::cout << "barrier " << barrier.percolationBarrier * Units::EnergyToKelvin << " K ("
+                    << barrier.percolationBarrier / (Units::KB * temperature) << " kT at " << temperature
+                    << " K), running in " << barrier.dimensionalityWithin(Units::KB * temperature).first
+                    << " direction(s)" << std::endl;
+        }
       }
     }
 

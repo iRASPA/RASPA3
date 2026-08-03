@@ -4,7 +4,7 @@ import std;
 
 import int3;
 import double3;
-import simulationbox;
+import unit_cell;
 import pore_accessibility;
 import exact_boundary_components;
 
@@ -45,7 +45,7 @@ std::vector<double3> cageCentres(const double3& centre, double shellRadius, std:
 }
 
 
-PoreAccessibility geometryOf(const SimulationBox& box, const std::vector<double3>& positions, double ballRadius)
+PoreAccessibility geometryOf(const UnitCell& box, const std::vector<double3>& positions, double ballRadius)
 {
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
@@ -172,7 +172,7 @@ double3 fromPolar(double polar, double azimuth)
 // across circles ever invents an edge.
 TEST(boundary_components, separate_balls_are_separate_surfaces)
 {
-  SimulationBox box(30.0, 30.0, 30.0);
+  UnitCell box(30.0, 30.0, 30.0);
   PoreAccessibility geometry = geometryOf(box, {double3(8.0, 8.0, 8.0), double3(20.0, 20.0, 20.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry);
@@ -190,7 +190,7 @@ TEST(boundary_components, separate_balls_are_separate_surfaces)
 // Two balls that overlap: one surface, and one patch on each of them, joined across the circle they share.
 TEST(boundary_components, overlapping_balls_are_one_surface)
 {
-  SimulationBox box(30.0, 30.0, 30.0);
+  UnitCell box(30.0, 30.0, 30.0);
   PoreAccessibility geometry = geometryOf(box, {double3(14.0, 15.0, 15.0), double3(16.0, 15.0, 15.0)}, 2.0);
 
   BoundaryComponents components = boundaryComponents(geometry);
@@ -207,7 +207,7 @@ TEST(boundary_components, overlapping_balls_are_one_surface)
 // neither loop meets the other. It is one patch all the same, and the flood fill says so independently.
 TEST(boundary_components, a_band_between_two_caps_is_one_patch)
 {
-  SimulationBox box(30.0, 30.0, 30.0);
+  UnitCell box(30.0, 30.0, 30.0);
   PoreAccessibility geometry =
       geometryOf(box, {double3(15.0, 15.0, 15.0), double3(12.5, 15.0, 15.0), double3(17.5, 15.0, 15.0)}, 2.0);
 
@@ -232,7 +232,7 @@ TEST(boundary_components, a_band_between_two_caps_is_one_patch)
 // mattering, two representatives in one region being the thing that must not happen.
 TEST(boundary_components, a_region_winding_round_the_sphere_is_not_cut_up)
 {
-  SimulationBox box(40.0, 40.0, 40.0);
+  UnitCell box(40.0, 40.0, 40.0);
   const double3 centre(20.0, 20.0, 20.0);
   const double radius = 4.0;
 
@@ -268,7 +268,7 @@ TEST(boundary_components, a_region_winding_round_the_sphere_is_not_cut_up)
 TEST(boundary_components, a_sealed_cage_has_an_inside_and_an_outside)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const std::size_t count = 32;
   std::vector<double3> positions = cageCentres(double3(0.5 * a, 0.5 * a, 0.5 * a), 3.0, count);
   PoreAccessibility geometry = geometryOf(box, positions, 1.8);
@@ -305,7 +305,7 @@ TEST(boundary_components, a_sealed_cage_has_an_inside_and_an_outside)
 TEST(boundary_components, a_direction_is_looked_up_on_the_patch_it_lies_on)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const std::size_t count = 32;
   std::vector<double3> positions = cageCentres(centre, 3.0, count);
@@ -351,7 +351,7 @@ TEST(boundary_components, a_direction_is_looked_up_on_the_patch_it_lies_on)
 TEST(boundary_components, a_cage_on_the_boundary_is_the_same_cage)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const std::size_t count = 32;
   PoreAccessibility geometry = geometryOf(box, cageCentres(double3(0.0, 0.0, 0.0), 3.0, count), 1.8);
 
@@ -369,7 +369,7 @@ TEST(boundary_components, a_cage_on_the_boundary_is_the_same_cage)
 TEST(boundary_components, two_cages_give_four_surfaces)
 {
   const double a = 24.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   std::vector<double3> positions = cageCentres(double3(6.0, 6.0, 6.0), 3.0, 32);
   for (const double3& position : cageCentres(double3(18.0, 18.0, 18.0), 3.0, 32)) positions.push_back(position);
   PoreAccessibility geometry = geometryOf(box, positions, 1.8);
@@ -388,7 +388,7 @@ TEST(boundary_components, two_cages_give_four_surfaces)
 TEST(boundary_components, a_chain_round_the_cell_closes_on_a_translate)
 {
   const double a = 20.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   std::vector<double3> positions;
   const std::size_t count = 10;
   for (std::size_t i = 0; i < count; ++i)
@@ -410,7 +410,7 @@ TEST(boundary_components, a_chain_round_the_cell_closes_on_a_translate)
 // reached on the exposed side of it -- so the band is one patch, decided rather than searched for.
 TEST(boundary_components, the_nesting_rule_makes_the_band_one_patch)
 {
-  SimulationBox box(30.0, 30.0, 30.0);
+  UnitCell box(30.0, 30.0, 30.0);
   PoreAccessibility geometry =
       geometryOf(box, {double3(15.0, 15.0, 15.0), double3(12.5, 15.0, 15.0), double3(17.5, 15.0, 15.0)}, 2.0);
 
@@ -429,7 +429,7 @@ TEST(boundary_components, the_nesting_rule_makes_the_band_one_patch)
 // use if it decides less often than a search.
 TEST(boundary_components, the_nesting_rule_follows_a_winding_region)
 {
-  SimulationBox box(40.0, 40.0, 40.0);
+  UnitCell box(40.0, 40.0, 40.0);
   const double3 centre(20.0, 20.0, 20.0);
   const double radius = 4.0;
 
@@ -469,7 +469,7 @@ TEST(boundary_components, the_nesting_rule_follows_a_winding_region)
 TEST(boundary_components, the_two_merge_rules_agree)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const std::size_t count = 32;
 
   std::vector<std::pair<std::string, PoreAccessibility>> cases;
@@ -503,7 +503,7 @@ TEST(boundary_components, the_two_merge_rules_agree)
 TEST(boundary_components, neighbour_images_are_consistent_and_symmetric)
 {
   const double a = 9.0;  // small enough that the images of an atom reach its own sphere
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   PoreAccessibility geometry =
       geometryOf(box, {double3(1.0, 2.0, 3.0), double3(5.0, 6.0, 7.0), double3(8.5, 0.5, 4.0)}, 2.2);
 
@@ -546,7 +546,7 @@ TEST(boundary_components, neighbour_images_are_consistent_and_symmetric)
 TEST(boundary_components, a_surface_knows_how_many_directions_it_runs_away_in)
 {
   const double a = 16.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // A cage: two surfaces, an inside and an outside, neither going anywhere.
   {
@@ -631,7 +631,7 @@ TEST(boundary_components, a_surface_knows_how_many_directions_it_runs_away_in)
 TEST(boundary_components, a_rod_in_open_void_bounds_more_than_it_says)
 {
   const double a = 16.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::vector<double3> positions;
   for (std::size_t i = 0; i < 8; ++i) positions.push_back(double3(2.0 * static_cast<double>(i), 8.0, 8.0));

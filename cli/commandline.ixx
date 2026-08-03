@@ -36,7 +36,9 @@ enum State : std::uint8_t
   PSD_BV = 9, // Pore Size Distribution using Ban, Vlugt method
   PoreAnalysis = 10, // Pore diameters (Di, Df, Dif) and the channel/pocket analysis, as in zeo++
   BlockingSpheres = 11, // Spheres covering the pockets a probe cannot reach
-  Last = 12
+  PercolationBarrier = 12, // The energetic counterpart of Df: the saddle a probe crosses to get through
+  BruteForce = 13, // The exact routes worked out again from the atoms alone, and the two set against each other
+  Last = 14
 };
 
 void run(int argc, char* argv[]);

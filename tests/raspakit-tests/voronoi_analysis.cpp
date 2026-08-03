@@ -5,6 +5,8 @@ import std;
 import int3;
 import double3;
 import simulationbox;
+import unit_cell;
+import structure_input;
 import atom;
 import randomnumbers;
 import forcefield;
@@ -23,7 +25,7 @@ TEST(voronoi_analysis, simple_cubic_pore_diameters)
 {
   double a = 5.0;
   double r = 1.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   VoronoiNetwork network = VoronoiNetwork::create(box, {double3(0.0, 0.0, 0.0)}, {r});
 
   EXPECT_EQ(network.nodes.size(), 1);
@@ -42,7 +44,7 @@ TEST(voronoi_analysis, simple_cubic_pore_diameters)
 TEST(voronoi_analysis, simple_cubic_is_three_dimensional_channel)
 {
   double a = 5.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   VoronoiNetwork network = VoronoiNetwork::create(box, {double3(0.0, 0.0, 0.0)}, {1.0});
 
   ChannelAnalysis channels = ChannelAnalysis::compute(network, 0.5);
@@ -70,7 +72,7 @@ TEST(voronoi_analysis, accessibility_classification)
   double a = 5.0;
   double r = 1.0;
   double probe = 0.5;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   PoreAccessibility accessibility = PoreAccessibility::create(box, {double3(0.0, 0.0, 0.0)}, {r}, probe);
 
   // Point well inside the inflated atom.
@@ -126,7 +128,7 @@ TEST(voronoi_analysis, apollonius_tangent_sphere)
 TEST(voronoi_analysis, largest_included_sphere_matches_brute_force_clearance_peak)
 {
   double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::mt19937 generator(11);
   std::uniform_real_distribution<double> uniform(0.0, 1.0);
@@ -230,7 +232,7 @@ TEST(voronoi_analysis, largest_included_sphere_matches_brute_force_clearance_pea
 TEST(voronoi_analysis, radii_are_true_clearances_for_heterogeneous_radii)
 {
   double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::mt19937 generator(7);
   std::uniform_real_distribution<double> uniform(0.0, 1.0);
@@ -306,7 +308,7 @@ TEST(voronoi_analysis, radii_are_true_clearances_for_heterogeneous_radii)
 TEST(voronoi_analysis, classify_decides_every_point_with_heterogeneous_radii)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double largeRadius = 2.2;
   const double smallRadius = 0.35;
   const double probe = 0.4;
@@ -356,17 +358,18 @@ TEST(voronoi_analysis, itq29_pipeline)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  UnitCell frameworkCell = StructureInput::makeUnitCell(framework.simulationBox);
 
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
   for (const Atom& atom : framework.unitCellAtoms)
   {
-    fractionalPositions.push_back(framework.simulationBox.inverseCell * atom.position);
+    fractionalPositions.push_back(frameworkCell.inverseCell * atom.position);
     std::size_t type = static_cast<std::size_t>(atom.type);
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
 
-  VoronoiNetwork network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
+  VoronoiNetwork network = VoronoiNetwork::create(frameworkCell, fractionalPositions, radii);
   EXPECT_GT(network.nodes.size(), 0);
   EXPECT_GT(network.edges.size(), 0);
 
@@ -393,12 +396,13 @@ TEST(voronoi_analysis, DISABLED_fau_timing_vs_zeopp)
   // Same radii table as zeo++ (CLI option --zeo++): radius = sigma / 2.
   ForceField forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false);
   Framework framework = Framework::makeFAU(forceField, int3(1, 1, 1));
+  UnitCell frameworkCell = StructureInput::makeUnitCell(framework.simulationBox);
 
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
   for (const Atom& atom : framework.unitCellAtoms)
   {
-    fractionalPositions.push_back(framework.simulationBox.inverseCell * atom.position);
+    fractionalPositions.push_back(frameworkCell.inverseCell * atom.position);
     std::size_t type = static_cast<std::size_t>(atom.type);
     radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }
@@ -408,14 +412,14 @@ TEST(voronoi_analysis, DISABLED_fau_timing_vs_zeopp)
   auto ms = [](auto d) { return std::chrono::duration<double, std::milli>(d).count(); };
 
   auto t0 = clock();
-  VoronoiNetwork network = VoronoiNetwork::create(framework.simulationBox, fractionalPositions, radii);
+  VoronoiNetwork network = VoronoiNetwork::create(frameworkCell, fractionalPositions, radii);
   auto t1 = clock();
   PoreDiameters diameters = PoreDiameters::compute(network);
   auto t2 = clock();
   ChannelAnalysis channels = ChannelAnalysis::compute(network, probeRadius);
   auto t3 = clock();
   PoreAccessibility accessibility =
-      PoreAccessibility::create(framework.simulationBox, fractionalPositions, radii, probeRadius);
+      PoreAccessibility::create(frameworkCell, fractionalPositions, radii, probeRadius);
   auto t4 = clock();
 
   RandomNumber random{std::nullopt};
@@ -434,7 +438,7 @@ TEST(voronoi_analysis, DISABLED_fau_timing_vs_zeopp)
   std::size_t volumeSamples = 50000;
   for (std::size_t s = 0; s < volumeSamples; ++s)
   {
-    double3 point = framework.simulationBox.cell * double3(random.uniform(), random.uniform(), random.uniform());
+    double3 point = frameworkCell.cell * double3(random.uniform(), random.uniform(), random.uniform());
     volatile auto c = accessibility.classify(point);
     (void)c;
   }
@@ -493,11 +497,11 @@ TEST(voronoi_analysis, DISABLED_dump_network_nt2)
       }
     }
   }
-  SimulationBox::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
+  UnitCell::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
                               std::abs(gamma - 90.0) > 1.0e-3)
-                                 ? SimulationBox::Type::Triclinic
-                                 : SimulationBox::Type::Rectangular;
-  SimulationBox simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
+                                 ? UnitCell::Type::Triclinic
+                                 : UnitCell::Type::Rectangular;
+  UnitCell simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
                               gamma * std::numbers::pi / 180.0, type);
 
   VoronoiNetwork network = VoronoiNetwork::create(simulationBox, fractionalPositions, radii);
@@ -578,11 +582,11 @@ TEST(voronoi_analysis, DISABLED_compare_p1_cifs_vs_zeopp)
     }
     ASSERT_FALSE(fractionalPositions.empty()) << name;
 
-    SimulationBox::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
+    UnitCell::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
                                 std::abs(gamma - 90.0) > 1.0e-3)
-                                   ? SimulationBox::Type::Triclinic
-                                   : SimulationBox::Type::Rectangular;
-    SimulationBox simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
+                                   ? UnitCell::Type::Triclinic
+                                   : UnitCell::Type::Rectangular;
+    UnitCell simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
                                 gamma * std::numbers::pi / 180.0, type);
 
     auto t0 = clock();
@@ -693,11 +697,11 @@ TEST(voronoi_analysis, DISABLED_compare_all_cifs_vs_zeopp)
     { std::istringstream iss(line); iss >> numberOfAtoms; }
     std::getline(stream, line);  // structure name
 
-    SimulationBox::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
+    UnitCell::Type type = (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 ||
                                 std::abs(gamma - 90.0) > 1.0e-3)
-                                   ? SimulationBox::Type::Triclinic
-                                   : SimulationBox::Type::Rectangular;
-    SimulationBox simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
+                                   ? UnitCell::Type::Triclinic
+                                   : UnitCell::Type::Rectangular;
+    UnitCell simulationBox(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
                                 gamma * std::numbers::pi / 180.0, type);
 
     std::vector<double3> fractionalPositions;

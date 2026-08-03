@@ -251,6 +251,9 @@ install:
 	install -m 664 ../data/molecules/example_definitions/methane.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/methane.json
 	install -m 664 ../data/molecules/example_definitions/co2.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/co2.json
 	install -m 664 ../data/molecules/example_definitions/n2.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/n2.json
+	install -m 664 ../data/molecules/example_definitions/o2.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/o2.json
+	install -m 664 ../data/molecules/example_definitions/h2.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/h2.json
+	install -m 664 ../data/molecules/example_definitions/no.json  $(DESTDIR)/share/raspa3/molecules/example_definitions/no.json
 
 clean:
 	rm -f ../app/raspa *.pcm *.o foundationkit/*.pcm foundationkit/*.o mathkit/*.pcm mathkit/*.o symmetrykit/*.pcm symmetrykit/*.o raspakit/*.pcm raspakit/*.o raspakit/interactions/*.pcm raspakit/interactions/*.o raspakit/mc_moves/*.o raspakit/potentials/*.o raspakit/properties/*.o raspakit/cbmc/*.o raspakit/forcefield/*.o ../app/main.pcm ../app/main.o *.so ../app/raspa3.exe

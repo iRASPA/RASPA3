@@ -3,7 +3,7 @@
 import std;
 
 import double3;
-import simulationbox;
+import unit_cell;
 import randomnumbers;
 import voronoi_network;
 import pore_accessibility;
@@ -26,11 +26,11 @@ namespace
 // back undecided, which is what is wanted here -- the area is all in `total()` and none of it has been
 // through a diagram -- and it keeps these cases free of the question of whether a diagram of four atoms
 // in a large box has any vertices.
-PoreAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+PoreAccessibility bareGeometry(const UnitCell& box, const std::vector<double3>& fractionalPositions,
                                  const std::vector<double>& radii)
 {
   VoronoiNetwork network;
-  network.simulationBox = box;
+  network.unitCell = box;
   network.atomRadii = radii;
   for (const double3& fractional : fractionalPositions)
   {
@@ -62,7 +62,7 @@ double unionAreaOfTwoSpheres(double firstRadius, double secondRadius, double dis
 TEST(apollonius_surface_area, lone_sphere)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double radius = 1.7;
 
   PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
@@ -77,7 +77,7 @@ TEST(apollonius_surface_area, lone_sphere)
 TEST(apollonius_surface_area, two_spheres_against_the_closed_form)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   const std::array<std::array<double, 3>, 5> cases = {{{2.0, 1.0, 2.5},
                                                        {3.0, 2.5, 1.0},
@@ -108,7 +108,7 @@ TEST(apollonius_surface_area, two_spheres_against_the_closed_form)
 TEST(apollonius_surface_area, a_buried_sphere_carries_no_area)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double large = 3.0;
   const double small = 0.5;
 
@@ -129,7 +129,7 @@ TEST(apollonius_surface_area, an_atom_is_cut_by_its_own_images)
 {
   const double a = 10.0;
   const double radius = 6.0;  // between a/2 and a/sqrt(2), so exactly the six face images cut it
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
   MeasuredPatches area = exactAccessibleSurfaceAreaByPore(geometry);
@@ -149,7 +149,7 @@ TEST(apollonius_surface_area, an_atom_is_cut_by_its_own_images)
 TEST(apollonius_surface_area, refining_the_quadrature_does_not_move_the_answer)
 {
   double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   RandomNumber random{std::optional<std::size_t>(31)};
   std::vector<double3> fractionalPositions;
@@ -196,7 +196,7 @@ TEST(apollonius_surface_area, refining_the_quadrature_does_not_move_the_answer)
 TEST(apollonius_surface_area, agrees_with_the_sampled_estimate)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double probe = 0.4;
 
   RandomNumber random{std::optional<std::size_t>(7)};
@@ -233,7 +233,7 @@ TEST(apollonius_surface_area, agrees_with_the_sampled_estimate)
 TEST(apollonius_surface_area, the_parts_add_up_to_the_whole)
 {
   double a = 13.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   RandomNumber random{std::optional<std::size_t>(19)};
   std::vector<double3> fractionalPositions;
@@ -268,7 +268,7 @@ TEST(apollonius_surface_area, the_parts_add_up_to_the_whole)
 TEST(apollonius_surface_area, the_total_is_the_same_on_either_network)
 {
   double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double probe = 0.6;
 
   RandomNumber random{std::optional<std::size_t>(101)};

@@ -15,7 +15,7 @@ add_executable(unit_tests_symmetrykit
 
 raspa_target_link_libraries(unit_tests_symmetrykit)
 target_link_libraries(unit_tests_symmetrykit PUBLIC
-                      raspakit_base
+                      symmetrykit
                       GTest::gtest
                       GTest::gtest_main
                       GTest::gmock

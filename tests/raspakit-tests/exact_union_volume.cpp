@@ -3,7 +3,7 @@
 import std;
 
 import double3;
-import simulationbox;
+import unit_cell;
 import randomnumbers;
 import voronoi_network;
 import pore_accessibility;
@@ -26,11 +26,11 @@ import exact_union_volume;
 namespace
 {
 
-PoreAccessibility bareGeometry(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+PoreAccessibility bareGeometry(const UnitCell& box, const std::vector<double3>& fractionalPositions,
                                  const std::vector<double>& radii)
 {
   VoronoiNetwork network;
-  network.simulationBox = box;
+  network.unitCell = box;
   network.atomRadii = radii;
   for (const double3& fractional : fractionalPositions)
   {
@@ -62,7 +62,7 @@ double unionVolumeOfTwoSpheres(double firstRadius, double secondRadius, double d
 
 
 // The same volume by throwing points into the cell, for the cases that have no closed form.
-double sampledUnionVolume(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+double sampledUnionVolume(const UnitCell& box, const std::vector<double3>& fractionalPositions,
                           const std::vector<double>& radii, std::size_t samples, std::size_t seed)
 {
   RandomNumber random{std::optional<std::size_t>(seed)};
@@ -92,7 +92,7 @@ double sampledUnionVolume(const SimulationBox& box, const std::vector<double3>& 
 TEST(exact_union_volume, lone_sphere)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double radius = 1.7;
 
   PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5)}, {radius});
@@ -106,7 +106,7 @@ TEST(exact_union_volume, lone_sphere)
 TEST(exact_union_volume, two_spheres_against_the_closed_form)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   const std::array<std::array<double, 3>, 6> cases = {{{2.0, 1.0, 2.5},
                                                        {3.0, 2.5, 1.0},
@@ -136,7 +136,7 @@ TEST(exact_union_volume, two_spheres_against_the_closed_form)
 TEST(exact_union_volume, a_buried_sphere_adds_nothing)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double large = 3.0;
   const double small = 0.8;
 
@@ -153,7 +153,7 @@ TEST(exact_union_volume, a_buried_sphere_adds_nothing)
 TEST(exact_union_volume, a_cell_packed_solid_is_the_cell)
 {
   const double a = 3.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // Half the body diagonal is the farthest a corner of the cell can be from the atom at its centre.
   const double radius = 0.5 * std::sqrt(3.0) * a + 0.2;
@@ -168,7 +168,7 @@ TEST(exact_union_volume, a_cell_packed_solid_is_the_cell)
 TEST(exact_union_volume, images_fill_the_cell_too)
 {
   const double a = 4.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double radius = 0.5 * std::sqrt(3.0) * a;
 
   PoreAccessibility geometry =
@@ -184,7 +184,7 @@ TEST(exact_union_volume, images_fill_the_cell_too)
 TEST(exact_union_volume, an_atom_is_cut_by_its_own_images)
 {
   const double a = 3.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double radius = 1.9;  // more than half the cell, less than half its diagonal
 
   std::vector<double3> positions = {double3(0.5, 0.5, 0.5)};
@@ -206,7 +206,7 @@ TEST(exact_union_volume, an_atom_is_cut_by_its_own_images)
 TEST(exact_union_volume, agrees_with_the_sampled_volume)
 {
   const double a = 8.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   RandomNumber random{std::optional<std::size_t>(4321)};
 
   for (std::size_t trial = 0; trial < 4; ++trial)
@@ -236,7 +236,7 @@ TEST(exact_union_volume, agrees_with_the_sampled_volume)
 TEST(exact_union_volume, refining_the_quadrature_does_not_move_the_answer)
 {
   const double a = 8.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   RandomNumber random{std::optional<std::size_t>(2024)};
 
   std::vector<double3> positions;

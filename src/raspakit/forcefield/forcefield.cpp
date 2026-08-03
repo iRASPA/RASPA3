@@ -1791,7 +1791,29 @@ ForceField ForceField::makeZeoliteForceField(double rc, bool shifted, bool tailC
                      {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
                      {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
                      {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
+                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false},
+
+                     // Nitrogen as a molecule rather than as the united-atom probe above: two sites 0.55 Å
+                     // either side of a massless one carrying the compensating charge, which is how the
+                     // quadrupole is put on it. The pair of them is what a molecule named N2 is built from.
+                     {"N_n2", false, 14.00674, -0.405, 0.0, 7, false},
+                     {"N_com", false, 0.0, 0.810, 0.0, 0, false},
+
+                     // Oxygen, built the same way, 0.605 Å either side of the centre.
+                     {"O_o2", false, 15.9994, -0.091, 0.0, 8, false},
+                     {"O_com", false, 0.0, 0.182, 0.0, 0, false},
+
+                     // Hydrogen, which is put together the other way about: the dispersion sits at the
+                     // centre and the two ends carry nothing but charge. That is Darkrim and Levesque's
+                     // model, and the arrangement is theirs rather than an oversight.
+                     {"H_h2", false, 1.00794, 0.468, 0.0, 1, false},
+                     {"H_com", false, 0.0, -0.936, 0.0, 0, false},
+
+                     // Nitric oxide, two sites and no dummy: being made of two unlike atoms it can carry a
+                     // dipole on the atoms themselves. The charges are small, and over the 1.15 Å bond they
+                     // come to 0.159 D, which is the measured dipole.
+                     {"N_no", false, 14.00674, 0.0288, 0.0, 7, false},
+                     {"O_no", false, 15.9994, -0.0288, 0.0, 8, false}},
                     {{1.0, 1.0},
                      {22.0, 2.30},
                      {22.0, 2.30},
@@ -1807,7 +1829,15 @@ ForceField ForceField::makeZeoliteForceField(double rc, bool shifted, bool tailC
                      {10.9, 2.64},
                      {124.070, 3.38},
                      {158.5, 3.72},
-                     {91.5, 3.681}},
+                     {91.5, 3.681},
+                     {38.298, 3.306},  // N_n2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165
+                     {0.0, 1.0},       // N_com, a charge and nothing else
+                     {33.36, 3.024},   // O_o2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2015, 17, 24048
+                     {0.0, 1.0},       // O_com, a charge and nothing else
+                     {0.0, 1.0},       // H_h2, a charge and nothing else
+                     {36.7, 2.958},    // H_com, F. Darkrim and D. Levesque, J. Chem. Phys. 1998, 109, 4981
+                     {79.5, 3.014},    // N_no, COMPASS, as used for NO in nanoporous solids
+                     {96.9, 2.875}},   // O_no, likewise
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 

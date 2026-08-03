@@ -68,8 +68,8 @@
       "element" : "O",
       "print_as" : "O",
       "mass" : 15.9994,
-      "charge" : -0.112,
-      "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+      "charge" : -0.091,
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2015, 17, 24048-24055"
     },
     {
       "name" : "O_com",
@@ -78,8 +78,8 @@
       "element" : "O",
       "print_as" : "O",
       "mass" : 0.0,
-      "charge" :  0.224,
-      "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+      "charge" :  0.182,
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2015, 17, 24048-24055"
     },
     {
       "name" : "N_n2",
@@ -100,6 +100,46 @@
       "mass" : 0.0,
       "charge" :  0.810,
       "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "H_h2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" :  0.468,
+      "source" : "F. Darkrim and D. Levesque, J. Chem. Phys. 1998, 109, 4981-4984"
+    },
+    {
+      "name" : "H_com",
+      "framework" : false,
+      "print_to_output" : false,
+      "element" : "H",
+      "print_as" : "-",
+      "mass" : 0.0,
+      "charge" : -0.936,
+      "source" : "F. Darkrim and D. Levesque, J. Chem. Phys. 1998, 109, 4981-4984"
+    },
+    {
+      "name" : "N_no",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.00674,
+      "charge" :  0.0288,
+      "source" : "COMPASS, as used for nitric oxide in nanoporous solids"
+    },
+    {
+      "name" : "O_no",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.0288,
+      "source" : "COMPASS, as used for nitric oxide in nanoporous solids"
     },
     {
       "name" : "Ar",
@@ -193,6 +233,54 @@
       "type" : "lennard-jones",    
       "parameters" : [29.933, 2.745],
       "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "N_n2",
+      "type" : "lennard-jones",    
+      "parameters" : [38.298, 3.306],
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "N_com",
+      "type" : "none",    
+      "parameters" : [0.0, 1.0],
+      "source" : "the centre of nitrogen carries the compensating charge and no dispersion"
+    },
+    {
+      "name" : "O_o2",
+      "type" : "lennard-jones",    
+      "parameters" : [33.36, 3.024],
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2015, 17, 24048-24055"
+    },
+    {
+      "name" : "O_com",
+      "type" : "none",    
+      "parameters" : [0.0, 1.0],
+      "source" : "the centre of oxygen carries the compensating charge and no dispersion"
+    },
+    {
+      "name" : "H_h2",
+      "type" : "none",    
+      "parameters" : [0.0, 1.0],
+      "source" : "hydrogen is built the other way about: its protons carry charge alone"
+    },
+    {
+      "name" : "H_com",
+      "type" : "lennard-jones",    
+      "parameters" : [36.7, 2.958],
+      "source" : "F. Darkrim and D. Levesque, J. Chem. Phys. 1998, 109, 4981-4984"
+    },
+    {
+      "name" : "N_no",
+      "type" : "lennard-jones",    
+      "parameters" : [79.5, 3.014],
+      "source" : "COMPASS, as used for nitric oxide in nanoporous solids"
+    },
+    {
+      "name" : "O_no",
+      "type" : "lennard-jones",    
+      "parameters" : [96.9, 2.875],
+      "source" : "COMPASS, as used for nitric oxide in nanoporous solids"
     }
   ],
   "MixingRule" : "Lorentz-Berthelot",

@@ -3,7 +3,7 @@
 import std;
 
 import double3;
-import simulationbox;
+import unit_cell;
 import pore_accessibility;
 import exact_union_volume;
 import exact_surface_patches;
@@ -31,7 +31,7 @@ namespace
 double ballVolume(double radius) { return 4.0 / 3.0 * std::numbers::pi * radius * radius * radius; }
 
 
-PoreAccessibility inflatedGeometry(const SimulationBox& box, const std::vector<double3>& positions,
+PoreAccessibility inflatedGeometry(const UnitCell& box, const std::vector<double3>& positions,
                                       const std::vector<double>& bareRadii, double probeRadius)
 {
   std::vector<double3> fractionalPositions;
@@ -123,7 +123,7 @@ struct DifferencedSlope
   bool comparable{false};
 };
 
-DifferencedSlope differencedDistribution(const SimulationBox& box, const std::vector<double3>& positions,
+DifferencedSlope differencedDistribution(const UnitCell& box, const std::vector<double3>& positions,
                                          const std::vector<double>& bareRadii, double probeRadius, double step)
 {
   auto shapeAt = [&](double probe)
@@ -199,7 +199,7 @@ TEST(exact_solvent_excluded, a_region_of_a_sphere_cut_out_by_caps)
 TEST(exact_solvent_excluded, a_lone_atom_excludes_itself)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double bare = 1.7;
 
   for (double probe : {0.0, 0.5, 1.4, 3.0})
@@ -220,7 +220,7 @@ TEST(exact_solvent_excluded, a_lone_atom_excludes_itself)
 TEST(exact_solvent_excluded, two_atoms_out_of_reach_of_one_another)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double bare = 1.7;
   const double probe = 1.0;
 
@@ -238,7 +238,7 @@ TEST(exact_solvent_excluded, two_atoms_out_of_reach_of_one_another)
 TEST(exact_solvent_excluded, two_atoms_against_the_solid_of_revolution)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // bare radius, separation, probe
   const std::array<std::array<double, 3>, 7> cases = {{{1.7, 4.0, 1.0},
@@ -276,7 +276,7 @@ TEST(exact_solvent_excluded, two_atoms_against_the_solid_of_revolution)
 TEST(exact_solvent_excluded, the_distribution_of_a_pair_is_the_slope_of_its_volume)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double bare = 1.7;
 
   std::size_t compared = 0;
@@ -311,7 +311,7 @@ TEST(exact_solvent_excluded, the_distribution_of_a_pair_is_the_slope_of_its_volu
 TEST(exact_solvent_excluded, the_distribution_of_a_triangle_is_the_slope_of_its_volume)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // bare radius, side of the triangle, probe. A vertex needs the circumradius within reach of the inflated
   // spheres and a cusp needs the triangle wider than twice sqrt(bare^2 + 2 bare probe), and the two together
@@ -372,7 +372,7 @@ TEST(exact_solvent_excluded, the_distribution_of_a_triangle_is_the_slope_of_its_
 TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_union_of_the_atoms)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::vector<double3> positions;
   std::vector<double> radii;
@@ -408,7 +408,7 @@ TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_union_of_the_atoms)
 TEST(exact_solvent_excluded, a_lone_atom_is_all_convex)
 {
   double a = 40.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double bare = 1.7;
   const double sphere = 4.0 * std::numbers::pi * bare * bare;
 
@@ -432,7 +432,7 @@ TEST(exact_solvent_excluded, a_lone_atom_is_all_convex)
 TEST(exact_solvent_excluded, two_atoms_against_the_surface_of_revolution)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // bare radius, separation, probe. The rolling circle is smaller than the probe, and so the band cusped, once
   // the atoms are further apart than twice sqrt(a^2 + 2 a r): the last two are, and the rest are not.
@@ -483,7 +483,7 @@ TEST(exact_solvent_excluded, two_atoms_against_the_surface_of_revolution)
 TEST(exact_solvent_excluded, a_triangle_leaves_two_spherical_triangles)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // bare radius, side of the triangle, probe. The two patches are out of reach of one another as long as the
   // probe's rest is further above the plane than the probe's own radius, which asks for 3 (a + r)^2 > side^2 + 3 r^2.
@@ -531,7 +531,7 @@ TEST(exact_solvent_excluded, a_triangle_leaves_two_spherical_triangles)
 TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_surface_of_the_atoms)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::vector<double3> positions;
   std::vector<double> radii;
@@ -573,7 +573,7 @@ TEST(exact_solvent_excluded, a_vanishing_probe_leaves_the_surface_of_the_atoms)
 TEST(exact_solvent_excluded, the_kinds_and_the_sides_each_account_for_the_whole_wall)
 {
   double a = 11.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // A lattice with one atom left out, which leaves a pocket the probe cannot reach from outside, so that the
   // sides being added up is a test of something rather than of one side being everything.
@@ -663,7 +663,7 @@ std::pair<std::vector<double3>, std::vector<double>> icosahedralCage(const doubl
 TEST(exact_solvent_excluded, a_sealed_cage_holds_a_pore_volume_that_only_falls)
 {
   const double a = 10.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   // Room for a probe of radius 0.9 inside, and sealed to any probe at all: the nearest a face of the shell
   // comes to being open is 2.5 sin(37.377 degrees) = 1.518, which is inside the atoms.
@@ -707,7 +707,7 @@ TEST(exact_solvent_excluded, a_sealed_cage_holds_a_pore_volume_that_only_falls)
 TEST(exact_solvent_excluded, the_pore_volume_falls_to_nothing_and_never_rises)
 {
   double a = 9.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   std::vector<double3> positions;
   std::vector<double> radii;

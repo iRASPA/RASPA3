@@ -1,0 +1,12 @@
+{
+  "CriticalTemperature" : 154.581,
+  "CriticalPressure" : 5043000.0,
+  "AcentricFactor" : 0.0222,
+  "pseudoAtoms" : 
+    [
+      ["O_o2",  [0.0, 0.0,  0.605]],
+      ["O_com", [0.0, 0.0,  0.0]],
+      ["O_o2",  [0.0, 0.0, -0.605]]
+    ],
+  "Bonds" : [[0,1], [1,2]]
+}

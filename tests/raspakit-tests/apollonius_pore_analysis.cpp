@@ -5,6 +5,8 @@ import std;
 import int3;
 import double3;
 import simulationbox;
+import unit_cell;
+import structure_input;
 import randomnumbers;
 import forcefield;
 import skapolloniusdiagram;
@@ -32,7 +34,7 @@ TEST(apollonius_pore_analysis, simple_cubic_pore_diameters)
 {
   double a = 5.0;
   double r = 1.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   ApolloniusPoreNetwork pores = ApolloniusPoreNetwork::create(box, {double3(0.0, 0.0, 0.0)}, {r});
 
@@ -58,7 +60,7 @@ TEST(apollonius_pore_analysis, simple_cubic_pore_diameters)
 TEST(apollonius_pore_analysis, network_holds_the_whole_diagram)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   RandomNumber random{std::optional<std::size_t>(42)};
   std::vector<double3> fractionalPositions;
@@ -128,7 +130,7 @@ TEST(apollonius_pore_analysis, network_holds_the_whole_diagram)
 TEST(apollonius_pore_analysis, diameters_are_at_least_the_radical_ones)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   RandomNumber random{std::optional<std::size_t>(7)};
   std::vector<double3> fractionalPositions;
@@ -160,7 +162,7 @@ TEST(apollonius_pore_analysis, diameters_are_at_least_the_radical_ones)
 
 // The clearance of a point: how far a probe centred there is from the nearest surface, negative if it
 // is inside an atom. The radii handed in are already inflated by the probe.
-static double clearanceAt(const SimulationBox& box, const std::vector<double3>& fractionalPositions,
+static double clearanceAt(const UnitCell& box, const std::vector<double3>& fractionalPositions,
                           const std::vector<double>& radii, const double3& point)
 {
   double best = std::numeric_limits<double>::max();
@@ -184,7 +186,7 @@ static double clearanceAt(const SimulationBox& box, const std::vector<double3>& 
 TEST(apollonius_pore_analysis, classifier_is_exact_about_solid_with_heterogeneous_radii)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double largeRadius = 2.2;
   const double smallRadius = 0.35;
   const double probe = 0.4;
@@ -253,7 +255,7 @@ TEST(apollonius_pore_analysis, classifier_is_exact_about_solid_with_heterogeneou
 TEST(apollonius_pore_analysis, sampled_area_and_volume_match_the_radical_ones_for_equal_radii)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double radius = 1.6;
   const double probe = 0.35;
 
@@ -294,7 +296,7 @@ TEST(apollonius_pore_analysis, sampled_area_and_volume_match_the_radical_ones_fo
 TEST(apollonius_pore_analysis, window_of_a_known_ring_comes_out_as_the_ring)
 {
   double a = 60.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double atomRadius = 1.6;
   const std::size_t ringSize = 24;
   const double3 centre = box.cell * double3(0.5, 0.5, 0.5);
@@ -302,7 +304,7 @@ TEST(apollonius_pore_analysis, window_of_a_known_ring_comes_out_as_the_ring)
   auto ringNetwork = [&](double firstSemiAxis, double secondSemiAxis)
   {
     VoronoiNetwork network;
-    network.simulationBox = box;
+    network.unitCell = box;
     for (std::size_t k = 0; k < ringSize; ++k)
     {
       double angle = 2.0 * std::numbers::pi * static_cast<double>(k) / static_cast<double>(ringSize);
@@ -361,7 +363,7 @@ TEST(apollonius_pore_analysis, channel_window_of_the_simple_cubic_bottleneck)
 {
   double a = 5.0;
   double r = 1.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   ApolloniusPoreNetwork pores = ApolloniusPoreNetwork::create(box, {double3(0.0, 0.0, 0.0)}, {r});
   ChannelAnalysis channels = ChannelAnalysis::compute(pores.network, 0.5);
@@ -387,7 +389,7 @@ TEST(apollonius_pore_analysis, channel_window_of_the_simple_cubic_bottleneck)
 TEST(apollonius_pore_analysis, channel_windows_bracket_the_free_sphere)
 {
   double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   RandomNumber random{std::optional<std::size_t>(7)};
   std::vector<double3> fractionalPositions;
@@ -444,7 +446,7 @@ TEST(apollonius_pore_analysis, DISABLED_compare_p1_cifs_apollonius_vs_radical)
   auto ms = [](auto d) { return std::chrono::duration<double, std::milli>(d).count(); };
 
   // The area and volume estimates, over whichever classifier is handed in, from the same points.
-  auto sample = [&](const PoreAccessibility& accessibility, const SimulationBox& box)
+  auto sample = [&](const PoreAccessibility& accessibility, const UnitCell& box)
   {
     RandomNumber random{std::optional<std::size_t>(42)};
     double accessibleArea = 0.0;
@@ -528,11 +530,11 @@ TEST(apollonius_pore_analysis, DISABLED_compare_p1_cifs_apollonius_vs_radical)
     }
     ASSERT_FALSE(fractionalPositions.empty()) << name;
 
-    SimulationBox::Type type =
+    UnitCell::Type type =
         (std::abs(alpha - 90.0) > 1.0e-3 || std::abs(beta - 90.0) > 1.0e-3 || std::abs(gamma - 90.0) > 1.0e-3)
-            ? SimulationBox::Type::Triclinic
-            : SimulationBox::Type::Rectangular;
-    SimulationBox box(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
+            ? UnitCell::Type::Triclinic
+            : UnitCell::Type::Rectangular;
+    UnitCell box(a, b, c, alpha * std::numbers::pi / 180.0, beta * std::numbers::pi / 180.0,
                       gamma * std::numbers::pi / 180.0, type);
 
     for (const std::string& backend : {std::string("radical"), std::string("apollonius")})

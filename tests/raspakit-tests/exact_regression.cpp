@@ -5,6 +5,8 @@ import std;
 import int3;
 import double3;
 import simulationbox;
+import unit_cell;
+import structure_input;
 import atom;
 import forcefield;
 import framework;
@@ -66,7 +68,7 @@ void expectRecorded(const std::vector<Recorded>& values)
 
 struct Structure
 {
-  SimulationBox box;
+  UnitCell box;
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
 };
@@ -75,12 +77,13 @@ Structure itq29()
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  UnitCell frameworkCell = StructureInput::makeUnitCell(framework.simulationBox);
 
   Structure structure;
-  structure.box = framework.simulationBox;
+  structure.box = frameworkCell;
   for (const Atom& atom : framework.unitCellAtoms)
   {
-    structure.fractionalPositions.push_back(framework.simulationBox.inverseCell * atom.position);
+    structure.fractionalPositions.push_back(frameworkCell.inverseCell * atom.position);
     const std::size_t type = static_cast<std::size_t>(atom.type);
     structure.radii.push_back(0.5 * forceField(type, type).sizeParameter());
   }

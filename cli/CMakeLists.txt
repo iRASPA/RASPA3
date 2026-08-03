@@ -8,7 +8,7 @@ target_sources(${PROJECT_NAME} PUBLIC commandline.cpp)
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES commandline.ixx)
 
 raspa_target_link_libraries(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE raspakit_base)
+target_link_libraries(${PROJECT_NAME} PRIVATE raspakit_base structurekit structure_input)
 
 if(BUILD_MAC_PACKAGE)
   install(CODE "execute_process(COMMAND

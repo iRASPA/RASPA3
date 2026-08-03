@@ -3,7 +3,7 @@
 import std;
 
 import double3;
-import simulationbox;
+import unit_cell;
 import randomnumbers;
 import pore_accessibility;
 import voronoi_accessible_volume;
@@ -45,7 +45,7 @@ std::vector<double3> cageCentres(const double3& centre, double shellRadius, std:
 }
 
 
-PoreAccessibility geometryWithRadii(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
+PoreAccessibility geometryWithRadii(const UnitCell& box, const std::vector<double3>& cartesianPositions,
                                        const std::vector<double>& radii)
 {
   std::vector<double3> fractionalPositions;
@@ -60,7 +60,7 @@ PoreAccessibility geometryWithRadii(const SimulationBox& box, const std::vector<
 }
 
 
-PoreAccessibility cageGeometry(const SimulationBox& box, const std::vector<double3>& cartesianPositions,
+PoreAccessibility cageGeometry(const UnitCell& box, const std::vector<double3>& cartesianPositions,
                                   double ballRadius)
 {
   return geometryWithRadii(box, cartesianPositions, std::vector<double>(cartesianPositions.size(), ballRadius));
@@ -169,7 +169,7 @@ double3 sampledCavityCentre(const std::vector<double3>& cartesianPositions, cons
 TEST(exact_void_split, a_sealed_cage_gives_its_cavity)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
@@ -206,7 +206,7 @@ TEST(exact_void_split, a_sealed_cage_gives_its_cavity)
 TEST(exact_void_split, a_pocket_across_the_periodic_boundary_is_the_same_pocket)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
 
@@ -241,7 +241,7 @@ TEST(exact_void_split, a_cage_that_nearly_fills_its_cell)
   // The cage reaches shellRadius + ballRadius from its centre, so this leaves a tenth of an ångström
   // between it and its own image.
   const double a = 2.0 * (shellRadius + ballRadius) + 0.1;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
@@ -262,7 +262,7 @@ TEST(exact_void_split, a_cage_that_nearly_fills_its_cell)
 TEST(exact_void_split, two_cages_give_two_pockets)
 {
   const double a = 20.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
 
@@ -290,7 +290,7 @@ TEST(exact_void_split, two_cages_give_two_pockets)
 TEST(exact_void_split, an_open_structure_has_no_pockets)
 {
   const double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   PoreAccessibility geometry = cageGeometry(box, {double3(6.0, 6.0, 6.0)}, 2.0);
   ExactVoidSplit split = exactVoidSplit(geometry, box.volume);
@@ -306,7 +306,7 @@ TEST(exact_void_split, an_open_structure_has_no_pockets)
 TEST(exact_void_split, refining_the_quadrature_does_not_move_the_pocket)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
@@ -327,7 +327,7 @@ TEST(exact_void_split, refining_the_quadrature_does_not_move_the_pocket)
 TEST(exact_void_split, agrees_with_the_sampled_split)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
@@ -354,7 +354,7 @@ TEST(exact_void_split, agrees_with_the_sampled_split)
 TEST(exact_void_split, by_components_a_sealed_cage_gives_its_cavity)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
@@ -405,7 +405,7 @@ TEST(exact_void_split, by_components_a_sealed_cage_gives_its_cavity)
 TEST(exact_void_split, by_components_a_pocket_across_the_periodic_boundary_is_the_same_pocket)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
 
@@ -429,7 +429,7 @@ TEST(exact_void_split, by_components_a_cage_that_nearly_fills_its_cell)
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
   const double a = 2.0 * (shellRadius + ballRadius) + 0.1;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
@@ -450,7 +450,7 @@ TEST(exact_void_split, by_components_a_cage_that_nearly_fills_its_cell)
 TEST(exact_void_split, by_components_two_cages_give_two_pockets)
 {
   const double a = 20.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
 
@@ -480,7 +480,7 @@ TEST(exact_void_split, by_components_two_cages_give_two_pockets)
 TEST(exact_void_split, by_components_a_ball_in_a_cavity_takes_up_room)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
@@ -516,7 +516,7 @@ TEST(exact_void_split, by_components_a_ball_in_a_cavity_takes_up_room)
 TEST(exact_void_split, by_components_the_area_of_a_sealed_cluster_is_out_of_reach)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double innerRadius = 0.8;
 
@@ -548,7 +548,7 @@ TEST(exact_void_split, by_components_the_area_of_a_sealed_cluster_is_out_of_reac
 // also all that has to hold for the volumes to mean anything.
 TEST(exact_void_split, by_components_a_winding_surface_still_closes)
 {
-  SimulationBox box(40.0, 40.0, 40.0);
+  UnitCell box(40.0, 40.0, 40.0);
   const double3 centre(20.0, 20.0, 20.0);
   const double radius = 4.0;
 
@@ -573,7 +573,7 @@ TEST(exact_void_split, by_components_a_winding_surface_still_closes)
 TEST(exact_void_split, by_components_an_open_structure_has_no_pockets)
 {
   const double a = 12.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
 
   ExactVoidSplit split = exactVoidSplitByComponents(cageGeometry(box, {double3(6.0, 6.0, 6.0)}, 2.0), box.volume);
 
@@ -589,7 +589,7 @@ TEST(exact_void_split, by_components_an_open_structure_has_no_pockets)
 TEST(exact_void_split, by_components_refining_the_quadrature_does_not_move_the_pocket)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
   PoreAccessibility geometry = cageGeometry(box, cageCentres(centre, 3.0, 32), 1.8);
@@ -610,7 +610,7 @@ TEST(exact_void_split, by_components_refining_the_quadrature_does_not_move_the_p
 TEST(exact_void_split, by_components_a_pocket_knows_where_it_is)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
@@ -643,7 +643,7 @@ TEST(exact_void_split, by_components_a_pocket_knows_where_it_is)
 TEST(exact_void_split, by_components_a_pockets_reach_covers_it_and_no_more)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
   const double shellRadius = 3.0;
   const double ballRadius = 1.8;
@@ -668,7 +668,7 @@ TEST(exact_void_split, by_components_a_pockets_reach_covers_it_and_no_more)
 TEST(exact_void_split, by_components_a_pockets_centre_moves_with_the_pocket)
 {
   const double a = 14.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 shift(0.37 * a, -0.62 * a, 1.24 * a);
   const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
 
@@ -692,7 +692,7 @@ TEST(exact_void_split, by_components_a_pockets_centre_moves_with_the_pocket)
 TEST(exact_void_split, by_components_two_pockets_have_their_own_centres)
 {
   const double a = 20.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const double3 first(5.0, 5.0, 5.0);
   const double3 second(14.0, 13.0, 15.0);
 
@@ -727,7 +727,7 @@ TEST(exact_void_split, by_components_a_blocking_sphere_holds_no_accessible_point
 {
   const double a = 20.0;
   const double shellRadius = 3.0;
-  SimulationBox box(a, a, a);
+  UnitCell box(a, a, a);
   const std::vector<double3> centres{double3(5.0, 5.0, 5.0), double3(14.0, 13.0, 15.0)};
 
   std::vector<double3> positions;

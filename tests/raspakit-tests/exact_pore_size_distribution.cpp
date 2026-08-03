@@ -3,7 +3,7 @@
 import std;
 
 import double3;
-import simulationbox;
+import unit_cell;
 import pore_accessibility;
 import exact_pore_size_distribution;
 
@@ -23,7 +23,7 @@ namespace
 
 struct Lattice
 {
-  SimulationBox box{6.0, 6.0, 6.0};
+  UnitCell box{6.0, 6.0, 6.0};
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
 };
@@ -32,7 +32,7 @@ struct Lattice
 Lattice simpleCubic(double edge, double radius)
 {
   Lattice lattice;
-  lattice.box = SimulationBox(edge, edge, edge);
+  lattice.box = UnitCell(edge, edge, edge);
   lattice.fractionalPositions = {double3(0.0, 0.0, 0.0)};
   lattice.radii = {radius};
   return lattice;
@@ -45,7 +45,7 @@ Lattice simpleCubic(double edge, double radius)
 Lattice cageInAnOpenCell(double edge, double shellRadius, double atomRadius)
 {
   Lattice lattice;
-  lattice.box = SimulationBox(edge, edge, edge);
+  lattice.box = UnitCell(edge, edge, edge);
 
   const double golden = 0.5 * (1.0 + std::sqrt(5.0));
   const double scale = shellRadius / (std::sqrt(1.0 + golden * golden) * edge);

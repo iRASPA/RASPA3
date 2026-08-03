@@ -4,7 +4,7 @@ add_executable(unit_tests_foundationkit
 
 raspa_target_link_libraries(unit_tests_foundationkit)
 target_link_libraries(unit_tests_foundationkit PUBLIC
-                      raspakit_base
+                      foundationkit
                       GTest::gtest
                       GTest::gtest_main
                       GTest::gmock

@@ -1,5 +1,9 @@
 add_executable(unit_tests_raspakit
   cbmc_interactions.cpp
+  grid_area_curve.cpp
+  grid_blocking_cover.cpp
+  grid_percolation.cpp
+  grid_pore_size.cpp
   energy_decomposition.cpp
   gradients.cpp
   translation_smart_mc.cpp
@@ -77,6 +81,8 @@ add_executable(unit_tests_raspakit
 raspa_target_link_libraries(unit_tests_raspakit)
 target_link_libraries(unit_tests_raspakit PUBLIC
                       raspakit_base
+                      structurekit
+                      structure_input
                       GTest::gtest
                       GTest::gtest_main
                       GTest::gmock
