@@ -10,7 +10,7 @@ import pore_accessibility;
 import exact_surface_patches;
 import exact_union_volume;
 import exact_boundary_components;
-import exact_parallel;
+import structure_parallel;
 import exact_solvent_excluded;
 
 namespace

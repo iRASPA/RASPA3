@@ -9,6 +9,7 @@ import double3;
 import double3x3;
 import unit_cell;
 import brute_force_structure;
+import structure_parallel;
 
 namespace
 {
@@ -218,12 +219,14 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
   // The clearance at every voxel centre, the long way round.
   self.clearance.assign(numberOfVoxels, 0.0f);
 
-#pragma omp parallel for schedule(static)
-  for (std::int64_t index = 0; index < static_cast<std::int64_t>(numberOfVoxels); ++index)
-  {
-    std::size_t voxel = static_cast<std::size_t>(index);
-    self.clearance[voxel] = static_cast<float>(structure.clearance(self.centre(structure, voxel)));
-  }
+  forEachBlock(numberOfVoxels, workersAvailable(),
+               [&](std::size_t, std::size_t begin, std::size_t end)
+               {
+                 for (std::size_t voxel = begin; voxel < end; ++voxel)
+                 {
+                   self.clearance[voxel] = static_cast<float>(structure.clearance(self.centre(structure, voxel)));
+                 }
+               });
 
   // Flood the voxels with room in them, joining each to the three neighbours ahead of it so that every pair
   // is looked at once, and noting which joins crossed a cell boundary.

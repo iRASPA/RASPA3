@@ -72,7 +72,7 @@ build = "cp312-*"
 
 
 [tool.cibuildwheel.macos]
-before-all = "brew install llvm cmake libomp"
+before-all = "brew install llvm cmake"
 
 [[tool.cibuildwheel.overrides]]
 select = "*-macosx*x86_64"

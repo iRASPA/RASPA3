@@ -1,9 +1,5 @@
 module;
 
-#if __has_include(<omp.h>)
-#include <omp.h>
-#endif
-
 export module threadpool;
 
 import std;
@@ -130,9 +126,7 @@ using default_function_type = std::function<void()>;
 enum class ThreadingType : std::size_t
 {
   Serial = 0,
-  ThreadPool = 1,
-  OpenMP = 2,
-  GPU_Offload = 3
+  ThreadPool = 1
 };
 
 template <typename FunctionType = details::default_function_type, typename ThreadType = std::jthread>

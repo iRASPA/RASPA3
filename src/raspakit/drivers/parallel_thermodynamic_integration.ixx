@@ -18,7 +18,7 @@ import json;
  *
  * The single declared system is replicated into one replica per lambda-bin; replica k starts with
  * its fractional molecule(s) pinned at lambda-bin k. Every replica runs in its own thread with its
- * own random-number stream (no OpenMP; plain std::jthread worker threads). The threads only
+ * own random-number stream (plain std::jthread worker threads). The threads only
  * synchronize on a std::barrier every 'LambdaExchangeEvery' cycles, where Hamiltonian
  * parallel-tempering exchanges of the lambda values between replicas at neighboring lambda-bins
  * are attempted (and at the start/end of each simulation stage).

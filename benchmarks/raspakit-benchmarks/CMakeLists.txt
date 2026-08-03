@@ -9,7 +9,7 @@ add_executable(${PROJECT_NAME}
 raspa_target_link_libraries(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-                      raspakit_base
+                      raspakit
                       benchmark::benchmark)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/benchmarks COMPONENT ${PROJECT_NAME})

@@ -12,6 +12,7 @@ import randomnumbers;
 import brute_force_structure;
 import brute_force_voxels;
 import brute_force_surface_area;
+import structure_parallel;
 
 namespace
 {
@@ -406,26 +407,35 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
   // How near two corners come to each other. A wedge the arithmetic reached by two nearly equal routes
   // would appear twice and lay down its patch twice, so this is measured rather than assumed away.
   {
-    double closest = std::numeric_limits<double>::max();
-    std::size_t crowded = 0;
+    // Every corner is held against every other, so each stretch of them costs the same and a worker takes a
+    // stretch. What comes out is a smallest distance and a count, neither of which depends on the order they
+    // were arrived at.
+    const std::size_t workers = workersAvailable();
+    std::vector<double> closestOfWorker(workers, std::numeric_limits<double>::max());
+    std::vector<std::size_t> crowdedOfWorker(workers, 0);
 
-#pragma omp parallel for schedule(static) reduction(min : closest) reduction(+ : crowded)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(corners.size()); ++index)
-    {
-      double nearest = std::numeric_limits<double>::max();
+    forEachBlock(corners.size(), workers,
+                 [&](std::size_t worker, std::size_t begin, std::size_t end)
+                 {
+                   for (std::size_t index = begin; index < end; ++index)
+                   {
+                     double nearest = std::numeric_limits<double>::max();
 
-      for (std::size_t other = 0; other < corners.size(); ++other)
-      {
-        if (other == static_cast<std::size_t>(index)) continue;
+                     for (std::size_t other = 0; other < corners.size(); ++other)
+                     {
+                       if (other == index) continue;
 
-        double3 dr = structure.nearestImage(corners[static_cast<std::size_t>(index)].centre,
-                                            corners[other].centre);
-        nearest = std::min(nearest, dr.length());
-      }
+                       double3 dr = structure.nearestImage(corners[index].centre, corners[other].centre);
+                       nearest = std::min(nearest, dr.length());
+                     }
 
-      closest = std::min(closest, nearest);
-      if (nearest < 1.0e-3) ++crowded;
-    }
+                     closestOfWorker[worker] = std::min(closestOfWorker[worker], nearest);
+                     if (nearest < 1.0e-3) ++crowdedOfWorker[worker];
+                   }
+                 });
+
+    double closest = std::ranges::min(closestOfWorker);
+    std::size_t crowded = std::reduce(crowdedOfWorker.begin(), crowdedOfWorker.end());
 
     self.crowdedCorners = crowded;
     self.closestCorners = corners.size() > 1 ? closest : 0.0;
@@ -458,44 +468,42 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
     std::vector<double> buriedOfAtom(numberOfAtoms, 0.0);
     std::vector<double> varianceOfAtom(numberOfAtoms, 0.0);
 
-#pragma omp parallel for schedule(dynamic, 1)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(numberOfAtoms); ++index)
-    {
-      std::size_t atom = static_cast<std::size_t>(index);
+    forEachIndex(numberOfAtoms, workersAvailable(),
+                 [&](std::size_t, std::size_t atom)
+                 {
+                   double radius = structure.radii[atom];
+                   double sphereArea = 4.0 * std::numbers::pi * radius * radius;
+                   double perSample = sphereArea / static_cast<double>(samplesPerAtom);
 
-      double radius = structure.radii[atom];
-      double sphereArea = 4.0 * std::numbers::pi * radius * radius;
-      double perSample = sphereArea / static_cast<double>(samplesPerAtom);
+                   RandomNumber random{numberOfAtoms + atom};
 
-      RandomNumber random{numberOfAtoms + atom};
+                   std::size_t kept = 0;
+                   std::size_t lost = 0;
 
-      std::size_t kept = 0;
-      std::size_t lost = 0;
+                   for (std::size_t sample = 0; sample < samplesPerAtom; ++sample)
+                   {
+                     double3 direction = random.randomVectorOnUnitSphere();
 
-      for (std::size_t sample = 0; sample < samplesPerAtom; ++sample)
-      {
-        double3 direction = random.randomVectorOnUnitSphere();
+                     double3 centre = structure.positions[atom] + (radius + probeRadius) * direction;
+                     if (!freeProbeCentre(centre)) continue;
 
-        double3 centre = structure.positions[atom] + (radius + probeRadius) * direction;
-        if (!freeProbeCentre(centre)) continue;
+                     double3 point = structure.positions[atom] + radius * direction;
+                     if (buried(point))
+                     {
+                       ++lost;
+                       continue;
+                     }
 
-        double3 point = structure.positions[atom] + radius * direction;
-        if (buried(point))
-        {
-          ++lost;
-          continue;
-        }
+                     ++kept;
+                   }
 
-        ++kept;
-      }
+                   convexOfAtom[atom] = static_cast<double>(kept) * perSample;
+                   buriedOfAtom[atom] = static_cast<double>(lost) * perSample;
 
-      convexOfAtom[atom] = static_cast<double>(kept) * perSample;
-      buriedOfAtom[atom] = static_cast<double>(lost) * perSample;
-
-      double fraction = static_cast<double>(kept) / static_cast<double>(samplesPerAtom);
-      varianceOfAtom[atom] =
-          sphereArea * sphereArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerAtom);
-    }
+                   double fraction = static_cast<double>(kept) / static_cast<double>(samplesPerAtom);
+                   varianceOfAtom[atom] =
+                       sphereArea * sphereArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerAtom);
+                 });
 
     double variance = 0.0;
     for (std::size_t atom = 0; atom < numberOfAtoms; ++atom)
@@ -526,151 +534,150 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
     std::vector<double> buriedOfAtom(numberOfAtoms, 0.0);
     std::vector<std::size_t> pairsOfAtom(numberOfAtoms, 0);
 
-#pragma omp parallel for schedule(dynamic, 1)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(numberOfAtoms); ++index)
-    {
-      std::size_t atom = static_cast<std::size_t>(index);
+    forEachIndex(numberOfAtoms, workersAvailable(),
+                 [&](std::size_t, std::size_t atom)
+                 {
+                   double3 first = cell * structure.fractional()[atom];
+                   double firstInflated = inflated.radii[atom];
 
-      double3 first = cell * structure.fractional()[atom];
-      double firstInflated = inflated.radii[atom];
+                   for (const Neighbour &neighbour : neighboursOf[atom])
+                   {
+                     // Once per pair: the higher-numbered atom, or the same atom in a later image.
+                     bool ordered = neighbour.atom > atom;
+                     if (neighbour.atom == atom)
+                     {
+                       const int3 &t = neighbour.translation;
+                       ordered = t.x > 0 || (t.x == 0 && (t.y > 0 || (t.y == 0 && t.z > 0)));
+                     }
+                     if (!ordered) continue;
 
-      for (const Neighbour &neighbour : neighboursOf[atom])
-      {
-        // Once per pair: the higher-numbered atom, or the same atom in a later image.
-        bool ordered = neighbour.atom > atom;
-        if (neighbour.atom == atom)
-        {
-          const int3 &t = neighbour.translation;
-          ordered = t.x > 0 || (t.x == 0 && (t.y > 0 || (t.y == 0 && t.z > 0)));
-        }
-        if (!ordered) continue;
+                     double3 along = neighbour.centre - first;
+                     double distance = along.length();
+                     if (distance <= 0.0) continue;
 
-        double3 along = neighbour.centre - first;
-        double distance = along.length();
-        if (distance <= 0.0) continue;
+                     double3 axis = (1.0 / distance) * along;
 
-        double3 axis = (1.0 / distance) * along;
+                     // Where along the line the circle of probe centres sits, and how wide it is.
+                     double offset =
+                         (distance * distance + firstInflated * firstInflated - neighbour.radius * neighbour.radius) /
+                         (2.0 * distance);
+                     double squared = firstInflated * firstInflated - offset * offset;
+                     if (squared <= 0.0) continue;
 
-        // Where along the line the circle of probe centres sits, and how wide it is.
-        double offset =
-            (distance * distance + firstInflated * firstInflated - neighbour.radius * neighbour.radius) /
-            (2.0 * distance);
-        double squared = firstInflated * firstInflated - offset * offset;
-        if (squared <= 0.0) continue;
+                     double circleRadius = std::sqrt(squared);
+                     double3 circleCentre = first + offset * axis;
 
-        double circleRadius = std::sqrt(squared);
-        double3 circleCentre = first + offset * axis;
+                     double3 u = somePerpendicular(axis);
+                     double3 v = double3::cross(axis, u);
 
-        double3 u = somePerpendicular(axis);
-        double3 v = double3::cross(axis, u);
+                     ++pairsOfAtom[atom];
 
-        ++pairsOfAtom[atom];
+                     // The arc of the probe's own surface between the two contacts, in the plane through the axis: the
+                     // angle is measured from the direction straight in towards the axis, so that the point at angle
+                     // theta stands off the axis by circleRadius - probeRadius cos theta.
+                     double toFirst = std::atan2(-offset, circleRadius);
+                     double toSecond = std::atan2(distance - offset, circleRadius);
 
-        // The arc of the probe's own surface between the two contacts, in the plane through the axis: the
-        // angle is measured from the direction straight in towards the axis, so that the point at angle
-        // theta stands off the axis by circleRadius - probeRadius cos theta.
-        double toFirst = std::atan2(-offset, circleRadius);
-        double toSecond = std::atan2(distance - offset, circleRadius);
+                     // Where the swept surface would fold through the axis, it stops instead. A circle of probe centres
+                     // narrower than the probe leaves a gap about the middle of the arc.
+                     double cusp = circleRadius < probeRadius
+                                       ? std::acos(std::clamp(circleRadius / probeRadius, -1.0, 1.0))
+                                       : 0.0;
 
-        // Where the swept surface would fold through the axis, it stops instead. A circle of probe centres
-        // narrower than the probe leaves a gap about the middle of the arc.
-        double cusp = circleRadius < probeRadius ? std::acos(std::clamp(circleRadius / probeRadius, -1.0, 1.0))
-                                                 : 0.0;
+                     double perTurn = sweptAcrossArc(circleRadius, probeRadius, toFirst, toSecond);
+                     if (perTurn <= 0.0) continue;
 
-        double perTurn = sweptAcrossArc(circleRadius, probeRadius, toFirst, toSecond);
-        if (perTurn <= 0.0) continue;
+                     double stepPhi = 2.0 * std::numbers::pi / static_cast<double>(aroundTheCircle);
 
-        double stepPhi = 2.0 * std::numbers::pi / static_cast<double>(aroundTheCircle);
+                     auto centreAt = [&](double phi)
+                     { return circleCentre + circleRadius * (std::cos(phi) * u + std::sin(phi) * v); };
 
-        auto centreAt = [&](double phi)
-        { return circleCentre + circleRadius * (std::cos(phi) * u + std::sin(phi) * v); };
+                     // Where round the circle the probe can go is a set of arcs, and the ends of them are where the
+                     // probe first meets a third atom. Stepping round and taking whole steps as free or not would put
+                     // each end wrong by up to half a step, which on a crystal is a systematic error rather than a
+                     // wobble, the ends of the crease sitting at the same place on every symmetry-related pair. So the
+                     // ends are found instead, by halving the interval the change happened in.
+                     auto boundaryBetween = [&](double open, double shut)
+                     {
+                       for (int refine = 0; refine < 40; ++refine)
+                       {
+                         double middle = 0.5 * (open + shut);
+                         (freeProbeCentre(centreAt(middle)) ? open : shut) = middle;
+                       }
+                       return 0.5 * (open + shut);
+                     };
 
-        // Where round the circle the probe can go is a set of arcs, and the ends of them are where the
-        // probe first meets a third atom. Stepping round and taking whole steps as free or not would put
-        // each end wrong by up to half a step, which on a crystal is a systematic error rather than a
-        // wobble, the ends of the crease sitting at the same place on every symmetry-related pair. So the
-        // ends are found instead, by halving the interval the change happened in.
-        auto boundaryBetween = [&](double open, double shut)
-        {
-          for (int refine = 0; refine < 40; ++refine)
-          {
-            double middle = 0.5 * (open + shut);
-            (freeProbeCentre(centreAt(middle)) ? open : shut) = middle;
-          }
-          return 0.5 * (open + shut);
-        };
+                     // How much of the turn the probe is free for, taken interval by interval so that the walk cannot
+                     // wrap past itself or count a stretch twice. Each step contributes all of itself, none of itself,
+                     // or the part of itself on the free side of the crossing found within it.
+                     double turned = 0.0;
 
-        // How much of the turn the probe is free for, taken interval by interval so that the walk cannot
-        // wrap past itself or count a stretch twice. Each step contributes all of itself, none of itself,
-        // or the part of itself on the free side of the crossing found within it.
-        double turned = 0.0;
+                     bool freeHere = freeProbeCentre(centreAt(0.0));
+                     bool freeAtStart = freeHere;
 
-        bool freeHere = freeProbeCentre(centreAt(0.0));
-        bool freeAtStart = freeHere;
+                     for (std::size_t step = 0; step < aroundTheCircle; ++step)
+                     {
+                       double from = static_cast<double>(step) * stepPhi;
+                       double to = from + stepPhi;
 
-        for (std::size_t step = 0; step < aroundTheCircle; ++step)
-        {
-          double from = static_cast<double>(step) * stepPhi;
-          double to = from + stepPhi;
+                       bool freeThere = (step + 1 == aroundTheCircle) ? freeAtStart : freeProbeCentre(centreAt(to));
 
-          bool freeThere = (step + 1 == aroundTheCircle) ? freeAtStart : freeProbeCentre(centreAt(to));
+                       if (freeHere && freeThere)
+                       {
+                         turned += stepPhi;
+                       }
+                       else if (freeHere != freeThere)
+                       {
+                         double crossing = boundaryBetween(freeHere ? from : to, freeHere ? to : from);
+                         turned += freeHere ? crossing - from : to - crossing;
+                       }
 
-          if (freeHere && freeThere)
-          {
-            turned += stepPhi;
-          }
-          else if (freeHere != freeThere)
-          {
-            double crossing = boundaryBetween(freeHere ? from : to, freeHere ? to : from);
-            turned += freeHere ? crossing - from : to - crossing;
-          }
+                       freeHere = freeThere;
+                     }
 
-          freeHere = freeThere;
-        }
+                     turned = std::clamp(turned, 0.0, 2.0 * std::numbers::pi);
 
-        turned = std::clamp(turned, 0.0, 2.0 * std::numbers::pi);
+                     double swept = turned * perTurn;
+                     if (swept <= 0.0) continue;
 
-        double swept = turned * perTurn;
-        if (swept <= 0.0) continue;
+                     // What is left to sample for is not how much surface there is but how much of it is buried under a
+                     // probe that can reach it from elsewhere, which is a fraction and needs far fewer points than the
+                     // area itself would. The points are weighted by how much surface each stands for, the area element
+                     // varying across the arc, so that the fraction is of area and not of points.
+                     double weighed = 0.0;
+                     double lost = 0.0;
 
-        // What is left to sample for is not how much surface there is but how much of it is buried under a
-        // probe that can reach it from elsewhere, which is a fraction and needs far fewer points than the
-        // area itself would. The points are weighted by how much surface each stands for, the area element
-        // varying across the arc, so that the fraction is of area and not of points.
-        double weighed = 0.0;
-        double lost = 0.0;
+                     for (std::size_t step = 0; step < aroundTheCircle; ++step)
+                     {
+                       double phi = (static_cast<double>(step) + 0.5) * stepPhi;
+                       double3 radial = std::cos(phi) * u + std::sin(phi) * v;
+                       double3 centre = circleCentre + circleRadius * radial;
 
-        for (std::size_t step = 0; step < aroundTheCircle; ++step)
-        {
-          double phi = (static_cast<double>(step) + 0.5) * stepPhi;
-          double3 radial = std::cos(phi) * u + std::sin(phi) * v;
-          double3 centre = circleCentre + circleRadius * radial;
+                       if (!freeProbeCentre(centre)) continue;
 
-          if (!freeProbeCentre(centre)) continue;
+                       for (std::size_t across = 0; across < acrossTheArc; ++across)
+                       {
+                         double theta = toFirst + (static_cast<double>(across) + 0.5) * (toSecond - toFirst) /
+                                                      static_cast<double>(acrossTheArc);
+                         if (cusp > 0.0 && std::abs(theta) < cusp) continue;
 
-          for (std::size_t across = 0; across < acrossTheArc; ++across)
-          {
-            double theta = toFirst + (static_cast<double>(across) + 0.5) * (toSecond - toFirst) /
-                                         static_cast<double>(acrossTheArc);
-            if (cusp > 0.0 && std::abs(theta) < cusp) continue;
+                         double standOff = circleRadius - probeRadius * std::cos(theta);
+                         if (standOff <= 0.0) continue;
 
-            double standOff = circleRadius - probeRadius * std::cos(theta);
-            if (standOff <= 0.0) continue;
+                         weighed += standOff;
+                         if (buried(centre + probeRadius * (-std::cos(theta) * radial + std::sin(theta) * axis)))
+                         {
+                           lost += standOff;
+                         }
+                       }
+                     }
 
-            weighed += standOff;
-            if (buried(centre + probeRadius * (-std::cos(theta) * radial + std::sin(theta) * axis)))
-            {
-              lost += standOff;
-            }
-          }
-        }
+                     double buriedShare = weighed > 0.0 ? lost / weighed : 0.0;
 
-        double buriedShare = weighed > 0.0 ? lost / weighed : 0.0;
-
-        saddleOfAtom[atom] += swept * (1.0 - buriedShare);
-        buriedOfAtom[atom] += swept * buriedShare;
-      }
-    }
+                     saddleOfAtom[atom] += swept * (1.0 - buriedShare);
+                     buriedOfAtom[atom] += swept * buriedShare;
+                   }
+                 });
 
     for (std::size_t atom = 0; atom < numberOfAtoms; ++atom)
     {
@@ -697,94 +704,94 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
     std::vector<double> buriedOfCorner(corners.size(), 0.0);
     std::vector<double> varianceOfCorner(corners.size(), 0.0);
 
-#pragma omp parallel for schedule(dynamic, 8)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(corners.size()); ++index)
-    {
-      const Corner &corner = corners[static_cast<std::size_t>(index)];
+    forEachIndex(corners.size(), workersAvailable(),
+                 [&](std::size_t, std::size_t index)
+                 {
+                   const Corner &corner = corners[index];
 
-      // The patch is bounded by the great circles through pairs of contact directions -- but only by those
-      // pairs that leave every other contact on one side, which for three contacts is all of them and for
-      // four or more is the edges of their spherical convex hull. Bounding it by every pair would cut the
-      // patch down to nothing wherever the probe rests on more than three atoms.
-      std::vector<double3> edges;
-      for (std::size_t a = 0; a + 1 < corner.contact.size(); ++a)
-      {
-        for (std::size_t b = a + 1; b < corner.contact.size(); ++b)
-        {
-          double3 normal = double3::cross(corner.contact[a], corner.contact[b]);
-          double length = normal.length();
-          if (length < 1.0e-9) continue;
-          normal = (1.0 / length) * normal;
+                   // The patch is bounded by the great circles through pairs of contact directions -- but only by those
+                   // pairs that leave every other contact on one side, which for three contacts is all of them and for
+                   // four or more is the edges of their spherical convex hull. Bounding it by every pair would cut the
+                   // patch down to nothing wherever the probe rests on more than three atoms.
+                   std::vector<double3> edges;
+                   for (std::size_t a = 0; a + 1 < corner.contact.size(); ++a)
+                   {
+                     for (std::size_t b = a + 1; b < corner.contact.size(); ++b)
+                     {
+                       double3 normal = double3::cross(corner.contact[a], corner.contact[b]);
+                       double length = normal.length();
+                       if (length < 1.0e-9) continue;
+                       normal = (1.0 / length) * normal;
 
-          bool anyAbove = false;
-          bool anyBelow = false;
-          for (std::size_t c = 0; c < corner.contact.size(); ++c)
-          {
-            if (c == a || c == b) continue;
-            double side = double3::dot(normal, corner.contact[c]);
-            if (side > 1.0e-9) anyAbove = true;
-            if (side < -1.0e-9) anyBelow = true;
-          }
-          if (anyAbove && anyBelow) continue;  // the pair spans the hull rather than bounding it
+                       bool anyAbove = false;
+                       bool anyBelow = false;
+                       for (std::size_t c = 0; c < corner.contact.size(); ++c)
+                       {
+                         if (c == a || c == b) continue;
+                         double side = double3::dot(normal, corner.contact[c]);
+                         if (side > 1.0e-9) anyAbove = true;
+                         if (side < -1.0e-9) anyBelow = true;
+                       }
+                       if (anyAbove && anyBelow) continue;  // the pair spans the hull rather than bounding it
 
-          edges.push_back(anyBelow ? -1.0 * normal : normal);
-        }
-      }
-      if (edges.size() < 3) continue;
+                       edges.push_back(anyBelow ? -1.0 * normal : normal);
+                     }
+                   }
+                   if (edges.size() < 3) return;
 
-      // Drawing over the whole sphere to find a small patch is mostly waste, so the draw is confined to a
-      // cap that holds it and the cap's own area is what the fraction is taken of.
-      double3 middle(0.0, 0.0, 0.0);
-      for (const double3 &contact : corner.contact) middle += contact;
+                   // Drawing over the whole sphere to find a small patch is mostly waste, so the draw is confined to a
+                   // cap that holds it and the cap's own area is what the fraction is taken of.
+                   double3 middle(0.0, 0.0, 0.0);
+                   for (const double3 &contact : corner.contact) middle += contact;
 
-      double middleLength = middle.length();
-      if (middleLength <= 1.0e-12) continue;
-      middle = (1.0 / middleLength) * middle;
+                   double middleLength = middle.length();
+                   if (middleLength <= 1.0e-12) return;
+                   middle = (1.0 / middleLength) * middle;
 
-      double cosine = 1.0;
-      for (const double3 &contact : corner.contact)
-      {
-        cosine = std::min(cosine, double3::dot(middle, contact));
-      }
-      cosine = std::clamp(cosine - 1.0e-6, -1.0, 1.0);
+                   double cosine = 1.0;
+                   for (const double3 &contact : corner.contact)
+                   {
+                     cosine = std::min(cosine, double3::dot(middle, contact));
+                   }
+                   cosine = std::clamp(cosine - 1.0e-6, -1.0, 1.0);
 
-      double capArea = 2.0 * std::numbers::pi * probeRadius * probeRadius * (1.0 - cosine);
+                   double capArea = 2.0 * std::numbers::pi * probeRadius * probeRadius * (1.0 - cosine);
 
-      double3 u = somePerpendicular(middle);
-      double3 v = double3::cross(middle, u);
+                   double3 u = somePerpendicular(middle);
+                   double3 v = double3::cross(middle, u);
 
-      RandomNumber random{static_cast<std::size_t>(index)};
+                   RandomNumber random{index};
 
-      std::size_t kept = 0;
-      std::size_t lost = 0;
+                   std::size_t kept = 0;
+                   std::size_t lost = 0;
 
-      for (std::size_t sample = 0; sample < samplesPerCorner; ++sample)
-      {
-        // Uniform on the cap: the height is uniform and the angle about the axis is uniform.
-        double height = cosine + (1.0 - cosine) * random.uniform();
-        double ring = std::sqrt(std::max(1.0 - height * height, 0.0));
-        double angle = 2.0 * std::numbers::pi * random.uniform();
+                   for (std::size_t sample = 0; sample < samplesPerCorner; ++sample)
+                   {
+                     // Uniform on the cap: the height is uniform and the angle about the axis is uniform.
+                     double height = cosine + (1.0 - cosine) * random.uniform();
+                     double ring = std::sqrt(std::max(1.0 - height * height, 0.0));
+                     double angle = 2.0 * std::numbers::pi * random.uniform();
 
-        double3 direction = height * middle + (ring * std::cos(angle)) * u + (ring * std::sin(angle)) * v;
+                     double3 direction = height * middle + (ring * std::cos(angle)) * u + (ring * std::sin(angle)) * v;
 
-        bool inside = std::ranges::all_of(edges, [&](const double3 &normal)
-                                          { return double3::dot(normal, direction) >= 0.0; });
-        if (!inside) continue;
+                     bool inside = std::ranges::all_of(
+                         edges, [&](const double3 &normal) { return double3::dot(normal, direction) >= 0.0; });
+                     if (!inside) continue;
 
-        if (buried(corner.centre + probeRadius * direction))
-          ++lost;
-        else
-          ++kept;
-      }
+                     if (buried(corner.centre + probeRadius * direction))
+                       ++lost;
+                     else
+                       ++kept;
+                   }
 
-      double perSample = capArea / static_cast<double>(samplesPerCorner);
-      concaveOfCorner[static_cast<std::size_t>(index)] = static_cast<double>(kept) * perSample;
-      buriedOfCorner[static_cast<std::size_t>(index)] = static_cast<double>(lost) * perSample;
+                   double perSample = capArea / static_cast<double>(samplesPerCorner);
+                   concaveOfCorner[index] = static_cast<double>(kept) * perSample;
+                   buriedOfCorner[index] = static_cast<double>(lost) * perSample;
 
-      double fraction = static_cast<double>(kept) / static_cast<double>(samplesPerCorner);
-      varianceOfCorner[static_cast<std::size_t>(index)] =
-          capArea * capArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerCorner);
-    }
+                   double fraction = static_cast<double>(kept) / static_cast<double>(samplesPerCorner);
+                   varianceOfCorner[index] =
+                       capArea * capArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerCorner);
+                 });
 
     double variance = 0.0;
     for (std::size_t corner = 0; corner < corners.size(); ++corner)

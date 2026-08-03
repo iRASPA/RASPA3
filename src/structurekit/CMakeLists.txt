@@ -10,10 +10,6 @@ project(structurekit)
 # a pair of types does to one another; a system, a component, a move, a molecule and an interpolation grid
 # are all things it never needs to know exist. Making that a link boundary rather than a convention means
 # the compiler refuses an engine dependency instead of a reviewer having to notice one.
-#
-# It is also built once. raspakit is compiled four times over on x86, once per SIMD level, so that the
-# Python wheel can dispatch at run time; none of that helps the geometry, graph traversal and OpenCL host
-# code here, and none of those variants was ever linked against it.
 
 file(GLOB STRUCTUREKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/shared/*.cpp
@@ -60,4 +56,4 @@ target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJEC
 # Containers and file formats, vector and matrix arithmetic, and crystal symmetry, and nothing above them.
 # The link is PUBLIC because those types appear in the interfaces here, so anything using this library sees
 # them too.
-target_link_libraries(${PROJECT_NAME} PUBLIC symmetrykit mathkit foundationkit OpenMP::OpenMP_CXX)
+target_link_libraries(${PROJECT_NAME} PUBLIC symmetrykit mathkit foundationkit)

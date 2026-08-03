@@ -232,94 +232,6 @@ template <>
   return energy;
 }
 
-template <>
-[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::OpenMP>(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    [[maybe_unused]] const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms, double cutOffVDW,
-    double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
-{
-  bool useCharge = forceField.useCharge;
-  [[maybe_unused]] const double overlapCriteria = forceField.energyOverlapCriteria;
-  const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
-  const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-
-  std::atomic_flag cancel;
-  cancel.clear();
-
-  RunningEnergy energySum;
-
-#pragma omp declare reduction \
-   (energy_sum_reduction : RunningEnergy : omp_out += omp_in) \
-   initializer(omp_priv = RunningEnergy{})
-
-#pragma omp parallel for reduction(energy_sum_reduction : energySum)
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
-  {
-    if (!cancel.test())
-    {
-      double3 posA = it1->position;
-      std::size_t typeA = static_cast<std::size_t>(it1->type);
-      std::uint8_t groupIdA = it1->groupId;
-      double scalingVDWA = it1->scalingVDW;
-      double scalingCoulombA = it1->scalingCoulomb;
-      double chargeA = it1->charge;
-
-      for (int index = 0; const Atom &atom : atoms)
-      {
-        if (index != skip)
-        {
-          double3 posB = atom.position;
-          std::size_t typeB = static_cast<std::size_t>(atom.type);
-          std::uint8_t groupIdB = atom.groupId;
-          double scalingVDWB = atom.scalingVDW;
-          double scalingCoulombB = atom.scalingCoulomb;
-          double chargeB = atom.charge;
-
-          double3 dr = posA - posB;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          double rr = double3::dot(dr, dr);
-
-          if (rr < cutOffVDWSquared)
-          {
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
-                forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-            if (energyFactor.energy > overlapCriteria)
-            {
-              cancel.test_and_set();
-            }
-            energySum.frameworkMoleculeVDW += energyFactor.energy;
-            energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
-          }
-          if (useCharge && rr < cutOffChargeSquared)
-          {
-            double r = std::sqrt(rr);
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
-                forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
-
-            energySum.frameworkMoleculeCharge += energyFactor.energy;
-            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
-          }
-        }
-        ++index;
-      }
-    }
-  }
-  if (cancel.test()) return std::nullopt;
-  return energySum;
-}
-
-template <>
-[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::GPU_Offload>(
-    [[maybe_unused]] const ForceField &forceField, [[maybe_unused]] const SimulationBox &simulationBox,
-    [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    [[maybe_unused]] const std::optional<Framework> &framework, [[maybe_unused]] std::span<const Atom> frameworkAtoms,
-    [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb, [[maybe_unused]] std::span<Atom> atoms,
-    [[maybe_unused]] std::make_signed_t<std::size_t> skip) noexcept
-{
-  return std::nullopt;
-}
-
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeFrameworkMoleculeEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
@@ -336,21 +248,9 @@ template <>
           forceField, simulationBox, interpolationGrids, framework, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms,
           skip);
     }
-    case ThreadPool::ThreadingType::OpenMP:
-    {
-      return computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::OpenMP>(
-          forceField, simulationBox, interpolationGrids, framework, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms,
-          skip);
-    }
     case ThreadPool::ThreadingType::ThreadPool:
     {
       return computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(
-          forceField, simulationBox, interpolationGrids, framework, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms,
-          skip);
-    }
-    case ThreadPool::ThreadingType::GPU_Offload:
-    {
-      return computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::GPU_Offload>(
           forceField, simulationBox, interpolationGrids, framework, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms,
           skip);
     }

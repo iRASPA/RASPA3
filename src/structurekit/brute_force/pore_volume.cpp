@@ -10,6 +10,7 @@ import unit_cell;
 import randomnumbers;
 import brute_force_structure;
 import brute_force_voxels;
+import structure_parallel;
 
 BruteForcePoreVolume BruteForcePoreVolume::compute(const BruteForceStructure &structure,
                                                    const BruteForceVoxels &voxels, std::size_t numberOfPoints)
@@ -27,38 +28,39 @@ BruteForcePoreVolume BruteForcePoreVolume::compute(const BruteForceStructure &st
 
   std::size_t perLane = numberOfPoints / lanes;
 
-#pragma omp parallel for schedule(dynamic, 1)
-  for (std::int64_t index = 0; index < static_cast<std::int64_t>(lanes); ++index)
-  {
-    std::size_t lane = static_cast<std::size_t>(index);
-    RandomNumber random{lane};
+  // A lane's points come from a generator seeded by the lane and land in counters of its own, so the draw is
+  // the same set of points and the total the same sum however many threads the lanes were run on.
+  forEachIndex(lanes, workersAvailable(),
+               [&](std::size_t, std::size_t lane)
+               {
+                 RandomNumber random{lane};
 
-    for (std::size_t point = 0; point < perLane; ++point)
-    {
-      double3 fractional(random.uniform(), random.uniform(), random.uniform());
-      double3 position = structure.unitCell.cell * fractional;
+                 for (std::size_t point = 0; point < perLane; ++point)
+                 {
+                   double3 fractional(random.uniform(), random.uniform(), random.uniform());
+                   double3 position = structure.unitCell.cell * fractional;
 
-      if (structure.clearance(position) < 0.0) continue;
-      ++inVoid[lane];
+                   if (structure.clearance(position) < 0.0) continue;
+                   ++inVoid[lane];
 
-      // Which piece of the void the point is in comes from the flood, which is the only thing here that can
-      // tell a channel from a pocket. A point can have room around it and still fall in a voxel whose own
-      // centre does not, so the nearest labelled voxel is what answers it; where even that fails the point
-      // is in void too thin for the grid to have found at all, and it is counted as such rather than given
-      // to either side.
-      std::int32_t region = voxels.regionNear(structure, position);
-      if (region < 0)
-      {
-        ++unresolved[lane];
-        continue;
-      }
+                   // Which piece of the void the point is in comes from the flood, which is the only thing here that
+                   // can tell a channel from a pocket. A point can have room around it and still fall in a voxel whose
+                   // own centre does not, so the nearest labelled voxel is what answers it; where even that fails the
+                   // point is in void too thin for the grid to have found at all, and it is counted as such rather than
+                   // given to either side.
+                   std::int32_t region = voxels.regionNear(structure, position);
+                   if (region < 0)
+                   {
+                     ++unresolved[lane];
+                     continue;
+                   }
 
-      if (voxels.regions[static_cast<std::size_t>(region)].percolates)
-        ++inChannel[lane];
-      else
-        ++inPocket[lane];
-    }
-  }
+                   if (voxels.regions[static_cast<std::size_t>(region)].percolates)
+                     ++inChannel[lane];
+                   else
+                     ++inPocket[lane];
+                 }
+               });
 
   std::size_t drawn = perLane * lanes;
   std::size_t voidPoints = std::reduce(inVoid.begin(), inVoid.end());

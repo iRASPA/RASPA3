@@ -10,6 +10,7 @@ import double3x3;
 import unit_cell;
 import brute_force_structure;
 import brute_force_voxels;
+import structure_parallel;
 
 namespace
 {
@@ -186,24 +187,36 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
 
     double bestOnTheGrid = ranked.empty() ? 0.0 : static_cast<double>(voxels.clearance[ranked.front()]);
 
-    double bestClearance = 0.0;
-    double3 bestPosition{};
-
     double step = std::max({voxels.spacing.x, voxels.spacing.y, voxels.spacing.z});
 
-#pragma omp parallel for schedule(dynamic, 1)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(starts); ++index)
-    {
-      auto [position, clearance] =
-          walkUphill(structure, voxels.centre(structure, ranked[static_cast<std::size_t>(index)]), step);
+    // One walk consults nothing but the structure, and how far each climbs varies, so the starts are dealt out
+    // one at a time. Each worker keeps the best of its own walks and the best of those is taken afterwards in
+    // worker order, so which start wins a tie is settled by arithmetic rather than by which walk finished
+    // first.
+    const std::size_t workers = workersAvailable();
+    std::vector<double> bestClearanceOfWorker(workers, 0.0);
+    std::vector<double3> bestPositionOfWorker(workers);
 
-#pragma omp critical
+    forEachIndex(starts, workers,
+                 [&](std::size_t worker, std::size_t index)
+                 {
+                   auto [position, clearance] = walkUphill(structure, voxels.centre(structure, ranked[index]), step);
+
+                   if (clearance > bestClearanceOfWorker[worker])
+                   {
+                     bestClearanceOfWorker[worker] = clearance;
+                     bestPositionOfWorker[worker] = position;
+                   }
+                 });
+
+    double bestClearance = 0.0;
+    double3 bestPosition{};
+    for (std::size_t worker = 0; worker < workers; ++worker)
+    {
+      if (bestClearanceOfWorker[worker] > bestClearance)
       {
-        if (clearance > bestClearance)
-        {
-          bestClearance = clearance;
-          bestPosition = position;
-        }
+        bestClearance = bestClearanceOfWorker[worker];
+        bestPosition = bestPositionOfWorker[worker];
       }
     }
 

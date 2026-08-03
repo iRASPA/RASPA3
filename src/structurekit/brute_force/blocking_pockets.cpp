@@ -10,6 +10,7 @@ import double3x3;
 import unit_cell;
 import brute_force_structure;
 import brute_force_voxels;
+import structure_parallel;
 
 BruteForceBlockingPockets BruteForceBlockingPockets::compute(const BruteForceStructure &structure,
                                                              const BruteForceVoxels &voxels)
@@ -109,47 +110,56 @@ BlockingAudit auditBlockingSpheres(const BruteForceStructure &structure, const B
 
   std::size_t numberOfVoxels = voxels.regionOf.size();
 
-  std::size_t leftOpen = 0;
-  std::size_t coveredUp = 0;
-  double worst = 0.0;
+  // Each worker audits a stretch of the voxels into counters of its own. What is collected is two counts and a
+  // maximum, none of which depends on the order they were collected in, so this comes out the same to the bit
+  // on any number of threads.
+  const std::size_t workers = workersAvailable();
+  std::vector<std::size_t> leftOpenOfWorker(workers, 0);
+  std::vector<std::size_t> coveredUpOfWorker(workers, 0);
+  std::vector<double> worstOfWorker(workers, 0.0);
 
-#pragma omp parallel for schedule(static) reduction(+ : leftOpen, coveredUp) reduction(max : worst)
-  for (std::int64_t index = 0; index < static_cast<std::int64_t>(numberOfVoxels); ++index)
-  {
-    std::size_t voxel = static_cast<std::size_t>(index);
+  forEachBlock(numberOfVoxels, workers,
+               [&](std::size_t worker, std::size_t begin, std::size_t end)
+               {
+                 for (std::size_t voxel = begin; voxel < end; ++voxel)
+                 {
+                   std::int32_t region = voxels.regionOf[voxel];
+                   if (region < 0) continue;
 
-    std::int32_t region = voxels.regionOf[voxel];
-    if (region < 0) continue;
+                   bool percolates = voxels.regions[static_cast<std::size_t>(region)].percolates;
+                   double3 position = voxels.centre(structure, voxel);
 
-    bool percolates = voxels.regions[static_cast<std::size_t>(region)].percolates;
-    double3 position = voxels.centre(structure, voxel);
+                   bool covered = false;
+                   double deepest = 0.0;
 
-    bool covered = false;
-    double deepest = 0.0;
+                   for (std::size_t sphere = 0; sphere < centres.size(); ++sphere)
+                   {
+                     double distance = structure.nearestImage(position, centres[sphere]).length();
+                     if (distance < spheres[sphere].second)
+                     {
+                       covered = true;
+                       deepest = std::max(deepest, spheres[sphere].second - distance);
+                     }
+                   }
 
-    for (std::size_t sphere = 0; sphere < centres.size(); ++sphere)
-    {
-      double distance = structure.nearestImage(position, centres[sphere]).length();
-      if (distance < spheres[sphere].second)
-      {
-        covered = true;
-        deepest = std::max(deepest, spheres[sphere].second - distance);
-      }
-    }
+                   if (percolates)
+                   {
+                     if (covered)
+                     {
+                       ++coveredUpOfWorker[worker];
+                       worstOfWorker[worker] = std::max(worstOfWorker[worker], deepest);
+                     }
+                   }
+                   else if (!covered)
+                   {
+                     ++leftOpenOfWorker[worker];
+                   }
+                 }
+               });
 
-    if (percolates)
-    {
-      if (covered)
-      {
-        ++coveredUp;
-        worst = std::max(worst, deepest);
-      }
-    }
-    else if (!covered)
-    {
-      ++leftOpen;
-    }
-  }
+  std::size_t leftOpen = std::reduce(leftOpenOfWorker.begin(), leftOpenOfWorker.end());
+  std::size_t coveredUp = std::reduce(coveredUpOfWorker.begin(), coveredUpOfWorker.end());
+  double worst = std::ranges::max(worstOfWorker);
 
   audit.pocketVoxelsLeftOpen = leftOpen;
   audit.channelVoxelsCoveredUp = coveredUp;

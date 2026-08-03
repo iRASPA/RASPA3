@@ -191,8 +191,8 @@ reported separately at the end of the simulation.
     by the replica index (`.s{k}`). Restart files (JSON and binary) are not
     supported by this driver.
 
-    The driver spawns one worker thread per temperature (plain C++ threads,
-    no OpenMP); leave `"NumberOfThreads"` at its default of `1` so the
+    The driver spawns one worker thread per temperature (plain C++ threads);
+    leave `"NumberOfThreads"` at its default of `1` so the
     per-energy-evaluation thread pool stays serial and the machine is not
     oversubscribed. Note that the swap move requires rigid, whole-molecule
     replicas: systems with fractional (CFCMC) molecules, flexible components,
@@ -252,8 +252,7 @@ reported separately at the end of the simulation.
     run, so the convergence of the isotherms can be monitored while the
     simulation is running.
 
-    The driver spawns one worker thread per grid point (plain C++ threads, no
-    OpenMP) — with N_T temperatures and N_P pressures that is N_T × N_P
+    The driver spawns one worker thread per grid point (plain C++ threads) — with N_T temperatures and N_P pressures that is N_T × N_P
     threads, so size the grid to the machine. Leave `"NumberOfThreads"` at its
     default of `1` so the per-energy-evaluation thread pool stays serial. The
     swap move requires rigid, whole-molecule replicas: systems with fractional
@@ -414,8 +413,7 @@ reported separately at the end of the simulation.
     crosses the vapor-liquid gap by construction — no starting configuration
     tricks are needed.
 
-    The driver spawns one worker thread per walker (plain C++ threads, no
-    OpenMP) — with N_T temperatures and N_W windows that is N_T × N_W
+    The driver spawns one worker thread per walker (plain C++ threads) — with N_T temperatures and N_W windows that is N_T × N_W
     threads, so size the grid to the machine. Leave `"NumberOfThreads"` at
     its default of `1` so the per-energy-evaluation thread pool stays serial.
     More windows shorten the equilibration (each walker only needs to flatten
@@ -541,8 +539,8 @@ reported separately at the end of the simulation.
     convergence of the curve can be monitored while the simulation is
     running. Binary restart files are not supported by this driver.
 
-    The driver spawns `NumberOfLambdaBins` worker threads (plain C++ threads,
-    no OpenMP); leave `"NumberOfThreads"` at its default of `1` so the
+    The driver spawns `NumberOfLambdaBins` worker threads (plain C++ threads);
+    leave `"NumberOfThreads"` at its default of `1` so the
     per-energy-evaluation thread pool stays serial and the machine is not
     oversubscribed.
 
@@ -666,8 +664,8 @@ reported separately at the end of the simulation.
     backend; otherwise the simulation runs serially. Default: `1`.
 
 -   `"ThreadingType" : string`\
-    Selects the threading backend explicitly. One of `"Serial"`, `"ThreadPool"`,
-    `"OpenMP"`, or `"GPU-Offload"`.
+    Selects the threading backend explicitly. Either `"Serial"` or
+    `"ThreadPool"`.
 
 -   `"RandomSeed" : integer`\
     Seeds the random-number generator for reproducible runs. When omitted a

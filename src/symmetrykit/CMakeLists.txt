@@ -15,8 +15,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PRIVATE ${SYMMETRYKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${SYMMETRYKIT_IXX_FILES})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
-target_link_libraries(${PROJECT_NAME} PUBLIC mathkit foundationkit OpenMP::OpenMP_CXX)
-
-# See foundationkit: the SIMD variants of raspakit compile these sources themselves.
-set(SYMMETRYKIT_CPP_FILES ${SYMMETRYKIT_CPP_FILES} PARENT_SCOPE)
-set(SYMMETRYKIT_IXX_FILES ${SYMMETRYKIT_IXX_FILES} PARENT_SCOPE)
+target_link_libraries(${PROJECT_NAME} PUBLIC mathkit foundationkit)

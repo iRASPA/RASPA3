@@ -1,9 +1,5 @@
 module;
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 module grid_pore_size;
 
 import std;
@@ -12,6 +8,7 @@ import uint3;
 import double3;
 import double3x3;
 import unit_cell;
+import structure_parallel;
 
 
 double coveringSlack(const UnitCell &unitCell, uint3 gridSize)
@@ -55,81 +52,87 @@ std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &unitCell
   // A void filling the whole cell has no boundary to find, and the search would otherwise walk the grid.
   const std::int64_t largestReach = std::max({nx, ny, nz}) / 2 + 1;
 
-#pragma omp parallel for schedule(dynamic, 8)
-  for (std::int64_t voxel = 0; voxel < static_cast<std::int64_t>(numberOfVoxels); ++voxel)
-  {
-    const float here = openness[static_cast<std::size_t>(voxel)];
-    if (here < level) continue;
+  // How far the search has to walk before it meets the boundary is what varies here, from one shell in a narrow
+  // pore to a good many in a wide one, so the voxels are dealt out one at a time rather than in stretches. Each
+  // reads the field and writes its own entry.
+  forEachIndex(numberOfVoxels, workersAvailable(),
+               [&](std::size_t, std::size_t index)
+               {
+                 const std::int64_t voxel = static_cast<std::int64_t>(index);
 
-    const std::int64_t k = voxel / (nx * ny);
-    const std::int64_t j = (voxel / nx) % ny;
-    const std::int64_t i = voxel % nx;
+                 const float here = openness[index];
+                 if (here < level) return;
 
-    double best = std::numeric_limits<double>::max();
+                 const std::int64_t k = voxel / (nx * ny);
+                 const std::int64_t j = (voxel / nx) % ny;
+                 const std::int64_t i = voxel % nx;
 
-    for (std::int64_t reach = 1; reach <= largestReach; ++reach)
-    {
-      // Nothing at this radius or beyond can beat what is already in hand. A crossing found from a point at
-      // this radius can lie a step nearer than the point itself, which the bound has to allow for.
-      if (static_cast<double>(reach - 1) * shortestStep - longestStep >= best) break;
+                 double best = std::numeric_limits<double>::max();
 
-      for (std::int64_t dk = -reach; dk <= reach; ++dk)
-      {
-        for (std::int64_t dj = -reach; dj <= reach; ++dj)
-        {
-          // Only the shell, since everything inside it was walked on an earlier pass.
-          const bool onFace = (std::abs(dk) == reach) || (std::abs(dj) == reach);
-          const std::int64_t stride = onFace ? 1 : 2 * reach;
-          for (std::int64_t di = -reach; di <= reach; di += stride)
-          {
-            const std::int64_t ii = ((i + di) % nx + nx) % nx;
-            const std::int64_t jj = ((j + dj) % ny + ny) % ny;
-            const std::int64_t kk = ((k + dk) % nz + nz) % nz;
-            const float outside = openness[static_cast<std::size_t>((kk * ny + jj) * nx + ii)];
-            if (outside >= level) continue;
+                 for (std::int64_t reach = 1; reach <= largestReach; ++reach)
+                 {
+                   // Nothing at this radius or beyond can beat what is already in hand. A crossing found from a point
+                   // at this radius can lie a step nearer than the point itself, which the bound has to allow for.
+                   if (static_cast<double>(reach - 1) * shortestStep - longestStep >= best) break;
 
-            double3 fractional(static_cast<double>(di) / static_cast<double>(nx),
-                               static_cast<double>(dj) / static_cast<double>(ny),
-                               static_cast<double>(dk) / static_cast<double>(nz));
-            double3 offset = cell * fractional;
-            if (offset.length() - longestStep >= best) continue;
+                   for (std::int64_t dk = -reach; dk <= reach; ++dk)
+                   {
+                     for (std::int64_t dj = -reach; dj <= reach; ++dj)
+                     {
+                       // Only the shell, since everything inside it was walked on an earlier pass.
+                       const bool onFace = (std::abs(dk) == reach) || (std::abs(dj) == reach);
+                       const std::int64_t stride = onFace ? 1 : 2 * reach;
+                       for (std::int64_t di = -reach; di <= reach; di += stride)
+                       {
+                         const std::int64_t ii = ((i + di) % nx + nx) % nx;
+                         const std::int64_t jj = ((j + dj) % ny + ny) % ny;
+                         const std::int64_t kk = ((k + dk) % nz + nz) % nz;
+                         const float outside = openness[static_cast<std::size_t>((kk * ny + jj) * nx + ii)];
+                         if (outside >= level) continue;
 
-            // The surface is placed where it crosses the edges of the grid, and only ever between two points
-            // that straddle it, which is where marching cubes puts its vertices too. Interpolating over any
-            // longer a span would be worse than useless on a field of this kind: an energy climbs as the
-            // twelfth power of separation, so a point in the wall is not larger than a point in the pore by
-            // some modest factor but by ten orders of magnitude, and a straight line drawn to it puts the
-            // crossing almost on top of the pore point. Distances measured that way come out far too small,
-            // and, worse, too small by an amount that depends on how deep the wall behind them happens to
-            // be.
-            for (std::size_t axis = 0; axis < 3; ++axis)
-            {
-              for (const std::int64_t step : {std::int64_t{-1}, std::int64_t{1}})
-              {
-                std::int64_t ni = ii, nj = jj, nk = kk;
-                if (axis == 0) ni = ((ii + step) % nx + nx) % nx;
-                if (axis == 1) nj = ((jj + step) % ny + ny) % ny;
-                if (axis == 2) nk = ((kk + step) % nz + nz) % nz;
+                         double3 fractional(static_cast<double>(di) / static_cast<double>(nx),
+                                            static_cast<double>(dj) / static_cast<double>(ny),
+                                            static_cast<double>(dk) / static_cast<double>(nz));
+                         double3 offset = cell * fractional;
+                         if (offset.length() - longestStep >= best) continue;
 
-                const float inside = openness[static_cast<std::size_t>((nk * ny + nj) * nx + ni)];
-                if (inside < level) continue;
+                         // The surface is placed where it crosses the edges of the grid, and only ever between two
+                         // points that straddle it, which is where marching cubes puts its vertices too. Interpolating
+                         // over any longer a span would be worse than useless on a field of this kind: an energy climbs
+                         // as the twelfth power of separation, so a point in the wall is not larger than a point in the
+                         // pore by some modest factor but by ten orders of magnitude, and a straight line drawn to it
+                         // puts the crossing almost on top of the pore point. Distances measured that way come out far
+                         // too small, and, worse, too small by an amount that depends on how deep the wall behind them
+                         // happens to be.
+                         for (std::size_t axis = 0; axis < 3; ++axis)
+                         {
+                           for (const std::int64_t step : {std::int64_t{-1}, std::int64_t{1}})
+                           {
+                             std::int64_t ni = ii, nj = jj, nk = kk;
+                             if (axis == 0) ni = ((ii + step) % nx + nx) % nx;
+                             if (axis == 1) nj = ((jj + step) % ny + ny) % ny;
+                             if (axis == 2) nk = ((kk + step) % nz + nz) % nz;
 
-                const double climb = static_cast<double>(inside) - static_cast<double>(outside);
-                const double fraction =
-                    (climb > 0.0) ? (static_cast<double>(level) - static_cast<double>(outside)) / climb : 0.0;
-                double3 crossing = offset + std::clamp(fraction, 0.0, 1.0) * static_cast<double>(step) *
-                                                axisStep[axis];
-                best = std::min(best, crossing.length());
-              }
-            }
-          }
-        }
-      }
-    }
+                             const float inside = openness[static_cast<std::size_t>((nk * ny + nj) * nx + ni)];
+                             if (inside < level) continue;
 
-    distance[static_cast<std::size_t>(voxel)] =
-        (best == std::numeric_limits<double>::max()) ? std::numeric_limits<float>::max() : static_cast<float>(best);
-  }
+                             const double climb = static_cast<double>(inside) - static_cast<double>(outside);
+                             const double fraction =
+                                 (climb > 0.0) ? (static_cast<double>(level) - static_cast<double>(outside)) / climb
+                                               : 0.0;
+                             double3 crossing =
+                                 offset + std::clamp(fraction, 0.0, 1.0) * static_cast<double>(step) * axisStep[axis];
+                             best = std::min(best, crossing.length());
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+
+                 distance[index] = (best == std::numeric_limits<double>::max()) ? std::numeric_limits<float>::max()
+                                                                                : static_cast<float>(best);
+               });
 
   return distance;
 }
@@ -156,50 +159,54 @@ std::vector<float> poreRadiusField(uint3 gridSize, const UnitCell &unitCell,
   const double stepsPerLengthY = static_cast<double>(ny) / widths.y;
   const double stepsPerLengthZ = static_cast<double>(nz) / widths.z;
 
-#pragma omp parallel for schedule(dynamic, 8)
-  for (std::int64_t voxel = 0; voxel < static_cast<std::int64_t>(numberOfVoxels); ++voxel)
-  {
-    const float radius = distance[static_cast<std::size_t>(voxel)];
-    if (!(radius > 0.0f) || radius == std::numeric_limits<float>::max()) continue;
-
-    const std::int64_t k = voxel / (nx * ny);
-    const std::int64_t j = (voxel / nx) % ny;
-    const std::int64_t i = voxel % nx;
-
-    const double reach = static_cast<double>(radius) + slack;
-    const std::int64_t reachX = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthX));
-    const std::int64_t reachY = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthY));
-    const std::int64_t reachZ = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthZ));
-
-    for (std::int64_t dk = -reachZ; dk <= reachZ; ++dk)
-    {
-      for (std::int64_t dj = -reachY; dj <= reachY; ++dj)
+  // How far a ball reaches is its own radius, so what one voxel costs here has nothing to do with what the next
+  // one costs and the voxels are dealt out one at a time.
+  forEachIndex(
+      numberOfVoxels, workersAvailable(),
+      [&](std::size_t, std::size_t index)
       {
-        for (std::int64_t di = -reachX; di <= reachX; ++di)
+        const std::int64_t voxel = static_cast<std::int64_t>(index);
+
+        const float radius = distance[index];
+        if (!(radius > 0.0f) || radius == std::numeric_limits<float>::max()) return;
+
+        const std::int64_t k = voxel / (nx * ny);
+        const std::int64_t j = (voxel / nx) % ny;
+        const std::int64_t i = voxel % nx;
+
+        const double reach = static_cast<double>(radius) + slack;
+        const std::int64_t reachX = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthX));
+        const std::int64_t reachY = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthY));
+        const std::int64_t reachZ = static_cast<std::int64_t>(std::ceil(reach * stepsPerLengthZ));
+
+        for (std::int64_t dk = -reachZ; dk <= reachZ; ++dk)
         {
-          double3 fractional(static_cast<double>(di) / static_cast<double>(nx),
-                             static_cast<double>(dj) / static_cast<double>(ny),
-                             static_cast<double>(dk) / static_cast<double>(nz));
-          double3 offset = cell * fractional;
-          if (offset.length_squared() > reach * reach) continue;
-
-          const std::int64_t ii = ((i + di) % nx + nx) % nx;
-          const std::int64_t jj = ((j + dj) % ny + ny) % ny;
-          const std::int64_t kk = ((k + dk) % nz + nz) % nz;
-
-          // Spheres from different centres reach the same point, and which of them gets there first is not
-          // fixed, so the largest has to be kept without assuming an order.
-          std::atomic_ref<float> covered(poreRadius[static_cast<std::size_t>((kk * ny + jj) * nx + ii)]);
-          float current = covered.load(std::memory_order_relaxed);
-          while (current < radius &&
-                 !covered.compare_exchange_weak(current, radius, std::memory_order_relaxed,
-                                                std::memory_order_relaxed))
+          for (std::int64_t dj = -reachY; dj <= reachY; ++dj)
           {
+            for (std::int64_t di = -reachX; di <= reachX; ++di)
+            {
+              double3 fractional(static_cast<double>(di) / static_cast<double>(nx),
+                                 static_cast<double>(dj) / static_cast<double>(ny),
+                                 static_cast<double>(dk) / static_cast<double>(nz));
+              double3 offset = cell * fractional;
+              if (offset.length_squared() > reach * reach) continue;
+
+              const std::int64_t ii = ((i + di) % nx + nx) % nx;
+              const std::int64_t jj = ((j + dj) % ny + ny) % ny;
+              const std::int64_t kk = ((k + dk) % nz + nz) % nz;
+
+              // Spheres from different centres reach the same point, and which of them gets there first is not
+              // fixed, so the largest has to be kept without assuming an order.
+              std::atomic_ref<float> covered(poreRadius[static_cast<std::size_t>((kk * ny + jj) * nx + ii)]);
+              float current = covered.load(std::memory_order_relaxed);
+              while (current < radius && !covered.compare_exchange_weak(current, radius, std::memory_order_relaxed,
+                                                                        std::memory_order_relaxed))
+              {
+              }
+            }
           }
         }
-      }
-    }
-  }
+      });
 
   return poreRadius;
 }

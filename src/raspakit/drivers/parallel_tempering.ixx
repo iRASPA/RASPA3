@@ -17,7 +17,7 @@ import json;
  *
  * The single declared system is replicated into one replica per temperature of the ladder
  * ('ExternalTemperatures'); replica k runs at temperature T_k. Every replica runs in its own
- * thread with its own random-number stream (no OpenMP; plain std::jthread worker threads). The
+ * thread with its own random-number stream (plain std::jthread worker threads). The
  * threads only synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where
  * configuration swaps between replicas at neighboring temperatures are attempted with the standard
  * parallel-tempering acceptance rule

@@ -8,6 +8,7 @@ import double3;
 import randomnumbers;
 import sampled_structure;
 import sampling_backend;
+import structure_parallel;
 
 namespace
 {
@@ -76,23 +77,24 @@ SamplingBackend samplingBackendCPU()
   backend.clearances = [](const SampledStructure &structure, std::span<const double3> positions,
                           std::span<double> into)
   {
-#pragma omp parallel for schedule(static)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(positions.size()); ++index)
-    {
-      std::size_t i = static_cast<std::size_t>(index);
-      into[i] = structure.clearance(positions[i]);
-    }
+    forEachBlock(positions.size(), workersAvailable(),
+                 [&](std::size_t, std::size_t begin, std::size_t end)
+                 {
+                   for (std::size_t i = begin; i < end; ++i) into[i] = structure.clearance(positions[i]);
+                 });
   };
 
   backend.straightWays = [](const SampledStructure &structure, std::span<const double3> origins,
                             std::span<const double3> displacements, std::span<SampledWay> into)
   {
-#pragma omp parallel for schedule(static)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(origins.size()); ++index)
-    {
-      std::size_t i = static_cast<std::size_t>(index);
-      into[i] = straightWayOf(structure, origins[i], displacements[i]);
-    }
+    forEachBlock(origins.size(), workersAvailable(),
+                 [&](std::size_t, std::size_t begin, std::size_t end)
+                 {
+                   for (std::size_t i = begin; i < end; ++i)
+                   {
+                     into[i] = straightWayOf(structure, origins[i], displacements[i]);
+                   }
+                 });
   };
 
   backend.walksUphill = [](const SampledStructure &structure, std::span<const SampledPeak> starts,
@@ -101,47 +103,46 @@ SamplingBackend samplingBackendCPU()
     const double finalStepFraction = 1.0e-4;
     const double shrink = steps > 0 ? std::pow(finalStepFraction, 1.0 / static_cast<double>(steps)) : 1.0;
 
-#pragma omp parallel for schedule(dynamic, 8)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(starts.size()); ++index)
-    {
-      std::size_t i = static_cast<std::size_t>(index);
+    // A walk carries its own seed, so which worker takes it makes no difference to where it ends up.
+    forEachIndex(starts.size(), workersAvailable(),
+                 [&](std::size_t, std::size_t i)
+                 {
+                   RandomNumber walk{static_cast<std::size_t>(seeds[i])};
 
-      RandomNumber walk{static_cast<std::size_t>(seeds[i])};
+                   double3 best = starts[i].position;
+                   double bestRadius = starts[i].radius;
+                   double step = std::max(bestRadius, 0.1);
 
-      double3 best = starts[i].position;
-      double bestRadius = starts[i].radius;
-      double step = std::max(bestRadius, 0.1);
+                   for (std::size_t attempt = 0; attempt < steps; ++attempt)
+                   {
+                     double3 trial = best + step * walk.randomVectorOnUnitSphere();
+                     double clearance = structure.clearance(trial);
 
-      for (std::size_t attempt = 0; attempt < steps; ++attempt)
-      {
-        double3 trial = best + step * walk.randomVectorOnUnitSphere();
-        double clearance = structure.clearance(trial);
+                     if (clearance > bestRadius)
+                     {
+                       best = trial;
+                       bestRadius = clearance;
+                     }
 
-        if (clearance > bestRadius)
-        {
-          best = trial;
-          bestRadius = clearance;
-        }
+                     step *= shrink;
+                   }
 
-        step *= shrink;
-      }
-
-      into[i] = SampledPeak{.radius = bestRadius, .position = best};
-    }
+                   into[i] = SampledPeak{.radius = bestRadius, .position = best};
+                 });
   };
 
   backend.widestWays = [](const SampledStructure &structure, std::span<const double3> origins,
                           std::span<const double3> displacements, std::span<const std::uint32_t> seeds,
                           std::size_t depth, std::span<SampledWay> into)
   {
-#pragma omp parallel for schedule(dynamic, 1)
-    for (std::int64_t index = 0; index < static_cast<std::int64_t>(origins.size()); ++index)
-    {
-      std::size_t i = static_cast<std::size_t>(index);
-
-      RandomNumber bending{static_cast<std::size_t>(seeds[i])};
-      into[i] = widestWayOf(structure, origins[i], displacements[i], depth, bending);
-    }
+    // How far a way bends before it is settled varies by an order of magnitude between one and the next, so
+    // they are dealt out one at a time; each carries its own seed and writes only its own entry.
+    forEachIndex(origins.size(), workersAvailable(),
+                 [&](std::size_t, std::size_t i)
+                 {
+                   RandomNumber bending{static_cast<std::size_t>(seeds[i])};
+                   into[i] = widestWayOf(structure, origins[i], displacements[i], depth, bending);
+                 });
   };
 
   return backend;

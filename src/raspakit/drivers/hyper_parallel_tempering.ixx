@@ -22,7 +22,7 @@ import json;
  * pressure) grid spanned by the ladders 'ExternalTemperatures' x 'ExternalPressures'. The
  * pressures are converted to per-component fugacities internally through the Peng-Robinson
  * equation of state evaluated at each grid point. Every replica runs in its own thread with its
- * own random-number stream (no OpenMP; plain std::jthread worker threads). The threads only
+ * own random-number stream (plain std::jthread worker threads). The threads only
  * synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where configuration
  * swaps between replicas at neighboring grid points are attempted with the Yan & de Pablo
  * acceptance rule

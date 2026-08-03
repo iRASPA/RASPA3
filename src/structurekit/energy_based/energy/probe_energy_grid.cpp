@@ -14,6 +14,7 @@ import pair_interactions;
 import units;
 
 import energy_shared_probe_energy_grid;
+import structure_parallel;
 
 ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions, const Crystal &framework,
                                             std::string probePseudoAtom, uint3 gridSize)
@@ -88,102 +89,105 @@ ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions
   const double cutOffSquared = cutOff * cutOff;
   const double ceiling = grid.ceiling;
 
-#pragma omp parallel for schedule(dynamic)
-  for (std::int64_t iz = 0; iz < static_cast<std::int64_t>(gridSize.z); ++iz)
-  {
-    for (std::size_t iy = 0; iy < gridSize.y; ++iy)
-    {
-      for (std::size_t ix = 0; ix < gridSize.x; ++ix)
+  // A plane of the grid is settled by the atoms, which nothing here writes to, and lands in its own stretch of
+  // the field, so the planes are independent work.
+  forEachIndex(
+      gridSize.z, workersAvailable(),
+      [&](std::size_t, std::size_t iz)
       {
-        // Endpoint-exclusive sampling, as in the clearance field: fractional 0 and 1 are the same periodic
-        // point, so dividing by the grid size rather than one less keeps the spacing uniform and every
-        // sample distinct. The two fields have to be sampled alike for anything to be read off both.
-        double3 s(static_cast<double>(ix) / static_cast<double>(gridSize.x),
-                  static_cast<double>(iy) / static_cast<double>(gridSize.y),
-                  static_cast<double>(iz) / static_cast<double>(gridSize.z));
-
-        double total = 0.0;
-
-        // The atom pulling hardest, and the nearest one in case none of them pulls. An atom's claim is its
-        // own contribution to the sum, over all of its images within the cutoff, so that an atom is not
-        // credited twice for being near in a small cell.
-        //
-        // Inside a wall every term is held at the ceiling, which makes the atoms there exactly equal and the
-        // strongest of them a matter of which was looked at first. Distance separates them and energy does
-        // not, so that region falls back on the nearest atom, which is also what the geometric route would
-        // say about it.
-        double strongestPull = 0.0;
-        double nearestDistanceSquared = std::numeric_limits<double>::max();
-        std::int32_t pullingAtom = -1;
-        std::int32_t nearestAtom = -1;
-
-        for (std::size_t iatom = 0; iatom < numberOfAtoms; ++iatom)
+        for (std::size_t iy = 0; iy < gridSize.y; ++iy)
         {
-          double contribution = 0.0;
-          double closest = std::numeric_limits<double>::max();
-          double3 ds = s - fractionalPositions[iatom];
-          ds.x -= std::rint(ds.x);
-          ds.y -= std::rint(ds.y);
-          ds.z -= std::rint(ds.z);
-
-          const double epsilon4 = epsilonTimesFour[iatom];
-          const double sigma2 = sigmaSquared[iatom];
-          const double shift = shiftValue[iatom];
-
-          for (std::int32_t a = -shells.x; a <= shells.x; ++a)
+          for (std::size_t ix = 0; ix < gridSize.x; ++ix)
           {
-            for (std::int32_t b = -shells.y; b <= shells.y; ++b)
+            // Endpoint-exclusive sampling, as in the clearance field: fractional 0 and 1 are the same periodic
+            // point, so dividing by the grid size rather than one less keeps the spacing uniform and every
+            // sample distinct. The two fields have to be sampled alike for anything to be read off both.
+            double3 s(static_cast<double>(ix) / static_cast<double>(gridSize.x),
+                      static_cast<double>(iy) / static_cast<double>(gridSize.y),
+                      static_cast<double>(iz) / static_cast<double>(gridSize.z));
+
+            double total = 0.0;
+
+            // The atom pulling hardest, and the nearest one in case none of them pulls. An atom's claim is its
+            // own contribution to the sum, over all of its images within the cutoff, so that an atom is not
+            // credited twice for being near in a small cell.
+            //
+            // Inside a wall every term is held at the ceiling, which makes the atoms there exactly equal and the
+            // strongest of them a matter of which was looked at first. Distance separates them and energy does
+            // not, so that region falls back on the nearest atom, which is also what the geometric route would
+            // say about it.
+            double strongestPull = 0.0;
+            double nearestDistanceSquared = std::numeric_limits<double>::max();
+            std::int32_t pullingAtom = -1;
+            std::int32_t nearestAtom = -1;
+
+            for (std::size_t iatom = 0; iatom < numberOfAtoms; ++iatom)
             {
-              for (std::int32_t c = -shells.z; c <= shells.z; ++c)
+              double contribution = 0.0;
+              double closest = std::numeric_limits<double>::max();
+              double3 ds = s - fractionalPositions[iatom];
+              ds.x -= std::rint(ds.x);
+              ds.y -= std::rint(ds.y);
+              ds.z -= std::rint(ds.z);
+
+              const double epsilon4 = epsilonTimesFour[iatom];
+              const double sigma2 = sigmaSquared[iatom];
+              const double shift = shiftValue[iatom];
+
+              for (std::int32_t a = -shells.x; a <= shells.x; ++a)
               {
-                double3 t = ds + double3(static_cast<double>(a), static_cast<double>(b), static_cast<double>(c));
+                for (std::int32_t b = -shells.y; b <= shells.y; ++b)
+                {
+                  for (std::int32_t c = -shells.z; c <= shells.z; ++c)
+                  {
+                    double3 t = ds + double3(static_cast<double>(a), static_cast<double>(b), static_cast<double>(c));
 
-                // The same inequality that sizes the shells above, used again to throw out an image before it
-                // is built.
-                double reach = std::max({std::abs(t.x) * widths.x, std::abs(t.y) * widths.y,
-                                         std::abs(t.z) * widths.z});
-                if (reach > cutOff) continue;
+                    // The same inequality that sizes the shells above, used again to throw out an image before it
+                    // is built.
+                    double reach =
+                        std::max({std::abs(t.x) * widths.x, std::abs(t.y) * widths.y, std::abs(t.z) * widths.z});
+                    if (reach > cutOff) continue;
 
-                double3 dr = cell * t;
-                double rr = double3::dot(dr, dr);
-                if (rr >= cutOffSquared) continue;
+                    double3 dr = cell * t;
+                    double rr = double3::dot(dr, dr);
+                    if (rr >= cutOffSquared) continue;
 
-                // A grid point can land on an atom's centre, where the pair energy has no value. The
-                // separation is held off zero so that the sum stays a number; the point is buried far above
-                // the ceiling either way, so nothing read off the field can turn on the figure chosen here.
-                rr = std::max(rr, 1.0e-6);
-                closest = std::min(closest, rr);
+                    // A grid point can land on an atom's centre, where the pair energy has no value. The
+                    // separation is held off zero so that the sum stays a number; the point is buried far above
+                    // the ceiling either way, so nothing read off the field can turn on the figure chosen here.
+                    rr = std::max(rr, 1.0e-6);
+                    closest = std::min(closest, rr);
 
-                double ratio = sigma2 / rr;
-                double ratio3 = ratio * ratio * ratio;
+                    double ratio = sigma2 / rr;
+                    double ratio3 = ratio * ratio * ratio;
 
-                // Each term is held down before it is added rather than the sum afterwards, so that no term
-                // ever overflows to something a later addition would turn into a value that is not a number.
-                contribution += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shift, ceiling);
+                    // Each term is held down before it is added rather than the sum afterwards, so that no term
+                    // ever overflows to something a later addition would turn into a value that is not a number.
+                    contribution += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shift, ceiling);
+                  }
+                }
+              }
+
+              total += contribution;
+
+              if (contribution < strongestPull)
+              {
+                strongestPull = contribution;
+                pullingAtom = static_cast<std::int32_t>(iatom);
+              }
+              if (closest < nearestDistanceSquared)
+              {
+                nearestDistanceSquared = closest;
+                nearestAtom = static_cast<std::int32_t>(iatom);
               }
             }
-          }
 
-          total += contribution;
-
-          if (contribution < strongestPull)
-          {
-            strongestPull = contribution;
-            pullingAtom = static_cast<std::int32_t>(iatom);
-          }
-          if (closest < nearestDistanceSquared)
-          {
-            nearestDistanceSquared = closest;
-            nearestAtom = static_cast<std::int32_t>(iatom);
+            const std::size_t voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
+            grid.energy[voxel] = static_cast<float>(std::min(total, ceiling));
+            grid.strongestAtom[voxel] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
           }
         }
-
-        const std::size_t voxel = (static_cast<std::size_t>(iz) * gridSize.y + iy) * gridSize.x + ix;
-        grid.energy[voxel] = static_cast<float>(std::min(total, ceiling));
-        grid.strongestAtom[voxel] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
-      }
-    }
-  }
+      });
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();

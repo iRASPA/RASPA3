@@ -614,14 +614,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     {
       threadingType = ThreadPool::ThreadingType::ThreadPool;
     }
-    if (caseInSensStringCompare(threadingTypeString, "OpenMP"))
-    {
-      threadingType = ThreadPool::ThreadingType::OpenMP;
-    }
-    if (caseInSensStringCompare(threadingTypeString, "GPU-Offload"))
-    {
-      threadingType = ThreadPool::ThreadingType::GPU_Offload;
-    }
   }
 
   if (parsed_data.contains("NumberOfThreads") && parsed_data["NumberOfThreads"].is_number_unsigned())

@@ -10,6 +10,7 @@ import unit_cell;
 import randomnumbers;
 import brute_force_structure;
 import brute_force_voxels;
+import structure_parallel;
 
 namespace
 {
@@ -44,60 +45,61 @@ BruteForceSurfaceArea BruteForceSurfaceArea::compute(const BruteForceStructure &
   // short of anywhere it could be mistaken for a different pore.
   double stepOff = 0.5 * std::max({voxels.spacing.x, voxels.spacing.y, voxels.spacing.z});
 
-#pragma omp parallel for schedule(dynamic, 1)
-  for (std::int64_t index = 0; index < static_cast<std::int64_t>(numberOfAtoms); ++index)
-  {
-    std::size_t atom = static_cast<std::size_t>(index);
+  // One atom's exposed area is settled by that atom and its neighbours, and lands in that atom's own entry of
+  // every array here, so the atoms are independent work and the totals below are the same on any number of
+  // threads.
+  forEachIndex(numberOfAtoms, workersAvailable(),
+               [&](std::size_t, std::size_t atom)
+               {
+                 double radius = structure.radii[atom];
+                 double sphereArea = 4.0 * std::numbers::pi * radius * radius;
 
-    double radius = structure.radii[atom];
-    double sphereArea = 4.0 * std::numbers::pi * radius * radius;
+                 RandomNumber random{atom};
 
-    RandomNumber random{atom};
+                 std::size_t exposed = 0;
+                 std::size_t accessible = 0;
+                 std::size_t inaccessible = 0;
+                 std::size_t undecided = 0;
 
-    std::size_t exposed = 0;
-    std::size_t accessible = 0;
-    std::size_t inaccessible = 0;
-    std::size_t undecided = 0;
+                 for (std::size_t sample = 0; sample < samplesPerAtom; ++sample)
+                 {
+                   double3 direction = directionFrom(random);
+                   double3 point = structure.positions[atom] + radius * direction;
 
-    for (std::size_t sample = 0; sample < samplesPerAtom; ++sample)
-    {
-      double3 direction = directionFrom(random);
-      double3 point = structure.positions[atom] + radius * direction;
+                   // The point sits on its own atom's sphere, so that atom contributes exactly zero to the clearance
+                   // there and the minimum over all of them is zero when nothing else reaches it and negative when
+                   // something does. No separate occlusion test is needed, and none of the bookkeeping about which atom
+                   // to skip: the point is exposed when the clearance has not gone negative.
+                   if (structure.clearance(point) < -1.0e-9) continue;
+                   ++exposed;
 
-      // The point sits on its own atom's sphere, so that atom contributes exactly zero to the clearance
-      // there and the minimum over all of them is zero when nothing else reaches it and negative when
-      // something does. No separate occlusion test is needed, and none of the bookkeeping about which atom
-      // to skip: the point is exposed when the clearance has not gone negative.
-      if (structure.clearance(point) < -1.0e-9) continue;
-      ++exposed;
+                   if (keepExposedPoints) pointsOfAtom[atom].push_back(point);
 
-      if (keepExposedPoints) pointsOfAtom[atom].push_back(point);
+                   double3 outside = point + stepOff * direction;
+                   std::int32_t region = voxels.regionNear(structure, outside);
 
-      double3 outside = point + stepOff * direction;
-      std::int32_t region = voxels.regionNear(structure, outside);
+                   if (region < 0)
+                     ++undecided;
+                   else if (voxels.regions[static_cast<std::size_t>(region)].percolates)
+                     ++accessible;
+                   else
+                     ++inaccessible;
+                 }
 
-      if (region < 0)
-        ++undecided;
-      else if (voxels.regions[static_cast<std::size_t>(region)].percolates)
-        ++accessible;
-      else
-        ++inaccessible;
-    }
+                 double perSample = sphereArea / static_cast<double>(samplesPerAtom);
 
-    double perSample = sphereArea / static_cast<double>(samplesPerAtom);
+                 exposedOfAtom[atom] = exposed;
+                 self.areaOfAtom[atom] = static_cast<double>(exposed) * perSample;
+                 accessibleOfAtom[atom] = static_cast<double>(accessible) * perSample;
+                 inaccessibleOfAtom[atom] = static_cast<double>(inaccessible) * perSample;
+                 undecidedOfAtom[atom] = static_cast<double>(undecided) * perSample;
 
-    exposedOfAtom[atom] = exposed;
-    self.areaOfAtom[atom] = static_cast<double>(exposed) * perSample;
-    accessibleOfAtom[atom] = static_cast<double>(accessible) * perSample;
-    inaccessibleOfAtom[atom] = static_cast<double>(inaccessible) * perSample;
-    undecidedOfAtom[atom] = static_cast<double>(undecided) * perSample;
-
-    // The count of exposed directions is binomial, so its variance is n p (1 - p) and the area's is that
-    // scaled by the area each sample stands for.
-    double fraction = static_cast<double>(exposed) / static_cast<double>(samplesPerAtom);
-    varianceOfAtom[atom] =
-        sphereArea * sphereArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerAtom);
-  }
+                 // The count of exposed directions is binomial, so its variance is n p (1 - p) and the area's is that
+                 // scaled by the area each sample stands for.
+                 double fraction = static_cast<double>(exposed) / static_cast<double>(samplesPerAtom);
+                 varianceOfAtom[atom] =
+                     sphereArea * sphereArea * fraction * (1.0 - fraction) / static_cast<double>(samplesPerAtom);
+               });
 
   double variance = 0.0;
   for (std::size_t atom = 0; atom < numberOfAtoms; ++atom)

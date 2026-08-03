@@ -14,10 +14,3 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PRIVATE ${FOUNDATIONKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${FOUNDATIONKIT_IXX_FILES})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
-
-# On x86 raspakit is compiled once per SIMD level, and each of those variants compiles these sources into
-# itself rather than linking this library, so that one module interface is never shared across two -march
-# settings. The parent needs the file lists for that.
-set(FOUNDATIONKIT_CPP_FILES ${FOUNDATIONKIT_CPP_FILES} PARENT_SCOPE)
-set(FOUNDATIONKIT_IXX_FILES ${FOUNDATIONKIT_IXX_FILES} PARENT_SCOPE)

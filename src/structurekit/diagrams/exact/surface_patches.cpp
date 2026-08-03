@@ -9,7 +9,7 @@ import int3;
 import voronoi_channels;
 import pore_accessibility;
 import exact_boundary_components;
-import exact_parallel;
+import structure_parallel;
 import exact_sphere_sweep;
 
 
@@ -387,7 +387,7 @@ void addSweptTo(MeasuredPatches& into, const MeasuredPatches& part)
 // Every sphere swept, into a copy of `blank` for each worker, and the copies added together in worker order.
 // On one worker that is exactly the loop it has always been: arc by arc into a single accumulator, and no
 // reduction to reassociate anything. On more than one the answer can move in its last digits, which is what
-// a reduction costs and what `exact_parallel` says about it.
+// a reduction costs and what `structure_parallel` says about it.
 MeasuredPatches sweepAtoms(const PoreAccessibility& accessibility, std::size_t subdivisions,
                            ArcAttribution attribution, const ComponentRoute* route, SurfaceMoments wanted,
                            const MeasuredPatches& blank)

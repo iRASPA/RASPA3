@@ -35,11 +35,6 @@ add_definitions(-DVERSION=${PROJECT_VERSION})
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
-find_package(OpenMP)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
-  #add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
-  #add_link_options("-fopenmp")
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
@@ -109,7 +104,6 @@ function(raspa_target_link_libraries target_name)
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       ${TORCH_LIBRARIES}
-      OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       ZLIB::ZLIB
       -lpthread)
@@ -121,7 +115,6 @@ function(raspa_target_link_libraries target_name)
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       ${TORCH_LIBRARIES}
-      OpenMP::OpenMP_CXX
       -Wl,--as-needed OpenCL::OpenCL
       -nostdlib++
       -l:libc++.a
@@ -138,7 +131,6 @@ function(raspa_target_link_libraries target_name)
       ${LAPACK_LIBRARIES}
       ${HDF5_LIBRARIES_TO_EXPORT}
       ${TORCH_LIBRARIES}
-      OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       -nostdlib++
       ${ZLIB_LIBRARIES})
@@ -149,7 +141,6 @@ function(raspa_target_link_libraries target_name)
       ${LAPACK_LIBRARIES}
       hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       ${TORCH_LIBRARIES}
-      $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
       OpenCL::OpenCL
       ${ZLIB_LIBRARIES}
       -static-libstdc++

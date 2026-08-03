@@ -1,26 +1,26 @@
 module;
 
-export module exact_parallel;
+export module structure_parallel;
 
 import std;
 
 import threadpool;
 
-// Running the independent parts of an exact analysis at the same time.
+// Running the independent parts of a structural analysis at the same time.
 //
 // The expensive loops of these analyses are over things that do not consult one another: one sphere's exposed
 // surface is settled by that sphere and its neighbours, one probe diameter's geometry is built from the same
-// fixed atoms as every other. So the loops are over independent work and the only question is how to hand out
-// the indices and what to do about the answers.
+// fixed atoms as every other, one voxel's clearance by the atoms around it. So the loops are over independent
+// work and the only question is how to hand out the indices and what to do about the answers.
 //
 // Two properties are wanted of the answer, and they are not the same property.
 //
 // It has to be the same every run. A structural analysis is a measurement of a fixed input, and a measurement
 // that moves in the last digits between two runs of the same command is one nobody can check. So which worker
 // takes which index is fixed by the index and the number of workers, and never by which worker happens to be
-// free: `forEachIndex` deals index i to worker i modulo the count, and a caller that accumulates into
-// per-worker partials and then reduces them in worker order gets an answer that depends on nothing but the
-// number of workers.
+// free: `forEachIndex` deals index i to worker i modulo the count, `forEachBlock` gives worker i a stretch
+// whose bounds are arithmetic, and a caller that accumulates into per-worker partials and then reduces them in
+// worker order gets an answer that depends on nothing but the number of workers.
 //
 // It cannot be the same as the serial answer, and this is worth being plain about rather than quiet about. A
 // sum of floating-point numbers depends on the order they are added in, and a reduction over partials adds
@@ -30,7 +30,8 @@ import threadpool;
 // is the one that is unchanged; asking for threads is asking for the answer sooner and not for the same bits.
 //
 // Loops that write one slot per index rather than accumulate --- the pore-size sweep is one, each diameter
-// filling its own row --- have no reduction and so no difference at all, on any number of threads.
+// filling its own row, and every grid is another --- have no reduction and so no difference at all, on any
+// number of threads.
 
 // How many indices can be under way at once: the pool's helper threads and the calling thread, or one where
 // there is no pool. One inside a loop that is already running here, so that a parallel loop reached from
@@ -53,12 +54,32 @@ void forEachIndexOfLane(std::size_t count, std::size_t lanes, std::size_t worker
   for (std::size_t index = worker; index < count; index += lanes) body(index);
 }
 
+// The stretch of indices lane `worker` of `lanes` takes: `[begin, end)`, the whole of `count` divided as
+// evenly as it goes with the first `count % lanes` lanes taking one index more. Empty where there are more
+// lanes than indices. Arithmetic in its arguments, for the same reason as `forEachIndexOfLane`.
+export std::pair<std::size_t, std::size_t> blockOfLane(std::size_t count, std::size_t lanes, std::size_t worker);
+
 // `body(worker, index)` for every index below `count`, on `workers` threads including the calling one.
 // `worker` is below `workers` and no two calls with the same worker run at the same time, so a caller may
 // give each worker scratch of its own and an accumulator of its own and share nothing else.
+//
+// Indices are dealt out one at a time and interleaved. Use this where one index can cost an order of magnitude
+// more than another and the expensive ones come in runs, which is most of the geometry: a lane that draws a
+// hard stretch is left with only its share of it.
 //
 // An exception thrown by `body` comes back out of this call. On one worker it comes out at once and the
 // indices behind it are not reached; on several, each worker carries on with its own and the first exception
 // is rethrown once they have all stopped, there being no way to recall a thread that is already running.
 export void forEachIndex(std::size_t count, std::size_t workers,
                          const std::function<void(std::size_t worker, std::size_t index)>& body);
+
+// `body(worker, begin, end)` once per worker, the stretches together covering `[0, count)` in order.
+// Otherwise as `forEachIndex`, including what becomes of an exception.
+//
+// Use this where the cost per index is even and the body writes a slot of its own in a shared array, which is
+// what the grids are. Neighbouring slots of an array of floats share a cache line, and dealing indices out
+// interleaved would leave every lane writing into every line of the array; the cores would spend longer
+// passing lines between themselves than computing what goes in them. Contiguous stretches share a line only
+// where they meet.
+export void forEachBlock(std::size_t count, std::size_t workers,
+                         const std::function<void(std::size_t worker, std::size_t begin, std::size_t end)>& body);

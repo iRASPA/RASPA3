@@ -13,6 +13,7 @@ import units;
 
 import energy_shared_electrostatic_potential_grid;
 import energy_shared_ewald;
+import structure_parallel;
 
 ElectrostaticPotentialGrid ElectrostaticPotentialGridCPU::compute(const PairInteractions &interactions,
                                                                   const Crystal &framework, uint3 gridSize,
@@ -51,34 +52,36 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridCPU::compute(const PairInte
 
   const std::size_t numberOfWaves = vectors.size();
 
-#pragma omp parallel for schedule(static)
-  for (std::int64_t iz = 0; iz < static_cast<std::int64_t>(gridSize.z); ++iz)
-  {
-    for (std::size_t iy = 0; iy < gridSize.y; ++iy)
-    {
-      for (std::size_t ix = 0; ix < gridSize.x; ++ix)
+  // A plane of the grid is settled by the wave vectors, which nothing here writes to, and lands in its own
+  // stretch of the field, so the planes are independent work.
+  forEachIndex(
+      gridSize.z, workersAvailable(),
+      [&](std::size_t, std::size_t iz)
       {
-        double3 s(static_cast<double>(ix) / static_cast<double>(gridSize.x),
-                  static_cast<double>(iy) / static_cast<double>(gridSize.y),
-                  static_cast<double>(iz) / static_cast<double>(gridSize.z));
-
-        // Holding the wave vectors as whole numbers of reciprocal cells means the phase is just their dot
-        // product with the fractional position, so nothing here needs to know the shape of the cell.
-        double total = 0.0;
-        for (std::size_t i = 0; i < numberOfWaves; ++i)
+        for (std::size_t iy = 0; iy < gridSize.y; ++iy)
         {
-          double phase = 2.0 * std::numbers::pi *
-                         (static_cast<double>(vectors[i].h) * s.x + static_cast<double>(vectors[i].k) * s.y +
-                          static_cast<double>(vectors[i].l) * s.z);
-          total += Units::CoulombicConversionFactor *
-                   (vectors[i].weightedReal * std::cos(phase) - vectors[i].weightedImaginary * std::sin(phase));
-        }
+          for (std::size_t ix = 0; ix < gridSize.x; ++ix)
+          {
+            double3 s(static_cast<double>(ix) / static_cast<double>(gridSize.x),
+                      static_cast<double>(iy) / static_cast<double>(gridSize.y),
+                      static_cast<double>(iz) / static_cast<double>(gridSize.z));
 
-        grid.smoothPotential[(static_cast<std::size_t>(iz) * gridSize.y + iy) * gridSize.x + ix] =
-            static_cast<float>(total + background);
-      }
-    }
-  }
+            // Holding the wave vectors as whole numbers of reciprocal cells means the phase is just their dot
+            // product with the fractional position, so nothing here needs to know the shape of the cell.
+            double total = 0.0;
+            for (std::size_t i = 0; i < numberOfWaves; ++i)
+            {
+              double phase = 2.0 * std::numbers::pi *
+                             (static_cast<double>(vectors[i].h) * s.x + static_cast<double>(vectors[i].k) * s.y +
+                              static_cast<double>(vectors[i].l) * s.z);
+              total += Units::CoulombicConversionFactor *
+                       (vectors[i].weightedReal * std::cos(phase) - vectors[i].weightedImaginary * std::sin(phase));
+            }
+
+            grid.smoothPotential[(iz * gridSize.y + iy) * gridSize.x + ix] = static_cast<float>(total + background);
+          }
+        }
+      });
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();

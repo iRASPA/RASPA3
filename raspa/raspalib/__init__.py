@@ -3,8 +3,6 @@ import collections.abc
 import os
 import platform
 import ctypes
-import subprocess
-import importlib
 import ctypes.util
 import warnings
 
@@ -32,41 +30,6 @@ def _has_opencl():
                     continue
     return False
 
-
-def _get_cpu_feature_level():
-    machine = platform.machine().lower()
-    if "x86_64" not in machine and "amd64" not in machine:
-        return "base"
-
-    try:
-        sys_name = platform.system()
-        if sys_name == "Windows":
-            k32 = ctypes.windll.kernel32
-            if k32.IsProcessorFeaturePresent(41): return "avx512"
-            # On Windows, AVX2 (40) implies FMA for all supported hardware
-            if k32.IsProcessorFeaturePresent(40): return "avx2"
-            if k32.IsProcessorFeaturePresent(19): return "avx"
-            return "base"
-        elif sys_name == "Linux":
-            with open("/proc/cpuinfo", "r") as f:
-                for line in f:
-                    if line.startswith("flags"):
-                        l_line = line.lower()
-                        if "avx512f" in l_line: return "avx512"
-                        if "avx2" in l_line and "fma" in l_line: return "avx2"
-                        if "avx" in l_line: return "avx"
-                        return "base"
-        elif sys_name == "Darwin":
-            cmd = ["sysctl", "-n", "machdep.cpu.leaf7_features", "machdep.cpu.features"]
-            output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().lower()
-            if "avx512f" in output: return "avx512"
-            if "avx2" in output and "fma" in output: return "avx2"
-            if "avx" in output: return "avx"
-            return "base"
-            
-    except Exception:
-        pass
-    return "base"
 
 __has_opencl__ = _has_opencl()
 
@@ -96,29 +59,18 @@ if not __has_opencl__ and os.environ.get("RASPALIB_QUIET") != "1":
         RuntimeWarning
     )
 
-force = os.environ.get("RASPALIB_FORCE")
-level = force if force in ["avx512", "avx2", "avx", "base"] else _get_cpu_feature_level()
+from . import _raspalib as _module
 
-module_path = f"raspalib.raspalib_{level}"
-
-try:
-    _module = importlib.import_module(module_path, package=__package__)
-except ImportError:
-    warnings.warn("Import failed, falling back to base-version", RuntimeWarning)
-    _module = importlib.import_module("raspalib.raspalib_base", package=__package__)
 globals().update({
     name: export 
     for name, export in _module.__dict__.items() 
     if not name.startswith('_')
 })
-__cpu_level__ = level
 __file_imported__ = _module.__file__
 del _module
 
 def print_debug_info():
     print(f"Raspalib Info:")
-    print(f"  Detected Level:  {level}")
-    print(f"  Forced via Env:  {'Yes' if os.environ.get('RASPALIB_FORCE') else 'No'}")
     print(f"  Binary Path:     {__file_imported__}")
     print(f"  OpenCL detected: {__has_opencl__}")
 

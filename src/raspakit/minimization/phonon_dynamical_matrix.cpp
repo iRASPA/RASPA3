@@ -41,19 +41,16 @@ double checkedInverseSqrtMass(double mass, std::string_view what)
 /**
  * Evaluate `modeAt(index)` for every k-point and store the result at `output[index]`. The k-points are
  * independent, so the loop is parallelized according to the configured threading type:
- *   - OpenMP: an `omp parallel for` with `schedule(dynamic)`.
  *   - ThreadPool: fine-grained self-scheduling over k-points. The pool is created with
  *     `NumberOfThreads - 1` workers (the calling thread is the remaining slot); one drain task is
  *     enqueued per worker and the calling thread runs the same drain, so `NumberOfThreads: N` means
  *     N cores do useful work. A shared atomic cursor hands out the next k-index, which dynamically
  *     balances uneven eigensolve costs. The first exception is captured under a mutex and rethrown
  *     after the join. Falls back to serial if the pool has no workers.
- *   - Serial / GPU-Offload / no pool: a plain sequential loop.
- * Exceptions thrown inside an OpenMP region cannot cross the region boundary, so the first one is
- * captured under a critical section and rethrown afterwards (matching the serial first-failure
- * behaviour). Each worker builds its own dynamical matrix and LAPACK workspace; the shared inputs
- * (`system`, force constants, masses) are only read. For best scaling keep the BLAS/LAPACK backend
- * single-threaded so the parallelism lives here rather than inside each eigensolve.
+ *   - Serial / no pool: a plain sequential loop.
+ * Each worker builds its own dynamical matrix and LAPACK workspace; the shared inputs (`system`, force
+ * constants, masses) are only read. For best scaling keep the BLAS/LAPACK backend single-threaded so
+ * the parallelism lives here rather than inside each eigensolve.
  */
 template <typename ModeFunction>
   requires std::invocable<ModeFunction, std::size_t> &&
@@ -64,26 +61,6 @@ std::vector<PhononModes> evaluateModesAlongPath(std::size_t numberOfKPoints, Mod
 
   auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
   const ThreadPool::ThreadingType threadingType = pool.getThreadingType();
-
-  if (threadingType == ThreadPool::ThreadingType::OpenMP)
-  {
-    std::exception_ptr firstError{};
-#pragma omp parallel for schedule(dynamic)
-    for (std::size_t index = 0; index < numberOfKPoints; ++index)
-    {
-      try
-      {
-        modes[index] = modeAt(index);
-      }
-      catch (...)
-      {
-#pragma omp critical(phononDispersionError)
-        if (!firstError) firstError = std::current_exception();
-      }
-    }
-    if (firstError) std::rethrow_exception(firstError);
-    return modes;
-  }
 
   // Fine-grained self-scheduling: getThreadCount() workers + the calling thread = NumberOfThreads
   // busy cores. Each executor pulls the next k-index from a shared atomic until the path is done.
