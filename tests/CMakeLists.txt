@@ -10,6 +10,10 @@ if(BUILD_TESTING_SYMMETRYKIT)
 add_subdirectory(symmetrykit-tests)
 endif()
 
+if(BUILD_TESTING_STRUCTUREKIT)
+add_subdirectory(structurekit-tests)
+endif()
+
 if(BUILD_TESTING_RASPAKIT)
 add_subdirectory(raspakit-tests)
 endif()

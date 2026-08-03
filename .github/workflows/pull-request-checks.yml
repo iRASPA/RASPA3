@@ -78,6 +78,7 @@ jobs:
       - name: run-tests
         shell: bash
         run: |
+          ${{github.workspace}}/build/tests/structurekit-tests/unit_tests_structurekit --gtest_output=xml:${{github.workspace}}/structureTestResults.xml
           ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:${{github.workspace}}/testResults.xml
 
       - name: test-report

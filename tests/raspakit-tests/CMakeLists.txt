@@ -1,9 +1,5 @@
 add_executable(unit_tests_raspakit
   cbmc_interactions.cpp
-  grid_area_curve.cpp
-  grid_blocking_cover.cpp
-  grid_percolation.cpp
-  grid_pore_size.cpp
   energy_decomposition.cpp
   gradients.cpp
   translation_smart_mc.cpp
@@ -67,15 +63,7 @@ add_executable(unit_tests_raspakit
   apollonius.cpp
   voronoi_analysis.cpp
   apollonius_pore_analysis.cpp
-  apollonius_surface_area.cpp
-  exact_sphere_sweep.cpp
-  structure_parallel.cpp
-  exact_union_volume.cpp
-  exact_void_split.cpp
-  exact_solvent_excluded.cpp
-  exact_pore_size_distribution.cpp
   exact_regression.cpp
-  boundary_components.cpp
   main.cpp)
 
 # The pore tests measure frameworks the engine has read, so they need the same adapter the command line uses.

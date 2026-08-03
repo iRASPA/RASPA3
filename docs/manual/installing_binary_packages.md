@@ -61,6 +61,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_arm64_ubuntu-25.deb
 apt-get install ./raspa_3.0.21_arm64_ubuntu-25.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -72,6 +73,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_arm64_ubuntu-24.deb
 apt-get install ./raspa_3.0.21_arm64_ubuntu-24.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -83,6 +85,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_arm64_debian-13.deb
 apt-get install ./raspa_3.0.21_arm64_debian-13.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -99,6 +102,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_ubuntu-25.deb
 apt-get install ./raspa_3.0.21_amd64_ubuntu-25.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -111,6 +115,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_ubuntu-24.deb
 apt-get install ./raspa_3.0.21_amd64_ubuntu-24.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -123,6 +128,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_ubuntu-22.deb
 apt-get install ./raspa_3.0.21_amd64_ubuntu-22.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -135,6 +141,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_ubuntu-20.deb
 apt-get install ./raspa_3.0.21_amd64_ubuntu-20.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -147,6 +154,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_debian-13.deb
 apt-get install ./raspa_3.0.21_amd64_debian-13.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -159,6 +167,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_debian-12.deb
 apt-get install ./raspa_3.0.21_amd64_debian-12.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -171,6 +180,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_debian-11.deb
 apt-get install ./raspa_3.0.21_amd64_debian-11.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -184,6 +194,7 @@ apt update
 apt install wget 
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa_3.0.21_amd64_debian-10.deb
 apt-get install ./raspa_3.0.21_amd64_debian-10.deb
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -196,6 +207,7 @@ pacman -Sy
 pacman -S wget
 wget https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1-x86_64.pkg.tar.zst
 pacman -U ./raspa-3.0.21-1-x86_64.pkg.tar.zst
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -205,6 +217,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, o
 tested on: almalinux/9-base
 ```
 yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.almalinux.el9.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -214,6 +227,7 @@ dependencies: blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-i
 tested on: almalinux/8-base
 ```
 yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.almalinux.el8.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -223,6 +237,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, o
 tested on: rockylinux/rockylinux:9
 ```
 yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.el9.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -232,6 +247,7 @@ dependencies: blas, lapack, libgfortran, libquadmath, glibc, libgcc, zlib, ocl-i
 tested on: rockylinux/rockylinux:8
 ```
 yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.el8.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -250,6 +266,7 @@ yum install epel-release
 ```
 yum install blas
 yum install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.el7.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -267,6 +284,7 @@ yum update -y && \
 ```
 ```
 yum install --nogpgcheck  https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.el6.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -276,6 +294,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib-ng
 tested on: fedora:41
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc41.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -285,6 +304,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib-ng
 tested on: fedora:40
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc40.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -294,6 +314,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, f
 tested on: fedora:39
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc39.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -303,6 +324,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, f
 tested on: fedora:38
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc38.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -312,6 +334,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, f
 tested on: fedora:37
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc37.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -321,6 +344,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, f
 tested on: fedora:36
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc36.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -330,6 +354,7 @@ dependencies: blas64, lapack64, libgfortran, libquadmath, glibc, libgcc, zlib, f
 tested on: fedora:35
 ```
 dnf install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.fc35.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -339,6 +364,7 @@ dependencies: libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libed
 tested on: opensuse/tumbleweed
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-tumbleweed.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -348,6 +374,7 @@ dependencies: libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, l
 tested on: opensuse/leap:15.6
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-leap-15.6.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -357,6 +384,7 @@ dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libed
 tested on: opensuse/leap:15.5
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-leap-15.5.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -366,6 +394,7 @@ dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libed
 tested on: opensuse/leap:15.4
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-leap-15.4.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -375,6 +404,7 @@ dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, glibc
 tested on: opensuse/leap:15.3
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-leap-15.3.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
 
@@ -384,5 +414,6 @@ dependencies: libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, glibc,
 tested on: opensuse/leap:15.2
 ```
 zypper install https://github.com/iRASPA/RASPA3/releases/download/v3.0.21/raspa-3.0.21-1.opensuse-leap-15.2.x86_64.rpm
+/usr/share/raspa3/tests/unit_tests_structurekit
 /usr/share/raspa3/tests/unit_tests_raspakit
 ```
