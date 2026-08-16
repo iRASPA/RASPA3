@@ -247,7 +247,9 @@ void CommandLine::run(int argc, char *argv[])
            { forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false); })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
-      .reg({"--geometric"}, argparser::no_argument, "Use geometric methods",
+      .reg({"--geometric"}, argparser::no_argument,
+           "Use geometric methods (the exact Apollonius route unless --monte-carlo, --integration or "
+           "--voronoi names another)",
            [&use_geometric_methods](std::string const &) { use_geometric_methods = true; })
       .reg({"--energy"}, argparser::no_argument, "Use energy-based methods",
            [&use_energy_methods](std::string const &) { use_energy_methods = true; })
@@ -404,6 +406,14 @@ void CommandLine::run(int argc, char *argv[])
   // and are not promised to agree with.
   ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance().init(
       num_threads, num_threads > 1 ? ThreadPool::ThreadingType::ThreadPool : ThreadPool::ThreadingType::Serial);
+
+  // --geometric on its own means the exact answer: the Apollonius route measures the areas and the void
+  // rather than sampling them. Unless a sampled (--monte-carlo) or sliced (--integration) estimate is
+  // asked for by name, or the Voronoi network is named instead, the geometric analyses take that route.
+  if (use_geometric_methods && !use_monte_carlo_methods && !use_integration_methods && !use_voronoi)
+  {
+    use_apollonius = true;
+  }
 
   // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
   // without saying what to do with it is asking for the pore analysis.
