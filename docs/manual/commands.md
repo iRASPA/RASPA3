@@ -783,7 +783,16 @@ reported separately at the end of the simulation.
     The cell angles of a `"Box"` system, in degrees. Default: `[90, 90, 90]`.
 
 -   `"Name" : string`\
-    For `"Type" : "Framework"`, loads the framework from the file `string.cif`.
+    For `"Type" : "Framework"`, the name of the framework; it is used in output
+    filenames and, when `"FileName"` is not given, the framework is loaded from
+    the file `string.cif` (looked up in the working directory or `RASPA_DIR`).
+    The name may not contain directory separators; use `"FileName"` to load
+    from a path.
+
+-   `"FileName" : string`\
+    For `"Type" : "Framework"`, loads the framework from this `CIF`-file path
+    (the `.cif` extension may be omitted). The framework name is derived from
+    the file stem, unless `"Name"` overrides it.
 
 -   `"NumberOfUnitCells" : [integer, integer, integer]`\
     The number of unit cells in the `x`, `y`, and `z` directions. The super-cell
@@ -1272,8 +1281,17 @@ and `"BinaryInteractions"` are read from the force field file
 ### Component properties <a name="component-properties"></a>
 
 -   `"Name" : string`\
-    The name of the component. For a rigid or flexible molecule this is also the
-    base name of its definition file.
+    The name of the component; it is used in output filenames and must be
+    unique among the components. When `"FileName"` is not given, it is also the
+    base name of the definition file `Name.json` (looked up in the working
+    directory or `RASPA_DIR`). The name may not contain directory separators;
+    use `"FileName"` to load from a path.
+
+-   `"FileName" : string`\
+    Loads the component definition from this file path (the `.json` extension
+    may be omitted). The component name is derived from the file stem, unless
+    `"Name"` overrides it — useful when two components share one definition
+    file.
 
 -   `"Type" : string`\
     The component type: `"Adsorbate"` (default) or `"Cation"`.

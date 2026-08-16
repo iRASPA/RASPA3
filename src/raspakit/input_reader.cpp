@@ -123,6 +123,32 @@ std::vector<T> parseList(std::size_t size, const std::string& item, auto json)
       std::format("[Input reader (parseList)]: key '{}', value {} should be array of numbers\n", item, json.dump()));
 }
 
+// 'Name' is an identity that ends up in output filenames (bias factors, density grids, ...), so it
+// may not be a path; 'FileName' is the keyword for loading a definition from a path.
+void checkNameIsNotAPath(const std::string& owner, const std::string& name)
+{
+  if (name.find('/') != std::string::npos || name.find('\\') != std::string::npos)
+  {
+    throw std::runtime_error(std::format(
+        "[Input reader]: {} 'Name' '{}' contains a directory separator; 'Name' is an identity used in output "
+        "filenames. Use 'FileName' to load the definition from a path (the name is then derived from the file "
+        "stem, or set 'Name' explicitly to override it).\n",
+        owner, name));
+  }
+}
+
+std::string deriveNameFromFileName(const std::string& owner, const std::string& fileName)
+{
+  std::string stem = std::filesystem::path(fileName).stem().string();
+  if (stem.empty() || stem == "." || stem == "..")
+  {
+    throw std::runtime_error(std::format(
+        "[Input reader]: {} 'FileName' '{}' has no usable file stem to derive a name from; set 'Name' explicitly\n",
+        owner, fileName));
+  }
+  return stem;
+}
+
 InputReader::InputReader(const std::string inputFile)
 {
   if (!std::filesystem::exists(inputFile))
@@ -653,23 +679,48 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // Parse component options
   if (parsed_data.contains("Components"))
   {
+    std::set<std::string> usedComponentNames{};
     for (std::size_t componentId = 0; auto& [_, item] : parsed_data["Components"].items())
     {
       std::vector<MCMoveProbabilities> move_probabilities(jsonNumberOfSystems);
 
-      if (!item.contains("Name"))
-      {
-        throw std::runtime_error(
-            std::format("[Input reader]: component must have a key 'Name' with a value of string-type'\n"));
-      }
-      std::string jsonComponentName = item["Name"].get<std::string>();
-      if (jsonComponentName.find('/') != std::string::npos || jsonComponentName.find('\\') != std::string::npos)
+      if (!item.contains("Name") && !item.contains("FileName"))
       {
         throw std::runtime_error(std::format(
-            "[Input reader]: component 'Name' '{}' contains a directory separator. 'Name' is the component identity "
-            "and the base name of its definition file (looked up as '{}.json' in the working directory or RASPA_DIR), "
-            "not a file path.\n",
-            jsonComponentName, std::filesystem::path(jsonComponentName).filename().string()));
+            "[Input reader]: component must have a key 'Name' and/or 'FileName' with a value of string-type\n"));
+      }
+
+      // 'FileName' locates the definition file (path allowed); 'Name' is the component identity. When only
+      // 'FileName' is given the name is derived from the file stem; when only 'Name' is given the definition is
+      // looked up as 'Name.json' in the working directory or RASPA_DIR.
+      std::string jsonComponentFileName{};
+      std::string jsonComponentName{};
+      if (item.contains("FileName"))
+      {
+        if (!item["FileName"].is_string())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: component 'FileName' must have a value of string-type\n"));
+        }
+        jsonComponentFileName = item["FileName"].get<std::string>();
+        jsonComponentName = deriveNameFromFileName("component", jsonComponentFileName);
+      }
+      if (item.contains("Name"))
+      {
+        jsonComponentName = item["Name"].get<std::string>();
+        checkNameIsNotAPath("component", jsonComponentName);
+        if (jsonComponentFileName.empty())
+        {
+          jsonComponentFileName = jsonComponentName;
+        }
+      }
+
+      if (!usedComponentNames.insert(jsonComponentName).second)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: duplicate component name '{}'; component names must be unique because they key "
+            "output files and restart data (use 'Name' to disambiguate components sharing a 'FileName')\n",
+            jsonComponentName));
       }
 
       Component::Type componentType = Component::Type::Adsorbate;
@@ -1013,7 +1064,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
 
         jsonComponents[i][componentId] =
-            Component(componentType, componentId, forceFields[i].value(), jsonComponentName, jsonComponentName,
+            Component(componentType, componentId, forceFields[i].value(), jsonComponentName, jsonComponentFileName,
                       jsonNumberOfBlocks, jsonNumberOfLambdaBins, move_probabilities[i]);
       }
 
@@ -2007,12 +2058,36 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (caseInSensStringCompare(typeString, "Framework"))
       {
         // Parse framework options
-        if (!value.contains("Name"))
+        if (!value.contains("Name") && !value.contains("FileName"))
         {
-          throw std::runtime_error(
-              std::format("[Input reader]: framework must have a key 'Name' with a value of string-type'\n"));
+          throw std::runtime_error(std::format(
+              "[Input reader]: framework must have a key 'Name' and/or 'FileName' with a value of string-type\n"));
         }
-        std::string frameworkNameString = value["Name"].get<std::string>();
+
+        // 'FileName' locates the CIF-file (path allowed); 'Name' is the framework identity used in output
+        // filenames. When only 'FileName' is given the name is derived from the file stem; when only 'Name' is
+        // given the CIF-file is looked up as 'Name.cif' in the working directory or RASPA_DIR.
+        std::string frameworkFileNameString{};
+        std::string frameworkNameString{};
+        if (value.contains("FileName"))
+        {
+          if (!value["FileName"].is_string())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: framework 'FileName' must have a value of string-type\n"));
+          }
+          frameworkFileNameString = value["FileName"].get<std::string>();
+          frameworkNameString = deriveNameFromFileName("framework", frameworkFileNameString);
+        }
+        if (value.contains("Name"))
+        {
+          frameworkNameString = value["Name"].get<std::string>();
+          checkNameIsNotAPath("framework", frameworkNameString);
+          if (frameworkFileNameString.empty())
+          {
+            frameworkFileNameString = frameworkNameString;
+          }
+        }
 
         int3 jsonNumberOfUnitCells{1, 1, 1};
         if (value.contains("NumberOfUnitCells"))
@@ -2031,7 +2106,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
 
-        const std::string file_content = readFileContent(frameworkNameString, ".cif");
+        const std::string file_content = readFileContent(frameworkFileNameString, ".cif");
 
         if (const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom);
             cif.has_value())
@@ -3205,6 +3280,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "CellType",
     "MonoclinicAngleType",
     "Name",
+    "FileName",
     "NumberOfUnitCells",
     "HeliumVoidFraction",
     "BoxLengths",
@@ -3286,6 +3362,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",
+    "FileName",
     "Type",
     "MoleculeDefinition",
     "TranslationProbability",

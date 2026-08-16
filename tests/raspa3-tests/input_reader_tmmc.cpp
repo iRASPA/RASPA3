@@ -94,6 +94,91 @@ TEST(INPUT_READER, rejects_component_name_with_directory_separator)
   }
 }
 
+TEST(INPUT_READER, rejects_framework_name_with_directory_separator)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = readTMMCExample();
+  input["Systems"][0]["Name"] = "top/tobacco-667";
+  TemporaryInput temporary(std::move(input), "framework_path", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    FAIL() << "expected InputReader to reject a framework Name that is a path";
+  }
+  catch (const std::runtime_error& error)
+  {
+    const std::string message = error.what();
+    EXPECT_NE(message.find("directory separator"), std::string::npos);
+  }
+}
+
+TEST(INPUT_READER, component_file_name_loads_path_and_derives_name_from_stem)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  workspace.write("top/methane.json", molecule_fixtures::kMethaneJson);
+  nlohmann::json input = readTMMCExample();
+  input["Components"][0].erase("Name");
+  input["Components"][0]["FileName"] = "top/methane";
+  TemporaryInput temporary(std::move(input), "component_filename", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_EQ(reader.systems[0].components.size(), 1uz);
+  EXPECT_EQ(reader.systems[0].components[0].name, "methane");
+}
+
+TEST(INPUT_READER, component_name_overrides_stem_of_file_name)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  workspace.write("top/methane.json", molecule_fixtures::kMethaneJson);
+  nlohmann::json input = readTMMCExample();
+  input["Components"][0]["Name"] = "CH4-alias";
+  input["Components"][0]["FileName"] = "top/methane.json";
+  TemporaryInput temporary(std::move(input), "component_name_override", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_EQ(reader.systems[0].components.size(), 1uz);
+  EXPECT_EQ(reader.systems[0].components[0].name, "CH4-alias");
+}
+
+TEST(INPUT_READER, framework_file_name_loads_path_and_derives_name_from_stem)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  workspace.write("top/tobacco-667.cif", input_reader_fixtures::kTobacco667Cif);
+  nlohmann::json input = readTMMCExample();
+  input["Systems"][0].erase("Name");
+  input["Systems"][0]["FileName"] = "top/tobacco-667";
+  TemporaryInput temporary(std::move(input), "framework_filename", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_TRUE(reader.systems[0].framework.has_value());
+  EXPECT_EQ(reader.systems[0].framework->name, "tobacco-667");
+}
+
+TEST(INPUT_READER, rejects_duplicate_component_names)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = readTMMCExample();
+  input["Components"].push_back(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "duplicate_names", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    FAIL() << "expected InputReader to reject duplicate component names";
+  }
+  catch (const std::runtime_error& error)
+  {
+    const std::string message = error.what();
+    EXPECT_NE(message.find("duplicate component name"), std::string::npos);
+  }
+}
+
 TEST(INPUT_READER_TMMC, rejects_multidimensional_component_moves)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();
