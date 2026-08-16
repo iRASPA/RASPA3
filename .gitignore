@@ -27,6 +27,9 @@ _deps
 
 # raspa test-executables
 test_*
+!**/test_*.hpp
+!**/test_*.h
+!**/test_*.cpp
 restart_data.bin
 examples/*/*/run
 **/run
