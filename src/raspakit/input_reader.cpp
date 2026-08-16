@@ -663,6 +663,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::format("[Input reader]: component must have a key 'Name' with a value of string-type'\n"));
       }
       std::string jsonComponentName = item["Name"].get<std::string>();
+      if (jsonComponentName.find('/') != std::string::npos || jsonComponentName.find('\\') != std::string::npos)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: component 'Name' '{}' contains a directory separator. 'Name' is the component identity "
+            "and the base name of its definition file (looked up as '{}.json' in the working directory or RASPA_DIR), "
+            "not a file path.\n",
+            jsonComponentName, std::filesystem::path(jsonComponentName).filename().string()));
+      }
 
       Component::Type componentType = Component::Type::Adsorbate;
       if (item.contains("Type") && item["Type"].is_string())

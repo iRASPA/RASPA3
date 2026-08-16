@@ -73,6 +73,27 @@ nlohmann::json readNVTExample() { return nlohmann::json::parse(input_reader_fixt
 
 }  // namespace
 
+TEST(INPUT_READER, rejects_component_name_with_directory_separator)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  workspace.write("top/methane.json", molecule_fixtures::kMethaneJson);
+  nlohmann::json input = readTMMCExample();
+  input["Components"][0]["Name"] = "top/methane";
+  TemporaryInput temporary(std::move(input), "component_path", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    FAIL() << "expected InputReader to reject a component Name that is a path";
+  }
+  catch (const std::runtime_error& error)
+  {
+    const std::string message = error.what();
+    EXPECT_NE(message.find("directory separator"), std::string::npos);
+  }
+}
+
 TEST(INPUT_READER_TMMC, rejects_multidimensional_component_moves)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();
