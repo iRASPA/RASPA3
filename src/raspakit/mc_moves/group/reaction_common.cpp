@@ -72,41 +72,8 @@ void acceptChargedEwaldMove(System& system) noexcept
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, newAtoms, oldAtoms, system.netCharge);
 
-  // The combined difference treats each atom set as one big molecule and therefore adds spurious
-  // cross-molecule exclusion (erf) pairs, to both the energy and the per-group dU/dlambda. Undo
-  // the all-pairs exclusion terms and re-add the true intra-molecular ones.
-  auto accumulateExclusion = [&system](std::span<const Atom> atoms, double sign, RunningEnergy& accumulator)
-  {
-    const double alpha = system.forceField.EwaldAlpha;
-    for (std::size_t i = 0; i != atoms.size(); ++i)
-    {
-      for (std::size_t j = i + 1; j != atoms.size(); ++j)
-      {
-        double3 dr = atoms[i].position - atoms[j].position;
-        dr = system.simulationBox.applyPeriodicBoundaryConditions(dr);
-        const double r = std::sqrt(double3::dot(dr, dr));
-        const double scalingTotal = atoms[i].scalingCoulomb * atoms[j].scalingCoulomb;
-        const Potentials::EwaldExclusionFactors exclusion =
-            Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
-        const double prefactor = sign * Units::CoulombicConversionFactor * atoms[i].charge * atoms[j].charge;
-        accumulator.ewald_exclusion += scalingTotal * prefactor * exclusion.potential;
-        accumulator.addDudlambdaEwald(atoms[i].groupId, atoms[j].groupId, atoms[i].scalingCoulomb,
-                                      atoms[j].scalingCoulomb, prefactor * exclusion.dUdlambda);
-      }
-    }
-  };
-  // remove the all-pairs terms the combined call added (+pairs(old), -pairs(new))
-  accumulateExclusion(oldAtoms, -1.0, ewaldCombined);
-  accumulateExclusion(newAtoms, +1.0, ewaldCombined);
-  // add the intra-molecular exclusion terms per molecule
-  for (const std::vector<Atom>& oldMolecule : oldMolecules)
-  {
-    accumulateExclusion(oldMolecule, +1.0, ewaldCombined);
-  }
-  for (const std::vector<Atom>& newMolecule : newMolecules)
-  {
-    accumulateExclusion(newMolecule, -1.0, ewaldCombined);
-  }
+  // The combined difference matches exclusion pairs on moleculeId, so multi-molecule spans yield
+  // the intra-molecular exclusion terms directly and need no correction here.
 
   // rebuild trialEik by replacing the molecules one at a time, keeping storedEik untouched
   const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEikSnapshot = system.storedEik;
