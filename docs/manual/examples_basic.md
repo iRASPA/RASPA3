@@ -15,14 +15,16 @@
 10. [Monte Carlo: adsorption of CO₂ in MFI](#Example_basic_10)
 11. [Monte Carlo: adsorption of CO₂ in Cu-BTC](#Example_basic_11)
 12. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_12)
-13. [Monte Carlo: radial distribution function of water](#Example_basic_13)
-14. [Molecular Dynamics: radial distribution function of water](#Example_basic_14)
+13. [Molecular Dynamics: radial distribution function of water](#Example_basic_13)
+14. [Monte Carlo: radial distribution function of water](#Example_basic_14)
 15. [Molecular Dynamics: butane and isobutane in FAU](#Example_basic_15)
 16. [Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_16)
 17. [Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_17)
+18. [Monte Carlo: Gibbs CO₂](#Example_basic_18)
 19. [Minimization: CO₂ in IRMOF-1](#Example_basic_19)
 20. [Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)](#Example_basic_20)
 21. [Molecular Dynamics: flexible cyclohexane in box](#Example_basic_21)
+22. [Molecular Dynamics: mixed fixed/flexible framework](#Example_basic_22)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -1580,7 +1582,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Monte Carlo: radial distribution function of water<a name="Example_basic_13"></a>
+#### Molecular Dynamics: radial distribution function of water<a name="Example_basic_13"></a>
 
 ```json
 {
@@ -1620,7 +1622,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 }
 ```
 
-#### Molecular Dynamics: radial distribution function of water<a name="Example_basic_14"></a>
+#### Monte Carlo: radial distribution function of water<a name="Example_basic_14"></a>
 
 ```json
 {
@@ -1653,6 +1655,53 @@ H1   H      0.3802     0.228      0.8802      0.156
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 512
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: butane and isobutane in FAU <a name="Example_basic_15"></a>
+
+NVT molecular dynamics of 12 butane and 12 isobutane molecules in siliceous FAU
+at 300 K. The two isomers are fully flexible TraPPE chains and explore the
+supercage network of a \f$1 \times 1 \times 1\f$ FAU cell.
+
+Run from `examples/basic/15_md_butane_isobutane_in_fau`:
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 5000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "FAU_SI",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "Ensemble" : "NVT",
+      "TimeStep" : 0.0005
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "butane",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 12
+    },
+    {
+      "Name" : "isobutane",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 12
     }
   ]
 }
@@ -1707,22 +1756,6 @@ The rigid sub-units are declared in the molecule file `diethyl-biphenyl.json`; e
   ]
 ```
 
-#### Minimization: CO₂ in IRMOF-1 <a name="Example_basic_19"></a>
-
-This fixed-cell example minimizes one rigid CO₂ molecule in IRMOF-1 with Ewald electrostatics and the Baker
-eigenvector-following driver. Molecular positions are initialized deterministically by
-`CreateNumberOfMolecules` and `RandomSeed`; rigid translations and quaternion-tangent rotations are optimized.
-
-Run from `examples/basic/19_minimization_co2_in_irmof_1`:
-
-```bash
-raspa3
-```
-
-Progress is written to `output/minimization.s0.txt`, and the final energy, convergence diagnostics, and atomic
-coordinates are written to `output/minimization.s0.json`. A successful run ends with
-`Final minimization status: converged=true`.
-
 #### Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box<a name="Example_basic_17"></a>
 
 This example is the molecular-dynamics counterpart of example 16. It computes the same intra-molecular geometry histograms (bond lengths, bend angles, and torsion angles) using an NVT molecular dynamics simulation of 32 semi-flexible united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K.
@@ -1761,6 +1794,72 @@ The molecule definition is identical to example 16: the two aromatic 6-rings are
   ]
 }
 ```
+
+#### Monte Carlo: Gibbs CO₂ <a name="Example_basic_18"></a>
+
+Vapour–liquid equilibrium of CO₂ in the Gibbs ensemble at 240 K. Two boxes
+start at \f$30 \times 30 \times 30\f$ &Aring; with 256 molecules each. Volume
+moves and CBMC Gibbs swaps let the boxes phase-separate into a vapour and a
+liquid.
+
+Run from `examples/basic/18_mc_gibbs_co2`:
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 500000,
+  "NumberOfInitializationCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 240.0,
+      "ChargeMethod" : "Ewald",
+      "GibbsVolumeMoveProbability" : 0.01
+    },
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 240.0,
+      "ChargeMethod" : "Ewald",
+      "GibbsVolumeMoveProbability" : 0.01
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "GibbsSwapCBMCProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : [256, 256]
+    }
+  ]
+}
+```
+
+#### Minimization: CO₂ in IRMOF-1 <a name="Example_basic_19"></a>
+
+This fixed-cell example minimizes one rigid CO₂ molecule in IRMOF-1 with Ewald electrostatics and the Baker
+eigenvector-following driver. Molecular positions are initialized deterministically by
+`CreateNumberOfMolecules` and `RandomSeed`; rigid translations and quaternion-tangent rotations are optimized.
+
+Run from `examples/basic/19_minimization_co2_in_irmof_1`:
+
+```bash
+raspa3
+```
+
+Progress is written to `output/minimization.s0.txt`, and the final energy, convergence diagnostics, and atomic
+coordinates are written to `output/minimization.s0.json`. A successful run ends with
+`Final minimization status: converged=true`.
 
 #### Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)<a name="Example_basic_20"></a>
 
@@ -1862,6 +1961,61 @@ This example is the molecular-dynamics counterpart of example 20: 30 fully flexi
       "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 30
     }
+  ]
+}
+```
+
+#### Molecular Dynamics: mixed fixed/flexible framework <a name="Example_basic_22"></a>
+
+NVT molecular dynamics of a short chain framework in which one atom is held
+fixed and the other two are flexible. The grouping is declared in
+`framework.json`: atom 0 is a `"Fixed"` group, atoms 1 and 2 are a `"Flexible"`
+group, with harmonic bonds and a 180&deg; bend. Intra-molecular 1–2 and 1–3
+interactions are excluded.
+
+Run from `examples/basic/22_md_mixed_framework_fixed_flexible`:
+
+```json
+{
+  "SimulationType": "MolecularDynamics",
+  "NumberOfProductionCycles": 1000,
+  "NumberOfInitializationCycles": 0,
+  "NumberOfEquilibrationCycles": 200,
+  "PrintEvery": 100,
+
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "chain",
+      "FrameworkDefinition": "framework",
+      "FrameworkType": "Flexible",
+      "NumberOfUnitCells": [1, 1, 1],
+      "ChargeMethod": "None",
+      "Ensemble": "NVT",
+      "TimeStep": 0.0005,
+      "ExternalTemperature": 300.0
+    }
+  ]
+}
+```
+
+`framework.json`:
+
+```json
+{
+  "Type": "Flexible",
+  "Groups": [
+    { "Type": "Fixed", "Atoms": [0] },
+    { "Type": "Flexible", "Atoms": [1, 2] }
+  ],
+  "ExcludeIntra12Interactions": true,
+  "ExcludeIntra13Interactions": true,
+  "Bonds": [
+    [["C1", "C2"], "HARMONIC", [50000.0, 1.5]],
+    [["C2", "C3"], "HARMONIC", [50000.0, 1.5]]
+  ],
+  "Bends": [
+    [["C1", "C2", "C3"], "HARMONIC", [20000.0, 180.0]]
   ]
 }
 ```

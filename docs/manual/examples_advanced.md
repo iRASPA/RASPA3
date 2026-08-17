@@ -5,9 +5,11 @@
 ## Table of Contents
 1. [Monte Carlo: CFCMC Gibbs CO₂](#Example_advanced_1)
 2. [Monte Carlo: CFCMC adsorption of CO₂ in MFI](#Example_advanced_2)
-3. [Monte Carlo: CFCMC binary mixture adsorption of CO₂ and N₂ in DMOF](#Example_advanced_3)
-4. [HMC CFCMC co2 in MFI](#Example_advanced_4)
-5. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_5)
+3. [HMC CFCMC CO₂ in MFI](#Example_advanced_3)
+4. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_4)
+5. [Thermodynamic integration: NaCl in water](#Example_advanced_5)
+6. [Reweighted histogram: methane in MFI](#Example_advanced_6)
+7. [Reweighted histogram: methane VLE](#Example_advanced_7)
 
 
 #### Monte Carlo: CFCMC Gibbs CO₂<a name="Example_advanced_1"></a>
@@ -422,14 +424,7 @@ Component 0 [CO2]
 ```
 
 
-#### Monte Carlo: CFCMC binary mixture adsorption of CO₂ and N₂ in DMOF<a name="Example_advanced_3"></a>
-
-```json
-{
-}
-```
-
-#### HMC CFCMC co2 in MFI<a name="Example_advanced_4"></a>
+#### HMC CFCMC CO₂ in MFI<a name="Example_advanced_3"></a>
 
 ```json
 {
@@ -471,8 +466,15 @@ Component 0 [CO2]
 }
 ```
 
-#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_5"></a>
+#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_4"></a>
 
+Windowed TMMC of methane adsorption in tobacco-667 at 111.58 K. The example is
+split into five overlapping macrostate windows in subdirectories `0`–`4`.
+Window 0 covers \f$N = 0\ldots 84\f$; later windows continue the range. Combine
+the collected ln Π(N) with `combine-tmmc-data.py`. The multithreaded analogue
+that runs all windows in one process is `examples/parallel/4_parallel_tmmc_vle_methane`.
+
+Run from `examples/advanced/4_tmmc_methane_in_tobacco_667/0`:
 
 ```json
 {
@@ -491,8 +493,8 @@ Component 0 [CO2]
       "ExternalPressure" : 36000,
       "ChargeMethod" : "None",
       "MacroStateUseBias" : true,
-      "MacroStateMinimumNumberOfMolecules" : 84,
-      "MacroStateMaximumNumberOfMolecules" : 168
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : 84
     }
   ],
 
@@ -503,7 +505,150 @@ Component 0 [CO2]
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
       "SwapProbability" : 1.0,
-      "CreateNuMberofmolecules" : 120
+      "CreateNumberOfMolecules" : 10
+    }
+  ]
+}
+```
+
+#### Thermodynamic integration: NaCl in water<a name="Example_advanced_5"></a>
+
+Fixed-λ thermodynamic integration of an NaCl ion pair in 300 water molecules
+at 298 K. Sodium is pinned at λ-bin 75 of 101; chloride is the paired
+component. The parallel driver that samples every λ-bin in one run is
+`examples/parallel/3_parallel_ti_nacl_in_water`.
+
+Run from `examples/advanced/5_ti_fixed_lambda_nacl_in_water`:
+
+```json
+{
+  "SimulationType" : "ThermodynamicIntegration",
+  "NumberOfLambdaBins" : 101,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [20.8, 20.8, 20.8],
+      "ExternalTemperature" : 298.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "Ewald",
+      "CutOff" : 10.0,
+      "VolumeMoveProbability" : 0.01
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "water",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "CreateNumberOfMolecules" : 300
+    },
+    {
+      "Name" : "sodium",
+      "FugacityCoefficient" : 1.0,
+      "PairComponent" : 2,
+      "LambdaBinIndex" : 75,
+      "TranslationProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "chloride",
+      "FugacityCoefficient" : 1.0,
+      "PairComponent" : 1,
+      "TranslationProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### Reweighted histogram: methane in MFI<a name="Example_advanced_6"></a>
+
+Hyper-parallel tempering of methane in MFI on a \f$3 \times 3\f$ temperature–
+pressure grid, with WHAM reweighting of the pooled (N, U) samples onto a fine
+isotherm at 300–400 K.
+
+Run from `examples/advanced/6_reweighted_histogram_methane_in_mfi`:
+
+```json
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [300.0, 325.0, 350.0, 375.0, 400.0],
+  "ReweightingNumberOfPressures" : 100,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperatures" : [300.0, 350.0, 400.0],
+      "ExternalPressures" : [1.0e4, 1.0e5, 1.0e6],
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### Reweighted histogram: methane VLE<a name="Example_advanced_7"></a>
+
+The same WHAM driver for bulk methane, used to locate vapour–liquid
+coexistence by the equal-weight criterion. The temperature ladder sits near
+the critical point; the run starts from a liquid-density configuration so both
+phases are visited.
+
+Run from `examples/advanced/7_reweighted_histogram_vle_methane`:
+
+```json
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [155.0, 160.0, 165.0, 170.0, 175.0, 180.0, 185.0],
+  "ReweightingPressureRange" : [5.0e5, 6.0e6],
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperatures" : [160.0, 170.0, 180.0, 186.0],
+      "ExternalPressures" : [1.2e6, 2.4e6, 4.0e6],
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 300
     }
   ]
 }

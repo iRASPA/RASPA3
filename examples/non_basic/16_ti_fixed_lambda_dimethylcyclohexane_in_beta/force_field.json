@@ -1,0 +1,92 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "CutOffVDW" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.996,
+      "charge" : -1.025,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Al",
+      "print_as" : "Al",
+      "mass" : 28.0855,
+      "charge" :  2.05,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "CH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 15.03452,
+      "charge" :  0.0,
+      "source" : "TraPPE united-atom methyl, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2_c",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" :  0.0,
+      "source" : "TraPPE united-atom cyclic methylene, S. J. Keasler et al., J. Phys. Chem. B 2012, 116, 11234-11246"
+    },
+    {
+      "name" : "CH_c",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" :  0.0,
+      "source" : "TraPPE united-atom methine, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "O",
+      "type" : "lennard-jones",
+      "parameters" : [53.0, 3.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "type" : "lennard-jones",
+      "parameters" : [22.0, 2.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "CH3",
+      "type" : "lennard-jones",
+      "parameters" : [98.0, 3.75],
+      "source" : "TraPPE united-atom methyl, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2_c",
+      "type" : "lennard-jones",
+      "parameters" : [52.5, 3.91],
+      "source" : "TraPPE united-atom cyclic methylene, S. J. Keasler et al., J. Phys. Chem. B 2012, 116, 11234-11246"
+    },
+    {
+      "name" : "CH_c",
+      "type" : "lennard-jones",
+      "parameters" : [10.0, 4.68],
+      "source" : "TraPPE united-atom methine, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    }
+  ]
+}

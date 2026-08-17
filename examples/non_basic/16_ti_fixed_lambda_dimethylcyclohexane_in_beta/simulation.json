@@ -1,0 +1,31 @@
+{
+  "SimulationType" : "ThermodynamicIntegration",
+  "NumberOfLambdaBins" : 41,
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "BEA",
+      "NumberOfUnitCells" : [2, 2, 1],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "12-dimethylcyclohexane",
+      "FugacityCoefficient" : 1.0,
+      "LambdaBinIndex" : 20,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

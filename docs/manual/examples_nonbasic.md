@@ -6,12 +6,19 @@
 1. [Monte Carlo: adsorption of binary mixture of CO₂ and methane in IRMOF-1](#Example_nonbasic_1)
 2. [Monte Carlo: NPT CO₂](#Example_nonbasic_2)
 3. [Monte Carlo: NPT propane](#Example_nonbasic_3)
-4. [Monte Carlo: Gibbs CO₂](#Example_nonbasic_4)
+4. [Monte Carlo: Gibbs ethene / heptane](#Example_nonbasic_4)
 5. [Molecular Dynamics: benzene in IRMOF-1](#Example_nonbasic_5)
 6. [Monte Carlo: adsorption CO₂ in LTA-4A sodium](#Example_nonbasic_6)
 7. [Molecular Dynamics: diffusion of CO₂ in LTA-4A sodium](#Example_nonbasic_7)
 8. [Monte Carlo: adsorption of C6-isomers in MFI](#Example_nonbasic_8)
-17. [Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)](#Example_nonbasic_17)
+9. [Monte Carlo: propene metathesis](#Example_nonbasic_9)
+10. [Monte Carlo: ammonia synthesis](#Example_nonbasic_10)
+11. [Minimization: flexible IRMOF-1 (variable cell)](#Example_nonbasic_11)
+12. [Molecular Dynamics: μVT methane in a box](#Example_nonbasic_12)
+13. [Molecular Dynamics: μPT methane in a box](#Example_nonbasic_13)
+14. [Molecular Dynamics: μPTPR methane in a box](#Example_nonbasic_14)
+15. [Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)](#Example_nonbasic_15)
+16. [Thermodynamic integration: 1,2-dimethylcyclohexane in zeolite Beta](#Example_nonbasic_16)
 
 
 
@@ -430,75 +437,74 @@ Component 0 [propane]
     Rotation             max-change:     0.604939   0.601181   0.601781
 ```
 
-#### Monte Carlo: Gibbs CO₂<a name="Example_nonbasic_4"></a>
+#### Monte Carlo: Gibbs ethene / heptane<a name="Example_nonbasic_4"></a>
 
-We can compute Vapor-Liquid Equilibrium (VLE) using the Gibbs-ensemble.
+Binary Gibbs-ensemble vapour–liquid equilibrium of ethene and heptane at 433 K.
+The two boxes start at different sizes and compositions; CBMC Gibbs swaps and
+Gibbs identity-change moves equilibrate both the density and the mixture
+composition. Heptane uses a precomputed ideal-gas Rosenbluth weight and
+partial-reinsertion moves for the chain tails.
+
+Run from `examples/non_basic/4_mc_gibbs_ethene_heptane`:
+
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfProductionCycles" : 200000,
-  "NumberOfInitializationCycles" : 50000,
+  "NumberOfProductionCycles" : 25000,
+  "NumberOfPreInitializationCycles" : 2000,
+  "NumberOfInitializationCycles" : 25000,
   "PrintEvery" : 1000,
 
   "Systems" :
   [
     {
       "Type" : "Box",
-      "BoxLengths" : [30.0, 30.0, 30.0],
-      "ExternalTemperature" : 240.0,
-      "ChargeMethod" : "Ewald",
-      "GibbsVolumeMoveProbability" : 0.01
+      "BoxLengths" : [42.0, 42.0, 42.0],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 27.58e5,
+      "ChargeMethod" : "None",
+      "VolumeMoveProbability" : 0.01
     },
     {
       "Type" : "Box",
-      "BoxLengths" : [30.0, 30.0, 30.0],
-      "ExternalTemperature" : 240.0,
-      "ChargeMethod" : "Ewald",
-      "GibbsVolumeMoveProbability" : 0.01
+      "BoxLengths" : [72.0, 72.0, 72.0],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 27.58e5,
+      "ChargeMethod" : "None",
+      "VolumeMoveProbability" : 0.01
     }
   ],
 
   "Components" :
   [
     {
-      "Name" : "CO2",
-      "MoleculeDefinition" : "ExampleDefinitions",
-      "TranslationProbability" : 0.5,
-      "RotationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
+      "Name" : "ethene",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
       "GibbsSwapCBMCProbability" : 1.0,
-      "CreateNumberOfMolecules" : [256, 256]
+      "GibbsIdentityChangeProbability" : 1.0,
+      "GibbsIdentityChanges" : [1],
+      "CreateNumberOfMolecules" : [40, 210]
+    },
+    {
+      "Name" : "heptane",
+      "IdealGasRosenbluthWeight" : 1.590031e-03,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
+      "GibbsIdentityChangeProbability" : 1.0,
+      "GibbsIdentityChanges" : [0],
+      "CreateNumberOfMolecules" : [230, 20]
     }
   ]
 }
 ```
 
-For each box we obtain a computed density (both the number of molecules and the volume of the boxes change), computing to a vapor phase and a liquid phase. For the gas-phase we obtain
-```
-Component 0 (CO2)
-    Block[  0] 8.581800000000001
-    Block[  1] 11.114
-    Block[  2] 9.5334
-    Block[  3] 10.2088
-    Block[  4] 8.6978
-    -----------------------------------------------------------------------
-    Density average   9.627160e+00 +/-  1.318860e+00 [molecules]
-    Density average   4.605977e-04 +/-  5.480961e-05 [molec/A^3]
-    Density average   3.365205e+01 +/-  4.004484e+00 [kg.m⁻³]
-```
-and for the liquid phase we obtain
-```
-    Block[  0] 503.4182
-    Block[  1] 500.886
-    Block[  2] 502.4666
-    Block[  3] 501.7912
-    Block[  4] 503.3022
-    -----------------------------------------------------------------------
-    Density average   5.023728e+02 +/-  1.318860e+00 [molecules]
-    Density average   1.512513e-02 +/-  1.232200e-04 [molec/A^3]
-    Density average   1.105068e+03 +/-  9.002663e+00 [kg.m⁻³]
-```
-Uisng the NIST chemical database, we can compare to the experimental values of 33.295 and 1088.9 kg/m³. The experimental pressure from NIST is 12.825 bar. From the simulations we obtain \f$13.08 \pm 1.3\f$ and \f$12.27 \pm 9.5\f$ bar for the vapor and the liquid phases, respectively. Note that in equilibrium, the temperatures, chemical potentials, and pressures of the phases is equal, but the vapor-phase data has significantly lower error bars.
+The CO₂ Gibbs vapour–liquid example is `examples/basic/18_mc_gibbs_co2`.
 
 #### Molecular Dynamics: benzene in IRMOF-1<a name="Example_nonbasic_5"></a>
 
@@ -909,7 +915,270 @@ Component 4 [23-methylbutane]
     Note: need to subtract the ideal-gas energy.
 ```
 
-#### Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)<a name="Example_nonbasic_17"></a>
+#### Monte Carlo: propene metathesis<a name="Example_nonbasic_9"></a>
+
+Reaction Monte Carlo of propene metathesis in a large empty box at 450 K and
+1 bar. Two reactions are defined: 2 propene \f$\rightleftharpoons\f$ ethene +
+trans-2-butene, and trans-2-butene \f$\rightleftharpoons\f$ cis-2-butene.
+Partition-function logarithms are supplied per component; the reaction CBMC
+move samples the composition at chemical equilibrium.
+
+Run from `examples/non_basic/9_mc_reaction_propene_metathesis`:
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 25000,
+  "NumberOfInitializationCycles" : 25000,
+  "NumberOfEquilibrationCycles" : 0,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [150.0, 150.0, 150.0],
+      "ExternalTemperature" : 450.0,
+      "ExternalPressure" : 101300.0,
+      "CutOff" : 14.0,
+      "ChargeMethod" : "None",
+      "ReactionCBMCProbability" : 1.0,
+      "VolumeMoveProbability" : 0.1,
+      "ComputeNumberOfMoleculesHistogram" : true,
+      "WriteNumberOfMoleculesHistogramEvery" : 5000,
+      "Reactions" :
+      [
+        {
+          "Reactants" : [2, 0, 0, 0],
+          "Products" : [0, 1, 0, 1]
+        },
+        {
+          "Reactants" : [0, 0, 0, 1],
+          "Products" : [0, 0, 1, 0]
+        }
+      ]
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "propene",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "LnPartitionFunction" : 87.1384,
+      "TranslationProbability" : 35.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 10.0,
+      "CreateNumberOfMolecules" : 400
+    },
+    {
+      "Name" : "ethene",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "LnPartitionFunction" : 82.0298,
+      "TranslationProbability" : 35.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 10.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "cis-2-butene",
+      "IdealGasRosenbluthWeight" : 7.609974e-02,
+      "LnPartitionFunction" : 89.0386,
+      "TranslationProbability" : 35.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 10.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "trans-2-butene",
+      "IdealGasRosenbluthWeight" : 7.319831e-02,
+      "LnPartitionFunction" : 89.4937,
+      "TranslationProbability" : 35.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 10.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### Monte Carlo: ammonia synthesis<a name="Example_nonbasic_10"></a>
+
+Reaction Monte Carlo of N₂ + 3 H₂ \f$\rightleftharpoons\f$ 2 NH₃ at 573 K and
+200 bar. Partition functions are taken from the embedded JANAF thermochemical
+database (`"LnPartitionFunction" : "auto"`).
+
+Run from `examples/non_basic/10_mc_reaction_ammonia_synthesis`:
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 25000,
+  "NumberOfInitializationCycles" : 25000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [34.0, 34.0, 34.0],
+      "ExternalTemperature" : 573.0,
+      "ExternalPressure" : 2.0e7,
+      "CutOff" : 12.0,
+      "ChargeMethod" : "Ewald",
+      "ThermochemicalDatabase" : "JANAF",
+      "ReactionCBMCProbability" : 1.0,
+      "VolumeMoveProbability" : 0.1,
+      "Reactions" :
+      [
+        {
+          "Reactants" : [1, 3, 0],
+          "Products" : [0, 0, 2]
+        }
+      ]
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "N2",
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 7
+    },
+    {
+      "Name" : "H2",
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 21
+    },
+    {
+      "Name" : "NH3",
+      "LnPartitionFunction" : "auto",
+      "TranslationProbability" : 40.0,
+      "RotationProbability" : 53.9,
+      "ReinsertionProbability" : 5.0,
+      "CreateNumberOfMolecules" : 146
+    }
+  ]
+}
+```
+
+#### Minimization: flexible IRMOF-1 (variable cell)<a name="Example_nonbasic_11"></a>
+
+Variable-cell Baker minimization of flexible IRMOF-1 in the NPTPR ensemble
+(regular upper-triangular cell). After convergence the run computes elastic
+constants, Γ-point normal modes, the phonon dispersion, and the phonon density
+of states.
+
+Run from `examples/non_basic/11_flexible_irmof_1_variable_cell_minimization`:
+
+```json
+{
+  "SimulationType": "Minimization",
+  "MaximumNumberOfMinimizationSteps": 1000,
+  "ComputeElasticConstants": true,
+  "ComputeNormalModes": true,
+  "ComputePhononDispersion": true,
+  "ComputePhononDensityOfStates": true,
+  "PhononDOSMesh": [16, 16, 16],
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "IRMOF-1",
+      "FrameworkDefinition": "framework",
+      "FrameworkType": "Flexible",
+      "Ensemble": "NPTPR",
+      "CellType": "RegularUpperTriangle",
+      "NumberOfUnitCells": [1, 1, 1],
+      "ChargeMethod": "Ewald",
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 0.0
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: μVT methane in a box<a name="Example_nonbasic_12"></a>
+
+Grand-canonical molecular dynamics of methane in a
+\f$30 \times 30 \times 30\f$ &Aring; box at 300 K and 10 bar. Swap moves
+exchange molecules with the reservoir while the MD integrator samples the
+canonical motion of the current loading.
+
+Run from `examples/non_basic/12_md_muvt_methane_box`:
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e6,
+      "ChargeMethod" : "None",
+      "Ensemble" : "MuVT"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "methane",
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 50
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: μPT methane in a box<a name="Example_nonbasic_13"></a>
+
+The same methane setup in the μPT ensemble: molecule number, pressure and
+temperature fluctuate (isotropic volume moves plus swaps).
+
+Run from `examples/non_basic/13_md_mupt_methane_box`:
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "Ensemble" : "MuPT",
+  "ExternalTemperature" : 300.0,
+  "ExternalPressure" : 1.0e6
+}
+```
+
+The remaining keys match example 12.
+
+#### Molecular Dynamics: μPTPR methane in a box<a name="Example_nonbasic_14"></a>
+
+μPTPR methane in a box, with a flexible regular-upper-triangular cell.
+
+Run from `examples/non_basic/14_md_muptpr_methane_box`:
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "Ensemble" : "MuPTPR",
+  "CellType" : "RegularUpperTriangle",
+  "ExternalTemperature" : 300.0,
+  "ExternalPressure" : 1.0e6
+}
+```
+
+#### Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)<a name="Example_nonbasic_15"></a>
 
 This example computes the competitive adsorption of an equimolar mixture of 1,2-, 1,3-, and 1,4-dimethylcyclohexane in siliceous zeolite Beta (`BEA`) at 433 K and a total pressure of 1 bar. The simulation uses a \f$2 \times 2 \times 1\f$ supercell of the polymorphic Beta framework. Each isomer is a fully flexible molecule: a six-membered ring (with two `CH_c` methine beads carrying the methyls) and two flexible `CH3` tails. The ring needs no declaration — it is inferred from the cycle in the `"Connectivity"` bond graph. During grand-canonical insertion, deletion, reinsertion, and identity-change moves the ring is grown with ring-closure configurational-bias Monte Carlo (the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo that keeps the ring closed) and the two methyl groups are then grown off the closed ring with the standard coupled-decoupled CBMC scheme.
 
@@ -932,7 +1201,7 @@ The ring bonds and the methyl junction bonds are harmonic (TraPPE-style, 96500 K
 
 Because the isomers are flexible, converting the imposed fugacities to the chemical potential requires the ideal-gas Rosenbluth weight of each isolated chain. These were pre-computed at 433 K with Widom insertions in an empty box (the auxiliary ideal-gas Rosenbluth workflow) and entered as `IdealGasRosenbluthWeight`. Identity-change moves between the three isomers speed up the equilibration of the mixture composition considerably.
 
-Run from `examples/non_basic/17_mc_adsorption_dimethylcyclohexane_isomers_in_beta`:
+Run from `examples/non_basic/15_mc_adsorption_dimethylcyclohexane_isomers_in_beta`:
 
 ```json
 {
@@ -993,6 +1262,51 @@ Run from `examples/non_basic/17_mc_adsorption_dimethylcyclohexane_isomers_in_bet
       "IdentityChanges" : [0, 1],
       "SwapProbability" : 1.0,
       "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### Thermodynamic integration: 1,2-dimethylcyclohexane in zeolite Beta<a name="Example_nonbasic_16"></a>
+
+Fixed-λ thermodynamic integration of 1,2-dimethylcyclohexane in BEA at 433 K
+and 1 bar. The coupling parameter is pinned at bin 20 of 41
+(\f$\lambda = 0.5\f$). Running one simulation per λ-bin and integrating
+\f$\langle \partial U/\partial\lambda \rangle\f$ from 0 to 1 gives the excess
+chemical potential. The parallel counterpart that samples all λ-bins in one
+run is `examples/parallel/3_parallel_ti_nacl_in_water`.
+
+Run from `examples/non_basic/16_ti_fixed_lambda_dimethylcyclohexane_in_beta`:
+
+```json
+{
+  "SimulationType" : "ThermodynamicIntegration",
+  "NumberOfLambdaBins" : 41,
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "BEA",
+      "NumberOfUnitCells" : [2, 2, 1],
+      "ExternalTemperature" : 433.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "12-dimethylcyclohexane",
+      "FugacityCoefficient" : 1.0,
+      "LambdaBinIndex" : 20,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
       "CreateNumberOfMolecules" : 0
     }
   ]
