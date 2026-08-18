@@ -52,7 +52,8 @@ export struct Move
     GroupSwapCFCMC = 41,              // CFCMC insertion/deletion of a neutral group of molecules
     GroupSwapCBCFCMC = 42,            // CB/CFCMC insertion/deletion of a neutral group of molecules
     TetheredProtonHop = 43,           // relocation of a tethered proton among its discrete candidate sites
-    Count = 44
+    IdentitySwitchCBMC = 44,          // canonical pair identity exchange (MCCCS-MN 'swatch')
+    Count = 45
   };
 
   /**
@@ -125,7 +126,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::RotationSmartMC,
                                                                 Move::Types::TranslationRotationSmartMC,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
-                                                                Move::Types::IdentityChangeCBMC, Move::Types::Swap,
+                                                                Move::Types::IdentityChangeCBMC,
+                                                                Move::Types::IdentitySwitchCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,
                                                                 Move::Types::PairSwap,
                                                                 Move::Types::GroupSwap,          Move::Types::GroupSwapCBMC,

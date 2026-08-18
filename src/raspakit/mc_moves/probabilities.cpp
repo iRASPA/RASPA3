@@ -121,6 +121,7 @@ std::string MCMoveProbabilities::repr()
   std::print(stream, "reinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ReinsertionCBMC)]);
   std::print(stream, "partialReinsertionCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::PartialReinsertionCBMC)]);
   std::print(stream, "identityChangeCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::IdentityChangeCBMC)]);
+  std::print(stream, "identitySwitchCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::IdentitySwitchCBMC)]);
   std::print(stream, "swapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Swap)]);
   std::print(stream, "swapCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCBMC)]);
   std::print(stream, "swapCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCFCMC)]);

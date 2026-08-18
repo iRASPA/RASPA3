@@ -843,6 +843,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("IdentitySwitchProbability") && item["IdentitySwitchProbability"].is_number_float())
+      {
+        double identity_switch_CBMC_probability = item["IdentitySwitchProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::IdentitySwitchCBMC, identity_switch_CBMC_probability);
+        }
+      }
+
       if (item.contains("SwapConventionalProbability") && item["SwapConventionalProbability"].is_number_float())
       {
         double swapProbability = item["SwapConventionalProbability"].get<double>();
@@ -1197,6 +1206,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].identityChanges = identity_changes;
+        }
+      }
+
+      if (item.contains("IdentitySwitches") && item["IdentitySwitches"].is_array())
+      {
+        std::vector<std::size_t> identity_switches = item["IdentitySwitches"].get<std::vector<std::size_t>>();
+        if (std::ranges::contains(identity_switches, componentId))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}' (id {}) cannot list itself in 'IdentitySwitches'\n",
+                          jsonComponentName, componentId));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].identitySwitches = identity_switches;
         }
       }
 
@@ -3376,6 +3400,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "ReinsertionProbability",
     "PartialReinsertionProbability",
     "IdentityChangeProbability",
+    "IdentitySwitchProbability",
     "SwapConventionalProbability",
     "SwapProbability",
     "PairSwapConventionalProbability",
@@ -3409,6 +3434,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdealGasRosenbluthWeight",
     "MolFraction",
     "IdentityChanges",
+    "IdentitySwitches",
     "GibbsIdentityChanges",
     "ThermodynamicIntegration",
     "LambdaBinIndex",

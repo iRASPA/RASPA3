@@ -2141,6 +2141,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
   archive << c.gibbsIdentityChanges;
+  archive << c.identitySwitches;
 
   archive << c.initialNumberOfMolecules;
 
@@ -2239,6 +2240,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
   archive >> c.gibbsIdentityChanges;
+  // 'identitySwitches' was added in version 2; older restart files do not contain it.
+  if (versionNumber >= 2)
+  {
+    archive >> c.identitySwitches;
+  }
 
   archive >> c.initialNumberOfMolecules;
 
