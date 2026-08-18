@@ -1157,6 +1157,9 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     }
   }
 
+  // Only pairs within the same molecule are excluded from the Fourier sum. 'newatoms'/'oldatoms'
+  // may span several molecules (the reaction moves change more than one molecule at a time), so
+  // pairs are matched on moleculeId instead of assuming one molecule per span.
   for (std::size_t i = 0; i != oldatoms.size(); i++)
   {
     double chargeA = oldatoms[i].charge;
@@ -1165,6 +1168,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     double3 posA = oldatoms[i].position;
     for (std::size_t j = i + 1; j != oldatoms.size(); j++)
     {
+      if (oldatoms[i].moleculeId != oldatoms[j].moleculeId) continue;
+
       double chargeB = oldatoms[j].charge;
       double scalingB = oldatoms[j].scalingCoulomb;
       std::uint8_t groupIdB = oldatoms[j].groupId;
@@ -1190,6 +1195,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     double3 posA = newatoms[i].position;
     for (std::size_t j = i + 1; j != newatoms.size(); j++)
     {
+      if (newatoms[i].moleculeId != newatoms[j].moleculeId) continue;
+
       double chargeB = newatoms[j].charge;
       double scalingB = newatoms[j].scalingCoulomb;
       std::uint8_t groupIdB = newatoms[j].groupId;
@@ -1365,6 +1372,9 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     }
   }
 
+  // Only pairs within the same molecule are excluded from the Fourier sum. 'newatoms'/'oldatoms'
+  // may span several molecules (the reaction moves change more than one molecule at a time), so
+  // pairs are matched on moleculeId instead of assuming one molecule per span.
   for (std::size_t i = 0; i != oldatoms.size(); i++)
   {
     double chargeA = oldatoms[i].charge;
@@ -1373,6 +1383,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     double3 posA = oldatoms[i].position;
     for (std::size_t j = i + 1; j != oldatoms.size(); j++)
     {
+      if (oldatoms[i].moleculeId != oldatoms[j].moleculeId) continue;
+
       double chargeB = oldatoms[j].charge;
       double scalingB = oldatoms[j].scalingCoulomb;
       std::uint8_t groupIdB = oldatoms[j].groupId;
@@ -1399,6 +1411,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     double3 posA = newatoms[i].position;
     for (std::size_t j = i + 1; j != newatoms.size(); j++)
     {
+      if (newatoms[i].moleculeId != newatoms[j].moleculeId) continue;
+
       double chargeB = newatoms[j].charge;
       double scalingB = newatoms[j].scalingCoulomb;
       std::uint8_t groupIdB = newatoms[j].groupId;
