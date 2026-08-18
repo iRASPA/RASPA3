@@ -56,7 +56,9 @@ RunningEnergy realSpaceSelfEnergyDifference(const ForceField& forceField, std::s
 // Dubbeldam et al. (the Brick-CFCMC formulation, terms S62 and S63). The Ewald method combines the
 // analogous term with the Fourier part (using erf(alpha r)/r), so this routine must never be used for it.
 // The 'sign' argument is +1 to add the exclusion of a configuration and -1 to remove it, matching the
-// old/new convention of the energy-difference routines.
+// old/new convention of the energy-difference routines. 'atoms' may span several molecules (the reaction
+// moves change more than one molecule at a time), so pairs are matched on moleculeId instead of assuming
+// one molecule per span.
 void addRealSpaceExclusionEnergy(RunningEnergy& energy, const ForceField& forceField,
                                  const SimulationBox& simulationBox, std::span<const Atom> atoms, double sign = 1.0)
 {
@@ -69,6 +71,8 @@ void addRealSpaceExclusionEnergy(RunningEnergy& energy, const ForceField& forceF
     double3 posA = atoms[i].position;
     for (std::size_t j = i + 1; j != atoms.size(); ++j)
     {
+      if (atoms[i].moleculeId != atoms[j].moleculeId) continue;
+
       double3 dr = simulationBox.applyPeriodicBoundaryConditions(posA - atoms[j].position);
       double rr = double3::dot(dr, dr);
       if (rr >= cutOffSquared) continue;
