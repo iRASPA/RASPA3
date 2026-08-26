@@ -19,6 +19,7 @@ import system;
 import running_energy;
 import forcefield;
 import interactions_framework_molecule;
+import interactions_intermolecular;
 import interactions_ewald;
 import interactions_polarization;
 import mc_moves_move_types;
@@ -87,6 +88,15 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   const std::size_t trialIdNewB = system.numberOfMolecules();
   const std::size_t trialIdNewA = system.numberOfMolecules() + 1;
 
+  const std::span<Atom> allMoleculeAtoms = system.spanOfMoleculeAtoms();
+
+  // Molecule-molecule polarization has to write the field change of every surviving molecule back
+  // into a storage-aligned array.  Record where each background atom came from while the background
+  // is built, so that the scatter does not have to repeat the membership test below.
+  const bool trackNeighborPolarization =
+      system.forceField.computePolarization && !system.forceField.omitInterPolarization;
+  std::vector<std::size_t> backgroundStorageIndex;
+
   // Background of the CBMC phase: every molecule (fractional ones as well) except the two that
   // exchange identities.  Both exchanged molecules are absent from the storage-backed background,
   // so no molecule needs to be excluded by id and the CBMC helpers are called with their default
@@ -94,7 +104,8 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   // reserve below covers that append (the pair is not part of 'backgroundWithoutPair'), so the
   // vector never reallocates.
   std::vector<Atom> backgroundWithoutPair;
-  backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
+  backgroundWithoutPair.reserve(allMoleculeAtoms.size());
+  if (trackNeighborPolarization) backgroundStorageIndex.reserve(allMoleculeAtoms.size());
   for (std::size_t component = 0; component < system.components.size(); ++component)
   {
     for (std::size_t molecule = 0; molecule < system.numberOfMoleculesPerComponent[component]; ++molecule)
@@ -105,6 +116,12 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       }
       std::span<Atom> atoms = system.spanOfMolecule(component, molecule);
       backgroundWithoutPair.insert(backgroundWithoutPair.end(), atoms.begin(), atoms.end());
+
+      if (trackNeighborPolarization)
+      {
+        const std::size_t offset = static_cast<std::size_t>(atoms.data() - allMoleculeAtoms.data());
+        for (std::size_t k = 0; k != atoms.size(); ++k) backgroundStorageIndex.push_back(offset + k);
+      }
     }
   }
   const std::size_t backgroundWithoutPairSize = backgroundWithoutPair.size();
@@ -265,6 +282,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   // (one A and one B on both sides of the move), for both molecule-molecule and
   // framework-molecule contributions.  Likewise the Ewald net-charge correction vanishes.
 
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   std::vector<double3> new_electric_field(newAtoms.size());
   std::vector<double3> old_electric_field(oldAtoms.size());
@@ -279,8 +297,63 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
         system.trialEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field, newAtoms,
         oldAtoms);
 
+    // Real-space molecule-molecule polarization.  The energies these calls return are discarded: the
+    // inter-molecular energy is already in the CBMC weights, only the electric fields are wanted.
+    if (trackNeighborPolarization)
+    {
+      electricFieldNeighborDelta.assign(allMoleculeAtoms.size(), double3(0.0, 0.0, 0.0));
+
+      // Old configuration: system storage is the right neighbor set, since each old molecule is
+      // skipped against itself by molecule id while the partner it interacts with is still present.
+      [[maybe_unused]] std::optional<RunningEnergy> oldFieldEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, std::span<double3>{},
+              old_electric_field, allMoleculeAtoms, {}, oldAtoms);
+
+      // New configuration: the two new molecules sit on the sites of the old ones, so storage cannot
+      // serve as their neighbor set (they would see the molecules they replace at zero distance).
+      // 'backgroundWithoutPair' holds exactly the surviving molecules; its field change is scattered
+      // back into the storage-aligned array through the index recorded while it was built.
+      std::vector<double3> backgroundDelta(backgroundWithoutPairSize, double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> newFieldEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, backgroundDelta, new_electric_field, std::span<double3>{},
+              backgroundWithoutPair, newAtoms, {});
+
+      for (std::size_t i = 0; i != backgroundWithoutPairSize; ++i)
+      {
+        electricFieldNeighborDelta[backgroundStorageIndex[i]] += backgroundDelta[i];
+      }
+
+      // Field the two new molecules exert on each other: neither is in storage yet, and their trial
+      // ids differ, so one pass of the pair against itself gives each of them the field of the other.
+      std::vector<double3> mutualField(newAtoms.size(), double3(0.0, 0.0, 0.0));
+      std::vector<double3> unusedDelta(newAtoms.size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> mutualFieldEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, unusedDelta, mutualField, std::span<double3>{}, newAtoms,
+              newAtoms, {});
+      for (std::size_t i = 0; i != newAtoms.size(); ++i)
+      {
+        new_electric_field[i] += mutualField[i];
+      }
+
+      // The two replaced molecules must not appear in the neighbor sum: their own field change is
+      // carried by 'old_electric_field' and 'new_electric_field'.
+      const std::size_t offsetA = static_cast<std::size_t>(atomsA.data() - allMoleculeAtoms.data());
+      for (std::size_t k = 0; k != atomsA.size(); ++k) electricFieldNeighborDelta[offsetA + k] = double3(0.0, 0.0, 0.0);
+      const std::size_t offsetB = static_cast<std::size_t>(atomsB.data() - allMoleculeAtoms.data());
+      for (std::size_t k = 0; k != atomsB.size(); ++k) electricFieldNeighborDelta[offsetB + k] = double3(0.0, 0.0, 0.0);
+    }
+
     polarizationDifference = Interactions::computePolarizationEnergyDifference(system.forceField, new_electric_field,
                                                                                old_electric_field, newAtoms, oldAtoms);
+
+    if (trackNeighborPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta, allMoleculeAtoms);
+    }
   }
 
   // Canonical acceptance: composition is conserved, so fugacities, ideal-gas Rosenbluth weights and
@@ -318,6 +391,17 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     }
     Molecule acceptedMoleculeNewA = exchangeA.grown->molecule;
     acceptedMoleculeNewA.componentId = componentA;
+
+    // Apply the field changes on the surrounding molecules while the storage layout is still the one
+    // 'electricFieldNeighborDelta' was built against, i.e. before any molecule is removed or added.
+    if (trackNeighborPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     // Replace A first, then B.  Deleting a molecule of component A shifts atom storage but leaves
     // component B's per-component molecule index unchanged (insertions append at the end of a

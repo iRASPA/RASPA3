@@ -163,6 +163,12 @@ static void expectNoDriftForChargedMultisiteSwitch(const ForceField &forceField)
     EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+
+    if (forceField.computePolarization)
+    {
+      // the fixture must actually exercise a non-trivial polarization energy
+      EXPECT_LT(recomputedEnergies.polarization, -1e-8);
+    }
   }
 }
 
@@ -186,6 +192,21 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_dual_cut_off_energy_
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.useDualCutOff = true;
   forceField.dualCutOff = 6.0;
+
+  expectNoDriftForChargedMultisiteSwitch(forceField);
+}
+
+// Same system with molecule-molecule polarization. Two molecules change at once, so both the field
+// on each of them (which must come from the surviving molecules plus its new partner, not from the
+// molecules being replaced) and the field change felt by every surrounding molecule have to be
+// tracked incrementally. A missing or double-counted contribution shows up as polarization drift.
+TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_polarization_energy_drift)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.omitEwaldFourier = false;
 
   expectNoDriftForChargedMultisiteSwitch(forceField);
 }
