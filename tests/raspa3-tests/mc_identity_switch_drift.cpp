@@ -102,15 +102,10 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, identical_components_are_always_accepted)
   }
 }
 
-// Charged, multi-site molecules of different sizes. Both molecules change at the same time, so
-// the Ewald difference is evaluated for a span covering two molecules at once: the intramolecular
-// exclusion terms must be matched per molecule and the cross terms between the two exchanged
-// molecules must not be counted as exclusions. This is the case that a single-molecule move never
-// exercises; an error in it shows up as accumulating energy drift rather than as a wrong average.
-TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_energy_drift)
+// Runs a box of CO2 and water molecules that switch identities with each other and checks that the
+// running energies still match a full recomputation.
+static void expectNoDriftForChargedMultisiteSwitch(const ForceField &forceField)
 {
-  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(Move::Types::IdentitySwitchCBMC, 1.0);
@@ -153,6 +148,10 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_energy_drift)
     EXPECT_EQ(s.numberOfIntegerMoleculesPerComponent[0], initialCO2);
     EXPECT_EQ(s.numberOfIntegerMoleculesPerComponent[1], initialWater);
 
+    const MoveStatistics<double> &statistics =
+        std::get<MoveStatistics<double>>(s.components[0].mc_moves_statistics[Move::Types::IdentitySwitchCBMC]);
+    EXPECT_GT(statistics.totalAccepted, 0.0);
+
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
 
@@ -165,4 +164,28 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_energy_drift)
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
   }
+}
+
+// Charged, multi-site molecules of different sizes. Both molecules change at the same time, so
+// the Ewald difference is evaluated for a span covering two molecules at once: the intramolecular
+// exclusion terms must be matched per molecule and the cross terms between the two exchanged
+// molecules must not be counted as exclusions. This is the case that a single-molecule move never
+// exercises; an error in it shows up as accumulating energy drift rather than as a wrong average.
+TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_energy_drift)
+{
+  expectNoDriftForChargedMultisiteSwitch(ForceField::makeZeoliteForceField(12.0, true, false, true));
+}
+
+// Same system with the dual cut-off scheme. The two exchanged molecules are grown and retraced in
+// a nested background, so their mutual interaction lives inside the second Rosenbluth weight on
+// each side of the move and is carried from the inner to the full cut-off by that molecule's dual
+// cut-off correction. An intra-pair term left behind at the inner cut-off, or a retrace that is
+// not corrected while its matching grow is, shows up here as energy drift.
+TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_dual_cut_off_energy_drift)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.useDualCutOff = true;
+  forceField.dualCutOff = 6.0;
+
+  expectNoDriftForChargedMultisiteSwitch(forceField);
 }

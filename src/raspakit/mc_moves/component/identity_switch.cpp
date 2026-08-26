@@ -14,7 +14,6 @@ import cbmc;
 import cbmc_chain_data;
 import cbmc_growth_context;
 import cbmc_interactions;
-import cbmc_interactions_intermolecular;
 import randomnumbers;
 import system;
 import running_energy;
@@ -52,8 +51,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   }
 
   // Composition is conserved (one A and one B are exchanged), so picking one molecule of each
-  // uniformly gives identical proposal probabilities for the forward and reverse moves; no
-  // 50/50 role swap is needed for detailed balance.
+  // uniformly gives identical proposal probabilities for the forward and reverse moves.
   if (system.numberOfIntegerMoleculesPerComponent[componentA] == 0 ||
       system.numberOfIntegerMoleculesPerComponent[componentB] == 0)
   {
@@ -69,15 +67,12 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   std::span<Atom> atomsA = system.spanOfMolecule(componentA, moleculeA);
   std::span<Atom> atomsB = system.spanOfMolecule(componentB, moleculeB);
 
-  // copies: pristine old configurations (taken before any relabeling below)
+  // copies: the old configurations, needed after the molecules have been removed from storage and as
+  // the background of the second retrace
   std::vector<Atom> oldA(atomsA.begin(), atomsA.end());
   std::vector<Atom> oldB(atomsB.begin(), atomsB.end());
   const Atom startingBeadA = oldA[componentAData.startingBead];
   const Atom startingBeadB = oldB[componentBData.startingBead];
-
-  const std::size_t globalA = system.moleculeIndexOfComponent(componentA, moleculeA);
-  const std::size_t globalB = system.moleculeIndexOfComponent(componentB, moleculeB);
-  const std::make_signed_t<std::size_t> skipBothMolecules = static_cast<std::make_signed_t<std::size_t>>(globalA);
 
   // Determine cutoff distances based on whether dual cutoff is used.
   const double cutOffFrameworkVDW =
@@ -87,139 +82,171 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   const double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
-  // Distinct trial ids that cannot collide with any existing molecule (global ids are 0..N-1).
+  // Distinct trial ids that cannot collide with any existing molecule (global ids are 0..N-1), so
+  // that the molecule grown second sees the one grown before it in the background.
   const std::size_t trialIdNewB = system.numberOfMolecules();
   const std::size_t trialIdNewA = system.numberOfMolecules() + 1;
 
-  const CBMC::GrowContext growContext{system.hasExternalField,
-                                      system.forceField,
-                                      system.simulationBox,
-                                      system.interpolationGrids,
-                                      system.externalFieldInterpolationGrid,
-                                      system.framework,
-                                      system.spanOfFrameworkAtoms(),
-                                      system.spanOfMoleculeAtoms(),
-                                      system.beta,
-                                      cutOffFrameworkVDW,
-                                      cutOffMoleculeVDW,
-                                      cutOffCoulomb};
-
-  struct CBMCResult
+  // Background of the CBMC phase: every molecule (fractional ones as well) except the two that
+  // exchange identities.  Both exchanged molecules are absent from the storage-backed background,
+  // so no molecule needs to be excluded by id and the CBMC helpers are called with their default
+  // (no) skip.  The first molecule of the pair is appended in place for the second operation; the
+  // reserve below covers that append (the pair is not part of 'backgroundWithoutPair'), so the
+  // vector never reallocates.
+  std::vector<Atom> backgroundWithoutPair;
+  backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
+  for (std::size_t component = 0; component < system.components.size(); ++component)
   {
-    ChainGrowData growNewB;     // new B grown at A's site
-    ChainGrowData growNewA;     // new A grown at B's site
-    ChainRetraceData retraceA;  // old A retraced at its site
-    ChainRetraceData retraceB;  // old B retraced at its site
+    for (std::size_t molecule = 0; molecule < system.numberOfMoleculesPerComponent[component]; ++molecule)
+    {
+      if ((component == componentA && molecule == moleculeA) || (component == componentB && molecule == moleculeB))
+      {
+        continue;
+      }
+      std::span<Atom> atoms = system.spanOfMolecule(component, molecule);
+      backgroundWithoutPair.insert(backgroundWithoutPair.end(), atoms.begin(), atoms.end());
+    }
+  }
+  const std::size_t backgroundWithoutPairSize = backgroundWithoutPair.size();
+
+  auto makeContext = [&](std::span<const Atom> background)
+  {
+    return CBMC::GrowContext{system.hasExternalField,
+                             system.forceField,
+                             system.simulationBox,
+                             system.interpolationGrids,
+                             system.externalFieldInterpolationGrid,
+                             system.framework,
+                             system.spanOfFrameworkAtoms(),
+                             background,
+                             system.beta,
+                             cutOffFrameworkVDW,
+                             cutOffMoleculeVDW,
+                             cutOffCoulomb};
   };
 
-  // Both molecules must be invisible to all four CBMC operations (grown/retraced against the
-  // background "system minus {A, B}").  The CBMC helpers exclude molecules by global moleculeId:
-  // the retraces self-exclude by id-matching and the grows take one skip id.  We therefore
-  // temporarily relabel molecule B's atoms with molecule A's global id so that a single skip id
-  // (and a single self-match) covers both molecules.  The relabeling is undone unconditionally
-  // right after the CBMC phase; nothing inside the window reads moleculeId for any other purpose.
-  for (Atom &atom : atomsB)
+  // One side of the exchange: the existing molecule (retraced at its own site) together with the
+  // new molecule of the same component, which is grown at the *other* molecule's starting bead.
+  struct Exchange
   {
-    atom.moleculeId = static_cast<std::uint32_t>(globalA);
-  }
+    Component *component;
+    std::size_t componentId;
+    std::span<Atom> oldAtoms;    // the existing molecule, in system storage
+    std::vector<Atom> *oldCopy;  // pristine copy of the same molecule
+    Atom growStartingBead;       // starting bead of the other molecule: where the new one is grown
+    std::size_t trialMoleculeId;
+    std::optional<ChainGrowData> grown;
+    ChainRetraceData retraced;
+  };
+
+  Exchange exchangeA{&componentAData, componentA, atomsA, &oldA, startingBeadB, trialIdNewA, std::nullopt, {}};
+  Exchange exchangeB{&componentBData, componentB, atomsB, &oldB, startingBeadA, trialIdNewB, std::nullopt, {}};
+
+  // Rather than hiding both molecules from all four CBMC operations and adding their mutual
+  // interaction back by hand, the pair is grown and retraced in a nested background: the first
+  // molecule against 'backgroundWithoutPair' and the second against that background plus the
+  // first.  Every intra-pair interaction then sits inside exactly one Rosenbluth weight on each
+  // side of the move, at the full cut-offs and with the dual cut-off correction applied to it.
+  //
+  // The nesting order must be the same in the forward and the reverse move, otherwise the retrace
+  // of a configuration no longer reproduces the weight that its growth produced and the Rosenbluth
+  // acceptance is not exact.  Ordering by role ("the selected molecule first") does not qualify:
+  // the exchange moves each component to the other site, so the reverse move would assign the
+  // roles the other way around.  The component index is invariant under the exchange and under
+  // which of the two components triggered the move, so it is used as the ordering key.
+  Exchange *const ordered[2] = {componentA < componentB ? &exchangeA : &exchangeB,
+                                componentA < componentB ? &exchangeB : &exchangeA};
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<CBMCResult> cbmc = [&]() -> std::optional<CBMCResult>
+  bool constructed = true;
+  for (std::size_t step = 0; step != 2 && constructed; ++step)
   {
-    std::optional<ChainGrowData> growNewB = CBMC::growMoleculeIdentityChangeInsertion(
-        random, growContext, componentBData, componentB, trialIdNewB, startingBeadA, 1.0, 0, false, skipBothMolecules);
-    if (!growNewB)
-    {
-      return std::nullopt;
-    }
-    if (system.insideBlockedPockets(componentBData,
-                                    std::span<const Atom>(growNewB->atoms.begin(), growNewB->atoms.end())))
-    {
-      return std::nullopt;
-    }
+    Exchange &exchange = *ordered[step];
+    const CBMC::GrowContext growContext = makeContext(backgroundWithoutPair);
 
-    std::optional<ChainGrowData> growNewA = CBMC::growMoleculeIdentityChangeInsertion(
-        random, growContext, componentAData, componentA, trialIdNewA, startingBeadB, 1.0, 0, false, skipBothMolecules);
-    if (!growNewA)
+    exchange.grown = CBMC::growMoleculeIdentityChangeInsertion(random, growContext, *exchange.component,
+                                                               exchange.componentId, exchange.trialMoleculeId,
+                                                               exchange.growStartingBead, 1.0, 0, false);
+    if (!exchange.grown ||
+        system.insideBlockedPockets(*exchange.component, std::span<const Atom>(exchange.grown->atoms)))
     {
-      return std::nullopt;
-    }
-    if (system.insideBlockedPockets(componentAData,
-                                    std::span<const Atom>(growNewA->atoms.begin(), growNewA->atoms.end())))
-    {
-      return std::nullopt;
+      constructed = false;
+      break;
     }
 
-    // Retraces self-exclude by moleculeId; because of the relabeling both molecules are excluded.
-    ChainRetraceData retraceA =
-        CBMC::retraceMoleculeIdentityChangeDeletion(random, growContext, componentAData, atomsA);
-    ChainRetraceData retraceB =
-        CBMC::retraceMoleculeIdentityChangeDeletion(random, growContext, componentBData, atomsB);
+    if (system.forceField.useDualCutOff)
+    {
+      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+      // cut-offs, using the same background as the growth.
+      std::optional<RunningEnergy> correction =
+          CBMC::computeDualCutOffCorrection(growContext, *exchange.component, exchange.grown->atoms);
+      if (!correction.has_value())
+      {
+        constructed = false;
+        break;
+      }
 
-    return CBMCResult{std::move(*growNewB), std::move(*growNewA), std::move(retraceA), std::move(retraceB)};
-  }();
+      exchange.grown->energies += correction.value();
+      exchange.grown->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+    }
 
-  // restore molecule B's global id unconditionally before anything else touches the system
-  for (Atom &atom : atomsB)
-  {
-    atom.moleculeId = static_cast<std::uint32_t>(globalB);
+    if (step == 0)
+    {
+      backgroundWithoutPair.insert(backgroundWithoutPair.end(), exchange.grown->atoms.begin(),
+                                   exchange.grown->atoms.end());
+    }
   }
+  backgroundWithoutPair.resize(backgroundWithoutPairSize);
+
+  for (std::size_t step = 0; step != 2 && constructed; ++step)
+  {
+    Exchange &exchange = *ordered[step];
+    const CBMC::GrowContext retraceContext = makeContext(backgroundWithoutPair);
+
+    exchange.retraced =
+        CBMC::retraceMoleculeIdentityChangeDeletion(random, retraceContext, *exchange.component, exchange.oldAtoms);
+
+    if (system.forceField.useDualCutOff)
+    {
+      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+      // cut-offs, using the same background as the retrace.
+      std::optional<RunningEnergy> correction =
+          CBMC::computeDualCutOffCorrection(retraceContext, *exchange.component, *exchange.oldCopy);
+      if (!correction.has_value())
+      {
+        // an existing configuration should never register as an overlap; reject defensively
+        constructed = false;
+        break;
+      }
+
+      exchange.retraced.energies += correction.value();
+      exchange.retraced.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+    }
+
+    if (step == 0)
+    {
+      backgroundWithoutPair.insert(backgroundWithoutPair.end(), exchange.oldCopy->begin(), exchange.oldCopy->end());
+    }
+  }
+  backgroundWithoutPair.resize(backgroundWithoutPairSize);
   time_end = std::chrono::steady_clock::now();
   componentAData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (!cbmc)
+  if (!constructed)
   {
     return std::nullopt;
-  }
-
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct both grown configurations from the inner cut-off to the full
-    // cut-offs, using the same background (both exchanged molecules excluded) as the growth.
-    std::optional<RunningEnergy> correctionNewB =
-        CBMC::computeDualCutOffCorrection(growContext, componentBData, cbmc->growNewB.atoms, skipBothMolecules);
-    std::optional<RunningEnergy> correctionNewA =
-        CBMC::computeDualCutOffCorrection(growContext, componentAData, cbmc->growNewA.atoms, skipBothMolecules);
-    if (!correctionNewB.has_value() || !correctionNewA.has_value())
-    {
-      return std::nullopt;
-    }
-
-    cbmc->growNewB.energies += correctionNewB.value();
-    cbmc->growNewB.RosenbluthWeight *= std::exp(-system.beta * correctionNewB->potentialEnergy());
-    cbmc->growNewA.energies += correctionNewA.value();
-    cbmc->growNewA.RosenbluthWeight *= std::exp(-system.beta * correctionNewA->potentialEnergy());
   }
 
   componentAData.mc_moves_statistics.addConstructed(move);
   componentBData.mc_moves_statistics.addConstructed(move);
 
-  // The direct A-B pair interaction is absent from all four CBMC weights (both molecules were
-  // excluded from the background), so it enters the acceptance explicitly: new pair minus old pair.
-  std::optional<RunningEnergy> newPairEnergy = CBMC::computeInterMolecularEnergy(
-      system.forceField, system.simulationBox,
-      std::span<const Atom>(cbmc->growNewA.atoms.begin(), cbmc->growNewA.atoms.end()), cutOffMoleculeVDW, cutOffCoulomb,
-      std::span<Atom>(cbmc->growNewB.atoms.begin(), cbmc->growNewB.atoms.end()), -1, -1);
-  if (!newPairEnergy)
-  {
-    return std::nullopt;
-  }
-  std::optional<RunningEnergy> oldPairEnergy = CBMC::computeInterMolecularEnergy(
-      system.forceField, system.simulationBox, std::span<const Atom>(oldA.begin(), oldA.end()), cutOffMoleculeVDW,
-      cutOffCoulomb, std::span<Atom>(oldB.begin(), oldB.end()), -1, -1);
-  if (!oldPairEnergy)
-  {
-    // an existing configuration should never register as an overlap; reject defensively
-    return std::nullopt;
-  }
-
   // Combined Ewald Fourier difference for the simultaneous change of both molecules
   // (single call so the cross terms between the two exchanged molecules are handled exactly).
   std::vector<Atom> newAtoms;
-  newAtoms.reserve(cbmc->growNewB.atoms.size() + cbmc->growNewA.atoms.size());
-  newAtoms.insert(newAtoms.end(), cbmc->growNewB.atoms.begin(), cbmc->growNewB.atoms.end());
-  newAtoms.insert(newAtoms.end(), cbmc->growNewA.atoms.begin(), cbmc->growNewA.atoms.end());
+  newAtoms.reserve(exchangeB.grown->atoms.size() + exchangeA.grown->atoms.size());
+  newAtoms.insert(newAtoms.end(), exchangeB.grown->atoms.begin(), exchangeB.grown->atoms.end());
+  newAtoms.insert(newAtoms.end(), exchangeA.grown->atoms.begin(), exchangeA.grown->atoms.end());
 
   std::vector<Atom> oldAtoms;
   oldAtoms.reserve(oldA.size() + oldB.size());
@@ -256,19 +283,18 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
                                                                                old_electric_field, newAtoms, oldAtoms);
   }
 
-  const RunningEnergy pairEnergyDifference = newPairEnergy.value() - oldPairEnergy.value();
-
   // Canonical acceptance: composition is conserved, so fugacities, ideal-gas Rosenbluth weights and
   // the N_old/(N_new+1) factors of the semi-grand move all cancel identically.  What remains is the
   // Rosenbluth ratio of the two grows over the two retraces, corrected for the energy terms that the
-  // CBMC weights do not contain (Fourier-space Ewald, polarization, and the explicit pair term).
+  // CBMC weights do not contain (Fourier-space Ewald and polarization).  The interaction between the
+  // two exchanged molecules needs no separate term: the nested background puts it inside the second
+  // grow and the second retrace.
   const double correctionFactor =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy() +
-                               pairEnergyDifference.potentialEnergy()));
+      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
 
-  const double acceptanceProbability = correctionFactor *
-                                       (cbmc->growNewB.RosenbluthWeight * cbmc->growNewA.RosenbluthWeight) /
-                                       (cbmc->retraceA.RosenbluthWeight * cbmc->retraceB.RosenbluthWeight);
+  const double acceptanceProbability =
+      correctionFactor * (exchangeB.grown->RosenbluthWeight * exchangeA.grown->RosenbluthWeight) /
+      (exchangeA.retraced.RosenbluthWeight * exchangeB.retraced.RosenbluthWeight);
 
   if (random.uniform() < acceptanceProbability)
   {
@@ -277,20 +303,20 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
-    std::vector<Atom> acceptedAtomsNewB(cbmc->growNewB.atoms.begin(), cbmc->growNewB.atoms.end());
+    std::vector<Atom> acceptedAtomsNewB(exchangeB.grown->atoms.begin(), exchangeB.grown->atoms.end());
     for (Atom &atom : acceptedAtomsNewB)
     {
       atom.componentId = static_cast<std::uint8_t>(componentB);
     }
-    Molecule acceptedMoleculeNewB = cbmc->growNewB.molecule;
+    Molecule acceptedMoleculeNewB = exchangeB.grown->molecule;
     acceptedMoleculeNewB.componentId = componentB;
 
-    std::vector<Atom> acceptedAtomsNewA(cbmc->growNewA.atoms.begin(), cbmc->growNewA.atoms.end());
+    std::vector<Atom> acceptedAtomsNewA(exchangeA.grown->atoms.begin(), exchangeA.grown->atoms.end());
     for (Atom &atom : acceptedAtomsNewA)
     {
       atom.componentId = static_cast<std::uint8_t>(componentA);
     }
-    Molecule acceptedMoleculeNewA = cbmc->growNewA.molecule;
+    Molecule acceptedMoleculeNewA = exchangeA.grown->molecule;
     acceptedMoleculeNewA.componentId = componentA;
 
     // Replace A first, then B.  Deleting a molecule of component A shifts atom storage but leaves
@@ -299,10 +325,11 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     // must be re-fetched because the underlying atom vector has been modified.
     if (system.forceField.computePolarization)
     {
-      std::span<double3> electricFieldNewB = std::span(new_electric_field.begin(), cbmc->growNewB.atoms.size());
-      std::span<double3> electricFieldNewA = std::span(
-          new_electric_field.begin() + static_cast<std::vector<double3>::difference_type>(cbmc->growNewB.atoms.size()),
-          cbmc->growNewA.atoms.size());
+      std::span<double3> electricFieldNewB = std::span(new_electric_field.begin(), exchangeB.grown->atoms.size());
+      std::span<double3> electricFieldNewA =
+          std::span(new_electric_field.begin() +
+                        static_cast<std::vector<double3>::difference_type>(exchangeB.grown->atoms.size()),
+                    exchangeA.grown->atoms.size());
 
       system.deleteMolecule(componentA, moleculeA, atomsA);
       system.insertMoleculePolarization(componentB, acceptedMoleculeNewB, acceptedAtomsNewB, electricFieldNewB);
@@ -321,9 +348,9 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       system.insertMolecule(componentA, acceptedMoleculeNewA, acceptedAtomsNewA);
     }
 
-    const RunningEnergy energyDifference = (cbmc->growNewB.energies + cbmc->growNewA.energies) -
-                                           (cbmc->retraceA.energies + cbmc->retraceB.energies) +
-                                           energyFourierDifference + pairEnergyDifference + polarizationDifference;
+    const RunningEnergy energyDifference = (exchangeB.grown->energies + exchangeA.grown->energies) -
+                                           (exchangeA.retraced.energies + exchangeB.retraced.energies) +
+                                           energyFourierDifference + polarizationDifference;
 
     return energyDifference;
   }
