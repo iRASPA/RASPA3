@@ -45,8 +45,9 @@ Dr. David Dubbeldam, University of Amsterdam
 # Contributors
 
 Olivier Marchand, equitable binning and site resolved density grid support<br>
-Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation discussion<br>
+Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to threading-implementation discussion<br>
 Anserme, better README.md and packaging
+Samiha Sharlin, canonical identity-switch move
 
 # Citing RASPA3
 
