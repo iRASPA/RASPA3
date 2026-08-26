@@ -142,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -236,6 +236,7 @@ export struct Component
   mutable std::map<std::vector<std::size_t>, std::vector<CBMC::GrowStep>> growthPlanCache{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
+  std::vector<std::size_t> identitySwitches{};  ///< Partner components for the canonical identity-switch move.
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 

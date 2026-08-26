@@ -54,6 +54,7 @@ import mc_moves_gibbs_swap_cbmc;
 import mc_moves_volume;
 import mc_moves_gibbs_volume;
 import mc_moves_identity_change;
+import mc_moves_identity_switch;
 import mc_moves_swap_cfcmc;
 import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_gibbs_swap_cbmc;
@@ -491,6 +492,22 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::identityChangeMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    case Move::Types::IdentitySwitchCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].identitySwitches.empty())
+      {
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::identitySwitchMove(random, selectedSystem, selectedComponent);
 
         if (energyDifference)
         {
@@ -1219,6 +1236,22 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       }
       break;
     }
+    case Move::Types::IdentitySwitchCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].identitySwitches.empty())
+      {
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::identitySwitchMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
     case Move::Types::Swap:
     {
       if (random.uniform() < 0.5)
@@ -1904,6 +1937,21 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::identityChangeMove(random, selectedSystem, selectedComponent);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      }
+      break;
+    }
+    case Move::Types::IdentitySwitchCBMC:
+    {
+      if (!selectedSystem.components[selectedComponent].identitySwitches.empty())
+      {
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::identitySwitchMove(random, selectedSystem, selectedComponent);
 
         if (energyDifference)
         {

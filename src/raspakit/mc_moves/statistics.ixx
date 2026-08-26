@@ -68,6 +68,7 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::ReinsertionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::PartialReinsertionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::IdentityChangeCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::IdentitySwitchCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::GibbsVolume)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::GibbsSwapCBMC)] = MoveStatistics<double>{};
