@@ -12,6 +12,7 @@ import atom;
 import pseudo_atom;
 import framework;
 import component;
+import blocking_pockets;
 import simulationbox;
 import forcefield;
 import double3;
@@ -1394,30 +1395,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (item.contains("BlockingPockets") && item.contains("BlockingPockets"))
+      if (item.contains("BlockingPockets"))
       {
-        for (auto& [_, block_pockets_item] : item["BlockingPockets"].items())
+        BlockingPockets::Specification specification = BlockingPockets::parse(item["BlockingPockets"]);
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
-          if (!block_pockets_item.is_array())
-          {
-            throw std::runtime_error(
-                std::format("[Component reader]: item {} must be an array\n", block_pockets_item.dump()));
-          }
-
-          if (block_pockets_item.size() != 4)
-          {
-            throw std::runtime_error(
-                std::format("[Component reader]: item {} must be an array with four elements, "
-                            "an array with the x,y,z positions, and a radius\n",
-                            block_pockets_item.dump()));
-          }
-
-          std::vector<double> data =
-              block_pockets_item.is_array() ? block_pockets_item.get<std::vector<double>>() : std::vector<double>{};
-          for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
-          {
-            jsonComponents[i][componentId].blockingPockets.push_back(double4(data[0], data[1], data[2], data[3]));
-          }
+          Component& component = jsonComponents[i][componentId];
+          component.blockingPockets.insert(component.blockingPockets.end(), specification.pockets.begin(),
+                                           specification.pockets.end());
+          component.automaticBlockingPockets = component.automaticBlockingPockets || specification.automatic;
         }
       }
 

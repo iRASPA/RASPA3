@@ -67,12 +67,6 @@ add_executable(unit_tests_raspakit
   exact_regression.cpp
   main.cpp)
 
-# The pore tests measure frameworks the engine has read, so they need the same adapter the command line uses.
-# It belongs to the command line rather than to a library of its own, so it is compiled in here as well.
-target_sources(unit_tests_raspakit PRIVATE ${CMAKE_SOURCE_DIR}/cli/structure_input.cpp)
-target_sources(unit_tests_raspakit PUBLIC FILE_SET CXX_MODULES
-  BASE_DIRS ${CMAKE_SOURCE_DIR}/cli FILES ${CMAKE_SOURCE_DIR}/cli/structure_input.ixx)
-
 raspa_target_link_libraries(unit_tests_raspakit)
 target_link_libraries(unit_tests_raspakit PUBLIC
                       raspakit

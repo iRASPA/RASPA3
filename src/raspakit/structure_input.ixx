@@ -20,8 +20,9 @@ import pair_interactions;
 // is this translation, and it is cheap because so little of a framework and a force field is a question about
 // a pore: nine fields of the one, and three numbers per pair of types from the other.
 //
-// This is compiled into whatever needs it rather than living inside either library, so that the arrow still
-// only ever points from the engine-aware code into the analysis, and never back.
+// It lives on the engine's side of the boundary rather than the analysis's, which is the only side it can
+// live on: the arrow points from the engine-aware code into the analysis and never back, and a translation
+// that names a Framework is engine-aware by definition.
 export namespace StructureInput
 {
 // The cell, carrying over whether it was found to be rectangular rather than deciding again, so that the

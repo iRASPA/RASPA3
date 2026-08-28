@@ -1331,13 +1331,14 @@ and `"BinaryInteractions"` are read from the force field file
     The index of the bead from which `CBMC` growth starts. Must be smaller than
     the number of atoms in the molecule.
 
--   `"BlockingPockets" : [[3 x floating-point-number, floating-point-number]]`\
+-   `"BlockingPockets" : [[3 x floating-point-number, floating-point-number]] or string`\
     Blocks certain pockets of the simulation volume so molecules cannot grow
     into them. A typical example is the sodalite cages in FAU- and LTA-type
-    zeolites, which are inaccessible to methane and larger molecules. Each pocket
-    is a list of four numbers: the fractional positions $s_x$, $s_y$, $s_z$ and a
-    radius in Ångström. For example, the blocking pockets of ITQ-29 for small
-    molecules are:
+    zeolites, which are inaccessible to methane and larger molecules.
+
+    Written as a list, each pocket is four numbers: the fractional positions
+    $s_x$, $s_y$, $s_z$ and a radius in Ångström. For example, the blocking
+    pockets of ITQ-29 for small molecules are:
 
         "BlockingPockets" : [
                    [0.0,       0.0,        0.0,       4.0],
@@ -1345,6 +1346,35 @@ and `"BinaryInteractions"` are read from the force field file
                    [0.0,       0.5,        0.0,       0.5],
                    [0.0,       0.0,        0.5,       0.5]
                  ]
+
+    Written as the string `"auto"`, the pockets are computed from the framework
+    read from the CIF-file, before the first molecule is placed:
+
+        "BlockingPockets" : "auto"
+
+    The void is split into what a nitrogen probe can reach and what it cannot,
+    and each unreachable cavity is covered by a sphere at its centre, of the
+    lesser of the radius that holds the cavity and the radius past which the
+    sphere would reach a channel. The spheres are a property of the framework
+    and of the probe, so every component asking for them gets the same ones,
+    and the framework is measured once. Silicalite comes back with none, being
+    all channel; KFI comes back with eight, its two *lta* cages and its six
+    *pau* cages. This needs the force field to give the framework atoms a van
+    der Waals size of their own: a force field that leaves them without
+    self-interactions and instead names every framework-guest pair outright
+    describes a framework of points, and the run stops and says so rather than
+    reporting that nothing is blocked.
+
+    Written as any other string, it is the name of a `.block` file to read the
+    pockets from, in the format the structural analysis writes: the number of
+    spheres on the first line, then one line of $s_x$, $s_y$, $s_z$ and a radius
+    per sphere, with no comments. The `.block` extension is added when absent
+    and the file is looked for in the working directory and then in `RASPA_DIR`:
+
+        "BlockingPockets" : "ITQ-29"
+
+    All three forms may be given in the molecule definition file as well, and
+    what the two files say is added together.
 
 -   `"LambdaBiasFileName" : string`\
     Points to a JSON file of preset λ values, allowing optimized CFCMC

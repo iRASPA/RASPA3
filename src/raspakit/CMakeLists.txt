@@ -5,7 +5,11 @@ project(raspakit)
 # minimisation, the equations of state, and the properties and averages a run reports.
 #
 # It stands on the three kits below it and is what the executables, the Python module and the tests are built
-# against. The structural analysis beside it is not part of it and must not become part of it.
+# against. The structural analysis beside it is not part of it and must not become part of it; what it is, is
+# something this library is allowed to call. A component asking for its blocking pockets to be worked out from
+# the framework rather than listed by hand is the engine asking the analysis a question, and the answer arrives
+# before the first molecule is placed, so it has to be asked from in here. The arrow points this way only:
+# structurekit still links nothing above the three kits, and the compiler still refuses it if that changes.
 
 file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/*.cpp
@@ -56,4 +60,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_IXX_FILES})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
-target_link_libraries(${PROJECT_NAME} PUBLIC symmetrykit mathkit foundationkit)
+target_link_libraries(${PROJECT_NAME} PUBLIC structurekit symmetrykit mathkit foundationkit)

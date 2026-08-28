@@ -8,9 +8,11 @@ import randomnumbers;
 import simd_quatd;
 import double3;
 import double3x3;
+import double4;
 import atom;
 import atom_dynamics;
 import component;
+import blocking_pockets;
 import molecule;
 import framework;
 import forcefield;
@@ -559,6 +561,37 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     }
 
     componentId++;
+  }
+}
+
+void System::computeAutomaticBlockingPockets()
+{
+  // The pockets depend on the framework and on the probe, neither of which is a property of a component, so
+  // every component that asked for them is answered with the same spheres and the framework is measured once.
+  std::optional<std::vector<double4>> computed{};
+
+  for (Component& component : components)
+  {
+    if (!component.automaticBlockingPockets) continue;
+
+    if (!framework.has_value())
+    {
+      throw std::runtime_error(
+          std::format("[System]: component '{}' asks for its blocking pockets to be computed, but the system has "
+                      "no framework to compute them from; a pocket is a cavity of a framework\n",
+                      component.name));
+    }
+
+    if (!computed.has_value())
+    {
+      computed = BlockingPockets::compute(framework.value(), forceField);
+    }
+
+    component.blockingPockets.insert(component.blockingPockets.end(), computed->begin(), computed->end());
+
+    // The spheres are listed like any others now, and a system built again from these components must not
+    // measure the framework a second time and list them twice.
+    component.automaticBlockingPockets = false;
   }
 }
 

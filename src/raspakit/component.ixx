@@ -142,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -294,6 +294,11 @@ export struct Component
   PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
   
   std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
+
+  /// Whether the blocking pockets are to be worked out from the framework rather than read. Set by
+  /// 'BlockingPockets' : 'auto', and cleared by the system once it has the framework and has done so; the
+  /// spheres depend on the framework, which does not exist yet when the components are read.
+  bool automaticBlockingPockets{false};
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 

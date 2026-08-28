@@ -235,16 +235,14 @@ void writeBlockingSpheres(const std::string& frameworkName, const std::string& d
 }
 
 
-void VoronoiBlockingSpheres::run(const PairInteractions& interactions, const Crystal& framework,
-                                 std::string probePseudoAtom, std::optional<std::size_t> numberOfSamples)
+void VoronoiBlockingSpheres::compute(const PairInteractions& interactions, const Crystal& framework,
+                                     std::string probePseudoAtom, std::optional<std::size_t> numberOfSamples)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
   {
     throw std::runtime_error("VoronoiBlockingSpheres: Unknown probe-atom type\n");
   }
-  double probeRadius = 0.5 * interactions[probeType.value()].sizeParameter;
-
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
   for (const CrystalAtom& atom : framework.atoms)
@@ -254,10 +252,20 @@ void VoronoiBlockingSpheres::run(const PairInteractions& interactions, const Cry
     radii.push_back(0.5 * interactions(type, type).sizeParameter);
   }
 
-  PoreAccessibility accessibility =
-      PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
+  compute(framework.unitCell, fractionalPositions, radii, 0.5 * interactions[probeType.value()].sizeParameter,
+          numberOfSamples);
+}
 
-  double volume = framework.unitCell.volume;
+void VoronoiBlockingSpheres::compute(const UnitCell& unitCell, const std::vector<double3>& fractionalPositions,
+                                     const std::vector<double>& radii, double probeRadius,
+                                     std::optional<std::size_t> numberOfSamples)
+{
+  this->probeRadius = probeRadius;
+
+  PoreAccessibility accessibility =
+      PoreAccessibility::create(unitCell, fractionalPositions, radii, probeRadius);
+
+  double volume = unitCell.volume;
 
   // The pockets come from the surface around them, which also says how far each may be blocked. Sampling is
   // what is left where that has to be refused: for the reasons the void fraction's division is refused, which
@@ -276,6 +284,12 @@ void VoronoiBlockingSpheres::run(const PairInteractions& interactions, const Cry
     std::size_t samples = numberOfSamples.value_or(static_cast<std::size_t>(200.0 * volume));
     spheres = computeBlockingSpheres(accessibility, samples);
   }
+}
+
+void VoronoiBlockingSpheres::run(const PairInteractions& interactions, const Crystal& framework,
+                                 std::string probePseudoAtom, std::optional<std::size_t> numberOfSamples)
+{
+  compute(interactions, framework, probePseudoAtom, numberOfSamples);
 
   writeBlockingSpheres(framework.name, "voronoi", probePseudoAtom, probeRadius, spheres, pockets, fallbackReason);
 }

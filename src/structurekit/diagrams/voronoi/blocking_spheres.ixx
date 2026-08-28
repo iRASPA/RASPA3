@@ -85,6 +85,26 @@ export struct VoronoiBlockingSpheres
   // The pockets the spheres stand for, when they were measured.
   std::vector<PocketGeometry> pockets;
 
+  // Half the probe's Lennard-Jones size, which is what the spheres were found against.
+  double probeRadius{0.0};
+
+  // The spheres and nothing else. This is the half a simulation wants, which asks for the pockets of the
+  // framework it is about to run in and holds the answer in memory: it has its own output to report them in,
+  // and a file named after the framework would be written once per component and read by nobody.
+  void compute(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
+               std::optional<std::size_t> numberOfSamples = std::nullopt);
+
+  // The same, against radii given as lengths rather than read off rows of the table.
+  //
+  // A probe is not obliged to be a pseudo-atom of the force field the structure was described by. The
+  // nitrogen the analyses measure with is a size and nothing else, and a force field written for a
+  // simulation has no reason to carry it; asking it to would refuse the structures that answer this best.
+  void compute(const UnitCell& unitCell, const std::vector<double3>& fractionalPositions,
+               const std::vector<double>& radii, double probeRadius,
+               std::optional<std::size_t> numberOfSamples = std::nullopt);
+
+  // The same, and then the `.block` file and the report beside it, which is what a run of the analysis on its
+  // own is for.
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            std::optional<std::size_t> numberOfSamples = std::nullopt);
 };

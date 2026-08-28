@@ -53,6 +53,7 @@ import intra_molecular_potentials;
 import chiral_center;
 import vdwparameters;
 import json;
+import blocking_pockets;
 
 namespace
 {
@@ -262,23 +263,11 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
                     parsed_data["AcentricFactor"].dump(), ex.what()));
   }
 
-  for (auto &[_, item] : parsed_data["BlockingPockets"].items())
+  if (parsed_data.contains("BlockingPockets"))
   {
-    if (!item.is_array())
-    {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
-    }
-
-    if (item.size() != 4)
-    {
-      throw std::runtime_error(
-          std::format("[Component reader]: item {} must be an array with four elements, "
-                      "an array with the x,y,z positions, and a radius\n",
-                      item.dump()));
-    }
-
-    std::vector<double> data = item.is_array() ? item.get<std::vector<double>>() : std::vector<double>{};
-    blockingPockets.push_back(double4(data[0], data[1], data[2], data[3]));
+    BlockingPockets::Specification specification = BlockingPockets::parse(parsed_data["BlockingPockets"]);
+    blockingPockets.insert(blockingPockets.end(), specification.pockets.begin(), specification.pockets.end());
+    automaticBlockingPockets = automaticBlockingPockets || specification.automatic;
   }
 
   std::size_t jsonNumberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
@@ -924,7 +913,8 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   }
   std::print(stream, "\n");
 
-  std::print(stream, "    number of blocking-pockets: {}\n", blockingPockets.size());
+  std::print(stream, "    number of blocking-pockets: {}{}\n", blockingPockets.size(),
+             automaticBlockingPockets ? " (still to be computed from the framework)" : "");
   for (std::size_t i = 0; i < blockingPockets.size(); ++i)
   {
     std::print(stream, "        fractional s_x,s_y,s_z: {},{},{} radius: {}\n", blockingPockets[i].x,
@@ -2105,6 +2095,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.filename;
 
   archive << c.blockingPockets;
+  archive << c.automaticBlockingPockets;
 
   archive << c.rigid;
   archive << c.translationalDegreesOfFreedom;
@@ -2204,6 +2195,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.filename;
 
   archive >> c.blockingPockets;
+  archive >> c.automaticBlockingPockets;
 
   archive >> c.rigid;
   archive >> c.translationalDegreesOfFreedom;

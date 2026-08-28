@@ -603,6 +603,19 @@ export struct System
    */
   void buildConformationReservoirs();
 
+  /**
+   * \brief Works out the blocking pockets of the components that asked for them.
+   *
+   * A component with 'BlockingPockets' : 'auto' has its spheres measured from the framework here, for a probe
+   * standing for the molecule, and the request is cleared once they are. This has to happen after the
+   * framework is in place and before a single molecule is put anywhere, which is the whole of the reason it
+   * is done by the system rather than by the reader: the spheres are a property of the framework, and the
+   * framework does not exist while the components are being read.
+   *
+   * \throws std::runtime_error If a component asking for them has no framework or no atoms.
+   */
+  void computeAutomaticBlockingPockets();
+
   bool insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const;
 
   void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle);

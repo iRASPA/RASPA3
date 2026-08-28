@@ -200,6 +200,10 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
     }
   }
 
+  // Before anything is placed: a molecule refused inside a pocket has to know where the pockets are, and the
+  // initial configuration is grown through the same refusal as every move after it.
+  computeAutomaticBlockingPockets();
+
   createInitialMolecules(initialpositions);
   initializeFixedLambdaFractionalMolecules();
   computeTailCorrectionCounts();
