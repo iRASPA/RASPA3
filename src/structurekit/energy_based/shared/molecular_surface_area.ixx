@@ -8,6 +8,7 @@ import uint3;
 import crystal;
 import pair_interactions;
 import grid_area_curve;
+import energy_shared_isosurface;
 import energy_shared_linear_probe;
 import energy_shared_energy_backend;
 import energy_shared_molecular_energy_grid;
@@ -53,6 +54,22 @@ export struct MolecularSurfaceArea
   std::size_t numberOfFreeEnergyTriangles{0};
   std::size_t numberOfMinimumEnergyTriangles{0};
   std::size_t numberOfRejectedTriangles{0};
+
+  // How each of the two areas divides by the shape of the surface it lies on. The energy field is a sum over
+  // the atoms and so smooth, which is what makes this a property of the surface rather than of the grid: on MFI
+  // the free-energy surface comes out 80% saddle and 20% concave at every grid from 96³ to 320³, moving by
+  // about a part in a thousand over that range.
+  //
+  // The minimum-energy surface might have been expected to misbehave, a least over a discrete set of
+  // orientations being kinked wherever the best orientation changes over, and a kink is the same thing that
+  // makes the clearance field's split meaningless. It does not, or not to any degree worth worrying about:
+  // carbon dioxide in MFI over forty orientations puts twenty times as much of the minimum-energy surface in
+  // the unresolved column as of the free-energy one, and twenty times almost nothing is still almost nothing,
+  // sixty triangles out of a hundred and eighty thousand. The ridges are there but they are gentle compared
+  // with the crease of a distance field. The area of the minimum-energy surface remains the thing to distrust
+  // about it, not the shape.
+  IsosurfaceArea freeEnergySurface;
+  IsosurfaceArea minimumEnergySurface;
 
   // The area at every level rather than at one, on the free-energy landscape.
   //

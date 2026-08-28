@@ -60,6 +60,7 @@ import energy_shared_linear_probe;
 import energy_shared_molecular_energy_barrier;
 import energy_shared_molecular_void_fraction;
 import energy_shared_molecular_surface_area;
+import energy_shared_well_surface;
 import energy_shared_pore_size_distribution;
 import energy_shared_pore_analysis;
 import energy_shared_pore_volume;
@@ -111,6 +112,7 @@ void CommandLine::run(int argc, char *argv[])
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
   double temperature{ 298.0 };
+  double longest_walk{ defaultLongestWalk };
   double blocking_threshold{ 30.0 };
   double brute_force_spacing{ 0.15 };
   std::size_t brute_force_samples{ 20000 };
@@ -174,6 +176,15 @@ void CommandLine::run(int argc, char *argv[])
            [&state](std::string const &) { state.set(State::SurfaceArea); })
       .reg({"-v", "--void-fraction"}, argparser::no_argument, "Compute void fraction",
            [&state](std::string const &) { state.set(State::VoidFraction); })
+      .reg({"--well-surface"}, argparser::no_argument,
+           "Compute the adsorption surface: the locus of energy wells, found by stepping out from the zero "
+           "surface along the wall normal until the energy stops falling. Where a surface area at a fixed level "
+           "says how much room a molecule may not enter, this says how much it can sit on",
+           [&state](std::string const &) { state.set(State::WellSurface); })
+      .reg({"--longest-walk"}, argparser::required_argument,
+           "How far a ray of the well surface may be walked before the search for a well is given up [Å], "
+           "default 6",
+           [&longest_walk](std::string const &arg) { longest_walk = std::stod(arg); })
       .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
            [&state](std::string const &) { state.set(State::PSD); })
       .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
@@ -780,6 +791,24 @@ void CommandLine::run(int argc, char *argv[])
           std::cout << "surface: " << sa.gravimetricArea << " m^2/g" << std::endl;
         }
       }
+    }
+
+    if (state.test(CommandLine::State::WellSurface))
+    {
+      // The energy route only. There is no geometric counterpart to this and there cannot be one: a hard-sphere
+      // surface has no well to walk to, the energy being zero everywhere the probe fits and infinite where it
+      // does not.
+      LinearProbe molecule = energyMolecule("well surface", "probe-N2");
+      std::cout << "Compute the adsorption surface, the locus of energy wells, for " << molecule.name << std::endl;
+
+      MolecularWellSurface wells;
+      wells.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, energyOrientations(),
+                temperature, longest_walk);
+
+      std::cout << "well surface " << wells.surface.gravimetricArea << " m^2/g, " << wells.surface.compression()
+                << " of the zero surface it was mapped from, mean well depth "
+                << wells.surface.meanDepth * Units::EnergyToKelvin << " K, Boltzmann-weighted area "
+                << wells.surface.gravimetricWeightedArea << " m^2/g" << std::endl;
     }
 
     if (state.test(CommandLine::State::VoidFraction))

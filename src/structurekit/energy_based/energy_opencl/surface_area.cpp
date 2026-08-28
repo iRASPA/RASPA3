@@ -23,6 +23,7 @@ import skspacegroupdatabase;
 import pair_interactions;
 import crystal;
 import units;
+import surface_curvature;
 
 import energy_shared_isosurface;
 
@@ -504,11 +505,13 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
                 framework.mass
          << " [m^2/g]" << std::endl;
   myfile << 1.0e4 * accumulated_surface_area / framework.unitCell.volume << " [m^2/cm^3]" << std::endl;
+  writeIsosurfaceCurvature(myfile, surface, "Curvature split:");
   myfile.close();
 }
 
 std::vector<double3> EnergyOpenCLSurfaceArea::trianglesOfIsosurface(std::span<const float> field, uint3 grid_size,
-                                                                    double isoValue)
+                                                                    double isoValue,
+                                                                    std::vector<double3> *gradients)
 {
   cl_int err = 0;
   std::size_t numberOfGridPoints = static_cast<std::size_t>(grid_size.x) * static_cast<std::size_t>(grid_size.y) *
@@ -769,16 +772,33 @@ std::vector<double3> EnergyOpenCLSurfaceArea::trianglesOfIsosurface(std::span<co
     clReleaseMemObject(buffer);
   }
 
-  // The kernel writes each triangle as three corners three floats apart, in fractional coordinates. Adding
-  // them up is the same arithmetic whichever extractor found them, so it is done in one place.
+  // The kernel writes each triangle as three vertices three float4s apart, and each vertex as a position, then
+  // a normal, then a slot nothing uses. Adding the positions up is the same arithmetic whichever extractor
+  // found them, so it is done in one place.
   std::vector<double3> corners;
   corners.reserve(3 * numberOfTriangles);
+  if (gradients != nullptr)
+  {
+    gradients->clear();
+    gradients->reserve(3 * numberOfTriangles);
+  }
+
   for (std::size_t i = 0; i + 6 < triangleData.size(); i += 9)
   {
     for (std::size_t corner : {i, i + 3, i + 6})
     {
       corners.emplace_back(static_cast<double>(triangleData[corner].x), static_cast<double>(triangleData[corner].y),
                            static_cast<double>(triangleData[corner].z));
+
+      // The gradient in the next slot is in the field's own sense, the same way round as the processor
+      // extractor stores it, so it is taken as it comes. Its length is not: the kernel neither halves the
+      // difference nor normalises it, and only the direction is ever used.
+      if (gradients != nullptr)
+      {
+        gradients->emplace_back(static_cast<double>(triangleData[corner + 1].x),
+                                static_cast<double>(triangleData[corner + 1].y),
+                                static_cast<double>(triangleData[corner + 1].z));
+      }
     }
   }
 
@@ -787,10 +807,11 @@ std::vector<double3> EnergyOpenCLSurfaceArea::trianglesOfIsosurface(std::span<co
 
 
 IsosurfaceArea EnergyOpenCLSurfaceArea::areaOfIsosurface(const Crystal &framework, std::span<const float> field,
-                                                        uint3 grid_size, double isoValue)
+                                                         uint3 grid_size, double isoValue)
 {
-  std::vector<double3> corners = this->trianglesOfIsosurface(field, grid_size, isoValue);
-  return accumulateTriangleAreas(framework.unitCell.cell, grid_size, corners);
+  std::vector<double3> gradients;
+  std::vector<double3> corners = this->trianglesOfIsosurface(field, grid_size, isoValue, &gradients);
+  return accumulateTriangleAreas(framework.unitCell.cell, grid_size, corners, gradients, FieldSense::GrowsIntoSolid);
 }
 
 const char *EnergyOpenCLSurfaceArea::energyGridKernelSource = R"foo(
@@ -855,6 +876,23 @@ std::string EnergyOpenCLSurfaceArea::marchingCubesKernelSource = std::string(R"f
 #pragma OPENCL EXTENSION cl_khr_3d_image_writes : enable
 
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
+
+// A note on the vertex normals the traverseHP kernels write, because there are two extractors here and they
+// have to agree.
+//
+// What is written beside each vertex is the field's gradient there, by central differences on the grid and
+// interpolated along the cube edge the vertex sits on, in the *field's own sense*: f(i+1) - f(i-1), so it
+// points towards larger values of the field. On an energy field that is into the wall. The processor extractor
+// forms it the same way round, so the two need no reconciling and a consumer can be written once.
+//
+// This used to be stored negated, which happened to point out of the wall on an energy field and so was right
+// for lighting a rendered surface, and the host had to negate it back to compare the two extractors. The sense
+// now belongs to whoever asks: `FieldSense` on the host says which way the field grows relative to the void and
+// turns the gradient into an outward normal accordingly. Anything rendering this buffer has to negate it.
+//
+// The magnitude differs between the two extractors and always did: this one leaves the difference unscaled,
+// twice the true derivative, while the processor one halves it and then normalises. Only the direction is ever
+// used, so neither is wrong, and nothing downstream may rely on the length.
 
 
 // Cube description:
@@ -1298,23 +1336,24 @@ __kernel void traverseHP16(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1327,7 +1366,7 @@ __kernel void traverseHP16(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);
@@ -1376,23 +1415,24 @@ __kernel void traverseHP32(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1405,7 +1445,7 @@ __kernel void traverseHP32(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);
@@ -1456,23 +1496,24 @@ __kernel void traverseHP64(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1485,7 +1526,7 @@ __kernel void traverseHP64(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);
@@ -1539,23 +1580,24 @@ __kernel void traverseHP128(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1568,7 +1610,7 @@ __kernel void traverseHP128(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);
@@ -1623,23 +1665,24 @@ __kernel void traverseHP256(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1652,7 +1695,7 @@ __kernel void traverseHP256(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);
@@ -1709,23 +1752,24 @@ __kernel void traverseHP512(
     const int3 point0 = (int3)(cubePosition.x + offsets3[edge*6], cubePosition.y + offsets3[edge*6+1], cubePosition.z + offsets3[edge*6+2]);
     const int3 point1 = (int3)(cubePosition.x + offsets3[edge*6+3], cubePosition.y + offsets3[edge*6+4], cubePosition.z + offsets3[edge*6+5]);
 
-    // compute normal
-    const float4 forwardDifference0 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
+    // the field's gradient at either end of the edge, in the field's own sense (see the note at the head
+    // of this source)
+    const float4 centralDifference0 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x+1, point0.y,   point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x-1, point0.y,   point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y+1, point0.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y-1, point0.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point0.x,   point0.y,   point0.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
-    const float4 forwardDifference1 = (float4)(
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
-                                               (float)(-read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x+
-                                                        read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
+    const float4 centralDifference1 = (float4)(
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x+1, point1.y,   point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x-1, point1.y,   point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y+1, point1.z,   0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y-1, point1.z,   0) % dimensions).x),
+                                               (float)(read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z+1, 0) % dimensions).x-
+                                                       read_imagef(rawData, sampler, (int4)(point1.x,   point1.y,   point1.z-1, 0) % dimensions).x),
                                                0.0f
                                                );
 
@@ -1738,7 +1782,7 @@ __kernel void traverseHP512(
     const float4 vertex = (float4)(point0.x, point0.y, point0.z, 1.0f) + ((float4)(point1.x, point1.y, point1.z,0.0f) - (float4)(point0.x, point0.y, point0.z,0.0f)) * diff;
     const float4 scaledVertex = (float4)(vertex.x/(float)(dimensions.x),vertex.y/(float)(dimensions.y),vertex.z/(float)(dimensions.z),1.0f);
 
-    const float4 normal = forwardDifference0 + (forwardDifference1 - forwardDifference0) * diff;
+    const float4 normal = centralDifference0 + (centralDifference1 - centralDifference0) * diff;
 
     vstore4(scaledVertex, target*9 + vertexNr*3, VBOBuffer);
     vstore4(normal, target*9 + vertexNr*3 + 1, VBOBuffer);

@@ -8,6 +8,7 @@ import uint3;
 import double3;
 import crystal;
 import pair_interactions;
+import surface_curvature;
 import opencl_clearance_grid;
 import grid_connected_components;
 
@@ -33,6 +34,19 @@ export struct GridSurfaceArea
 
   // Area attributed to each atom of the unit cell, in the order of `framework.atoms`.
   std::vector<double> atomSurfaceArea;
+
+  // The same area divided by the shape of the sheet rather than by what lies behind it. Marching cubes stores
+  // the field's gradient at every vertex it places, and three of those to a triangle are enough to estimate
+  // the two principal curvatures there, so the split costs a three-by-three solve per triangle and no extra
+  // pass over the field. It says how much of the wall bulges into the void and how much of it is the inside of
+  // a pocket, which is a different question from the one the channel/pocket split above answers.
+  CurvatureAreas curvature;
+  CurvatureAreas accessibleCurvature;
+  CurvatureAreas inaccessibleCurvature;
+
+  // Where the classification stops believing itself. The upper bound is set from the grid spacing, a curvature
+  // whose radius is finer than a voxel being the crease of the field rather than a shape the grid resolved.
+  CurvatureBands curvatureBands;
 
   std::size_t numberOfTriangles{0};
   double seconds{0.0};

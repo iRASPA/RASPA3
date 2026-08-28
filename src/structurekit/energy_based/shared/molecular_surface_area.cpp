@@ -42,6 +42,8 @@ MolecularSurfaceArea MolecularSurfaceArea::fromGrid(const EnergyBackend &backend
   result.numberOfFreeEnergyTriangles = free.numberOfTriangles;
   result.numberOfMinimumEnergyTriangles = least.numberOfTriangles;
   result.numberOfRejectedTriangles = free.numberOfRejectedTriangles + least.numberOfRejectedTriangles;
+  result.freeEnergySurface = free;
+  result.minimumEnergySurface = least;
 
   if (framework.mass > 0.0)
   {
@@ -166,6 +168,9 @@ void MolecularSurfaceArea::run(const EnergyBackend &backend, const PairInteracti
   std::print(myfile, "# number of orientations before either is quoted. The minimum-energy area is the worse\n");
   std::print(myfile, "# behaved of the two: a least over a discrete set of orientations is kinked wherever the\n");
   std::print(myfile, "# best orientation changes, and those kinks do not smooth away with more of them.\n");
+
+  writeIsosurfaceCurvature(myfile, this->freeEnergySurface, "Free energy curvature:");
+  writeIsosurfaceCurvature(myfile, this->minimumEnergySurface, "Minimum energy curvature:");
 
   if (!this->curve.points.empty())
   {

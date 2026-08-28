@@ -3,6 +3,8 @@ add_executable(unit_tests_structurekit
   grid_blocking_cover.cpp
   grid_percolation.cpp
   grid_pore_size.cpp
+                       grid_surface_curvature.cpp
+                       energy_well_surface.cpp
   structure_parallel.cpp
   exact_sphere_sweep.cpp
   exact_union_volume.cpp

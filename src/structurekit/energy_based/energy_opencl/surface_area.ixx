@@ -49,7 +49,19 @@ export struct EnergyOpenCLSurfaceArea
   // free-energy field gives the surface a whole molecule sees once its orientations are averaged over.
   // The triangles themselves, three corners to a triangle, in fractional coordinates. Handing these back is
   // what lets a surface be divided among the atoms rather than only measured.
-  std::vector<double3> trianglesOfIsosurface(std::span<const float> field, uint3 gridSize, double isoValue);
+  //
+  // When `gradients` is given it is filled with the field's gradient at each of those same corners, held per
+  // grid step and pointing towards larger values of the field, which on an energy field is into the wall. That
+  // is the same sense the processor extractor uses, so the two are interchangeable and a consumer of either can
+  // be written once; `FieldSense` on the far side is what turns a gradient into an outward normal.
+  //
+  // Nothing has to be recomputed or fetched to obtain it: the kernel already writes a gradient beside every
+  // vertex it emits, and the host already reads the whole buffer back and was discarding those slots.
+  //
+  // The length is not comparable between the two extractors --- this one leaves the difference unscaled and the
+  // processor one normalises --- and nothing may depend on it.
+  std::vector<double3> trianglesOfIsosurface(std::span<const float> field, uint3 gridSize, double isoValue,
+                                             std::vector<double3> *gradients = nullptr);
 
   IsosurfaceArea areaOfIsosurface(const Crystal &framework, std::span<const float> field, uint3 grid_size,
                                   double isoValue);

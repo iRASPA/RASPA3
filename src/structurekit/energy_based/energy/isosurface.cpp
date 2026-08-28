@@ -10,11 +10,12 @@ import double3x3;
 import marching_cubes;
 import unit_cell;
 import crystal;
+import surface_curvature;
 
 import energy_shared_isosurface;
 
 std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const float> field, uint3 gridSize,
-                                                             double isoValue)
+                                                             double isoValue, std::vector<double3> *gradients)
 {
   std::size_t numberOfGridPoints = gridSize.x * gridSize.y * gridSize.z;
   if (field.size() < numberOfGridPoints)
@@ -53,6 +54,12 @@ std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const flo
   // grid rather than by the extended one.
   std::vector<double3> corners;
   corners.reserve(3 * cube.ntrigs());
+  if (gradients != nullptr)
+  {
+    gradients->clear();
+    gradients->reserve(3 * cube.ntrigs());
+  }
+
   for (std::size_t i = 0; i < cube.ntrigs(); ++i)
   {
     const Triangle *triangle = cube.trig(static_cast<std::ptrdiff_t>(i));
@@ -61,6 +68,11 @@ std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const flo
       const Vertex *vertex = cube.vert(index);
       corners.emplace_back(vertex->x / static_cast<double>(gridSize.x), vertex->y / static_cast<double>(gridSize.y),
                            vertex->z / static_cast<double>(gridSize.z));
+
+      // The vertex normal is the field's own gradient, by central differences on the grid and normalised. The
+      // magnitude is gone but the direction is what a curvature needs, and it is in the field's sense: for an
+      // energy field it points into the wall.
+      if (gradients != nullptr) gradients->emplace_back(vertex->nx, vertex->ny, vertex->nz);
     }
   }
 
@@ -71,6 +83,7 @@ std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const flo
 IsosurfaceArea EnergyIsosurface::areaOfIsosurface(const Crystal &framework, std::span<const float> field,
                                                   uint3 gridSize, double isoValue)
 {
-  std::vector<double3> corners = EnergyIsosurface::trianglesOfIsosurface(field, gridSize, isoValue);
-  return accumulateTriangleAreas(framework.unitCell.cell, gridSize, corners);
+  std::vector<double3> gradients;
+  std::vector<double3> corners = EnergyIsosurface::trianglesOfIsosurface(field, gridSize, isoValue, &gradients);
+  return accumulateTriangleAreas(framework.unitCell.cell, gridSize, corners, gradients, FieldSense::GrowsIntoSolid);
 }

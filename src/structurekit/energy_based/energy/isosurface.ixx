@@ -23,7 +23,17 @@ export struct EnergyIsosurface
 {
   // The triangles themselves, three corners to a triangle, in fractional coordinates. Handing these back is
   // what lets a surface be divided among the atoms rather than only measured.
-  static std::vector<double3> trianglesOfIsosurface(std::span<const float> field, uint3 gridSize, double isoValue);
+  //
+  // When `gradients` is given it is filled with the field's gradient at each of those same corners, held per
+  // grid step and pointing towards larger values of the field, which on an energy field is into the wall. The
+  // GPU extractor uses the same sense, so the two are interchangeable; `FieldSense` on the far side is what
+  // turns a gradient into an outward normal.
+  //
+  // That is what a curvature is estimated from, and marching cubes has it already: it interpolates the gradient
+  // along the cube edge it put the vertex on, so nothing is recomputed to obtain it. The length is normalised
+  // here and is not on the GPU, so nothing may depend on it.
+  static std::vector<double3> trianglesOfIsosurface(std::span<const float> field, uint3 gridSize, double isoValue,
+                                                   std::vector<double3> *gradients = nullptr);
 
   static IsosurfaceArea areaOfIsosurface(const Crystal &framework, std::span<const float> field, uint3 gridSize,
                                          double isoValue);

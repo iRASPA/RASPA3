@@ -38,7 +38,8 @@ enum State : std::uint8_t
   BlockingSpheres = 11, // Spheres covering the pockets a probe cannot reach
   PercolationBarrier = 12, // The energetic counterpart of Df: the saddle a probe crosses to get through
   BruteForce = 13, // The exact routes worked out again from the atoms alone, and the two set against each other
-  Last = 14
+  WellSurface = 14, // The locus of energy wells: the surface a molecule sits on rather than the one it may not enter
+  Last = 15
 };
 
 void run(int argc, char* argv[]);
