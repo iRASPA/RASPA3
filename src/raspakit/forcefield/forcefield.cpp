@@ -262,6 +262,13 @@ ForceField::ForceField(std::string filePath)
   {
     mixingRule = MixingRule::Jorgensen;
   }
+  if (parsed_data.value("MixingRule", "") == "SixthPower" ||
+      parsed_data.value("MixingRule", "") == "Waldman-Hagler" ||
+      parsed_data.value("MixingRule", "") == "sixthpower" ||
+      parsed_data.value("MixingRule", "") == "waldman-hagler")
+  {
+    mixingRule = MixingRule::SixthPower;
+  }
 
   // Apply mixing rule and precompute potentials
   applyMixingRule();
@@ -992,6 +999,55 @@ void ForceField::applyMixingRule()
         }
       }
       break;
+    case MixingRule::SixthPower:
+      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+      {
+        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
+        {
+          VDWParameters::Type typeI = data[i * numberOfPseudoAtoms + i].type;
+          VDWParameters::Type typeJ = data[j * numberOfPseudoAtoms + j].type;
+
+          if ((typeI == VDWParameters::Type::CFFEpsilonSigma && typeJ == VDWParameters::Type::CFFEpsilonSigma) ||
+              (typeI == VDWParameters::Type::LennardJones && typeJ == VDWParameters::Type::LennardJones))
+          {
+            double epsI = data[i * numberOfPseudoAtoms + i].parameters.x;
+            double sigI = data[i * numberOfPseudoAtoms + i].parameters.y;
+            double epsJ = data[j * numberOfPseudoAtoms + j].parameters.x;
+            double sigJ = data[j * numberOfPseudoAtoms + j].parameters.y;
+
+            double s6I = std::pow(sigI, 6.0);
+            double s6J = std::pow(sigJ, 6.0);
+            double s6Sum = s6I + s6J;
+
+            double mixSigma = std::pow(0.5 * s6Sum, 1.0 / 6.0);
+            double mixEps = (s6Sum > 0.0)
+                                ? 2.0 * std::sqrt(epsI * epsJ) * (std::pow(sigI, 3.0) * std::pow(sigJ, 3.0)) / s6Sum
+                                : 0.0;
+
+            VDWParameters::Type crossType = (typeI == VDWParameters::Type::CFFEpsilonSigma)
+                                                ? VDWParameters::Type::CFFEpsilonSigma
+                                                : VDWParameters::Type::LennardJones;
+
+            data[i * numberOfPseudoAtoms + j].parameters.x = mixEps;
+            data[i * numberOfPseudoAtoms + j].parameters.y = mixSigma;
+            data[i * numberOfPseudoAtoms + j].type = crossType;
+
+            data[j * numberOfPseudoAtoms + i].parameters.x = mixEps;
+            data[j * numberOfPseudoAtoms + i].parameters.y = mixSigma;
+            data[j * numberOfPseudoAtoms + i].type = crossType;
+          }
+          if ((typeI == VDWParameters::Type::None) || (typeJ == VDWParameters::Type::None))
+          {
+            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
+          }
+        }
+      }
+      break;
   }
 
   // set all interactions without interaction energy or length to none interactions
@@ -999,10 +1055,12 @@ void ForceField::applyMixingRule()
   {
     for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
     {
-      if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+      if (((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones ||
+            data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::CFFEpsilonSigma) &&
            (data[i * numberOfPseudoAtoms + i].parameters.x == 0.0 ||
             data[i * numberOfPseudoAtoms + i].parameters.y == 0.0)) ||
-          (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones &&
+          ((data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones ||
+            data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::CFFEpsilonSigma) &&
            (data[j * numberOfPseudoAtoms + j].parameters.x == 0.0 ||
             data[j * numberOfPseudoAtoms + j].parameters.y == 0.0)))
       {
@@ -1233,6 +1291,9 @@ std::string ForceField::printForceFieldStatus() const
       break;
     case ForceField::MixingRule::Jorgensen:
       std::print(stream, "Mixing-rule: Jorgensen\n");
+      break;
+    case ForceField::MixingRule::SixthPower:
+      std::print(stream, "Mixing-rule: SixthPower (Waldman-Hagler)\n");
       break;
     default:
       std::unreachable();
