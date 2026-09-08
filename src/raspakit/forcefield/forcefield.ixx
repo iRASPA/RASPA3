@@ -44,7 +44,8 @@ export struct ForceField
   enum class MixingRule : int
   {
     Lorentz_Berthelot = 0,  ///< Lorentz-Berthelot mixing rule.
-    Jorgensen = 1
+    Jorgensen = 1,          ///< Jorgensen mixing rule.
+    SixthPower = 2          ///< Sixth-power (Waldman-Hagler) mixing rule for Class-II/CFF.
   };
 
   enum class PotentialEnergySurfaceType : std::size_t

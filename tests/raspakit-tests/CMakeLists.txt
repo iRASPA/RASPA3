@@ -56,6 +56,7 @@ add_executable(unit_tests_raspakit
   polarization_phonon.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
+  cff_cross_mixing.cpp
   internal_potentials.cpp
   janaf.cpp
   nasa_polynomials.cpp
