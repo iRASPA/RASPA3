@@ -25,16 +25,15 @@ import framework;
 // grid, no sampling and no accelerator, so it costs the same on every machine and gives the same spheres.
 export namespace BlockingPockets
 {
-/// The size of the nitrogen every structure is measured with, in Ångström. It is the probe the pore analyses
-/// report against by default and the one the literature quotes accessible volumes and surface areas at, so a
-/// pocket called closed here is a pocket closed by the same standard as everything else said about the
-/// framework. A force field written for a simulation carries the guests it simulates and no probes, so this
-/// is a length of its own rather than a pseudo-atom to be looked up; where the force field does define
-/// 'probe-N2', that definition is preferred, since naming it is how a user overrides this.
-inline constexpr double nitrogenProbeSizeParameter = 3.681;
+/// The size of the helium every structure is measured with, in Ångström. It is the probe the pore-volume
+/// analyses report against by default, so a pocket called closed here is a pocket closed to the same probe
+/// that defines the accessible void. A force field written for a simulation carries the guests it simulates
+/// and no probes, so this is a length of its own rather than a pseudo-atom to be looked up; where the force
+/// field does define 'probe-He', that definition is preferred, since naming it is how a user overrides this.
+inline constexpr double heliumProbeSizeParameter = 2.64;
 
 /// The name looked for in the force field before falling back on the size above.
-inline constexpr std::string_view nitrogenProbeName = "probe-N2";
+inline constexpr std::string_view heliumProbeName = "probe-He";
 
 /**
  * \struct Specification
@@ -78,7 +77,7 @@ Specification parse(const nlohmann::basic_json<nlohmann::raspa_map> &item);
 std::vector<double4> readBlockingPocketFile(const std::string &fileName);
 
 /**
- * \brief Computes the blocking pockets of a framework, as seen by a nitrogen probe.
+ * \brief Computes the blocking pockets of a framework, as seen by a helium probe.
  *
  * Inflates the framework atoms by the probe, splits the void into what the probe can reach and what it
  * cannot, and covers each unreachable pocket with a sphere at its centroid, of the lesser of the radius that

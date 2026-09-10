@@ -1423,7 +1423,7 @@ and `"BinaryInteractions"` are read from the force field file
 
         "BlockingPockets" : "auto"
 
-    The void is split into what a nitrogen probe can reach and what it cannot,
+    The void is split into what a helium probe can reach and what it cannot,
     and each unreachable cavity is covered by a sphere at its centre, of the
     lesser of the radius that holds the cavity and the radius past which the
     sphere would reach a channel. The spheres are a property of the framework

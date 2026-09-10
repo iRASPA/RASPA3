@@ -107,12 +107,12 @@ std::vector<double4> compute(const Framework &framework, const ForceField &force
         framework.name));
   }
 
-  // Nitrogen, at the size the force field gives it where it has one and at the standard size where it does
+  // Helium, at the size the force field gives it where it has one and at the standard size where it does
   // not, which is the case for every force field written for a simulation rather than for an analysis.
-  std::optional<std::size_t> probeType = forceField.findPseudoAtom(std::string(nitrogenProbeName));
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(std::string(heliumProbeName));
   double probeRadius = 0.5 * (probeType.has_value()
                                   ? forceField(probeType.value(), probeType.value()).sizeParameter()
-                                  : nitrogenProbeSizeParameter);
+                                  : heliumProbeSizeParameter);
 
   VoronoiBlockingSpheres blocking{};
   blocking.compute(unitCell, fractionalPositions, radii, probeRadius);
