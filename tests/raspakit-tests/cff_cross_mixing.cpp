@@ -119,7 +119,7 @@ TEST(cff_cross_mixing, SpatialDerivativesMatchAnalytic)
   {
     double rr = r * r;
     Potentials::PairDerivatives<1> val = Potentials::potentialVDW<1>(ff, 1.0, 1.0, rr, 0, 1);
-    double gradFactor = val.radialFirstDerivativeFactor * Units::EnergyToKelvin;
+    double gradFactor = val.firstDerivativeFactor * Units::EnergyToKelvin;
     double expectedGradFactor = analyticGradientFactor96(r, expectedEps, expectedSigma);
     EXPECT_NEAR(gradFactor, expectedGradFactor, std::max(1e-6, 1e-6 * std::abs(expectedGradFactor)))
         << " at r = " << r;

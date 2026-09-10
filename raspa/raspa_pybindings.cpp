@@ -461,7 +461,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<CIFReader> cifReader(m, "CIFReader");
   cifReader
-      .def("expand_defined_atoms_to_unit_cell", &CIFReader::expandDefinedAtomsToUnitCell,
+      .def_static("expand_defined_atoms_to_unit_cell", &CIFReader::expandDefinedAtomsToUnitCell,
            nanobind::arg("simulation_box"), nanobind::arg("space_group_hall_number"),
            nanobind::arg("defined_atoms"),
            nanobind::arg("symmetry_operation_strings") = std::vector<std::string>{});

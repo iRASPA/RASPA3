@@ -285,7 +285,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<CIFReader> cifReader(m, "CIFReader");
   cifReader
-      .def("expand_defined_atoms_to_unit_cell", &CIFReader::expandDefinedAtomsToUnitCell,
+      .def_static("expand_defined_atoms_to_unit_cell", &CIFReader::expandDefinedAtomsToUnitCell,
            pybind11::arg("simulation_box"), pybind11::arg("space_group_hall_number"),
            pybind11::arg("defined_atoms"),
            pybind11::arg("symmetry_operation_strings") = std::vector<std::string>{});
