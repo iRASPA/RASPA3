@@ -32,6 +32,7 @@ import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
 import json;
+import isotherm_bet;
 
 // The analysis-property writers (RDFs, density grid, histograms, molecule properties) gate
 // themselves on their own 'writeEvery'; a cycle argument of 0 forces the write (used for the
@@ -83,14 +84,16 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
       sampleReweightingEvery(std::max(1uz, reader.sampleReweightingEvery)),
       reweightingTemperatures(reader.reweightingTemperatures),
       reweightingNumberOfPressures(reader.reweightingNumberOfPressures),
+      computeBET(reader.computeBET),
+      autoExternalPressures(reader.autoExternalPressures),
+      autoReweightingPressureRange(reader.autoReweightingPressureRange),
+      autoMacroStateMaximum(reader.autoMacroStateMaximum),
       temperatures(reader.parallelTemperingTemperatures),
       pressures(reader.parallelTemperingPressures),
       numberOfTemperatures(temperatures.size()),
       numberOfPressures(pressures.size()),
       numberOfReplicas(numberOfTemperatures * numberOfPressures)
 {
-  // the reweighting evaluates one sampled potential energy U(x) at all the temperatures, so the
-  // force field must not depend on the temperature
   for (const VDWParameters& parameter : reader.systems.front().forceField.data)
   {
     if (parameter.type == VDWParameters::Type::FeynmannHibbs)
@@ -102,18 +105,122 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
     }
   }
 
-  // the reweighted isotherms default to the simulated temperatures and the simulated pressure span
+  System templateSystem = std::move(reader.systems.front());
+  reader.systems.clear();
+
+  if (temperatures.empty())
+  {
+    temperatures.push_back(templateSystem.temperature);
+  }
+
+  if (autoExternalPressures || autoReweightingPressureRange)
+  {
+    nitrogenBETPressurePlan =
+        planNitrogenBETPressures(templateSystem, temperatures.front(), reader.numberOfThreads);
+    if (autoExternalPressures)
+    {
+      pressures = nitrogenBETPressurePlan->samplingPressures;
+    }
+    if (autoReweightingPressureRange)
+    {
+      reweightingPressureRange =
+          std::make_pair(nitrogenBETPressurePlan->lowestPressure, nitrogenBETPressurePlan->highestPressure);
+      if (!reader.reweightingNumberOfPressuresSpecified)
+      {
+        reweightingNumberOfPressures = nitrogenBETPressurePlan->whamReweightingNumberOfPressures;
+      }
+    }
+  }
+
+  if (autoMacroStateMaximum)
+  {
+    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem);
+    templateSystem.tmmc.maxMacrostate =
+        std::max(templateSystem.tmmc.minMacrostate + 1uz, nitrogenBETFillingCeiling->maxMacrostate);
+  }
+
+  numberOfTemperatures = temperatures.size();
+  numberOfPressures = pressures.size();
+  numberOfReplicas = numberOfTemperatures * numberOfPressures;
+
+  if (temperatures.empty() || pressures.empty())
+  {
+    throw std::runtime_error(
+        "[ReweightedHistogram]: a non-empty temperature ladder and pressure ladder are required\n");
+  }
+  if (numberOfReplicas < 2)
+  {
+    throw std::runtime_error(
+        "[ReweightedHistogram]: at least two (temperature, pressure) grid points are required\n");
+  }
+
+  if (reweightingTemperatures.empty())
+  {
+    reweightingTemperatures = temperatures;
+  }
+  if (!autoReweightingPressureRange)
+  {
+    reweightingPressureRange =
+        reader.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
+  }
+
+  initializeReplicas(std::move(templateSystem));
+  numberOfStepsPerCycle = std::max(1uz, systems.front().tmmc.maxMacrostate);
+}
+
+ReweightedHistogram::ReweightedHistogram(System templateSystem, std::vector<double> temperatures_,
+                                         std::vector<double> pressures_, ReweightedHistogramParameters parameters)
+    : random(parameters.randomSeed),
+      numberOfProductionCycles(parameters.numberOfProductionCycles),
+      numberOfPreInitializationCycles(parameters.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(parameters.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(parameters.numberOfEquilibrationCycles),
+      printEvery(parameters.printEvery),
+      optimizeMCMovesEvery(parameters.optimizeMCMovesEvery),
+      rescaleWangLandauEvery(parameters.rescaleWangLandauEvery),
+      writeBinaryRestartEvery(parameters.writeBinaryRestartEvery),
+      numberOfBlocks(parameters.numberOfBlocks),
+      parallelTemperingSwapEvery(parameters.parallelTemperingSwapEvery),
+      sampleReweightingEvery(std::max(1uz, parameters.sampleReweightingEvery)),
+      reweightingTemperatures(std::move(parameters.reweightingTemperatures)),
+      reweightingNumberOfPressures(parameters.reweightingNumberOfPressures),
+      computeBET(parameters.computeBET),
+      temperatures(std::move(temperatures_)),
+      pressures(std::move(pressures_)),
+      numberOfTemperatures(temperatures.size()),
+      numberOfPressures(pressures.size()),
+      numberOfReplicas(numberOfTemperatures * numberOfPressures)
+{
+  if (temperatures.empty() || pressures.empty())
+  {
+    throw std::runtime_error(
+        "[ReweightedHistogram]: a non-empty temperature ladder and pressure ladder are required\n");
+  }
+
+  for (const VDWParameters& parameter : templateSystem.forceField.data)
+  {
+    if (parameter.type == VDWParameters::Type::FeynmannHibbs)
+    {
+      throw std::runtime_error(
+          std::format("[ReweightedHistogram]: temperature-dependent potentials (Feynman-Hibbs) are not "
+                      "compatible with histogram reweighting (a sampled energy U(x) is reused at all "
+                      "temperatures)\n"));
+    }
+  }
+
   if (reweightingTemperatures.empty())
   {
     reweightingTemperatures = temperatures;
   }
   reweightingPressureRange =
-      reader.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
+      parameters.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
 
-  // the single declared system is replicated into one replica per (temperature, pressure) grid point
-  System templateSystem = std::move(reader.systems.front());
-  reader.systems.clear();
+  initializeReplicas(std::move(templateSystem));
+  numberOfStepsPerCycle = std::max(1uz, systems.front().tmmc.maxMacrostate);
+}
 
+void ReweightedHistogram::initializeReplicas(System templateSystem)
+{
   systems.reserve(numberOfReplicas);
   for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
   {
@@ -121,7 +228,6 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
   }
   systems.push_back(std::move(templateSystem));
 
-  // replica (t, p) is pinned at temperature T_t and pressure P_p, with its own random-number stream
   randoms.reserve(numberOfReplicas);
   for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
   {
@@ -135,14 +241,6 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
       system.temperature = T;
       system.beta = 1.0 / (Units::KB * T);
 
-      system.input_pressure = P;
-      system.pressure = P / Units::PressureConversionFactor;
-      system.input_pressureTensorDiagonal = double3(system.input_pressure, system.input_pressure,
-                                                    system.input_pressure);
-      system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
-
-      // pair coefficients, shifts and tail-corrections are temperature-independent here (checked
-      // above), but the stored force-field temperature is kept consistent with the replica
       if (system.forceField.temperature != T)
       {
         system.forceField.temperature = T;
@@ -151,18 +249,8 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
         system.forceField.preComputeTailCorrection();
       }
 
-      // convert the pressure to per-component fugacities at this grid point: the fugacity
-      // coefficients are recomputed with the Peng-Robinson equation of state at (T_t, P_p)
-      // (an explicitly given 'FugacityCoefficient' would only be valid at one state point)
-      for (Component& component : system.components)
-      {
-        component.fugacityCoefficient = std::nullopt;
-      }
-      system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
-                                               EquationOfState::MixingRules::VanDerWaals, T, P, system.simulationBox,
-                                               system.heliumVoidFraction, system.components);
+      pinSystemPengRobinsonPressure(system, P);
 
-      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
       system.buildConformationReservoirs();
 
       randoms.emplace_back(random.seed + replicaId + 1);
@@ -194,6 +282,11 @@ void ReweightedHistogram::run()
 
 void ReweightedHistogram::setup()
 {
+  if (!systems.empty())
+  {
+    numberOfStepsPerCycle = std::max(1uz, systems.front().tmmc.maxMacrostate);
+  }
+
   for (System& system : systems)
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
@@ -201,6 +294,7 @@ void ReweightedHistogram::setup()
   }
 
   std::filesystem::create_directories("output");
+  std::filesystem::create_directories("wham");
 
   // on a binary-restart resume append to the existing output files (and skip re-printing the
   // headers) so each log continues where the interrupted run left off
@@ -221,6 +315,8 @@ void ReweightedHistogram::setup()
     std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
     std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
     std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
+    std::print(stream, "MC steps per cycle:                          {} (filling ceiling N_max)\n",
+               numberOfStepsPerCycle);
     std::print(stream, "Temperature ladder:                         ");
     for (double T : temperatures)
     {
@@ -232,7 +328,8 @@ void ReweightedHistogram::setup()
     {
       std::print(stream, " {}", P);
     }
-    std::print(stream, " [Pa]\n");
+    std::print(stream, " [Pa]{}\n",
+               autoExternalPressures ? " (log skeleton + Fisher extras from pre-isotherm fit)" : "");
     if (parallelTemperingSwapEvery == 0uz)
     {
       std::print(stream, "Configuration swaps:                         disabled\n");
@@ -243,6 +340,17 @@ void ReweightedHistogram::setup()
       std::print(stream, "  (sweeps alternate between the temperature and the pressure direction of the grid)\n");
     }
     std::print(stream, "Reweighting (N, U) sample every:             {} cycles\n", sampleReweightingEvery);
+    const bool anyCFCMC = std::ranges::any_of(systems, [](const System& system)
+    {
+      return std::ranges::any_of(system.components, [](const Component& component)
+                                 { return component.hasFractionalMolecule; });
+    });
+    if (anyCFCMC)
+    {
+      std::print(stream,
+                 "  With CFCMC a sample is recorded whenever every fractional molecule is at λ = 0;\n"
+                 "  SampleReweightingEvery applies only when no fractional molecule is present.\n");
+    }
     std::print(stream, "Reweighted-isotherm temperatures:           ");
     for (double T : reweightingTemperatures)
     {
@@ -251,6 +359,14 @@ void ReweightedHistogram::setup()
     std::print(stream, " [K]\n");
     std::print(stream, "Reweighted-isotherm pressure range:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
                reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
+    if (nitrogenBETPressurePlan.has_value())
+    {
+      writeNitrogenBETPressurePlan(stream, *nitrogenBETPressurePlan);
+    }
+    if (nitrogenBETFillingCeiling.has_value())
+    {
+      writeNitrogenBETFillingCeiling(stream, *nitrogenBETFillingCeiling);
+    }
 
     std::print(stream, "Replica grid: replica (t, p) = t * {} + p, fugacity coefficients from Peng-Robinson\n",
                numberOfPressures);
@@ -278,12 +394,40 @@ void ReweightedHistogram::setup()
   outputJson["initialization"]["units"] = Units::jsonStatus();
   outputJson["initialization"]["temperatures"] = temperatures;
   outputJson["initialization"]["pressures"] = pressures;
+  outputJson["initialization"]["numberOfStepsPerCycle"] = numberOfStepsPerCycle;
   outputJson["initialization"]["parallelTemperingSwapEvery"] = parallelTemperingSwapEvery;
   outputJson["initialization"]["sampleReweightingEvery"] = sampleReweightingEvery;
   outputJson["initialization"]["reweightingTemperatures"] = reweightingTemperatures;
   outputJson["initialization"]["reweightingPressureRange"] =
       std::vector<double>{reweightingPressureRange.first, reweightingPressureRange.second};
   outputJson["initialization"]["reweightingNumberOfPressures"] = reweightingNumberOfPressures;
+  if (nitrogenBETPressurePlan.has_value())
+  {
+    outputJson["initialization"]["nitrogenBETHenryCoefficient"] = nitrogenBETPressurePlan->henryCoefficientPerCell;
+    outputJson["initialization"]["autoExternalPressures"] = autoExternalPressures;
+    outputJson["initialization"]["autoReweightingPressureRange"] = autoReweightingPressureRange;
+  }
+  if (nitrogenBETFillingCeiling.has_value())
+  {
+    outputJson["initialization"]["autoMacroStateMaximum"] = autoMacroStateMaximum;
+    outputJson["initialization"]["fillingCeiling"] = nitrogenBETFillingCeiling->maxMacrostate;
+    outputJson["initialization"]["fillingCeilingMeanOccupancy"] = nitrogenBETFillingCeiling->meanOccupancy;
+  }
+
+  // interpolation grids are computed once and shared (copied) between the replicas
+  systems.front().createExternalFieldInterpolationGrid(stream, 0);
+  systems.front().createFrameworkInterpolationGrids(stream);
+  for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)
+  {
+    systems[replicaId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
+    systems[replicaId].interpolationGrids = systems.front().interpolationGrids;
+  }
+
+  if (!resumedFromBinaryRestart && autoExternalPressures && numberOfPressures >= 3uz)
+  {
+    placePressureLadderFromHenryAndSaturation();
+    outputJson["initialization"]["pressures"] = pressures;
+  }
 
   std::ofstream json(outputJsonFileName);
   json << outputJson.dump(4);
@@ -330,14 +474,185 @@ void ReweightedHistogram::setup()
     std::ofstream replicaJson(replicaJsonFileNames[replicaId]);
     replicaJson << replicaJsons[replicaId].dump(4);
   }
+}
 
-  // interpolation grids are computed once and shared (copied) between the replicas
-  systems.front().createExternalFieldInterpolationGrid(stream, 0);
-  systems.front().createFrameworkInterpolationGrids(stream);
-  for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)
+void ReweightedHistogram::placePressureLadderFromHenryAndSaturation()
+{
+  if (!nitrogenBETPressurePlan.has_value())
   {
-    systems[replicaId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
-    systems[replicaId].interpolationGrids = systems.front().interpolationGrids;
+    return;
+  }
+
+  double cells = 1.0;
+  if (systems.front().framework.has_value())
+  {
+    const int3 numberOfUnitCells = systems.front().framework->numberOfUnitCells;
+    cells = static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
+  }
+
+  const double henry = nitrogenBETPressurePlan->henryCoefficientPerCell;
+  double nSatPerCell = nitrogenBETPressurePlan->packingCapacity;
+  const char* nSatSource = "Gurvich packing";
+  if (nitrogenBETFillingCeiling.has_value() && nitrogenBETFillingCeiling->meanOccupancy > 0.0 && cells > 0.0)
+  {
+    nSatPerCell = nitrogenBETFillingCeiling->meanOccupancy / cells;
+    nSatSource = "P0-scout plateau";
+  }
+  const double gurvichPerCell = nitrogenBETPressurePlan->packingCapacity;
+
+  const std::vector<double> logSpacedPressures = pressures;
+  const double affinity = (nSatPerCell > 0.0) ? henry / nSatPerCell : 0.0;
+
+  std::vector<SimulatedIsothermPoint> probes;
+  if (affinity > 0.0 && nSatPerCell > 0.0 && !systems.empty())
+  {
+    std::print("  Scouting Langmuir-coverage probes (θ = 0.1, 0.5, 0.9) for the WHAM pressure ladder...\n");
+    std::cout << std::flush;
+    for (double coverage : nitrogenBETLangmuirProbeCoverages)
+    {
+      const double probePressure = langmuirPressureAtCoverage(coverage, affinity);
+      if (!(probePressure > logSpacedPressures.front() * 1.0001) ||
+          !(probePressure < logSpacedPressures.back() * 0.9999))
+      {
+        std::print("    skip θ = {:g}: Langmuir P = {:.5e} Pa is outside the Henry–P0 span\n", coverage,
+                   probePressure);
+        std::cout << std::flush;
+        continue;
+      }
+      const NitrogenBETScoutPoint scout = scoutNitrogenBETOccupancy(systems.front(), probePressure);
+      SimulatedIsothermPoint point;
+      point.pressure = probePressure;
+      point.moleculesPerCell = (cells > 0.0) ? scout.meanOccupancy / cells : scout.meanOccupancy;
+      probes.push_back(point);
+      std::print("    θ_L = {:g}: P = {:.5e} Pa, n = {:.4f} / cell (Langmuir {:.4f})\n", coverage, probePressure,
+                 point.moleculesPerCell, nSatPerCell * coverage);
+      std::cout << std::flush;
+    }
+  }
+
+  const NitrogenBETPreIsothermFit fit =
+      fitNitrogenBETPreIsotherm(henry, nSatPerCell, gurvichPerCell, probes);
+  pressures = placePressuresByPreIsothermFisher(logSpacedPressures.front(), logSpacedPressures.back(),
+                                                numberOfPressures, fit);
+
+  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+  {
+    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+    {
+      pinSystemPengRobinsonPressure(systems[replicaIndex(temperatureIndex, pressureIndex)], pressures[pressureIndex]);
+    }
+  }
+
+  const char* modelName = "Langmuir";
+  switch (fit.model)
+  {
+    case NitrogenBETIsothermModel::LangmuirFreundlich:
+      modelName = "Langmuir-Freundlich";
+      break;
+    case NitrogenBETIsothermModel::Toth:
+      modelName = "Toth";
+      break;
+    case NitrogenBETIsothermModel::Langmuir:
+      modelName = "Langmuir";
+      break;
+  }
+
+  std::print(stream, "Pressure-ladder re-placement (pre-isotherm Type I fit, Fisher overlap)\n");
+  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "    Henry coefficient:                     {:.6e} [molecules/cell/Pa]\n", henry);
+  std::print(stream, "    n_sat:                                 {:.4f} [molecules / cell] ({})\n", nSatPerCell,
+             nSatSource);
+  std::print(stream, "    Fitted n_sat:                          {:.4f} [molecules / cell]\n",
+             fit.saturationLoadingPerCell);
+  std::print(stream, "    Model:                                 {} (b = {:.6e} 1/Pa, exponent = {:.4f})\n", modelName,
+             fit.affinity, fit.exponent);
+  std::print(stream, "    Selection:                             {}\n", fit.selectionReason);
+  std::print(stream, "    Langmuir rejected (m ≠ 1):             {}\n", fit.langmuirRejected ? "yes" : "no");
+  std::print(stream, "    Hill plot flat:                        {} (m = {:.3f}, {:.3f})\n",
+             fit.hillPlotFlat ? "yes" : "no", fit.hillExponentLow, fit.hillExponentHigh);
+  std::print(stream, "    Fit r²:                                {:.5f} (Langmuir line {:.5f})\n", fit.rSquared,
+             fit.langmuirRSquared);
+  if (affinity > 0.0)
+  {
+    std::print(stream, "    Langmuir 1/b (half filling):           {:.5e} [Pa]\n", 1.0 / affinity);
+  }
+  std::print(stream, "    Log-skeleton max gap:                  {:g} × equal-log step\n",
+             nitrogenBETMaxLogSpacingMultiplier);
+  std::print(stream, "    Fisher extras per skeleton interval:   at most {}\n",
+             nitrogenBETMaxGradientExtrasPerInterval);
+  if (!probes.empty())
+  {
+    std::print(stream, "    Langmuir-coverage probes:\n");
+    std::print(stream, "      θ_L          P [Pa]          n_scout / cell    n_model / cell\n");
+    for (const SimulatedIsothermPoint& point : probes)
+    {
+      const double langmuirTheta = (affinity * point.pressure) / (1.0 + affinity * point.pressure);
+      std::print(stream, "      {:<8.2f}  {:13.5e}    {:14.4f}    {:14.4f}\n", langmuirTheta, point.pressure,
+                 point.moleculesPerCell, nitrogenBETPreIsothermLoadingPerCell(fit, point.pressure));
+    }
+  }
+  std::print(stream, "    replica    log-spaced P [Pa]   model n         production P [Pa]   model n\n");
+  std::print(stream, "    --------------------------------------------------------------------------------\n");
+  for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+  {
+    std::print(stream, "    {:7d}    {:13.5e}    {:14.4f}    {:13.5e}    {:14.4f}\n", pressureIndex,
+               logSpacedPressures[pressureIndex],
+               nitrogenBETPreIsothermLoadingPerCell(fit, logSpacedPressures[pressureIndex]),
+               pressures[pressureIndex], nitrogenBETPreIsothermLoadingPerCell(fit, pressures[pressureIndex]));
+  }
+  std::print(stream, "\n    Production pressure ladder:                ");
+  for (double P : pressures)
+  {
+    std::print(stream, " {}", P);
+  }
+  std::print(stream, " [Pa]\n");
+  std::print(stream, "    Replica grid after re-placement:\n");
+  std::print(stream, "    replica    temperature [K]    pressure [Pa]\n");
+  std::print(stream, "    ------------------------------------------------\n");
+  for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+  {
+    for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+    {
+      const std::size_t replicaId = replicaIndex(temperatureIndex, pressureIndex);
+      std::print(stream, "    {:7d}    {:15.4f}    {:13.5e}\n", replicaId, temperatures[temperatureIndex],
+                 pressures[pressureIndex]);
+    }
+  }
+  std::print(stream, "\n");
+  std::flush(stream);
+
+  std::print("  Re-placed {} WHAM rungs ({} Fisher ladder, log skeleton at {:g}× equal-log, n_sat = {})\n",
+             numberOfPressures, modelName, nitrogenBETMaxLogSpacingMultiplier, nSatSource);
+  std::cout << std::flush;
+
+  outputJson["initialization"]["langmuirSaturationLoadingPerCell"] = nSatPerCell;
+  outputJson["initialization"]["langmuirSaturationSource"] = nSatSource;
+  outputJson["initialization"]["preIsothermModel"] = modelName;
+  outputJson["initialization"]["preIsothermAffinity"] = fit.affinity;
+  outputJson["initialization"]["preIsothermExponent"] = fit.exponent;
+  outputJson["initialization"]["preIsothermSaturationLoadingPerCell"] = fit.saturationLoadingPerCell;
+  outputJson["initialization"]["preIsothermLangmuirRejected"] = fit.langmuirRejected;
+  outputJson["initialization"]["preIsothermHillPlotFlat"] = fit.hillPlotFlat;
+  outputJson["initialization"]["preIsothermRSquared"] = fit.rSquared;
+
+  std::filesystem::create_directories("wham");
+  std::ofstream ladderFile("wham/isotherm_ladder.reweighted_histogram.txt", std::ios::trunc);
+  std::print(ladderFile, "# WHAM pressure ladder: pre-isotherm {} fit, Fisher overlap on a log-spaced\n", modelName);
+  std::print(ladderFile, "# skeleton (gap ≤ {:g}× equal-log) plus at most {} extras per interval.\n",
+             nitrogenBETMaxLogSpacingMultiplier, nitrogenBETMaxGradientExtrasPerInterval);
+  std::print(ladderFile, "# n_sat source: {}\n", nSatSource);
+  std::print(ladderFile, "# selection: {}\n", fit.selectionReason);
+  std::print(ladderFile, "# b = {:.8e} 1/Pa, exponent = {:.6f}, fitted n_sat = {:.6f} / cell\n", fit.affinity,
+             fit.exponent, fit.saturationLoadingPerCell);
+  std::print(ladderFile, "# column 1: log-spaced Henry-to-P0 pressure [Pa]\n");
+  std::print(ladderFile, "# column 2: model n at that pressure [molecules / cell]\n");
+  std::print(ladderFile, "# column 3: production pressure [Pa]\n");
+  std::print(ladderFile, "# column 4: model n at the production pressure [molecules / cell]\n\n");
+  for (std::size_t pressureIndex = 0; pressureIndex < numberOfPressures; ++pressureIndex)
+  {
+    std::print(ladderFile, "{: .6e}   {: .6e}   {: .6e}   {: .6e}\n", logSpacedPressures[pressureIndex],
+               nitrogenBETPreIsothermLoadingPerCell(fit, logSpacedPressures[pressureIndex]),
+               pressures[pressureIndex], nitrogenBETPreIsothermLoadingPerCell(fit, pressures[pressureIndex]));
   }
 }
 
@@ -350,9 +665,8 @@ void ReweightedHistogram::performReplicaCycle(std::size_t replicaId, SimulationS
   // supported by this driver
   std::size_t fractionalMoleculeSystem = 0uz;
 
-  const std::size_t numberOfStepsPerCycle =
-      std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
-
+  // filling ceiling (MacroStateMaximumNumberOfMolecules), not the current loading: an empty replica
+  // must do as many moves as a full one so cycle-based sampling and swaps compare equal work
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; ++j)
   {
     std::size_t selectedComponent = system.randomComponent(rng);
@@ -372,7 +686,8 @@ void ReweightedHistogram::performReplicaCycle(std::size_t replicaId, SimulationS
 
         // Wang-Landau biasing of the CFCMC lambda moves (all state is owned by this replica)
         system.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            system.lambdaWangLandauIsActive(selectedComponent));
         system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
@@ -621,8 +936,26 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                 system.sampleProperties(replicaId, estimation.currentBin, cycle);
 
                 // the raw (N, U) reweighting sample of this replica: the molecule count of the
-                // single adsorbate component and the potential energy, tagged with the block
-                if (cycle % sampleReweightingEvery == 0uz)
+                // single adsorbate component and the potential energy, tagged with the block.
+                //
+                // A CFCMC fractional molecule only counts once it is fully decoupled. Its partial
+                // interactions are already inside runningEnergies while it is absent from
+                // numberOfIntegerMoleculesPerComponent, so at any intermediate lambda the pair
+                // would carry the energy of N molecules plus a fraction against a count of N, and
+                // WHAM would bin those shifted energies as if they belonged to the N-molecule
+                // state. At lambda = 0 the configuration is an ordinary N-molecule one.
+                // Lambda is decoupled on only a small share of cycles, so when a fractional
+                // molecule exists every decoupled configuration is taken instead of every nth
+                // cycle. Applying both gates at once starved the analysis: on FER most replicas
+                // ended a 10000-cycle production run with no samples at all.
+                const bool anyFractionalMolecule =
+                    std::ranges::any_of(system.components, [](const Component& component)
+                                        { return component.hasFractionalMolecule; });
+                const bool fractionalMoleculesAreDecoupled = std::ranges::all_of(
+                    system.components, [](const Component& component)
+                    { return !component.hasFractionalMolecule || component.lambdaGC.currentBin == 0uz; });
+                if (anyFractionalMolecule ? fractionalMoleculesAreDecoupled
+                                          : cycle % sampleReweightingEvery == 0uz)
                 {
                   reweightingSamples[replicaId].push_back(
                       Sample{.energy = system.runningEnergies.potentialEnergy(),
@@ -892,7 +1225,7 @@ void ReweightedHistogram::writeIsothermSnapshot() const
   // directly-measured point, assembled from the per-replica block averages
   for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
   {
-    std::ofstream isotherm(std::format("output/isotherm_{}.reweighted_histogram.txt",
+    std::ofstream isotherm(std::format("wham/isotherm_{}.reweighted_histogram.txt",
                                        temperatures[temperatureIndex]),
                            std::ios::trunc);
 
@@ -901,8 +1234,8 @@ void ReweightedHistogram::writeIsothermSnapshot() const
     std::print(isotherm, "# one block per component (gnuplot 'index'), rows ordered by increasing pressure\n");
     std::print(isotherm, "# errors are the block confidence-interval errors (zero until three blocks are filled)\n");
     std::print(isotherm, "# column 1: fugacity [Pa]\n");
-    std::print(isotherm, "# column 2, 3: absolute loading, error [molecules/cell]\n");
-    std::print(isotherm, "# column 4, 5: absolute loading, error [molecules/unit-cell]\n");
+    std::print(isotherm, "# column 2, 3: absolute loading, error [molecules / simulation supercell]\n");
+    std::print(isotherm, "# column 4, 5: absolute loading, error [molecules / unit cell]\n");
     std::print(isotherm, "# column 6, 7: absolute loading, error [mol/kg-framework]\n");
     std::print(isotherm, "# column 8, 9: absolute loading, error [mg/g-framework]\n");
     std::print(isotherm, "# column 10: pressure [Pa]\n");
@@ -921,8 +1254,8 @@ void ReweightedHistogram::writeIsothermSnapshot() const
             component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.input_pressure;
 
         const auto [loadingAverage, loadingError] = system.averageLoadings.average();
-        const double moleculesPerCell = loadingAverage.numberOfMolecules[componentId];
-        const double moleculesPerCellError = loadingError.numberOfMolecules[componentId];
+        const double moleculesInSupercell = loadingAverage.numberOfMolecules[componentId];
+        const double moleculesInSupercellError = loadingError.numberOfMolecules[componentId];
 
         // without a framework the per-unit-cell and per-framework-mass units are not defined
         double toMoleculesPerUnitCell = 1.0;
@@ -940,10 +1273,10 @@ void ReweightedHistogram::writeIsothermSnapshot() const
 
         std::print(isotherm,
                    "{: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e}\n",
-                   fugacity, moleculesPerCell, moleculesPerCellError, toMoleculesPerUnitCell * moleculesPerCell,
-                   toMoleculesPerUnitCell * moleculesPerCellError, toMolePerKg * moleculesPerCell,
-                   toMolePerKg * moleculesPerCellError, toMgPerG * moleculesPerCell,
-                   toMgPerG * moleculesPerCellError, system.input_pressure);
+                   fugacity, moleculesInSupercell, moleculesInSupercellError,
+                   toMoleculesPerUnitCell * moleculesInSupercell, toMoleculesPerUnitCell * moleculesInSupercellError,
+                   toMolePerKg * moleculesInSupercell, toMolePerKg * moleculesInSupercellError,
+                   toMgPerG * moleculesInSupercell, toMgPerG * moleculesInSupercellError, system.input_pressure);
       }
     }
   }
@@ -963,9 +1296,16 @@ void ReweightedHistogram::performReweightingAnalysis()
   }
   if (totalNumberOfSamples == 0uz)
   {
+    whamConverged = true;
+    whamResidual = 0.0;
+    whamIterations = 0uz;
+    whamUnconvergedBlocks = 0uz;
+    whamUnconvergedBlockDetails.clear();
     std::print(stream, "    no (N, U) samples were collected (no production cycles); analysis skipped\n\n\n");
     return;
   }
+
+  reweightedIsotherms.clear();
 
   // per-state (replica) thermodynamic fields, all in internal units: the reduced potential of a
   // sample (N, U) at state i is u_i = beta_i U - N ln(beta_i f_i)
@@ -1130,6 +1470,59 @@ void ReweightedHistogram::performReweightingAnalysis()
   // bin b is w_b ~ Omega_b exp(-beta U_b + N_b ln(beta f)). Returns the average molecule count
   // and the effective number of independent samples supporting the estimate (an overlap
   // diagnostic: small values flag extrapolation beyond the sampled (N, U) region).
+  // The isosteric heat at the same state point, from the grand-canonical fluctuation identity
+  //
+  //   q_st = kT - (<NU> - <N><U>) / (<N^2> - <N>^2),
+  //
+  // which is the energy an added molecule brings with it, at the loading the state point sits at. It needs
+  // no extra sampling: the moments come from the same reweighted bins as the loading, and U is the energy
+  // that was stored with every (N, U) sample. Where the pore is empty or full the number fluctuations
+  // vanish and the ratio is meaningless, which the caller sees as a non-finite value.
+  auto reweightIsostericHeat = [&](const std::vector<double>& logDensityOfStates, double beta,
+                                   double logBetaFugacity) -> double
+  {
+    double largest = logZero;
+    std::vector<double> logWeights(numberOfBins, logZero);
+    for (std::size_t binId = 0; binId < numberOfBins; ++binId)
+    {
+      if (logDensityOfStates[binId] <= logZeroThreshold) continue;
+      logWeights[binId] = logDensityOfStates[binId] - beta * binMeanEnergy[binId] +
+                          static_cast<double>(binMoleculeCount[binId]) * logBetaFugacity;
+      largest = std::max(largest, logWeights[binId]);
+    }
+    if (largest <= logZeroThreshold) return std::numeric_limits<double>::quiet_NaN();
+
+    double partitionSum = 0.0;
+    for (std::size_t binId = 0; binId < numberOfBins; ++binId)
+    {
+      if (logWeights[binId] <= logZeroThreshold) continue;
+      partitionSum += std::exp(logWeights[binId] - largest);
+    }
+    const double logPartition = largest + std::log(partitionSum);
+
+    double averageMolecules = 0.0;
+    double averageEnergy = 0.0;
+    double averageMoleculesSquared = 0.0;
+    double averageMoleculesEnergy = 0.0;
+    for (std::size_t binId = 0; binId < numberOfBins; ++binId)
+    {
+      if (logWeights[binId] <= logZeroThreshold) continue;
+      const double weight = std::exp(logWeights[binId] - logPartition);
+      const double molecules = static_cast<double>(binMoleculeCount[binId]);
+      const double energy = binMeanEnergy[binId];
+      averageMolecules += weight * molecules;
+      averageEnergy += weight * energy;
+      averageMoleculesSquared += weight * molecules * molecules;
+      averageMoleculesEnergy += weight * molecules * energy;
+    }
+
+    const double varianceOfMolecules = averageMoleculesSquared - averageMolecules * averageMolecules;
+    const double covariance = averageMoleculesEnergy - averageMolecules * averageEnergy;
+    if (!(varianceOfMolecules > 1e-8)) return std::numeric_limits<double>::quiet_NaN();
+
+    return 1.0 / beta - covariance / varianceOfMolecules;
+  };
+
   auto reweight = [&](const std::vector<double>& logDensityOfStates, double beta,
                       double logBetaFugacity) -> std::pair<double, double>
   {
@@ -1185,12 +1578,15 @@ void ReweightedHistogram::performReweightingAnalysis()
       solveWham(logStateCounts, logBinCounts, freeEnergies, logDensityOfStates, 100000uz);
   const std::size_t iterations = convergence.first;
   const double residual = convergence.second;
+  whamIterations = iterations;
+  whamResidual = residual;
+  whamConverged = residual <= 1e-8;
 
   std::print(stream, "    pooled samples:          {}\n", totalNumberOfSamples);
   std::print(stream, "    occupied (N, U) bins:    {} ({} energy bins, deltaU = {:.6e} [K])\n", numberOfBins,
              numberOfEnergyBins, Units::EnergyToKelvin * deltaEnergy);
   std::print(stream, "    WHAM iterations:         {} (residual {:.3e})\n\n", iterations, residual);
-  if (residual > 1e-8)
+  if (!whamConverged)
   {
     std::print(stream, "    WARNING: the WHAM equations did not converge; the reweighted results are unreliable.\n");
     std::print(stream, "             Weak overlap between neighboring state points is the usual cause; use denser\n");
@@ -1200,6 +1596,8 @@ void ReweightedHistogram::performReweightingAnalysis()
   // per-block solves (warm-started from the full solution) for the error bars
   std::vector<std::vector<double>> blockLogDensityOfStates(numberOfBlocks);
   std::vector<bool> blockIsValid(numberOfBlocks, false);
+  whamUnconvergedBlocks = 0uz;
+  whamUnconvergedBlockDetails.clear();
   for (std::size_t block = 0; block < numberOfBlocks; ++block)
   {
     std::vector<double> blockLogStateCounts(numberOfReplicas);
@@ -1219,8 +1617,26 @@ void ReweightedHistogram::performReweightingAnalysis()
     }
 
     std::vector<double> blockFreeEnergies = freeEnergies;
-    solveWham(blockLogStateCounts, blockLogBinCounts, blockFreeEnergies, blockLogDensityOfStates[block], 100000uz);
-    blockIsValid[block] = true;
+    const auto [blockIterations, blockResidual] =
+        solveWham(blockLogStateCounts, blockLogBinCounts, blockFreeEnergies, blockLogDensityOfStates[block], 100000uz);
+    blockIsValid[block] = blockResidual <= 1e-8;
+    if (!blockIsValid[block])
+    {
+      ++whamUnconvergedBlocks;
+      whamUnconvergedBlockDetails.push_back(UnconvergedBlock{
+          .index = block, .residual = blockResidual, .iterations = blockIterations});
+    }
+  }
+  if (whamUnconvergedBlocks > 0uz)
+  {
+    std::print(stream, "    WARNING: {} of {} block WHAM solves did not converge; error bars may be underestimated.\n",
+               whamUnconvergedBlocks, numberOfBlocks);
+    for (const UnconvergedBlock& item : whamUnconvergedBlockDetails)
+    {
+      std::print(stream, "             production block {} residual {:.3e} ({} iterations)\n", item.index,
+                 item.residual, item.iterations);
+    }
+    std::print(stream, "\n");
   }
 
   // mean and confidence-interval error of the reweighted molecule count at (beta, ln(beta f));
@@ -1258,7 +1674,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   // free energies per state point, with the self-consistency check: the reweighted loading at
   // every simulated state point must agree with the directly-measured average loading
   {
-    std::ofstream freeEnergyFile("output/reweighted_free_energies.reweighted_histogram.txt", std::ios::trunc);
+    std::ofstream freeEnergyFile("wham/reweighted_free_energies.reweighted_histogram.txt", std::ios::trunc);
     std::print(freeEnergyFile, "# Reweighted histogram: WHAM free energies per simulated state point\n");
     std::print(freeEnergyFile, "# g_i = -ln Xi_i (dimensionless, gauge g_0 = 0)\n");
     std::print(freeEnergyFile,
@@ -1271,10 +1687,10 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::print(freeEnergyFile, "# column 4: fugacity [Pa]\n");
     std::print(freeEnergyFile, "# column 5: free energy g_i [-]\n");
     std::print(freeEnergyFile, "# column 6: samples [-]\n");
-    std::print(freeEnergyFile, "# column 7, 8: direct loading, error [molecules/cell]\n");
-    std::print(freeEnergyFile, "# column 9, 10: reweighted loading, error [molecules/cell]\n");
+    std::print(freeEnergyFile, "# column 7, 8: direct loading, error [molecules / unit cell]\n");
+    std::print(freeEnergyFile, "# column 9, 10: reweighted loading, error [molecules / unit cell]\n");
 
-    std::print(stream, "    self-consistency check (loading in molecules/cell)\n");
+    std::print(stream, "    self-consistency check (loading in molecules / unit cell)\n");
     std::print(stream, "    replica    temperature [K]    pressure [Pa]        direct              reweighted\n");
     std::print(stream, "    ---------------------------------------------------------------------------------\n");
     for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
@@ -1285,11 +1701,13 @@ void ReweightedHistogram::performReweightingAnalysis()
           component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.input_pressure;
 
       const auto [loadingAverage, loadingError] = system.averageLoadings.average();
-      const double directLoading = loadingAverage.numberOfMolecules[0];
-      const double directError = loadingError.numberOfMolecules[0];
+      const double directLoading = toMoleculesPerUnitCell * loadingAverage.numberOfMolecules[0];
+      const double directError = toMoleculesPerUnitCell * loadingError.numberOfMolecules[0];
 
-      const auto [reweightedLoading, reweightedError, effectiveSamples] =
+      const auto [reweightedLoadingSupercell, reweightedErrorSupercell, effectiveSamples] =
           reweightWithError(stateBeta[stateId], stateLogBetaFugacity[stateId]);
+      const double reweightedLoading = toMoleculesPerUnitCell * reweightedLoadingSupercell;
+      const double reweightedError = toMoleculesPerUnitCell * reweightedErrorSupercell;
       const double samples = std::accumulate(stateBlockCounts[stateId].begin(), stateBlockCounts[stateId].end(), 0.0);
 
       std::print(freeEnergyFile, "{:6d}   {:10.4f}   {: .6e}   {: .6e}   {: .10e}   {:10.0f}   "
@@ -1311,6 +1729,20 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::print(stream, "\n");
   }
 
+  {
+    std::ofstream dosFile("wham/density_of_states.reweighted_histogram.txt", std::ios::trunc);
+    std::print(dosFile, "# Reweighted histogram: WHAM density of states Omega(N, U)\n");
+    std::print(dosFile, "# column 1: N [molecules]\n");
+    std::print(dosFile, "# column 2: mean energy of the bin [internal units]\n");
+    std::print(dosFile, "# column 3: sample count in the bin\n");
+    std::print(dosFile, "# column 4: ln Omega(N, U) (gauge g_0 = 0)\n\n");
+    for (std::size_t binId = 0; binId < numberOfBins; ++binId)
+    {
+      std::print(dosFile, "{:6d}   {: .10e}   {: .6e}   {: .10e}\n", binMoleculeCount[binId], binMeanEnergy[binId],
+                 binTotalCount[binId], logDensityOfStates[binId]);
+    }
+  }
+
   // reweighted isotherms: one file per requested temperature, evaluated on a fine log-spaced
   // pressure grid (fugacity coefficients from the Peng-Robinson equation of state at every point)
   const std::vector<EquationOfState::FluidInput> fluidInputs = {
@@ -1322,7 +1754,7 @@ void ReweightedHistogram::performReweightingAnalysis()
 
   for (const double targetTemperature : reweightingTemperatures)
   {
-    std::ofstream isotherm(std::format("output/reweighted_isotherm_{}.reweighted_histogram.txt", targetTemperature),
+    std::ofstream isotherm(std::format("wham/reweighted_isotherm_{}.reweighted_histogram.txt", targetTemperature),
                            std::ios::trunc);
     std::print(isotherm, "# Reweighted histogram: reweighted adsorption isotherm at {} [K] ({})\n", targetTemperature,
                frontComponent.name);
@@ -1331,14 +1763,20 @@ void ReweightedHistogram::performReweightingAnalysis()
                "# the effective sample size (last column) diagnoses the overlap: small values flag\n"
                "# extrapolation beyond the sampled (N, U) region\n");
     std::print(isotherm, "# column 1: fugacity [Pa]\n");
-    std::print(isotherm, "# column 2, 3: absolute loading, error [molecules/cell]\n");
-    std::print(isotherm, "# column 4, 5: absolute loading, error [molecules/unit-cell]\n");
+    std::print(isotherm, "# column 2, 3: absolute loading, error [molecules / simulation supercell]\n");
+    std::print(isotherm, "# column 4, 5: absolute loading, error [molecules / unit cell]\n");
     std::print(isotherm, "# column 6, 7: absolute loading, error [mol/kg-framework]\n");
     std::print(isotherm, "# column 8, 9: absolute loading, error [mg/g-framework]\n");
     std::print(isotherm, "# column 10: pressure [Pa]\n");
-    std::print(isotherm, "# column 11: effective sample size [-]\n\n");
+    std::print(isotherm, "# column 11: effective sample size [-]\n");
+    std::print(isotherm,
+               "# column 12: isosteric heat [kJ/mol], kT - cov(N, U) / var(N) over the reweighted\n"
+               "#            distribution; not a number where the loading is pinned and N does not fluctuate\n\n");
 
     const double targetBeta = 1.0 / (Units::KB * targetTemperature);
+    ReweightedIsotherm stored;
+    stored.temperature = targetTemperature;
+    stored.points.reserve(numberOfTargetPressures);
     for (std::size_t pressureIndex = 0; pressureIndex < numberOfTargetPressures; ++pressureIndex)
     {
       const double targetPressure =
@@ -1356,13 +1794,148 @@ void ReweightedHistogram::performReweightingAnalysis()
       const double logBetaFugacity = std::log(targetBeta * fugacityPa / Units::PressureConversionFactor);
 
       const auto [loading, loadingError, effectiveSamples] = reweightWithError(targetBeta, logBetaFugacity);
+      const double isostericHeat = reweightIsostericHeat(logDensityOfStates, targetBeta, logBetaFugacity);
+      const double loadingPerCell = toMoleculesPerUnitCell * loading;
+      const double loadingErrorPerCell = toMoleculesPerUnitCell * loadingError;
+
+      stored.points.push_back(ReweightedIsothermPoint{targetPressure, fugacityPa, loadingPerCell,
+                                                      loadingErrorPerCell, effectiveSamples, isostericHeat});
 
       std::print(isotherm,
                  "{: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e}   "
-                 "{: .6e}\n",
-                 fugacityPa, loading, loadingError, toMoleculesPerUnitCell * loading,
-                 toMoleculesPerUnitCell * loadingError, toMolePerKg * loading, toMolePerKg * loadingError,
-                 toMgPerG * loading, toMgPerG * loadingError, targetPressure, effectiveSamples);
+                 "{: .6e}   {: .6e}\n",
+                 fugacityPa, loading, loadingError, loadingPerCell, loadingErrorPerCell, toMolePerKg * loading,
+                 toMolePerKg * loadingError, toMgPerG * loading, toMgPerG * loadingError, targetPressure,
+                 effectiveSamples, Units::EnergyToKJPerMol * isostericHeat);
+    }
+    reweightedIsotherms.push_back(std::move(stored));
+  }
+
+  if (computeBET)
+  {
+    std::print(stream, "BET extraction\n");
+    if (!front.framework.has_value())
+    {
+      std::print(stream, "    skipped: BET needs a framework (unit-cell mass and volume)\n\n");
+    }
+    else if (front.components.empty())
+    {
+      std::print(stream, "    skipped: BET needs an adsorbate component\n\n");
+    }
+    else
+    {
+      const BETProbeProperties probe = requireBETProbeProperties(front.components.front());
+      const int3 numberOfUnitCells = front.framework->numberOfUnitCells;
+      const double cells =
+          static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
+      const double unitCellVolume = front.simulationBox.volume / cells;
+      const double unitCellMass = front.framework->unitCellMass;
+      outputJson["output"]["reweighting"]["bet"] = nlohmann::json::array();
+      for (const ReweightedIsotherm& isotherm : reweightedIsotherms)
+      {
+        std::vector<SimulatedIsothermPoint> points;
+        points.reserve(isotherm.points.size());
+        for (const ReweightedIsothermPoint& point : isotherm.points)
+        {
+          points.push_back(SimulatedIsothermPoint{point.pressure, point.moleculesPerCell});
+        }
+        const BETSurfaceArea bet = fitNitrogenBET(points, unitCellMass, unitCellVolume, probe);
+
+        std::optional<double> areaError;
+        std::optional<double> monolayerError;
+        std::optional<double> cError;
+        nlohmann::json blockAreas = nlohmann::json::array();
+        nlohmann::json blockMonolayers = nlohmann::json::array();
+        nlohmann::json blockCConstants = nlohmann::json::array();
+        std::size_t betBlocksUsed = 0uz;
+        std::size_t betBlocksFailed = 0uz;
+
+        // Jackknife the BET line inside the full-data Rouquerol window: each converged block WHAM
+        // density of states rebuilds n(P), then slope/intercept are refit with the window frozen.
+        if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow)
+        {
+          const double targetBeta = 1.0 / (Units::KB * isotherm.temperature);
+          std::vector<double> blockAreaValues;
+          std::vector<double> blockMonolayerValues;
+          std::vector<double> blockCValues;
+          blockAreaValues.reserve(numberOfBlocks);
+          blockMonolayerValues.reserve(numberOfBlocks);
+          blockCValues.reserve(numberOfBlocks);
+
+          for (std::size_t block = 0; block < numberOfBlocks; ++block)
+          {
+            if (!blockIsValid[block]) continue;
+
+            std::vector<SimulatedIsothermPoint> blockPoints;
+            blockPoints.reserve(isotherm.points.size());
+            for (const ReweightedIsothermPoint& point : isotherm.points)
+            {
+              const double logBetaFugacity =
+                  std::log(targetBeta * point.fugacity / Units::PressureConversionFactor);
+              const double loading =
+                  reweight(blockLogDensityOfStates[block], targetBeta, logBetaFugacity).first;
+              blockPoints.push_back(
+                  SimulatedIsothermPoint{point.pressure, toMoleculesPerUnitCell * loading});
+            }
+
+            const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
+                blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
+            if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+            {
+              ++betBlocksFailed;
+              continue;
+            }
+            ++betBlocksUsed;
+            blockAreaValues.push_back(blockBet.gravimetricArea);
+            blockMonolayerValues.push_back(blockBet.monolayerCapacity);
+            blockCValues.push_back(blockBet.cConstant);
+            blockAreas.push_back(blockBet.gravimetricArea);
+            blockMonolayers.push_back(blockBet.monolayerCapacity);
+            blockCConstants.push_back(blockBet.cConstant);
+          }
+
+          if (betBlocksUsed >= 3uz)
+          {
+            areaError = blockErrorEstimate(blockAreaValues, bet.gravimetricArea);
+            monolayerError = blockErrorEstimate(blockMonolayerValues, bet.monolayerCapacity);
+            cError = blockErrorEstimate(blockCValues, bet.cConstant);
+          }
+        }
+
+        writeNitrogenBETSummary(stream, bet, probe, "    ", areaError, monolayerError, cError);
+        if (betBlocksUsed > 0uz || betBlocksFailed > 0uz)
+        {
+          std::print(stream,
+                     "    BET block errors:       {} blocks (fixed Rouquerol window); {} fixed-window "
+                     "refits failed{}\n",
+                     betBlocksUsed, betBlocksFailed,
+                     areaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
+        }
+        std::print(stream, "\n");
+        const std::string betFile =
+            std::format("wham/bet_{}.reweighted_histogram.txt", isotherm.temperature);
+        std::ofstream table(betFile, std::ios::trunc);
+        std::print(table, "# Reweighted histogram: BET plot at {} [K] ({})\n", isotherm.temperature,
+                   frontComponent.name);
+        writeNitrogenBETTable(table, bet, probe);
+        nlohmann::json entry = nitrogenBETJson(bet, probe);
+        entry["temperature"] = isotherm.temperature;
+        entry["file"] = betFile;
+        entry["fixedWindowBlockErrors"] = true;
+        entry["betBlocksUsed"] = betBlocksUsed;
+        entry["betBlocksFailed"] = betBlocksFailed;
+        entry["blockGravimetricAreas"] = std::move(blockAreas);
+        entry["blockMonolayerCapacities"] = std::move(blockMonolayers);
+        entry["blockCConstants"] = std::move(blockCConstants);
+        if (areaError.has_value())
+        {
+          entry["gravimetricAreaError"] = *areaError;
+          entry["monolayerCapacityError"] = *monolayerError;
+          entry["cConstantError"] = *cError;
+        }
+        outputJson["output"]["reweighting"]["bet"].push_back(std::move(entry));
+        std::print(stream, "    BET plot written to {}\n\n", betFile);
+      }
     }
   }
 
@@ -1741,11 +2314,25 @@ void ReweightedHistogram::performReweightingAnalysis()
   outputJson["output"]["reweighting"]["occupiedBins"] = numberOfBins;
   outputJson["output"]["reweighting"]["iterations"] = iterations;
   outputJson["output"]["reweighting"]["residual"] = residual;
-  outputJson["output"]["reweighting"]["converged"] = residual <= 1e-8;
+  outputJson["output"]["reweighting"]["converged"] = whamConverged;
+  outputJson["output"]["reweighting"]["unconvergedBlocks"] = whamUnconvergedBlocks;
+  nlohmann::json unconvergedBlockDetails = nlohmann::json::array();
+  for (const UnconvergedBlock& item : whamUnconvergedBlockDetails)
+  {
+    unconvergedBlockDetails.push_back(
+        {{"block", item.index}, {"residual", item.residual}, {"iterations", item.iterations}});
+  }
+  outputJson["output"]["reweighting"]["unconvergedBlockDetails"] = unconvergedBlockDetails;
   outputJson["output"]["reweighting"]["freeEnergies"] = freeEnergies;
 
-  std::print(stream, "    reweighted isotherms written to output/reweighted_isotherm_{{T}}.reweighted_histogram.txt\n");
-  std::print(stream, "    free energies written to output/reweighted_free_energies.reweighted_histogram.txt\n\n\n");
+  std::print(stream, "    reweighted isotherms written to wham/reweighted_isotherm_{{T}}.reweighted_histogram.txt\n");
+  std::print(stream, "    free energies written to wham/reweighted_free_energies.reweighted_histogram.txt\n");
+  std::print(stream, "    density of states written to wham/density_of_states.reweighted_histogram.txt\n");
+  if (computeBET && front.framework.has_value())
+  {
+    std::print(stream, "    BET plots written to wham/bet_{{T}}.reweighted_histogram.txt\n");
+  }
+  std::print(stream, "\n\n");
   std::flush(stream);
 
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();

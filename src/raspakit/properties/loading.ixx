@@ -43,10 +43,10 @@ export struct LoadingData
     {
       this->numberOfMolecules[i] = static_cast<double>(numberOfIntegerMolecules[i]);
       totalNumberOfMolecules += static_cast<double>(numberOfIntegerMolecules[i]);
-      ;
       this->numberDensities[i] = static_cast<double>(numberOfIntegerMolecules[i]) * inverseVolume;
       totalDensity += static_cast<double>(numberOfIntegerMolecules[i]) * inverseVolume;
-      this->inverseNumberDensities[i] = box.volume / static_cast<double>(numberOfIntegerMolecules[i]);
+      this->inverseNumberDensities[i] =
+          numberOfIntegerMolecules[i] > 0uz ? box.volume / static_cast<double>(numberOfIntegerMolecules[i]) : 0.0;
     }
   }
 
@@ -74,9 +74,9 @@ export struct LoadingData
 
   std::uint64_t versionNumber{1};
 
-  std::size_t size;
-  double totalNumberOfMolecules;
-  double totalDensity;
+  std::size_t size{};
+  double totalNumberOfMolecules{0.0};
+  double totalDensity{0.0};
   std::vector<double> numberOfMolecules;
   std::vector<double> numberDensities;
   std::vector<double> inverseNumberDensities;

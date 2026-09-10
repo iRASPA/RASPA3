@@ -875,6 +875,18 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
   }
+  if (crossSection.has_value())
+  {
+    std::print(stream, "    Cross-section (BET):          {:10.4f} [Å²]\n", crossSection.value());
+  }
+  if (liquidVolume.has_value())
+  {
+    std::print(stream, "    Liquid volume (Gurvich):      {:10.4f} [Å³/molecule]\n", liquidVolume.value());
+  }
+  if (saturationPressure.has_value())
+  {
+    std::print(stream, "    Saturation pressure P0:       {:10.4f} [Pa]\n", saturationPressure.value());
+  }
   if (lnPartitionFunction != 0.0)
   {
     std::print(stream, "    Ln partition function:        {:10.4f} [ln(q/V) with q/V in A^-3]\n", lnPartitionFunction);
@@ -2116,6 +2128,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.idealGasRosenbluthWeight;
   archive << c.idealGasEnergy;
+  archive << c.crossSection;
+  archive << c.liquidVolume;
+  archive << c.saturationPressure;
 
   archive << c.netCharge;
   archive << c.startingBead;
@@ -2216,6 +2231,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.idealGasRosenbluthWeight;
   archive >> c.idealGasEnergy;
+  archive >> c.crossSection;
+  archive >> c.liquidVolume;
+  archive >> c.saturationPressure;
 
   archive >> c.netCharge;
   archive >> c.startingBead;
@@ -2324,6 +2342,60 @@ Component Component::makeCO2(const ForceField &forceField, std::size_t id, bool 
        Atom({0, 0,  0.000},  qC, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), static_cast<std::uint8_t>(id), false, false),
        Atom({0, 0, -1.149},  qO, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), static_cast<std::uint8_t>(id), false, false)},
       {}, {}, 5, 21);
+}
+
+Component Component::makeN2(const ForceField &forceField, std::size_t id, bool useCharges)
+{
+  std::optional<std::size_t> type_n_n2 = forceField.findPseudoAtom("N_n2");
+  if (!type_n_n2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "N_n2"));
+  }
+
+  std::optional<std::size_t> type_n_com = forceField.findPseudoAtom("N_com");
+  if (!type_n_com.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "N_com"));
+  }
+
+  const double qN = useCharges ? forceField.pseudoAtoms[type_n_n2.value()].charge : 0.0;
+  const double qCom = useCharges ? forceField.pseudoAtoms[type_n_com.value()].charge : 0.0;
+
+  Component component(
+      forceField, "N2", 126.192, 3395800.0, 0.0372,
+      {Atom({0, 0,  0.55}, qN, 1.0, 0, static_cast<std::uint16_t>(type_n_n2.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom({0, 0,  0.00}, qCom, 1.0, 0, static_cast<std::uint16_t>(type_n_com.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom({0, 0, -0.55}, qN, 1.0, 0, static_cast<std::uint16_t>(type_n_n2.value()), static_cast<std::uint8_t>(id), false, false)},
+      {}, {}, 5, 21);
+  component.crossSection = 16.2;
+  component.liquidVolume = 57.7;
+  component.saturationPressure = 101325.0;
+  return component;
+}
+
+Component Component::makeSphericalProbe(const ForceField &forceField, std::size_t id, std::string_view typeName)
+{
+  const std::string name(typeName);
+  std::optional<std::size_t> type = forceField.findPseudoAtom(name);
+  if (!type.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", name));
+  }
+
+  Component component(
+      forceField, name, 126.192, 3395800.0, 0.0372,
+      {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(type.value()), static_cast<std::uint8_t>(id), false,
+            false)},
+      {}, {}, 5, 21);
+  if (!(component.totalMass > 0.0))
+  {
+    component.totalMass = 28.0134;
+    if (!component.definedAtoms.empty()) component.definedAtoms.front().second = 28.0134;
+  }
+  return component;
 }
 
 Component Component::makeWater(const ForceField &forceField, std::size_t id, bool useCharges)

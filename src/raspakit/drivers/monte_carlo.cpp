@@ -329,11 +329,12 @@ void MonteCarlo::performCycle()
                                                  fractionalMoleculeSystem);
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSystem.lambdaWangLandauIsActive(selectedComponent));
 
         selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            selectedSecondSystem.containsTheFractionalMolecule);
+            selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
 
         if (selectedSystem.usesGibbsConventionalCFCMC())
         {

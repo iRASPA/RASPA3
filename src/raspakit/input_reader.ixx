@@ -9,6 +9,7 @@ import std;
 import stringutils;
 
 import int3;
+import uint3;
 import double3;
 import threadpool;
 import json;
@@ -86,7 +87,8 @@ export struct InputReader
     ParallelThermodynamicIntegration = 6,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
     HyperParallelTempering = 7,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
     ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
-    ParallelTMMC = 9  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
+    ParallelTMMC = 9,  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
+    NLDFT = 10  ///< Classical nonlocal DFT isotherm on the framework energy grid (structurekit solver).
   };
 
   /**
@@ -133,10 +135,25 @@ export struct InputReader
   /// (defaults to the temperature ladder).
   std::vector<double> reweightingTemperatures;
   /// Reweighted histogram: the pressure range [min, max] of the reweighted isotherms in Pa
-  /// (defaults to the span of the pressure ladder).
+  /// (defaults to the span of the pressure ladder, or the Henry-to-P0 span when 'ComputeBET' is set).
   std::optional<std::pair<double, double>> reweightingPressureRange;
   /// Reweighted histogram: the number of log-spaced pressures of the reweighted isotherms.
   std::size_t reweightingNumberOfPressures{100};
+  /// True when the input file set 'ReweightingNumberOfPressures' explicitly.
+  bool reweightingNumberOfPressuresSpecified{false};
+  /// True when 'ExternalPressures' is `"auto"` (or omitted under 'ComputeBET' for WHAM).
+  bool autoExternalPressures{false};
+  /// True when 'ReweightingPressureRange' is `"auto"` (or omitted under 'ComputeBET').
+  bool autoReweightingPressureRange{false};
+  /// True when 'MacroStateMaximumNumberOfMolecules' is `"auto"` (or omitted under 'ComputeBET').
+  bool autoMacroStateMaximum{false};
+
+  /// Extract a nitrogen BET area (Rouquerol) from the reweighted isotherm after a WHAM or TMMC run.
+  /// The JSON key is 'ComputeBET'; 'ComputeBTE' is accepted as an alias.
+  /// With this flag, `'ExternalPressures': 'auto'` and `'ReweightingPressureRange': 'auto'` (or omitting
+  /// those keys) place the span from a Widom Henry coefficient up to nitrogen P0.
+  /// `'MacroStateMaximumNumberOfMolecules': 'auto'` (or omitting it) scouts occupancy at P0 for N_max.
+  bool computeBET{false};
 
   /// Parallel TMMC: the macrostate range [MacroStateMinimumNumberOfMolecules,
   /// MacroStateMaximumNumberOfMolecules] is split into this many windows sharing their endpoints;
@@ -144,6 +161,17 @@ export struct InputReader
   std::size_t tmmcNumberOfWindows{1};
   /// Parallel TMMC: number of Monte Carlo steps between updates of the transition-matrix bias.
   std::size_t tmmcUpdateEvery{100000};
+
+  /// NLDFT: energy-grid size (0 means use ForceField NumberOfVDWGridPoints, else 128³).
+  uint3 nldftGridSize{0, 0, 0};
+  /// NLDFT: orientations for ρ(r, ω); 0 means auto (128 for a multi-site probe, 1 for a sphere).
+  std::size_t nldftNumberOfOrientations{0};
+  /// NLDFT: prefer the OpenCL energy backend when available.
+  bool nldftUseGPU{false};
+  /// NLDFT: override whether framework electrostatics enter V_ext / U(r, ω).
+  std::optional<bool> nldftUseElectrostatics{};
+  /// NLDFT: override the relative Ewald precision for the framework potential grid.
+  std::optional<double> nldftRelativePrecision{};
 
   std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
   std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.

@@ -7,11 +7,19 @@
 import std;
 
 import input_reader;
+import int3;
 import json;
 import thermobarostat;
 
 namespace
 {
+
+void setBETProbeProperties(nlohmann::json& component)
+{
+  component["CrossSection"] = 16.2;
+  component["LiquidVolume"] = 57.7;
+  component["SaturationPressure"] = 101325.0;
+}
 
 class TemporaryInput
 {
@@ -211,6 +219,22 @@ TEST(INPUT_READER_TMMC, rejects_non_nearest_neighbor_system_moves)
       std::runtime_error);
 }
 
+TEST(INPUT_READER_TMMC, enables_lambda_chain_for_cfcmc_swap)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = readTMMCExample();
+  input["NumberOfLambdaBins"] = 7;
+  input["Components"][0]["SwapProbability"] = 0.0;
+  input["Components"][0]["CFCMC_CBMC_SwapProbability"] = 1.0;
+  TemporaryInput temporary(std::move(input), "lambda_chain", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_EQ(reader.systems.size(), 1uz);
+  EXPECT_EQ(reader.systems[0].components[0].lambdaGC.numberOfSamplePoints, 7uz);
+  EXPECT_EQ(reader.systems[0].tmmc.numberOfLambdaBins, 7uz);
+}
+
 TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();
@@ -326,4 +350,258 @@ TEST(INPUT_READER_MD, reads_grand_canonical_md_examples)
     InputReader reader("simulation.json");
     EXPECT_TRUE(molecularDynamicsHasParticleExchange(reader.systems[0].molecularDynamicsEnsemble));
   }
+}
+
+TEST(INPUT_READER, compute_bet_is_accepted_for_parallel_tmmc)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ComputeBET"] = true;
+  input["NumberOfWindows"] = 2;
+  input["NumberOfInitializationCycles"] = 10;
+  input["NumberOfEquilibrationCycles"] = 10;
+  input["NumberOfProductionCycles"] = 10;
+  input["Systems"][0].erase("Ensemble");
+  input["Systems"][0].erase("ComputeMSD");
+  input["Systems"][0].erase("SampleMSDEvery");
+  input["Systems"][0].erase("WriteMSDEvery");
+  input["Systems"][0]["ExternalPressure"] = 1.0e5;
+  input["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 0;
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = 10;
+  input["Components"][0]["SwapProbability"] = 1.0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "compute_bet", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.computeBET);
+  EXPECT_EQ(reader.simulationType, InputReader::SimulationType::ParallelTMMC);
+}
+
+TEST(INPUT_READER, compute_bte_alias_sets_compute_bet)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ComputeBTE"] = true;
+  input["NumberOfWindows"] = 2;
+  input["Systems"][0].erase("Ensemble");
+  input["Systems"][0].erase("ComputeMSD");
+  input["Systems"][0].erase("SampleMSDEvery");
+  input["Systems"][0].erase("WriteMSDEvery");
+  input["Systems"][0]["ExternalPressure"] = 1.0e5;
+  input["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 0;
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = 10;
+  input["Components"][0]["SwapProbability"] = 1.0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "compute_bte", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.computeBET);
+}
+
+TEST(INPUT_READER, compute_bet_rejected_for_molecular_dynamics)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["ComputeBET"] = true;
+  TemporaryInput temporary(std::move(input), "compute_bet_md", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, compute_bet_accepts_auto_pressures_for_wham)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["ReweightingPressureRange"] = "auto";
+  input["NumberOfThreads"] = 16;
+  input["Systems"][0]["ExternalPressures"] = "auto";
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "wham_auto", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.computeBET);
+  EXPECT_TRUE(reader.autoExternalPressures);
+  EXPECT_TRUE(reader.autoReweightingPressureRange);
+  EXPECT_TRUE(reader.parallelTemperingPressures.empty());
+  EXPECT_EQ(reader.simulationType, InputReader::SimulationType::ReweightedHistogram);
+}
+
+TEST(INPUT_READER, compute_bet_omitted_pressures_imply_auto_for_wham)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "wham_omit", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.autoExternalPressures);
+  EXPECT_TRUE(reader.autoReweightingPressureRange);
+  EXPECT_EQ(reader.parallelTemperingTemperatures.size(), 1uz);
+}
+
+TEST(INPUT_READER, auto_pressures_rejected_without_compute_bet)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ReweightingPressureRange"] = "auto";
+  input["Systems"][0]["ExternalTemperatures"] = nlohmann::json::array({111.58, 120.0});
+  input["Systems"][0]["ExternalPressures"] = "auto";
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  TemporaryInput temporary(std::move(input), "auto_no_bet", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, compute_bet_omitted_range_implies_auto_for_tmmc)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ComputeBET"] = true;
+  input["NumberOfWindows"] = 2;
+  input["Components"][0].erase("CreateNuMberofmolecules");
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "tmmc_omit_range", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.computeBET);
+  EXPECT_TRUE(reader.autoReweightingPressureRange);
+  EXPECT_FALSE(reader.reweightingPressureRange.has_value());
+}
+
+TEST(INPUT_READER, auto_reweighting_range_rejected_without_compute_bet)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ReweightingPressureRange"] = "auto";
+  input["NumberOfWindows"] = 2;
+  input["Systems"][0].erase("Ensemble");
+  input["Systems"][0].erase("ComputeMSD");
+  input["Systems"][0].erase("SampleMSDEvery");
+  input["Systems"][0].erase("WriteMSDEvery");
+  input["Systems"][0]["ExternalPressure"] = 1.0e5;
+  input["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 0;
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = 10;
+  input["Components"][0]["SwapProbability"] = 1.0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  TemporaryInput temporary(std::move(input), "tmmc_auto_no_bet", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, compute_bet_accepts_auto_macrostate_for_wham)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = "auto";
+  TemporaryInput temporary(std::move(input), "wham_auto_nmax", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.autoMacroStateMaximum);
+}
+
+TEST(INPUT_READER, compute_bet_accepts_auto_macrostate_for_tmmc)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ComputeBET"] = true;
+  input["NumberOfWindows"] = 2;
+  input["Components"][0].erase("CreateNuMberofmolecules");
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = "auto";
+  TemporaryInput temporary(std::move(input), "tmmc_auto_nmax", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.autoMacroStateMaximum);
+}
+
+TEST(INPUT_READER, compute_bet_omitted_macrostate_implies_auto)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["ComputeBET"] = true;
+  input["NumberOfWindows"] = 2;
+  input["Components"][0].erase("CreateNuMberofmolecules");
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  input["Systems"][0].erase("MacroStateMaximumNumberOfMolecules");
+  TemporaryInput temporary(std::move(input), "tmmc_omit_nmax", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_TRUE(reader.autoMacroStateMaximum);
+}
+
+TEST(INPUT_READER, auto_macrostate_rejected_without_compute_bet)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ParallelTMMC";
+  input["NumberOfWindows"] = 2;
+  input["Components"][0].erase("CreateNuMberofmolecules");
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Systems"][0]["MacroStateMaximumNumberOfMolecules"] = "auto";
+  TemporaryInput temporary(std::move(input), "auto_nmax_no_bet", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, number_of_unit_cells_auto_satisfies_minimum_image_convention)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = readTMMCExample();
+  // Unit cell ~30.6 Å; CutOff 20 Å → need ceil(40 / 30.6) = 2 replicas per axis.
+  input["Systems"][0]["CutOff"] = 20.0;
+  input["Systems"][0]["NumberOfUnitCells"] = "auto";
+  TemporaryInput temporary(std::move(input), "unit_cells_auto", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_TRUE(reader.systems[0].framework.has_value());
+  const int3 cells = reader.systems[0].framework->numberOfUnitCells;
+  EXPECT_EQ(cells.x, 2);
+  EXPECT_EQ(cells.y, 2);
+  EXPECT_EQ(cells.z, 2);
+}
+
+TEST(INPUT_READER, number_of_unit_cells_rejects_invalid_string)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = readTMMCExample();
+  input["Systems"][0]["NumberOfUnitCells"] = "automatic";
+  TemporaryInput temporary(std::move(input), "unit_cells_bad", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
 }

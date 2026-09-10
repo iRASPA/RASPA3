@@ -126,6 +126,16 @@ void recordOtherwiseMissingNeutralTMMCTrial(Move::Types moveType, System& system
   }
 }
 
+void captureTMMCLambdaBin(System& system, std::size_t componentId)
+{
+  if (!system.tmmc.lambdaChain() || componentId >= system.components.size())
+  {
+    system.tmmc.currentLambdaBin = 0uz;
+    return;
+  }
+  system.tmmc.currentLambdaBin = system.components[componentId].lambdaGC.currentBin;
+}
+
 }  // namespace
 
 MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNumber& random, System& system,
@@ -187,6 +197,7 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  captureTMMCLambdaBin(selectedSystem, selectedComponent);
 
   // during pre-initialization only translation, rotation, reinsertion and partial-reinsertion moves are performed;
   // any other sampled move type is skipped
@@ -284,6 +295,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  captureTMMCLambdaBin(selectedSystem, selectedComponent);
 
   switch (moveType)
   {
@@ -1018,6 +1030,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  captureTMMCLambdaBin(selectedSystem, selectedComponent);
 
   switch (moveType)
   {
@@ -1752,6 +1765,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  captureTMMCLambdaBin(selectedSystem, selectedComponent);
 
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   switch (moveType)

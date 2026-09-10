@@ -7,6 +7,7 @@ import component;
 import double3;
 import forcefield;
 import mc_moves;
+import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_group_swap;
 import mc_moves_tethered_proton_hop;
 import mc_moves_move_types;
@@ -145,6 +146,18 @@ double totalTrials(const System& system, Move::Types move)
 {
   const auto& statistics = std::get<MoveStatistics<double3>>(system.components[0].mc_moves_statistics[move]);
   return statistics.totalCounts.x + statistics.totalCounts.y + statistics.totalCounts.z;
+}
+
+void expectAtomScalingState(const std::vector<Atom>& actual, const std::vector<Atom>& expected)
+{
+  ASSERT_EQ(actual.size(), expected.size());
+  for (std::size_t i = 0; i < actual.size(); ++i)
+  {
+    EXPECT_DOUBLE_EQ(actual[i].scalingVDW, expected[i].scalingVDW);
+    EXPECT_DOUBLE_EQ(actual[i].scalingCoulomb, expected[i].scalingCoulomb);
+    EXPECT_EQ(actual[i].groupId, expected[i].groupId);
+    EXPECT_EQ(actual[i].isFractional, expected[i].isFractional);
+  }
 }
 
 System makeInitializationRoutingSystem(Move::Types move)
@@ -506,6 +519,84 @@ TEST(MC_COMPONENT_MOVES, initialization_routes_fractional_swap_handlers)
     EXPECT_EQ(totalTrials(system, Move::Types::SwapCBMC), 0.0);
     EXPECT_EQ(totalTrials(system, Move::Types::PairSwapCBMC), 0.0);
   }
+}
+
+TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_upper_tmmc_window_rejection)
+{
+  System system = makeInitializationRoutingSystem(Move::Types::SwapCBCFCMC);
+  Component& component = system.components[0];
+  const std::size_t fractionalIndex =
+      system.indexOfFractionalMoleculeForMove(Move::Types::SwapCBCFCMC, 0);
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[0];
+
+  system.tmmc.doTMMC = true;
+  system.tmmc.rejectOutOfBound = true;
+  system.tmmc.minMacrostate = 0;
+  system.tmmc.maxMacrostate = oldN;
+  system.tmmc.numberOfLambdaBins = component.lambdaGC.numberOfSamplePoints;
+  system.tmmc.initialize();
+
+  for (Atom& atom : system.spanOfMolecule(0, fractionalIndex))
+  {
+    atom.setScalingToFractional(1.0, component.lambdaGC.dUdlambdaGroupId);
+  }
+  component.lambdaGC.setCurrentBin(component.lambdaGC.numberOfSamplePoints - 1uz);
+  const std::vector<Atom> before = system.atomData;
+
+  RandomNumber random(91);
+  bool testedBoundary = false;
+  for (std::size_t attempt = 0; attempt < 100uz && !testedBoundary; ++attempt)
+  {
+    system.atomData = before;
+    component.lambdaGC.setCurrentBin(component.lambdaGC.numberOfSamplePoints - 1uz);
+    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0, fractionalIndex);
+    if (pacc.z > 0.0)
+    {
+      EXPECT_FALSE(energy.has_value());
+      expectAtomScalingState(system.atomData, before);
+      testedBoundary = true;
+    }
+  }
+  EXPECT_TRUE(testedBoundary);
+}
+
+TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_lower_tmmc_window_rejection)
+{
+  System system = makeInitializationRoutingSystem(Move::Types::SwapCBCFCMC);
+  Component& component = system.components[0];
+  const std::size_t fractionalIndex =
+      system.indexOfFractionalMoleculeForMove(Move::Types::SwapCBCFCMC, 0);
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[0];
+
+  system.tmmc.doTMMC = true;
+  system.tmmc.rejectOutOfBound = true;
+  system.tmmc.minMacrostate = oldN;
+  system.tmmc.maxMacrostate = oldN + 2uz;
+  system.tmmc.numberOfLambdaBins = component.lambdaGC.numberOfSamplePoints;
+  system.tmmc.initialize();
+
+  for (Atom& atom : system.spanOfMolecule(0, fractionalIndex))
+  {
+    atom.setScalingToFractional(0.0, component.lambdaGC.dUdlambdaGroupId);
+  }
+  component.lambdaGC.setCurrentBin(0uz);
+  const std::vector<Atom> before = system.atomData;
+
+  RandomNumber random(37);
+  bool testedBoundary = false;
+  for (std::size_t attempt = 0; attempt < 100uz && !testedBoundary; ++attempt)
+  {
+    system.atomData = before;
+    component.lambdaGC.setCurrentBin(0uz);
+    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0, fractionalIndex);
+    if (pacc.x > 0.0)
+    {
+      EXPECT_FALSE(energy.has_value());
+      expectAtomScalingState(system.atomData, before);
+      testedBoundary = true;
+    }
+  }
+  EXPECT_TRUE(testedBoundary);
 }
 
 TEST(MC_COMPONENT_MOVES, neutral_trial_updates_tmmc_diagonal)

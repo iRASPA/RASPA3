@@ -272,7 +272,8 @@ void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationSta
 
         // Wang-Landau biasing of the CFCMC lambda moves (all state is owned by this replica)
         system.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            system.lambdaWangLandauIsActive(selectedComponent));
         system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;

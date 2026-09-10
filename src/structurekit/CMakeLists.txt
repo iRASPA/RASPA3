@@ -57,3 +57,11 @@ target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJEC
 # The link is PUBLIC because those types appear in the interfaces here, so anything using this library sees
 # them too.
 target_link_libraries(${PROJECT_NAME} PUBLIC symmetrykit mathkit foundationkit)
+
+# FFTW carries the convolutions of the NLDFT solver (energy_based/shared/nldft.cpp): the FMT weighted
+# densities and the mean-field attraction are products in Fourier space over the periodic cell.
+find_path(FFTW3_INCLUDE_DIR fftw3.h PATHS /opt/homebrew/include /usr/local/include REQUIRED)
+find_library(FFTW3_LIBRARY fftw3 PATHS /opt/homebrew/lib /usr/local/lib REQUIRED)
+find_library(FFTW3_THREADS_LIBRARY fftw3_threads PATHS /opt/homebrew/lib /usr/local/lib REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${FFTW3_INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${FFTW3_LIBRARY} ${FFTW3_THREADS_LIBRARY})

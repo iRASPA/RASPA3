@@ -17,6 +17,7 @@ import parallel_tempering;
 import hyper_parallel_tempering;
 import reweighted_histogram;
 import parallel_tmmc;
+import nldft;
 
 void runSimulation(InputReader& inputReader)
 {
@@ -130,6 +131,12 @@ void runSimulation(InputReader& inputReader)
         readBinaryRestartFile(parallel_tmmc, inputReader.restartFromBinaryFileName);
       }
       parallel_tmmc.run();
+      break;
+    }
+    case InputReader::SimulationType::NLDFT:
+    {
+      NLDFT nldft(inputReader);
+      nldft.run();
       break;
     }
     default:

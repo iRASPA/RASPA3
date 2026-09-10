@@ -53,23 +53,59 @@ bool sameHamiltonian(const ForceField& forceFieldA, const ForceField& forceField
   return forceFieldA == normalizedB;
 }
 
+bool anyNonzero(const std::vector<std::size_t>& counts)
+{
+  return std::ranges::any_of(counts, [](std::size_t count) { return count != 0; });
+}
+
+// Pair-swap, group-swap, Gibbs and reaction fractional slots need extra discrete state
+// and standard-state factors that this move does not evaluate. GC and pair-GC
+// (SwapCFCMC / SwapCBCFCMC) slots are supported when both replicas match.
+bool hasUnsupportedFractionalSlots(const System& system)
+{
+  return anyNonzero(system.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfGibbsFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC) ||
+         anyNonzero(system.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC);
+}
+
+bool matchingGCFractionalLayout(const System& systemA, const System& systemB)
+{
+  return systemA.numberOfFractionalMoleculesPerComponent == systemB.numberOfFractionalMoleculesPerComponent &&
+         systemA.numberOfGCFractionalMoleculesPerComponent_CFCMC ==
+             systemB.numberOfGCFractionalMoleculesPerComponent_CFCMC &&
+         systemA.numberOfPairGCFractionalMoleculesPerComponent_CFCMC ==
+             systemB.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+}
+
+bool matchingLambdaGrids(const System& systemA, const System& systemB)
+{
+  for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
+  {
+    const Component& componentA = systemA.components[componentId];
+    const Component& componentB = systemB.components[componentId];
+    if (!componentA.hasFractionalMolecule && !componentB.hasFractionalMolecule) continue;
+    if (componentA.hasFractionalMolecule != componentB.hasFractionalMolecule) return false;
+    if (componentA.lambdaGC.numberOfSamplePoints != componentB.lambdaGC.numberOfSamplePoints) return false;
+    if (componentA.lambdaGC.biasFactor.size() != componentB.lambdaGC.biasFactor.size()) return false;
+    if (componentA.lambdaGC.currentBin >= componentA.lambdaGC.biasFactor.size()) return false;
+    if (componentB.lambdaGC.currentBin >= componentB.lambdaGC.biasFactor.size()) return false;
+  }
+  return true;
+}
+
 bool compatibleMobileTopology(const System& systemA, const System& systemB)
 {
-  auto hasFractionalSlots = [](const System& system)
-  {
-    return std::ranges::any_of(system.numberOfFractionalMoleculesPerComponent,
-                               [](std::size_t count) { return count != 0; });
-  };
-
-  // This implementation deliberately supports only rigid, whole-molecule replicas.
-  // Flexible intramolecular definitions, reaction coordinates, and fractional lambda
-  // state do not yet have a complete cross-replica compatibility comparator. Rejecting
-  // them before the random draw is conservative and preserves detailed balance.
   if (!sameHamiltonian(systemA.forceField, systemB.forceField) || systemA.hasExternalField || systemB.hasExternalField ||
       systemA.components.size() != systemB.components.size() ||
       systemA.numberOfFrameworkAtoms != systemB.numberOfFrameworkAtoms ||
       !systemA.reactions.list.empty() || !systemB.reactions.list.empty() ||
-      hasFractionalSlots(systemA) || hasFractionalSlots(systemB))
+      hasUnsupportedFractionalSlots(systemA) || hasUnsupportedFractionalSlots(systemB) ||
+      !matchingGCFractionalLayout(systemA, systemB) || !matchingLambdaGrids(systemA, systemB))
   {
     return false;
   }
@@ -117,6 +153,20 @@ bool compatibleMobileTopology(const System& systemA, const System& systemB)
   return true;
 }
 
+std::optional<double> tmmcLogBias(const System& replica, const System& configuration)
+{
+  if (!replica.tmmc.doTMMC || !replica.tmmc.useBias) return 0.0;
+  if (!replica.tmmc.useTMBias && !replica.tmmc.useWangLandau) return 0.0;
+  if (replica.components.empty() || configuration.components.empty()) return 0.0;
+
+  const std::size_t moleculeCount = configuration.numberOfIntegerMoleculesPerComponent.front();
+  const std::size_t lambdaBin =
+      replica.tmmc.lambdaChain() ? configuration.components.front().lambdaGC.currentBin : 0uz;
+  const std::size_t index = replica.tmmc.chainIndex(moleculeCount, lambdaBin);
+  if (index >= replica.tmmc.bias.size()) return std::nullopt;
+  return replica.tmmc.bias[index];
+}
+
 template <typename T>
 void swapMobileTail(std::vector<T>& dataA, std::size_t fixedSizeA, std::vector<T>& dataB, std::size_t fixedSizeB)
 {
@@ -153,9 +203,85 @@ void rebuildConfigurationDerivedState(System& system)
   system.computeTailCorrectionCounts();
   system.netCharge = system.netChargeFramework + system.netChargeAdsorbates;
   system.checkMoleculeIds();
+  if (system.tmmc.doTMMC && !system.components.empty())
+  {
+    system.tmmc.currentLambdaBin = system.components.front().lambdaGC.currentBin;
+  }
 }
 
 }  // namespace
+
+std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& systemA, const System& systemB)
+{
+  if (!compatibleMobileTopology(systemA, systemB))
+  {
+    return std::nullopt;
+  }
+
+  // Symmetric exchange of configurations X_A ↔ X_B between ensembles (β_A, f_A) and (β_B, f_B).
+  // For a shared temperature-independent Hamiltonian the energy term is
+  // (β_B − β_A)(U(X_B) − U(X_A)). The activity uses integer molecule counts only: the
+  // fractional molecule is already in U and in the replica-local λ-bias.
+  //
+  //     log R = (β_B − β_A)(U_B − U_A)
+  //           + Σ_i (N_B,i − N_A,i) log(a_A,i / a_B,i)
+  //           + (β_B P_B − β_A P_A)(V_B − V_A)          [variable-cell / no-framework only]
+  //           + Σ_q [B_A(λ_q(X_B)) − B_A(λ_q(X_A)) + B_B(λ_q(X_A)) − B_B(λ_q(X_B))]
+  //           + B^{TM}_A(X_B) − B^{TM}_A(X_A) + B^{TM}_B(X_A) − B^{TM}_B(X_B)
+  double logR = (systemB.beta - systemA.beta) *
+                (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy());
+
+  for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
+  {
+    const std::ptrdiff_t moleculeDifference =
+        static_cast<std::ptrdiff_t>(systemB.numberOfIntegerMoleculesPerComponent[componentId]) -
+        static_cast<std::ptrdiff_t>(systemA.numberOfIntegerMoleculesPerComponent[componentId]);
+    if (moleculeDifference == 0) continue;
+
+    const Component& componentA = systemA.components[componentId];
+    const Component& componentB = systemB.components[componentId];
+    const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * systemA.pressure;
+    const double fugacityB = componentB.molFraction * componentB.fugacityCoefficient.value_or(1.0) * systemB.pressure;
+    const double activityA = systemA.beta * fugacityA;
+    const double activityB = systemB.beta * fugacityB;
+    if (!(activityA > 0.0) || !(activityB > 0.0))
+    {
+      return std::nullopt;
+    }
+    logR += static_cast<double>(moleculeDifference) * (std::log(activityA) - std::log(activityB));
+  }
+
+  // Volume travels with the configuration only when there is no framework. The PV term
+  // belongs to an isobaric ensemble; a fixed-framework μVT box keeps its cell.
+  if (!systemA.framework.has_value())
+  {
+    logR += (systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
+            (systemB.simulationBox.volume - systemA.simulationBox.volume);
+  }
+
+  for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
+  {
+    const Component& componentA = systemA.components[componentId];
+    const Component& componentB = systemB.components[componentId];
+    if (!componentA.hasFractionalMolecule) continue;
+    const std::size_t binA = componentA.lambdaGC.currentBin;
+    const std::size_t binB = componentB.lambdaGC.currentBin;
+    logR += componentA.lambdaGC.biasFactor[binB] - componentA.lambdaGC.biasFactor[binA] +
+            componentB.lambdaGC.biasFactor[binA] - componentB.lambdaGC.biasFactor[binB];
+  }
+
+  const std::optional<double> tmmcAOnA = tmmcLogBias(systemA, systemA);
+  const std::optional<double> tmmcAOnB = tmmcLogBias(systemA, systemB);
+  const std::optional<double> tmmcBOnB = tmmcLogBias(systemB, systemB);
+  const std::optional<double> tmmcBOnA = tmmcLogBias(systemB, systemA);
+  if (!tmmcAOnA.has_value() || !tmmcAOnB.has_value() || !tmmcBOnB.has_value() || !tmmcBOnA.has_value())
+  {
+    return std::nullopt;
+  }
+  logR += *tmmcAOnB - *tmmcAOnA + *tmmcBOnA - *tmmcBOnB;
+
+  return logR;
+}
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwap(RandomNumber &random,
                                                                                        System &systemA, System &systemB)
@@ -163,73 +289,27 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ParallelTempering;
 
-  // Update swap move counts for both systems
   systemA.mc_moves_statistics.addTrial(move);
 
-  // A complete cross-Hamiltonian evaluator is not available here. Reject incompatible
-  // Hamiltonians and topologies before drawing an acceptance variate rather than mixing
-  // partial cross energies with full running energies.
-  if (!compatibleMobileTopology(systemA, systemB))
+  time_begin = std::chrono::steady_clock::now();
+  const std::optional<double> logAcceptance = ParallelTemperingLogAcceptance(systemA, systemB);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
+
+  if (!logAcceptance.has_value())
   {
     return std::nullopt;
   }
 
-  // Swapping the configurations X_A <-> X_B between the ensembles (beta_A, f_A) and (beta_B, f_B):
-  //
-  //     acc = [W_A(X_B) W_B(X_A)] / [W_A(X_A) W_B(X_B)]
-  //
-  // The potential-energy part gives exp[(beta_B - beta_A)(U_B - U_A)]. For open (grand-canonical)
-  // ensembles the weight carries (beta f_i V)^{N_i} per component (exp(beta mu) = beta f Lambda^3;
-  // the thermal wavelengths cancel within each ensemble), contributing
-  //
-  //     prod_i [(beta_A f_A,i) / (beta_B f_B,i)]^{N_B,i - N_A,i}
-  //
-  // with f_X,i = molFraction_i * fugacityCoefficient_X,i * P_X. This is the Yan & de Pablo
-  // hyper-parallel-tempering rule (JCP 111(21), 9509-9516, 1999) written in fugacities. For
-  // isobaric ensembles the boxes travel with the configurations and the PV work contributes
-  // exp[(beta_B P_B - beta_A P_A)(V_B - V_A)].
-  time_begin = std::chrono::steady_clock::now();
-
-  double acc = std::exp((systemB.beta - systemA.beta) *
-                        (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy()));
-
-  for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
-  {
-    const std::ptrdiff_t moleculeDifference =
-        static_cast<std::ptrdiff_t>(systemB.numberOfIntegerMoleculesPerComponent[componentId]) -
-        static_cast<std::ptrdiff_t>(systemA.numberOfIntegerMoleculesPerComponent[componentId]);
-    if (moleculeDifference != 0)
-    {
-      const Component &componentA = systemA.components[componentId];
-      const Component &componentB = systemB.components[componentId];
-      const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * systemA.pressure;
-      const double fugacityB = componentB.molFraction * componentB.fugacityCoefficient.value_or(1.0) * systemB.pressure;
-      acc *= std::pow((systemA.beta * fugacityA) / (systemB.beta * fugacityB),
-                      static_cast<double>(moleculeDifference));
-    }
-  }
-
-  // the simulation boxes are exchanged along with the configurations when there is no framework
-  if (!systemA.framework.has_value())
-  {
-    acc *= std::exp((systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
-                    (systemB.simulationBox.volume - systemA.simulationBox.volume));
-  }
-
-  time_end = std::chrono::steady_clock::now();
-  systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
-
-  // Update constructed move counts for both systems
   systemA.mc_moves_statistics.addConstructed(move);
 
-  // Apply acceptance/rejection rule
-  if (random.uniform() < acc)
+  const double logUniform = std::log(std::max(random.uniform(), std::numeric_limits<double>::min()));
+  if (logUniform < *logAcceptance)
   {
-    // Update accepted move counts for both systems
     systemA.mc_moves_statistics.addAccepted(move);
 
-    // Swap configuration-owned state. Thermodynamic state, force fields, move controls,
-    // accumulated statistics, and property samplers remain attached to their replicas.
+    // Swap configuration-owned state. Thermodynamic state, force fields, learned λ/TMMC
+    // biases, move controls, accumulated statistics, and property samplers stay put.
     swapMobileTail(systemA.atomData, systemA.numberOfFrameworkAtoms, systemB.atomData, systemB.numberOfFrameworkAtoms);
     swapMobileTail(systemA.atomDynamics, systemA.numberOfFrameworkAtoms, systemB.atomDynamics,
                    systemB.numberOfFrameworkAtoms);
@@ -251,6 +331,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.translationalCenterOfMassConstraint, systemB.translationalCenterOfMassConstraint);
     std::swap(systemA.translationalDegreesOfFreedom, systemB.translationalDegreesOfFreedom);
     std::swap(systemA.rotationalDegreesOfFreedom, systemB.rotationalDegreesOfFreedom);
+    std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
+    for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
+    {
+      std::swap(systemA.components[componentId].lambdaGC.currentBin,
+                systemB.components[componentId].lambdaGC.currentBin);
+    }
 
     rebuildConfigurationDerivedState(systemA);
     rebuildConfigurationDerivedState(systemB);

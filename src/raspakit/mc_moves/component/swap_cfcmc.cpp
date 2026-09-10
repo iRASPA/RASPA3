@@ -30,6 +30,22 @@ import mc_moves_move_types;
 import scaling;
 import intra_molecular_potentials;
 
+namespace
+{
+bool recordsLambdaChain(const System& system, bool insertionDisabled, bool deletionDisabled)
+{
+  return system.tmmc.doTMMC && system.tmmc.lambdaChain() && !insertionDisabled && !deletionDisabled;
+}
+
+double3 lambdaHopTMMCPacc(const System& system, bool insertionDisabled, bool deletionDisabled, std::size_t newBin,
+                          std::size_t oldBin, double physicalPacc)
+{
+  if (!recordsLambdaChain(system, insertionDisabled, deletionDisabled)) return double3(0.0, 0.0, 0.0);
+  if (newBin >= oldBin) return double3(0.0, 1.0 - physicalPacc, physicalPacc);
+  return double3(physicalPacc, 1.0 - physicalPacc, 0.0);
+}
+}  // namespace
+
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(RandomNumber& random, System& system,
                                                                           std::size_t selectedComponent,
                                                                           std::size_t selectedMolecule,
@@ -45,6 +61,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
   double deltaLambda = lambda.delta;
   double maxChange = component.mc_moves_statistics.getMaxChange(move, 2);
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
+  if (recordsLambdaChain(system, insertionDisabled, deletionDisabled))
+  {
+    selectedNewBin = static_cast<std::make_signed_t<std::size_t>>(oldBin) + (random.uniform() < 0.5 ? 1 : -1);
+  }
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   std::size_t indexFractionalMolecule =
@@ -338,6 +358,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
     {
+      // Evaluating the boundary transition temporarily made the fractional slot integer.
+      // Keep the physical probability for C, but leave the sampled configuration untouched.
+      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
@@ -684,6 +707,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
       if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
       {
+        // Restore both molecules modified while evaluating the forbidden deletion.
+        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
         return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       }
 
@@ -715,7 +741,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
           std::swap_ranges(fieldNewFractional.begin(), fieldNewFractional.end(), fieldFractional.begin());
         }
         std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)],
-                  system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, 0)]);
+                  system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)]);
 
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
         system.computeTailCorrectionCounts();
@@ -736,6 +762,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
   }
   else  // Lambda-move
   {
+    // 1D-N TMMC skips lambda hops (integer N is unchanged). On the (N, λ) chain a hop is a
+    // real ±1 step: record the unbiased Metropolis Pacc, and sample with the TMMC bias
+    // instead of the component lambda Wang-Landau (that WL is off when the chain is on).
+    const double3 skipTMMC{};
+    const bool chain = recordsLambdaChain(system, insertionDisabled, deletionDisabled);
+    const double3 hopReject = chain ? double3(0.0, 1.0, 0.0) : skipTMMC;
+
     std::size_t newBin = static_cast<std::size_t>(selectedNewBin);
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
@@ -754,7 +787,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     if (system.insideBlockedPockets(component, trialPositions))
     {
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+      return {std::nullopt, hopReject};
     }
 
     // Compute external field energy contribution
@@ -773,7 +806,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       component.mc_moves_cputime[move][Move::Timing::LambdaExternalField] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::LambdaExternalField] += (time_end - time_begin);
     }
-    if (!externalFieldEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!externalFieldEnergyDifference.has_value()) return {std::nullopt, hopReject};
 
     // Compute framework-molecule energy contribution
     time_begin = std::chrono::steady_clock::now();
@@ -791,7 +824,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       component.mc_moves_cputime[move][Move::Timing::LambdaFramework] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::LambdaFramework] += (time_end - time_begin);
     }
-    if (!frameworkEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!frameworkEnergyDifference.has_value()) return {std::nullopt, hopReject};
 
     // Compute molecule-molecule energy contribution
     time_begin = std::chrono::steady_clock::now();
@@ -808,7 +841,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       component.mc_moves_cputime[move][Move::Timing::LambdaMolecule] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::LambdaMolecule] += (time_end - time_begin);
     }
-    if (!interEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!interEnergyDifference.has_value()) return {std::nullopt, hopReject};
 
     // Compute Ewald energy contribution
     time_begin = std::chrono::steady_clock::now();
@@ -879,10 +912,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     component.mc_moves_statistics.addConstructed(move, 2);
 
-    double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    const double energyTerm = -system.beta * energyDifference.potentialEnergy();
+    const double physicalPacc = std::min(1.0, std::exp(energyTerm));
+    const double biasTerm = chain ? 0.0 : (lambda.biasFactor[newBin] - lambda.biasFactor[oldBin]);
+    const double tmmcBias = chain ? system.tmmc.biasFactor(oldN, oldN, newBin, oldBin) : 1.0;
+    const double3 hopPacc = lambdaHopTMMCPacc(system, insertionDisabled, deletionDisabled, newBin, oldBin, physicalPacc);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
+    if (random.uniform() < tmmcBias * std::exp(energyTerm + biasTerm))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       component.mc_moves_statistics.addAccepted(move, 2);
@@ -901,8 +938,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
       component.lambdaGC.setCurrentBin(newBin);
 
-      return {energyDifference, double3(0.0, 1.0, 0.0)};
+      return {energyDifference, hopPacc};
     };
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    return {std::nullopt, hopPacc};
   }
 }

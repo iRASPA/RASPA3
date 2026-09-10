@@ -1890,7 +1890,10 @@ ForceField ForceField::makeZeoliteForceField(double rc, bool shifted, bool tailC
                      {10.9, 2.64},
                      {124.070, 3.38},
                      {158.5, 3.72},
-                     {91.5, 3.681},
+                     // Adsorption-surface nitrogen as in iRASPA (ε/k = 36 K, σ = 3.31 Å), not the
+                     // Hirschfelder gas-phase probe. The well-surface calibration for silicalite
+                     // (~344 m²/g) is this pair mixed with TraPPE-zeo oxygen.
+                     {36.0, 3.31},
                      {38.298, 3.306},  // N_n2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165
                      {0.0, 1.0},       // N_com, a charge and nothing else
                      {33.36, 3.024},   // O_o2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2015, 17, 24048
@@ -2026,7 +2029,9 @@ ForceField ForceField::makeMetalOrganicFrameworkForceField(double rc, bool shift
                      {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
                      {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
                      {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
+                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false},
+                     {"N_n2", false, 14.00674, -0.405, 0.0, 7, false},
+                     {"N_com", false, 0.0, 0.810, 0.0, 0, false}},
                     {{1.0, 1.0},
                      {7.64893, 2.84642},  //   1 "H"   DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909.
                      {10.9, 2.64},        //   2 "He"
@@ -2150,7 +2155,9 @@ ForceField ForceField::makeMetalOrganicFrameworkForceField(double rc, bool shift
                                     // New York, 1954, p. 1114.
                      {124.070, 3.38},  // probe-Ar
                      {158.5, 3.72},    // probe-CH4
-                     {91.5, 3.681}},   // probe-N2
+                     {91.5, 3.681},    // probe-N2
+                     {38.298, 3.306},  // N_n2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165
+                     {0.0, 1.0}},      // N_com, a charge and nothing else
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 

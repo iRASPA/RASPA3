@@ -12,6 +12,7 @@ import running_energy;
 import double3;
 import archive;
 import json;
+import isotherm_bet;
 
 /**
  * \brief Multithreaded transition-matrix Monte Carlo (TMMC) with windowed macrostate walkers.
@@ -34,11 +35,30 @@ import json;
  *
  *     ln Pi(N+1) = ln Pi(N) + ln P(N -> N+1) - ln P(N+1 -> N)
  *
+ * At the low-N end that estimator is badly conditioned in a strongly binding adsorbent: the two
+ * transition probabilities differ by many orders of magnitude (some 19 natural logs per molecule
+ * for nitrogen in ferrierite at 77 K), the deletion side is an average with a heavy upper tail,
+ * and every increment error propagates into ln Pi of all higher macrostates, which moves the
+ * filling pressure. The same increment also follows exactly from a Widom test insertion,
+ *
+ *     ln Pi(N+1) - ln Pi(N) = ln(beta f V <W>_N / (N+1)),
+ *
+ * with <W>_N the mean Rosenbluth weight of a test insertion into the N-molecule system (the
+ * N = 0 case is the Henry coefficient). Test insertions are sampled per macrostate during
+ * production and replace the collection-matrix increments over the contiguous low-N block.
+ * The block ends where the test-insertion mean becomes hopeless (relative error of order 1,
+ * one lucky insertion in a full pore), not where it is merely noisy: a 0.35 relative-error
+ * cut closed the ferrierite (N, λ) block at N = 1 after three increments at 0.35–0.39. Every
+ * counted increment inside the block is used. Insertions become hopeless as the pore fills,
+ * exactly where the collection matrix of a 1D-N walk is well conditioned, so the two
+ * estimators are complementary and the handover is automatic.
+ *
  * ln Pi(N) is exact at the reference fugacity f_ref (from 'ExternalPressure' through the
  * Peng-Robinson equation of state) and reweights exactly to any other fugacity,
  * ln Pi(N; f) = ln Pi(N; f_ref) + N ln(f / f_ref), giving continuous adsorption isotherms
  * <N>(f) per temperature. The error bars come from re-deriving ln Pi from the per-block
- * increments of the collection matrices.
+ * increments of the collection matrices. With ComputeBET the Rouquerol window is taken from
+ * the full-data fit and slope/intercept are refit per block for a CI on the BET area.
  *
  * For bulk boxes (no framework) the analysis additionally locates the vapor-liquid coexistence
  * at every simulated subcritical temperature with the equal-weight criterion (Wilding): the
@@ -50,6 +70,45 @@ import json;
  * Every temperature is solved from its own walkers only, so temperature-dependent potentials are
  * allowed; the ladder gives one isotherm and one coexistence point per simulated temperature.
  */
+/// Cycle counts and TMMC analysis controls for a programmatic (no input-file) construction.
+export struct ParallelTMMCParameters
+{
+  std::size_t numberOfProductionCycles{10000};
+  std::size_t numberOfPreInitializationCycles{0};
+  std::size_t numberOfInitializationCycles{5000};
+  std::size_t numberOfEquilibrationCycles{5000};
+  std::size_t printEvery{5000};
+  std::size_t optimizeMCMovesEvery{5000};
+  std::size_t rescaleWangLandauEvery{5000};
+  std::size_t writeBinaryRestartEvery{0};
+  std::size_t numberOfBlocks{5};
+  std::size_t numberOfWindows{8};
+  std::size_t tmmcUpdateEvery{10000};
+  std::pair<double, double> reweightingPressureRange{1.0, 101325.0};
+  std::size_t reweightingNumberOfPressures{100};
+  bool computeBET{false};
+  std::optional<std::size_t> randomSeed{};
+};
+
+/// One point of a TMMC-reweighted isotherm, after the analysis has run.
+export struct TMMCIsothermPoint
+{
+  double pressure{0.0};               ///< Pressure [Pa].
+  double fugacity{0.0};               ///< Fugacity [Pa].
+  double moleculesPerCell{0.0};       ///< Absolute loading [molecules / simulation cell].
+  double moleculesPerCellError{0.0};  ///< Block error on the loading.
+  bool bimodal{false};                ///< True when Pi(N) has two basins at this pressure.
+};
+
+/// The three TMMC isotherm branches at one temperature.
+export struct TMMCIsotherm
+{
+  double temperature{0.0};
+  std::vector<TMMCIsothermPoint> equilibrium;
+  std::vector<TMMCIsothermPoint> adsorption;
+  std::vector<TMMCIsothermPoint> desorption;
+};
+
 export struct ParallelTMMC
 {
   enum class SimulationStage : std::size_t
@@ -72,6 +131,16 @@ export struct ParallelTMMC
    */
   ParallelTMMC(InputReader& reader);
 
+  /**
+   * \brief Constructs the driver from a single template system and a temperature ladder, without
+   *        an input file. The system is replicated into one walker per (temperature, window) pair
+   *        as in the InputReader constructor. The template system's tmmc min/max macrostates must
+   *        already be set (minimum < maximum); TMMC flags and the bias-update interval are applied
+   *        from \p parameters.
+   */
+  ParallelTMMC(System templateSystem, std::vector<double> temperatures,
+               ParallelTMMCParameters parameters = {});
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding).
@@ -90,6 +159,19 @@ export struct ParallelTMMC
 
   std::pair<double, double> reweightingPressureRange;  ///< Pressure range of the reweighted isotherms [Pa].
   std::size_t reweightingNumberOfPressures;            ///< Number of log-spaced pressures of the reweighted isotherms.
+
+  /// Extract a nitrogen BET area from each reweighted isotherm (Rouquerol, P0 = 101325 Pa).
+  bool computeBET{false};
+  /// 'ReweightingPressureRange': 'auto' (or omitted under ComputeBET): Henry-to-P0 isotherm grid.
+  bool autoReweightingPressureRange{false};
+  /// 'MacroStateMaximumNumberOfMolecules': 'auto' (or omitted under ComputeBET): P0 occupancy scout.
+  bool autoMacroStateMaximum{false};
+  /// Filled when the pressure span was placed from a Widom Henry coefficient.
+  std::optional<NitrogenBETPressurePlan> nitrogenBETPressurePlan;
+  /// Filled when N_max was placed from a P0 occupancy scout.
+  std::optional<NitrogenBETFillingCeiling> nitrogenBETFillingCeiling;
+  /// MC moves per cycle: the global maxMacrostate, not the current occupancy or the window width.
+  std::size_t numberOfStepsPerCycle{20};
 
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
@@ -128,7 +210,20 @@ export struct ParallelTMMC
   std::vector<std::vector<double3>> productionStartCollectionMatrices;
   std::vector<std::vector<std::size_t>> productionStartHistograms;
 
+  /// Widom test-insertion statistics per walker on the global macrostate grid, accumulated during
+  /// production only: the sum and the sum of squares of the Rosenbluth weight and the number of
+  /// insertions, per macrostate. They give the exact increment
+  /// ln Pi(N+1) - ln Pi(N) = ln(beta f V <W>_N / (N+1)) at the reference fugacity, which anchors
+  /// the low-N end of ln Pi where the collection-matrix estimate is worst conditioned.
+  std::vector<std::vector<double>> widomWeightSums;
+  std::vector<std::vector<double>> widomWeightSquaredSums;
+  std::vector<std::vector<std::size_t>> widomInsertions;
+
   std::vector<std::size_t> stepsPerWalker;  ///< Production MC steps performed per walker.
+
+  /// Reweighted isotherms (equilibrium, adsorption and desorption branches), one per temperature,
+  /// filled by performTransitionMatrixAnalysis.
+  std::vector<TMMCIsotherm> reweightedIsotherms;
 
   /// Cycles completed in the previous stages; the time-evolution properties (number of molecules,
   /// volume) are indexed by the absolute cycle number counted over all stages.
@@ -197,9 +292,10 @@ export struct ParallelTMMC
   void output();
 
   /**
-   * \brief Combines the collection matrices of the windows per temperature into the macrostate
-   *        probability distribution ln Pi(N) over the full range, writes it together with the
-   *        reweighted isotherms (exact in the fugacity): the equilibrium isotherm plus the
+   * \brief Combines the windows per temperature into the macrostate probability distribution
+   *        ln Pi(N) over the full range by reconstructing ln Pi in each window and matching
+   *        the gauge at the shared endpoint. Writes it together with the reweighted isotherms
+   *        (exact in the fugacity): the equilibrium isotherm plus the
    *        adsorption and desorption branches (conditional averages over the low-/high-density
    *        basin of Pi(N) where it is bimodal - the hysteresis loop). For bulk boxes the
    *        vapor-liquid coexistence is additionally located with the equal-weight criterion.
@@ -207,6 +303,12 @@ export struct ParallelTMMC
    *        increments.
    */
   void performTransitionMatrixAnalysis();
+
+  /**
+   * \brief Replicates \p templateSystem into one walker per (temperature, window) pair and pins
+   *        each walker's temperature, Peng-Robinson fugacity and macrostate window.
+   */
+  void initializeWalkers(System templateSystem);
 
   /**
    * \brief Writes the final per-walker reports (energy drift, move statistics and averages) to

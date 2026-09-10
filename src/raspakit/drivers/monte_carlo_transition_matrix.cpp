@@ -63,7 +63,11 @@ bool isTMMCCrossSystemMove(Move::Types moveType)
 void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
 {
   const std::size_t N = system.numberOfIntegerMoleculesPerComponent[componentId];
-  system.tmmc.updateHistogram(N);
+  const std::size_t lambdaBin =
+      (system.tmmc.lambdaChain() && componentId < system.components.size())
+          ? system.components[componentId].lambdaGC.currentBin
+          : 0uz;
+  system.tmmc.updateHistogram(N, lambdaBin);
   system.tmmc.numberOfSteps++;
   if (adjustBias)
   {
@@ -238,10 +242,11 @@ void MonteCarloTransitionMatrix::performCycle()
         }
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSystem.lambdaWangLandauIsActive(selectedComponent));
         selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            selectedSecondSystem.containsTheFractionalMolecule);
+            selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
 
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         selectedSecondSystem.pairSwapLambdaWangLandauIteration(

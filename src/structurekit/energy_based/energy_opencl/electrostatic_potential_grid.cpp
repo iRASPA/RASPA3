@@ -51,7 +51,8 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
   grid.alpha = split.alpha;
   grid.largestWaveVector = split.largestWaveVector;
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * static_cast<std::size_t>(gridSize.y) *
+                              static_cast<std::size_t>(gridSize.z);
   grid.smoothPotential.assign(numberOfVoxels, 0.0f);
 
   std::vector<double3> fractionalPositions = framework.fractionalPositions;
@@ -106,30 +107,15 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
         std::format("ElectrostaticPotentialGridOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
 
-  cl_int waveError, imaginaryError, potentialError;
-  cl_mem waveBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                     sizeof(cl_float4) * std::max<std::size_t>(1, waves.size()), nullptr, &waveError);
+  cl_mem waveBuffer = OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float4) * std::max<std::size_t>(1, waves.size()));
   cl_mem imaginaryBuffer =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                     sizeof(cl_float) * std::max<std::size_t>(1, imaginary.size()), nullptr, &imaginaryError);
-  cl_mem potentialBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
-                                          sizeof(cl_float) * numberOfVoxels, nullptr, &potentialError);
-  if (waveError != CL_SUCCESS || imaginaryError != CL_SUCCESS || potentialError != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("ElectrostaticPotentialGridOpenCL: OpenCL clCreateBuffer failed at {}\n", __LINE__));
-  }
+      OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float) * std::max<std::size_t>(1, imaginary.size()));
+  cl_mem potentialBuffer = OpenCL::createBuffer(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels);
 
   if (!waves.empty())
   {
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), waveBuffer, CL_TRUE, 0, sizeof(cl_float4) * waves.size(),
-                               waves.data(), 0, nullptr, nullptr);
-    err |= clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), imaginaryBuffer, CL_TRUE, 0,
-                                sizeof(cl_float) * imaginary.size(), imaginary.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(
-          std::format("ElectrostaticPotentialGridOpenCL: OpenCL clEnqueueWriteBuffer failed at {}\n", __LINE__));
-    }
+    OpenCL::writeBuffer(waveBuffer, sizeof(cl_float4) * waves.size(), waves.data());
+    OpenCL::writeBuffer(imaginaryBuffer, sizeof(cl_float) * imaginary.size(), imaginary.data());
   }
 
   cl_int3 clGridSize = {{cl_int(gridSize.x), cl_int(gridSize.y), cl_int(gridSize.z), 0}};
@@ -157,13 +143,7 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
         std::format("ElectrostaticPotentialGridOpenCL: OpenCL clEnqueueNDRangeKernel failed at {}\n", __LINE__));
   }
 
-  err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), potentialBuffer, CL_TRUE, 0,
-                            sizeof(cl_float) * numberOfVoxels, grid.smoothPotential.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(
-        std::format("ElectrostaticPotentialGridOpenCL: OpenCL clEnqueueReadBuffer failed at {}\n", __LINE__));
-  }
+  OpenCL::readBuffer(potentialBuffer, sizeof(cl_float) * numberOfVoxels, grid.smoothPotential.data());
 
   clFinish(OpenCL::clCommandQueue.value());
 

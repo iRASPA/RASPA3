@@ -5,6 +5,7 @@ module energy_backend;
 import std;
 
 import uint3;
+import double3;
 import unit_cell;
 import crystal;
 import pair_interactions;
@@ -15,11 +16,14 @@ import energy_shared_molecular_energy_grid;
 import energy_shared_electrostatic_potential_grid;
 import energy_shared_isosurface;
 import energy_shared_energy_backend;
+import energy_shared_well_field;
+import blocking_spheres;
 
 import energy_probe_energy_grid;
 import energy_molecular_energy_grid;
 import energy_electrostatic_potential_grid;
 import energy_isosurface;
+import energy_well_field;
 import grid_pore_size;
 
 EnergyBackend cpuEnergyBackend()
@@ -60,6 +64,23 @@ EnergyBackend cpuEnergyBackend()
 
   backend.poreRadiusField = [](uint3 gridSize, const UnitCell &unitCell, std::span<const float> distance,
                                double slack) { return poreRadiusField(gridSize, unitCell, distance, slack); };
+
+  backend.wellField = [](const PairInteractions &interactions, const Crystal &framework, const LinearProbe &probe,
+                         uint3 gridSize, std::size_t numberOfOrientations, double thermalEnergy,
+                         std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
+                         double ceiling, const ElectrostaticPotentialGrid *potential, double coulombFactor)
+  {
+    return WellFieldCPU::compute(interactions, framework, probe, gridSize, numberOfOrientations, thermalEnergy,
+                                 blockingSpheres, blockedEnergyPerAngstrom, ceiling, potential, coulombFactor);
+  };
+
+  backend.refineWellVertices = [](std::vector<double3> &corners, std::vector<double> &energies,
+                                  const PairInteractions &interactions, const Crystal &framework,
+                                  const NeighbourhoodParameters &parameters,
+                                  std::span<const BlockingSphere> blockingSpheres, double iso)
+  {
+    WellFieldCPU::refineVertices(corners, energies, interactions, framework, parameters, blockingSpheres, iso);
+  };
 
   return backend;
 }

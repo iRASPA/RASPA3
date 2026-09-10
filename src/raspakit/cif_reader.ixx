@@ -172,8 +172,13 @@ export struct CIFReader
    */
   std::optional<std::string> scanString();
 
-  static std::vector<Atom> expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box,
-                  std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms);
+  /// Expands the asymmetric unit to the full cell. When the file lists its own symmetry operations,
+  /// pass them: they describe the setting the coordinates are written in, which the Hall number alone
+  /// does not preserve.
+  static std::vector<Atom> expandDefinedAtomsToUnitCell(
+      const SimulationBox &simulation_box, std::size_t spaceGroupHallNumber,
+      const std::vector<Atom> &definedAtoms,
+      const std::vector<std::string> &symmetryOperationStrings = {});
 
   void resolveSpaceGroupHallNumber(const SimulationBox& simulation_box);
 
@@ -182,6 +187,9 @@ export struct CIFReader
 
   std::vector<Atom> fractionalAtoms;                ///< List of atoms with fractional coordinates.
   std::optional<std::size_t> spaceGroupHallNumber;  ///< Optional space group Hall number.
+  /// Whether the Hall number came from a Hall symbol. A Hall symbol fixes the setting; a
+  /// Hermann-Mauguin symbol does not, since forty of them name more than one setting.
+  bool spaceGroupHallNumberFromHallSymbol{false};
   std::optional<std::size_t> spaceGroupInternationalNumber;
   std::string hmSymbol;
   std::vector<std::string> symmetryOperationStrings;

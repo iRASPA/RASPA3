@@ -66,6 +66,7 @@ add_executable(unit_tests_raspakit
   voronoi_analysis.cpp
   apollonius_pore_analysis.cpp
   exact_regression.cpp
+  cif_reader.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

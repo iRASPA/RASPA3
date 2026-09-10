@@ -269,6 +269,13 @@ reported separately at the end of the simulation.
     (WHAM; Ferrenberg & Swendsen, PRL 63, 1195, 1989; Kumar et al., J. Comput.
     Chem. 13, 1011, 1992) into a continuous isotherm surface.
 
+    A cycle is a fixed number of Monte Carlo moves equal to
+    `"MacroStateMaximumNumberOfMolecules"` (the same filling ceiling TMMC uses),
+    not the current occupancy, so empty and filled replicas do the same amount of
+    work per cycle. With `"ComputeBET"` the key may be `"auto"` or omitted: an
+    unbiased GCMC scout at nitrogen P0 places N_max just above the plateau
+    loading.
+
     Every `"SampleReweightingEvery"` production cycles (default `5`) each
     replica records a raw (N, U) sample: the molecule count of the adsorbate
     and the potential energy. At the end of the run the pooled samples are
@@ -339,7 +346,11 @@ reported separately at the end of the simulation.
     contiguous windows that share their endpoint macrostates, and the system
     is replicated into one walker per (temperature, window) pair of the
     ladder `"ExternalTemperatures"` × windows (a single
-    `"ExternalTemperature"` gives a one-temperature run). Every walker runs
+    `"ExternalTemperature"` gives a one-temperature run). A cycle is a fixed
+    number of Monte Carlo moves equal to the global
+    `"MacroStateMaximumNumberOfMolecules"` (not the current occupancy or the
+    window width), so every walker does the same amount of work per cycle.
+    Every walker runs
     grand-canonical Monte Carlo in its own thread with its own random-number
     stream, confined to its window and flattened by the transition-matrix
     bias, which is re-derived from the collection matrix every
@@ -636,14 +647,45 @@ reported separately at the end of the simulation.
     ladder `"ExternalTemperatures"`.
 
 -   `"ReweightingPressureRange" : [P_min, P_max]`\
-    For `"SimulationType" : "ReweightedHistogram"`: the pressure range (in
-    Pascal) of the reweighted isotherms. Default: the span of the pressure
-    ladder `"ExternalPressures"`.
+    For `"SimulationType" : "ReweightedHistogram"` and `"ParallelTMMC"`: the
+    pressure range (in Pascal) of the reweighted isotherms. Default: the span
+    of the pressure ladder `"ExternalPressures"` (WHAM) or four decades around
+    the reference pressure (TMMC). Written as the string `"auto"` — only with
+    `"ComputeBET" : true` — the range is placed from a Widom Henry coefficient
+    of the empty framework to nitrogen P0 (101325 Pa), the same rule
+    `raspa3-cli --gcmc-bet` / `--tmmc-bet` uses. With `"ComputeBET"` the key
+    may also be omitted, which is the same as `"auto"`.
 
 -   `"ReweightingNumberOfPressures" : integer`\
     For `"SimulationType" : "ReweightedHistogram"` and `"ParallelTMMC"`: the
     number of log-spaced pressures the reweighted isotherms are evaluated at.
-    Default: `100`.
+    Default: `100`. When `"ComputeBET"` places the range automatically and this
+    key is omitted, WHAM uses 400 points and TMMC uses 12 points per decade
+    (at least 100).
+
+-   `"ComputeBET" : boolean`\
+    For `"SimulationType" : "ReweightedHistogram"` and `"ParallelTMMC"`: after
+    the reweighted isotherm is written, extract a BET surface area
+    (Rouquerol consistency) using the adsorbate component's
+    `"SaturationPressure"`, `"CrossSection"`, and `"LiquidVolume"`, and write
+    it to the combined output. `"ComputeBTE"` is accepted as an alias. With this
+    flag, `"ExternalPressures"` (WHAM) and `"ReweightingPressureRange"` may be
+    `"auto"` or omitted: a Widom Henry coefficient of the empty framework
+    places the bottom of the span at min(1 Pa, 10⁻³ n_Gurvich / K_H) and the
+    top at P0. `"NumberOfThreads"` then sizes the WHAM pressure ladder
+    (8–16 rungs), matching `raspa3-cli --threads`. WHAM then scouts occupancy
+    at Langmuir θ = 0.1, 0.5, 0.9, fits Langmuir vs Langmuir–Freundlich vs Toth,
+    and places rungs at equal Fisher overlap on a log-spaced skeleton (a point
+    at least every two equal-log steps, at most two extras per interval). For WHAM,
+    each converged production-block density of states also rebuilds the isotherm and
+    refits slope/intercept inside the full-data Rouquerol window; the spread of
+    those block areas is reported as the confidence-interval error on the BET
+    area (and on \(n_m\) and \(C\)) when at least three blocks succeed. TMMC does the
+    same from the per-block collection-matrix increments (rebuilt `ln Π(N)`). TMMC still samples at
+    `"ExternalPressure"` (typically P0); only the reweighting grid is placed
+    automatically. `"MacroStateMaximumNumberOfMolecules"` may also be `"auto"`
+    or omitted: an unbiased GCMC scout at P0 places the filling ceiling used
+    as TMMC N_max and as the WHAM cycle length. Default: `false`.
 
 -   `"NumberOfWindows" : integer`\
     For `"SimulationType" : "ParallelTMMC"`: the number of contiguous
@@ -716,7 +758,15 @@ reported separately at the end of the simulation.
     to per-component fugacities internally with the Peng-Robinson equation of
     state at each grid point. Together with `"ExternalTemperatures"` it spans
     the (temperature, pressure) replica grid. Replaces `"ExternalPressure"`
-    for those simulation types.
+    for those simulation types. Written as the string `"auto"` — only with
+    `"SimulationType" : "ReweightedHistogram"` and `"ComputeBET" : true` — a
+    log-spaced ladder is placed from the nitrogen Henry limit to P0 after the
+    system is built; `"NumberOfThreads"` sets the rung count (8–16). Occupancy
+    is then scouted at Langmuir θ = 0.1, 0.5, 0.9; Langmuir vs Langmuir–Freundlich
+    vs Toth is selected, and the same count is re-placed at equal Fisher overlap
+    on a log-spaced skeleton (gap at most twice equal-log spacing, at most two
+    extra rungs per interval), keeping the Henry and P0 endpoints.
+    With `"ComputeBET"` the key may also be omitted, which is the same as `"auto"`.
 
 -   `"ExternalPressureX" / "ExternalPressureY" / "ExternalPressureZ" : floating-point-number`\
     Override individual diagonal components of the pressure tensor, for
@@ -727,13 +777,17 @@ reported separately at the end of the simulation.
     Sets the imposed chemical potential (in internal units); the corresponding
     fugacity is derived from it and the temperature.
 
--   `"MacroStateMinimumNumberOfMolecules" / "MacroStateMaximumNumberOfMolecules" : integer`\
+-   `"MacroStateMinimumNumberOfMolecules" / "MacroStateMaximumNumberOfMolecules" : integer or "auto"`\
     For `"SimulationType" : "MonteCarloTransitionMatrix"` and
     `"ParallelTMMC"`: the macrostate range (the total molecule count) the
-    transition-matrix walk is confined to. For `"ParallelTMMC"` the range is
-    split into `"NumberOfWindows"` windows, and a minimum of `0` enables the
-    exact normalization of the saturation pressure by the empty-box state.
-    Defaults: `0` and `100`.
+    transition-matrix walk is confined to. `"ReweightedHistogram"` uses the
+    maximum as the number of Monte Carlo moves per cycle. For `"ParallelTMMC"`
+    the range is split into `"NumberOfWindows"` windows, and a minimum of `0`
+    enables the exact normalization of the saturation pressure by the
+    empty-box state. With `"ComputeBET"`, `"MacroStateMaximumNumberOfMolecules"`
+    may be `"auto"` or omitted: occupancy is scouted at nitrogen P0 and N_max
+    is placed just above the plateau (capped by Gurvich packing). Defaults:
+    `0` and `100`.
 
 -   `"MacroStateUseBias" : boolean`\
     For `"SimulationType" : "MonteCarloTransitionMatrix"`: whether the
@@ -794,10 +848,13 @@ reported separately at the end of the simulation.
     (the `.cif` extension may be omitted). The framework name is derived from
     the file stem, unless `"Name"` overrides it.
 
--   `"NumberOfUnitCells" : [integer, integer, integer]`\
+-   `"NumberOfUnitCells" : [integer, integer, integer] or "auto"`\
     The number of unit cells in the `x`, `y`, and `z` directions. The super-cell
     contains these unit cells, and periodic boundary conditions are applied at
     the super-cell level (*not* at the unit-cell level). Default: `[1, 1, 1]`.
+    With `"auto"`, the smallest integer replication in each direction is chosen
+    so the super-cell satisfies the minimum-image convention for the force-field
+    cut-offs (`ceil(2 * cutOff / perpendicularWidth)` per axis, at least 1).
 
 -   `"HeliumVoidFraction" : floating-point-number`\
     The void fraction obtained by probing the structure with helium at room
@@ -1316,6 +1373,20 @@ and `"BinaryInteractions"` are read from the force field file
     Rosenbluth weight shifts the chemical-potential reference, and the chemical
     potential follows directly from the fugacity). For equimolar mixtures this is
     essential.
+
+-   `"CrossSection" : floating-point-number`\
+    Probe cross-section σ for BET surface-area conversion [Å²]. Required when
+    `"ComputeBET"` is true (nitrogen is usually 16.2 Å²).
+
+-   `"LiquidVolume" : floating-point-number`\
+    Liquid molecular volume v_L for Gurvich packing and the t-plot [Å³ per
+    molecule]. Required when `"ComputeBET"` is true (nitrogen is usually
+    57.7 Å³).
+
+-   `"SaturationPressure" : floating-point-number`\
+    Saturation pressure P0 used for relative pressure x = P/P0 in the BET fit
+    [Pa]. Required when `"ComputeBET"` is true (nitrogen at 77 K is usually
+    101325 Pa).
 
 -   `"CreateNumberOfMolecules" : integer`\
     The number of molecules to create for this component at start-up. These

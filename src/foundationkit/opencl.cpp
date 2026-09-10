@@ -18,8 +18,80 @@ std::optional<cl_context> OpenCL::clContext = std::nullopt;
 std::optional<cl_device_id> OpenCL::clDeviceId = std::nullopt;
 std::optional<cl_command_queue> OpenCL::clCommandQueue = std::nullopt;
 
+namespace
+{
+constexpr std::size_t kCopyChunk = std::size_t{1} << 28;
+constexpr std::size_t kFourGiB = std::size_t{1} << 32;
+
+std::size_t paddedDeviceBytes(std::size_t bytes)
+{
+  if (bytes == 0) return 4;
+  if ((bytes & (kFourGiB - 1)) == 0) return bytes + 256;
+  return bytes;
+}
+
+void checkBuffer(cl_int err, const char *what)
+{
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL {} failed (err {})\n", what, err));
+  }
+}
+}  // namespace
+
+cl_mem OpenCL::createBuffer(cl_mem_flags flags, std::size_t bytes)
+{
+  if (!clContext.has_value())
+  {
+    throw std::runtime_error("OpenCL createBuffer: no OpenCL context\n");
+  }
+  cl_int err = CL_SUCCESS;
+  cl_mem mem = clCreateBuffer(clContext.value(), flags, paddedDeviceBytes(bytes), nullptr, &err);
+  checkBuffer(err, "clCreateBuffer");
+  return mem;
+}
+
+void OpenCL::writeBuffer(cl_mem mem, std::size_t bytes, const void *host)
+{
+  if (bytes == 0 || host == nullptr) return;
+  if (!clCommandQueue.has_value())
+  {
+    throw std::runtime_error("OpenCL writeBuffer: no OpenCL command queue\n");
+  }
+  const auto *p = static_cast<const std::byte *>(host);
+  for (std::size_t off = 0; off < bytes;)
+  {
+    const std::size_t n = std::min(kCopyChunk, bytes - off);
+    checkBuffer(clEnqueueWriteBuffer(clCommandQueue.value(), mem, CL_TRUE, off, n, p + off, 0, nullptr, nullptr),
+                "clEnqueueWriteBuffer");
+    off += n;
+  }
+}
+
+void OpenCL::readBuffer(cl_mem mem, std::size_t bytes, void *host)
+{
+  if (bytes == 0 || host == nullptr) return;
+  if (!clCommandQueue.has_value())
+  {
+    throw std::runtime_error("OpenCL readBuffer: no OpenCL command queue\n");
+  }
+  auto *p = static_cast<std::byte *>(host);
+  for (std::size_t off = 0; off < bytes;)
+  {
+    const std::size_t n = std::min(kCopyChunk, bytes - off);
+    checkBuffer(clEnqueueReadBuffer(clCommandQueue.value(), mem, CL_TRUE, off, n, p + off, 0, nullptr, nullptr),
+                "clEnqueueReadBuffer");
+    off += n;
+  }
+}
+
 void OpenCL::initialize()
 {
+  if (clContext.has_value() && clDeviceId.has_value() && clCommandQueue.has_value())
+  {
+    return;
+  }
+
   cl_int err;
 
   // Check first if there is a suitable GPU device for OpenCL

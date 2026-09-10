@@ -17,7 +17,8 @@ export namespace MC_Moves
  *
  * Attempts to swap the configurations of two systems in a parallel tempering Monte Carlo simulation.
  * The swap is accepted or rejected based on the Metropolis criterion, taking into account differences
- * in temperature, pressure, and potential energy between the two systems.
+ * in temperature, pressure, potential energy, and, for matching rigid CFCMC replicas, the replica-local
+ * lambda (and TMMC) biases at the incoming lambda coordinates.
  *
  * Reference: "Hyper-parallel tempering Monte Carlo: Application to the Lennard-Jones fluid and the
  * restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999.
@@ -29,4 +30,8 @@ export namespace MC_Moves
  */
 std::optional<std::pair<RunningEnergy, RunningEnergy>> ParallelTemperingSwap(RandomNumber &random, System &systemA,
                                                                              System &systemB);
+
+/// Log acceptance ratio for X_A ↔ X_B. Empty when the pair is incompatible
+/// (no RNG should be consumed). Exposed so tests can check the ratio.
+std::optional<double> ParallelTemperingLogAcceptance(const System &systemA, const System &systemB);
 }  // namespace MC_Moves

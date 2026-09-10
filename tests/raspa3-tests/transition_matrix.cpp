@@ -69,3 +69,56 @@ TEST(TRANSITION_MATRIX, rejects_an_inverted_macrostate_range)
 
   EXPECT_THROW(matrix.initialize(), std::invalid_argument);
 }
+
+TEST(TRANSITION_MATRIX, lambda_chain_indexes_and_adjacent_bias)
+{
+  TransitionMatrix matrix;
+  matrix.doTMMC = true;
+  matrix.useBias = true;
+  matrix.useTMBias = true;
+  matrix.rejectOutOfBound = true;
+  matrix.minMacrostate = 0;
+  matrix.maxMacrostate = 2;
+  matrix.numberOfLambdaBins = 3;
+  matrix.initialize();
+
+  EXPECT_EQ(matrix.numberOfChainStates(), 9uz);
+  EXPECT_EQ(matrix.chainIndex(1, 2), 5uz);
+  EXPECT_EQ(matrix.lastLambdaBin(), 2uz);
+
+  matrix.bias.assign(9, 0.0);
+  matrix.bias[matrix.chainIndex(1, 0)] = std::log(4.0);
+  EXPECT_DOUBLE_EQ(matrix.biasFactor(1, 0), 4.0);
+
+  matrix.currentLambdaBin = 1;
+  matrix.updateMatrix(double3(0.0, 0.25, 0.75), 1);
+  EXPECT_DOUBLE_EQ(matrix.cmatrix[matrix.chainIndex(1, 1)].z, 0.75);
+  EXPECT_DOUBLE_EQ(matrix.cmatrix[matrix.chainIndex(1, 0)].z, 0.0);
+
+  matrix.updateHistogram(1, 2);
+  EXPECT_EQ(matrix.histogram[matrix.chainIndex(1, 2)], 1uz);
+}
+
+TEST(TRANSITION_MATRIX, lnpi_does_not_infer_a_ratio_from_a_one_sided_link)
+{
+  TransitionMatrix matrix;
+  matrix.doTMMC = true;
+  matrix.useBias = true;
+  matrix.useTMBias = true;
+  matrix.useWangLandau = false;
+  matrix.minMacrostate = 0;
+  matrix.maxMacrostate = 2;
+  matrix.initialize();
+
+  matrix.updateHistogram(0);
+  matrix.updateHistogram(1);
+  matrix.cmatrix[0] = double3(0.0, 0.5, 0.5);
+  matrix.cmatrix[1] = double3(0.5, 0.5, 0.0);
+  matrix.recomputeLnPiAndBias();
+  EXPECT_NEAR(matrix.lnpi[1] - matrix.lnpi[0], 0.0, 1.0e-12);
+
+  matrix.cmatrix[0] = double3(0.0, 1.0, 0.0);
+  matrix.recomputeLnPiAndBias();
+
+  EXPECT_NEAR(matrix.lnpi[1] - matrix.lnpi[0], 0.0, 1.0e-12);
+}

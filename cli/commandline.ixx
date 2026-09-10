@@ -39,7 +39,8 @@ enum State : std::uint8_t
   PercolationBarrier = 12, // The energetic counterpart of Df: the saddle a probe crosses to get through
   BruteForce = 13, // The exact routes worked out again from the atoms alone, and the two set against each other
   WellSurface = 14, // The locus of energy wells: the surface a molecule sits on rather than the one it may not enter
-  Last = 15
+  BET = 15,         // Predicted BET area from the well-surface contact sheet and the energy-grid Henry coefficient
+  Last = 16
 };
 
 void run(int argc, char* argv[]);

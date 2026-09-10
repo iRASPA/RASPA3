@@ -28,11 +28,48 @@ import double3x3;
 import property_lambda_probability_histogram;
 import transition_matrix;
 import mc_moves;
+import mc_moves_move_types;
+import mc_moves_widom;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import cbmc;
 import cbmc_chain_data;
 import json;
+import isotherm_bet;
+
+// One Widom test insertion per this many production MC steps, per walker, and only while the
+// walker sits in the bottom fraction of the macrostate range. The macrostates at the bottom hold
+// only a small share of the steps even under a flattening bias, so they need the maximum rate to
+// gather enough insertions; above the anchor region the insertions buy nothing, because the mean
+// Rosenbluth weight of a filling pore is carried by ever rarer lucky insertions (measured on
+// ferrierite: a relative error of 0.4 at the empty end rising past 0.9 at the full end).
+static constexpr std::size_t widomSampleEvery = 1uz;
+static constexpr double widomSampleFractionOfRange = 1.0;
+
+// A counted test-insertion mean replaces the collection-matrix increment. 35 percent of the mean
+// is 0.3 natural logs, while a 1D-N collection matrix is off by some ten natural logs per
+// increment over the rise and an (N, λ) chain is worse (the molecule increment is a product of
+// ~20 Metropolis λ-hops; a starved hop emits another 5–12 nats). Direct GCMC on ferrierite:
+// reaching 35 molecules takes 0.0164 Pa, increment 15.6, against 15.5–15.6 Widom and 4.3–5.4
+// from the collection matrix.
+//
+// The relative-error cut used to be 0.35 and it *ended the block*, not just labelled a hole.
+// That is the wrong test: "slightly noisy" is not "no estimate". The (N, λ) FER canary of
+// 50 k production cycles had 384–511 insertions at N = 2, 3, 4 with relative error 0.35–0.39,
+// then 512 at N = 5 with relative error 0.23. Three misses in a row closed the block at N = 1
+// and the isotherm sat on the λ-chain again (BET 104 m²/g, n_m = 2.30 / cell). The cut below
+// is "the mean is still a mean": above it the average is one lucky insertion (relative error
+// → 1 as the pore fills) and the collection-matrix tail takes over. Inside the block every
+// counted increment is applied, including 0.36–0.80, so a flicker around 0.35 cannot open a
+// collection-matrix hole.
+static constexpr std::size_t minimumWidomInsertions = 100uz;
+static constexpr double maximumWidomRelativeError = 0.85;
+
+// The anchored block ends where the test insertions stop being a usable mean for good, which
+// takes this many consecutive macrostates to establish. A single noisy or uncounted macrostate
+// does not end the block: the relative error is not monotone in N. Ending at the first flicker
+// truncated the block at N = 1 on ferrierite (see above).
+static constexpr std::size_t widomAnchorFailureRun = 3uz;
 
 // The analysis-property writers (RDFs, density grid, histograms, molecule properties) gate
 // themselves on their own 'writeEvery'; a cycle argument of 0 forces the write (used for the
@@ -69,6 +106,89 @@ static void writeWalkerAnalysisOutputs(System& system, std::size_t walkerId, std
   }
 }
 
+namespace
+{
+// A window whose lower bound is past the physical packing can never be grown into. The whole
+// budget is spent per molecule, single-threaded, before any sampling starts, so it also sets how
+// long the run takes to notice that the window is impossible.
+constexpr std::size_t maxGrowAttempts = 5000uz;
+
+bool growToMacrostate(System& system, RandomNumber& rng, std::size_t target)
+{
+  const std::size_t componentId = 0uz;
+  while (system.numberOfIntegerMoleculesPerComponent[componentId] < target)
+  {
+    std::optional<ChainGrowData> growData = std::nullopt;
+    bool insideBlockedPocket{false};
+    std::size_t attempts = 0uz;
+    do
+    {
+      do
+      {
+        growData = CBMC::growMoleculeSwapInsertion(
+            rng,
+            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
+                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                              system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                              system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW,
+                              system.forceField.cutOffCoulomb},
+            system.components[componentId], componentId, system.numberOfMolecules(), 1.0, false, false);
+        ++attempts;
+        if (attempts >= maxGrowAttempts) return false;
+      } while (!growData || growData->energies.potentialEnergy() > system.forceField.energyOverlapCriteria);
+
+      std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
+      insideBlockedPocket = system.insideBlockedPockets(system.components[componentId], newMolecule);
+    } while (insideBlockedPocket);
+
+    system.insertMolecule(componentId, growData->molecule, growData->atoms);
+  }
+  return true;
+}
+
+// The collection matrix is built from acceptance probabilities of attempted moves, not from visit
+// frequencies, so it is an unbiased estimator of the transition probabilities whatever the
+// configuration it was sampled from and is kept across all stages. Dropping the initialization
+// entries strands the walker: filling a micropore from empty is the only part of the run that
+// records transitions at low N, and once they are gone the bias gives no reason to go back down,
+// while an unbiased deletion out of a filled micropore at 77 K is of order e^-40.
+void pinWalkerWindow(System& system, double temperature, std::size_t windowIndex, std::size_t minN, std::size_t maxN)
+{
+  system.tmmc.minMacrostate = minN;
+  system.tmmc.maxMacrostate = maxN;
+  system.tmmc.rezeroAfterInitialization = false;
+  system.tmmc.statisticsFileName = std::format("tmmc/tmmc_statistics_{}_w{}.parallel_tmmc.txt", temperature, windowIndex);
+  system.tmmc.initialize();
+}
+
+// Neighboring partition segments [boundaries[w], boundaries[w+1]] are expanded by `overlap` so
+// the walkers share several interior macrostates, not only the bound state they cannot cross.
+struct WindowRange
+{
+  std::size_t lo;
+  std::size_t hi;
+};
+
+WindowRange overlappedWindow(std::size_t windowIndex, std::size_t numberOfWindows, std::size_t minMacrostate,
+                             std::size_t maxMacrostate, const std::vector<std::size_t>& windowBoundaries)
+{
+  WindowRange range{windowBoundaries[windowIndex], windowBoundaries[windowIndex + 1uz]};
+  if (numberOfWindows <= 1uz) return range;
+  const std::size_t span = maxMacrostate - minMacrostate;
+  const std::size_t slice = std::max(1uz, span / numberOfWindows);
+  const std::size_t overlap = std::max(4uz, slice / 3uz);
+  if (windowIndex > 0uz)
+  {
+    range.lo -= std::min(overlap, range.lo - minMacrostate);
+  }
+  if (windowIndex + 1uz < numberOfWindows)
+  {
+    range.hi = std::min(maxMacrostate, range.hi + overlap);
+  }
+  return range;
+}
+}  // namespace
+
 ParallelTMMC::ParallelTMMC(InputReader& reader)
     : random(reader.randomSeed),
       numberOfProductionCycles(reader.numberOfProductionCycles),
@@ -81,6 +201,9 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       reweightingNumberOfPressures(reader.reweightingNumberOfPressures),
+      computeBET(reader.computeBET),
+      autoReweightingPressureRange(reader.autoReweightingPressureRange),
+      autoMacroStateMaximum(reader.autoMacroStateMaximum),
       temperatures(reader.parallelTemperingTemperatures),
       numberOfWindows(reader.tmmcNumberOfWindows)
 {
@@ -94,14 +217,125 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
 
   referencePressure = reader.systems.front().input_pressure;
 
-  // the isotherm/coexistence scan range defaults to four decades around the reference pressure
-  reweightingPressureRange =
-      reader.reweightingPressureRange.value_or(std::make_pair(0.01 * referencePressure, 100.0 * referencePressure));
+  System templateSystem = std::move(reader.systems.front());
+  reader.systems.clear();
 
-  // the macrostate windows: window w spans [windowBoundaries[w], windowBoundaries[w+1]];
-  // neighboring windows share their endpoint macrostate, which stitches the collection matrices
-  minMacrostate = reader.systems.front().tmmc.minMacrostate;
-  maxMacrostate = reader.systems.front().tmmc.maxMacrostate;
+  if (autoReweightingPressureRange)
+  {
+    nitrogenBETPressurePlan =
+        planNitrogenBETPressures(templateSystem, temperatures.front(), reader.numberOfThreads);
+    reweightingPressureRange =
+        std::make_pair(nitrogenBETPressurePlan->lowestPressure, nitrogenBETPressurePlan->highestPressure);
+    if (!reader.reweightingNumberOfPressuresSpecified)
+    {
+      reweightingNumberOfPressures = nitrogenBETPressurePlan->tmmcReweightingNumberOfPressures;
+    }
+  }
+  else
+  {
+    reweightingPressureRange =
+        reader.reweightingPressureRange.value_or(std::make_pair(0.01 * referencePressure, 100.0 * referencePressure));
+  }
+
+  if (autoMacroStateMaximum)
+  {
+    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem);
+    templateSystem.tmmc.maxMacrostate =
+        std::max(templateSystem.tmmc.minMacrostate + 1uz, nitrogenBETFillingCeiling->maxMacrostate);
+  }
+  if (templateSystem.tmmc.maxMacrostate <= templateSystem.tmmc.minMacrostate)
+  {
+    throw std::runtime_error(
+        "[ParallelTMMC]: the template system needs a macrostate range with minimum < maximum\n");
+  }
+  const std::size_t macrostateSpan = templateSystem.tmmc.maxMacrostate - templateSystem.tmmc.minMacrostate;
+  if (numberOfWindows > macrostateSpan)
+  {
+    numberOfWindows = std::max(1uz, macrostateSpan);
+  }
+  numberOfWalkers = numberOfTemperatures * numberOfWindows;
+
+  initializeWalkers(std::move(templateSystem));
+  numberOfStepsPerCycle = std::max(1uz, maxMacrostate);
+}
+
+ParallelTMMC::ParallelTMMC(System templateSystem, std::vector<double> temperatures_,
+                           ParallelTMMCParameters parameters)
+    : random(parameters.randomSeed),
+      numberOfProductionCycles(parameters.numberOfProductionCycles),
+      numberOfPreInitializationCycles(parameters.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(parameters.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(parameters.numberOfEquilibrationCycles),
+      printEvery(parameters.printEvery),
+      optimizeMCMovesEvery(parameters.optimizeMCMovesEvery),
+      rescaleWangLandauEvery(parameters.rescaleWangLandauEvery),
+      writeBinaryRestartEvery(parameters.writeBinaryRestartEvery),
+      numberOfBlocks(parameters.numberOfBlocks),
+      reweightingPressureRange(parameters.reweightingPressureRange),
+      reweightingNumberOfPressures(parameters.reweightingNumberOfPressures),
+      computeBET(parameters.computeBET),
+      temperatures(std::move(temperatures_)),
+      numberOfWindows(std::max(1uz, parameters.numberOfWindows))
+{
+  if (temperatures.empty())
+  {
+    temperatures.push_back(templateSystem.temperature);
+  }
+  numberOfTemperatures = temperatures.size();
+
+  referencePressure = templateSystem.input_pressure;
+
+  templateSystem.tmmc.doTMMC = true;
+  templateSystem.tmmc.useBias = true;
+  templateSystem.tmmc.useTMBias = true;
+  templateSystem.tmmc.rejectOutOfBound = true;
+  templateSystem.tmmc.useWangLandau = true;
+  templateSystem.tmmc.updateTMEvery = std::max(1uz, parameters.tmmcUpdateEvery);
+
+  if (templateSystem.tmmc.maxMacrostate <= templateSystem.tmmc.minMacrostate)
+  {
+    throw std::runtime_error(
+        "[ParallelTMMC]: the template system needs a macrostate range with minimum < maximum\n");
+  }
+  const std::size_t macrostateSpan = templateSystem.tmmc.maxMacrostate - templateSystem.tmmc.minMacrostate;
+  if (numberOfWindows > macrostateSpan)
+  {
+    numberOfWindows = std::max(1uz, macrostateSpan);
+  }
+  numberOfWalkers = numberOfTemperatures * numberOfWindows;
+
+  initializeWalkers(std::move(templateSystem));
+  numberOfStepsPerCycle = std::max(1uz, maxMacrostate);
+}
+
+void ParallelTMMC::initializeWalkers(System templateSystem)
+{
+  if (templateSystem.components.size() == 1uz)
+  {
+    const Component& component = templateSystem.components.front();
+    const bool usesCFCMCSwap =
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
+    const std::size_t componentLambdaBins = component.lambdaGC.numberOfSamplePoints;
+    if (usesCFCMCSwap && componentLambdaBins > 1uz)
+    {
+      if (templateSystem.tmmc.numberOfLambdaBins != 1uz &&
+          templateSystem.tmmc.numberOfLambdaBins != componentLambdaBins)
+      {
+        throw std::runtime_error(std::format(
+            "[ParallelTMMC]: transition-matrix lambda bins ({}) do not match the CFCMC component lambda bins ({})\n",
+            templateSystem.tmmc.numberOfLambdaBins, componentLambdaBins));
+      }
+      templateSystem.tmmc.numberOfLambdaBins = componentLambdaBins;
+    }
+  }
+
+  numberOfWalkers = numberOfTemperatures * numberOfWindows;
+
+  // the macrostate windows: windowBoundaries is a partition of [min, max]; each walker is then
+  // expanded so neighboring windows overlap by several interior states (needed to gauge-match ln Π)
+  minMacrostate = templateSystem.tmmc.minMacrostate;
+  maxMacrostate = templateSystem.tmmc.maxMacrostate;
   windowBoundaries.resize(numberOfWindows + 1uz);
   for (std::size_t windowIndex = 0; windowIndex <= numberOfWindows; ++windowIndex)
   {
@@ -109,9 +343,6 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
   }
 
   // the single declared system is replicated into one walker per (temperature, window) pair
-  System templateSystem = std::move(reader.systems.front());
-  reader.systems.clear();
-
   systems.reserve(numberOfWalkers);
   for (std::size_t walkerId = 0; walkerId + 1 < numberOfWalkers; ++walkerId)
   {
@@ -155,11 +386,13 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
       // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
       system.buildConformationReservoirs();
 
-      // the walker is confined to its window; the bias is cleared once at the start of the
-      // equilibration (statistics of the relaxing initial configurations are dropped)
-      system.tmmc.minMacrostate = windowBoundaries[windowIndex];
-      system.tmmc.maxMacrostate = windowBoundaries[windowIndex + 1uz];
-      system.tmmc.rezeroAfterInitialization = true;
+      // the walker is confined to its (overlapped) window; the collection matrix is kept across
+      // the stages, see pinWalkerWindow
+      const WindowRange range =
+          overlappedWindow(windowIndex, numberOfWindows, minMacrostate, maxMacrostate, windowBoundaries);
+      system.tmmc.minMacrostate = range.lo;
+      system.tmmc.maxMacrostate = range.hi;
+      system.tmmc.rezeroAfterInitialization = false;
       system.tmmc.statisticsFileName = std::format("tmmc/tmmc_statistics_{}_w{}.parallel_tmmc.txt", T, windowIndex);
       system.tmmc.initialize();
 
@@ -169,6 +402,20 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
 
   blockCollectionMatrices.resize(numberOfWalkers);
   stepsPerWalker.assign(numberOfWalkers, 0uz);
+
+  // The Widom statistics live on the global macrostate grid, so the windows of one temperature
+  // simply add up (like the collection matrices). Grown rather than assigned: on a resume from a
+  // binary restart the deserialized statistics must survive this call.
+  const std::size_t numberOfMacrostates = maxMacrostate - minMacrostate + 1uz;
+  widomWeightSums.resize(numberOfWalkers);
+  widomWeightSquaredSums.resize(numberOfWalkers);
+  widomInsertions.resize(numberOfWalkers);
+  for (std::size_t walkerId = 0; walkerId < numberOfWalkers; ++walkerId)
+  {
+    widomWeightSums[walkerId].resize(numberOfMacrostates, 0.0);
+    widomWeightSquaredSums[walkerId].resize(numberOfMacrostates, 0.0);
+    widomInsertions[walkerId].resize(numberOfMacrostates, 0uz);
+  }
 }
 
 void ParallelTMMC::run()
@@ -183,6 +430,8 @@ void ParallelTMMC::run()
 
 void ParallelTMMC::setup()
 {
+  numberOfStepsPerCycle = std::max(1uz, maxMacrostate);
+
   for (System& system : systems)
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
@@ -190,6 +439,7 @@ void ParallelTMMC::setup()
   }
 
   std::filesystem::create_directories("output");
+  std::filesystem::create_directories("tmmc");
 
   // on a binary-restart resume append to the existing output files (and skip re-printing the
   // headers) so each log continues where the interrupted run left off
@@ -197,19 +447,104 @@ void ParallelTMMC::setup()
   stream.open("output/output.parallel_tmmc.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
   outputJsonFileName = "output/output.parallel_tmmc.json";
 
-  const System& front = systems.front();
   if (!resumedFromBinaryRestart)
   {
-    std::print(stream, "{}", front.writeOutputHeader());
+    std::print(stream, "{}", systems.front().writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
     std::print(stream, "{}\n", HardwareInfo::writeInfo());
     std::print(stream, "{}", Units::printStatus());
+  }
 
+  // interpolation grids are computed once and shared (copied) between the walkers
+  systems.front().createExternalFieldInterpolationGrid(stream, 0);
+  systems.front().createFrameworkInterpolationGrids(stream);
+  for (std::size_t walkerId = 1; walkerId < systems.size(); ++walkerId)
+  {
+    systems[walkerId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
+    systems[walkerId].interpolationGrids = systems.front().interpolationGrids;
+  }
+
+  // Grow windows in increasing-N order per temperature: copy the previous walker's configuration
+  // and insert the extra molecules. Independent growth from empty into a high window hangs when
+  // that window's lower bound exceeds the physical packing. If packing stops short of Nmax, the
+  // remaining windows are dropped and the last used window is closed at the packed N.
+  if (!resumedFromBinaryRestart)
+  {
+    std::print(stream, "Growing the initial configurations into their windows (CBMC)\n");
+    std::flush(stream);
+
+    const std::size_t layoutWindows = numberOfWindows;
+    for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+    {
+      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+      {
+        const std::size_t walkerId = temperatureIndex * layoutWindows + windowIndex;
+        if (windowIndex > 0)
+        {
+          const std::size_t previousId = temperatureIndex * layoutWindows + windowIndex - 1uz;
+          systems[walkerId] = systems[previousId];
+          const WindowRange range =
+              overlappedWindow(windowIndex, layoutWindows, minMacrostate, maxMacrostate, windowBoundaries);
+          pinWalkerWindow(systems[walkerId], temperatures[temperatureIndex], windowIndex, range.lo, range.hi);
+        }
+        const WindowRange growRange =
+            overlappedWindow(windowIndex, layoutWindows, minMacrostate, maxMacrostate, windowBoundaries);
+        if (growToMacrostate(systems[walkerId], randoms[walkerId], growRange.lo)) continue;
+
+        const std::size_t packed = systems[walkerId].numberOfIntegerMoleculesPerComponent[0];
+        if (windowIndex == 0uz || packed <= minMacrostate)
+        {
+          throw std::runtime_error(
+              "[ParallelTMMC]: CBMC could not place a molecule in the empty box; the macrostate range is empty\n");
+        }
+
+        maxMacrostate = packed;
+        numberOfWindows = windowIndex;
+        windowBoundaries.resize(numberOfWindows + 1uz);
+        windowBoundaries[numberOfWindows] = maxMacrostate;
+        const std::size_t lastId = temperatureIndex * layoutWindows + windowIndex - 1uz;
+        pinWalkerWindow(systems[lastId], temperatures[temperatureIndex], windowIndex - 1uz,
+                        systems[lastId].tmmc.minMacrostate, maxMacrostate);
+        std::print(stream, "Physical packing is {} molecules; dropping windows above that bound\n", packed);
+        break;
+      }
+    }
+
+    if (numberOfWindows < layoutWindows)
+    {
+      std::vector<System> compacted;
+      compacted.reserve(numberOfTemperatures * numberOfWindows);
+      std::vector<RandomNumber> compactedRandoms;
+      compactedRandoms.reserve(numberOfTemperatures * numberOfWindows);
+      for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+      {
+        for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+        {
+          const std::size_t walkerId = temperatureIndex * layoutWindows + windowIndex;
+          compacted.push_back(std::move(systems[walkerId]));
+          compactedRandoms.push_back(std::move(randoms[walkerId]));
+        }
+      }
+      systems = std::move(compacted);
+      randoms = std::move(compactedRandoms);
+      numberOfWalkers = systems.size();
+      blockCollectionMatrices.resize(numberOfWalkers);
+      stepsPerWalker.assign(numberOfWalkers, 0uz);
+    }
+
+    std::print(stream, "Initial configurations ready\n\n");
+    std::flush(stream);
+  }
+
+  if (!resumedFromBinaryRestart)
+  {
     std::print(stream, "Parallel transition-matrix Monte Carlo (TMMC)\n");
     std::print(stream, "===============================================================================\n\n");
     std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
     std::print(stream, "Number of macrostate windows:                {}\n", numberOfWindows);
     std::print(stream, "Number of walkers / threads:                 {}\n", numberOfWalkers);
+    std::print(stream, "MC steps per cycle:                          {} (global macrostate ceiling N_max)\n",
+               numberOfStepsPerCycle);
     std::print(stream, "Temperature ladder:                         ");
     for (double T : temperatures)
     {
@@ -218,9 +553,23 @@ void ParallelTMMC::setup()
     std::print(stream, " [K]\n");
     std::print(stream, "Reference pressure:                          {:.5e} [Pa]\n", referencePressure);
     std::print(stream, "Macrostate range:                            [{}, {}] molecules\n", minMacrostate, maxMacrostate);
-    std::print(stream, "Bias update every:                           {} steps\n", front.tmmc.updateTMEvery);
+    if (systems.front().tmmc.lambdaChain())
+    {
+      std::print(stream,
+                 "Lambda bins per molecule count:              {} (macrostate is (N, λ); isotherm uses λ = 0)\n",
+                 systems.front().tmmc.lambdaBinCount());
+    }
+    std::print(stream, "Bias update every:                           {} steps\n", systems.front().tmmc.updateTMEvery);
     std::print(stream, "Isotherm/coexistence pressure scan:          {:.5e} - {:.5e} [Pa], {} log-spaced points\n\n",
                reweightingPressureRange.first, reweightingPressureRange.second, reweightingNumberOfPressures);
+    if (nitrogenBETPressurePlan.has_value())
+    {
+      writeNitrogenBETPressurePlan(stream, *nitrogenBETPressurePlan);
+    }
+    if (nitrogenBETFillingCeiling.has_value())
+    {
+      writeNitrogenBETFillingCeiling(stream, *nitrogenBETFillingCeiling);
+    }
 
     std::print(stream, "Walker grid: walker (t, w) = t * {} + w\n", numberOfWindows);
     std::print(stream, "    walker    temperature [K]    window [molecules]\n");
@@ -231,7 +580,7 @@ void ParallelTMMC::setup()
       {
         const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
         std::print(stream, "    {:6d}    {:15.4f}    [{}, {}]\n", walkerId, temperatures[temperatureIndex],
-                   windowBoundaries[windowIndex], windowBoundaries[windowIndex + 1uz]);
+                   systems[walkerId].tmmc.minMacrostate, systems[walkerId].tmmc.maxMacrostate);
       }
     }
     std::print(stream, "\n");
@@ -248,10 +597,23 @@ void ParallelTMMC::setup()
   outputJson["initialization"]["temperatures"] = temperatures;
   outputJson["initialization"]["referencePressure"] = referencePressure;
   outputJson["initialization"]["macrostateRange"] = std::vector<std::size_t>{minMacrostate, maxMacrostate};
+  outputJson["initialization"]["numberOfStepsPerCycle"] = numberOfStepsPerCycle;
+  outputJson["initialization"]["numberOfLambdaBins"] = systems.front().tmmc.lambdaBinCount();
   outputJson["initialization"]["windowBoundaries"] = windowBoundaries;
   outputJson["initialization"]["reweightingPressureRange"] =
       std::vector<double>{reweightingPressureRange.first, reweightingPressureRange.second};
   outputJson["initialization"]["reweightingNumberOfPressures"] = reweightingNumberOfPressures;
+  if (nitrogenBETPressurePlan.has_value())
+  {
+    outputJson["initialization"]["nitrogenBETHenryCoefficient"] = nitrogenBETPressurePlan->henryCoefficientPerCell;
+    outputJson["initialization"]["autoReweightingPressureRange"] = autoReweightingPressureRange;
+  }
+  if (nitrogenBETFillingCeiling.has_value())
+  {
+    outputJson["initialization"]["autoMacroStateMaximum"] = autoMacroStateMaximum;
+    outputJson["initialization"]["fillingCeiling"] = nitrogenBETFillingCeiling->maxMacrostate;
+    outputJson["initialization"]["fillingCeilingMeanOccupancy"] = nitrogenBETFillingCeiling->meanOccupancy;
+  }
 
   std::ofstream json(outputJsonFileName);
   json << outputJson.dump(4);
@@ -302,63 +664,6 @@ void ParallelTMMC::setup()
       walkerJson << walkerJsons[walkerId].dump(4);
     }
   }
-
-  // interpolation grids are computed once and shared (copied) between the walkers
-  systems.front().createExternalFieldInterpolationGrid(stream, 0);
-  systems.front().createFrameworkInterpolationGrids(stream);
-  for (std::size_t walkerId = 1; walkerId < systems.size(); ++walkerId)
-  {
-    systems[walkerId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
-    systems[walkerId].interpolationGrids = systems.front().interpolationGrids;
-  }
-
-  // every walker starts inside its window: molecules are grown with CBMC up to the lower window
-  // boundary (the walk then explores the window under the flattening bias), in parallel
-  {
-    std::print(stream, "Growing the initial configurations into their windows (CBMC)\n");
-    std::flush(stream);
-    std::vector<std::jthread> threads;
-    threads.reserve(numberOfWalkers);
-    for (std::size_t walkerId = 0; walkerId < numberOfWalkers; ++walkerId)
-    {
-      threads.emplace_back(
-          [this, walkerId]()
-          {
-            System& system = systems[walkerId];
-            RandomNumber& rng = randoms[walkerId];
-            const std::size_t componentId = 0uz;
-            const std::size_t target = system.tmmc.minMacrostate;
-
-            while (system.numberOfIntegerMoleculesPerComponent[componentId] < target)
-            {
-              std::optional<ChainGrowData> growData = std::nullopt;
-              bool insideBlockedPocket{false};
-              do
-              {
-                do
-                {
-                  growData = CBMC::growMoleculeSwapInsertion(
-                      rng,
-                      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                        system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                        system.beta, system.forceField.cutOffFrameworkVDW,
-                                        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb},
-                      system.components[componentId], componentId, system.numberOfMolecules(), 1.0, false, false);
-                } while (!growData || growData->energies.potentialEnergy() > system.forceField.energyOverlapCriteria);
-
-                std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
-                insideBlockedPocket = system.insideBlockedPockets(system.components[componentId], newMolecule);
-              } while (insideBlockedPocket);
-
-              system.insertMolecule(componentId, growData->molecule, growData->atoms);
-            }
-          });
-    }
-    // jthreads join on scope exit
-  }
-  std::print(stream, "Initial configurations ready\n\n");
-  std::flush(stream);
 }
 
 void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stage, std::size_t currentBlock)
@@ -370,9 +675,8 @@ void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stag
   // supported by this driver
   std::size_t fractionalMoleculeSystem = 0uz;
 
-  const std::size_t numberOfStepsPerCycle =
-      std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
-
+  // global maxMacrostate, not the current loading or the window width: every walker does the
+  // same number of moves per cycle so cycle-based sampling compares equal amounts of work
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; ++j)
   {
     std::size_t selectedComponent = system.randomComponent(rng);
@@ -390,26 +694,72 @@ void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stag
       case SimulationStage::Equilibration:
         MC_Moves::performRandomMoveEquilibration(rng, system, system, selectedComponent, fractionalMoleculeSystem);
 
-        // Wang-Landau biasing of the CFCMC lambda moves (all state is owned by this walker)
-        system.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        // Wang-Landau biasing of the CFCMC lambda moves. Off when TMMC already flattens the
+        // (N, λ) chain: that Wang-Landau would double-bias λ and is replaced by tmmc.visitWangLandau.
+        if (!system.tmmc.lambdaChain())
+        {
+          system.components[selectedComponent].lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+              system.lambdaWangLandauIsActive(selectedComponent));
+          system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        }
         break;
       case SimulationStage::Production:
         MC_Moves::performRandomMoveProduction(rng, system, system, selectedComponent, fractionalMoleculeSystem,
                                               currentBlock);
         ++stepsPerWalker[walkerId];
+
+        // Widom test insertion at the current macrostate: the mean Rosenbluth weight gives the
+        // exact ln Pi increment out of this macrostate (see the class documentation). The move
+        // leaves the configuration untouched, so it does not disturb the walk. On an (N, λ)
+        // chain the physical increment is a full-molecule insertion at λ = 0, so only sample there.
+        if (stepsPerWalker[walkerId] % widomSampleEvery == 0uz)
+        {
+          const std::size_t currentN = system.numberOfIntegerMoleculesPerComponent[0];
+          const bool atDecoupledLambda =
+              !system.tmmc.lambdaChain() ||
+              (!system.components.empty() && system.components.front().lambdaGC.currentBin == 0uz);
+          const std::size_t sampledMacrostates = std::max(
+              1uz, static_cast<std::size_t>(widomSampleFractionOfRange *
+                                            static_cast<double>(widomWeightSums[walkerId].size())));
+          if (atDecoupledLambda && currentN >= minMacrostate && currentN - minMacrostate < sampledMacrostates)
+          {
+            const double weight = MC_Moves::WidomMove(rng, system, 0uz);
+            const std::size_t index = currentN - minMacrostate;
+            widomWeightSums[walkerId][index] += weight;
+            widomWeightSquaredSums[walkerId][index] += weight * weight;
+            ++widomInsertions[walkerId][index];
+          }
+        }
         break;
     }
 
     // the TMMC state sampling: the moves already recorded the unbiased acceptance probabilities
     // into the collection matrix; here the visit histogram is updated and the flattening bias is
-    // re-derived from the collection matrix every 'TMMCUpdateEvery' steps
-    system.tmmc.updateHistogram(system.numberOfIntegerMoleculesPerComponent[0]);
+    // re-derived from the collection matrix every 'TMMCUpdateEvery' steps.
+    //
+    // The bias is already built during the initialization stage. That stage is where a walker
+    // started from an empty box crosses every macrostate on its way to its equilibrium loading;
+    // biasing it there is what turns that one-way filling into a random walk over the window.
+    // Left unbiased, the walker arrives at the filling loading and stays: the equilibration stage
+    // then only ever sees the top of the range.
+    const std::size_t currentN = system.numberOfIntegerMoleculesPerComponent[0];
+    const std::size_t lambdaBin =
+        system.tmmc.lambdaChain() && !system.components.empty() ? system.components.front().lambdaGC.currentBin : 0uz;
+    system.tmmc.updateHistogram(currentN, lambdaBin);
     system.tmmc.numberOfSteps++;
-    if (stage == SimulationStage::Equilibration || stage == SimulationStage::Production)
+    if (stage == SimulationStage::Initialization || stage == SimulationStage::Equilibration ||
+        stage == SimulationStage::Production)
     {
+      // While Wang-Landau owns the bias (initialization, equilibration, first quarter of
+      // production) it drives the walk and adjustBias only keeps ln Pi current for the
+      // statistics files. After switchToTMBias (rest of production) visitWangLandau is inert
+      // and adjustBias re-derives the flattening bias from the growing collection matrix
+      // every 'tmmcUpdateEvery' steps. Either way the estimate is safe: the collection matrix
+      // is built from the unbiased acceptance probabilities, so whatever bias makes the walk
+      // ergodic, ln Pi stands.
+      system.tmmc.visitWangLandau(currentN, lambdaBin);
       system.tmmc.adjustBias();
     }
 
@@ -421,8 +771,16 @@ void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stag
 
 std::vector<double3> ParallelTMMC::productionCollectionMatrix(std::size_t walkerId) const
 {
+  if (walkerId >= systems.size() || walkerId >= productionStartCollectionMatrices.size())
+  {
+    throw std::runtime_error("[ParallelTMMC]: production collection-matrix snapshot is missing");
+  }
   std::vector<double3> matrix = systems[walkerId].tmmc.cmatrix;
   const std::vector<double3>& start = productionStartCollectionMatrices[walkerId];
+  if (start.size() != matrix.size())
+  {
+    throw std::runtime_error("[ParallelTMMC]: production collection-matrix snapshot has the wrong size");
+  }
   for (std::size_t index = 0; index < matrix.size(); ++index)
   {
     matrix[index] -= start[index];
@@ -453,16 +811,19 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
       // drop the collection-matrix statistics of the relaxing initial configurations
       system.tmmc.clearCMatrix();
 
-      for (Component& component : system.components)
+      if (!system.tmmc.lambdaChain())
       {
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                               system.containsTheFractionalMolecule);
-        component.lambdaGC.clear();
+        for (Component& component : system.components)
+        {
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.clear();
+        }
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+        system.pairSwapLambdaClearBookkeeping();
+        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+        system.reactionLambdaClearBookkeeping();
       }
-      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-      system.pairSwapLambdaClearBookkeeping();
-      system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-      system.reactionLambdaClearBookkeeping();
     }
   }
   if (startCycle == 0uz && stage == SimulationStage::Production)
@@ -473,15 +834,26 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
     {
       System& system = systems[walkerId];
 
-      // the collection matrix and visit histogram are NOT reset: the recorded acceptance
-      // probabilities are unbiased regardless of the applied bias, so the equilibration
-      // statistics remain valid and keep accumulating. Resetting them would make the periodic
-      // bias re-derivation (which normalizes over the visited range only) discontinuous at the
-      // edge of the recently revisited region, trapping the walker behind an artificial bias
-      // wall. The production-start snapshots below give the production-only block increments
-      // and coverage diagnostics.
+      // Drop all pre-production statistics but keep the Wang-Landau bias built so far. The
+      // recorded acceptance probabilities are formally unbiased under any applied bias, but
+      // they are conditional averages over the configurations actually visited: during the
+      // Wang-Landau exploration the molecules at low N have not yet relaxed into the deep
+      // adsorption sites, their deletion acceptances are overestimated by orders of magnitude,
+      // and because a row estimate is a heavy-tailed mean those early entries dominate it no
+      // matter how long production runs. Production therefore restarts the statistics from
+      // zero: Wang-Landau keeps driving the walk for the first quarter of production (its
+      // descents sample low N with the well-bound survivor configurations), after which the
+      // bias switches to the transition-matrix bias -ln Pi derived from those clean rows,
+      // flattening the walk so every macrostate collects comparable statistics (Errington/Shen
+      // hybrid; the switch happens inside the walker threads at wangLandauProductionCycles).
+      system.tmmc.clearStatisticsKeepBias();
       productionStartCollectionMatrices[walkerId] = system.tmmc.cmatrix;
       productionStartHistograms[walkerId] = system.tmmc.histogram;
+
+      // the Widom anchor is a production-stage measurement as well
+      std::fill(widomWeightSums[walkerId].begin(), widomWeightSums[walkerId].end(), 0.0);
+      std::fill(widomWeightSquaredSums[walkerId].begin(), widomWeightSquaredSums[walkerId].end(), 0.0);
+      std::fill(widomInsertions[walkerId].begin(), widomInsertions[walkerId].end(), 0uz);
 
       system.mc_moves_statistics.clearMoveStatistics();
       system.mc_moves_cputime.clearTimingStatistics();
@@ -491,14 +863,20 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
         component.mc_moves_statistics.clearMoveStatistics();
         component.mc_moves_cputime.clearTimingStatistics();
 
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                               system.containsTheFractionalMolecule);
-        component.lambdaGC.clear();
+        if (!system.tmmc.lambdaChain())
+        {
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
+                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.clear();
+        }
       }
-      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
-      system.pairSwapLambdaClearBookkeeping();
-      system.reactionLambdaFinalize();
-      system.reactionLambdaClearBookkeeping();
+      if (!system.tmmc.lambdaChain())
+      {
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+        system.pairSwapLambdaClearBookkeeping();
+        system.reactionLambdaFinalize();
+        system.reactionLambdaClearBookkeeping();
+      }
     }
     std::fill(stepsPerWalker.begin(), stepsPerWalker.end(), 0uz);
   }
@@ -565,10 +943,21 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
             // snapshot count restores the current block on a resume from a binary restart
             std::size_t currentBlock = blockCollectionMatrices[walkerId].size();
 
+            // first quarter of production: Wang-Landau keeps exploring the window while the
+            // freshly reset collection matrix fills with relaxed-configuration statistics;
+            // afterwards the bias becomes the transition-matrix bias -ln Pi derived from those
+            // rows, which flattens the walk over the whole window (on a binary-restart resume
+            // past this point the switched flag is part of the checkpointed TMMC state)
+            const std::size_t wangLandauProductionCycles = numberOfCycles / 4uz;
+
             for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {
               if (stage == SimulationStage::Production)
               {
+                if (cycle == wangLandauProductionCycles)
+                {
+                  system.tmmc.switchToTMBias();
+                }
                 estimation.setCurrentSample(cycle);
 
                 // cumulative production-only collection-matrix snapshot at every block boundary
@@ -623,7 +1012,8 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
               }
 
               // Wang-Landau biasing-factor adjustment (all state is owned by this walker)
-              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz)
+              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz &&
+                  !system.tmmc.lambdaChain())
               {
                 for (Component& component : system.components)
                 {
@@ -855,31 +1245,37 @@ void ParallelTMMC::output()
 
 void ParallelTMMC::performTransitionMatrixAnalysis()
 {
+  reweightedIsotherms.clear();
+
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
   std::print(stream, "Transition-matrix analysis\n");
   std::print(stream, "===============================================================================\n\n");
 
   const std::size_t numberOfMacrostates = maxMacrostate - minMacrostate + 1uz;
+  const std::size_t nLambda = std::max(1uz, systems.front().tmmc.lambdaBinCount());
+  const std::size_t nChain = numberOfMacrostates * nLambda;
 
   // the code base is compiled with -ffast-math, so infinities must not occur: unsampled states
   // carry this finite 'log of zero' sentinel instead and drop out of the sums
   constexpr double logZero = -1e300;
   constexpr double logZeroThreshold = -1e299;
 
-  // ln Pi(N) from a collection matrix over the full macrostate range by the detailed-balance
-  // recursion ln Pi(N+1) = ln Pi(N) + ln P(N -> N+1) - ln P(N+1 -> N); states outside the visited
-  // range stay at the 'log of zero' sentinel
+  // ln Pi from a collection matrix over a 1D chain by the detailed-balance recursion
+  // ln Pi(i+1) = ln Pi(i) + ln P(i -> i+1) - ln P(i+1 -> i). For 1D TMMC the chain is N;
+  // for (N, λ) it is the flattened nearest-neighbour walk. States outside the visited
+  // range stay at the 'log of zero' sentinel.
   auto computeLogPi = [&](const std::vector<double3>& collectionMatrix) -> std::vector<double>
   {
-    std::vector<double> logPi(numberOfMacrostates, logZero);
+    const std::size_t nStates = collectionMatrix.size();
+    std::vector<double> logPi(nStates, logZero);
 
     auto rowTotal = [&](std::size_t index) -> double
     { return collectionMatrix[index].x + collectionMatrix[index].y + collectionMatrix[index].z; };
 
-    std::size_t first = numberOfMacrostates;
+    std::size_t first = nStates;
     std::size_t last = 0uz;
-    for (std::size_t index = 0; index < numberOfMacrostates; ++index)
+    for (std::size_t index = 0; index < nStates; ++index)
     {
       if (rowTotal(index) > 0.0)
       {
@@ -887,23 +1283,35 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         last = std::max(last, index);
       }
     }
-    if (first >= numberOfMacrostates) return logPi;
+    if (first >= nStates) return logPi;
 
     logPi[first] = 0.0;
     for (std::size_t index = first; index < last; ++index)
     {
-      double value = logPi[index];
-      if (collectionMatrix[index].z > 0.0)
-      {
-        value += std::log(collectionMatrix[index].z) - std::log(rowTotal(index));
-      }
-      if (collectionMatrix[index + 1uz].x > 0.0)
-      {
-        value += std::log(rowTotal(index + 1uz)) - std::log(collectionMatrix[index + 1uz].x);
-      }
-      logPi[index + 1uz] = value;
+      const double forwardTotal = rowTotal(index);
+      const double reverseTotal = rowTotal(index + 1uz);
+      const bool supportedLink = logPi[index] > logZeroThreshold && collectionMatrix[index].z > 0.0 &&
+                                 collectionMatrix[index + 1uz].x > 0.0 && forwardTotal > 0.0 &&
+                                 reverseTotal > 0.0;
+      if (!supportedLink) continue;
+
+      logPi[index + 1uz] = logPi[index] + std::log(collectionMatrix[index].z) - std::log(forwardTotal) -
+                           std::log(collectionMatrix[index + 1uz].x) + std::log(reverseTotal);
     }
     return logPi;
+  };
+
+  // WHAM samples (N, U) only at λ = 0 (decoupled). Π_GC(N) ∝ Π_EE(N, k = 0).
+  auto toMoleculeLogPi = [&](const std::vector<double>& chainLogPi) -> std::vector<double>
+  {
+    if (nLambda <= 1uz) return chainLogPi;
+    std::vector<double> moleculeLogPi(numberOfMacrostates, logZero);
+    for (std::size_t n = 0; n < numberOfMacrostates; ++n)
+    {
+      const std::size_t index = n * nLambda;
+      if (index < chainLogPi.size()) moleculeLogPi[n] = chainLogPi[index];
+    }
+    return moleculeLogPi;
   };
 
   auto logSumExpRange = [&](const std::vector<double>& values, std::size_t begin, std::size_t end) -> double
@@ -1055,6 +1463,11 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
 
   bool anyApproximateNormalization = false;
 
+  if (computeBET)
+  {
+    outputJson["output"]["tmmc"]["bet"] = nlohmann::json::array();
+  }
+
   for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
   {
     const double temperature = temperatures[temperatureIndex];
@@ -1078,79 +1491,252 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       return fluidResults.front().fugacityCoefficient.value_or(1.0) * pressurePa / Units::PressureConversionFactor;
     };
 
-    // combine the collection matrices of the windows: the final (total) matrix and the per-block
-    // increments; entries at the shared boundary macrostates simply add (the recorded acceptance
-    // probabilities are unbiased estimates of the same transition probabilities)
-    std::vector<double3> totalCollectionMatrix(numberOfMacrostates, double3(0.0, 0.0, 0.0));
-    std::vector<std::vector<double3>> blockCollectionMatrix(
-        numberOfBlocks, std::vector<double3>(numberOfMacrostates, double3(0.0, 0.0, 0.0)));
+    // Scatter one walker's collection matrix onto the global chain (zeros elsewhere).
+    auto scatterWindow = [&](const System& system, const std::vector<double3>& local) -> std::vector<double3>
+    {
+      std::vector<double3> scattered(nChain, double3(0.0, 0.0, 0.0));
+      if (system.tmmc.minMacrostate < minMacrostate) return scattered;
+      const std::size_t offset = (system.tmmc.minMacrostate - minMacrostate) * nLambda;
+      if (offset >= nChain) return scattered;
+      const std::size_t count = std::min(local.size(), nChain - offset);
+      for (std::size_t index = 0; index < count; ++index)
+      {
+        scattered[offset + index] = local[index];
+      }
+      return scattered;
+    };
+
+    // Pool the collection matrices of all windows on the global chain and reconstruct one
+    // ln Π by the detailed-balance recursion. Every row entry is an accumulated sum of
+    // unbiased acceptance probabilities, so summing rows across windows yields the
+    // attempt-count weighted combination of their estimates of the same physical transition
+    // probabilities. No gauge matching is needed and no seams appear at the window walls;
+    // per-window reconstruction with overlap matching left ln Π discontinuities where the
+    // poorly-sampled edge of one window met the well-sampled interior of the next.
+    auto stitchLogPi = [&](auto localMatrixOfWalker) -> std::vector<double>
+    {
+      std::vector<double3> pooled(nChain, double3(0.0, 0.0, 0.0));
+      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+      {
+        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
+        const System& system = systems[walkerId];
+        const std::vector<double3> scattered = scatterWindow(system, localMatrixOfWalker(walkerId));
+        for (std::size_t index = 0; index < nChain; ++index)
+        {
+          pooled[index] += scattered[index];
+        }
+      }
+      return toMoleculeLogPi(computeLogPi(pooled));
+    };
+
+    // The Widom anchor. Pool the production test insertions of all windows per macrostate (they
+    // are accumulated on the global N grid already) and turn them into the exact increment
+    //
+    //   ln Pi(N+1) - ln Pi(N) = ln(beta f V <W>_N / (N+1)),
+    //
+    // the same ratio the insertion acceptance rule uses, evaluated at the reference fugacity that
+    // gauges ln Pi. A macrostate has an increment once it has enough insertions. The increment
+    // extends the anchored block while the relative error of the mean is below the hopeless cut
+    // (a flicker around 0.35 must not close the block; see the constant). Every counted increment
+    // inside that block replaces the collection-matrix value.
+    std::vector<double> widomLogIncrement(numberOfMacrostates, 0.0);
+    std::vector<double> widomRelativeError(numberOfMacrostates, 0.0);
+    std::vector<std::size_t> widomCount(numberOfMacrostates, 0uz);
+    std::vector<bool> widomHasIncrement(numberOfMacrostates, false);
+    std::vector<bool> widomPrecise(numberOfMacrostates, false);
+    for (std::size_t index = 0; index + 1uz < numberOfMacrostates; ++index)
+    {
+      double weightSum = 0.0;
+      double weightSquaredSum = 0.0;
+      std::size_t count = 0uz;
+      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+      {
+        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
+        weightSum += widomWeightSums[walkerId][index];
+        weightSquaredSum += widomWeightSquaredSums[walkerId][index];
+        count += widomInsertions[walkerId][index];
+      }
+      widomCount[index] = count;
+      if (count == 0uz) continue;
+
+      const double mean = weightSum / static_cast<double>(count);
+      if (!(mean > 0.0)) continue;
+      const double variance = std::max(0.0, weightSquaredSum / static_cast<double>(count) - mean * mean);
+      const double relativeError = std::sqrt(variance / static_cast<double>(count)) / mean;
+      widomRelativeError[index] = relativeError;
+      if (count < minimumWidomInsertions) continue;
+
+      const double moleculesAfter = static_cast<double>(minMacrostate + index + 1uz);
+      widomLogIncrement[index] = std::log(beta * referenceFugacity * volume * mean / moleculesAfter);
+      widomHasIncrement[index] = true;
+      if (relativeError <= maximumWidomRelativeError) widomPrecise[index] = true;
+    }
+
+    std::size_t widomAnchorEnd = 0uz;  // one past the last anchored increment
+    std::size_t consecutiveFailures = 0uz;
+    for (std::size_t index = 0; index + 1uz < numberOfMacrostates; ++index)
+    {
+      if (widomPrecise[index])
+      {
+        consecutiveFailures = 0uz;
+        widomAnchorEnd = index + 1uz;
+      }
+      else if (++consecutiveFailures >= widomAnchorFailureRun)
+      {
+        break;
+      }
+    }
+
+    if (widomAnchorEnd > 0uz)
+    {
+      // the N = minMacrostate increment of an empty box is the Henry coefficient, reported in the
+      // same units as the Widom-based value of the reweighted-histogram driver
+      std::print(stream, "Widom anchor at {} K: increments out of N = {}--{} taken from test insertions\n",
+                 temperature, minMacrostate, minMacrostate + widomAnchorEnd - 1uz);
+      if (minMacrostate == 0uz && toMoleculesPerUnitCell > 0.0 && widomHasIncrement[0])
+      {
+        const double henryPerCell = std::exp(widomLogIncrement[0]) / referenceFugacity /
+                                    Units::PressureConversionFactor * toMoleculesPerUnitCell;
+        std::print(stream, "    Henry coefficient {:.6e} [molecules/cell/Pa] ({} test insertions)\n", henryPerCell,
+                   widomCount[0]);
+      }
+      std::print(stream, "\n");
+    }
+    else
+    {
+      std::print(stream, "Widom anchor at {} K: no macrostate qualified, ln Pi is the collection-matrix estimate\n\n",
+                 temperature);
+    }
+
+    // Replace the anchored increments and carry the accumulated correction into every macrostate
+    // above them, which leaves all collection-matrix increments outside the block untouched.
+    auto applyWidomAnchor = [&](std::vector<double>& logPi)
+    {
+      double shift = 0.0;
+      // A valid insertion measurement at the first macrostate supplies its own gauge even when
+      // the collection-matrix chain is disconnected there.
+      if (!logPi.empty() && logPi[0] <= logZeroThreshold && widomAnchorEnd > 0uz && widomHasIncrement[0])
+      {
+        logPi[0] = 0.0;
+      }
+      for (std::size_t index = 0; index + 1uz < numberOfMacrostates; ++index)
+      {
+        if (logPi[index] <= logZeroThreshold) continue;
+
+        if (index < widomAnchorEnd && widomHasIncrement[index])
+        {
+          const double rawNext = logPi[index + 1uz];
+          const double anchoredNext = logPi[index] + widomLogIncrement[index];
+          logPi[index + 1uz] = anchoredNext;
+          if (rawNext > logZeroThreshold) shift = anchoredNext - rawNext;
+        }
+        else if (logPi[index + 1uz] > logZeroThreshold)
+        {
+          logPi[index + 1uz] += shift;
+        }
+      }
+    };
 
     std::size_t availableBlocks = numberOfBlocks;
     for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
     {
-      const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
-      const System& system = systems[walkerId];
-      const std::vector<std::vector<double3>>& snapshots = blockCollectionMatrices[walkerId];
-      availableBlocks = std::min(availableBlocks, snapshots.size());
-
-      const std::size_t offset = system.tmmc.minMacrostate - minMacrostate;
-
-      // the total uses the full cumulative collection matrix (equilibration plus production):
-      // the recorded acceptance probabilities are unbiased, so all statistics count
-      for (std::size_t index = 0; index < system.tmmc.cmatrix.size(); ++index)
-      {
-        totalCollectionMatrix[offset + index] += system.tmmc.cmatrix[index];
-      }
-
-      // the error bars come from the production-only per-block increments
-      if (snapshots.empty()) continue;
-      for (std::size_t block = 0; block < std::min(numberOfBlocks, snapshots.size()); ++block)
-      {
-        for (std::size_t index = 0; index < snapshots[block].size(); ++index)
-        {
-          double3 increment = snapshots[block][index];
-          if (block > 0uz)
-          {
-            increment -= snapshots[block - 1uz][index];
-          }
-          blockCollectionMatrix[block][offset + index] += increment;
-        }
-      }
+      availableBlocks =
+          std::min(availableBlocks, blockCollectionMatrices[walkerIndex(temperatureIndex, windowIndex)].size());
     }
 
-    const std::vector<double> logPi = computeLogPi(totalCollectionMatrix);
+    // Production-only statistics (like the per-block increments below). The cumulative matrix
+    // still contains the Wang-Landau-era samples, taken while the walker descended through
+    // low N with molecules that had not yet relaxed into the deep sites: their deletion
+    // acceptances are overestimated by orders of magnitude, and because a row estimate is a
+    // mean of acceptance probabilities with a heavy upper tail, those early entries dominate
+    // the average no matter how long production runs. Discarding pre-production statistics
+    // from the readout (the bias keeps using the cumulative matrix) removes that transient.
+    std::vector<double> logPi =
+        stitchLogPi([&](std::size_t walkerId) { return productionCollectionMatrix(walkerId); });
+    applyWidomAnchor(logPi);
 
+    // The blocks are anchored with the same (whole-production) test-insertion increments, so the
+    // reported error over the anchored block carries the spread of the collection-matrix
+    // increments above it but not the anchor's own uncertainty, which the file lists per
+    // macrostate instead.
     std::vector<std::vector<double>> blockLogPi;
     blockLogPi.reserve(availableBlocks);
     for (std::size_t block = 0; block < availableBlocks; ++block)
     {
-      blockLogPi.push_back(computeLogPi(blockCollectionMatrix[block]));
+      blockLogPi.push_back(stitchLogPi([&](std::size_t walkerId)
+      {
+        const std::vector<std::vector<double3>>& snapshots = blockCollectionMatrices[walkerId];
+        std::vector<double3> increment = snapshots[block];
+        if (block > 0uz)
+        {
+          for (std::size_t index = 0; index < increment.size(); ++index)
+          {
+            increment[index] -= snapshots[block - 1uz][index];
+          }
+        }
+        return increment;
+      }));
+      applyWidomAnchor(blockLogPi.back());
     }
 
-    // total visit histogram over the windows (a pure diagnostic)
+    // total visit histogram over the windows (a pure diagnostic); (N, λ) visits are summed over λ
     std::vector<std::size_t> totalHistogram(numberOfMacrostates, 0uz);
     for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
     {
       const System& system = systems[walkerIndex(temperatureIndex, windowIndex)];
       const std::size_t offset = system.tmmc.minMacrostate - minMacrostate;
+      const std::size_t windowLambda = std::max(1uz, system.tmmc.lambdaBinCount());
       for (std::size_t index = 0; index < system.tmmc.histogram.size(); ++index)
       {
-        totalHistogram[offset + index] += system.tmmc.histogram[index];
+        const std::size_t molIndex = offset + index / windowLambda;
+        std::size_t visits = system.tmmc.histogram[index];
+        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
+        if (walkerId < productionStartHistograms.size() &&
+            index < productionStartHistograms[walkerId].size())
+        {
+          visits -= productionStartHistograms[walkerId][index];
+        }
+        if (molIndex < totalHistogram.size()) totalHistogram[molIndex] += visits;
       }
     }
 
     // ln Pi(N) at the reference fugacity, normalized to unit total probability, with the error
     // from the per-block solutions (normalized the same way, which removes the arbitrary gauge)
     {
-      std::ofstream lnpiFile(std::format("output/lnpi_{}.parallel_tmmc.txt", temperature), std::ios::trunc);
+      std::ofstream lnpiFile(std::format("tmmc/lnpi_{}.parallel_tmmc.txt", temperature), std::ios::trunc);
       std::print(lnpiFile, "# Parallel TMMC: macrostate probability distribution of {} at {} [K]\n",
                  frontComponent.name, temperature);
       std::print(lnpiFile, "# at the reference fugacity {:.6e} [Pa] (reference pressure {:.6e} [Pa])\n",
                  referenceFugacity * Units::PressureConversionFactor, referencePressure);
+      std::print(lnpiFile, "# window collection matrices pooled on the global macrostate grid (production only)\n");
+      if (nLambda > 1uz)
+      {
+        std::print(lnpiFile,
+                   "# (N, λ) TMMC: ln Pi is the λ = 0 slice of the chain (WHAM samples the decoupled molecule)\n");
+      }
       std::print(lnpiFile, "# reweight exactly with ln Pi(N; f) = ln Pi(N) + N ln(f / f_ref)\n");
+      if (widomAnchorEnd > 0uz)
+      {
+        std::print(lnpiFile,
+                   "# the increments out of N = {}--{} that have a test-insertion mean (column 7 = 1) are\n"
+                   "# Widom-anchored: ln(beta f V <W>_N / (N+1)) from the test insertions of column 5 rather\n"
+                   "# than from the collection matrix (the N = {} increment is the Henry coefficient); a\n"
+                   "# relative error above {:.2f} ends the block after {} consecutive misses but does not\n"
+                   "# leave a collection-matrix hole inside it; the increments above the block are the\n"
+                   "# collection-matrix estimates\n",
+                   minMacrostate, minMacrostate + widomAnchorEnd - 1uz, minMacrostate, maximumWidomRelativeError,
+                   widomAnchorFailureRun);
+      }
+      else
+      {
+        std::print(lnpiFile, "# no macrostate reached {} test insertions with a usable mean: ln Pi is the\n"
+                             "# collection-matrix estimate throughout\n", minimumWidomInsertions);
+      }
       std::print(lnpiFile, "# column 1: N [molecules]\n");
       std::print(lnpiFile, "# column 2, 3: ln Pi(N), error (normalized to unit total probability)\n");
-      std::print(lnpiFile, "# column 4: visits (summed over the windows)\n\n");
+      std::print(lnpiFile, "# column 4: visits (summed over the windows)\n");
+      std::print(lnpiFile, "# column 5, 6: test insertions at N, relative error of their mean Rosenbluth weight\n");
+      std::print(lnpiFile, "# column 7: 1 when the increment out of N is Widom-anchored, 0 when it is not\n\n");
 
       const double logNormalization = logSumExpRange(logPi, 0uz, numberOfMacrostates);
       std::vector<double> blockLogNormalization(availableBlocks);
@@ -1175,8 +1761,9 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         }
         const double error = blockErrorEstimate(blockValues, normalized);
 
-        std::print(lnpiFile, "{:6d}   {: .10e} {: .6e}   {}\n", minMacrostate + index, normalized, error,
-                   totalHistogram[index]);
+        std::print(lnpiFile, "{:6d}   {: .10e} {: .6e}   {}   {} {: .4e}   {}\n", minMacrostate + index, normalized,
+                   error, totalHistogram[index], widomCount[index], widomRelativeError[index],
+                   (index < widomAnchorEnd && widomHasIncrement[index]) ? 1 : 0);
       }
     }
 
@@ -1206,9 +1793,9 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     // equilibrium isotherm plus the adsorption and desorption branches (the hysteresis loop)
     {
       const std::array<std::string, 3> branchFileNames = {
-          std::format("output/reweighted_isotherm_{}.parallel_tmmc.txt", temperature),
-          std::format("output/adsorption_isotherm_{}.parallel_tmmc.txt", temperature),
-          std::format("output/desorption_isotherm_{}.parallel_tmmc.txt", temperature)};
+          std::format("tmmc/equilibrium_isotherm_{}.parallel_tmmc.txt", temperature),
+          std::format("tmmc/adsorption_isotherm_{}.parallel_tmmc.txt", temperature),
+          std::format("tmmc/desorption_isotherm_{}.parallel_tmmc.txt", temperature)};
       const std::array<std::string_view, 3> branchDescriptions = {
           "equilibrium reweighted adsorption isotherm (averaged over both basins of Pi(N))",
           "adsorption branch (conditional average over the low-density basin of Pi(N);\n"
@@ -1237,6 +1824,12 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         std::print(branchFiles[branch], "# column 10: pressure [Pa]\n");
         std::print(branchFiles[branch], "# column 11: bimodal (1 when Pi(N) has two basins at this pressure)\n\n");
       }
+
+      TMMCIsotherm stored;
+      stored.temperature = temperature;
+      stored.equilibrium.reserve(reweightingNumberOfPressures);
+      stored.adsorption.reserve(reweightingNumberOfPressures);
+      stored.desorption.reserve(reweightingNumberOfPressures);
 
       for (std::size_t pressureIndex = 0; pressureIndex < reweightingNumberOfPressures; ++pressureIndex)
       {
@@ -1276,7 +1869,177 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
                      toMoleculesPerUnitCell * loading, toMoleculesPerUnitCell * loadingError, toMolePerKg * loading,
                      toMolePerKg * loadingError, toMgPerG * loading, toMgPerG * loadingError, targetPressure,
                      bimodal ? 1 : 0);
+
+          const TMMCIsothermPoint point{
+              .pressure = targetPressure,
+              .fugacity = fugacityInternal * Units::PressureConversionFactor,
+              .moleculesPerCell = loading,
+              .moleculesPerCellError = loadingError,
+              .bimodal = bimodal};
+          if (branch == 0uz)
+          {
+            stored.equilibrium.push_back(point);
+          }
+          else if (branch == 1uz)
+          {
+            stored.adsorption.push_back(point);
+          }
+          else
+          {
+            stored.desorption.push_back(point);
+          }
         }
+      }
+      reweightedIsotherms.push_back(std::move(stored));
+    }
+
+    if (computeBET)
+    {
+      if (!front.framework.has_value())
+      {
+        if (temperatureIndex == 0uz)
+        {
+          std::print(stream, "BET extraction skipped: BET needs a framework (unit-cell mass and volume)\n\n");
+        }
+      }
+      else if (front.components.empty())
+      {
+        if (temperatureIndex == 0uz)
+        {
+          std::print(stream, "BET extraction skipped: BET needs an adsorbate component\n\n");
+        }
+      }
+      else
+      {
+        const BETProbeProperties probe = requireBETProbeProperties(front.components.front());
+        const int3 numberOfUnitCells = front.framework->numberOfUnitCells;
+        const double cells =
+            static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
+        const double unitCellVolume = front.simulationBox.volume / cells;
+        const double unitCellMass = front.framework->unitCellMass;
+        const TMMCIsotherm& storedIsotherm = reweightedIsotherms.back();
+
+        auto pointsFromBranch = [&](const std::vector<TMMCIsothermPoint>& branch) -> std::vector<SimulatedIsothermPoint>
+        {
+          std::vector<SimulatedIsothermPoint> points;
+          points.reserve(branch.size());
+          for (const TMMCIsothermPoint& point : branch)
+          {
+            points.push_back(
+                SimulatedIsothermPoint{point.pressure, toMoleculesPerUnitCell * point.moleculesPerCell});
+          }
+          return points;
+        };
+
+        const std::array<std::pair<std::string_view, const std::vector<TMMCIsothermPoint>*>, 3> branches = {
+            {{"equilibrium", &storedIsotherm.equilibrium},
+             {"adsorption", &storedIsotherm.adsorption},
+             {"desorption", &storedIsotherm.desorption}}};
+
+        std::print(stream, "BET extraction at {} [K]\n", temperature);
+        nlohmann::json betJson;
+        betJson["temperature"] = temperature;
+        for (std::size_t branchIndex = 0; branchIndex < branches.size(); ++branchIndex)
+        {
+          const auto& [branchName, branchPoints] = branches[branchIndex];
+          const BETSurfaceArea bet =
+              fitNitrogenBET(pointsFromBranch(*branchPoints), unitCellMass, unitCellVolume, probe);
+
+          std::optional<double> areaError;
+          std::optional<double> monolayerError;
+          std::optional<double> cError;
+          nlohmann::json blockAreas = nlohmann::json::array();
+          nlohmann::json blockMonolayers = nlohmann::json::array();
+          nlohmann::json blockCConstants = nlohmann::json::array();
+          std::size_t betBlocksUsed = 0uz;
+          std::size_t betBlocksFailed = 0uz;
+
+          // Jackknife the BET line inside the full-data Rouquerol window using the same
+          // per-block ln Pi(N) that supply the isotherm loading errors.
+          if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow &&
+              availableBlocks > 0uz)
+          {
+            std::vector<double> blockAreaValues;
+            std::vector<double> blockMonolayerValues;
+            std::vector<double> blockCValues;
+            blockAreaValues.reserve(availableBlocks);
+            blockMonolayerValues.reserve(availableBlocks);
+            blockCValues.reserve(availableBlocks);
+
+            for (std::size_t block = 0; block < availableBlocks; ++block)
+            {
+              std::vector<SimulatedIsothermPoint> blockPoints;
+              blockPoints.reserve(branchPoints->size());
+              for (const TMMCIsothermPoint& point : *branchPoints)
+              {
+                const double fugacityInternal = point.fugacity / Units::PressureConversionFactor;
+                const double delta = logBetaFugacityToDelta(fugacityInternal);
+                const double loading = branchLoadings(blockLogPi[block], delta).first[branchIndex];
+                blockPoints.push_back(
+                    SimulatedIsothermPoint{point.pressure, toMoleculesPerUnitCell * loading});
+              }
+
+              const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
+                  blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
+              if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+              {
+                ++betBlocksFailed;
+                continue;
+              }
+              ++betBlocksUsed;
+              blockAreaValues.push_back(blockBet.gravimetricArea);
+              blockMonolayerValues.push_back(blockBet.monolayerCapacity);
+              blockCValues.push_back(blockBet.cConstant);
+              blockAreas.push_back(blockBet.gravimetricArea);
+              blockMonolayers.push_back(blockBet.monolayerCapacity);
+              blockCConstants.push_back(blockBet.cConstant);
+            }
+
+            if (betBlocksUsed >= 3uz)
+            {
+              areaError = blockErrorEstimate(blockAreaValues, bet.gravimetricArea);
+              monolayerError = blockErrorEstimate(blockMonolayerValues, bet.monolayerCapacity);
+              cError = blockErrorEstimate(blockCValues, bet.cConstant);
+            }
+          }
+
+          if (branchName == "equilibrium")
+          {
+            writeNitrogenBETSummary(stream, bet, probe, "    ", areaError, monolayerError, cError);
+            if (betBlocksUsed > 0uz || betBlocksFailed > 0uz)
+            {
+              std::print(stream,
+                         "    BET block errors:       {} blocks (fixed Rouquerol window); {} fixed-window "
+                         "refits failed{}\n",
+                         betBlocksUsed, betBlocksFailed,
+                         areaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
+            }
+            std::print(stream, "\n");
+          }
+          const std::string betFile =
+              std::format("tmmc/bet_{}_{}.parallel_tmmc.txt", branchName, temperature);
+          std::ofstream table(betFile, std::ios::trunc);
+          std::print(table, "# Parallel TMMC: BET plot of the {} isotherm at {} [K] ({})\n", branchName,
+                     temperature, frontComponent.name);
+          writeNitrogenBETTable(table, bet, probe);
+          nlohmann::json entry = nitrogenBETJson(bet, probe);
+          entry["file"] = betFile;
+          entry["fixedWindowBlockErrors"] = true;
+          entry["betBlocksUsed"] = betBlocksUsed;
+          entry["betBlocksFailed"] = betBlocksFailed;
+          entry["blockGravimetricAreas"] = std::move(blockAreas);
+          entry["blockMonolayerCapacities"] = std::move(blockMonolayers);
+          entry["blockCConstants"] = std::move(blockCConstants);
+          if (areaError.has_value())
+          {
+            entry["gravimetricAreaError"] = *areaError;
+            entry["monolayerCapacityError"] = *monolayerError;
+            entry["cConstantError"] = *cError;
+          }
+          betJson[std::string(branchName)] = std::move(entry);
+        }
+        outputJson["output"]["tmmc"]["bet"].push_back(std::move(betJson));
+        std::print(stream, "    BET plots written to tmmc/bet_{{branch}}_{}.parallel_tmmc.txt\n\n", temperature);
       }
     }
 
@@ -1514,12 +2277,17 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     std::print(stream, "    coexistence P(N) written to output/vle_distribution_{{T}}.parallel_tmmc.txt\n\n");
   }
 
-  std::print(stream, "    ln Pi(N) written to output/lnpi_{{T}}.parallel_tmmc.txt\n");
-  std::print(stream, "    equilibrium isotherms written to output/reweighted_isotherm_{{T}}.parallel_tmmc.txt\n");
+  std::print(stream, "    ln Pi(N) written to tmmc/lnpi_{{T}}.parallel_tmmc.txt\n");
+  std::print(stream, "    equilibrium isotherms written to tmmc/equilibrium_isotherm_{{T}}.parallel_tmmc.txt\n");
   std::print(stream, "    adsorption/desorption branches (hysteresis loop) written to\n");
   std::print(stream,
-             "    output/adsorption_isotherm_{{T}}.parallel_tmmc.txt and "
-             "output/desorption_isotherm_{{T}}.parallel_tmmc.txt\n\n\n");
+             "    tmmc/adsorption_isotherm_{{T}}.parallel_tmmc.txt and "
+             "tmmc/desorption_isotherm_{{T}}.parallel_tmmc.txt\n");
+  if (computeBET && front.framework.has_value())
+  {
+    std::print(stream, "    BET plots written to tmmc/bet_{{branch}}_{{T}}.parallel_tmmc.txt\n");
+  }
+  std::print(stream, "\n\n");
   std::flush(stream);
 
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -1667,6 +2435,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << ptmmc.productionStartCollectionMatrices;
   archive << ptmmc.productionStartHistograms;
 
+  archive << ptmmc.widomWeightSums;
+  archive << ptmmc.widomWeightSquaredSums;
+  archive << ptmmc.widomInsertions;
+
   archive << ptmmc.stepsPerWalker;
   archive << ptmmc.absoluteCycleOffset;
 
@@ -1729,6 +2501,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
   archive >> ptmmc.blockCollectionMatrices;
   archive >> ptmmc.productionStartCollectionMatrices;
   archive >> ptmmc.productionStartHistograms;
+
+  archive >> ptmmc.widomWeightSums;
+  archive >> ptmmc.widomWeightSquaredSums;
+  archive >> ptmmc.widomInsertions;
 
   archive >> ptmmc.stepsPerWalker;
   archive >> ptmmc.absoluteCycleOffset;

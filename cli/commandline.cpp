@@ -61,6 +61,11 @@ import energy_shared_molecular_energy_barrier;
 import energy_shared_molecular_void_fraction;
 import energy_shared_molecular_surface_area;
 import energy_shared_well_surface;
+import energy_shared_bet_surface_area;
+import energy_shared_blocking_mask;
+import energy_shared_energy_backend;
+import energy_shared_probe_energy_grid;
+import blocking_spheres;
 import energy_shared_pore_size_distribution;
 import energy_shared_pore_analysis;
 import energy_shared_pore_volume;
@@ -112,7 +117,8 @@ void CommandLine::run(int argc, char *argv[])
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
   double temperature{ 298.0 };
-  double longest_walk{ defaultLongestWalk };
+  bool temperature_set{ false };
+  bool apply_blocking{ true };
   double blocking_threshold{ 30.0 };
   double brute_force_spacing{ 0.15 };
   std::size_t brute_force_samples{ 20000 };
@@ -153,7 +159,7 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
-           "Set number of threads the analyses may run on (default 1, one thread)",  // will be displayed in help
+           "Set number of threads the analyses may run on (default 1, one thread)",
            [&num_threads](std::string const &arg) { num_threads = std::stoul(arg); })
       .reg({"-f", "--force-field"},
            "FILE_NAME",  // will be used in help to illustrate the argument
@@ -177,14 +183,21 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"-v", "--void-fraction"}, argparser::no_argument, "Compute void fraction",
            [&state](std::string const &) { state.set(State::VoidFraction); })
       .reg({"--well-surface"}, argparser::no_argument,
-           "Compute the adsorption surface: the locus of energy wells, found by stepping out from the zero "
-           "surface along the wall normal until the energy stops falling. Where a surface area at a fixed level "
-           "says how much room a molecule may not enter, this says how much it can sit on",
+           "Compute the adsorption surface: the well-floor contact sheet of the probe, extracted from the "
+           "Apollonius distance field and refined onto the analytic energy minimum. Where a surface area at "
+           "a fixed energy level says how much room a molecule may not enter, this says how much it can sit "
+           "on. With --molecule the probe has a shape: the energy is the orientational free energy and the "
+           "contact is that of the best-fitting way round. A charged probe acts on the framework's Ewald "
+           "potential, which deepens and turns the wells but takes no part in the contact",
            [&state](std::string const &) { state.set(State::WellSurface); })
-      .reg({"--longest-walk"}, argparser::required_argument,
-           "How far a ray of the well surface may be walked before the search for a well is given up [Å], "
-           "default 6",
-           [&longest_walk](std::string const &arg) { longest_walk = std::stod(arg); })
+      .reg({"--bet"}, argparser::no_argument,
+           "Predict the BET nitrogen surface area from the well-surface contact sheet and the energy-grid Henry "
+           "coefficient, fitted in a Rouquerol-consistent window of P/P0. Default temperature 77.355 K",
+           [&state](std::string const &) { state.set(State::BET); })
+      .reg({"--no-blocking"}, argparser::no_argument,
+           "Leave inaccessible cages in the energy landscape, the well surface and the BET area. By default the "
+           "exact surface-area route's blocking spheres are applied automatically",
+           [&apply_blocking](std::string const &) { apply_blocking = false; })
       .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
            [&state](std::string const &) { state.set(State::PSD); })
       .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
@@ -219,11 +232,17 @@ void CommandLine::run(int argc, char *argv[])
            "part of it",
            [&brute_force_skip_excluded](std::string const &) { brute_force_skip_excluded = true; })
       .reg({"--temperature"}, argparser::required_argument,
-           "Set the temperature the energy barrier is reported against [K], default 298",
-           [&temperature](std::string const &arg) { temperature = std::stod(arg); })
+           "Set the temperature the energy properties are reported against [K], default 298 (77.355, the "
+           "nitrogen experiment's, when --surface-area, --well-surface or --bet is "
+           "asked for and this flag is omitted)",
+           [&temperature, &temperature_set](std::string const &arg)
+           {
+             temperature = std::stod(arg);
+             temperature_set = true;
+           })
       .reg({"--molecule"}, argparser::required_argument,
            "Use a rigid molecule with a shape of its own, such as CO2, for the energy barrier, the void "
-           "fraction or the surface area",
+           "fraction, the surface area, the well surface or the BET area",
            [&molecule_name](std::string const &arg) { molecule_name = arg; })
       .reg({"--orientations"}, argparser::required_argument,
            "Number of orientations to average a molecular property over, default 128. An area needs more of "
@@ -300,11 +319,11 @@ void CommandLine::run(int argc, char *argv[])
            [&probe_atom_name](std::string const &arg) { probe_atom_name = "probe-" + arg; })
       .reg({"--probe-size-parameter"},
            argparser::required_argument,
-           "The size of the probe atom", 
+           "σ of a spherical uncharged LJ probe [Å], written onto the '-' pseudo-atom (e.g. 3.798)",
            [&probe_size](std::string const &arg) { probe_size = std::stod(arg); })
       .reg({"--probe-strength-parameter"},
            argparser::required_argument,
-           "The strength of the probe atom", 
+           "ε/k of a spherical uncharged LJ probe [K], written onto the '-' pseudo-atom (e.g. 71.4)",
            [&probe_strength](std::string const &arg) { probe_strength = std::stod(arg); })
       .reg({"--use-well-depth-as-size"},
            argparser::no_argument,
@@ -405,12 +424,33 @@ void CommandLine::run(int argc, char *argv[])
     std::exit(-3);
   }
 
+  // The surface areas answer for the nitrogen experiment, so with no temperature given they default to its
+  // boiling point rather than to room temperature. It matters: at 298 K the orientational free energy pays
+  // an entropy toll in the tight channels that the 77 K measurement never pays, and the sheet reads a tenth
+  // small for a reason that has nothing to do with the geometry.
+  const bool wants_surface_area = state.test(State::BET) || state.test(State::WellSurface) ||
+                                  state.test(State::SurfaceArea);
+  if (wants_surface_area && !temperature_set) temperature = nitrogenBETTemperature;
+
   if (!use_cpu && !use_gpu) use_cpu = true;
+
+  std::vector<BlockingSphere> analysis_blocking;
+  double blocking_ramp = 0.0;
+  double blocking_ceiling = 0.0;
 
   // The energy-based properties are the same arithmetic on a field whichever machine filled the field in, so
   // the backend is chosen once here and handed down. Asking for the other one changes nothing but the
-  // precision of the field and the time it takes to build.
-  auto energyBackend = [&] { return use_gpu ? openCLEnergyBackend() : cpuEnergyBackend(); };
+  // precision of the field and the time it takes to build. Blocking spheres, when they have been computed for
+  // this structure, are written onto every energy field the backend returns.
+  auto energyBackend = [&]
+  {
+    EnergyBackend backend = use_gpu ? openCLEnergyBackend() : cpuEnergyBackend();
+    if (apply_blocking && !analysis_blocking.empty())
+    {
+      backend = withBlockedPockets(backend, analysis_blocking, blocking_ramp, blocking_ceiling);
+    }
+    return backend;
+  };
 
   // Serial unless threads were asked for. An analysis that can use them looks the pool up and finds it empty
   // otherwise, and takes the route it has always taken; see `exact_parallel` for what the threaded routes are
@@ -500,6 +540,14 @@ void CommandLine::run(int argc, char *argv[])
       }
     }
 
+    if (!forceField.has_value())
+    {
+      throw std::runtime_error(
+          std::format("Could not assign a force field to '{}'. The atom types in the CIF are not in the "
+                      "zeolite or MOF force field.\n",
+                      filename));
+    }
+
     // Handle custom probe size
     if(probe_size.has_value())
     {
@@ -546,6 +594,23 @@ void CommandLine::run(int argc, char *argv[])
 
     // A molecule with a shape has to be averaged over its orientations; a single site has only the one.
     auto energyOrientations = [&] { return molecule_name.has_value() ? number_of_orientations : std::size_t{1}; };
+
+    analysis_blocking.clear();
+    forgetMolecularField();
+    const bool wants_energy_blocking =
+        apply_blocking && (use_energy_methods || state.test(State::WellSurface) || state.test(State::BET));
+    if (wants_energy_blocking)
+    {
+      std::string blockingProbe = geometricProbe("probe-N2");
+      analysis_blocking = analysisBlockingSpheres(interactions, crystal, blockingProbe);
+      blocking_ramp = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
+      blocking_ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
+      if (!analysis_blocking.empty())
+      {
+        std::cout << analysis_blocking.size() << " blocking spheres from the exact surface-area route, applied to "
+                  << "the energy landscape" << std::endl;
+      }
+    }
 
     // The sampling routines go further still and ask for no types at all, only a cell, a set of atom centres
     // and the radius of each atom's contact sphere. This is where the mixing rule becomes those radii, once
@@ -795,20 +860,40 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::WellSurface))
     {
-      // The energy route only. There is no geometric counterpart to this and there cannot be one: a hard-sphere
-      // surface has no well to walk to, the energy being zero everywhere the probe fits and infinite where it
-      // does not.
       LinearProbe molecule = energyMolecule("well surface", "probe-N2");
-      std::cout << "Compute the adsorption surface, the locus of energy wells, for " << molecule.name << std::endl;
+      std::cout << "Compute the adsorption surface, the well-floor contact sheet, for " << molecule.name << std::endl;
 
       MolecularWellSurface wells;
       wells.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, energyOrientations(),
-                temperature, longest_walk);
+                temperature, analysis_blocking);
 
-      std::cout << "well surface " << wells.surface.gravimetricArea << " m^2/g, " << wells.surface.compression()
-                << " of the zero surface it was mapped from, mean well depth "
+      std::cout << "well surface " << wells.surface.gravimetricArea << " m^2/g, mean well depth "
                 << wells.surface.meanDepth * Units::EnergyToKelvin << " K, Boltzmann-weighted area "
-                << wells.surface.gravimetricWeightedArea << " m^2/g" << std::endl;
+                << wells.surface.gravimetricWeightedArea << " m^2/g";
+      if (wells.surface.filamentVolume > 0.0)
+      {
+        std::cout << ", filament volume " << wells.surface.filamentVolume << " A^3";
+      }
+      std::cout << std::endl;
+    }
+
+    if (state.test(CommandLine::State::BET))
+    {
+      LinearProbe molecule = energyMolecule("BET area", "probe-N2");
+      std::cout << "Compute the predicted BET surface area for " << molecule.name << " at " << temperature
+                << " K" << std::endl;
+
+      BETSurfaceArea bet;
+      bet.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, energyOrientations(),
+              temperature, analysis_blocking);
+
+      std::cout << "BET " << bet.gravimetricArea << " m^2/g (C = " << bet.cConstant << ", n_m = "
+                << bet.monolayerCapacity << " / cell, window " << bet.windowLow << "--" << bet.windowHigh
+                << ", saturation " << bet.saturationCapacity << " / cell)"
+                << ", sheet " << bet.sheetCapacity << " / cell (" << bet.sheetGravimetricArea
+                << " m^2/g), 1-D file " << bet.filamentFileCapacity << " / cell ("
+                << bet.filamentFileGravimetricArea << " m^2/g), 2-D midplane " << bet.filamentMidplaneCapacity
+                << " / cell (" << bet.filamentMidplaneGravimetricArea << " m^2/g)" << std::endl;
     }
 
     if (state.test(CommandLine::State::VoidFraction))

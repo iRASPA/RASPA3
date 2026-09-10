@@ -5,6 +5,7 @@ module input_reader;
 import std;
 
 import int3;
+import uint3;
 import stringutils;
 import json;
 import system;
@@ -97,6 +98,11 @@ double3 parseDouble3(const std::string& item, auto json)
   }
   throw std::runtime_error(std::format(
       "[Input reader]: key '{}', value {} should be array of 3 floating point numbers\n", item, json.dump()));
+}
+
+bool jsonIsAuto(const auto& json)
+{
+  return json.is_string() && caseInSensStringCompare(json.template get<std::string>(), "auto");
 }
 
 template <typename T>
@@ -227,6 +233,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ParallelTMMC;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "NLDFT"))
+    {
+      simulationType = SimulationType::NLDFT;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -315,20 +326,53 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     reweightingTemperatures = parsed_data["ReweightingTemperatures"].get<std::vector<double>>();
   }
-  if (parsed_data.contains("ReweightingPressureRange") && parsed_data["ReweightingPressureRange"].is_array())
+
+  auto parseComputeBET = [&](const std::string& key)
   {
-    std::vector<double> range = parsed_data["ReweightingPressureRange"].get<std::vector<double>>();
-    if (range.size() != 2 || range[0] <= 0.0 || range[1] <= range[0])
+    if (!parsed_data.contains(key)) return;
+    if (!parsed_data[key].is_boolean())
+    {
+      throw std::runtime_error(std::format("[Input reader]: '{}' must be a boolean\n", key));
+    }
+    computeBET = computeBET || parsed_data[key].get<bool>();
+  };
+  parseComputeBET("ComputeBET");
+  parseComputeBET("ComputeBTE");
+
+  if (parsed_data.contains("ReweightingPressureRange"))
+  {
+    if (jsonIsAuto(parsed_data["ReweightingPressureRange"]))
+    {
+      if (!computeBET)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'ReweightingPressureRange': 'auto' places the isotherm grid from a "
+                        "nitrogen Henry coefficient to P0; it is only valid with 'ComputeBET': true\n"));
+      }
+      autoReweightingPressureRange = true;
+    }
+    else if (parsed_data["ReweightingPressureRange"].is_array())
+    {
+      std::vector<double> range = parsed_data["ReweightingPressureRange"].get<std::vector<double>>();
+      if (range.size() != 2 || range[0] <= 0.0 || range[1] <= range[0])
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'ReweightingPressureRange' must be [min, max] with 0 < min < max, or "
+                        "'auto' with 'ComputeBET': true\n"));
+      }
+      reweightingPressureRange = std::make_pair(range[0], range[1]);
+    }
+    else
     {
       throw std::runtime_error(
-          std::format("[Input reader]: 'ReweightingPressureRange' must be [min, max] with 0 < min < max\n"));
+          std::format("[Input reader]: 'ReweightingPressureRange' must be [min, max] or the string 'auto'\n"));
     }
-    reweightingPressureRange = std::make_pair(range[0], range[1]);
   }
   if (parsed_data.contains("ReweightingNumberOfPressures") &&
       parsed_data["ReweightingNumberOfPressures"].is_number_unsigned())
   {
     reweightingNumberOfPressures = std::max(2uz, parsed_data["ReweightingNumberOfPressures"].get<std::size_t>());
+    reweightingNumberOfPressuresSpecified = true;
   }
 
   // Parallel TMMC: window and bias-update controls
@@ -339,6 +383,43 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   if (parsed_data.contains("TMMCUpdateEvery") && parsed_data["TMMCUpdateEvery"].is_number_unsigned())
   {
     tmmcUpdateEvery = std::max(1uz, parsed_data["TMMCUpdateEvery"].get<std::size_t>());
+  }
+
+  // NLDFT: grid / orientation / backend controls
+  if (parsed_data.contains("NumberOfOrientations") && parsed_data["NumberOfOrientations"].is_number_unsigned())
+  {
+    nldftNumberOfOrientations = parsed_data["NumberOfOrientations"].get<std::size_t>();
+  }
+  if (parsed_data.contains("UseGPU") && parsed_data["UseGPU"].is_boolean())
+  {
+    nldftUseGPU = parsed_data["UseGPU"].get<bool>();
+  }
+  if (parsed_data.contains("NLDFTUseElectrostatics") && parsed_data["NLDFTUseElectrostatics"].is_boolean())
+  {
+    nldftUseElectrostatics = parsed_data["NLDFTUseElectrostatics"].get<bool>();
+  }
+  if (parsed_data.contains("NLDFTRelativePrecision") && parsed_data["NLDFTRelativePrecision"].is_number())
+  {
+    nldftRelativePrecision = parsed_data["NLDFTRelativePrecision"].get<double>();
+  }
+  if (parsed_data.contains("NLDFTGridSize"))
+  {
+    if (parsed_data["NLDFTGridSize"].is_array() && parsed_data["NLDFTGridSize"].size() == 3)
+    {
+      nldftGridSize = uint3(parsed_data["NLDFTGridSize"][0].get<std::size_t>(),
+                            parsed_data["NLDFTGridSize"][1].get<std::size_t>(),
+                            parsed_data["NLDFTGridSize"][2].get<std::size_t>());
+    }
+    else if (parsed_data["NLDFTGridSize"].is_number_unsigned())
+    {
+      const std::size_t n = parsed_data["NLDFTGridSize"].get<std::size_t>();
+      nldftGridSize = uint3(n, n, n);
+    }
+    else
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'NLDFTGridSize' must be an unsigned integer or an array of three unsigned integers\n");
+    }
   }
 
   if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
@@ -1107,6 +1188,33 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].idealGasRosenbluthWeight = ideal_gas_rosenbluth_weight;
+        }
+      }
+
+      if (item.contains("CrossSection") && item["CrossSection"].is_number())
+      {
+        const double cross_section = item["CrossSection"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].crossSection = cross_section;
+        }
+      }
+
+      if (item.contains("LiquidVolume") && item["LiquidVolume"].is_number())
+      {
+        const double liquid_volume = item["LiquidVolume"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].liquidVolume = liquid_volume;
+        }
+      }
+
+      if (item.contains("SaturationPressure") && item["SaturationPressure"].is_number())
+      {
+        const double saturation_pressure = item["SaturationPressure"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].saturationPressure = saturation_pressure;
         }
       }
 
@@ -1913,10 +2021,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      // Hyper-parallel tempering: the pressure ladder (in Pa, converted to per-component fugacities
+      // Hyper-parallel tempering / WHAM: the pressure ladder (in Pa, converted to per-component fugacities
       // internally through the Peng-Robinson equation of state); combined with the temperature ladder
-      // the single declared system is replicated into one replica per (temperature, pressure) point
-      if (value.contains("ExternalPressures") && value["ExternalPressures"].is_array())
+      // the single declared system is replicated into one replica per (temperature, pressure) point.
+      // With 'ComputeBET', the string "auto" (or omitting the key) places a log-spaced ladder from the
+      // nitrogen Henry limit to P0 after the system exists.
+      if (value.contains("ExternalPressures"))
       {
         if (simulationType != SimulationType::HyperParallelTempering &&
             simulationType != SimulationType::ReweightedHistogram)
@@ -1926,17 +2036,42 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                           "'SimulationType': 'HyperParallelTempering' or 'ReweightedHistogram'; use "
                           "'ExternalPressure' instead\n"));
         }
-        parallelTemperingPressures = value["ExternalPressures"].get<std::vector<double>>();
-        if (parallelTemperingPressures.empty())
+        if (jsonIsAuto(value["ExternalPressures"]))
         {
-          throw std::runtime_error(
-              std::format("[Input reader]: 'ExternalPressures' must contain at least one pressure\n"));
+          if (simulationType != SimulationType::ReweightedHistogram)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'ExternalPressures': 'auto' is only valid for "
+                            "'SimulationType': 'ReweightedHistogram' with 'ComputeBET': true\n"));
+          }
+          if (!computeBET)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'ExternalPressures': 'auto' places a nitrogen BET pressure "
+                            "ladder from a Henry coefficient to P0; it is only valid with 'ComputeBET': true\n"));
+          }
+          autoExternalPressures = true;
         }
-        if (!std::ranges::is_sorted(parallelTemperingPressures))
+        else if (value["ExternalPressures"].is_array())
+        {
+          parallelTemperingPressures = value["ExternalPressures"].get<std::vector<double>>();
+          if (parallelTemperingPressures.empty())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'ExternalPressures' must contain at least one pressure\n"));
+          }
+          if (!std::ranges::is_sorted(parallelTemperingPressures))
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'ExternalPressures' must be sorted in increasing order (swaps are "
+                            "attempted between neighboring pressures)\n"));
+          }
+        }
+        else
         {
           throw std::runtime_error(
-              std::format("[Input reader]: 'ExternalPressures' must be sorted in increasing order (swaps are "
-                          "attempted between neighboring pressures)\n"));
+              std::format("[Input reader]: 'ExternalPressures' must be a sorted list of pressures or the string "
+                          "'auto'\n"));
         }
       }
 
@@ -2099,10 +2234,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
         }
 
+        bool autoNumberOfUnitCells = false;
         int3 jsonNumberOfUnitCells{1, 1, 1};
         if (value.contains("NumberOfUnitCells"))
         {
-          jsonNumberOfUnitCells = parseInt3("NumberOfUnitCells", value["NumberOfUnitCells"]);
+          if (jsonIsAuto(value["NumberOfUnitCells"]))
+          {
+            autoNumberOfUnitCells = true;
+          }
+          else if (value["NumberOfUnitCells"].is_array())
+          {
+            jsonNumberOfUnitCells = parseInt3("NumberOfUnitCells", value["NumberOfUnitCells"]);
+          }
+          else
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'NumberOfUnitCells' must be an array of 3 integers or "
+                            "the string 'auto'\n"));
+          }
         }
 
         double heliumVoidFraction{1.0};
@@ -2122,6 +2271,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             cif.has_value())
         {
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+          if (autoNumberOfUnitCells)
+          {
+            // Minimum supercell so that 2 * cut-off fits in each perpendicular width (MIC).
+            // Uses the force-field cut-offs present at read time (defaults or system overrides).
+            const ForceField& forceField = forceFields[systemId].value();
+            const double cutOff = std::max(
+                {forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb});
+            jsonNumberOfUnitCells = simulation_box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
+            jsonNumberOfUnitCells.x = std::max(jsonNumberOfUnitCells.x, std::int32_t{1});
+            jsonNumberOfUnitCells.y = std::max(jsonNumberOfUnitCells.y, std::int32_t{1});
+            jsonNumberOfUnitCells.z = std::max(jsonNumberOfUnitCells.z, std::int32_t{1});
+          }
           Framework framework =
               Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
                         defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
@@ -2291,10 +2452,28 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<std::size_t>();
       }
 
-      if (value.contains("MacroStateMaximumNumberOfMolecules") &&
-          value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
+      if (value.contains("MacroStateMaximumNumberOfMolecules"))
       {
-        systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<std::size_t>();
+        if (jsonIsAuto(value["MacroStateMaximumNumberOfMolecules"]))
+        {
+          if (!computeBET)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'MacroStateMaximumNumberOfMolecules': 'auto' scouts occupancy at "
+                            "nitrogen P0; it is only valid with 'ComputeBET': true\n"));
+          }
+          autoMacroStateMaximum = true;
+        }
+        else if (value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
+        {
+          systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<std::size_t>();
+        }
+        else
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'MacroStateMaximumNumberOfMolecules' must be an unsigned integer or "
+                          "the string 'auto'\n"));
+        }
       }
 
       systems[systemId].reactions.list = std::move(jsonReactions[systemId]);
@@ -2849,6 +3028,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       systems[i].tmmc.doTMMC = true;
       systems[i].tmmc.useBias = true;
       systems[i].tmmc.useTMBias = true;
+      if (systems[i].components.size() == 1uz)
+      {
+        const Component& component = systems[i].components.front();
+        const bool usesCFCMCSwap =
+            component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+            component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
+        if (usesCFCMCSwap && component.lambdaGC.numberOfSamplePoints > 1uz)
+        {
+          systems[i].tmmc.numberOfLambdaBins = component.lambdaGC.numberOfSamplePoints;
+        }
+      }
     }
   }
 
@@ -3131,13 +3321,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "were declared\n",
                       systems.size()));
     }
-    if (parallelTemperingTemperatures.empty() || parallelTemperingPressures.empty())
+    if (parallelTemperingTemperatures.empty())
     {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'ReweightedHistogram' requires both ladders: give the system the keys "
-                      "'ExternalTemperatures' and 'ExternalPressures' (sorted lists)\n"));
+      if (computeBET && !systems.empty())
+      {
+        parallelTemperingTemperatures = {systems.front().temperature};
+      }
+      else
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'ReweightedHistogram' requires both ladders: give the system the keys "
+                        "'ExternalTemperatures' and 'ExternalPressures' (sorted lists)\n"));
+      }
     }
-    if (parallelTemperingTemperatures.size() * parallelTemperingPressures.size() < 2)
+    if (parallelTemperingPressures.empty())
+    {
+      if (computeBET && !systems.empty() && systems.front().framework.has_value())
+      {
+        autoExternalPressures = true;
+      }
+      else
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'ReweightedHistogram' requires both ladders: give the system the keys "
+                        "'ExternalTemperatures' and 'ExternalPressures' (sorted lists)\n"));
+      }
+    }
+    if (!autoExternalPressures &&
+        parallelTemperingTemperatures.size() * parallelTemperingPressures.size() < 2)
     {
       throw std::runtime_error(
           std::format("[Input reader]: 'ReweightedHistogram' requires at least two (temperature, pressure) grid "
@@ -3176,17 +3387,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     system.tmmc.doTMMC = true;
     system.tmmc.useBias = true;
     system.tmmc.useTMBias = true;
+    system.tmmc.useWangLandau = true;
     system.tmmc.rejectOutOfBound = true;
     system.tmmc.updateTMEvery = tmmcUpdateEvery;
+    const Component& component = system.components.front();
+    const bool usesCFCMCSwap =
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
+    if (usesCFCMCSwap && component.lambdaGC.numberOfSamplePoints > 1uz)
+    {
+      system.tmmc.numberOfLambdaBins = component.lambdaGC.numberOfSamplePoints;
+    }
     if (system.tmmc.maxMacrostate <= system.tmmc.minMacrostate)
     {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'ParallelTMMC' requires a macrostate range: give the system the keys "
-                      "'MacroStateMinimumNumberOfMolecules' and 'MacroStateMaximumNumberOfMolecules' with "
-                      "minimum < maximum\n"));
+      if (autoMacroStateMaximum)
+      {
+        // N_max is placed by a P0 occupancy scout after the system exists; skip the numeric check.
+      }
+      else
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'ParallelTMMC' requires a macrostate range: give the system the keys "
+                        "'MacroStateMinimumNumberOfMolecules' and 'MacroStateMaximumNumberOfMolecules' with "
+                        "minimum < maximum\n"));
+      }
     }
-    const std::size_t numberOfMacrostates = system.tmmc.maxMacrostate - system.tmmc.minMacrostate + 1;
-    if (tmmcNumberOfWindows > (numberOfMacrostates - 1))
+    const std::size_t numberOfMacrostates =
+        autoMacroStateMaximum ? 0uz : system.tmmc.maxMacrostate - system.tmmc.minMacrostate + 1;
+    if (!autoMacroStateMaximum && tmmcNumberOfWindows > (numberOfMacrostates - 1))
     {
       throw std::runtime_error(
           std::format("[Input reader]: 'NumberOfWindows' ({}) is too large for the macrostate range [{}, {}]; "
@@ -3202,6 +3430,86 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "'CreateNumberOfMolecules' ({}) must not exceed 'MacroStateMinimumNumberOfMolecules' ({})\n",
                       initialNumberOfMolecules, system.tmmc.minMacrostate));
     }
+  }
+
+  if (simulationType == SimulationType::NLDFT)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'NLDFT' requires exactly one declared system, {} systems were declared\n",
+                      systems.size()));
+    }
+    if (!systems.front().framework.has_value())
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'NLDFT' requires a framework (classical DFT needs an external field)\n");
+    }
+    if (systems.front().components.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'NLDFT' requires exactly one adsorbate component (the probe), {} components "
+                      "were declared\n",
+                      systems.front().components.size()));
+    }
+  }
+
+  if (computeBET && simulationType != SimulationType::ReweightedHistogram &&
+      simulationType != SimulationType::ParallelTMMC)
+  {
+    throw std::runtime_error(
+        std::format("[Input reader]: 'ComputeBET' extracts a BET area from a reweighted isotherm; "
+                    "it is only valid with 'SimulationType': 'ReweightedHistogram' or 'ParallelTMMC'\n"));
+  }
+  if (computeBET)
+  {
+    if (systems.empty() || systems.front().components.empty())
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'ComputeBET' needs an adsorbate component with 'CrossSection', "
+          "'LiquidVolume', and 'SaturationPressure'\n");
+    }
+    const Component& probe = systems.front().components.front();
+    if (!probe.crossSection.has_value() || !(probe.crossSection.value() > 0.0))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeBET' requires component '{}' to set a positive 'CrossSection' [Å²]\n",
+          probe.name));
+    }
+    if (!probe.liquidVolume.has_value() || !(probe.liquidVolume.value() > 0.0))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeBET' requires component '{}' to set a positive 'LiquidVolume' [Å³/molecule]\n",
+          probe.name));
+    }
+    if (!probe.saturationPressure.has_value() || !(probe.saturationPressure.value() > 0.0))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeBET' requires component '{}' to set a positive 'SaturationPressure' P0 [Pa]\n",
+          probe.name));
+    }
+  }
+  const bool hasFramework = !systems.empty() && systems.front().framework.has_value();
+  if (computeBET && hasFramework && !reweightingPressureRange.has_value() && !autoReweightingPressureRange)
+  {
+    autoReweightingPressureRange = true;
+  }
+  if (computeBET && hasFramework &&
+      (simulationType == SimulationType::ReweightedHistogram || simulationType == SimulationType::ParallelTMMC))
+  {
+    const bool maxSpecified =
+        !systems.empty() && parsed_data.contains("Systems") && parsed_data["Systems"].is_array() &&
+        !parsed_data["Systems"].empty() && parsed_data["Systems"][0].contains("MacroStateMaximumNumberOfMolecules");
+    if (!maxSpecified)
+    {
+      autoMacroStateMaximum = true;
+    }
+  }
+  if ((autoExternalPressures || autoReweightingPressureRange || autoMacroStateMaximum) && !hasFramework)
+  {
+    throw std::runtime_error(
+        std::format("[Input reader]: 'auto' nitrogen BET placement needs a framework (unit-cell volume "
+                    "and a host for the Henry coefficient and P0 occupancy scout)\n"));
   }
 }
 
@@ -3248,8 +3556,15 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ReweightingTemperatures",
     "ReweightingPressureRange",
     "ReweightingNumberOfPressures",
+    "ComputeBET",
+    "ComputeBTE",
     "NumberOfWindows",
     "TMMCUpdateEvery",
+    "NumberOfOrientations",
+    "UseGPU",
+    "NLDFTUseElectrostatics",
+    "NLDFTRelativePrecision",
+    "NLDFTGridSize",
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",
@@ -3418,6 +3733,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "StartingBead",
     "FugacityCoefficient",
     "IdealGasRosenbluthWeight",
+    "CrossSection",
+    "LiquidVolume",
+    "SaturationPressure",
     "MolFraction",
     "IdentityChanges",
     "IdentitySwitches",

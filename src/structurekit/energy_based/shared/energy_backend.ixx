@@ -9,12 +9,14 @@ import double3;
 import unit_cell;
 import crystal;
 import pair_interactions;
+import blocking_spheres;
 
 import energy_shared_linear_probe;
 import energy_shared_probe_energy_grid;
 import energy_shared_molecular_energy_grid;
 import energy_shared_electrostatic_potential_grid;
 import energy_shared_isosurface;
+import energy_shared_well_field;
 
 // The whole of what the energy-based properties need from the machine underneath: four ways of filling in a
 // field, and the one sweep over a field that is heavy enough to be worth choosing a machine for.
@@ -66,6 +68,19 @@ export struct EnergyBackend
   // at every point and how far a sphere may reach past itself. It is the heavy half of a pore-size
   // distribution and the only sweep here that is not dwarfed by building the field it runs on.
   std::function<std::vector<float>(uint3, const UnitCell &, std::span<const float>, double)> poreRadiusField;
+
+  // The well field: energy, Apollonius clearance and medial reliability on the same grid. The processor
+  // and GPU builders meet here so that --gpu changes the field, not the surface arithmetic on top of it.
+  std::function<WellField(const PairInteractions &, const Crystal &, const LinearProbe &, uint3, std::size_t, double,
+                          std::span<const BlockingSphere>, double, double, const ElectrostaticPotentialGrid *,
+                          double)>
+      wellField;
+
+  // Slide extracted vertices onto the analytic 1D well floor. `iso` is the trim isovalue already chosen
+  // for this sheet; vertices shallower than it are left where marching cubes put them.
+  std::function<void(std::vector<double3> &, std::vector<double> &, const PairInteractions &, const Crystal &,
+                     const NeighbourhoodParameters &, std::span<const BlockingSphere>, double)>
+      refineWellVertices;
 };
 
 // A molecule's landscape and the framework potential it was built against, which is empty when the molecule

@@ -5,6 +5,8 @@ add_executable(unit_tests_structurekit
   grid_pore_size.cpp
                        grid_surface_curvature.cpp
                        energy_well_surface.cpp
+                       energy_bet_area.cpp
+                       energy_nldft.cpp
   structure_parallel.cpp
   exact_sphere_sweep.cpp
   exact_union_volume.cpp

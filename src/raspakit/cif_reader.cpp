@@ -6,6 +6,7 @@ import std;
 
 import double3;
 import skspacegroup;
+import skspacegroupdatabase;
 import skdefinitions;
 import skseitzmatrix;
 import skelement;
@@ -95,7 +96,7 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     cif_reader.fractionalAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
   }
 
-  std::vector<Atom> atoms = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms);
+  std::vector<Atom> atoms = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms, cif_reader.symmetryOperationStrings);
 
   if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
   {
@@ -180,6 +181,7 @@ void CIFReader::parseSymmetry(std::string& string)
     if (possibleString)
     {
       spaceGroupHallNumber = SKSpaceGroup::HallNumber(*possibleString);
+      spaceGroupHallNumberFromHallSymbol = spaceGroupHallNumber.has_value();
     }
   }
 
@@ -214,9 +216,85 @@ void CIFReader::parseSymmetry(std::string& string)
   }
 }
 
+namespace
+{
+/// The setting whose operations are exactly the given ones, or nothing if no setting reproduces them.
+///
+/// This is deliberately not SKSpaceGroup::matchSpaceGroup, which is free to change basis and so answers
+/// "which group is this" rather than "which setting are these coordinates in"; asked the latter about
+/// ferrierite it returns the standard Pnnm for a file written in Pmnn. Two settings of one group differ
+/// by a permutation of the axes or a shift of the origin, both of which move a general point, so the
+/// orbit of a point lying on no symmetry element distinguishes them.
+std::optional<std::size_t> settingFromSymmetryOperations(const std::vector<SKSeitzMatrix>& operations)
+{
+  const double3 generalPoint(0.13411, 0.25703, 0.38119);
+
+  auto gather = [](std::vector<double3> positions)
+  {
+    std::vector<double3> unique{};
+    for (const double3& position : positions)
+    {
+      const double3 wrapped = double3::fract(position);
+      const bool seen = std::ranges::any_of(unique,
+                                            [&](const double3& other)
+                                            {
+                                              double3 delta = wrapped - other;
+                                              delta.x -= std::rint(delta.x);
+                                              delta.y -= std::rint(delta.y);
+                                              delta.z -= std::rint(delta.z);
+                                              return delta.length_squared() < 1.0e-8;
+                                            });
+      if (!seen) unique.push_back(wrapped);
+    }
+    return unique;
+  };
+
+  std::vector<double3> fromFile{};
+  fromFile.reserve(operations.size());
+  for (const SKSeitzMatrix& operation : operations)
+  {
+    fromFile.push_back(operation.rotation * generalPoint + operation.translation);
+  }
+  const std::vector<double3> target = gather(fromFile);
+
+  for (std::size_t hallNumber = 1; hallNumber < SKSpaceGroupDataBase::spaceGroupData.size(); ++hallNumber)
+  {
+    const std::vector<double3> candidate = gather(SKSpaceGroup(hallNumber).listOfSymmetricPositions(generalPoint));
+    if (candidate.size() != target.size()) continue;
+
+    if (std::ranges::all_of(target,
+                            [&](const double3& position)
+                            {
+                              return std::ranges::any_of(candidate,
+                                                         [&](const double3& other)
+                                                         {
+                                                           double3 delta = position - other;
+                                                           delta.x -= std::rint(delta.x);
+                                                           delta.y -= std::rint(delta.y);
+                                                           delta.z -= std::rint(delta.z);
+                                                           return delta.length_squared() < 1.0e-8;
+                                                         });
+                            }))
+    {
+      return hallNumber;
+    }
+  }
+
+  return std::nullopt;
+}
+}  // namespace
+
 void CIFReader::resolveSpaceGroupHallNumber(const SimulationBox& simulation_box)
 {
   if (symmetryOperationStrings.empty())
+  {
+    return;
+  }
+
+  // A Hall symbol names one setting and nothing else, so it is already the answer. A Hermann-Mauguin
+  // symbol is not: forty of them cover more than one setting, mostly the pairs that differ only in
+  // where the origin sits. Those are settled below, from the operations the file lists.
+  if (spaceGroupHallNumberFromHallSymbol)
   {
     return;
   }
@@ -247,6 +325,15 @@ void CIFReader::resolveSpaceGroupHallNumber(const SimulationBox& simulation_box)
     centering = SKSpaceGroup(spaceGroupHallNumber.value()).spaceGroupSetting().centring();
   }
 
+  // The setting that reproduces the listed operations, when there is one.
+  if (const std::optional<std::size_t> hallNumber = settingFromSymmetryOperations(operations))
+  {
+    spaceGroupHallNumber = hallNumber;
+    return;
+  }
+
+  // Otherwise fall back on identifying the group, which tolerates a change of basis and so still says
+  // something useful about a file whose operations match no tabulated setting exactly.
   if (const std::optional<std::size_t> hallNumber = SKSpaceGroup::HallNumberFromSymmetryOperations(
           operations, simulation_box.cell, centering, spaceGroupInternationalNumber))
   {
@@ -350,43 +437,38 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
 
         Atom atom = Atom();
 
-        if (std::map<std::string, std::string>::iterator atomSiteIndex =
-                dictionary.find(std::string("_atom_site_label"));
-            (atomSiteIndex != dictionary.end()))
+        auto lookUpPseudoAtom = [&](std::string name) -> std::optional<std::size_t>
         {
-          std::string tempString1 = atomSiteIndex->second;
-          // std::replace_if(tempString1.begin(), tempString1.end(), [](char c) { return std::isdigit(c); }, ' ');
-          std::istringstream ss(tempString1);
-          std::string value2;
-          if (ss >> value2)
+          if (name.empty()) return std::nullopt;
+          if (std::optional<std::size_t> found = forceField.findPseudoAtom(name); found.has_value())
           {
-            std::optional<std::size_t> index1 = forceField.findPseudoAtom(value2);
-
-            // find by stripping of numbers
-            if (!index1.has_value())
-            {
-              std::replace_if(tempString1.begin(), tempString1.end(), [](char c) { return std::isdigit(c); }, ' ');
-              std::istringstream ss2(tempString1);
-              ss2 >> value2;
-              index1 = forceField.findPseudoAtom(value2);
-            }
-
-            // TODO: add pseudoAtom if not found
-            if (!index1.has_value())
-            {
-              return std::unexpected(CIFReader::ParseError::invalidForceField);
-              //throw std::runtime_error(std::format("[cif reader]: atom type {} not recognized\n", value2));
-            }
-
-            if (index1.has_value())
-            {
-              atom.type = static_cast<std::uint16_t>(index1.value());
-            }
+            return found;
           }
 
-          //  atom->setDisplayName(atomSiteIndex->second);
-          //  atom->setUniqueForceFieldName(atomSiteIndex->second);
+          std::replace_if(name.begin(), name.end(), [](char c) { return std::isdigit(c); }, ' ');
+          std::istringstream stripped(name);
+          std::string token;
+          if (!(stripped >> token) || token.empty()) return std::nullopt;
+          return forceField.findPseudoAtom(token);
+        };
+
+        // The element is _atom_site_type_symbol. The site label is only a name (T1, O1, C_co2),
+        // so it is tried afterwards, for a force-field type that is not the element.
+        std::optional<std::size_t> index1 = lookUpPseudoAtom(chemicalElement);
+        if (!index1.has_value())
+        {
+          if (std::map<std::string, std::string>::iterator atomSiteIndex =
+                  dictionary.find(std::string("_atom_site_label"));
+              (atomSiteIndex != dictionary.end()))
+          {
+            index1 = lookUpPseudoAtom(atomSiteIndex->second);
+          }
         }
+        if (!index1.has_value())
+        {
+          return std::unexpected(CIFReader::ParseError::invalidForceField);
+        }
+        atom.type = static_cast<std::uint16_t>(index1.value());
 
         if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex =
                 dictionary.find(std::string("_atom_site_forcefield_label"));
@@ -586,21 +668,53 @@ std::optional<std::string> CIFReader::scanString()
   return std::nullopt;
 }
 
-std::vector<Atom> CIFReader::expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms)
+std::vector<Atom> CIFReader::expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms, const std::vector<std::string> &symmetryOperationStrings)
 {
-  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+  // A file that spells out its symmetry operations is also telling us which setting its coordinates are
+  // written in, and that is not recoverable from the space-group number alone. Ferrierite arrives as
+  // Pmnn, a non-standard setting of Pnnm (#58); generating positions from the standard setting instead
+  // puts four of the thirty-six silicons on top of existing atoms, where the overlap test below removes
+  // them, and the framework then has holes that read as very deep adsorption sites. So the operations in
+  // the file win, and the database is the fallback for files that name a group without listing them.
+  std::vector<SKSeitzMatrix> operations{};
+  operations.reserve(symmetryOperationStrings.size());
+  for (const std::string& symmetryOperationString : symmetryOperationStrings)
+  {
+    if (const std::optional<SKSeitzMatrix> operation =
+            SKSpaceGroup::parseCifSymmetryOperation(symmetryOperationString))
+    {
+      operations.push_back(*operation);
+    }
+  }
 
   // expand the fractional atoms based on the space-group
   std::vector<Atom> fractional_expanded_atoms{};
   fractional_expanded_atoms.reserve(definedAtoms.size() * 256);
 
-  for (Atom atomCopy : definedAtoms)
+  if (!operations.empty())
   {
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
-    for (const double3& pos : listOfPositions)
+    for (Atom atomCopy : definedAtoms)
     {
-      atomCopy.position = pos.fract();
-      fractional_expanded_atoms.push_back(atomCopy);
+      const double3 definedPosition = atomCopy.position;
+      for (const SKSeitzMatrix& operation : operations)
+      {
+        atomCopy.position = (operation.rotation * definedPosition + operation.translation).fract();
+        fractional_expanded_atoms.push_back(atomCopy);
+      }
+    }
+  }
+  else
+  {
+    SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+
+    for (Atom atomCopy : definedAtoms)
+    {
+      std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
+      for (const double3& pos : listOfPositions)
+      {
+        atomCopy.position = pos.fract();
+        fractional_expanded_atoms.push_back(atomCopy);
+      }
     }
   }
 

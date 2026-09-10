@@ -442,7 +442,14 @@ export struct System
   {
     double w = std::transform_reduce(
         components.begin(), components.end(), 1.0, [](const double& acc, const double& b) { return acc * b; },
-        [](const Component& component) { return component.lambdaGC.weight() * component.lambdaGibbs.weight(); });
+        [](const Component& component)
+        {
+          if (!component.hasFractionalMolecule)
+          {
+            return 1.0;
+          }
+          return component.lambdaGC.weight() * component.lambdaGibbs.weight();
+        });
 
     if (usesReactionConventionalCFCMC())
     {
@@ -453,6 +460,14 @@ export struct System
     }
 
     return w;
+  }
+
+  /// Wang-Landau updates the GC lambda bias only while this box holds a real fractional molecule.
+  /// `containsTheFractionalMolecule` alone is not enough: it defaults to true on system 0 for Gibbs
+  /// ownership, including conventional GCMC that has no lambda coordinate.
+  bool lambdaWangLandauIsActive(std::size_t componentId) const
+  {
+    return containsTheFractionalMolecule && components[componentId].hasFractionalMolecule;
   }
 
   void removeRedundantMoves();

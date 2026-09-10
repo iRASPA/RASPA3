@@ -15,6 +15,7 @@ add_executable(unit_tests_raspa3
   mc_cyclic_cbmc.cpp
   transition_matrix.cpp
   input_reader_tmmc.cpp
+  reweighted_histogram_wham.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

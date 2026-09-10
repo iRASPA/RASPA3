@@ -171,6 +171,13 @@ export struct Component
   std::optional<double> idealGasRosenbluthWeight{};  ///< Optional ideal gas Rosenbluth weight [-].
   std::optional<double> idealGasEnergy{};            ///< Optional ideal gas energy [J].
 
+  /// Probe cross-section for BET surface area [Å²]. Required with 'ComputeBET'.
+  std::optional<double> crossSection{};
+  /// Liquid molar volume for Gurvich packing and t-plot [Å³ / molecule]. Required with 'ComputeBET'.
+  std::optional<double> liquidVolume{};
+  /// Saturation pressure P0 for relative-pressure BET [Pa]. Required with 'ComputeBET'.
+  std::optional<double> saturationPressure{};
+
   /// Partner component index for distance-biased ion-pair GCMC (Orkoulas & Panagiotopoulos).
   std::optional<std::size_t> pairComponentId{};
   /// Maximum ion-pair separation R_max for distance-biased pair insertion/deletion [m].
@@ -563,6 +570,11 @@ export struct Component
 
   static Component makeMethane(const ForceField &forceField, std::size_t id = 0);
   static Component makeCO2(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  static Component makeN2(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  /// One uncharged LJ site. Nitrogen critical constants so Peng-Robinson fugacity is still N2.
+  /// `typeName` is a force-field pseudo-atom (the CLI custom probe is "-"). Mass 0 in the FF is
+  /// replaced by 28.0134 g/mol.
+  static Component makeSphericalProbe(const ForceField &forceField, std::size_t id, std::string_view typeName);
   static Component makeWater(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
   static Component makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q);
 };

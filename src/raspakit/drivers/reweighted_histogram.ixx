@@ -11,6 +11,7 @@ import input_reader;
 import running_energy;
 import archive;
 import json;
+import isotherm_bet;
 
 /**
  * \brief Multithreaded replica-grid driver with multiple-histogram reweighting.
@@ -51,6 +52,46 @@ import json;
  * on the temperature (temperature-dependent potentials such as Feynman-Hibbs are rejected), and
  * a single adsorbate component is required (the histograms are collected over its molecule count).
  */
+/// Cycle counts and WHAM analysis controls for a programmatic (no input-file) construction.
+export struct ReweightedHistogramParameters
+{
+  std::size_t numberOfProductionCycles{10000};
+  std::size_t numberOfPreInitializationCycles{0};
+  std::size_t numberOfInitializationCycles{5000};
+  std::size_t numberOfEquilibrationCycles{0};
+  std::size_t printEvery{5000};
+  std::size_t optimizeMCMovesEvery{5000};
+  std::size_t rescaleWangLandauEvery{5000};
+  std::size_t writeBinaryRestartEvery{0};
+  std::size_t numberOfBlocks{5};
+  std::size_t parallelTemperingSwapEvery{10};
+  std::size_t sampleReweightingEvery{5};
+  std::vector<double> reweightingTemperatures{};
+  std::optional<std::pair<double, double>> reweightingPressureRange{};
+  std::size_t reweightingNumberOfPressures{100};
+  bool computeBET{false};
+  std::optional<std::size_t> randomSeed{};
+};
+
+/// One point of a WHAM-reweighted isotherm, after the analysis has run.
+export struct ReweightedIsothermPoint
+{
+  double pressure{0.0};               ///< Pressure [Pa].
+  double fugacity{0.0};               ///< Fugacity [Pa].
+  double moleculesPerCell{0.0};       ///< Loading [molecules / crystallographic unit cell].
+  double moleculesPerCellError{0.0};  ///< Block error on the per-unit-cell loading.
+  double effectiveSamples{0.0};       ///< Effective sample size (overlap diagnostic).
+  /// Isosteric heat at this point [internal energy units], from the (N, U) fluctuations of the
+  /// reweighted distribution. NaN where the loading is pinned and the fluctuations vanish.
+  double isostericHeat{std::numeric_limits<double>::quiet_NaN()};
+};
+
+export struct ReweightedIsotherm
+{
+  double temperature{0.0};  ///< Temperature the isotherm was reweighted to [K].
+  std::vector<ReweightedIsothermPoint> points;
+};
+
 export struct ReweightedHistogram
 {
   enum class SimulationStage : std::size_t
@@ -86,6 +127,14 @@ export struct ReweightedHistogram
    */
   ReweightedHistogram(InputReader& reader);
 
+  /**
+   * \brief Constructs the driver from a single template system and a (temperature, pressure) grid,
+   *        without an input file. The system is replicated into one replica per grid point as in
+   *        the InputReader constructor.
+   */
+  ReweightedHistogram(System templateSystem, std::vector<double> temperatures, std::vector<double> pressures,
+                      ReweightedHistogramParameters parameters = {});
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
@@ -108,6 +157,21 @@ export struct ReweightedHistogram
   std::pair<double, double> reweightingPressureRange;  ///< Pressure range of the reweighted isotherms [Pa].
   std::size_t reweightingNumberOfPressures;  ///< Number of log-spaced pressures of the reweighted isotherms.
 
+  /// Extract a nitrogen BET area from each reweighted isotherm (Rouquerol, P0 = 101325 Pa).
+  bool computeBET{false};
+  /// 'ExternalPressures': 'auto' (or omitted under ComputeBET): Henry-to-P0 WHAM ladder.
+  bool autoExternalPressures{false};
+  /// 'ReweightingPressureRange': 'auto' (or omitted under ComputeBET): Henry-to-P0 isotherm grid.
+  bool autoReweightingPressureRange{false};
+  /// 'MacroStateMaximumNumberOfMolecules': 'auto' (or omitted under ComputeBET): P0 occupancy scout.
+  bool autoMacroStateMaximum{false};
+  /// Filled when the pressure span was placed from a Widom Henry coefficient.
+  std::optional<NitrogenBETPressurePlan> nitrogenBETPressurePlan;
+  /// Filled when N_max was placed from a P0 occupancy scout.
+  std::optional<NitrogenBETFillingCeiling> nitrogenBETFillingCeiling;
+  /// MC moves per cycle: MacroStateMaximumNumberOfMolecules (the TMMC filling ceiling), not Gurvich of the cell.
+  std::size_t numberOfStepsPerCycle{20};
+
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
   /// Completed cycles of the stage the binary restart file was written in; a restarted run
@@ -128,6 +192,24 @@ export struct ReweightedHistogram
 
   /// Raw (N, U) samples per replica; each worker thread appends exclusively to its own vector.
   std::vector<std::vector<Sample>> reweightingSamples;
+
+  /// WHAM-reweighted isotherms, one per requested temperature, filled by performReweightingAnalysis.
+  std::vector<ReweightedIsotherm> reweightedIsotherms;
+
+  /// Full-data WHAM solve status. Non-converged results are still written and marked unreliable.
+  bool whamConverged{true};
+  double whamResidual{0.0};
+  std::size_t whamIterations{0};
+  std::size_t whamUnconvergedBlocks{0};
+
+  /// Per-block WHAM solves that failed the 1e-8 residual test (0-based production windows).
+  struct UnconvergedBlock
+  {
+    std::size_t index{};
+    double residual{};
+    std::size_t iterations{};
+  };
+  std::vector<UnconvergedBlock> whamUnconvergedBlockDetails;
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
 
@@ -222,6 +304,18 @@ export struct ReweightedHistogram
    *        report to the combined output.
    */
   void performReweightingAnalysis();
+
+  /**
+   * \brief Replicates the template system onto the (temperature, pressure) grid and prepares the
+   *        per-replica random streams and sample buffers. Called from both constructors.
+   */
+  void initializeReplicas(System templateSystem);
+
+  /**
+   * \brief Re-pin the auto pressure ladder from a pre-isotherm Type I fit (Langmuir,
+   *        Langmuir–Freundlich, or Toth): Fisher overlap on a 2× equal-log skeleton.
+   */
+  void placePressureLadderFromHenryAndSaturation();
 
   /**
    * \brief Writes the final per-replica reports (energy drift, move statistics and averages) to

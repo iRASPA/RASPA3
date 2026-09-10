@@ -30,6 +30,7 @@ import randomnumbers;
 import mc_moves_gibbs_swap_cbcfcmc;
 import mc_moves_gibbs_conventional_common;
 import mc_moves_parallel_tempering_swap;
+import property_lambda_probability_histogram;
 
 namespace
 {
@@ -1081,4 +1082,167 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_reaction_definitions_before_rand
   const std::size_t drawsBefore = random.count;
   EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
   EXPECT_EQ(random.count, drawsBefore);
+}
+
+MCMoveProbabilities makeSwapCBCFCMCProbabilities()
+{
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::SwapCBCFCMC, 1.0);
+  return probabilities;
+}
+
+System makeRigidCFCMCSystem(std::size_t integerMolecules, double temperature, double pressure)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = makeSwapCBCFCMCProbabilities();
+  methane.fugacityCoefficient = 1.0;
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, temperature, pressure, 1.0, {}, {methane}, {},
+                {integerMolecules}, 5);
+  system.components[0].fugacityCoefficient = 1.0;
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+  return system;
+}
+
+void setGCLambdaBin(System& system, std::size_t bin)
+{
+  Component& component = system.components[0];
+  ASSERT_LT(bin, component.lambdaGC.numberOfSamplePoints);
+  component.lambdaGC.setCurrentBin(bin);
+  const double lambda = component.lambdaGC.lambdaValue();
+  const std::size_t fractionalIndex = system.indexOfFractionalMoleculeForMove(Move::Types::SwapCBCFCMC, 0);
+  for (Atom& atom : system.spanOfMolecule(0, fractionalIndex))
+  {
+    atom.setScalingToFractional(lambda, component.lambdaGC.dUdlambdaGroupId);
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_log_ratio_is_antisymmetric)
+{
+  System systemA = makeRigidCFCMCSystem(3, 300.0, 1e4);
+  System systemB = makeRigidCFCMCSystem(3, 300.0, 1e4);
+  setGCLambdaBin(systemA, 3);
+  setGCLambdaBin(systemB, 8);
+  systemA.components[0].lambdaGC.biasFactor[3] = 0.25;
+  systemA.components[0].lambdaGC.biasFactor[8] = 1.75;
+  systemB.components[0].lambdaGC.biasFactor[3] = -0.40;
+  systemB.components[0].lambdaGC.biasFactor[8] = 0.60;
+
+  const std::optional<double> forward = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(forward.has_value());
+  ASSERT_GT(*forward, 0.0);
+
+  RandomNumber random(20);
+  ASSERT_TRUE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+
+  const std::optional<double> reverse = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(reverse.has_value());
+  EXPECT_NEAR(*forward + *reverse, 0.0, 1.0e-10);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_uses_integer_count_and_cross_bias)
+{
+  System systemA = makeRigidCFCMCSystem(2, 300.0, 1e4);
+  System systemB = makeRigidCFCMCSystem(4, 300.0, 5e4);
+  setGCLambdaBin(systemA, 2);
+  setGCLambdaBin(systemB, 6);
+  systemA.components[0].lambdaGC.biasFactor[2] = 0.10;
+  systemA.components[0].lambdaGC.biasFactor[6] = 0.80;
+  systemB.components[0].lambdaGC.biasFactor[2] = -0.20;
+  systemB.components[0].lambdaGC.biasFactor[6] = 0.30;
+
+  const double energyTerm = (systemB.beta - systemA.beta) *
+                            (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy());
+  const double activityA = systemA.beta * systemA.pressure;
+  const double activityB = systemB.beta * systemB.pressure;
+  const double activityTerm = (4.0 - 2.0) * (std::log(activityA) - std::log(activityB));
+  const double biasTerm = 0.80 - 0.10 + (-0.20) - 0.30;
+  const double volumeTerm =
+      (systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
+      (systemB.simulationBox.volume - systemA.simulationBox.volume);
+
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_GT(systemA.numberOfMoleculesPerComponent[0], systemA.numberOfIntegerMoleculesPerComponent[0]);
+  const std::optional<double> logR = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(logR.has_value());
+  EXPECT_NEAR(*logR, energyTerm + activityTerm + biasTerm + volumeTerm, 1.0e-10);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_swaps_lambda_and_preserves_bias)
+{
+  System systemA = makeRigidCFCMCSystem(2, 300.0, 1e4);
+  System systemB = makeRigidCFCMCSystem(4, 300.0, 1e4);
+  setGCLambdaBin(systemA, 4);
+  setGCLambdaBin(systemB, 9);
+  systemA.components[0].lambdaGC.biasFactor.assign(systemA.components[0].lambdaGC.biasFactor.size(), 0.0);
+  systemB.components[0].lambdaGC.biasFactor.assign(systemB.components[0].lambdaGC.biasFactor.size(), 0.0);
+  systemA.components[0].lambdaGC.biasFactor[4] = 2.0;
+  systemB.components[0].lambdaGC.biasFactor[9] = 3.0;
+
+  const std::vector<double> biasA = systemA.components[0].lambdaGC.biasFactor;
+  const std::vector<double> biasB = systemB.components[0].lambdaGC.biasFactor;
+  const std::size_t binA = systemA.components[0].lambdaGC.currentBin;
+  const std::size_t binB = systemB.components[0].lambdaGC.currentBin;
+  const double3 positionA = systemA.spanOfMolecule(0, 0)[0].position;
+  const double3 positionB = systemB.spanOfMolecule(0, 0)[0].position;
+
+  RandomNumber random(21);
+  std::optional<std::pair<RunningEnergy, RunningEnergy>> accepted{};
+  for (std::size_t attempt = 0; attempt < 256uz && !accepted.has_value(); ++attempt)
+  {
+    accepted = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  }
+  ASSERT_TRUE(accepted.has_value());
+  EXPECT_EQ(systemA.components[0].lambdaGC.currentBin, binB);
+  EXPECT_EQ(systemB.components[0].lambdaGC.currentBin, binA);
+  EXPECT_EQ(systemA.components[0].lambdaGC.biasFactor, biasA);
+  EXPECT_EQ(systemB.components[0].lambdaGC.biasFactor, biasB);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 4u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+  EXPECT_EQ(systemA.spanOfMolecule(0, 0)[0].position, positionB);
+  EXPECT_EQ(systemB.spanOfMolecule(0, 0)[0].position, positionA);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_rejection_preserves_configuration)
+{
+  System systemA = makeRigidCFCMCSystem(6, 250.0, 1e9);
+  System systemB = makeRigidCFCMCSystem(2, 250.0, 1.0);
+  setGCLambdaBin(systemA, 1);
+  setGCLambdaBin(systemB, 10);
+  const auto atomsA = systemA.atomData;
+  const auto atomsB = systemB.atomData;
+  const std::size_t binA = systemA.components[0].lambdaGC.currentBin;
+  const std::size_t binB = systemB.components[0].lambdaGC.currentBin;
+
+  RandomNumber random(22);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(systemA.components[0].lambdaGC.currentBin, binA);
+  EXPECT_EQ(systemB.components[0].lambdaGC.currentBin, binB);
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 6u);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+  ASSERT_EQ(systemA.atomData.size(), atomsA.size());
+  EXPECT_EQ(systemA.atomData.front().position, atomsA.front().position);
+  EXPECT_EQ(systemB.atomData.front().position, atomsB.front().position);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
+}
+
+TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_mismatched_lambda_grids_before_random_draw)
+{
+  System systemA = makeRigidCFCMCSystem(2, 300.0, 1e4);
+  System systemB = makeRigidCFCMCSystem(2, 300.0, 1e4);
+  systemB.components[0].lambdaGC = PropertyLambdaProbabilityHistogram(5, 11);
+
+  RandomNumber random(23);
+  const std::size_t drawsBefore = random.count;
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(random.count, drawsBefore);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB).has_value());
 }

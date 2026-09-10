@@ -10,6 +10,10 @@ a single system; RASPA replicates it internally onto a temperature, pressure, or
 2. [Hyper-parallel tempering: methane in MFI](#Example_parallel_2)
 3. [Parallel thermodynamic integration: NaCl in water](#Example_parallel_3)
 4. [Parallel TMMC: methane vapour–liquid equilibrium](#Example_parallel_4)
+5. [WHAM-CBMC: nitrogen BET in MFI](#Example_parallel_5)
+6. [WHAM-CBCFCMC: nitrogen BET in MFI](#Example_parallel_6)
+7. [TMMC-CBMC: nitrogen BET in MFI](#Example_parallel_7)
+8. [TMMC-CBCFCMC: nitrogen BET in MFI](#Example_parallel_8)
 
 ----------------------------------------------------------------------------------
 
@@ -199,6 +203,222 @@ Run from `examples/parallel/4_parallel_tmmc_vle_methane`:
       "TranslationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### WHAM-CBMC: nitrogen BET in MFI <a name="Example_parallel_5"></a>
+
+Nitrogen at 77.355 K in siliceous MFI, sampled with CBMC swaps on a WHAM
+replica grid. `"ComputeBET" : true` extracts a Rouquerol BET area from the
+reweighted isotherm and places the pressure ladder and reweighting grid
+automatically from a Widom Henry coefficient up to P0 (101325 Pa). Short GCMC
+probes at Langmuir θ = 0.1, 0.5, 0.9 select Langmuir, Langmuir–Freundlich, or
+Toth; rungs are then re-placed at equal Fisher overlap on a 2× equal-log
+skeleton plus at most two extra rungs per interval.
+`"MacroStateMaximumNumberOfMolecules" : "auto"` scouts occupancy at P0 for
+the filling ceiling (WHAM cycle length / TMMC N_max). `"NumberOfThreads"`
+sizes the ladder (8–16 rungs). Analysis files go to `wham/`.
+
+Run from `examples/parallel/5_parallel_wham_cbmc_n2_bet_in_mfi`:
+
+```json
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 5000,
+  "NumberOfProductionCycles" : 40000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [77.355],
+  "ReweightingPressureRange" : "auto",
+  "NumberOfThreads" : 16,
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperatures" : [77.355],
+      "ExternalPressures" : "auto",
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "BlockingPockets" : "auto",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### WHAM-CBCFCMC: nitrogen BET in MFI <a name="Example_parallel_6"></a>
+
+The same nitrogen BET measurement as example 5, with CB/CFCMC swaps and a
+longer equilibration so the Wang–Landau λ-bias can flatten before production.
+
+Run from `examples/parallel/6_parallel_wham_cbcfcmc_n2_bet_in_mfi`:
+
+```json
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 40000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [77.355],
+  "ReweightingPressureRange" : "auto",
+  "NumberOfThreads" : 16,
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperatures" : [77.355],
+      "ExternalPressures" : "auto",
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CFCMC_CBMC_SwapProbability" : 1.0,
+      "BlockingPockets" : "auto",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### TMMC-CBMC: nitrogen BET in MFI <a name="Example_parallel_7"></a>
+
+Windowed TMMC of the same N2/MFI system. The walk samples at P0; `"ComputeBET"`
+places only the reweighting grid from the Henry coefficient to P0. The driver
+writes equilibrium, adsorption, and desorption isotherms (and BET-plot tables)
+under `tmmc/`.
+
+Run from `examples/parallel/7_parallel_tmmc_cbmc_n2_bet_in_mfi`:
+
+```json
+{
+  "SimulationType" : "ParallelTMMC",
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 40000,
+  "PrintEvery" : 5000,
+  "NumberOfWindows" : 16,
+  "NumberOfThreads" : 16,
+  "TMMCUpdateEvery" : 10000,
+  "ReweightingPressureRange" : "auto",
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 77.355,
+      "ExternalPressure" : 1.01325e5,
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 2.0,
+      "SwapProbability" : 2.0,
+      "BlockingPockets" : "auto",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### TMMC-CBCFCMC: nitrogen BET in MFI <a name="Example_parallel_8"></a>
+
+The same TMMC nitrogen BET measurement as example 7, with CB/CFCMC swaps so
+the collection matrix is the flattened (N, λ) chain.
+
+Run from `examples/parallel/8_parallel_tmmc_cbcfcmc_n2_bet_in_mfi`:
+
+```json
+{
+  "SimulationType" : "ParallelTMMC",
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 40000,
+  "PrintEvery" : 5000,
+  "NumberOfWindows" : 16,
+  "NumberOfThreads" : 16,
+  "TMMCUpdateEvery" : 10000,
+  "ReweightingPressureRange" : "auto",
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 77.355,
+      "ExternalPressure" : 1.01325e5,
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 2.0,
+      "CFCMC_CBMC_SwapProbability" : 2.0,
+      "BlockingPockets" : "auto",
       "CreateNumberOfMolecules" : 0
     }
   ]
