@@ -1315,8 +1315,9 @@ void CommandLine::run(int argc, char *argv[])
                                   .subdivisions = number_of_slices.value_or(1),
                                   .skipSolventExcluded = brute_force_skip_excluded};
 
-      // The same probes the routes being checked use by default, so that what comes out is comparable with
-      // what those routes wrote rather than with a third convention invented here.
+      // Nitrogen for the accessible-surface geometry and total area; helium labels which of that area is
+      // reachable from outside (N₂ walls He can reach), and also defines the excluded surface, the blocking
+      // spheres, and the void — so sealed for blocking matches the accessible void.
       BruteForceValidation validation;
       validation.run(interactions, crystal, geometricProbe("probe-N2"), geometricProbe("probe-He"),
                      settings);

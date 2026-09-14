@@ -454,7 +454,7 @@ MeasuredPatches exactAccessibleSurfaceAreaByPore(const PoreAccessibility& access
 
 
 std::vector<SurfaceSide> surfaceSides(const BoundaryComponents& components, const MeasuredPatches& patches,
-                                      const std::vector<ComponentVerdict>& verdicts)
+                                      const std::vector<ComponentVerdict>& verdicts, SurfaceSidePolicy policy)
 {
   std::vector<SurfaceSide> sides(components.numberOfComponents, SurfaceSide{});
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
@@ -467,7 +467,8 @@ std::vector<SurfaceSide> surfaceSides(const BoundaryComponents& components, cons
     {
       sides[component] = {SurfaceClosure::runaway, 1};
     }
-    else if (-(moments.radiusWeightedArea + moments.originWeighted) > 0.0)
+    else if (policy == SurfaceSidePolicy::geometric &&
+             -(moments.radiusWeightedArea + moments.originWeighted) > 0.0)
     {
       sides[component] = {SurfaceClosure::sealed, -1};
     }
@@ -505,7 +506,8 @@ std::vector<double3> surfaceMomentOrigins(const PoreAccessibility& accessibility
 MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibility& accessibility,
                                                       const BoundaryComponents& components,
                                                       const std::vector<ComponentVerdict>& verdicts,
-                                                      std::size_t subdivisions, SurfaceMoments wanted)
+                                                      std::size_t subdivisions, SurfaceMoments wanted,
+                                                      SurfaceSidePolicy policy)
 {
   MeasuredPatches blank;
   blank.components.assign(components.numberOfComponents, BoundaryMoments{});
@@ -523,7 +525,7 @@ MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibility& a
 
   // Which side each surface is on, now that each has been measured whole. The counts alongside say what
   // settled each of them, which is how much of this division is geometry's and how much is the network's.
-  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts);
+  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts, policy);
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
     const SurfaceSide& side = sides[component];

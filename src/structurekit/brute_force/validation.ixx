@@ -14,6 +14,7 @@ import brute_force_surface_area;
 import brute_force_solvent_excluded;
 import brute_force_pore_volume;
 import brute_force_blocking_pockets;
+import brute_force_pore_spikes;
 
 // How hard the checks are run. Everything here trades time for how tightly the brute force can pin the
 // exact answer down, and nothing here changes what is being checked.
@@ -28,6 +29,8 @@ export struct BruteForceSettings
   std::size_t cornerSamples{4096}; // directions drawn at each corner, for the concave patches
 
   bool skipSolventExcluded{false};  // the slowest of them, and the only one that is a quadrature
+  bool skipPoreSpikes{false};       // exact PSD for the spike check; skip to save that cost
+  std::size_t spikeVolumePoints{0}; // 0 → reuse volumePoints for the spike-weight sample
 };
 
 // One number worked out twice and the difference between the two.
@@ -67,6 +70,7 @@ export struct BruteForceValidation
   std::vector<BruteForceCheck> checks;
 
   BruteForceDiameters diameters;
+  BruteForcePoreSpikes poreSpikes;
   BruteForceSurfaceArea surfaceArea;
   BruteForceSolventExcluded solventExcluded;
   BruteForcePoreVolume poreVolume;
@@ -81,9 +85,9 @@ export struct BruteForceValidation
   std::size_t exactVanishedVertices{0};
   std::size_t exactDiscardedCorners{0};
 
-  // Necks the flood on the probe's own grid stepped over and a straight line then proved passable. The one
-  // for the void grid is carried by `poreVolume`; this is the other grid, the one the accessible and sealed
-  // surface are split on.
+  // Necks the flood on the reachability grid stepped over and a straight line then proved passable. The one
+  // for the void grid is carried by `poreVolume`; this is the helium flood used to label N₂ surface as
+  // reachable vs sealed.
   std::size_t surfaceNecksProved{0};
   std::size_t surfaceNecksTried{0};
 
@@ -91,9 +95,11 @@ export struct BruteForceValidation
 
   double seconds{0.0};
 
-  // Runs both routes and writes `{framework}.brute-force.txt`. `surfaceProbe` is the probe the surface area
-  // and the blocking spheres are measured with and `voidProbe` the one the void fraction is; the pore
-  // diameters take no probe, being about the void itself.
+  // Runs both routes and writes `{framework}.brute-force.txt`. `surfaceProbe` is the probe the accessible
+  // surface area is measured with (nitrogen by default): totals use that geometry. Reachable vs sealed
+  // area is labeled by `voidProbe` (helium by default) — N₂ area of walls He can reach from outside.
+  // `voidProbe` also defines the void fraction, the solvent-excluded surface, and the blocking spheres,
+  // so sealed for blocking matches the accessible void. The pore diameters take no probe.
   void run(const PairInteractions &interactions, const Crystal &framework, const std::string &surfaceProbe,
            const std::string &voidProbe, const BruteForceSettings &settings);
 };

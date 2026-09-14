@@ -200,6 +200,7 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
+      betScoutMaximumCycles(reader.betScoutMaximumCycles),
       reweightingNumberOfPressures(reader.reweightingNumberOfPressures),
       computeBET(reader.computeBET),
       autoReweightingPressureRange(reader.autoReweightingPressureRange),
@@ -239,7 +240,7 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
 
   if (autoMacroStateMaximum)
   {
-    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem);
+    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem, betScoutMaximumCycles);
     templateSystem.tmmc.maxMacrostate =
         std::max(templateSystem.tmmc.minMacrostate + 1uz, nitrogenBETFillingCeiling->maxMacrostate);
   }
@@ -271,6 +272,7 @@ ParallelTMMC::ParallelTMMC(System templateSystem, std::vector<double> temperatur
       rescaleWangLandauEvery(parameters.rescaleWangLandauEvery),
       writeBinaryRestartEvery(parameters.writeBinaryRestartEvery),
       numberOfBlocks(parameters.numberOfBlocks),
+      betScoutMaximumCycles(parameters.betScoutMaximumCycles),
       reweightingPressureRange(parameters.reweightingPressureRange),
       reweightingNumberOfPressures(parameters.reweightingNumberOfPressures),
       computeBET(parameters.computeBET),
@@ -603,6 +605,7 @@ void ParallelTMMC::setup()
   outputJson["initialization"]["reweightingPressureRange"] =
       std::vector<double>{reweightingPressureRange.first, reweightingPressureRange.second};
   outputJson["initialization"]["reweightingNumberOfPressures"] = reweightingNumberOfPressures;
+  outputJson["initialization"]["betScoutMaximumCycles"] = betScoutMaximumCycles;
   if (nitrogenBETPressurePlan.has_value())
   {
     outputJson["initialization"]["nitrogenBETHenryCoefficient"] = nitrogenBETPressurePlan->henryCoefficientPerCell;
@@ -1944,6 +1947,8 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
           const auto& [branchName, branchPoints] = branches[branchIndex];
           const BETSurfaceArea bet =
               fitNitrogenBET(pointsFromBranch(*branchPoints), unitCellMass, unitCellVolume, probe);
+          const FiniteLayerBETFit finiteLayer =
+              fitNitrogenFiniteLayerBET(pointsFromBranch(*branchPoints), unitCellMass, unitCellVolume, probe);
 
           std::optional<double> areaError;
           std::optional<double> monolayerError;
@@ -1954,17 +1959,32 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
           std::size_t betBlocksUsed = 0uz;
           std::size_t betBlocksFailed = 0uz;
 
-          // Jackknife the BET line inside the full-data Rouquerol window using the same
-          // per-block ln Pi(N) that supply the isotherm loading errors.
-          if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow &&
+          std::optional<double> finiteLayerAreaError;
+          std::optional<double> finiteLayerMonolayerError;
+          std::optional<double> finiteLayerCError;
+          nlohmann::json finiteLayerBlockAreas = nlohmann::json::array();
+          nlohmann::json finiteLayerBlockMonolayers = nlohmann::json::array();
+          nlohmann::json finiteLayerBlockCConstants = nlohmann::json::array();
+          std::size_t finiteLayerBlocksUsed = 0uz;
+          std::size_t finiteLayerBlocksFailed = 0uz;
+
+          // Jackknife classical BET (fixed Rouquerol window) and finite-layer BET (frozen n + window).
+          if (((!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow) ||
+               finiteLayer.ok) &&
               availableBlocks > 0uz)
           {
             std::vector<double> blockAreaValues;
             std::vector<double> blockMonolayerValues;
             std::vector<double> blockCValues;
+            std::vector<double> finiteLayerAreaValues;
+            std::vector<double> finiteLayerMonolayerValues;
+            std::vector<double> finiteLayerCValues;
             blockAreaValues.reserve(availableBlocks);
             blockMonolayerValues.reserve(availableBlocks);
             blockCValues.reserve(availableBlocks);
+            finiteLayerAreaValues.reserve(availableBlocks);
+            finiteLayerMonolayerValues.reserve(availableBlocks);
+            finiteLayerCValues.reserve(availableBlocks);
 
             for (std::size_t block = 0; block < availableBlocks; ++block)
             {
@@ -1979,20 +1999,46 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
                     SimulatedIsothermPoint{point.pressure, toMoleculesPerUnitCell * loading});
               }
 
-              const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
-                  blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
-              if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+              if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow)
               {
-                ++betBlocksFailed;
-                continue;
+                const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
+                    blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
+                if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+                {
+                  ++betBlocksFailed;
+                }
+                else
+                {
+                  ++betBlocksUsed;
+                  blockAreaValues.push_back(blockBet.gravimetricArea);
+                  blockMonolayerValues.push_back(blockBet.monolayerCapacity);
+                  blockCValues.push_back(blockBet.cConstant);
+                  blockAreas.push_back(blockBet.gravimetricArea);
+                  blockMonolayers.push_back(blockBet.monolayerCapacity);
+                  blockCConstants.push_back(blockBet.cConstant);
+                }
               }
-              ++betBlocksUsed;
-              blockAreaValues.push_back(blockBet.gravimetricArea);
-              blockMonolayerValues.push_back(blockBet.monolayerCapacity);
-              blockCValues.push_back(blockBet.cConstant);
-              blockAreas.push_back(blockBet.gravimetricArea);
-              blockMonolayers.push_back(blockBet.monolayerCapacity);
-              blockCConstants.push_back(blockBet.cConstant);
+
+              if (finiteLayer.ok)
+              {
+                const FiniteLayerBETFit blockFit = fitNitrogenFiniteLayerBETFixedLayers(
+                    blockPoints, unitCellMass, unitCellVolume, finiteLayer.numberOfLayers, finiteLayer.windowLow,
+                    finiteLayer.windowHigh, probe);
+                if (!blockFit.ok || !(blockFit.gravimetricArea > 0.0))
+                {
+                  ++finiteLayerBlocksFailed;
+                }
+                else
+                {
+                  ++finiteLayerBlocksUsed;
+                  finiteLayerAreaValues.push_back(blockFit.gravimetricArea);
+                  finiteLayerMonolayerValues.push_back(blockFit.monolayerCapacity);
+                  finiteLayerCValues.push_back(blockFit.cConstant);
+                  finiteLayerBlockAreas.push_back(blockFit.gravimetricArea);
+                  finiteLayerBlockMonolayers.push_back(blockFit.monolayerCapacity);
+                  finiteLayerBlockCConstants.push_back(blockFit.cConstant);
+                }
+              }
             }
 
             if (betBlocksUsed >= 3uz)
@@ -2000,6 +2046,13 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
               areaError = blockErrorEstimate(blockAreaValues, bet.gravimetricArea);
               monolayerError = blockErrorEstimate(blockMonolayerValues, bet.monolayerCapacity);
               cError = blockErrorEstimate(blockCValues, bet.cConstant);
+            }
+            if (finiteLayerBlocksUsed >= 3uz)
+            {
+              finiteLayerAreaError = blockErrorEstimate(finiteLayerAreaValues, finiteLayer.gravimetricArea);
+              finiteLayerMonolayerError =
+                  blockErrorEstimate(finiteLayerMonolayerValues, finiteLayer.monolayerCapacity);
+              finiteLayerCError = blockErrorEstimate(finiteLayerCValues, finiteLayer.cConstant);
             }
           }
 
@@ -2013,6 +2066,17 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
                          "refits failed{}\n",
                          betBlocksUsed, betBlocksFailed,
                          areaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
+            }
+            std::print(stream, "\n");
+            writeNitrogenFiniteLayerBETSummary(stream, finiteLayer, probe, "    ", finiteLayerAreaError,
+                                               finiteLayerMonolayerError, finiteLayerCError);
+            if (finiteLayerBlocksUsed > 0uz || finiteLayerBlocksFailed > 0uz)
+            {
+              std::print(stream,
+                         "    Finite-layer block errors: {} blocks (frozen n, window); {} fixed-layer "
+                         "refits failed{}\n",
+                         finiteLayerBlocksUsed, finiteLayerBlocksFailed,
+                         finiteLayerAreaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
             }
             std::print(stream, "\n");
           }
@@ -2036,6 +2100,20 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
             entry["monolayerCapacityError"] = *monolayerError;
             entry["cConstantError"] = *cError;
           }
+          nlohmann::json finiteLayerEntry = nitrogenFiniteLayerBETJson(finiteLayer, probe);
+          finiteLayerEntry["fixedLayerBlockErrors"] = true;
+          finiteLayerEntry["betBlocksUsed"] = finiteLayerBlocksUsed;
+          finiteLayerEntry["betBlocksFailed"] = finiteLayerBlocksFailed;
+          finiteLayerEntry["blockGravimetricAreas"] = std::move(finiteLayerBlockAreas);
+          finiteLayerEntry["blockMonolayerCapacities"] = std::move(finiteLayerBlockMonolayers);
+          finiteLayerEntry["blockCConstants"] = std::move(finiteLayerBlockCConstants);
+          if (finiteLayerAreaError.has_value())
+          {
+            finiteLayerEntry["gravimetricAreaError"] = *finiteLayerAreaError;
+            finiteLayerEntry["monolayerCapacityError"] = *finiteLayerMonolayerError;
+            finiteLayerEntry["cConstantError"] = *finiteLayerCError;
+          }
+          entry["finiteLayer"] = std::move(finiteLayerEntry);
           betJson[std::string(branchName)] = std::move(entry);
         }
         outputJson["output"]["tmmc"]["bet"].push_back(std::move(betJson));
@@ -2411,6 +2489,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << ptmmc.writeBinaryRestartEvery;
 
   archive << ptmmc.numberOfBlocks;
+  archive << ptmmc.betScoutMaximumCycles;
 
   archive << ptmmc.reweightingPressureRange;
   archive << ptmmc.reweightingNumberOfPressures;
@@ -2478,6 +2557,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
   archive >> ptmmc.writeBinaryRestartEvery;
 
   archive >> ptmmc.numberOfBlocks;
+  archive >> ptmmc.betScoutMaximumCycles;
 
   archive >> ptmmc.reweightingPressureRange;
   archive >> ptmmc.reweightingNumberOfPressures;

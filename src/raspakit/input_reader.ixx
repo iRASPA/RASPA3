@@ -141,6 +141,12 @@ export struct InputReader
   std::size_t reweightingNumberOfPressures{100};
   /// True when the input file set 'ReweightingNumberOfPressures' explicitly.
   bool reweightingNumberOfPressuresSpecified{false};
+  /// Reweighted histogram: WHAM free-energy iteration tolerance (max |Δg_i|).
+  double whamTolerance{1.0e-6};
+  /// Reweighted histogram: maximum WHAM free-energy iterations (pooled and per-block).
+  std::size_t whamMaximumIterations{1000000};
+  /// Cap on unbiased GCMC occupancy scouts used for BET auto N_max / WHAM ladder probes (cycles).
+  std::size_t betScoutMaximumCycles{15000};
   /// True when 'ExternalPressures' is `"auto"` (or omitted under 'ComputeBET' for WHAM).
   bool autoExternalPressures{false};
   /// True when 'ReweightingPressureRange' is `"auto"` (or omitted under 'ComputeBET').

@@ -173,12 +173,98 @@ nlohmann::json nitrogenBETJson(const BETSurfaceArea& bet, const BETProbeProperti
                         {"liquidVolume", probe.liquidVolume}};
 }
 
+FiniteLayerBETFit fitNitrogenFiniteLayerBET(std::span<const SimulatedIsothermPoint> points, double mass,
+                                            double cellVolume, const BETProbeProperties& probe)
+{
+  return fitFiniteLayerBET(nitrogenBETIsotherm(points, probe.saturationPressure), mass, cellVolume,
+                           probe.crossSection, probe.liquidVolume);
+}
+
+FiniteLayerBETFit fitNitrogenFiniteLayerBETFixedLayers(std::span<const SimulatedIsothermPoint> points, double mass,
+                                                       double cellVolume, double numberOfLayers, double windowLow,
+                                                       double windowHigh, const BETProbeProperties& probe)
+{
+  return fitFiniteLayerBETFixedLayers(nitrogenBETIsotherm(points, probe.saturationPressure), mass, cellVolume,
+                                      numberOfLayers, windowLow, windowHigh, probe.crossSection, probe.liquidVolume);
+}
+
+void writeNitrogenFiniteLayerBETSummary(std::ostream& stream, const FiniteLayerBETFit& fit,
+                                        const BETProbeProperties& probe, std::string_view indent,
+                                        std::optional<double> gravimetricAreaError,
+                                        std::optional<double> monolayerCapacityError,
+                                        std::optional<double> cConstantError,
+                                        std::optional<double> numberOfLayersError)
+{
+  std::print(stream, "{}Finite-layer BET (n-layer / BDDT, P0 = {:.0f} Pa, σ = {:.1f} Å²)\n", indent,
+             probe.saturationPressure, probe.crossSection);
+  if (!fit.ok)
+  {
+    std::print(stream, "{}    (no admissible finite-layer fit)\n", indent);
+    return;
+  }
+  if (gravimetricAreaError.has_value())
+  {
+    std::print(stream, "{}    BET area:              {:14.4f} ± {:.4f} [m²/g]   {:12.4f} [m²/cm³]\n", indent,
+               fit.gravimetricArea, *gravimetricAreaError, fit.volumetricArea);
+  }
+  else
+  {
+    std::print(stream, "{}    BET area:              {:14.4f} [m²/g]   {:12.4f} [m²/cm³]\n", indent,
+               fit.gravimetricArea, fit.volumetricArea);
+  }
+  if (monolayerCapacityError.has_value())
+  {
+    std::print(stream, "{}    monolayer n_m:         {:14.4f} ± {:.4f} [molecules / cell]\n", indent,
+               fit.monolayerCapacity, *monolayerCapacityError);
+  }
+  else
+  {
+    std::print(stream, "{}    monolayer n_m:         {:14.4f} [molecules / cell]\n", indent, fit.monolayerCapacity);
+  }
+  if (cConstantError.has_value())
+  {
+    std::print(stream, "{}    C constant:            {:14.4f} ± {:.4f} [-]\n", indent, fit.cConstant, *cConstantError);
+  }
+  else
+  {
+    std::print(stream, "{}    C constant:            {:14.4f} [-]\n", indent, fit.cConstant);
+  }
+  if (numberOfLayersError.has_value())
+  {
+    std::print(stream, "{}    number of layers n:    {:14.4f} ± {:.4f} [-]\n", indent, fit.numberOfLayers,
+               *numberOfLayersError);
+  }
+  else
+  {
+    std::print(stream, "{}    number of layers n:    {:14.0f} [-]\n", indent, fit.numberOfLayers);
+  }
+  std::print(stream, "{}    fit window:            {:.4g} -- {:.4g} in P/P0, r² = {:.5f}\n", indent, fit.windowLow,
+             fit.windowHigh, fit.rSquared);
+}
+
+nlohmann::json nitrogenFiniteLayerBETJson(const FiniteLayerBETFit& fit, const BETProbeProperties& probe)
+{
+  return nlohmann::json{{"ok", fit.ok},
+                        {"gravimetricArea", fit.gravimetricArea},
+                        {"volumetricArea", fit.volumetricArea},
+                        {"monolayerCapacity", fit.monolayerCapacity},
+                        {"cConstant", fit.cConstant},
+                        {"numberOfLayers", fit.numberOfLayers},
+                        {"rSquared", fit.rSquared},
+                        {"residualSumOfSquares", fit.residualSumOfSquares},
+                        {"windowLow", fit.windowLow},
+                        {"windowHigh", fit.windowHigh},
+                        {"saturationPressure", probe.saturationPressure},
+                        {"crossSection", probe.crossSection},
+                        {"liquidVolume", probe.liquidVolume}};
+}
+
 namespace
 {
 constexpr double ladderBottomFillFraction = 1.0e-3;
 constexpr double ladderSpacing = 5.0;
 constexpr std::size_t minimumNumberOfPressures = 8;
-constexpr std::size_t maximumNumberOfPressures = 16;
+constexpr std::size_t maximumNumberOfPressures = 32;
 constexpr std::size_t reweightingPressurePointsPerDecade = 12;
 constexpr std::size_t minimumNumberOfTMMCReweightingPressures = 100;
 constexpr std::size_t numberOfWHAMReweightingPressures = 400;
@@ -1150,7 +1236,6 @@ double nitrogenBETPreIsothermLoadingPerCell(const NitrogenBETPreIsothermFit& fit
 namespace
 {
 constexpr std::size_t scoutBlockCycles = 1000;
-constexpr std::size_t scoutMaximumCycles = 15000;
 constexpr std::size_t scoutStableBlocks = 3;
 constexpr double scoutPlateauTolerance = 0.01;
 constexpr double scoutUnconvergedMargin = 1.5;
@@ -1176,7 +1261,7 @@ std::size_t gurvichCapForSystem(const System& system, double liquidVolume)
 }
 }  // namespace
 
-NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa)
+NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa, std::size_t maximumCycles)
 {
   if (system.components.empty())
   {
@@ -1186,6 +1271,11 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   {
     throw std::runtime_error("[ComputeBET]: occupancy scout needs a positive pressure\n");
   }
+  if (maximumCycles == 0uz)
+  {
+    throw std::runtime_error("[ComputeBET]: occupancy scout needs a positive maximumCycles\n");
+  }
+  const std::size_t scoutMaximumCycles = std::max(scoutBlockCycles, maximumCycles);
 
   pinNitrogenBETPressure(system, pressurePa);
   system.tmmc.doTMMC = false;
@@ -1294,7 +1384,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   return point;
 }
 
-NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system)
+NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system, std::size_t maximumCycles)
 {
   if (system.components.empty())
   {
@@ -1308,7 +1398,8 @@ NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system)
              probe.saturationPressure);
   std::cout << std::flush;
 
-  const NitrogenBETScoutPoint point = scoutNitrogenBETOccupancy(std::move(system), probe.saturationPressure);
+  const NitrogenBETScoutPoint point =
+      scoutNitrogenBETOccupancy(std::move(system), probe.saturationPressure, maximumCycles);
   NitrogenBETFillingCeiling ceiling;
   ceiling.meanOccupancy = point.meanOccupancy;
   ceiling.standardDeviation = point.standardDeviation;

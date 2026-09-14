@@ -33,18 +33,7 @@ constexpr double cellVolumeToMillilitrePerGram = 0.60221419947;
 // n(1-x) rising at the filling step. `layers` need not be an integer: it interpolates the two forms.
 double betOccupancy(double x, double C, double layers)
 {
-  if (!(x > 0.0) || x >= 1.0) return 0.0;
-  if (!(layers > 0.0))
-  {
-    double denom = (1.0 - x) * (1.0 - x + C * x);
-    if (!(denom > 0.0)) return 0.0;
-    return C * x / denom;
-  }
-  double xN = std::pow(x, layers);
-  double numerator = C * x * (1.0 - (layers + 1.0) * xN + layers * xN * x);
-  double denominator = (1.0 - x) * (1.0 + (C - 1.0) * x - C * xN * x);
-  if (!(std::fabs(denominator) > 0.0)) return 0.0;
-  return numerator / denominator;
+  return finiteLayerBETOccupancy(x, C, layers);
 }
 
 double langmuirOccupancy(double x, double C)
@@ -941,6 +930,284 @@ BETSurfaceArea BETSurfaceArea::fromIsothermFixedWindow(std::vector<IsothermPoint
     result.volumetricArea = 1.0e4 * betArea / cellVolume;
   }
   return result;
+}
+
+double finiteLayerBETOccupancy(double relativePressure, double cConstant, double numberOfLayers)
+{
+  const double x = relativePressure;
+  const double C = cConstant;
+  const double layers = numberOfLayers;
+  if (!(x > 0.0) || x >= 1.0) return 0.0;
+  if (!(layers > 0.0))
+  {
+    const double denom = (1.0 - x) * (1.0 - x + C * x);
+    if (!(denom > 0.0)) return 0.0;
+    return C * x / denom;
+  }
+  const double xN = std::pow(x, layers);
+  const double numerator = C * x * (1.0 - (layers + 1.0) * xN + layers * xN * x);
+  const double denominator = (1.0 - x) * (1.0 + (C - 1.0) * x - C * xN * x);
+  if (!(std::fabs(denominator) > 0.0)) return 0.0;
+  return numerator / denominator;
+}
+
+namespace
+{
+struct FiniteLayerCandidate
+{
+  double monolayer{0.0};
+  double cConstant{0.0};
+  // Finite sentinel: infinity comparisons are unsafe under this build's fast-math flags.
+  double residual{1.0e300};
+  bool ok{false};
+};
+
+FiniteLayerCandidate fitFiniteLayerAtFixedN(std::span<const IsothermPoint> points, double numberOfLayers,
+                                            double saturationLoading)
+{
+  FiniteLayerCandidate best;
+  if (points.size() < 3uz || !(numberOfLayers > 0.0)) return best;
+
+  auto evaluate = [&](double c) -> FiniteLayerCandidate
+  {
+    FiniteLayerCandidate candidate;
+    if (!(c > 0.0) || !std::isfinite(c)) return candidate;
+
+    double sumFN = 0.0;
+    double sumFF = 0.0;
+    for (const IsothermPoint &point : points)
+    {
+      const double f = finiteLayerBETOccupancy(point.relativePressure, c, numberOfLayers);
+      if (!(f > 0.0) || !std::isfinite(f)) return candidate;
+      sumFN += f * point.moleculesPerCell;
+      sumFF += f * f;
+    }
+    if (!(sumFF > 0.0)) return candidate;
+    const double monolayer = sumFN / sumFF;
+    if (!(monolayer > 0.0) || !std::isfinite(monolayer)) return candidate;
+    // A monolayer larger than the highest loading on the isotherm is unphysical.
+    if (saturationLoading > 0.0 && monolayer > saturationLoading) return candidate;
+
+    double residual = 0.0;
+    for (const IsothermPoint &point : points)
+    {
+      const double f = finiteLayerBETOccupancy(point.relativePressure, c, numberOfLayers);
+      const double delta = point.moleculesPerCell - monolayer * f;
+      residual += delta * delta;
+    }
+    if (!std::isfinite(residual)) return candidate;
+    candidate.monolayer = monolayer;
+    candidate.cConstant = c;
+    candidate.residual = residual;
+    candidate.ok = true;
+    return candidate;
+  };
+
+  // Coarse log-grid over C, then ternary refine around the best decade.
+  // Extra seeds near typical BET C values (fast-math + sparse log grids can miss a sharp n-layer minimum).
+  constexpr int numberOfLogSteps = 120;
+  const double logCMin = std::log(1.0e-2);
+  const double logCMax = std::log(1.0e8);
+  auto consider = [&](double c)
+  {
+    FiniteLayerCandidate candidate = evaluate(c);
+    if (candidate.ok && (!best.ok || candidate.residual < best.residual))
+    {
+      best = candidate;
+    }
+  };
+  for (int i = 0; i < numberOfLogSteps; ++i)
+  {
+    const double logC =
+        logCMin + (logCMax - logCMin) * static_cast<double>(i) / static_cast<double>(numberOfLogSteps - 1);
+    consider(std::exp(logC));
+  }
+  for (double cSeed : {0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 150.0, 200.0, 500.0, 1000.0,
+                       5000.0, 1.0e4, 1.0e5})
+  {
+    consider(cSeed);
+  }
+  if (!best.ok) return best;
+
+  // Refine from several starts (best coarse C and nearby decades).
+  const double starts[3] = {best.cConstant, best.cConstant / 3.0, best.cConstant * 3.0};
+  for (double start : starts)
+  {
+    if (!(start > 0.0)) continue;
+    double low = std::max(1.0e-3, start / 10.0);
+    double high = std::min(1.0e9, start * 10.0);
+    for (int iter = 0; iter < 50; ++iter)
+    {
+      const double left = low + (high - low) / 3.0;
+      const double right = high - (high - low) / 3.0;
+      const FiniteLayerCandidate a = evaluate(left);
+      const FiniteLayerCandidate b = evaluate(right);
+      const double residualA = a.ok ? a.residual : 1.0e300;
+      const double residualB = b.ok ? b.residual : 1.0e300;
+      if (residualA < residualB)
+      {
+        high = right;
+        if (a.ok && a.residual < best.residual) best = a;
+      }
+      else
+      {
+        low = left;
+        if (b.ok && b.residual < best.residual) best = b;
+      }
+    }
+  }
+  return best;
+}
+
+double finiteLayerWindowCap(std::span<const IsothermPoint> isotherm)
+{
+  if (isotherm.empty()) return 0.0;
+  double xMax = 0.0;
+  for (const IsothermPoint &point : isotherm)
+  {
+    if (point.relativePressure > 0.0 && point.relativePressure < 1.0)
+    {
+      xMax = std::max(xMax, point.relativePressure);
+    }
+  }
+  // Finite-layer BET needs the multilayer region; keep most of the tabulated span up to 0.90.
+  return std::min(xMax, 0.90);
+}
+
+FiniteLayerBETFit finalizeFiniteLayerFit(const FiniteLayerCandidate &candidate, double numberOfLayers,
+                                         double windowLow, double windowHigh, double mass, double cellVolume,
+                                         double crossSection, std::span<const IsothermPoint> points)
+{
+  FiniteLayerBETFit result;
+  if (!candidate.ok) return result;
+
+  double mean = 0.0;
+  for (const IsothermPoint &point : points)
+  {
+    mean += point.moleculesPerCell;
+  }
+  mean /= static_cast<double>(points.size());
+  double totalSquares = 0.0;
+  for (const IsothermPoint &point : points)
+  {
+    const double d = point.moleculesPerCell - mean;
+    totalSquares += d * d;
+  }
+
+  result.ok = true;
+  result.monolayerCapacity = candidate.monolayer;
+  result.cConstant = candidate.cConstant;
+  result.numberOfLayers = numberOfLayers;
+  result.residualSumOfSquares = candidate.residual;
+  result.rSquared = (totalSquares > 0.0) ? std::max(0.0, 1.0 - candidate.residual / totalSquares) : 1.0;
+  result.windowLow = windowLow;
+  result.windowHigh = windowHigh;
+
+  const double betArea = result.monolayerCapacity * crossSection;
+  if (mass > 0.0)
+  {
+    result.gravimetricArea = betArea * angstromSquaredToSquareMetrePerMol / mass;
+  }
+  if (cellVolume > 0.0)
+  {
+    result.volumetricArea = 1.0e4 * betArea / cellVolume;
+  }
+  return result;
+}
+}  // namespace
+
+FiniteLayerBETFit fitFiniteLayerBET(std::span<const IsothermPoint> isotherm, double mass, double cellVolume,
+                                    double crossSection, double liquidVolume)
+{
+  FiniteLayerBETFit result;
+  if (isotherm.size() < 3uz || !(crossSection > 0.0)) return result;
+  (void)liquidVolume;
+
+  double saturationLoading = 0.0;
+  double xMin = std::numeric_limits<double>::infinity();
+  for (const IsothermPoint &point : isotherm)
+  {
+    saturationLoading = std::max(saturationLoading, point.moleculesPerCell);
+    if (point.relativePressure > 0.0 && point.relativePressure < 1.0)
+    {
+      xMin = std::min(xMin, point.relativePressure);
+    }
+  }
+
+  const double windowHigh = finiteLayerWindowCap(isotherm);
+  if (!(windowHigh > 0.0) || !std::isfinite(xMin)) return result;
+  // Drop the deepest Henry decade so the residual is not dominated by the dilute wing.
+  const double windowLow = std::max(xMin, windowHigh * 1.0e-4);
+
+  std::vector<IsothermPoint> points;
+  points.reserve(isotherm.size());
+  for (const IsothermPoint &point : isotherm)
+  {
+    if (point.relativePressure >= windowLow && point.relativePressure <= windowHigh &&
+        point.moleculesPerCell > 0.0)
+    {
+      points.push_back(point);
+    }
+  }
+  if (points.size() < 5uz) return result;
+
+  // Cap n by how many monolayers the fill can hold. Langmuir n_m on a multilayer isotherm is only a
+  // lower bound on n_max (it overestimates n_m), so keep a generous floor.
+  FiniteLayerCandidate n1 = fitFiniteLayerAtFixedN(points, 1.0, saturationLoading);
+  std::size_t nMax = 20uz;
+  if (n1.ok && n1.monolayer > 0.0 && saturationLoading > 0.0)
+  {
+    nMax = static_cast<std::size_t>(
+        std::clamp(std::ceil(2.0 * saturationLoading / n1.monolayer), 20.0, 40.0));
+  }
+
+  FiniteLayerCandidate best;
+  double bestN = 0.0;
+  for (std::size_t n = 1uz; n <= nMax; ++n)
+  {
+    FiniteLayerCandidate candidate = fitFiniteLayerAtFixedN(points, static_cast<double>(n), saturationLoading);
+    if (candidate.ok && (!best.ok || candidate.residual < best.residual))
+    {
+      best = candidate;
+      bestN = static_cast<double>(n);
+    }
+  }
+  if (!best.ok) return result;
+  return finalizeFiniteLayerFit(best, bestN, windowLow, windowHigh, mass, cellVolume, crossSection, points);
+}
+
+FiniteLayerBETFit fitFiniteLayerBETFixedLayers(std::span<const IsothermPoint> isotherm, double mass,
+                                               double cellVolume, double numberOfLayers, double windowLow,
+                                               double windowHigh, double crossSection, double liquidVolume)
+{
+  FiniteLayerBETFit result;
+  if (isotherm.size() < 3uz || !(numberOfLayers > 0.0) || !(windowHigh > windowLow) || !(crossSection > 0.0))
+  {
+    return result;
+  }
+  (void)liquidVolume;
+
+  double saturationLoading = 0.0;
+  for (const IsothermPoint &point : isotherm)
+  {
+    saturationLoading = std::max(saturationLoading, point.moleculesPerCell);
+  }
+
+  std::vector<IsothermPoint> points;
+  points.reserve(isotherm.size());
+  for (const IsothermPoint &point : isotherm)
+  {
+    if (point.relativePressure >= windowLow && point.relativePressure <= windowHigh &&
+        point.moleculesPerCell > 0.0)
+    {
+      points.push_back(point);
+    }
+  }
+  if (points.size() < 3uz) return result;
+
+  const FiniteLayerCandidate candidate = fitFiniteLayerAtFixedN(points, numberOfLayers, saturationLoading);
+  return finalizeFiniteLayerFit(candidate, numberOfLayers, windowLow, windowHigh, mass, cellVolume, crossSection,
+                                points);
 }
 
 

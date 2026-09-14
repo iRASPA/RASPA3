@@ -48,7 +48,8 @@ export struct BruteForceSurfaceArea
   std::vector<double3> exposedPoints;
 
   // `structure` must carry the inflated radii, atom plus probe, so that its union's boundary is the surface
-  // being measured. `voxels` decides the accessible split and must have been built from the same structure.
+  // being measured. `voxels` decides the accessible split: usually the same inflation, or a smaller probe's
+  // flood when the total is nitrogen area but reachable means helium can reach the wall from outside.
   static BruteForceSurfaceArea compute(const BruteForceStructure &structure, const BruteForceVoxels &voxels,
                                        std::size_t samplesPerAtom, bool keepExposedPoints = false);
 };

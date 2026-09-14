@@ -84,6 +84,9 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
       sampleReweightingEvery(std::max(1uz, reader.sampleReweightingEvery)),
       reweightingTemperatures(reader.reweightingTemperatures),
       reweightingNumberOfPressures(reader.reweightingNumberOfPressures),
+      whamTolerance(reader.whamTolerance),
+      whamMaximumIterations(reader.whamMaximumIterations),
+      betScoutMaximumCycles(reader.betScoutMaximumCycles),
       computeBET(reader.computeBET),
       autoExternalPressures(reader.autoExternalPressures),
       autoReweightingPressureRange(reader.autoReweightingPressureRange),
@@ -134,7 +137,7 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
 
   if (autoMacroStateMaximum)
   {
-    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem);
+    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem, betScoutMaximumCycles);
     templateSystem.tmmc.maxMacrostate =
         std::max(templateSystem.tmmc.minMacrostate + 1uz, nitrogenBETFillingCeiling->maxMacrostate);
   }
@@ -184,6 +187,9 @@ ReweightedHistogram::ReweightedHistogram(System templateSystem, std::vector<doub
       sampleReweightingEvery(std::max(1uz, parameters.sampleReweightingEvery)),
       reweightingTemperatures(std::move(parameters.reweightingTemperatures)),
       reweightingNumberOfPressures(parameters.reweightingNumberOfPressures),
+      whamTolerance(parameters.whamTolerance),
+      whamMaximumIterations(parameters.whamMaximumIterations),
+      betScoutMaximumCycles(parameters.betScoutMaximumCycles),
       computeBET(parameters.computeBET),
       temperatures(std::move(temperatures_)),
       pressures(std::move(pressures_)),
@@ -401,6 +407,7 @@ void ReweightedHistogram::setup()
   outputJson["initialization"]["reweightingPressureRange"] =
       std::vector<double>{reweightingPressureRange.first, reweightingPressureRange.second};
   outputJson["initialization"]["reweightingNumberOfPressures"] = reweightingNumberOfPressures;
+  outputJson["initialization"]["betScoutMaximumCycles"] = betScoutMaximumCycles;
   if (nitrogenBETPressurePlan.has_value())
   {
     outputJson["initialization"]["nitrogenBETHenryCoefficient"] = nitrogenBETPressurePlan->henryCoefficientPerCell;
@@ -519,7 +526,8 @@ void ReweightedHistogram::placePressureLadderFromHenryAndSaturation()
         std::cout << std::flush;
         continue;
       }
-      const NitrogenBETScoutPoint scout = scoutNitrogenBETOccupancy(systems.front(), probePressure);
+      const NitrogenBETScoutPoint scout =
+          scoutNitrogenBETOccupancy(systems.front(), probePressure, betScoutMaximumCycles);
       SimulatedIsothermPoint point;
       point.pressure = probePressure;
       point.moleculesPerCell = (cells > 0.0) ? scout.meanOccupancy / cells : scout.meanOccupancy;
@@ -1388,7 +1396,7 @@ void ReweightedHistogram::performReweightingAnalysis()
 
   // the code base is compiled with -ffast-math, so infinities must not occur: empty bins/states
   // carry this finite 'log of zero' sentinel instead and drop out of the sums
-  constexpr double logZero = -1e300;
+    constexpr double logZero = -1e300;
   constexpr double logZeroThreshold = -1e299;
 
   // Solves the WHAM self-consistent equations in log space by direct iteration:
@@ -1399,7 +1407,7 @@ void ReweightedHistogram::performReweightingAnalysis()
                        std::vector<double>& freeEnergies, std::vector<double>& logDensityOfStates,
                        std::size_t maximumNumberOfIterations) -> std::pair<std::size_t, double>
   {
-    constexpr double tolerance = 1e-8;
+    const double tolerance = whamTolerance;
     std::vector<double> updatedFreeEnergies(numberOfReplicas);
     logDensityOfStates.assign(numberOfBins, logZero);
 
@@ -1575,17 +1583,18 @@ void ReweightedHistogram::performReweightingAnalysis()
   std::vector<double> freeEnergies(numberOfReplicas, 0.0);
   std::vector<double> logDensityOfStates;
   const std::pair<std::size_t, double> convergence =
-      solveWham(logStateCounts, logBinCounts, freeEnergies, logDensityOfStates, 100000uz);
+      solveWham(logStateCounts, logBinCounts, freeEnergies, logDensityOfStates, whamMaximumIterations);
   const std::size_t iterations = convergence.first;
   const double residual = convergence.second;
   whamIterations = iterations;
   whamResidual = residual;
-  whamConverged = residual <= 1e-8;
+  whamConverged = residual <= whamTolerance;
 
   std::print(stream, "    pooled samples:          {}\n", totalNumberOfSamples);
   std::print(stream, "    occupied (N, U) bins:    {} ({} energy bins, deltaU = {:.6e} [K])\n", numberOfBins,
              numberOfEnergyBins, Units::EnergyToKelvin * deltaEnergy);
-  std::print(stream, "    WHAM iterations:         {} (residual {:.3e})\n\n", iterations, residual);
+  std::print(stream, "    WHAM iterations:         {} (residual {:.3e}, tolerance {:.3e}, max {})\n\n", iterations,
+             residual, whamTolerance, whamMaximumIterations);
   if (!whamConverged)
   {
     std::print(stream, "    WARNING: the WHAM equations did not converge; the reweighted results are unreliable.\n");
@@ -1618,8 +1627,9 @@ void ReweightedHistogram::performReweightingAnalysis()
 
     std::vector<double> blockFreeEnergies = freeEnergies;
     const auto [blockIterations, blockResidual] =
-        solveWham(blockLogStateCounts, blockLogBinCounts, blockFreeEnergies, blockLogDensityOfStates[block], 100000uz);
-    blockIsValid[block] = blockResidual <= 1e-8;
+        solveWham(blockLogStateCounts, blockLogBinCounts, blockFreeEnergies, blockLogDensityOfStates[block],
+                  whamMaximumIterations);
+    blockIsValid[block] = blockResidual <= whamTolerance;
     if (!blockIsValid[block])
     {
       ++whamUnconvergedBlocks;
@@ -1840,6 +1850,8 @@ void ReweightedHistogram::performReweightingAnalysis()
           points.push_back(SimulatedIsothermPoint{point.pressure, point.moleculesPerCell});
         }
         const BETSurfaceArea bet = fitNitrogenBET(points, unitCellMass, unitCellVolume, probe);
+        const FiniteLayerBETFit finiteLayer =
+            fitNitrogenFiniteLayerBET(points, unitCellMass, unitCellVolume, probe);
 
         std::optional<double> areaError;
         std::optional<double> monolayerError;
@@ -1850,17 +1862,32 @@ void ReweightedHistogram::performReweightingAnalysis()
         std::size_t betBlocksUsed = 0uz;
         std::size_t betBlocksFailed = 0uz;
 
-        // Jackknife the BET line inside the full-data Rouquerol window: each converged block WHAM
-        // density of states rebuilds n(P), then slope/intercept are refit with the window frozen.
-        if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow)
+        std::optional<double> finiteLayerAreaError;
+        std::optional<double> finiteLayerMonolayerError;
+        std::optional<double> finiteLayerCError;
+        nlohmann::json finiteLayerBlockAreas = nlohmann::json::array();
+        nlohmann::json finiteLayerBlockMonolayers = nlohmann::json::array();
+        nlohmann::json finiteLayerBlockCConstants = nlohmann::json::array();
+        std::size_t finiteLayerBlocksUsed = 0uz;
+        std::size_t finiteLayerBlocksFailed = 0uz;
+
+        // Jackknife classical BET (fixed Rouquerol window) and finite-layer BET (frozen n + window).
+        if ((!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow) ||
+            finiteLayer.ok)
         {
           const double targetBeta = 1.0 / (Units::KB * isotherm.temperature);
           std::vector<double> blockAreaValues;
           std::vector<double> blockMonolayerValues;
           std::vector<double> blockCValues;
+          std::vector<double> finiteLayerAreaValues;
+          std::vector<double> finiteLayerMonolayerValues;
+          std::vector<double> finiteLayerCValues;
           blockAreaValues.reserve(numberOfBlocks);
           blockMonolayerValues.reserve(numberOfBlocks);
           blockCValues.reserve(numberOfBlocks);
+          finiteLayerAreaValues.reserve(numberOfBlocks);
+          finiteLayerMonolayerValues.reserve(numberOfBlocks);
+          finiteLayerCValues.reserve(numberOfBlocks);
 
           for (std::size_t block = 0; block < numberOfBlocks; ++block)
           {
@@ -1878,20 +1905,46 @@ void ReweightedHistogram::performReweightingAnalysis()
                   SimulatedIsothermPoint{point.pressure, toMoleculesPerUnitCell * loading});
             }
 
-            const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
-                blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
-            if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+            if (!bet.plateauReading && bet.monolayerCapacity > 0.0 && bet.windowHigh > bet.windowLow)
             {
-              ++betBlocksFailed;
-              continue;
+              const BETSurfaceArea blockBet = fitNitrogenBETFixedWindow(
+                  blockPoints, unitCellMass, unitCellVolume, bet.windowLow, bet.windowHigh, probe);
+              if (!(blockBet.monolayerCapacity > 0.0) || !(blockBet.gravimetricArea > 0.0))
+              {
+                ++betBlocksFailed;
+              }
+              else
+              {
+                ++betBlocksUsed;
+                blockAreaValues.push_back(blockBet.gravimetricArea);
+                blockMonolayerValues.push_back(blockBet.monolayerCapacity);
+                blockCValues.push_back(blockBet.cConstant);
+                blockAreas.push_back(blockBet.gravimetricArea);
+                blockMonolayers.push_back(blockBet.monolayerCapacity);
+                blockCConstants.push_back(blockBet.cConstant);
+              }
             }
-            ++betBlocksUsed;
-            blockAreaValues.push_back(blockBet.gravimetricArea);
-            blockMonolayerValues.push_back(blockBet.monolayerCapacity);
-            blockCValues.push_back(blockBet.cConstant);
-            blockAreas.push_back(blockBet.gravimetricArea);
-            blockMonolayers.push_back(blockBet.monolayerCapacity);
-            blockCConstants.push_back(blockBet.cConstant);
+
+            if (finiteLayer.ok)
+            {
+              const FiniteLayerBETFit blockFit = fitNitrogenFiniteLayerBETFixedLayers(
+                  blockPoints, unitCellMass, unitCellVolume, finiteLayer.numberOfLayers, finiteLayer.windowLow,
+                  finiteLayer.windowHigh, probe);
+              if (!blockFit.ok || !(blockFit.gravimetricArea > 0.0))
+              {
+                ++finiteLayerBlocksFailed;
+              }
+              else
+              {
+                ++finiteLayerBlocksUsed;
+                finiteLayerAreaValues.push_back(blockFit.gravimetricArea);
+                finiteLayerMonolayerValues.push_back(blockFit.monolayerCapacity);
+                finiteLayerCValues.push_back(blockFit.cConstant);
+                finiteLayerBlockAreas.push_back(blockFit.gravimetricArea);
+                finiteLayerBlockMonolayers.push_back(blockFit.monolayerCapacity);
+                finiteLayerBlockCConstants.push_back(blockFit.cConstant);
+              }
+            }
           }
 
           if (betBlocksUsed >= 3uz)
@@ -1899,6 +1952,13 @@ void ReweightedHistogram::performReweightingAnalysis()
             areaError = blockErrorEstimate(blockAreaValues, bet.gravimetricArea);
             monolayerError = blockErrorEstimate(blockMonolayerValues, bet.monolayerCapacity);
             cError = blockErrorEstimate(blockCValues, bet.cConstant);
+          }
+          if (finiteLayerBlocksUsed >= 3uz)
+          {
+            finiteLayerAreaError = blockErrorEstimate(finiteLayerAreaValues, finiteLayer.gravimetricArea);
+            finiteLayerMonolayerError =
+                blockErrorEstimate(finiteLayerMonolayerValues, finiteLayer.monolayerCapacity);
+            finiteLayerCError = blockErrorEstimate(finiteLayerCValues, finiteLayer.cConstant);
           }
         }
 
@@ -1910,6 +1970,17 @@ void ReweightedHistogram::performReweightingAnalysis()
                      "refits failed{}\n",
                      betBlocksUsed, betBlocksFailed,
                      areaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
+        }
+        std::print(stream, "\n");
+        writeNitrogenFiniteLayerBETSummary(stream, finiteLayer, probe, "    ", finiteLayerAreaError,
+                                           finiteLayerMonolayerError, finiteLayerCError);
+        if (finiteLayerBlocksUsed > 0uz || finiteLayerBlocksFailed > 0uz)
+        {
+          std::print(stream,
+                     "    Finite-layer block errors: {} blocks (frozen n, window); {} fixed-layer "
+                     "refits failed{}\n",
+                     finiteLayerBlocksUsed, finiteLayerBlocksFailed,
+                     finiteLayerAreaError.has_value() ? "" : " — need ≥ 3 successful blocks for a CI");
         }
         std::print(stream, "\n");
         const std::string betFile =
@@ -1933,6 +2004,20 @@ void ReweightedHistogram::performReweightingAnalysis()
           entry["monolayerCapacityError"] = *monolayerError;
           entry["cConstantError"] = *cError;
         }
+        nlohmann::json finiteLayerEntry = nitrogenFiniteLayerBETJson(finiteLayer, probe);
+        finiteLayerEntry["fixedLayerBlockErrors"] = true;
+        finiteLayerEntry["betBlocksUsed"] = finiteLayerBlocksUsed;
+        finiteLayerEntry["betBlocksFailed"] = finiteLayerBlocksFailed;
+        finiteLayerEntry["blockGravimetricAreas"] = std::move(finiteLayerBlockAreas);
+        finiteLayerEntry["blockMonolayerCapacities"] = std::move(finiteLayerBlockMonolayers);
+        finiteLayerEntry["blockCConstants"] = std::move(finiteLayerBlockCConstants);
+        if (finiteLayerAreaError.has_value())
+        {
+          finiteLayerEntry["gravimetricAreaError"] = *finiteLayerAreaError;
+          finiteLayerEntry["monolayerCapacityError"] = *finiteLayerMonolayerError;
+          finiteLayerEntry["cConstantError"] = *finiteLayerCError;
+        }
+        entry["finiteLayer"] = std::move(finiteLayerEntry);
         outputJson["output"]["reweighting"]["bet"].push_back(std::move(entry));
         std::print(stream, "    BET plot written to {}\n\n", betFile);
       }
@@ -2314,6 +2399,8 @@ void ReweightedHistogram::performReweightingAnalysis()
   outputJson["output"]["reweighting"]["occupiedBins"] = numberOfBins;
   outputJson["output"]["reweighting"]["iterations"] = iterations;
   outputJson["output"]["reweighting"]["residual"] = residual;
+  outputJson["output"]["reweighting"]["tolerance"] = whamTolerance;
+  outputJson["output"]["reweighting"]["maximumIterations"] = whamMaximumIterations;
   outputJson["output"]["reweighting"]["converged"] = whamConverged;
   outputJson["output"]["reweighting"]["unconvergedBlocks"] = whamUnconvergedBlocks;
   nlohmann::json unconvergedBlockDetails = nlohmann::json::array();
@@ -2473,6 +2560,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Reweig
   archive << rh.reweightingTemperatures;
   archive << rh.reweightingPressureRange;
   archive << rh.reweightingNumberOfPressures;
+  archive << rh.whamTolerance;
+  archive << rh.whamMaximumIterations;
+  archive << rh.betScoutMaximumCycles;
 
   archive << rh.simulationStage;
   archive << rh.cyclesCompletedThisStage;
@@ -2541,6 +2631,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHi
   archive >> rh.reweightingTemperatures;
   archive >> rh.reweightingPressureRange;
   archive >> rh.reweightingNumberOfPressures;
+  archive >> rh.whamTolerance;
+  archive >> rh.whamMaximumIterations;
+  archive >> rh.betScoutMaximumCycles;
 
   archive >> rh.simulationStage;
   archive >> rh.cyclesCompletedThisStage;

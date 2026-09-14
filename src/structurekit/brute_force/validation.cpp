@@ -27,6 +27,8 @@ import brute_force_surface_area;
 import brute_force_solvent_excluded;
 import brute_force_pore_volume;
 import brute_force_blocking_pockets;
+import brute_force_pore_spikes;
+import exact_pore_size_distribution;
 
 namespace
 {
@@ -163,27 +165,104 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
                         .tolerance = 4.0 * grain,
                         .basis = std::format("two grid steps either way, the grid being {:.3f} Å", grain),
                         .applicable = this->diameters.percolates || exact.freeSphereDiameter > 0.0});
+
+    if (!settings.skipPoreSpikes)
+    {
+      // Local clearance maxima on the bare grid, clustered by diameter, with a Monte Carlo union weight.
+      // Compared with the last three whole-void spikes of the exact PSD.
+      const std::size_t spikePoints =
+          settings.spikeVolumePoints > 0 ? settings.spikeVolumePoints : settings.volumePoints;
+      this->poreSpikes = BruteForcePoreSpikes::compute(bare, voxels, spikePoints, 3);
+
+      auto build = [&](double probeRadius)
+      {
+        return ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, probeRadius)
+            .accessibility;
+      };
+      const double maxDiameter = std::max(20.0, this->diameters.includedSphereDiameter + 1.0);
+      PoreSizeDistributionCurve curve =
+          exactPoreSizeDistribution(build, volume, maxDiameter, 100, panels, /*probeRadius*/ 0.0);
+
+      const std::size_t nExact = curve.spikes.size();
+
+      for (std::size_t rank = 0; rank < 3; ++rank)
+      {
+        const bool haveExact = rank < nExact;
+        const bool haveBrute = rank < this->poreSpikes.families.size();
+        const PoreSizeSpike exactSpike = haveExact ? curve.spikes[nExact - 1 - rank] : PoreSizeSpike{};
+        const BruteForceSpikeFamily bruteFamily =
+            haveBrute ? this->poreSpikes.families[rank] : BruteForceSpikeFamily{};
+
+        const double diameterTol =
+            haveExact ? std::max({exactSpike.bracket, 1.0e-3, 2.0 * grain}) : 2.0 * grain;
+
+        this->checks.push_back(BruteForceCheck{
+            .property = std::format("PSD spike {}, diameter", rank + 1),
+            .units = "Å",
+            .exact = haveExact ? exactSpike.diameter : 0.0,
+            .bruteForce = haveBrute ? bruteFamily.diameter : 0.0,
+            .tolerance = diameterTol,
+            .basis = haveExact ? std::format("exact spike bracket {:.3e} Å, and two grid steps",
+                                             exactSpike.bracket)
+                               : "no exact spike at this rank",
+            .applicable = haveExact && haveBrute});
+
+        const double weightTol = haveBrute ? (4.0 * bruteFamily.weightError + 1.0e-4) : 1.0e-4;
+
+        this->checks.push_back(BruteForceCheck{
+            .property = std::format("PSD spike {}, weight", rank + 1),
+            .units = "",
+            .exact = haveExact ? exactSpike.weight : 0.0,
+            .bruteForce = haveBrute ? bruteFamily.weight : 0.0,
+            .tolerance = weightTol,
+            .basis = "four standard errors of the void-point sample, and 1e-4",
+            .applicable = haveExact && haveBrute});
+      }
+
+      // Record how many were available when the two sides disagree on the count.
+      if (std::min<std::size_t>(3, nExact) != this->poreSpikes.families.size())
+      {
+        this->checks.push_back(BruteForceCheck{
+            .property = "PSD spikes, how many of the last three",
+            .units = "",
+            .exact = static_cast<double>(std::min<std::size_t>(3, nExact)),
+            .bruteForce = static_cast<double>(this->poreSpikes.families.size()),
+            .basis = std::format("exact {}, brute force {} (reported, not judged: a shallow maximum may "
+                                 "fail the weight floor, and the exact search may merge brackets)",
+                                 std::min<std::size_t>(3, nExact), this->poreSpikes.families.size()),
+            .applicable = false});
+      }
+    }
   }
 
-  // ---- the surface area and its decomposition, against the exact sweep ------------------------------
+  // ---- the accessible surface area, against the exact sweep -----------------------------------------
+  // Geometry and total area use the surface probe (nitrogen). Reachable vs sealed is labeled by the
+  // void probe (helium): N₂ area of walls that He can reach from outside. The exact walk already
+  // supports that split via a smaller-probe reference network; brute force samples the N₂ surface
+  // and steps into the He flood.
   {
-    ApolloniusAccessibility classifier = ApolloniusAccessibility::create(
+    ApolloniusAccessibility surfaceClassifier = ApolloniusAccessibility::create(
         framework.unitCell, fractionalPositions, bareRadii, surfaceProbeRadius);
+    ApolloniusAccessibility reachClassifier = ApolloniusAccessibility::create(
+        framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
 
-    BoundaryComponents components = boundaryComponents(classifier.accessibility);
-    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(classifier.accessibility, components);
-    MeasuredPatches measured =
-        exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels);
+    BoundaryComponents components = boundaryComponents(surfaceClassifier.accessibility);
+    std::vector<ComponentVerdict> verdicts =
+        boundaryComponentVerdicts(surfaceClassifier.accessibility, components, &reachClassifier.accessibility);
+    MeasuredPatches measured = exactAccessibleSurfaceAreaByComponent(
+        surfaceClassifier.accessibility, components, verdicts, panels, SurfaceMoments::volume,
+        SurfaceSidePolicy::network);
 
-    BruteForceStructure bare = structureWith(framework, bareRadii);
-    BruteForceStructure inflated = structureWith(framework, inflatedBy(bareRadii, surfaceProbeRadius));
-    BruteForceVoxels voxels = BruteForceVoxels::build(inflated, settings.spacing);
+    BruteForceStructure surfaceInflated =
+        structureWith(framework, inflatedBy(bareRadii, surfaceProbeRadius));
+    BruteForceStructure reachInflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
+    BruteForceVoxels reachVoxels = BruteForceVoxels::build(reachInflated, settings.spacing);
 
-    this->surfaceNecksProved = voxels.necksProved;
-    this->surfaceNecksTried = voxels.necksTried;
+    this->surfaceNecksProved = reachVoxels.necksProved;
+    this->surfaceNecksTried = reachVoxels.necksTried;
 
-    this->surfaceArea = BruteForceSurfaceArea::compute(inflated, voxels, settings.samplesPerAtom,
-                                                       !settings.skipSolventExcluded);
+    this->surfaceArea =
+        BruteForceSurfaceArea::compute(surfaceInflated, reachVoxels, settings.samplesPerAtom, false);
 
     // Four standard errors is a one-in-sixteen-thousand coincidence, which is the point at which a
     // disagreement is worth looking at rather than worth repeating with more points.
@@ -220,10 +299,29 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
                         .bruteForce = this->surfaceArea.inaccessibleArea,
                         .tolerance = areaTolerance + splitSlack,
                         .basis = "the same"});
+  }
+
+  // ---- the solvent-excluded surface and the blocking spheres (void probe) ---------------------------
+  {
+    ApolloniusAccessibility classifier =
+        ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
+
+    BoundaryComponents components = boundaryComponents(classifier.accessibility);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(classifier.accessibility, components);
+    MeasuredPatches measured =
+        exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels);
+
+    BruteForceStructure bare = structureWith(framework, bareRadii);
+    BruteForceStructure inflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
+    BruteForceVoxels voxels = BruteForceVoxels::build(inflated, settings.spacing);
 
     if (!settings.skipSolventExcluded)
     {
-      SolventExcludedGeometry excluded = solventExcludedGeometry(classifier.accessibility, surfaceProbeRadius,
+      // The accessible-surface sample is needed only to seed the burial cloud for the excluded patches.
+      BruteForceSurfaceArea surfaceForExcluded =
+          BruteForceSurfaceArea::compute(inflated, voxels, settings.samplesPerAtom, true);
+
+      SolventExcludedGeometry excluded = solventExcludedGeometry(classifier.accessibility, voidProbeRadius,
                                                                  components, verdicts, measured, panels);
 
       this->exactVertices = excluded.diagnostics.numberOfVertices;
@@ -233,7 +331,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
       this->exactDiscardedCorners = excluded.diagnostics.discardedCorners;
 
       this->solventExcluded =
-          BruteForceSolventExcluded::compute(bare, inflated, this->surfaceArea, surfaceProbeRadius,
+          BruteForceSolventExcluded::compute(bare, inflated, surfaceForExcluded, voidProbeRadius,
                                              settings.samplesPerAtom, settings.creaseSteps,
                                              settings.cornerSamples);
 
@@ -293,10 +391,10 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
           .units = "",
           .exact = static_cast<double>(split.numberOfPockets),
           .bruteForce = static_cast<double>(this->blockingPockets.pockets.size()),
-          .applicable = false,
           .basis = std::format("exact {}, brute force {} (reported, not judged: a grid may split a pocket "
                                "at a neck it cannot resolve)",
-                               split.numberOfPockets, this->blockingPockets.pockets.size())});
+                               split.numberOfPockets, this->blockingPockets.pockets.size()),
+          .applicable = false});
 
       std::string refused = measuredSpheresRefused(split);
       if (refused.empty())
@@ -398,8 +496,12 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
   std::print(report, "# Crystal: {}\n", framework.name);
   std::print(report, "# Atoms in the unit cell: {}\n", framework.atoms.size());
   std::print(report, "# Cell volume: {} [Å³]\n", volume);
-  std::print(report, "# Probe for the surface, the excluded surface and the blocking spheres: {}, radius {} [Å]\n",
-             surfaceProbe, surfaceProbeRadius);
+  std::print(report, "# Probe for the surface area (geometry and total): {}, radius {} [Å]\n", surfaceProbe,
+             surfaceProbeRadius);
+  std::print(report, "# Probe that labels reachable vs sealed surface: {}, radius {} [Å]\n", voidProbe,
+             voidProbeRadius);
+  std::print(report, "# Probe for the excluded surface and the blocking spheres: {}, radius {} [Å]\n", voidProbe,
+             voidProbeRadius);
   std::print(report, "# Probe for the void: {}, radius {} [Å]\n", voidProbe, voidProbeRadius);
   std::print(report, "# Grid the void is flooded on: about {} Å between voxel centres\n", settings.spacing);
   std::print(report, "# Directions per atom: {}\n", settings.samplesPerAtom);
@@ -431,6 +533,21 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
              this->surfaceArea.totalArea);
   std::print(report, "Widest path runs away in {} direction(s)\n", this->diameters.dimensionality);
   std::print(report, "The walk uphill improved on the best voxel by {} Å\n", this->diameters.walkGainedForDi);
+
+  if (!this->poreSpikes.families.empty() || this->poreSpikes.numberOfMaxima > 0)
+  {
+    std::print(report,
+               "Clearance maxima for PSD spikes: {} distinct peaks in {} diameter families; "
+               "Monte Carlo void volume {} Å³\n",
+               this->poreSpikes.numberOfMaxima, this->poreSpikes.numberOfFamilies, this->poreSpikes.voidVolume);
+    for (std::size_t i = 0; i < this->poreSpikes.families.size(); ++i)
+    {
+      const auto &family = this->poreSpikes.families[i];
+      std::print(report,
+                 "  spike family {}: diameter {} Å, {} centre(s), weight {} ± {} of the void\n", i + 1,
+                 family.diameter, family.centres.size(), family.weight, family.weightError);
+    }
+  }
 
   if (!settings.skipSolventExcluded)
   {

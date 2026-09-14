@@ -213,6 +213,35 @@ export struct BETSurfaceArea
            double relativePrecision = 1e-6);
 };
 
+/// Finite-n (n-layer / BDDT) BET occupancy θ(x; C, n) = n_ads / n_m. As n → ∞ this is classical BET;
+/// n = 1 is Langmuir. `layers` need not be an integer.
+export double finiteLayerBETOccupancy(double relativePressure, double cConstant, double numberOfLayers);
+
+/// Three-parameter finite-layer BET fit (n_m, C, n) to an isotherm, reported alongside the classical
+/// Rouquerol BET line. Integer n is searched; C and n_m are optimized by least squares for each n.
+export struct FiniteLayerBETFit
+{
+  double gravimetricArea{0.0};     ///< m²/g from n_m × σ
+  double volumetricArea{0.0};      ///< m²/cm³
+  double monolayerCapacity{0.0};   ///< n_m [molecules / cell]
+  double cConstant{0.0};
+  double numberOfLayers{0.0};      ///< n (integer from the search)
+  double rSquared{0.0};            ///< loading residual r² over the fit window
+  double residualSumOfSquares{0.0};
+  double windowLow{0.0};           ///< relative-pressure window used for the fit
+  double windowHigh{0.0};
+  bool ok{false};
+};
+
+/// Fit finite-layer BET over the tabulated isotherm up to min(0.9, highest x).
+export FiniteLayerBETFit fitFiniteLayerBET(std::span<const IsothermPoint> isotherm, double mass, double cellVolume,
+                                           double crossSection, double liquidVolume);
+
+/// Refit with frozen n and relative-pressure window (block jackknife companion to fitFiniteLayerBET).
+export FiniteLayerBETFit fitFiniteLayerBETFixedLayers(std::span<const IsothermPoint> isotherm, double mass,
+                                                      double cellVolume, double numberOfLayers, double windowLow,
+                                                      double windowHigh, double crossSection, double liquidVolume);
+
 export void writeBETSurfaceArea(std::ostream &stream, const BETSurfaceArea &bet);
 
 // The properties that come off the isotherm rather than off the BET line: the Gurvich micropore volume and

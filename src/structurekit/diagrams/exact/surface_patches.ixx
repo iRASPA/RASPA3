@@ -212,26 +212,6 @@ export MeasuredPatches exactSurfaceArea(const PoreAccessibility& accessibility, 
 export MeasuredPatches exactAccessibleSurfaceAreaByPore(const PoreAccessibility& accessibility,
                                                         std::size_t subdivisions = 1);
 
-// The same measurement, split by the connected surfaces of the boundary rather than arc by arc.
-//
-// Every arc lies on one patch of one sphere, and the patch is found from a point of the arc's own edge: a
-// gap in a latitude begins and ends where a bounding circle crosses it, and the arcs of the circles already
-// carry the patch they bound. So the lookup is a search along a circle, not a classification, and an arc
-// cannot come out on a different side from the surface it is part of.
-//
-// What that buys is both the cost and the correctness. The classifier is consulted once per connected
-// surface instead of once per arc -- some tens of times instead of some hundreds of thousands -- and the
-// share of a bounded surface is then a closed surface by construction, which is what the divergence theorem
-// needs and what the arc-by-arc route could only be checked for afterwards.
-//
-// `moments` is what the surfaces are to be measured for; see `SurfaceMoments`. The default leaves out the one
-// part no caller here needs, and a caller that does need it says so.
-export MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibility& accessibility,
-                                                             const BoundaryComponents& components,
-                                                             const std::vector<ComponentVerdict>& verdicts,
-                                                             std::size_t subdivisions = 1,
-                                                             SurfaceMoments moments = SurfaceMoments::volume);
-
 // What settled which side of a connected surface the void that can be reached is on.
 export enum class SurfaceClosure : std::uint8_t
 {
@@ -247,21 +227,55 @@ export struct SurfaceSide
   int side{0};  // plus one reachable, minus one shut in, zero where nothing could say
 };
 
+// How reachable vs sealed is decided for a connected surface; see `surfaceSides`.
+export enum class SurfaceSidePolicy : std::uint8_t
+{
+  geometric,
+  network,
+};
+
+// The same measurement, split by the connected surfaces of the boundary rather than arc by arc.
+//
+// Every arc lies on one patch of one sphere, and the patch is found from a point of the arc's own edge: a
+// gap in a latitude begins and ends where a bounding circle crosses it, and the arcs of the circles already
+// carry the patch they bound. So the lookup is a search along a circle, not a classification, and an arc
+// cannot come out on a different side from the surface it is part of.
+//
+// What that buys is both the cost and the correctness. The classifier is consulted once per connected
+// surface instead of once per arc -- some tens of times instead of some hundreds of thousands -- and the
+// share of a bounded surface is then a closed surface by construction, which is what the divergence theorem
+// needs and what the arc-by-arc route could only be checked for afterwards.
+//
+// `moments` is what the surfaces are to be measured for; see `SurfaceMoments`. The default leaves out the one
+// part no caller here needs, and a caller that does need it says so. `policy` is how reachable vs sealed is
+// decided after the sweep; see `SurfaceSidePolicy`.
+export MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibility& accessibility,
+                                                             const BoundaryComponents& components,
+                                                             const std::vector<ComponentVerdict>& verdicts,
+                                                             std::size_t subdivisions = 1,
+                                                             SurfaceMoments moments = SurfaceMoments::volume,
+                                                             SurfaceSidePolicy policy = SurfaceSidePolicy::geometric);
+
 // Which side of each connected surface the reachable void is on.
 //
-// Three arguments decide it and only the last of them needs the network. A surface that closes on a translate
-// of itself runs away through the crystal and the void runs away along it. A surface that closes on itself
-// has the void on one side and the solid on the other, and the sign of the volume it encloses says which:
-// positive is void, and void enclosed by a closed surface can reach nothing outside it. Only a surface
-// enclosing solid --- a cluster of atoms with the void standing around it --- leaves a question, which is
-// whether that void is itself sealed, and that is the one thing asked of `verdicts`.
+// `geometric` (default): three arguments decide it and only the last needs the network. A surface that
+// closes on a translate of itself runs away through the crystal and the void runs away along it. A surface
+// that closes on itself has the void on one side and the solid on the other, and the sign of the volume it
+// encloses says which: positive is void, and void enclosed by a closed surface can reach nothing outside it.
+// Only a surface enclosing solid --- a cluster of atoms with the void standing around it --- leaves a
+// question, which is whether that void is itself sealed, and that is the one thing asked of `verdicts`.
 //
-// The area, the excluded volume and the void split all divide their totals by this, and they have to divide
-// them the same way or the three disagree about the same structure. It is the whole of what the network is
-// consulted for on this route, which is why it is one function and not a line repeated in each of them.
+// `network`: skip the geometric seal. Percolating surfaces are reachable; every other surface follows the
+// network verdict alone. Use this when the verdicts come from a smaller probe than the surface (helium
+// labeling nitrogen walls): a cage N₂ cannot leave may still sit in a channel He moves along, and the
+// geometric rule would mark that wall sealed regardless of He.
+//
+// The area, the excluded volume and the void split all divide their totals by this when they share a probe,
+// and they have to divide them the same way or the three disagree about the same structure.
 export std::vector<SurfaceSide> surfaceSides(const BoundaryComponents& components,
                                              const MeasuredPatches& patches,
-                                             const std::vector<ComponentVerdict>& verdicts);
+                                             const std::vector<ComponentVerdict>& verdicts,
+                                             SurfaceSidePolicy policy = SurfaceSidePolicy::geometric);
 
 // The point each surface's moments are taken about: a point of the surface itself, carried into the frame the
 // surface closes in. The choice cannot change a closed surface's volume, and it cancels out of the centroid

@@ -62,6 +62,27 @@ export void writeNitrogenBETTable(std::ostream& stream, const BETSurfaceArea& be
 /// JSON object of the fitted numbers (no isotherm table).
 export nlohmann::json nitrogenBETJson(const BETSurfaceArea& bet, const BETProbeProperties& probe);
 
+/// Finite-layer (n-layer / BDDT) BET fit of the same isotherm, reported alongside the Rouquerol BET line.
+export FiniteLayerBETFit fitNitrogenFiniteLayerBET(std::span<const SimulatedIsothermPoint> points, double mass,
+                                                   double cellVolume, const BETProbeProperties& probe);
+
+/// Refit finite-layer BET with frozen n and relative-pressure window (block jackknife).
+export FiniteLayerBETFit fitNitrogenFiniteLayerBETFixedLayers(std::span<const SimulatedIsothermPoint> points,
+                                                              double mass, double cellVolume, double numberOfLayers,
+                                                              double windowLow, double windowHigh,
+                                                              const BETProbeProperties& probe);
+
+/// Append finite-layer BET numbers to a report stream (after the Rouquerol summary).
+export void writeNitrogenFiniteLayerBETSummary(std::ostream& stream, const FiniteLayerBETFit& fit,
+                                               const BETProbeProperties& probe, std::string_view indent = "",
+                                               std::optional<double> gravimetricAreaError = std::nullopt,
+                                               std::optional<double> monolayerCapacityError = std::nullopt,
+                                               std::optional<double> cConstantError = std::nullopt,
+                                               std::optional<double> numberOfLayersError = std::nullopt);
+
+/// JSON object for the finite-layer fit (no isotherm table).
+export nlohmann::json nitrogenFiniteLayerBETJson(const FiniteLayerBETFit& fit, const BETProbeProperties& probe);
+
 /// Number of Widom insertions used to place the nitrogen BET pressure span (order of magnitude of K is enough).
 export constexpr std::size_t nitrogenBETHenryInsertions = 200000;
 
@@ -79,7 +100,7 @@ export struct NitrogenBETPressurePlan
 };
 
 /// Place the nitrogen BET pressure span from a Widom Henry coefficient of the empty framework.
-/// `numberOfThreads` sizes the WHAM sampling ladder (8–16 rungs), matching raspa3-cli `--threads`.
+/// `numberOfThreads` sizes the WHAM sampling ladder (8–32 rungs), matching raspa3-cli `--threads`.
 export NitrogenBETPressurePlan planNitrogenBETPressures(System system, double temperature,
                                                         std::size_t numberOfThreads);
 
@@ -139,7 +160,9 @@ export struct NitrogenBETPreIsothermFit
 };
 
 /// Unbiased GCMC occupancy at a set pressure. The input system is copied.
-export NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa);
+/// \p maximumCycles caps the scout (default 15000); early exit still applies when the loading plateaus.
+export NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa,
+                                                       std::size_t maximumCycles = 15000);
 
 /// Langmuir P(θ) = (θ / (1 − θ)) / b. Returns 0 if b or θ is not usable.
 export double langmuirPressureAtCoverage(double coverage, double affinity);
@@ -190,7 +213,9 @@ export struct NitrogenBETFillingCeiling
 /// Scout occupancy at P0 with the system's own swap moves and return N_max.
 /// The input system is copied; TMMC window bounds on the original are not used (the scout must
 /// be free to fill past the default maxMacrostate of 100).
-export NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system);
+/// \p maximumCycles is forwarded to the occupancy scout (default 15000).
+export NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system,
+                                                                std::size_t maximumCycles = 15000);
 
 /// Write the P0 scout and chosen filling ceiling to a report stream.
 export void writeNitrogenBETFillingCeiling(std::ostream& stream, const NitrogenBETFillingCeiling& ceiling);

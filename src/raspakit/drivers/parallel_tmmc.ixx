@@ -87,6 +87,8 @@ export struct ParallelTMMCParameters
   std::pair<double, double> reweightingPressureRange{1.0, 101325.0};
   std::size_t reweightingNumberOfPressures{100};
   bool computeBET{false};
+  /// Cap on unbiased GCMC occupancy scouts (BET auto N_max).
+  std::size_t betScoutMaximumCycles{15000};
   std::optional<std::size_t> randomSeed{};
 };
 
@@ -141,7 +143,7 @@ export struct ParallelTMMC
   ParallelTMMC(System templateSystem, std::vector<double> temperatures,
                ParallelTMMCParameters parameters = {});
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding).
 
@@ -156,6 +158,8 @@ export struct ParallelTMMC
   std::size_t writeBinaryRestartEvery;  ///< Frequency of writing the binary restart file (0 disables).
 
   std::size_t numberOfBlocks;  ///< Number of blocks for the block-error estimation.
+  /// Cap on unbiased GCMC occupancy scouts (BET auto N_max).
+  std::size_t betScoutMaximumCycles{15000};
 
   std::pair<double, double> reweightingPressureRange;  ///< Pressure range of the reweighted isotherms [Pa].
   std::size_t reweightingNumberOfPressures;            ///< Number of log-spaced pressures of the reweighted isotherms.

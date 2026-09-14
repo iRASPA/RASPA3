@@ -91,7 +91,7 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, recovers_sampled_mean_and_reports_convergence)
   simulation.performReweightingAnalysis();
 
   EXPECT_TRUE(simulation.whamConverged);
-  EXPECT_LE(simulation.whamResidual, 1.0e-8);
+  EXPECT_LE(simulation.whamResidual, 1.0e-6);
   EXPECT_GT(simulation.whamIterations, 0uz);
   EXPECT_EQ(simulation.whamUnconvergedBlocks, 0uz);
   EXPECT_TRUE(simulation.whamUnconvergedBlockDetails.empty());

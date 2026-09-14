@@ -663,29 +663,53 @@ reported separately at the end of the simulation.
     key is omitted, WHAM uses 400 points and TMMC uses 12 points per decade
     (at least 100).
 
+-   `"WHAMTolerance" : floating-point-number`\
+    For `"SimulationType" : "ReweightedHistogram"`: stop the WHAM free-energy
+    iteration when the maximum absolute change in any state free energy \(g_i\)
+    between successive iterates falls below this value (and likewise for the
+    per-block solves used for error bars). Default: `1e-6`.
+
+-   `"WHAMIterations" : integer`\
+    For `"SimulationType" : "ReweightedHistogram"`: maximum number of WHAM
+    free-energy iterations for the pooled solve and for each production-block
+    solve. Default: `1000000`.
+
+-   `"BETScoutMaximumCycles" : integer`\
+    Cap on the unbiased GCMC occupancy scouts used when `"ComputeBET"` places
+    the auto filling ceiling (`"MacroStateMaximumNumberOfMolecules": "auto"`)
+    and when WHAM scouts Langmuir-coverage probes for the pressure ladder.
+    Scouts still stop early once the loading plateaus (three successive
+    1000-cycle blocks). Default: `15000`.
+
 -   `"ComputeBET" : boolean`\
     For `"SimulationType" : "ReweightedHistogram"` and `"ParallelTMMC"`: after
     the reweighted isotherm is written, extract a BET surface area
     (Rouquerol consistency) using the adsorbate component's
     `"SaturationPressure"`, `"CrossSection"`, and `"LiquidVolume"`, and write
-    it to the combined output. `"ComputeBTE"` is accepted as an alias. With this
+    it to the combined output. The same isotherm is also fit to the
+    finite-layer (n-layer / BDDT) BET equation (\(n_m\), \(C\), integer \(n\)),
+    reported next to the classical line in the text and JSON (`finiteLayer`).
+    `"ComputeBTE"` is accepted as an alias. With this
     flag, `"ExternalPressures"` (WHAM) and `"ReweightingPressureRange"` may be
     `"auto"` or omitted: a Widom Henry coefficient of the empty framework
     places the bottom of the span at min(1 Pa, 10⁻³ n_Gurvich / K_H) and the
     top at P0. `"NumberOfThreads"` then sizes the WHAM pressure ladder
-    (8–16 rungs), matching `raspa3-cli --threads`. WHAM then scouts occupancy
+    (8–32 rungs), matching `raspa3-cli --threads`. WHAM then scouts occupancy
     at Langmuir θ = 0.1, 0.5, 0.9, fits Langmuir vs Langmuir–Freundlich vs Toth,
     and places rungs at equal Fisher overlap on a log-spaced skeleton (a point
     at least every two equal-log steps, at most two extras per interval). For WHAM,
     each converged production-block density of states also rebuilds the isotherm and
     refits slope/intercept inside the full-data Rouquerol window; the spread of
     those block areas is reported as the confidence-interval error on the BET
-    area (and on \(n_m\) and \(C\)) when at least three blocks succeed. TMMC does the
+    area (and on \(n_m\) and \(C\)) when at least three blocks succeed. The
+    finite-layer fit is jackknifed the same way with frozen \(n\) and window.
+    TMMC does the
     same from the per-block collection-matrix increments (rebuilt `ln Π(N)`). TMMC still samples at
     `"ExternalPressure"` (typically P0); only the reweighting grid is placed
     automatically. `"MacroStateMaximumNumberOfMolecules"` may also be `"auto"`
     or omitted: an unbiased GCMC scout at P0 places the filling ceiling used
-    as TMMC N_max and as the WHAM cycle length. Default: `false`.
+    as TMMC N_max and as the WHAM cycle length (length capped by
+    `"BETScoutMaximumCycles"`). Default: `false`.
 
 -   `"NumberOfWindows" : integer`\
     For `"SimulationType" : "ParallelTMMC"`: the number of contiguous
@@ -761,7 +785,7 @@ reported separately at the end of the simulation.
     for those simulation types. Written as the string `"auto"` — only with
     `"SimulationType" : "ReweightedHistogram"` and `"ComputeBET" : true` — a
     log-spaced ladder is placed from the nitrogen Henry limit to P0 after the
-    system is built; `"NumberOfThreads"` sets the rung count (8–16). Occupancy
+    system is built; `"NumberOfThreads"` sets the rung count (8–32). Occupancy
     is then scouted at Langmuir θ = 0.1, 0.5, 0.9; Langmuir vs Langmuir–Freundlich
     vs Toth is selected, and the same count is re-placed at equal Fisher overlap
     on a log-spaced skeleton (gap at most twice equal-log spacing, at most two
@@ -786,8 +810,8 @@ reported separately at the end of the simulation.
     enables the exact normalization of the saturation pressure by the
     empty-box state. With `"ComputeBET"`, `"MacroStateMaximumNumberOfMolecules"`
     may be `"auto"` or omitted: occupancy is scouted at nitrogen P0 and N_max
-    is placed just above the plateau (capped by Gurvich packing). Defaults:
-    `0` and `100`.
+    is placed just above the plateau (capped by Gurvich packing; scout length
+    by `"BETScoutMaximumCycles"`). Defaults: `0` and `100`.
 
 -   `"MacroStateUseBias" : boolean`\
     For `"SimulationType" : "MonteCarloTransitionMatrix"`: whether the

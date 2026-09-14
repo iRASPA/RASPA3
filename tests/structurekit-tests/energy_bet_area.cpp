@@ -368,6 +368,42 @@ TEST(energy_bet_area, fixed_window_refit_keeps_window_and_tracks_loading)
 }
 
 
+// Finite-layer (n-layer) BET recovers n_m, C and n from a synthetic isotherm.
+TEST(energy_bet_area, finite_layer_bet_recovers_synthetic_isotherm)
+{
+  const double mass = 100.0;
+  const double cellVolume = 1000.0;
+  const double nMono = 12.0;
+  const double C = 80.0;
+  const double nLayers = 4.0;
+
+  std::vector<IsothermPoint> isotherm;
+  for (int i = 0; i < 160; ++i)
+  {
+    const double logX = std::log(1.0e-5) + (std::log(0.85) - std::log(1.0e-5)) * static_cast<double>(i) / 159.0;
+    const double x = std::exp(logX);
+    isotherm.push_back(IsothermPoint{x, nMono * finiteLayerBETOccupancy(x, C, nLayers)});
+  }
+
+  const FiniteLayerBETFit fit =
+      fitFiniteLayerBET(isotherm, mass, cellVolume, nitrogenCrossSection, nitrogenLiquidVolume);
+  ASSERT_TRUE(fit.ok);
+  EXPECT_NEAR(fit.numberOfLayers, nLayers, 0.5);
+  EXPECT_NEAR(fit.monolayerCapacity, nMono, 0.05 * nMono);
+  EXPECT_NEAR(fit.cConstant, C, 0.15 * C);
+  EXPECT_GT(fit.rSquared, 0.999);
+  EXPECT_NEAR(fit.gravimetricArea, nMono * nitrogenCrossSection * 6.0221419947e3 / mass, 1.0);
+
+  const FiniteLayerBETFit frozen = fitFiniteLayerBETFixedLayers(
+      isotherm, mass, cellVolume, fit.numberOfLayers, fit.windowLow, fit.windowHigh, nitrogenCrossSection,
+      nitrogenLiquidVolume);
+  ASSERT_TRUE(frozen.ok);
+  EXPECT_DOUBLE_EQ(frozen.numberOfLayers, fit.numberOfLayers);
+  EXPECT_NEAR(frozen.monolayerCapacity, fit.monolayerCapacity, 1.0e-6 * fit.monolayerCapacity);
+  EXPECT_NEAR(frozen.gravimetricArea, fit.gravimetricArea, 1.0e-6 * fit.gravimetricArea);
+}
+
+
 // Geometric packing for a 1-D filament: L / λ sites, which is what an ultramicroporous channel needs
 // (volume packing of the filament tube undercounts by orders of magnitude).
 TEST(energy_bet_area, geometric_sites_pack_a_filament_by_length)

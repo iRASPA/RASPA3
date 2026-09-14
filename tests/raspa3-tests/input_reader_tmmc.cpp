@@ -526,6 +526,79 @@ TEST(INPUT_READER, compute_bet_accepts_auto_macrostate_for_wham)
   EXPECT_TRUE(reader.autoMacroStateMaximum);
 }
 
+TEST(INPUT_READER, wham_tolerance_defaults_and_accepts_override)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporaryDefault(input, "wham_tol_default", workspace.path());
+  {
+    ScopedCurrentPath currentPath(workspace.path());
+    InputReader reader(temporaryDefault.path().filename().string());
+    EXPECT_DOUBLE_EQ(reader.whamTolerance, 1.0e-6);
+    EXPECT_EQ(reader.whamMaximumIterations, 1000000uz);
+    EXPECT_EQ(reader.betScoutMaximumCycles, 15000uz);
+  }
+
+  input["WHAMTolerance"] = 1.0e-5;
+  input["WHAMIterations"] = 500000;
+  input["BETScoutMaximumCycles"] = 30000;
+  TemporaryInput temporaryOverride(std::move(input), "wham_tol_override", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+  InputReader reader(temporaryOverride.path().filename().string());
+  EXPECT_DOUBLE_EQ(reader.whamTolerance, 1.0e-5);
+  EXPECT_EQ(reader.whamMaximumIterations, 500000uz);
+  EXPECT_EQ(reader.betScoutMaximumCycles, 30000uz);
+}
+
+TEST(INPUT_READER, wham_tolerance_rejects_non_positive)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["WHAMTolerance"] = 0.0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "wham_tol_bad", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, wham_iterations_rejects_zero)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["WHAMIterations"] = 0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "wham_iters_bad", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
+TEST(INPUT_READER, bet_scout_maximum_cycles_rejects_zero)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["ComputeBET"] = true;
+  input["BETScoutMaximumCycles"] = 0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  setBETProbeProperties(input["Components"][0]);
+  TemporaryInput temporary(std::move(input), "bet_scout_bad", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
+}
+
 TEST(INPUT_READER, compute_bet_accepts_auto_macrostate_for_tmmc)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();

@@ -69,6 +69,12 @@ export struct ReweightedHistogramParameters
   std::vector<double> reweightingTemperatures{};
   std::optional<std::pair<double, double>> reweightingPressureRange{};
   std::size_t reweightingNumberOfPressures{100};
+  /// Max |Δg_i| for WHAM free-energy self-consistency (default matches common practice).
+  double whamTolerance{1.0e-6};
+  /// Maximum WHAM free-energy iterations for the pooled and per-block solves.
+  std::size_t whamMaximumIterations{1000000};
+  /// Cap on unbiased GCMC occupancy scouts (BET auto N_max and WHAM ladder probes).
+  std::size_t betScoutMaximumCycles{15000};
   bool computeBET{false};
   std::optional<std::size_t> randomSeed{};
 };
@@ -135,7 +141,7 @@ export struct ReweightedHistogram
   ReweightedHistogram(System templateSystem, std::vector<double> temperatures, std::vector<double> pressures,
                       ReweightedHistogramParameters parameters = {});
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{4};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -156,6 +162,12 @@ export struct ReweightedHistogram
   std::vector<double> reweightingTemperatures;  ///< Temperatures the reweighted isotherms are written at [K].
   std::pair<double, double> reweightingPressureRange;  ///< Pressure range of the reweighted isotherms [Pa].
   std::size_t reweightingNumberOfPressures;  ///< Number of log-spaced pressures of the reweighted isotherms.
+  /// Max |Δg_i| between successive WHAM free-energy iterates for convergence.
+  double whamTolerance{1.0e-6};
+  /// Maximum WHAM free-energy iterations for the pooled and per-block solves.
+  std::size_t whamMaximumIterations{1000000};
+  /// Cap on unbiased GCMC occupancy scouts (BET auto N_max and WHAM ladder probes).
+  std::size_t betScoutMaximumCycles{15000};
 
   /// Extract a nitrogen BET area from each reweighted isotherm (Rouquerol, P0 = 101325 Pa).
   bool computeBET{false};
@@ -202,7 +214,7 @@ export struct ReweightedHistogram
   std::size_t whamIterations{0};
   std::size_t whamUnconvergedBlocks{0};
 
-  /// Per-block WHAM solves that failed the 1e-8 residual test (0-based production windows).
+  /// Per-block WHAM solves that failed the residual tolerance test (0-based production windows).
   struct UnconvergedBlock
   {
     std::size_t index{};

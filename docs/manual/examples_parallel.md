@@ -220,7 +220,7 @@ Toth; rungs are then re-placed at equal Fisher overlap on a 2× equal-log
 skeleton plus at most two extra rungs per interval.
 `"MacroStateMaximumNumberOfMolecules" : "auto"` scouts occupancy at P0 for
 the filling ceiling (WHAM cycle length / TMMC N_max). `"NumberOfThreads"`
-sizes the ladder (8–16 rungs). Analysis files go to `wham/`.
+sizes the ladder (8–32 rungs). Analysis files go to `wham/`.
 
 Run from `examples/parallel/5_parallel_wham_cbmc_n2_bet_in_mfi`:
 

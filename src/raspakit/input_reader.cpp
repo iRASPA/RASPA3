@@ -374,6 +374,42 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     reweightingNumberOfPressures = std::max(2uz, parsed_data["ReweightingNumberOfPressures"].get<std::size_t>());
     reweightingNumberOfPressuresSpecified = true;
   }
+  if (parsed_data.contains("WHAMTolerance"))
+  {
+    if (!parsed_data["WHAMTolerance"].is_number())
+    {
+      throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive number\n");
+    }
+    whamTolerance = parsed_data["WHAMTolerance"].get<double>();
+    if (!(whamTolerance > 0.0) || !std::isfinite(whamTolerance))
+    {
+      throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive finite number\n");
+    }
+  }
+  if (parsed_data.contains("WHAMIterations"))
+  {
+    if (!parsed_data["WHAMIterations"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: 'WHAMIterations' must be a positive unsigned integer\n");
+    }
+    whamMaximumIterations = parsed_data["WHAMIterations"].get<std::size_t>();
+    if (whamMaximumIterations == 0uz)
+    {
+      throw std::runtime_error("[Input reader]: 'WHAMIterations' must be a positive unsigned integer\n");
+    }
+  }
+  if (parsed_data.contains("BETScoutMaximumCycles"))
+  {
+    if (!parsed_data["BETScoutMaximumCycles"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: 'BETScoutMaximumCycles' must be a positive unsigned integer\n");
+    }
+    betScoutMaximumCycles = parsed_data["BETScoutMaximumCycles"].get<std::size_t>();
+    if (betScoutMaximumCycles == 0uz)
+    {
+      throw std::runtime_error("[Input reader]: 'BETScoutMaximumCycles' must be a positive unsigned integer\n");
+    }
+  }
 
   // Parallel TMMC: window and bias-update controls
   if (parsed_data.contains("NumberOfWindows") && parsed_data["NumberOfWindows"].is_number_unsigned())
@@ -3556,6 +3592,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ReweightingTemperatures",
     "ReweightingPressureRange",
     "ReweightingNumberOfPressures",
+    "WHAMTolerance",
+    "WHAMIterations",
+    "BETScoutMaximumCycles",
     "ComputeBET",
     "ComputeBTE",
     "NumberOfWindows",
