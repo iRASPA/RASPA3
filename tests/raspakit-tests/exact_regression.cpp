@@ -130,7 +130,7 @@ PoreSizeDistributionCurve runCurve(const Structure& structure)
   { return PoreAccessibility::create(structure.box, structure.fractionalPositions, structure.radii, inflation); };
 
   return exactPoreSizeDistribution(build, structure.box.volume, maximumDiameter, numberOfBins, subdivisions,
-                                   probeRadius, refinements);
+                                   probeRadius, probeRadius, refinements);
 }
 
 }  // namespace

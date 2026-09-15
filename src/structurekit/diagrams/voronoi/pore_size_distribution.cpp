@@ -11,6 +11,8 @@ import pair_interactions;
 import skspacegroupdatabase;
 import pore_accessibility;
 import exact_pore_size_distribution;
+import exact_void_split;
+import voronoi_blocking_spheres;
 
 // The bare radii of the framework's atoms, and where they are in fractional coordinates.
 std::pair<std::vector<double3>, std::vector<double>> frameworkSpheres(const PairInteractions& interactions,
@@ -60,9 +62,12 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# Crystal mass: {} [g/mol]\n", framework.mass);
   std::print(report, "# Void volume: {} [Å³], void fraction {}\n", curve.voidVolume,
              (curve.cellVolume > 0.0) ? curve.voidVolume / curve.cellVolume : 0.0);
-  std::print(report, "# Probe: {}, radius {} [Å], diameter {} [Å]\n", probePseudoAtom, curve.probeRadius,
-             2.0 * curve.probeRadius);
-  std::print(report, "# Volume that probe can reach: {} [Å³], {} of the void\n", curve.probeAccessibleVolume,
+  std::print(report, "# Probe (blocking / accessibility): {}, radius {} [Å], diameter {} [Å]\n", probePseudoAtom,
+             curve.probeRadius, 2.0 * curve.probeRadius);
+  std::print(report, "# Floor radius: {} [Å] ({})\n", curve.floorRadius,
+             (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare PSD of the rest"
+                                       : "probe-occupiable: flat below this diameter");
+  std::print(report, "# Volume of the primary curve: {} [Å³], {} of the void\n", curve.probeAccessibleVolume,
              (curve.voidVolume > 0.0) ? curve.probeAccessibleVolume / curve.voidVolume : 0.0);
   std::print(report, "# Diameters evaluated: {}, up to {} [Å]\n", curve.points.size(),
              curve.points.empty() ? 0.0 : curve.points.back().diameter);
@@ -78,18 +83,28 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# the void is tested and no trial sphere is drawn, so no row of this file is an\n");
   std::print(report, "# estimate of another row's value.\n");
   std::print(report, "#\n");
-  std::print(report, "# The distribution is given twice: over the whole void, which is every pore the framework\n");
-  std::print(report, "# has whether or not anything can get into it, and over the part of the void the probe\n");
-  std::print(report, "# named above can reach, which is the distribution of the pore sizes a molecule of that\n");
-  std::print(report, "# size actually meets. The two differ by the pores sealed off from that probe, and that is\n");
-  std::print(report, "# not a rescaling: a cage nothing can enter is often the largest pore of a framework.\n");
+  std::print(report, "# Pockets sealed to the blocking probe are excluded from columns 2 to 5. By default the\n");
+  std::print(report, "# floor is zero (hybrid): those pockets are filled by their helium blocking spheres and the\n");
+  std::print(report, "# bare pore-size distribution of the remaining void is reported, so wall corrugation below\n");
+  std::print(report, "# the blocking probe's diameter is still shown. With a positive floor the primary curve is\n");
+  std::print(report, "# instead the probe-occupiable distribution, flat below twice that radius.\n");
   std::print(report, "#\n");
-  std::print(report, "# The accessible curve is flat below the probe's own diameter and normalised by the volume\n");
-  std::print(report, "# the probe can reach. Both follow from what that region is: a union of balls of the\n");
-  std::print(report, "# probe's radius, so every point of it has a pore size of at least the probe's diameter,\n");
-  std::print(report, "# and none of the region has left below it. It is also not the accessible share of the\n");
-  std::print(report, "# whole curve row by row, columns 6 to 8 dividing each row by what a probe of that row's\n");
-  std::print(report, "# own diameter can reach, which moves along the curve where this probe stands still.\n");
+  if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "# The primary curve is flat below the floor diameter {:.5f} [Å] and normalised by the\n",
+               2.0 * curve.floorRadius);
+    std::print(report, "# volume left after blocking. Columns 6 to 8 divide each row by what a probe of that\n");
+    std::print(report, "# row's own diameter can reach, which moves along the curve where the blocking probe\n");
+    std::print(report, "# stands still. Columns 14 to 17 hold the bare whole-void curve from the same sweep.\n");
+  }
+  else
+  {
+    std::print(report, "# The primary curve has no diameter floor: helium-sealed pockets are filled by blocking\n");
+    std::print(report, "# spheres and the remaining open network is given its bare Gelb--Gubbins distribution,\n");
+    std::print(report, "# normalised by that remaining void. The open framework without blocking is not\n");
+    std::print(report, "# reported: sealed cages are not an adsorption observable. Columns 14 to 17 mirror\n");
+    std::print(report, "# columns 2 to 5.\n");
+  }
   std::print(report, "#\n");
   std::print(report, "# The distribution is not a function of d alone. A pore holds the whole of its volume at\n");
   std::print(report, "# the diameter of the largest sphere that fits in it -- a cavity that is a ball of radius\n");
@@ -101,41 +116,19 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# The spikes are found by bisection, wherever the volume lost across a step exceeds what\n");
   std::print(report, "# the derivative accounts for. A corner of the continuous part loses that excess under\n");
   std::print(report, "# refinement and a cliff keeps it, so what is listed here survived the narrowing of its\n");
-  std::print(report, "# own interval by a factor of a thousand or more:\n");
+  std::print(report, "# own interval by a factor of a thousand or more. The list below is for the blocked curve:\n");
   std::print(report, "#\n");
   std::print(report, "#      d [Å]        weight     cornered within [Å]\n");
-  for (const PoreSizeSpike& spike : curve.spikes)
-  {
-    std::print(report, "#   {:9.5f}    {:10.6f}    {:.2e}\n", spike.diameter, spike.weight, spike.bracket);
-  }
-  std::print(report, "#\n");
-  std::print(report, "# The continuous part integrates to {:.6f} and the spikes weigh {:.6f}, which come to\n",
-             curve.integral, curve.singularWeight);
-  std::print(report, "# {:.6f} against one. The void has some pore size everywhere, so the two have to make up\n",
-             curve.integral + curve.singularWeight);
-  std::print(report, "# the whole of it, and they are computed independently: how near that comes is the check\n");
-  std::print(report, "# of the volume against its own derivative over the whole range.\n");
-  std::print(report, "#\n");
-  std::print(report, "# The largest sphere that fits in the void is {:.5f} [Å] across, which is where the last\n",
-             curve.largestDiameter);
-  std::print(report, "# spike stands. Beyond it {:.2e} of the void is left, which ought to be nothing: where it\n",
-             curve.truncatedWeight);
-  std::print(report, "# is not, the range asked for stopped short of the largest pore.\n");
-  std::print(report, "#\n");
   if (curve.probeAccessibleVolume > 0.0)
   {
-    std::print(report, "# The same three things for the volume the probe can reach, whose spikes are its own: the\n");
-    std::print(report, "# cages it cannot enter are absent from them and the pores it can are weighed against its\n");
-    std::print(report, "# own volume. They are marked to be told from the ones above.\n");
-    std::print(report, "#\n");
-    std::print(report, "#            d [Å]        weight     cornered within [Å]\n");
     for (const PoreSizeSpike& spike : curve.probeAccessibleSpikes)
     {
-      std::print(report, "#   probe {:9.5f}    {:10.6f}    {:.2e}\n", spike.diameter, spike.weight, spike.bracket);
+      std::print(report, "#   {:9.5f}    {:10.6f}    {:.2e}\n", spike.diameter, spike.weight, spike.bracket);
     }
     std::print(report, "#\n");
-    std::print(report, "# Its continuous part comes to {:.6f} and its spikes to {:.6f}, together {:.6f} against one.\n",
-               curve.probeAccessibleIntegral, curve.probeAccessibleSingularWeight,
+    std::print(report, "# The continuous part integrates to {:.6f} and the spikes weigh {:.6f}, which come to\n",
+               curve.probeAccessibleIntegral, curve.probeAccessibleSingularWeight);
+    std::print(report, "# {:.6f} against one over the volume the probe can reach.\n",
                curve.probeAccessibleIntegral + curve.probeAccessibleSingularWeight);
     std::print(report, "# The largest sphere that fits anywhere the probe can reach is {:.5f} [Å] across, with\n",
                curve.probeAccessibleLargestDiameter);
@@ -144,25 +137,53 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   }
   else
   {
-    std::print(report, "# This probe reaches nothing of this framework: every pore of it is sealed off from the\n");
-    std::print(report, "# outside at that size, so there is no accessible distribution and columns 14 to 17 are\n");
-    std::print(report, "# zero throughout. That is a statement about the framework and not a failure of the\n");
-    std::print(report, "# analysis, and the whole void above is still every pore the framework has.\n");
+    std::print(report, "#   (none: every pore is sealed to this probe, so columns 2 to 5 are zero throughout)\n");
+    std::print(report, "#\n");
+    std::print(report, "# The probe reaches nothing of this framework at that size. That is a statement about the\n");
+    std::print(report, "# framework and not a failure of the analysis.\n");
+  }
+  std::print(report, "#\n");
+  if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "# The same three things for the whole void, with pockets not blocked:\n");
+    std::print(report, "#\n");
+    std::print(report, "#   whole void   d [Å]        weight     cornered within [Å]\n");
+    for (const PoreSizeSpike& spike : curve.spikes)
+    {
+      std::print(report, "#   {:9.5f}    {:10.6f}    {:.2e}\n", spike.diameter, spike.weight, spike.bracket);
+    }
+    std::print(report, "#\n");
+    std::print(report, "# Its continuous part comes to {:.6f} and its spikes to {:.6f}, together {:.6f} against one.\n",
+               curve.integral, curve.singularWeight, curve.integral + curve.singularWeight);
+    std::print(report, "# The largest sphere that fits in the void is {:.5f} [Å] across, with {:.2e} left beyond\n",
+               curve.largestDiameter, curve.truncatedWeight);
+    std::print(report, "# the end of the range.\n");
+  }
+  else
+  {
+    std::print(report, "# The open whole-void distribution is not computed for the hybrid (no floor).\n");
   }
   std::print(report, "#\n");
   std::print(report, "# column 1: diameter d [Å]\n");
-  std::print(report, "# column 2: P(d) [1/Å] over the whole void, normalised to integrate to one\n");
-  std::print(report, "# column 3: cumulative pore volume, as a fraction of the void volume\n");
-  std::print(report, "# column 4: cumulative pore volume [Å³]\n");
-  std::print(report, "# column 5: cumulative pore volume [cm³/g]\n");
-  std::print(report, "# columns 6-8: the share of column 2 on surfaces a probe of that row's own diameter can\n");
+  std::print(report, "# column 2: P(d) [1/Å] over the open network (pockets blocked), normalised by its volume\n");
+  std::print(report, "# column 3: that volume at this diameter, as a fraction of the whole of it\n");
+  std::print(report, "# column 4: that volume at this diameter [Å³]\n");
+  std::print(report, "# column 5: the same [cm³/g]\n");
+  std::print(report, "# columns 6-8: the share of P(d) on surfaces a probe of that row's own diameter can\n");
   std::print(report, "#              reach, on surfaces sealed off from it, and on surfaces the network could\n");
   std::print(report, "#              not place\n");
   std::print(report, "# columns 9-13: arcs, of them cusped, vertices, of them clipped, of them degenerate\n");
-  std::print(report, "# column 14: P(d) [1/Å] over the volume the named probe can reach, normalised by it\n");
-  std::print(report, "# column 15: that volume at this diameter, as a fraction of the whole of it\n");
-  std::print(report, "# column 16: that volume at this diameter [Å³]\n");
-  std::print(report, "# column 17: the same [cm³/g]\n");
+  if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "# column 14: P(d) [1/Å] over the whole void, normalised to integrate to one\n");
+    std::print(report, "# column 15: cumulative pore volume, as a fraction of the void volume\n");
+    std::print(report, "# column 16: cumulative pore volume [Å³]\n");
+    std::print(report, "# column 17: the same [cm³/g]\n");
+  }
+  else
+  {
+    std::print(report, "# columns 14-17: mirror of columns 2-5 (no separate whole-void curve)\n");
+  }
 
   // Å³ per unit cell to cm³ per gram.
   const double gramsPerCell = framework.mass / Units::AvogadroConstant;
@@ -175,21 +196,47 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
     std::print(report,
                "{:11.6f} {:14.8f} {:12.8f} {:14.5f} {:12.6f} {:14.8f} {:14.8f} {:14.8f} {:8} {:8} {:8} {:8} {:8}"
                " {:14.8f} {:12.8f} {:14.5f} {:12.6f}\n",
-               point.diameter, asPrinted(point.distribution), asPrinted(point.cumulative),
-               asPrinted(point.poreVolume), asPrinted(point.poreVolume * toVolumePerMass),
-               asPrinted(point.accessible), asPrinted(point.inaccessible), asPrinted(point.undecided),
-               point.numberOfArcs, point.cuspedArcs, point.numberOfVertices, point.clippedVertices,
-               point.degenerateVertices, asPrinted(point.probeAccessibleDistribution),
+               point.diameter, asPrinted(point.probeAccessibleDistribution),
                asPrinted(point.probeAccessibleCumulative), asPrinted(point.probeAccessiblePoreVolume),
-               asPrinted(point.probeAccessiblePoreVolume * toVolumePerMass));
+               asPrinted(point.probeAccessiblePoreVolume * toVolumePerMass), asPrinted(point.accessible),
+               asPrinted(point.inaccessible), asPrinted(point.undecided), point.numberOfArcs, point.cuspedArcs,
+               point.numberOfVertices, point.clippedVertices, point.degenerateVertices,
+               asPrinted(point.distribution), asPrinted(point.cumulative), asPrinted(point.poreVolume),
+               asPrinted(point.poreVolume * toVolumePerMass));
   }
   report.close();
 }
 
 
+PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked, double accessibilityRadius)
+{
+  PoreSizeDistributionCurve curve = std::move(blocked);
+  curve.probeRadius = accessibilityRadius;
+  curve.floorRadius = 0.0;
+  // Bare PSD of the blocked network is the only curve: mirror it into the primary columns.
+  // voidVolume is the remaining open-network volume after blocking spheres (zero-probe), which
+  // also normalises the distribution; the He void-split volume is a different quantity and is not
+  // substituted here.
+  curve.probeAccessibleVolume = curve.voidVolume;
+  curve.probeAccessibleIntegral = curve.integral;
+  curve.probeAccessibleSingularWeight = curve.singularWeight;
+  curve.probeAccessibleSpikes = curve.spikes;
+  curve.probeAccessibleTruncatedWeight = curve.truncatedWeight;
+  curve.probeAccessibleLargestDiameter = curve.largestDiameter;
+  for (PoreSizeDistributionPoint& point : curve.points)
+  {
+    point.probeAccessiblePoreVolume = point.poreVolume;
+    point.probeAccessibleCumulative = point.cumulative;
+    point.probeAccessibleDistribution = point.distribution;
+  }
+  return curve;
+}
+
+
 void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, const Crystal& framework,
                                       std::string probePseudoAtom, std::optional<double> maximumDiameter,
-                                      std::optional<std::size_t> numberOfBins, std::size_t subdivisions)
+                                      std::optional<std::size_t> numberOfBins, std::size_t subdivisions,
+                                      double floorRadius)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -203,8 +250,47 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
   auto build = [&](double inflation)
   { return PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, inflation); };
 
-  curve = exactPoreSizeDistribution(build, framework.unitCell.volume, maximumDiameter.value_or(20.0),
-                                    numberOfBins.value_or(100), subdivisions, probeRadius);
+  const double cellVolume = framework.unitCell.volume;
+  const double maxDiameter = maximumDiameter.value_or(20.0);
+  const std::size_t bins = numberOfBins.value_or(100);
+
+  if (floorRadius > 0.0)
+  {
+    curve = exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
+                                      floorRadius);
+  }
+  else
+  {
+    // Hybrid: fill helium-sealed pockets with their blocking spheres, then take the bare PSD of what remains.
+    PoreAccessibility he = PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
+    ExactVoidSplit split = exactVoidSplitByComponents(he, cellVolume, subdivisions);
+    std::vector<BlockingSphere> spheres;
+    if (measuredSpheresRefused(split).empty())
+    {
+      spheres = exactBlockingSpheres(split);
+    }
+    else
+    {
+      spheres = computeBlockingSpheres(he, static_cast<std::size_t>(200.0 * cellVolume));
+    }
+
+    std::vector<double3> blockedPositions = fractionalPositions;
+    std::vector<double> blockedRadii = radii;
+    blockedPositions.reserve(fractionalPositions.size() + spheres.size());
+    blockedRadii.reserve(radii.size() + spheres.size());
+    for (const BlockingSphere& sphere : spheres)
+    {
+      blockedPositions.push_back(sphere.centerFractional);
+      blockedRadii.push_back(sphere.radius);
+    }
+
+    auto buildBlocked = [&](double inflation)
+    { return PoreAccessibility::create(framework.unitCell, blockedPositions, blockedRadii, inflation); };
+
+    PoreSizeDistributionCurve blocked =
+        exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
+    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
+  }
 
   writePoreSizeDistribution(framework, "voronoi", probePseudoAtom, curve);
 }

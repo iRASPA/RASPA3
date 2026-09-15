@@ -70,7 +70,7 @@ PoreSizeDistributionCurve curveOf(const Lattice& lattice, double maximumDiameter
   {
     return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius);
   };
-  return exactPoreSizeDistribution(build, lattice.box.volume, maximumDiameter, bins, 1, probe);
+  return exactPoreSizeDistribution(build, lattice.box.volume, maximumDiameter, bins, 1, probe, probe);
 }
 
 }  // namespace

@@ -105,8 +105,12 @@ bool isGridLocalMaximum(const BruteForceVoxels &voxels, std::size_t voxel)
 
 BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &structure,
                                                    const BruteForceVoxels &voxels, std::size_t volumePoints,
-                                                   std::size_t maxFamilies)
+                                                   std::size_t maxFamilies,
+                                                   const BruteForceStructure *reachabilityStructure,
+                                                   const BruteForceVoxels *reachabilityVoxels)
 {
+  const bool blockPockets =
+      reachabilityStructure != nullptr && reachabilityVoxels != nullptr;
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   BruteForcePoreSpikes self;
 
@@ -147,7 +151,10 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                {
                  auto [position, clearance] =
                      walkUphill(structure, voxels.centre(structure, seeds[index]), step);
-                 if (clearance > 0.0) maximaOfWorker[worker].emplace_back(wrapCentre(structure, position), clearance);
+                 if (clearance <= 0.0) return;
+                 const double3 centre = wrapCentre(structure, position);
+                 if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, centre)) return;
+                 maximaOfWorker[worker].emplace_back(centre, clearance);
                });
 
   std::vector<std::pair<double3, double>> maxima;
@@ -224,6 +231,8 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                    double3 fractional(random.uniform(), random.uniform(), random.uniform());
                    double3 position = structure.unitCell.cell * fractional;
                    if (structure.clearance(position) < 0.0) continue;
+                   if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, position))
+                     continue;
                    ++inVoid[lane];
 
                    // A point's pore size is the largest covering maximal sphere, so it belongs to at most

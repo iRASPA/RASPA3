@@ -120,6 +120,7 @@ void CommandLine::run(int argc, char *argv[])
   bool temperature_set{ false };
   bool apply_blocking{ true };
   double blocking_threshold{ 30.0 };
+  std::optional<std::string> psd_floor_probe{};
   double brute_force_spacing{ 0.15 };
   std::size_t brute_force_samples{ 20000 };
   std::size_t brute_force_points{ 4000000 };
@@ -178,7 +179,8 @@ void CommandLine::run(int argc, char *argv[])
              std::cout << OpenCL::printBestOpenCLDevice();
              std::exit(0);
            })
-      .reg({"-s", "--surface-area"}, argparser::no_argument, "Compute surface area",
+      .reg({"-s", "--surface-area"}, argparser::no_argument,
+           "Compute surface area (nitrogen geometry; helium labels reachable vs sealed for the geometric routes)",
            [&state](std::string const &) { state.set(State::SurfaceArea); })
       .reg({"-v", "--void-fraction"}, argparser::no_argument, "Compute void fraction",
            [&state](std::string const &) { state.set(State::VoidFraction); })
@@ -200,14 +202,21 @@ void CommandLine::run(int argc, char *argv[])
            [&apply_blocking](std::string const &) { apply_blocking = false; })
       .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
            [&state](std::string const &) { state.set(State::PSD); })
+      .reg({"--pore-size-distribution-probe-floor"}, argparser::required_argument,
+           "Floor of the primary PSD curve. Default (flag omitted) is zero-probe hybrid: fill helium-sealed "
+           "pockets with blocking spheres, then report the bare pore-size distribution of the remaining void. "
+           "Pass a probe name (e.g. He) for the probe-occupiable curve, flat below that probe's diameter",
+           [&psd_floor_probe](std::string const &arg) { psd_floor_probe = arg; })
       .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
            "Use pore size distribution method from Ban, Vlugt paper",
            [&state](std::string const &){state.set(State::PSD_BV);})
       .reg({"--pore-analysis"}, argparser::no_argument,
-           "Compute the pore diameters Di, Df and Dif and the channel/pocket analysis (as zeo++ -res and -chan)",
+           "Compute the pore diameters Di, Df and Dif and the channel/pocket analysis (as zeo++ -res and -chan); "
+           "geometric routes use helium by default for channels/pockets",
            [&state](std::string const &) { state.set(State::PoreAnalysis); })
       .reg({"--blocking-spheres"}, argparser::no_argument,
-           "Compute spheres covering the pockets the probe cannot reach, in RASPA .block format",
+           "Compute spheres covering the pockets the probe cannot reach, in RASPA .block format "
+           "(helium by default, matching the accessible void)",
            [&state](std::string const &) { state.set(State::BlockingSpheres); })
       .reg({"--energy-barrier"}, argparser::no_argument,
            "Compute the lowest energy at which the probe percolates, the energetic counterpart of Df",
@@ -315,11 +324,13 @@ void CommandLine::run(int argc, char *argv[])
            [&maximum_range](std::string const &arg) { maximum_range = std::stod(arg); })
       .reg({"--probe-atom-name"},
            argparser::required_argument,
-           "The name of the probe atom", 
+           "The name of the surface / occupancy probe (prefixed with probe-, e.g. Ar → probe-Ar). "
+           "Does not change helium accessibility labelling",
            [&probe_atom_name](std::string const &arg) { probe_atom_name = "probe-" + arg; })
       .reg({"--probe-size-parameter"},
            argparser::required_argument,
-           "σ of a spherical uncharged LJ probe [Å], written onto the '-' pseudo-atom (e.g. 3.798)",
+           "σ of a spherical uncharged LJ probe [Å], written onto the '-' pseudo-atom (e.g. 3.798). "
+           "Overrides the surface probe only; helium still labels reachable vs sealed",
            [&probe_size](std::string const &arg) { probe_size = std::stod(arg); })
       .reg({"--probe-strength-parameter"},
            argparser::required_argument,
@@ -569,9 +580,15 @@ void CommandLine::run(int argc, char *argv[])
     // The probe the geometric analyses sample with. Not every force field defines every probe, a
     // custom one read from a file need define none of them, so an unchosen default falls back to
     // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
-    // the command line is passed through, and the analysis says so if it does not exist.
+    // the command line (or written onto '-' via --probe-size-parameter) overrides the surface /
+    // occupancy probe, but never the helium accessibility label: reachable vs sealed is always He.
     auto geometricProbe = [&](const std::string &preferred) -> std::string
     {
+      if (preferred == "probe-He")
+      {
+        if (forceField->findPseudoAtom("probe-He").has_value()) return "probe-He";
+        // No helium in this force field: fall through to the caller-facing probe rather than invent one.
+      }
       if (probe_atom_name.has_value()) return probe_atom_name.value();
       if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
       return "probe-N2";
@@ -601,7 +618,7 @@ void CommandLine::run(int argc, char *argv[])
         apply_blocking && (use_energy_methods || state.test(State::WellSurface) || state.test(State::BET));
     if (wants_energy_blocking)
     {
-      std::string blockingProbe = geometricProbe("probe-N2");
+      std::string blockingProbe = geometricProbe("probe-He");
       analysis_blocking = analysisBlockingSpheres(interactions, crystal, blockingProbe);
       blocking_ramp = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
       blocking_ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
@@ -758,11 +775,13 @@ void CommandLine::run(int argc, char *argv[])
       {
         // The area itself is measured rather than sampled unless the sampled estimate is asked for by
         // name, there being no reason to prefer a statistical answer to an exact one at the same cost.
+        // Nitrogen for the surface geometry; helium labels which of that area is reachable from outside
+        // (same hybrid as the atlas brute-force check).
         ApolloniusSurfaceArea sa;
         sa.run(interactions, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
                                        : ApolloniusSurfaceArea::Method::Exact,
-               number_of_iterations, number_of_slices);
+               number_of_iterations, number_of_slices, geometricProbe("probe-He"));
       }
       else if (use_voronoi)
       {
@@ -772,7 +791,7 @@ void CommandLine::run(int argc, char *argv[])
         sa.run(interactions, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
                                        : VoronoiSurfaceArea::Method::Exact,
-               number_of_iterations, number_of_slices);
+               number_of_iterations, number_of_slices, geometricProbe("probe-He"));
       }
 
       if (use_geometric_methods)
@@ -1026,35 +1045,46 @@ void CommandLine::run(int argc, char *argv[])
     if (state.test(CommandLine::State::PSD))
     {
       // The distribution itself is a closed form over the surface of the framework, so it is evaluated rather
-      // than sampled unless the sampled estimate is asked for by name. Which diagram is named decides only how
-      // the curve is divided between the void a probe can reach and the void it cannot.
-      //
-      // The probe named is the one the accessible distribution is reported for, beside the distribution of the
-      // whole of the void. Helium by default, as for the accessible volume: it is the molecule a void volume is
-      // measured with, and being the smallest of the probes it is the one that separates the pores a molecule
-      // cannot enter at all from the pores it merely finds narrow. A larger probe answers a narrower question,
-      // and answers nothing whatever in a framework whose windows it cannot pass.
+      // than sampled unless the sampled estimate is asked for by name. Helium is the accessibility / blocking
+      // Helium is the accessibility / blocking probe. By default the diameter floor is zero (hybrid):
+      // helium-sealed pockets are filled by their blocking spheres and the bare pore-size distribution of
+      // the remaining void is reported. --pore-size-distribution-probe-floor He restores the probe-occupiable
+      // curve, flat below the helium diameter. The open whole-void curve is not computed for the hybrid.
+      std::string psdAccessProbe = geometricProbe("probe-He");
+      double psdFloorRadius = 0.0;
+      if (psd_floor_probe.has_value())
+      {
+        std::string floorName = psd_floor_probe.value();
+        if (!floorName.starts_with("probe-")) floorName = "probe-" + floorName;
+        std::optional<std::size_t> floorType = interactions.findType(floorName);
+        if (!floorType.has_value())
+        {
+          throw std::runtime_error(
+              std::format("Unknown probe '{}' for --pore-size-distribution-probe-floor\n", floorName));
+        }
+        psdFloorRadius = 0.5 * interactions[floorType.value()].sizeParameter;
+      }
       if (use_gridbased_methods && use_gpu)
       {
         std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
 
         GridPoreSizeDistribution psd;
-        psd.run(interactions, crystal, geometricProbe("probe-He"), gridSize, maximum_range, number_of_bins);
+        psd.run(interactions, crystal, psdAccessProbe, gridSize, maximum_range, number_of_bins);
       }
 
       if (use_apollonius)
       {
         std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
         ApolloniusPoreSizeDistribution psd;
-        psd.run(interactions, crystal, geometricProbe("probe-He"), maximum_range, number_of_bins,
-                number_of_slices.value_or(1));
+        psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
+                number_of_slices.value_or(1), psdFloorRadius);
       }
       else if (use_voronoi)
       {
         std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
         VoronoiPoreSizeDistribution psd;
-        psd.run(interactions, crystal, geometricProbe("probe-He"), maximum_range, number_of_bins,
-                number_of_slices.value_or(1));
+        psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
+                number_of_slices.value_or(1), psdFloorRadius);
       }
 
       if (use_monte_carlo_methods)
@@ -1103,7 +1133,10 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::PoreAnalysis))
     {
-      std::string probe = geometricProbe("probe-N2");
+      // Helium for geometric channel/pocket labeling, matching void fraction and blocking. Energy pore
+      // analysis below stays on nitrogen (adsorption). Di/Df/Dif on the diagram routes still come from the
+      // same network pruned at this probe.
+      std::string probe = geometricProbe("probe-He");
 
       bool onTheGrid = use_gridbased_methods && use_gpu;
 
@@ -1224,7 +1257,9 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::BlockingSpheres))
     {
-      std::string probe = geometricProbe("probe-N2");
+      // Helium by default, same probe as the accessible void / BF blocking audit. Nitrogen remains the
+      // default for the energy-landscape blocking route below (BET / adsorption).
+      std::string probe = geometricProbe("probe-He");
 
       // The spheres come from the surfaces of the pockets themselves; the network is there for the cluster the
       // surfaces cannot place and for the sampled fallback, so it is worth saying which of the two was used.

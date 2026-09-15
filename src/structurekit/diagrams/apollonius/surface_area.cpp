@@ -9,6 +9,7 @@ import crystal;
 import pair_interactions;
 import units;
 import apollonius_accessibility;
+import pore_accessibility;
 import exact_surface_patches;
 import exact_boundary_components;
 import exact_solvent_excluded;
@@ -17,7 +18,7 @@ import voronoi_surface_area;
 void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crystal& framework,
                                 std::string probePseudoAtom, Method method,
                                 std::optional<std::size_t> samplesPerAtom,
-                                std::optional<std::size_t> subdivisions)
+                                std::optional<std::size_t> subdivisions, std::string reachabilityProbe)
 {
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
@@ -27,6 +28,24 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
     throw std::runtime_error("ApolloniusSurfaceArea: Unknown probe-atom type\n");
   }
   double probeRadius = 0.5 * interactions[probeType.value()].sizeParameter;
+
+  const std::string reachName = reachabilityProbe.empty() ? probePseudoAtom : reachabilityProbe;
+  const bool hybrid = reachName != probePseudoAtom;
+  double reachRadius = probeRadius;
+  if (hybrid)
+  {
+    std::optional<std::size_t> reachType = interactions.findType(reachName);
+    if (!reachType.has_value())
+    {
+      throw std::runtime_error("ApolloniusSurfaceArea: Unknown reachability probe-atom type\n");
+    }
+    reachRadius = 0.5 * interactions[reachType.value()].sizeParameter;
+    if (reachRadius > probeRadius + 1.0e-12)
+    {
+      throw std::runtime_error(
+          "ApolloniusSurfaceArea: reachability probe must be no larger than the surface probe\n");
+    }
+  }
 
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
@@ -41,6 +60,12 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
 
   ApolloniusAccessibility classifier =
       ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
+  std::optional<ApolloniusAccessibility> reachClassifier;
+  if (hybrid)
+  {
+    reachClassifier = ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, reachRadius);
+  }
+  const PoreAccessibility* reachPtr = reachClassifier ? &reachClassifier->accessibility : nullptr;
 
   const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
   const std::size_t panels = std::max<std::size_t>(1, subdivisions.value_or(1));
@@ -51,9 +76,13 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
     // Decomposed once, used twice: for the accessible area surface by surface, and for the excluded surface
     // behind it, whose convex, saddle and concave pieces hang off the same patches, creases and wedges.
     BoundaryComponents components = boundaryComponents(classifier.accessibility);
-    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(classifier.accessibility, components);
+    std::vector<ComponentVerdict> verdicts =
+        boundaryComponentVerdicts(classifier.accessibility, components, reachPtr);
+    const SurfaceSidePolicy policy =
+        hybrid ? SurfaceSidePolicy::network : SurfaceSidePolicy::geometric;
 
-    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels);
+    measured = exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels,
+                                                     SurfaceMoments::volume, policy);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
@@ -63,7 +92,7 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
   }
   else
   {
-    SurfaceAreaSample sample = sampleAccessibleSurfaceArea(classifier.accessibility, density);
+    SurfaceAreaSample sample = sampleAccessibleSurfaceArea(classifier.accessibility, density, reachPtr);
     accessibleSurfaceArea = sample.accessible;
     inaccessibleSurfaceArea = sample.inaccessible;
     undecidedSurfaceArea = 0.0;
@@ -85,7 +114,11 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
     std::print(myfile, "# Accessible / inaccessible surface area (Apollonius + Monte Carlo)\n");
   }
   std::print(myfile, "# Crystal: {}\n", framework.name);
-  std::print(myfile, "# Probe atom: {} radius: {} [Å]\n", probePseudoAtom, probeRadius);
+  std::print(myfile, "# Probe atom (surface geometry): {} radius: {} [Å]\n", probePseudoAtom, probeRadius);
+  if (hybrid)
+  {
+    std::print(myfile, "# Probe that labels reachable vs sealed: {} radius: {} [Å]\n", reachName, reachRadius);
+  }
   if (method == Method::Exact)
   {
     std::print(myfile, "# Quadrature: {}-point Gauss-Legendre per half panel, {} panel(s) per smooth piece\n",

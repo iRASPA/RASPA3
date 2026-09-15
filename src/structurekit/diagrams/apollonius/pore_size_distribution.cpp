@@ -9,11 +9,14 @@ import crystal;
 import pair_interactions;
 import apollonius_accessibility;
 import exact_pore_size_distribution;
+import exact_void_split;
+import voronoi_blocking_spheres;
 import voronoi_pore_size_distribution;
 
 void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, const Crystal& framework,
                                          std::string probePseudoAtom, std::optional<double> maximumDiameter,
-                                         std::optional<std::size_t> numberOfBins, std::size_t subdivisions)
+                                         std::optional<std::size_t> numberOfBins, std::size_t subdivisions,
+                                         double floorRadius)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -33,14 +36,57 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     radii.push_back(0.5 * interactions(type, type).sizeParameter);
   }
 
-  auto build = [&](double probeRadius)
+  auto build = [&](double inflation)
   {
-    return ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius)
+    return ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, inflation)
         .accessibility;
   };
 
-  curve = exactPoreSizeDistribution(build, framework.unitCell.volume, maximumDiameter.value_or(20.0),
-                                    numberOfBins.value_or(100), subdivisions, probeRadius);
+  const double cellVolume = framework.unitCell.volume;
+  const double maxDiameter = maximumDiameter.value_or(20.0);
+  const std::size_t bins = numberOfBins.value_or(100);
+
+  if (floorRadius > 0.0)
+  {
+    curve = exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
+                                      floorRadius);
+  }
+  else
+  {
+    // Hybrid: fill helium-sealed pockets with their blocking spheres, then take the bare PSD of what remains.
+    ApolloniusAccessibility classifier =
+        ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
+    ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, cellVolume, subdivisions);
+    std::vector<BlockingSphere> spheres;
+    if (measuredSpheresRefused(split).empty())
+    {
+      spheres = exactBlockingSpheres(split);
+    }
+    else
+    {
+      spheres = computeBlockingSpheres(classifier.accessibility, static_cast<std::size_t>(200.0 * cellVolume));
+    }
+
+    std::vector<double3> blockedPositions = fractionalPositions;
+    std::vector<double> blockedRadii = radii;
+    blockedPositions.reserve(fractionalPositions.size() + spheres.size());
+    blockedRadii.reserve(radii.size() + spheres.size());
+    for (const BlockingSphere& sphere : spheres)
+    {
+      blockedPositions.push_back(sphere.centerFractional);
+      blockedRadii.push_back(sphere.radius);
+    }
+
+    auto buildBlocked = [&](double inflation)
+    {
+      return ApolloniusAccessibility::create(framework.unitCell, blockedPositions, blockedRadii, inflation)
+          .accessibility;
+    };
+
+    PoreSizeDistributionCurve blocked =
+        exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
+    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
+  }
 
   writePoreSizeDistribution(framework, "apollonius", probePseudoAtom, curve);
 }

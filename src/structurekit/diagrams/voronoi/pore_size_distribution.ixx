@@ -19,12 +19,19 @@ export struct VoronoiPoreSizeDistribution
 {
   PoreSizeDistributionCurve curve;
 
-  // `probePseudoAtom` is the probe the accessible curve is reported for, beside the curve of the whole void.
+  // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
+  // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest).
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            std::optional<double> maximumDiameter, std::optional<std::size_t> numberOfBins,
-           std::size_t subdivisions = 1);
+           std::size_t subdivisions = 1, double floorRadius = 0.0);
 };
 
 // The report both diagrams write, the two differing only in the name in it.
 export void writePoreSizeDistribution(const Crystal& framework, const std::string& diagramName,
                                       const std::string& probePseudoAtom, const PoreSizeDistributionCurve& curve);
+
+// Promote a bare PSD of the framework with He pockets filled by blocking spheres into the hybrid report
+// shape. The open-framework whole-void curve is not computed: only the blocked network is physical for
+// adsorption. `accessibilityRadius` is recorded as the blocking probe.
+export PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked,
+                                                        double accessibilityRadius);

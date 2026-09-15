@@ -29,6 +29,7 @@ import brute_force_pore_volume;
 import brute_force_blocking_pockets;
 import brute_force_pore_spikes;
 import exact_pore_size_distribution;
+import apollonius_pore_size_distribution;
 
 namespace
 {
@@ -169,27 +170,28 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
     if (!settings.skipPoreSpikes)
     {
       // Local clearance maxima on the bare grid, clustered by diameter, with a Monte Carlo union weight.
-      // Compared with the last three whole-void spikes of the exact PSD.
+      // Pockets sealed to the void probe are blocked out, and the last three spikes of the accessible
+      // exact PSD are compared.
       const std::size_t spikePoints =
           settings.spikeVolumePoints > 0 ? settings.spikeVolumePoints : settings.volumePoints;
-      this->poreSpikes = BruteForcePoreSpikes::compute(bare, voxels, spikePoints, 3);
+      BruteForceStructure reachInflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
+      BruteForceVoxels reachVoxels = BruteForceVoxels::build(reachInflated, settings.spacing);
+      this->poreSpikes = BruteForcePoreSpikes::compute(bare, voxels, spikePoints, 3, &reachInflated,
+                                                       &reachVoxels);
 
-      auto build = [&](double probeRadius)
-      {
-        return ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, probeRadius)
-            .accessibility;
-      };
       const double maxDiameter = std::max(20.0, this->diameters.includedSphereDiameter + 1.0);
-      PoreSizeDistributionCurve curve =
-          exactPoreSizeDistribution(build, volume, maxDiameter, 100, panels, /*probeRadius*/ 0.0);
+      ApolloniusPoreSizeDistribution exactPsd;
+      exactPsd.run(interactions, framework, voidProbe, maxDiameter, 100, panels, /*floorRadius*/ 0.0);
+      const PoreSizeDistributionCurve& curve = exactPsd.curve;
 
-      const std::size_t nExact = curve.spikes.size();
+      const std::size_t nExact = curve.probeAccessibleSpikes.size();
 
       for (std::size_t rank = 0; rank < 3; ++rank)
       {
         const bool haveExact = rank < nExact;
         const bool haveBrute = rank < this->poreSpikes.families.size();
-        const PoreSizeSpike exactSpike = haveExact ? curve.spikes[nExact - 1 - rank] : PoreSizeSpike{};
+        const PoreSizeSpike exactSpike =
+            haveExact ? curve.probeAccessibleSpikes[nExact - 1 - rank] : PoreSizeSpike{};
         const BruteForceSpikeFamily bruteFamily =
             haveBrute ? this->poreSpikes.families[rank] : BruteForceSpikeFamily{};
 
@@ -544,7 +546,8 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
     {
       const auto &family = this->poreSpikes.families[i];
       std::print(report,
-                 "  spike family {}: diameter {} Å, {} centre(s), weight {} ± {} of the void\n", i + 1,
+                 "  spike family {}: diameter {} Å, {} centre(s), weight {} ± {} of the reachable void\n",
+                 i + 1,
                  family.diameter, family.centres.size(), family.weight, family.weightError);
     }
   }

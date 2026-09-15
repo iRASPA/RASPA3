@@ -16,10 +16,12 @@ import exact_surface_patches;
 import exact_boundary_components;
 import exact_solvent_excluded;
 
-SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density)
+SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density,
+                                              const PoreAccessibility* reachability)
 {
   RandomNumber random{samplingSeed};
   SurfaceAreaSample sample;
+  const PoreAccessibility& pores = (reachability != nullptr) ? *reachability : accessibility;
 
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
   {
@@ -43,7 +45,7 @@ SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibi
         buried = accessibility.overlapsAtom(point, i);
         if (buried) break;
 
-        classification = accessibility.classify(point);
+        classification = pores.classify(point);
         if (!classification.resample) break;
       }
       if (buried || classification.resample || classification.inside) continue;
@@ -101,7 +103,7 @@ void writeExcludedSurfaceAreas(std::ostream& stream, const SolventExcludedGeomet
 
 void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
                              Method method, std::optional<std::size_t> samplesPerAtom,
-                             std::optional<std::size_t> subdivisions)
+                             std::optional<std::size_t> subdivisions, std::string reachabilityProbe)
 {
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
@@ -111,6 +113,24 @@ void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal
     throw std::runtime_error("VoronoiSurfaceArea: Unknown probe-atom type\n");
   }
   double probeRadius = 0.5 * interactions[probeType.value()].sizeParameter;
+
+  const std::string reachName = reachabilityProbe.empty() ? probePseudoAtom : reachabilityProbe;
+  const bool hybrid = reachName != probePseudoAtom;
+  double reachRadius = probeRadius;
+  if (hybrid)
+  {
+    std::optional<std::size_t> reachType = interactions.findType(reachName);
+    if (!reachType.has_value())
+    {
+      throw std::runtime_error("VoronoiSurfaceArea: Unknown reachability probe-atom type\n");
+    }
+    reachRadius = 0.5 * interactions[reachType.value()].sizeParameter;
+    if (reachRadius > probeRadius + 1.0e-12)
+    {
+      throw std::runtime_error(
+          "VoronoiSurfaceArea: reachability probe must be no larger than the surface probe\n");
+    }
+  }
 
   std::vector<double3> fractionalPositions;
   std::vector<double> radii;
@@ -123,6 +143,12 @@ void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal
 
   PoreAccessibility accessibility =
       PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
+  std::optional<PoreAccessibility> reachability;
+  if (hybrid)
+  {
+    reachability = PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, reachRadius);
+  }
+  const PoreAccessibility* reachPtr = reachability ? &*reachability : nullptr;
 
   const std::size_t density = samplesPerAtom.value_or(50);  // per Å² (zeo++ default)
   const std::size_t panels = std::max<std::size_t>(1, subdivisions.value_or(1));
@@ -133,9 +159,12 @@ void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal
     // The boundary is decomposed once and used twice: for the accessible area, surface by surface, and for the
     // excluded surface behind it, whose three kinds of patch hang off the same patches, creases and wedges.
     BoundaryComponents components = boundaryComponents(accessibility);
-    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components, reachPtr);
+    const SurfaceSidePolicy policy =
+        hybrid ? SurfaceSidePolicy::network : SurfaceSidePolicy::geometric;
 
-    measured = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, panels);
+    measured = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, panels,
+                                                     SurfaceMoments::volume, policy);
     accessibleSurfaceArea = measured.accessible;
     inaccessibleSurfaceArea = measured.inaccessible;
     undecidedSurfaceArea = measured.undecided;
@@ -144,7 +173,7 @@ void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal
   }
   else
   {
-    SurfaceAreaSample sample = sampleAccessibleSurfaceArea(accessibility, density);
+    SurfaceAreaSample sample = sampleAccessibleSurfaceArea(accessibility, density, reachPtr);
     accessibleSurfaceArea = sample.accessible;
     inaccessibleSurfaceArea = sample.inaccessible;
     undecidedSurfaceArea = 0.0;
@@ -160,7 +189,11 @@ void VoronoiSurfaceArea::run(const PairInteractions& interactions, const Crystal
   std::print(myfile, "# Accessible / inaccessible surface area (Voronoi, {})\n",
              method == Method::Exact ? "exact" : "Monte Carlo");
   std::print(myfile, "# Crystal: {}\n", framework.name);
-  std::print(myfile, "# Probe atom: {} radius: {} [Å]\n", probePseudoAtom, probeRadius);
+  std::print(myfile, "# Probe atom (surface geometry): {} radius: {} [Å]\n", probePseudoAtom, probeRadius);
+  if (hybrid)
+  {
+    std::print(myfile, "# Probe that labels reachable vs sealed: {} radius: {} [Å]\n", reachName, reachRadius);
+  }
   if (method == Method::Exact)
   {
     std::print(myfile, "# Quadrature: {} panel(s) per smooth piece\n", panels);

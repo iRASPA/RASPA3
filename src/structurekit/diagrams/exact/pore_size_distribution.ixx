@@ -87,11 +87,14 @@ export struct PoreSizeDistributionCurve
   double cellVolume{0.0};  // Å³
   double voidVolume{0.0};  // Å³, the pore volume at zero diameter, which normalises the distribution
 
-  // The probe the accessible curve belongs to, and the volume that probe can reach: the pore volume at its own
-  // diameter, less the pores it cannot get into. It is what normalises the accessible curve, so that curve
-  // integrates to one over the region it describes rather than to the accessible share of the void.
-  double probeRadius{0.0};            // Å
-  double probeAccessibleVolume{0.0};  // Å³
+  // The probe that decides which pockets are blocked from the primary curve, and the volume left after that
+  // blocking. By default the floor is zero (hybrid): the blocked pockets are excluded, but the remaining void
+  // is given its bare pore-size distribution, including wall corrugation below the probe diameter. When
+  // `floorRadius` equals `probeRadius`, the curve is instead the older probe-occupiable distribution: flat
+  // below 2 r_p and normalised by the volume that probe can sit in.
+  double probeRadius{0.0};            // Å, accessibility / blocking probe
+  double floorRadius{0.0};            // Å, below which the primary curve is held flat (0 = hybrid)
+  double probeAccessibleVolume{0.0};  // Å³, normalisation volume of the primary curve
 
   // The integral of the continuous part of the distribution, and the spikes, whose weights make up the rest.
   //
@@ -142,22 +145,22 @@ export struct PoreSizeDistributionCurve
 //
 // Two curves come out of the one sweep. The first is the whole void: every pore of the framework, whether or
 // not anything can get into it, which is the distribution the volume of the cell is made of. The second is the
-// void one fixed probe can reach, `probeRadius` being that probe, which is the distribution a molecule of that
-// size meets. They differ by the pores that are sealed off from that probe, and the difference is not a
-// rescaling: a sealed cage can be the largest pore in a framework.
+// primary curve: pockets sealed to `probeRadius` are blocked, and what remains is given a pore-size
+// distribution. By default `floorRadius` is zero (the hybrid): that remaining volume keeps its bare local
+// clearances, so wall corrugation below the blocking probe's diameter is still shown. Setting `floorRadius`
+// to `probeRadius` restores the probe-occupiable curve, flat below 2 r_p.
 //
 // The second is not the accessible share of the first row by row. At a diameter d the first divides the volume
 // leaving there by what a probe of that same diameter can reach, which moves along the curve; the second holds
-// the probe still. So a cage that the fixed probe cannot enter is outside the accessible curve at every
-// diameter, and a bulge in a channel that only a larger sphere fits into is inside it, though at that diameter
-// it is a pore of its own that nothing can get into.
+// the blocking probe still. So a cage that probe cannot enter is outside the primary curve at every diameter.
 //
 // `build` makes the accessibility for a given probe radius: it is a callback because which diagram the pores
 // are taken from is the caller's business and the geometry here is the same either way. It is called at
-// `probeRadius` as well, the pores of that one network being what the accessible curve is divided by at every
-// diameter above it, and once at vanishing probe for the void volume. The diameter of the largest sphere in
-// that vanishing-probe network is where the cumulative hits zero, so rows of the report past it plus one bin
-// are left at zero without being evaluated.
+// `probeRadius` for the blocking network, at `floorRadius` for the normalisation volume when a floor is set,
+// and once at vanishing probe for the void volume. The diameter of the largest sphere in that vanishing-probe
+// network is where the cumulative hits zero, so rows of the report past it plus one bin are left at zero
+// without being evaluated.
 export PoreSizeDistributionCurve exactPoreSizeDistribution(
     const std::function<PoreAccessibility(double)>& build, double cellVolume, double maximumDiameter,
-    std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, std::size_t refinements = 12);
+    std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, double floorRadius = 0.0,
+    std::size_t refinements = 12);

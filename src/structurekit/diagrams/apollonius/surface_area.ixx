@@ -36,7 +36,11 @@ export struct ApolloniusSurfaceArea
   // by the kind of patch and by the side it faces. Filled by the exact method alone.
   SolventExcludedGeometry excludedSurface;
 
+  // `reachabilityProbe`, when set and different from `probePseudoAtom`, labels reachable vs sealed with that
+  // smaller probe (helium by default from the CLI) while the surface geometry stays with `probePseudoAtom`
+  // (nitrogen). Empty keeps the old single-probe behaviour.
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            Method method = Method::Exact, std::optional<std::size_t> samplesPerAtom = std::nullopt,
-           std::optional<std::size_t> subdivisions = std::nullopt);
+           std::optional<std::size_t> subdivisions = std::nullopt,
+           std::string reachabilityProbe = {});
 };

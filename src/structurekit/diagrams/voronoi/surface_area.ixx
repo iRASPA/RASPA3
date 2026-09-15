@@ -22,7 +22,10 @@ export struct SurfaceAreaSample
 // The sampling itself, over whatever accessibility classifier is handed to it, so that the same
 // estimate can be made of a network taken from the radical diagram or from the Apollonius diagram.
 // `density` is the number of sample points per Å² of inflated sphere surface.
-export SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density);
+// `reachability`, where given, is the network used to label channel vs pocket (e.g. helium while the
+// spheres are nitrogen); exposure is still tested against `accessibility`.
+export SurfaceAreaSample sampleAccessibleSurfaceArea(const PoreAccessibility& accessibility, std::size_t density,
+                                                     const PoreAccessibility* reachability = nullptr);
 
 // The excluded surface's area, written out as a table of the three kinds of patch against the side each faces,
 // for whichever diagram divided the sides. Shared so that the two reports say the same thing in the same words.
@@ -55,5 +58,6 @@ export struct VoronoiSurfaceArea
 
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            Method method = Method::Exact, std::optional<std::size_t> samplesPerAtom = std::nullopt,
-           std::optional<std::size_t> subdivisions = std::nullopt);
+           std::optional<std::size_t> subdivisions = std::nullopt,
+           std::string reachabilityProbe = {});
 };

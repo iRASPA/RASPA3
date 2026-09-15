@@ -18,7 +18,7 @@ namespace
 
 // One diameter, and the two things known there: the fraction with a pore size at least this, and the derivative
 // of that fraction. They are computed by routes with nothing in common, which is what makes the comparison below
-// worth making. Both are kept twice, once over the whole void and once over the part one fixed probe can reach.
+// worth making. Both are kept twice, once over the whole void and once over the part left after blocking.
 struct Series
 {
   double cumulative{0.0};
@@ -97,23 +97,32 @@ double collect(Collector& into, const Sample& left, const Sample& right, Series 
 // What a diameter is measured against, and the measurement itself.
 //
 // Two volumes normalise the curve, and neither is known until it has been measured: the whole of the void, at a
-// vanishing probe, and the part of it the fixed probe reaches, at the probe's own diameter. So the sampler is
+// vanishing probe, and the part left after blocking pockets sealed to the accessibility probe. The sampler is
 // filled in that order --- `measureVoidVolume`, then `measureProbe`, then any number of calls to `at` --- and
 // each of the first two leaves behind what the ones after it need. Past that the samples are independent of one
 // another: `at` reads the sampler and writes nothing but the count of evaluations.
+//
+// `accessibilityRadius` is the probe that decides which pockets are blocked. `floorRadius` is the diameter floor
+// of the primary curve: below 2 floorRadius that curve is held flat (the probe-occupiable convention). Zero
+// floor is the hybrid: blocked pockets are still excluded, but the remaining void keeps its bare pore sizes.
 struct Sampler
 {
-  Sampler(const std::function<PoreAccessibility(double)>& build, std::size_t subdivisions, double probeRadius)
-      : build(build), subdivisions(subdivisions), probeRadius(probeRadius)
+  Sampler(const std::function<PoreAccessibility(double)>& build, std::size_t subdivisions,
+          double accessibilityRadius, double floorRadius)
+      : build(build),
+        subdivisions(subdivisions),
+        accessibilityRadius(std::max(0.0, accessibilityRadius)),
+        floorRadius(std::max(0.0, floorRadius))
   {
   }
 
   const std::function<PoreAccessibility(double)>& build;
   std::size_t subdivisions{1};
-  double probeRadius{0.0};
+  double accessibilityRadius{0.0};
+  double floorRadius{0.0};
 
-  // The network of the fixed probe. It is built once and kept: every diameter above the probe's own asks the
-  // same network which of its pores each surface faces.
+  // The network of the accessibility probe. It is built once and kept: every diameter above the floor asks
+  // the same network which of its pores each surface faces.
   PoreAccessibility reference;
 
   // The diameter of the largest sphere that fits in the void, from the network at vanishing probe. Rows of the
@@ -122,7 +131,7 @@ struct Sampler
   double largestIncludedDiameter{0.0};
 
   double scale{0.0};                  // one over the void volume, which the whole curve is normalised by
-  double probeAccessibleVolume{0.0};  // and the volume the probe reaches, which the accessible curve is
+  double probeAccessibleVolume{0.0};  // and the blocked remaining volume, which the primary curve is
 
   // Atomic because the diameters may be evaluated several at a time, and this is the one thing they all
   // write to. It is a count and not a sum, so how the increments interleave cannot change it.
@@ -130,10 +139,57 @@ struct Sampler
 
   double reachableScale() const { return (probeAccessibleVolume > 0.0) ? 1.0 / probeAccessibleVolume : 0.0; }
 
+  // Volume behind components sealed or unplaced relative to `reference`, and the reentrant derivative on the
+  // reachable side. Shared by the normalisation sample and every diameter of the sweep.
+  void splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                        const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
+                        double& reachableDerivative) const;
+
   double measureVoidVolume(double cellVolume);
   Sample measureProbe(double voidVolume);
   Sample at(double diameter, PoreSizeDistributionPoint* row);
 };
+
+void Sampler::splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                               const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
+                               double& reachableDerivative) const
+{
+  sealed = 0.0;
+  unplaced = 0.0;
+  reachableDerivative = 0.0;
+
+  // Not `surfaceSides`, and the difference is the whole point of this curve rather than an oversight.
+  // That division asks whether a surface seals void, and answers from the sign of the volume the
+  // surface encloses before it consults anything: a surface that closes around void has sealed it, at
+  // this radius. Here the question is whether the accessibility probe can reach that void, which is a
+  // question about that probe's network and not about this surface, so a closed surface is put to the
+  // network like any other. A pocket nothing of this size can leave may still stand in a channel the
+  // accessibility probe moves freely along, and it is exactly that case the primary curve is drawn to show.
+  //
+  // What survives of the geometric argument is the one case the network cannot improve on: a surface
+  // running away through the crystal walls a channel at this radius, so it walls one at the accessibility
+  // probe's radius too, and there is nothing to ask.
+  const std::vector<ComponentVerdict> referenceVerdicts =
+      boundaryComponentVerdicts(accessibility, components, &reference);
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
+  {
+    const bool percolates = components.componentPercolates[component] != 0;
+    const ComponentVerdict& verdict = referenceVerdicts[component];
+    const int side = percolates ? 1 : (!verdict.decided ? 0 : (verdict.accessible ? 1 : -1));
+    if (side > 0)
+    {
+      reachableDerivative += geometry.componentDistribution[component];
+    }
+    else if (side < 0)
+    {
+      sealed += geometry.componentEnclosedVolume[component] + geometry.componentShellVolume[component];
+    }
+    else
+    {
+      unplaced += geometry.componentEnclosedVolume[component] + geometry.componentShellVolume[component];
+    }
+  }
+}
 
 // The void volume, which the whole curve is normalised by. It is the pore volume at zero probe radius, where
 // the excluded surface is the surface of the bare atoms and the sweep is the void fraction's own.
@@ -153,40 +209,58 @@ double Sampler::measureVoidVolume(double cellVolume)
   return voidVolume;
 }
 
-// The volume the fixed probe can reach, which normalises the accessible curve, and the sample at the probe's
-// own diameter. The volume is the pore volume there less the pores that probe cannot get into, so it is the
-// void fraction's accessible volume, taken as room for the whole probe rather than for its centre.
+// The volume left after blocking pockets sealed to the accessibility probe, which normalises the primary
+// curve, and the sample at the floor diameter. The volume is taken at the floor radius: zero for the hybrid
+// (bare void of the open network), the accessibility probe's own radius for the probe-occupiable curve.
 //
-// The same evaluation is a sample of both curves, and one that is wanted: the accessible curve has a corner at
-// the probe's diameter, above which volume leaves it and below which none does, and a trapezium laid across
-// such a corner would take it for a cliff. So the diameter is made a point of the sweep whether or not a row of
-// the table falls on it.
+// When the floor is positive, the same evaluation is a sample of both curves, and one that is wanted: the
+// primary curve has a corner at the floor diameter, above which volume leaves it and below which none does,
+// and a trapezium laid across such a corner would take it for a cliff. So the diameter is made a point of the
+// sweep whether or not a row of the table falls on it. At a zero floor the corner is the origin itself.
 Sample Sampler::measureProbe(double voidVolume)
 {
-  reference = build(probeRadius);
+  reference = build(accessibilityRadius);
 
-  BoundaryComponents components = boundaryComponents(reference);
-  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(reference, components);
+  const double radius = floorRadius;
+  PoreAccessibility accessibility = (std::abs(radius - accessibilityRadius) < 1.0e-15) ? reference : build(radius);
+  BoundaryComponents components = boundaryComponents(accessibility);
+  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components);
   SolventExcludedGeometry geometry =
-      solventExcludedGeometry(reference, probeRadius, components, verdicts, subdivisions);
+      solventExcludedGeometry(accessibility, radius, components, verdicts, subdivisions);
   ++evaluations;
+
+  double sealed = 0.0;
+  double unplaced = 0.0;
+  double reachableDerivative = 0.0;
+  if (accessibilityRadius > 0.0)
+  {
+    splitByReference(accessibility, components, geometry, sealed, unplaced, reachableDerivative);
+  }
+  else
+  {
+    // No blocking probe: the primary curve is the whole void.
+    reachableDerivative = geometry.distribution;
+  }
+
+  const double reachableVolume =
+      std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume));
 
   // A volume this small is the round-off left by subtracting the sealed pores from a total they make up the
   // whole of, and not a pore anything could be in: a framework whose void is nothing but sealed cages ends
-  // with parts in 1e10 of the cell here, and an accessible curve normalised by that would be a distribution
-  // made out of nothing. Below the slack the probe reaches nothing and there is no accessible curve to draw.
+  // with parts in 1e10 of the cell here, and a primary curve normalised by that would be a distribution
+  // made out of nothing. Below the slack the probe reaches nothing and there is no primary curve to draw.
   const double slack = 1.0e-6 * std::max(voidVolume, 1.0);
-  probeAccessibleVolume = (geometry.accessiblePoreVolume > slack) ? geometry.accessiblePoreVolume : 0.0;
+  probeAccessibleVolume = (reachableVolume > slack) ? reachableVolume : 0.0;
 
   Sample sample;
-  sample.diameter = 2.0 * probeRadius;
+  sample.diameter = 2.0 * radius;
   sample.whole.cumulative = geometry.poreVolume * scale;
   sample.whole.distribution = 0.5 * geometry.distribution * scale;
   sample.reachable.cumulative = probeAccessibleVolume * reachableScale();
 
-  // The derivative here is the one from above, which is the side of the corner the accessible curve has. At
-  // this radius the two divisions are the same one, the pores of the network being the pores of the boundary.
-  sample.reachable.distribution = 0.5 * geometry.accessibleDistribution * reachableScale();
+  // At a positive floor the derivative from above is the side of the corner the primary curve has. At a zero
+  // floor this sample coincides with the origin, whose derivative is zero on the bare convex surface.
+  sample.reachable.distribution = (radius > 0.0) ? 0.5 * reachableDerivative * reachableScale() : 0.0;
   return sample;
 }
 
@@ -201,51 +275,22 @@ Sample Sampler::at(double diameter, PoreSizeDistributionPoint* row)
   SolventExcludedGeometry geometry = solventExcludedGeometry(accessibility, radius, components, verdicts, subdivisions);
   ++evaluations;
 
-  // The same boundary, divided by the pores of the fixed probe instead of by the pores of this diameter.
-  // Above the probe's radius the two questions are different ones: a surface may close on a pore nothing of
-  // this size can leave and yet stand in a channel the probe moves along, and the volume behind it is then
-  // reachable although it is sealed at its own size.
-  //
-  // Below the probe's radius the question is not asked at all: the region that probe can occupy is a union of
-  // balls of its radius, so every point of it has a pore size of at least the probe's diameter and none of it
-  // has gone anywhere yet. The walk could not be taken there either, being clear of these atoms and not of the
-  // larger ones the probe inflates them to.
+  // Below the floor the primary region is treated as a union of balls of that floor radius, so every point of
+  // it has a pore size of at least the floor diameter and none of it has gone anywhere yet. The hybrid uses a
+  // zero floor and asks the accessibility network at every diameter, including the wall-corrugation range.
   double sealed = 0.0;
   double unplaced = 0.0;
   double reachableDerivative = 0.0;
-  const bool divide = radius >= probeRadius;
+  const bool divide = radius >= floorRadius;
   if (divide)
   {
-    const std::vector<ComponentVerdict> referenceVerdicts =
-        boundaryComponentVerdicts(accessibility, components, &reference);
-    for (std::size_t component = 0; component < components.numberOfComponents; ++component)
+    if (accessibilityRadius > 0.0)
     {
-      // Not `surfaceSides`, and the difference is the whole point of this curve rather than an oversight.
-      // That division asks whether a surface seals void, and answers from the sign of the volume the
-      // surface encloses before it consults anything: a surface that closes around void has sealed it, at
-      // this radius. Here the question is whether the fixed probe can reach that void, which is a question
-      // about the probe's network and not about this surface, so a closed surface is put to the network
-      // like any other. A pocket nothing of this size can leave may still stand in a channel the smaller
-      // probe moves freely along, and it is exactly that case the accessible curve is drawn to show.
-      //
-      // What survives of the geometric argument is the one case the network cannot improve on: a surface
-      // running away through the crystal walls a channel at this radius, so it walls one at the probe's
-      // smaller radius too, and there is nothing to ask.
-      const bool percolates = components.componentPercolates[component] != 0;
-      const ComponentVerdict& verdict = referenceVerdicts[component];
-      const int side = percolates ? 1 : (!verdict.decided ? 0 : (verdict.accessible ? 1 : -1));
-      if (side > 0)
-      {
-        reachableDerivative += geometry.componentDistribution[component];
-      }
-      else if (side < 0)
-      {
-        sealed += geometry.componentEnclosedVolume[component] + geometry.componentShellVolume[component];
-      }
-      else
-      {
-        unplaced += geometry.componentEnclosedVolume[component] + geometry.componentShellVolume[component];
-      }
+      splitByReference(accessibility, components, geometry, sealed, unplaced, reachableDerivative);
+    }
+    else
+    {
+      reachableDerivative = geometry.distribution;
     }
   }
 
@@ -311,9 +356,10 @@ std::vector<Sample> evaluateRows(Sampler& sampler, std::vector<PoreSizeDistribut
   return rows;
 }
 
-// The samples in order of diameter: the origin, the rows, and the probe's own diameter put in its place among
+// The samples in order of diameter: the origin, the rows, and the floor diameter put in its place among
 // them. That one is a point of the sweep and not a row of the table, the rows being the evenly spaced ones the
-// caller asked for; where a row falls on it already there is nothing to insert.
+// caller asked for; where a row falls on it already there is nothing to insert. A zero floor coincides with
+// the origin and is not inserted again.
 std::vector<Sample> sweepGrid(const Sample& origin, const std::vector<Sample>& rows, const Sample& probeSample,
                               double maximumDiameter)
 {
@@ -340,8 +386,8 @@ std::vector<Sample> narrowInterval(Sampler& sampler, const Sample& left, const S
                                    std::size_t refinements)
 {
   // The refinement follows the whole void. It does not need following twice: volume that goes over a cliff in
-  // a pore the probe can reach goes over the same cliff in the total, so every interval holding a spike of the
-  // accessible curve holds one of this curve as well and is narrowed on its account.
+  // a pore the primary curve can reach goes over the same cliff in the total, so every interval holding a spike
+  // of the primary curve holds one of this curve as well and is narrowed on its account.
   std::vector<Sample> pending = {left, right};
   if (unaccounted(pending[0], pending[1], &Sample::whole) <= spikeFloor) return pending;
 
@@ -385,7 +431,7 @@ std::vector<std::vector<Sample>> narrowIntervals(Sampler& sampler, const std::ve
 }
 
 // The trapezia and the spikes of both series, over the narrowed intervals in order of diameter.
-void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double probeDiameter, double allowance,
+void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double floorDiameter, double allowance,
                    Collector& whole, Collector& reachable)
 {
   // No bound at all for the whole void, which is the series the other one is held to. The largest finite double
@@ -398,14 +444,15 @@ void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double prob
     {
       const double cliff = collect(whole, pending[k], pending[k + 1], &Sample::whole, unbounded);
 
-      // The accessible curve is flat below the probe's own diameter and starts there. Since that diameter is a
-      // point of the sweep, every interval lies on one side of it, and the ones below hold nothing to collect.
+      // With a positive floor the primary curve is flat below that diameter and starts there. Since that
+      // diameter is a point of the sweep, every interval lies on one side of it, and the ones below hold
+      // nothing to collect. With a zero floor every interval is collected.
       //
-      // What the accessible curve may lose over the interval is held to what the whole void lost there, which
-      // is an inequality rather than a safeguard: the accessible region is part of the void, so the volume it
+      // What the primary curve may lose over the interval is held to what the whole void lost there, which
+      // is an inequality rather than a safeguard: the remaining region is part of the void, so the volume it
       // loses between two diameters is part of the volume the void loses, and in cubic Angstrom the one is at
       // most the other. The two are normalised by different volumes, whence the ratio.
-      if (pending[k].diameter >= probeDiameter)
+      if (pending[k].diameter >= floorDiameter)
       {
         collect(reachable, pending[k], pending[k + 1], &Sample::reachable, cliff * allowance);
       }
@@ -417,7 +464,7 @@ void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double prob
 
 PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAccessibility(double)>& build,
                                                     double cellVolume, double maximumDiameter, std::size_t numberOfBins,
-                                                    std::size_t subdivisions, double probeRadius,
+                                                    std::size_t subdivisions, double probeRadius, double floorRadius,
                                                     std::size_t refinements)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -425,11 +472,12 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   PoreSizeDistributionCurve curve;
   curve.cellVolume = cellVolume;
   curve.probeRadius = std::max(0.0, probeRadius);
+  curve.floorRadius = std::max(0.0, floorRadius);
 
   const std::size_t bins = std::max<std::size_t>(1, numberOfBins);
   const double step = maximumDiameter / static_cast<double>(bins);
 
-  Sampler sampler{build, subdivisions, curve.probeRadius};
+  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius};
 
   curve.voidVolume = sampler.measureVoidVolume(cellVolume);
   const Sample probeSample = sampler.measureProbe(curve.voidVolume);
@@ -437,8 +485,9 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
 
   // At a vanishing probe the excluded surface is the surface of the bare atoms, which is convex everywhere it
   // is exposed, so nothing of it is reentrant and the derivative is zero. The whole void is open, so the
-  // cumulative is one. Neither is evaluated; both are what the definitions say. The accessible curve is one
-  // there too, its own region being untouched until the probe's diameter is passed.
+  // cumulative is one. Neither is evaluated; both are what the definitions say. With a positive floor the
+  // primary curve is one there too, its own region being untouched until the floor diameter is passed; with a
+  // zero floor it starts losing volume as soon as the wall corrugation does.
   Sample origin;
   origin.diameter = 0.0;
   origin.whole.cumulative = 1.0;
@@ -451,7 +500,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   const std::vector<Sample> grid = sweepGrid(origin, rows, probeSample, maximumDiameter);
   const std::vector<std::vector<Sample>> narrowed = narrowIntervals(sampler, grid, refinements);
 
-  // What a weight of the whole void is worth to the accessible curve, the two being normalised by different
+  // What a weight of the whole void is worth to the primary curve, the two being normalised by different
   // volumes.
   const double allowance = (curve.probeAccessibleVolume > 0.0) ? curve.voidVolume / curve.probeAccessibleVolume : 0.0;
 

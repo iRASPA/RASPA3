@@ -42,6 +42,12 @@ export struct BruteForcePoreSpikes
   double seconds{0.0};
 
   // `voxels` must have been built from `structure` at threshold zero (bare radii).
+  //
+  // When `reachabilityStructure` and `reachabilityVoxels` are both set, maxima in pockets sealed to that
+  // probe are dropped and spike weights are fractions of the void it can reach rather than of the whole
+  // void. The reachability grid is the one built from the probe-inflated structure, as for the void flood.
   static BruteForcePoreSpikes compute(const BruteForceStructure &structure, const BruteForceVoxels &voxels,
-                                      std::size_t volumePoints, std::size_t maxFamilies = 3);
+                                      std::size_t volumePoints, std::size_t maxFamilies = 3,
+                                      const BruteForceStructure *reachabilityStructure = nullptr,
+                                      const BruteForceVoxels *reachabilityVoxels = nullptr);
 };
