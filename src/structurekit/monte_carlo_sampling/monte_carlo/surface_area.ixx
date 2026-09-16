@@ -10,13 +10,12 @@ import sampled_structure;
 // contact sphere, and the ones that fall inside another atom's thrown away.
 //
 // The share of a sphere that survives is the share of its area that is exposed, so the total is a sum of
-// 4 pi R_i² over the atoms weighted by those shares. The error is statistical and falls off as one over the
-// square root of the number of points, which is what the two counts below buy: `numberOfInnerSteps` points
-// per atom in a pass, and `numberOfIterations` independent passes whose spread is what the estimate's own
-// uncertainty could be read off.
+// 4 pi R_i² over the atoms weighted by those shares. Each pass is one independent reading of that total;
+// the running sum and sum of squares of those readings give the mean and a 95% confidence interval.
 export struct MC_SurfaceArea
 {
-  double surfaceArea{0.0};  // Å², averaged over the passes
+  double surfaceArea{0.0};       // Å², averaged over the passes
+  double surfaceAreaError{0.0};  // Å², half-width of the 95% confidence interval of the mean
   double seconds{0.0};
 
   void run(const SampledStructure &structure, const SampledProbe &probe,

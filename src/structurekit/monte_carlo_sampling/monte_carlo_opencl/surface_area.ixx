@@ -18,7 +18,8 @@ import sampled_structure;
 // The Monte Carlo accessible surface area on the GPU: one work item per atom, each sweeping the same set of
 // random directions over its own contact sphere and counting the ones that reach no other atom. See
 // `mc_surface_area` for what is being estimated; the directions are drawn on the processor so that all the
-// atoms of a pass see the same ones, exactly as they do there.
+// atoms of a pass see the same ones, exactly as they do there. Each pass is one reading of the total; the
+// sum and sum of squares of those readings give the mean and a 95% confidence interval.
 export struct MC_OpenCL_SurfaceArea
 {
   cl_program surfaceAreaProgram;
@@ -26,7 +27,8 @@ export struct MC_OpenCL_SurfaceArea
   static const char* surfaceAreaKernelSource;
   size_t surfaceAreaWorkGroupSize;
 
-  double surfaceArea{0.0};  // Å², averaged over the passes
+  double surfaceArea{0.0};       // Å², averaged over the passes
+  double surfaceAreaError{0.0};  // Å², half-width of the 95% confidence interval of the mean
   double seconds{0.0};
 
   MC_OpenCL_SurfaceArea();

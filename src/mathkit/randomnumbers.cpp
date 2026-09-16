@@ -58,6 +58,7 @@ double3x3 RandomNumber::randomRotationAroundZ(double angle)
   return double3x3(double3(c, s, 0.0), double3(-s, c, 0.0), double3(0.0, 0.0, 1.0));
 }
 
+// Marsaglia’s method
 double3 RandomNumber::randomVectorOnUnitSphere()
 {
   double ran1, ran2, ranh, ransq = 0.0;

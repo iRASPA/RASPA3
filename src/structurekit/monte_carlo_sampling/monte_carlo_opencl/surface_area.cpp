@@ -19,6 +19,7 @@ import float4;
 import double3x3;
 import randomnumbers;
 import sampled_structure;
+import unit_cell;
 
 MC_OpenCL_SurfaceArea::MC_OpenCL_SurfaceArea()
 {
@@ -148,6 +149,25 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
   cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
 
+  // Same image shell as SampledStructure::overlaps: MIC alone misses burials when 2r exceeds a cell edge.
+  double max_radius = structure.radii.empty() ? 0.0 : *std::ranges::max_element(structure.radii);
+  const double3x3 &cell = structure.unitCell.cell;
+  double shortest_edge = std::min({double3(cell[0][0], cell[0][1], cell[0][2]).length(),
+                                   double3(cell[1][0], cell[1][1], cell[1][2]).length(),
+                                   double3(cell[2][0], cell[2][1], cell[2][2]).length()});
+  cl_int use_minimum_image = (2.0 * max_radius <= shortest_edge) ? 1 : 0;
+
+  double3 a(cell[0][0], cell[0][1], cell[0][2]);
+  double3 b(cell[1][0], cell[1][1], cell[1][2]);
+  double3 c(cell[2][0], cell[2][1], cell[2][2]);
+  double spread = 0.5 * (a.length() + b.length() + c.length());
+  double reach = 2.0 * spread + max_radius;
+  double3 widths = structure.unitCell.perpendicularWidths();
+  auto along = [&](double width)
+  { return static_cast<cl_int>(std::clamp(std::ceil(reach / std::max(width, 1.0e-9)), 1.0, 8.0)); };
+  cl_int shell_x = along(widths.x);
+  cl_int shell_y = along(widths.y);
+  cl_int shell_z = along(widths.z);
 
   std::size_t number_of_random_unit_vectors{number_of_inner_steps};
   std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
@@ -173,9 +193,18 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   err |= clSetKernelArg(surfaceAreaKernel, 9, sizeof(cl_float4), &inverse_clCella);
   err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellb);
   err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverse_clCellc);
+  err |= clSetKernelArg(surfaceAreaKernel, 12, sizeof(cl_int), &use_minimum_image);
+  err |= clSetKernelArg(surfaceAreaKernel, 13, sizeof(cl_int), &shell_x);
+  err |= clSetKernelArg(surfaceAreaKernel, 14, sizeof(cl_int), &shell_y);
+  err |= clSetKernelArg(surfaceAreaKernel, 15, sizeof(cl_int), &shell_z);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clSetKernelArg failed {} : {}\n", __FILE__, __LINE__));
+  }
 
 
-  double accumulated_surface_area{};
+  double sum{};
+  double sum_of_squares{};
   for(std::size_t i = 0; i < number_of_iterations; ++i)
   {
     for (size_t j = 0; j < number_of_random_unit_vectors; j++)
@@ -207,8 +236,10 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
       throw std::runtime_error("MC_OpenCL_SurfaceArea: error in clEnqueueReadBuffer");
     }
 
+    // One independent reading of the total area: keep sum and sum of squares for the mean and its error.
     double surface_area = std::accumulate(output.begin(), output.end(), 0.0);
-    accumulated_surface_area += surface_area;
+    sum += surface_area;
+    sum_of_squares += surface_area * surface_area;
 
   }
 
@@ -222,7 +253,21 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   std::chrono::duration<double> timing = time_end - time_begin;
 
   this->seconds = timing.count();
-  this->surfaceArea = accumulated_surface_area / static_cast<double>(number_of_iterations);
+  double n = static_cast<double>(number_of_iterations);
+  this->surfaceArea = n > 0.0 ? sum / n : 0.0;
+
+  // Student-t critical values for a two-sided 95% interval (df = 1..20); beyond that the normal limit.
+  constexpr std::array<double, 21> student_t_95{
+      0.0,   12.71, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+      2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086};
+  this->surfaceAreaError = 0.0;
+  if (number_of_iterations >= 3)
+  {
+    double standard_error = std::sqrt((sum_of_squares - sum * sum / n) / (n * (n - 1.0)));
+    std::size_t degrees_of_freedom = number_of_iterations - 1;
+    double t = degrees_of_freedom < student_t_95.size() ? student_t_95[degrees_of_freedom] : 1.959963984540054;
+    this->surfaceAreaError = t * standard_error;
+  }
 
   std::ofstream myfile;
   myfile.open(structure.name + ".mc.sa.gpu.txt");
@@ -232,9 +277,14 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   std::print(myfile, "# Number of iterations: {}\n", number_of_iterations);
   std::print(myfile, "# Number of inner-steps (sample points per atom): {}\n", number_of_inner_steps);
   std::print(myfile, "# GPU Timing: {} [s]\n", this->seconds);
-  std::print(myfile, "{} [Å²]\n", this->surfaceArea);
-  std::print(myfile, "{} [m²/cm³]\n", 1.0e4 * this->surfaceArea / structure.unitCell.volume);
-  std::print(myfile, "{} [m²/g]\n", this->surfaceArea * structure.gravimetricFactor());
+  std::print(myfile, "# The area is the mean over independent passes; the error beside it is the\n");
+  std::print(myfile, "# half-width of the 95% confidence interval (Student-t times the standard\n");
+  std::print(myfile, "# error of the mean from the sum and sum of squares of the passes).\n");
+  std::print(myfile, "{} +/- {} [Å²]\n", this->surfaceArea, this->surfaceAreaError);
+  std::print(myfile, "{} +/- {} [m²/cm³]\n", 1.0e4 * this->surfaceArea / structure.unitCell.volume,
+             1.0e4 * this->surfaceAreaError / structure.unitCell.volume);
+  std::print(myfile, "{} +/- {} [m²/g]\n", this->surfaceArea * structure.gravimetricFactor(),
+             this->surfaceAreaError * structure.gravimetricFactor());
   myfile.close();
 }
 
@@ -250,9 +300,12 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
                                  const float4 cellc,
                                  const float4 inverse_cella,
                                  const float4 inverse_cellb,
-                                 const float4 inverse_cellc)
+                                 const float4 inverse_cellc,
+                                 const int use_minimum_image,
+                                 const int shell_x,
+                                 const int shell_y,
+                                 const int shell_z)
 {
-  float4 dr, ds;
   int iatom = get_global_id(0);
   float counted = 0.0f;
   float total = 0.0f;
@@ -265,33 +318,65 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
     for(int slice = 0; slice < numberOfSlices; ++slice)
     {
       float4 unit_vector = randomCartesianPositions[slice];
+      float4 sample = sphere_center + radius_i * unit_vector;
 
-      // check overlap with other atoms
       bool overlap = false;
-      for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
+      if(use_minimum_image)
       {
-        if(jatom != iatom)
+        // Large cells: one minimum-image test per other atom is enough.
+        for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
         {
-          float4 dr = (sphere_center + radius_i * unit_vector) - position[jatom];
+          if(jatom == iatom) continue;
 
+          float4 dr = sample - position[jatom];
+          float4 ds;
           ds.x = dot(inverse_cella, dr);
           ds.y = dot(inverse_cellb, dr);
           ds.z = dot(inverse_cellc, dr);
           ds.w = 0.0f;
-
           float4 t = ds - rint(ds);
-
           dr.x = dot(cella, t);
           dr.y = dot(cellb, t);
           dr.z = dot(cellc, t);
           dr.w = 0.0f;
 
-          float rr = dot(dr, dr);
-
-          if(rr < sigma[jatom] * sigma[jatom])
+          if(dot(dr, dr) < sigma[jatom] * sigma[jatom])
           {
             overlap = true;
             break;
+          }
+        }
+      }
+      else
+      {
+        // Small cells: search enough lattice images that a sphere with 2r > L is still caught,
+        // including periodic copies of the atom whose sphere was sampled.
+        for(int jatom = 0; jatom < numberOfAtoms && !overlap; ++jatom)
+        {
+          float radius_sq = sigma[jatom] * sigma[jatom];
+          for(int nc = -shell_z; nc <= shell_z && !overlap; ++nc)
+          {
+            for(int nb = -shell_y; nb <= shell_y && !overlap; ++nb)
+            {
+              for(int na = -shell_x; na <= shell_x; ++na)
+              {
+                if(jatom == iatom && na == 0 && nb == 0 && nc == 0) continue;
+
+                float4 lattice = (float4)((float)na, (float)nb, (float)nc, 0.0f);
+                float4 translation;
+                translation.x = dot(cella, lattice);
+                translation.y = dot(cellb, lattice);
+                translation.z = dot(cellc, lattice);
+                translation.w = 0.0f;
+
+                float4 dr = sample - (position[jatom] + translation);
+                if(dot(dr, dr) < radius_sq)
+                {
+                  overlap = true;
+                  break;
+                }
+              }
+            }
           }
         }
       }
@@ -304,7 +389,7 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
       total += 1.0f;
     }
 
-    output[ iatom ] = (counted / total) * 4.0 * M_PI * radius_i * radius_i;
+    output[ iatom ] = (counted / total) * 4.0f * M_PI_F * radius_i * radius_i;
   }
 }
 )foo";

@@ -804,12 +804,16 @@ void CommandLine::run(int argc, char *argv[])
           {
             MC_SurfaceArea sa;
             sa.run(structure, probe, number_of_iterations, number_of_inner_steps);
+            std::cout << "surface: " << sa.surfaceArea * structure.gravimetricFactor() << " +/- "
+                      << sa.surfaceAreaError * structure.gravimetricFactor() << " m^2/g" << std::endl;
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
             sa.run(structure, probe, number_of_iterations, number_of_inner_steps);
+            std::cout << "surface: " << sa.surfaceArea * structure.gravimetricFactor() << " +/- "
+                      << sa.surfaceAreaError * structure.gravimetricFactor() << " m^2/g" << std::endl;
           }
         }
 

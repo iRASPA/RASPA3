@@ -555,7 +555,9 @@ bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedA
 
           for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
           {
-            if (j == excludedAtom) continue;
+            // Ignore only the primary image of the atom whose sphere was sampled; other images of that
+            // atom must still be tested when 2r exceeds a cell edge.
+            if (j == excludedAtom && lx == 0 && ly == 0 && lz == 0) continue;
             double3 delta = atomPositions[j] + imageShift;
             if (double3::dot(delta, delta) < atomRadii[j] * atomRadii[j]) return true;
           }

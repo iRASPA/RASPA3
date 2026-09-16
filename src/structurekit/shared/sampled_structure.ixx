@@ -49,8 +49,10 @@ export struct SampledStructure
   // What a volume in Å³ is multiplied by to become one in cm³/g.
   double gravimetricVolumeFactor() const;
 
-  // True when `position` lies within the contact radius of some atom other than `skip`, under the minimum
-  // image convention. Pass an index at or past the end to test against every atom.
+  // True when `position` lies within the contact radius of some atom other than the primary image of
+  // `skip`. Enough lattice images are searched that a sphere larger than half a cell edge is still
+  // caught (the ordinary minimum-image wrap is not enough then). Pass an index at or past the end to
+  // test against every atom and every image.
   bool overlaps(const double3 &position, std::size_t skip) const;
 
   // The largest sphere centred on `position` that reaches no atom, or nothing when the position is inside
@@ -70,9 +72,7 @@ export struct SampledStructure
   // segment, less that atom's radius.
   //
   // `displacement` is a Cartesian vector and is taken as given, not wrapped, so a caller crossing a boundary
-  // passes the minimum image of the two endpoints' difference and gets the segment through the boundary. The
-  // nearest image of an atom is taken to the midpoint and held for the whole segment, which can only pick
-  // the wrong image for an atom half a cell away, and such an atom is never the nearest.
+  // passes the minimum image of the two endpoints' difference and gets the segment through the boundary.
   SegmentBottleneck segmentBottleneck(const double3 &position, const double3 &displacement) const;
 
   // Its radius alone, for the callers that have nothing to do with where it is.
