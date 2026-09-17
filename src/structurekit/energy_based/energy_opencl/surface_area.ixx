@@ -30,19 +30,10 @@ export struct EnergyOpenCLSurfaceArea
   EnergyOpenCLSurfaceArea();
   ~EnergyOpenCLSurfaceArea();
 
-  cl_program energyGridProgram;
-  cl_kernel energyGridKernel;
+  cl_program energyGridProgram{};
+  cl_kernel energyGridKernel{};
   static const char *energyGridKernelSource;
-  size_t energyGridWorkGroupSize;
-
-  cl_program energyEnergyOpenCLSurfaceAreaProgram;
-  cl_kernel constructHPLevelKernel;
-  cl_kernel classifyCubesKernel;
-  cl_kernel traverseHPKernel[10];
-  size_t constructHPLevelKernelWorkGroupSize;
-  size_t classifyCubesKernelWorkGroupSize;
-  size_t traverseHPKernelWorkGroupSize[10];
-  static std::string marchingCubesKernelSource;
+  size_t energyGridWorkGroupSize{0};
 
   // Extracts the surface where an arbitrary field crosses 'isoValue'. Which field is handed in decides what
   // the area means: the energy field of a single probe atom gives the surface that atom sees, a molecular
@@ -55,11 +46,8 @@ export struct EnergyOpenCLSurfaceArea
   // is the same sense the processor extractor uses, so the two are interchangeable and a consumer of either can
   // be written once; `FieldSense` on the far side is what turns a gradient into an outward normal.
   //
-  // Nothing has to be recomputed or fetched to obtain it: the kernel already writes a gradient beside every
-  // vertex it emits, and the host already reads the whole buffer back and was discarding those slots.
-  //
-  // The length is not comparable between the two extractors --- this one leaves the difference unscaled and the
-  // processor one normalises --- and nothing may depend on it.
+  // The mesh itself is Lewiner's (see `trianglesOfLewinerIsosurface`); positions are interpolated in float, so
+  // they will not be bit-identical to the CPU extractor, but the cubes, tilings and interior vertices agree.
   std::vector<double3> trianglesOfIsosurface(std::span<const float> field, uint3 gridSize, double isoValue,
                                              std::vector<double3> *gradients = nullptr);
 
