@@ -13,7 +13,6 @@ import stringutils;
 import hdf5;
 import input_reader;
 import framework;
-import vdwparameters;
 import forcefield;
 import cif_reader;
 import atom;
@@ -111,9 +110,12 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<std::size_t> number_of_inner_steps{};
   std::optional<double> minimum_range{};
   std::optional<double> maximum_range{};
-  std::optional<std::string> probe_atom_name{};
+  std::optional<std::string> probe_atom_name{};  // user label, e.g. "Ar" or "probe-Ar"
   std::optional<double> probe_size{};
   std::optional<double> probe_strength{};
+  // Ephemeral analysis probe (option B): type name in PairInteractions, display/file label.
+  std::optional<std::string> ephemeral_probe_type{};
+  std::optional<std::string> ephemeral_probe_label{};
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
   double temperature{ 298.0 };
@@ -322,19 +324,20 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "Maximum range", 
            [&maximum_range](std::string const &arg) { maximum_range = std::stod(arg); })
-      .reg({"--probe-atom-name"},
+      .reg({"--probe", "--probe-atom-name"},
            argparser::required_argument,
-           "The name of the surface / occupancy probe (prefixed with probe-, e.g. Ar → probe-Ar). "
+           "Spherical surface / occupancy probe label (e.g. Ar → probe-Ar in the force field, or the "
+           "ephemeral name when --probe-size-parameter / --probe-strength-parameter are set). "
            "Does not change helium accessibility labelling",
-           [&probe_atom_name](std::string const &arg) { probe_atom_name = "probe-" + arg; })
+           [&probe_atom_name](std::string const &arg) { probe_atom_name = arg; })
       .reg({"--probe-size-parameter"},
            argparser::required_argument,
-           "σ of a spherical uncharged LJ probe [Å], written onto the '-' pseudo-atom (e.g. 3.798). "
-           "Overrides the surface probe only; helium still labels reachable vs sealed",
+           "σ of an ephemeral spherical uncharged LJ probe [Å] (e.g. 3.31). Does not modify the force "
+           "field; overrides --probe defaults when both are given. Helium still labels reachable vs sealed",
            [&probe_size](std::string const &arg) { probe_size = std::stod(arg); })
       .reg({"--probe-strength-parameter"},
            argparser::required_argument,
-           "ε/k of a spherical uncharged LJ probe [K], written onto the '-' pseudo-atom (e.g. 71.4)",
+           "ε/k of an ephemeral spherical uncharged LJ probe [K] (e.g. 36.0). Does not modify the force field",
            [&probe_strength](std::string const &arg) { probe_strength = std::stod(arg); })
       .reg({"--use-well-depth-as-size"},
            argparser::no_argument,
@@ -559,29 +562,72 @@ void CommandLine::run(int argc, char *argv[])
                       filename));
     }
 
-    // Handle custom probe size
-    if(probe_size.has_value())
-    {
-      forceField->data.front() = VDWParameters(probe_strength.value_or(1.0), probe_size.value());
-      forceField->applyMixingRule();
-      forceField->preComputePotentialShift();
-      forceField->preComputeTailCorrection();
-      probe_atom_name = "-";
-    }
+    // Custom σ/ε define an ephemeral analysis probe on PairInteractions below — not a force-field type.
+    // --probe only supplies the label (and default ε/σ from a small alias table when one side is omitted).
 
     // The structural analysis is a library of its own, built on the same foundations as the simulation
     // engine rather than on the engine, so it is handed neither a framework nor a force field. This is where
     // the two become what it does take: a cell with a set of typed and charged atom centres in it, and a
-    // table of what a pair of types does to one another. It happens once, after any custom probe has been
-    // put into the force field above, so that everything below measures the same structure.
+    // table of what a pair of types does to one another. Ephemeral probe σ/ε are applied to the
+    // interactions table below, not to the force field.
     Crystal crystal = StructureInput::makeCrystal(framework);
     PairInteractions interactions = StructureInput::makeInteractions(forceField.value());
+
+    ephemeral_probe_type.reset();
+    ephemeral_probe_label.reset();
+
+    auto stripProbePrefix = [](std::string name) -> std::string
+    {
+      if (name.starts_with("probe-")) return name.substr(6);
+      return name;
+    };
+
+    // Analysis-probe aliases (ε/k in K, σ in Å). Used only to fill a missing size or strength when
+    // building an ephemeral probe; a bare --probe Ar still selects probe-Ar from the force field.
+    auto probeAlias = [](std::string key) -> std::optional<std::pair<double, double>>
+    {
+      if (key.starts_with("probe-")) key = key.substr(6);
+      for (char &c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+      if (key == "he") return std::pair{10.9, 2.64};
+      if (key == "ar") return std::pair{124.070, 3.38};
+      if (key == "ch4") return std::pair{158.5, 3.72};
+      if (key == "n2") return std::pair{36.0, 3.31};
+      return std::nullopt;
+    };
+
+    if (probe_size.has_value() || probe_strength.has_value())
+    {
+      std::string label = probe_atom_name.has_value() ? stripProbePrefix(probe_atom_name.value()) : "custom";
+      if (label.empty()) label = "custom";
+
+      double sigma = probe_size.value_or(0.0);
+      double epsilonKelvin = probe_strength.value_or(0.0);
+      if (!probe_size.has_value() || !probe_strength.has_value())
+      {
+        std::optional<std::pair<double, double>> alias = probe_atom_name.has_value()
+                                                             ? probeAlias(probe_atom_name.value())
+                                                             : std::nullopt;
+        if (!alias.has_value())
+        {
+          throw std::runtime_error(
+              "Ephemeral probe: both --probe-size-parameter and --probe-strength-parameter are required "
+              "unless --probe names a known alias (He, Ar, CH4, N2)\n");
+        }
+        if (!probe_strength.has_value()) epsilonKelvin = alias->first;
+        if (!probe_size.has_value()) sigma = alias->second;
+      }
+
+      constexpr std::string_view typeName = "custom";
+      interactions.addSphericalProbe(std::string(typeName), epsilonKelvin * Units::KelvinToEnergy, sigma);
+      ephemeral_probe_type = std::string(typeName);
+      ephemeral_probe_label = label;
+    }
 
     // The probe the geometric analyses sample with. Not every force field defines every probe, a
     // custom one read from a file need define none of them, so an unchosen default falls back to
     // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
-    // the command line (or written onto '-' via --probe-size-parameter) overrides the surface /
-    // occupancy probe, but never the helium accessibility label: reachable vs sealed is always He.
+    // the command line overrides the surface / occupancy probe, but never the helium accessibility
+    // label: reachable vs sealed is always He. An ephemeral σ/ε probe is the type "custom".
     auto geometricProbe = [&](const std::string &preferred) -> std::string
     {
       if (preferred == "probe-He")
@@ -589,7 +635,18 @@ void CommandLine::run(int argc, char *argv[])
         if (forceField->findPseudoAtom("probe-He").has_value()) return "probe-He";
         // No helium in this force field: fall through to the caller-facing probe rather than invent one.
       }
-      if (probe_atom_name.has_value()) return probe_atom_name.value();
+      if (ephemeral_probe_type.has_value()) return ephemeral_probe_type.value();
+      if (probe_atom_name.has_value())
+      {
+        std::string name = probe_atom_name.value();
+        if (interactions.findType(name).has_value()) return name;
+        if (!name.starts_with("probe-"))
+        {
+          std::string prefixed = "probe-" + name;
+          if (interactions.findType(prefixed).has_value()) return prefixed;
+        }
+        return name.starts_with("probe-") ? name : "probe-" + name;
+      }
       if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
       return "probe-N2";
     };
@@ -599,6 +656,19 @@ void CommandLine::run(int argc, char *argv[])
     // the long way round and held against the direct route; with no name it is the probe atom, as one site.
     auto energyMolecule = [&](const std::string &what, const std::string &preferred) -> LinearProbe
     {
+      if (!molecule_name.has_value() && ephemeral_probe_type.has_value())
+      {
+        std::optional<LinearProbe> probe = LinearProbe::singleSite(interactions, ephemeral_probe_type.value());
+        if (!probe.has_value())
+        {
+          throw std::runtime_error(std::format("Unknown ephemeral probe '{}' for the {}\n",
+                                               ephemeral_probe_type.value(), what));
+        }
+        probe->name = ephemeral_probe_label.value_or(ephemeral_probe_type.value());
+        if (!probe->sites.empty()) probe->sites.front().name = probe->name;
+        return probe.value();
+      }
+
       std::string name = molecule_name.value_or(geometricProbe(preferred));
       std::optional<LinearProbe> molecule = LinearProbe::named(interactions, name);
       if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, name);
@@ -796,7 +866,7 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_geometric_methods)
       {
-        auto [structure, probe] = sampledSurface(probe_atom_name.value_or("probe-N2"));
+        auto [structure, probe] = sampledSurface(geometricProbe("probe-N2"));
 
         if (use_monte_carlo_methods)
         {
@@ -861,17 +931,22 @@ void CommandLine::run(int argc, char *argv[])
         else if (use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(interactions, crystal, iso_value, probe_atom_name.value_or("probe-N2"), gridSize);
+          sa.run(interactions, crystal, iso_value, geometricProbe("probe-N2"), gridSize);
         }
         else
         {
           // The single-site route has no processor version of its own, so the probe is sent round as a
           // molecule of one site. The two agree exactly, which is what makes the substitution honest.
-          std::string probe = probe_atom_name.value_or("probe-N2");
+          std::string probe = geometricProbe("probe-N2");
           std::optional<LinearProbe> single = LinearProbe::singleSite(interactions, probe);
           if (!single.has_value())
           {
             throw std::runtime_error(std::format("Unknown probe atom '{}' for the surface area\n", probe));
+          }
+          if (ephemeral_probe_label.has_value())
+          {
+            single->name = ephemeral_probe_label.value();
+            if (!single->sites.empty()) single->sites.front().name = single->name;
           }
 
           MolecularSurfaceArea sa;
@@ -981,7 +1056,7 @@ void CommandLine::run(int argc, char *argv[])
         // properties. It shares no arithmetic with the field routes, so its agreeing with them is worth
         // something.
         EnergyVoidFraction vf;
-        vf.run(interactions, crystal, probe_atom_name.value_or("probe-He"), number_of_iterations,
+        vf.run(interactions, crystal, geometricProbe("probe-He"), number_of_iterations,
                number_of_inner_steps);
       }
       else if (use_energy_methods)
@@ -1013,17 +1088,22 @@ void CommandLine::run(int argc, char *argv[])
         else if (use_gpu)
         {
           EnergyOpenCLVoidFraction vf;
-          vf.run(interactions, crystal, probe_atom_name.value_or("probe-He"), gridSize, temperature);
+          vf.run(interactions, crystal, geometricProbe("probe-He"), gridSize, temperature);
         }
         else
         {
           // The single-site route has no processor version of its own, so the probe is sent round as a
           // molecule of one site. The two agree exactly, which is what makes the substitution honest.
-          std::string probe = probe_atom_name.value_or("probe-He");
+          std::string probe = geometricProbe("probe-He");
           std::optional<LinearProbe> single = LinearProbe::singleSite(interactions, probe);
           if (!single.has_value())
           {
             throw std::runtime_error(std::format("Unknown probe atom '{}' for the void fraction\n", probe));
+          }
+          if (ephemeral_probe_label.has_value())
+          {
+            single->name = ephemeral_probe_label.value();
+            if (!single->sites.empty()) single->sites.front().name = single->name;
           }
 
           MolecularVoidFraction vf;
@@ -1113,19 +1193,11 @@ void CommandLine::run(int argc, char *argv[])
         // As with the surface area: a molecule with a shape of its own goes through the orientational
         // landscape, and anything else is sent round as a molecule of one site, which the landscape
         // reproduces exactly.
-        std::string probe = molecule_name.value_or(probe_atom_name.value_or("probe-N2"));
-        std::optional<LinearProbe> molecule = LinearProbe::named(interactions, probe);
-        if (!molecule.has_value()) molecule = LinearProbe::singleSite(interactions, probe);
-        if (!molecule.has_value())
-        {
-          throw std::runtime_error(
-              std::format("Unknown molecule '{}' for the pore-size distribution\n", probe));
-        }
-
+        LinearProbe molecule = energyMolecule("pore-size distribution", "probe-N2");
         std::size_t orientations = molecule_name.has_value() ? number_of_orientations : 1;
 
         EnergyPoreSizeDistribution psd;
-        psd.run(energyBackend(), interactions, crystal, molecule.value(), iso_value, gridSize, orientations,
+        psd.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, orientations,
                 temperature, blocking_threshold, true, 1e-6, maximum_range, number_of_bins);
         std::cout << "largest sphere the void holds: " << psd.largestDiameter << " A, void fraction at this level "
                   << psd.voidFraction << ", running in " << psd.dimensionality << " directions" << std::endl;
@@ -1394,7 +1466,7 @@ void CommandLine::run(int argc, char *argv[])
       {
         throw std::runtime_error(
             std::format("Unknown molecule '{}' for the energy barrier; the ones with a shape of their own are {}, "
-                        "and any pseudo-atom may be named with --probe-atom-name instead\n",
+                        "and any pseudo-atom may be named with --probe instead\n",
                         molecule_name.value(), [] {
                           std::string names;
                           for (const std::string &name : LinearProbe::builtInNames())
@@ -1435,7 +1507,7 @@ void CommandLine::run(int argc, char *argv[])
       }
       else
       {
-        std::string probe = probe_atom_name.value_or("probe-N2");
+        std::string probe = geometricProbe("probe-N2");
 
         std::cout << "Compute the percolation barrier from the probe energy grid" << std::endl;
 

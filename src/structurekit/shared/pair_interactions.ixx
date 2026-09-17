@@ -48,4 +48,11 @@ export struct PairInteractions
   // The index of a named type, or nothing when the name is not one of them. This is how a probe named on a
   // command line becomes a row of the table.
   std::optional<std::size_t> findType(const std::string& name) const;
+
+  // Append a spherical, uncharged LJ probe that is not part of any force-field table: one new type whose
+  // self-term is (`size`, `strength`) and whose cross terms with every existing type are Lorentz–Berthelot.
+  // Shifts are filled when the table already carries them (a shifted cutoff), otherwise left at zero.
+  // `strength` and `shift` use the same energy units as the rest of the table. Returns the new type index.
+  // If `name` is already present it is replaced in place so a CLI can rebuild the ephemeral probe once.
+  std::size_t addSphericalProbe(std::string name, double strength, double size);
 };
