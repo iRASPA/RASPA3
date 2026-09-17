@@ -134,12 +134,65 @@ void refineThrough(std::vector<double3> &corners, std::vector<double> &energies,
   parameters.potential = potential;
   parameters.coulombFactor = coulombFactor;
 
+  // Marching cubes emits each shared vertex once per incident triangle. Weld by the same
+  // fractional quantisation the refinement itself uses, refine the unique set once, then
+  // scatter the slid positions and energies back onto every corner.
+  struct Key
+  {
+    std::int32_t x;
+    std::int32_t y;
+    std::int32_t z;
+    bool operator==(const Key &) const = default;
+  };
+  struct KeyHash
+  {
+    std::size_t operator()(const Key &key) const
+    {
+      std::size_t h = static_cast<std::size_t>(key.x);
+      h = h * 6364136223846793005ull + static_cast<std::size_t>(key.y);
+      h = h * 6364136223846793005ull + static_cast<std::size_t>(key.z);
+      return h;
+    }
+  };
+  auto quantize = [](double x) -> std::int32_t
+  {
+    double wrapped = x - std::floor(x);
+    std::int32_t r = static_cast<std::int32_t>(std::rint(wrapped * 1048576.0));
+    return r == 1048576 ? 0 : r;
+  };
+
+  std::vector<double3> unique;
+  std::vector<std::size_t> uniqueOf(corners.size());
+  {
+    std::unordered_map<Key, std::size_t, KeyHash> seen;
+    seen.reserve(corners.size() / 2 + 1);
+    unique.reserve(corners.size() / 3 + 1);
+    for (std::size_t i = 0; i < corners.size(); ++i)
+    {
+      const double3 &p = corners[i];
+      Key key{quantize(p.x), quantize(p.y), quantize(p.z)};
+      auto [it, inserted] = seen.emplace(key, unique.size());
+      if (inserted) unique.push_back(p);
+      uniqueOf[i] = it->second;
+    }
+  }
+
+  std::vector<double> uniqueEnergies;
   if (backend != nullptr && backend->refineWellVertices)
   {
-    backend->refineWellVertices(corners, energies, interactions, framework, parameters, blockingSpheres, iso);
-    return;
+    backend->refineWellVertices(unique, uniqueEnergies, interactions, framework, parameters, blockingSpheres, iso);
   }
-  WellFieldCPU::refineVertices(corners, energies, interactions, framework, parameters, blockingSpheres, iso);
+  else
+  {
+    WellFieldCPU::refineVertices(unique, uniqueEnergies, interactions, framework, parameters, blockingSpheres, iso);
+  }
+
+  energies.resize(corners.size());
+  for (std::size_t i = 0; i < corners.size(); ++i)
+  {
+    corners[i] = unique[uniqueOf[i]];
+    energies[i] = uniqueEnergies[uniqueOf[i]];
+  }
 }
 
 double3 principalAxis(double xx, double yy, double zz, double xy, double xz, double yz, double lambda)

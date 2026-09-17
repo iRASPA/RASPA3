@@ -53,6 +53,12 @@ double smoothPotentialAt(std::span<const float> smoothPotential, double3 s, uint
   return mix(mix(c00, c10, fracY), mix(c01, c11, fracY), fracZ);
 }
 
+struct AtomImage
+{
+  double3 cartesian{};
+  std::size_t atom{0};
+};
+
 struct Neighbourhood
 {
   UnitCell unitCell{};
@@ -81,6 +87,119 @@ struct Neighbourhood
   std::span<const float> smoothPotential{};
   uint3 potentialGridSize{0, 0, 0};
 
+  // Linked cells over the replicated atom images. Built once per neighbourhood (and again when
+  // widenFor changes the shell count); gather then only opens bins that can hold a neighbour.
+  std::vector<AtomImage> images{};
+  int3 cellCount{1, 1, 1};
+  int3 cellSpan{0, 0, 0};
+  double3 cellOrigin{0.0, 0.0, 0.0};
+  double3 cellScale{1.0, 1.0, 1.0};  // bins per fractional unit along each axis of the domain
+  std::vector<std::size_t> cellOffset{};
+  std::vector<std::size_t> cellImages{};
+
+  void rebuildCells()
+  {
+    this->images.clear();
+    this->cellOffset.clear();
+    this->cellImages.clear();
+
+    const double reach = this->longestCutOff + this->halfSpan + this->extraReach;
+    if (this->positions.empty() || !(reach > 0.0))
+    {
+      this->cellCount = int3(1, 1, 1);
+      this->cellSpan = int3(0, 0, 0);
+      this->cellOffset = {0, 0};
+      return;
+    }
+
+    // Replicate far enough that every atom image within `reach` of a point in the
+    // primary cell is present. ceil(reach / width) is the geometric padding; at least
+    // one shell keeps the periodic minimum-image case when the cutoff is small.
+    const int3 pad(
+        std::max(static_cast<std::int32_t>(std::ceil(reach / std::max(this->widths.x, 1.0e-12))), std::int32_t{1}),
+        std::max(static_cast<std::int32_t>(std::ceil(reach / std::max(this->widths.y, 1.0e-12))), std::int32_t{1}),
+        std::max(static_cast<std::int32_t>(std::ceil(reach / std::max(this->widths.z, 1.0e-12))), std::int32_t{1}));
+
+    this->images.reserve(this->positions.size() * static_cast<std::size_t>(2 * pad.x + 1) *
+                         static_cast<std::size_t>(2 * pad.y + 1) * static_cast<std::size_t>(2 * pad.z + 1));
+    for (std::size_t iatom = 0; iatom < this->positions.size(); ++iatom)
+    {
+      for (std::int32_t a = -pad.x; a <= pad.x; ++a)
+      {
+        for (std::int32_t b = -pad.y; b <= pad.y; ++b)
+        {
+          for (std::int32_t c = -pad.z; c <= pad.z; ++c)
+          {
+            double3 fractional =
+                this->positions[iatom] + double3(static_cast<double>(a), static_cast<double>(b), static_cast<double>(c));
+            this->images.push_back(AtomImage{this->unitCell.cell * fractional, iatom});
+          }
+        }
+      }
+    }
+
+    // Fractional domain covering every replicated image: [-pad, 1 + pad] on each axis.
+    this->cellOrigin =
+        double3(-static_cast<double>(pad.x), -static_cast<double>(pad.y), -static_cast<double>(pad.z));
+    const double3 domain(1.0 + 2.0 * static_cast<double>(pad.x), 1.0 + 2.0 * static_cast<double>(pad.y),
+                         1.0 + 2.0 * static_cast<double>(pad.z));
+
+    // Aim for bins about one cutoff on a side so a gather opens a small stencil. Perpendicular
+    // widths turn the fractional domain into Ångströms without assuming an orthogonal cell.
+    auto binsAlong = [&](double lengthFrac, double widthAngstrom) -> std::int32_t
+    {
+      double domainAngstrom = lengthFrac * widthAngstrom;
+      return std::max(std::int32_t{1}, static_cast<std::int32_t>(std::ceil(domainAngstrom / reach)));
+    };
+    this->cellCount = int3(binsAlong(domain.x, this->widths.x), binsAlong(domain.y, this->widths.y),
+                           binsAlong(domain.z, this->widths.z));
+    this->cellScale = double3(static_cast<double>(this->cellCount.x) / domain.x,
+                              static_cast<double>(this->cellCount.y) / domain.y,
+                              static_cast<double>(this->cellCount.z) / domain.z);
+
+    const double binWidthX = domain.x / static_cast<double>(this->cellCount.x) * this->widths.x;
+    const double binWidthY = domain.y / static_cast<double>(this->cellCount.y) * this->widths.y;
+    const double binWidthZ = domain.z / static_cast<double>(this->cellCount.z) * this->widths.z;
+    // +1 covers a query sitting on a bin face; +1 more absorbs the triclinic gap between
+    // perpendicular-width bounds and true Cartesian distance.
+    this->cellSpan =
+        int3(static_cast<std::int32_t>(std::ceil(reach / std::max(binWidthX, 1.0e-12))) + 2,
+             static_cast<std::int32_t>(std::ceil(reach / std::max(binWidthY, 1.0e-12))) + 2,
+             static_cast<std::int32_t>(std::ceil(reach / std::max(binWidthZ, 1.0e-12))) + 2);
+
+    const std::size_t nCells = static_cast<std::size_t>(this->cellCount.x) *
+                               static_cast<std::size_t>(this->cellCount.y) *
+                               static_cast<std::size_t>(this->cellCount.z);
+    std::vector<std::size_t> counts(nCells, 0);
+    auto binIndex = [&](const double3 &cartesian) -> std::size_t
+    {
+      double3 fractional = this->unitCell.inverseCell * cartesian;
+      std::int32_t bx = static_cast<std::int32_t>(std::floor((fractional.x - this->cellOrigin.x) * this->cellScale.x));
+      std::int32_t by = static_cast<std::int32_t>(std::floor((fractional.y - this->cellOrigin.y) * this->cellScale.y));
+      std::int32_t bz = static_cast<std::int32_t>(std::floor((fractional.z - this->cellOrigin.z) * this->cellScale.z));
+      bx = std::clamp(bx, 0, this->cellCount.x - 1);
+      by = std::clamp(by, 0, this->cellCount.y - 1);
+      bz = std::clamp(bz, 0, this->cellCount.z - 1);
+      return (static_cast<std::size_t>(bz) * static_cast<std::size_t>(this->cellCount.y) +
+              static_cast<std::size_t>(by)) *
+                 static_cast<std::size_t>(this->cellCount.x) +
+             static_cast<std::size_t>(bx);
+    };
+
+    for (const AtomImage &image : this->images) ++counts[binIndex(image.cartesian)];
+
+    this->cellOffset.resize(nCells + 1);
+    this->cellOffset[0] = 0;
+    for (std::size_t i = 0; i < nCells; ++i) this->cellOffset[i + 1] = this->cellOffset[i] + counts[i];
+    this->cellImages.resize(this->images.size());
+    std::vector<std::size_t> cursor(this->cellOffset.begin(), this->cellOffset.end() - 1);
+    for (std::size_t i = 0; i < this->images.size(); ++i)
+    {
+      std::size_t bin = binIndex(this->images[i].cartesian);
+      this->cellImages[cursor[bin]++] = i;
+    }
+  }
+
   void widenFor(double distance)
   {
     this->extraReach = distance;
@@ -88,6 +207,7 @@ struct Neighbourhood
     this->shells = int3(static_cast<std::int32_t>(std::floor(reach / this->widths.x + 0.5)),
                         static_cast<std::int32_t>(std::floor(reach / this->widths.y + 0.5)),
                         static_cast<std::int32_t>(std::floor(reach / this->widths.z + 0.5)));
+    this->rebuildCells();
   }
 
   std::pair<double *, double *> scratch() const
@@ -101,31 +221,43 @@ struct Neighbourhood
   {
     static thread_local std::vector<NearbyImage> nearby;
     nearby.clear();
+    if (this->images.empty()) return nearby;
 
     const double reach = this->longestCutOff + this->halfSpan + this->extraReach;
     const double reachSquared = reach * reach;
-    for (std::size_t iatom = 0; iatom < this->positions.size(); ++iatom)
+    const double3 centreCartesian = this->unitCell.cell * centre;
+
+    std::int32_t cx = static_cast<std::int32_t>(std::floor((centre.x - this->cellOrigin.x) * this->cellScale.x));
+    std::int32_t cy = static_cast<std::int32_t>(std::floor((centre.y - this->cellOrigin.y) * this->cellScale.y));
+    std::int32_t cz = static_cast<std::int32_t>(std::floor((centre.z - this->cellOrigin.z) * this->cellScale.z));
+    cx = std::clamp(cx, 0, this->cellCount.x - 1);
+    cy = std::clamp(cy, 0, this->cellCount.y - 1);
+    cz = std::clamp(cz, 0, this->cellCount.z - 1);
+
+    const std::int32_t x0 = std::max(0, cx - this->cellSpan.x);
+    const std::int32_t x1 = std::min(this->cellCount.x - 1, cx + this->cellSpan.x);
+    const std::int32_t y0 = std::max(0, cy - this->cellSpan.y);
+    const std::int32_t y1 = std::min(this->cellCount.y - 1, cy + this->cellSpan.y);
+    const std::int32_t z0 = std::max(0, cz - this->cellSpan.z);
+    const std::int32_t z1 = std::min(this->cellCount.z - 1, cz + this->cellSpan.z);
+
+    for (std::int32_t bz = z0; bz <= z1; ++bz)
     {
-      double3 ds = centre - this->positions[iatom];
-      ds.x -= std::rint(ds.x);
-      ds.y -= std::rint(ds.y);
-      ds.z -= std::rint(ds.z);
-
-      for (std::int32_t a = -this->shells.x; a <= this->shells.x; ++a)
+      for (std::int32_t by = y0; by <= y1; ++by)
       {
-        for (std::int32_t b = -this->shells.y; b <= this->shells.y; ++b)
+        for (std::int32_t bx = x0; bx <= x1; ++bx)
         {
-          for (std::int32_t c = -this->shells.z; c <= this->shells.z; ++c)
+          const std::size_t bin =
+              (static_cast<std::size_t>(bz) * static_cast<std::size_t>(this->cellCount.y) +
+               static_cast<std::size_t>(by)) *
+                  static_cast<std::size_t>(this->cellCount.x) +
+              static_cast<std::size_t>(bx);
+          for (std::size_t slot = this->cellOffset[bin]; slot < this->cellOffset[bin + 1]; ++slot)
           {
-            double3 t = ds + double3(static_cast<double>(a), static_cast<double>(b), static_cast<double>(c));
-            double far = std::max({std::abs(t.x) * this->widths.x, std::abs(t.y) * this->widths.y,
-                                   std::abs(t.z) * this->widths.z});
-            if (far > reach) continue;
-
-            double3 dr = this->unitCell.cell * t;
-            double rr = double3::dot(dr, dr);
-            if (rr >= reachSquared) continue;
-            nearby.push_back(NearbyImage{dr, iatom});
+            const AtomImage &image = this->images[this->cellImages[slot]];
+            double3 dr = centreCartesian - image.cartesian;
+            if (double3::dot(dr, dr) >= reachSquared) continue;
+            nearby.push_back(NearbyImage{dr, image.atom});
           }
         }
       }
