@@ -36,6 +36,7 @@ import cbmc;
 import cbmc_chain_data;
 import json;
 import isotherm_bet;
+import nitrogen_bet_setup;
 
 // One Widom test insertion per this many production MC steps, per walker, and only while the
 // walker sits in the bottom fraction of the macrostate range. The macrostates at the bottom hold
@@ -221,10 +222,16 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
 
-  if (autoReweightingPressureRange)
+  if (autoReweightingPressureRange || autoMacroStateMaximum)
   {
-    nitrogenBETPressurePlan =
-        planNitrogenBETPressures(templateSystem, temperatures.front(), reader.numberOfThreads);
+    const NitrogenBETAutoSetupResult betSetup =
+        applyNitrogenBETAutoSetup(templateSystem, temperatures.front(), reader.numberOfThreads,
+                                  betScoutMaximumCycles, autoReweightingPressureRange, autoMacroStateMaximum);
+    nitrogenBETPressurePlan = std::move(betSetup.pressurePlan);
+    nitrogenBETFillingCeiling = std::move(betSetup.fillingCeiling);
+  }
+  if (autoReweightingPressureRange && nitrogenBETPressurePlan.has_value())
+  {
     reweightingPressureRange =
         std::make_pair(nitrogenBETPressurePlan->lowestPressure, nitrogenBETPressurePlan->highestPressure);
     if (!reader.reweightingNumberOfPressuresSpecified)
@@ -232,17 +239,10 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
       reweightingNumberOfPressures = nitrogenBETPressurePlan->tmmcReweightingNumberOfPressures;
     }
   }
-  else
+  else if (!autoReweightingPressureRange)
   {
     reweightingPressureRange =
         reader.reweightingPressureRange.value_or(std::make_pair(0.01 * referencePressure, 100.0 * referencePressure));
-  }
-
-  if (autoMacroStateMaximum)
-  {
-    nitrogenBETFillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem, betScoutMaximumCycles);
-    templateSystem.tmmc.maxMacrostate =
-        std::max(templateSystem.tmmc.minMacrostate + 1uz, nitrogenBETFillingCeiling->maxMacrostate);
   }
   if (templateSystem.tmmc.maxMacrostate <= templateSystem.tmmc.minMacrostate)
   {

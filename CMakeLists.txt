@@ -1,8 +1,16 @@
 # CMakeLists.txt
 cmake_minimum_required(VERSION 4.3.0)
 
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
-set(CMAKE_CXX_MODULE_STD ON)
+# Gate for experimental `import std` (UUID changes per CMake minor release).
+# Must be set before project() so the toolchain check can see it.
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.4.0")
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+else()
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+endif()
+# Keep OFF while FetchContent pulls gtest/hdf5 (they must not inherit CXX_MODULE_STD).
+# Turned on below, just before our own module targets.
+set(CMAKE_CXX_MODULE_STD OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -95,6 +103,9 @@ FetchContent_Declare(hdf5
 FetchContent_MakeAvailable(hdf5)
 set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
 include_directories(${HDF5_INCLUDE_DIRS})
+
+# Our kits and drivers use `import std`; enable it only for targets created from here on.
+set(CMAKE_CXX_MODULE_STD ON)
 
 function(raspa_target_link_libraries target_name)
   if(CONDA)

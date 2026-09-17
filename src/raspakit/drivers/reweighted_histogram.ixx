@@ -324,12 +324,6 @@ export struct ReweightedHistogram
   void initializeReplicas(System templateSystem);
 
   /**
-   * \brief Re-pin the auto pressure ladder from a pre-isotherm Type I fit (Langmuir,
-   *        Langmuir–Freundlich, or Toth): Fisher overlap on a 2× equal-log skeleton.
-   */
-  void placePressureLadderFromHenryAndSaturation();
-
-  /**
    * \brief Writes the final per-replica reports (energy drift, move statistics and averages) to
    *        the per-replica output files.
    */

@@ -14,6 +14,7 @@ project(raspakit)
 file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/*.cpp
   ${PROJECT_SOURCE_DIR}/drivers/*.cpp
+  ${PROJECT_SOURCE_DIR}/drivers/internal/*.cpp
   ${PROJECT_SOURCE_DIR}/cbmc/*.cpp
   ${PROJECT_SOURCE_DIR}/cbmc/flexible_molecules/*.cpp
   ${PROJECT_SOURCE_DIR}/interactions/*.cpp
@@ -35,6 +36,7 @@ file(GLOB RASPAKIT_CPP_FILES
 file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/*.ixx
   ${PROJECT_SOURCE_DIR}/drivers/*.ixx
+  ${PROJECT_SOURCE_DIR}/drivers/internal/*.ixx
   ${PROJECT_SOURCE_DIR}/cbmc/*.ixx
   ${PROJECT_SOURCE_DIR}/cbmc/flexible_molecules/*.ixx
   ${PROJECT_SOURCE_DIR}/interactions/*.ixx
