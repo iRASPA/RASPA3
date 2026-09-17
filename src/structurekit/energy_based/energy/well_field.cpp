@@ -221,7 +221,73 @@ struct Neighbourhood
   {
     static thread_local std::vector<NearbyImage> nearby;
     nearby.clear();
-    if (this->images.empty()) return nearby;
+    this->forEachNearby(centre, [&](double3 dr, std::size_t atom) { nearby.push_back(NearbyImage{dr, atom}); });
+    return nearby;
+  }
+
+  // One site at the centre of mass, no charge, one orientation: energy, Apollonius clearance and
+  // softmin reliability in two cell-list walks with no NearbyImage vector and none of the
+  // multi-orientation bookkeeping. This is the Argon / probe-He / --probe-size-parameter path.
+  bool isSphericalUncharged() const
+  {
+    return !this->useCharges && this->numberOfOrientations == 1 && this->sites.size() == 1 &&
+           this->sites[0].dispersion && this->sites[0].offset == 0.0;
+  }
+
+  void sampleSpherical(double3 centre, double &energy, double &clearance, double &reliability) const
+  {
+    energy = 0.0;
+    clearance = 1.0e10;
+    reliability = 1.0;
+
+    static thread_local std::vector<NearbyImage> nearby;
+    nearby.clear();
+    this->forEachNearby(centre,
+                        [&](double3 dr, std::size_t atom)
+                        {
+                          nearby.push_back(NearbyImage{dr, atom});
+                          const SitePair &pair = this->pairs[atom];
+                          const double rr = double3::dot(dr, dr);
+                          if (!(rr < this->cutOffSquared)) return;
+                          const double clamped = std::max(rr, 1.0e-8);
+                          const double ratio = pair.sigma2 / clamped;
+                          const double ratio3 = ratio * ratio * ratio;
+                          energy += std::min(pair.epsilon4 * ratio3 * (ratio3 - 1.0) - pair.shift, this->ceiling);
+                          clearance = std::min(clearance, std::sqrt(clamped) - pair.contact);
+                        });
+
+    if (!(clearance < 1.0e9) || clearance < -0.5)
+    {
+      // No neighbour, or deep inside a wall: not a medial / filament voxel.
+      reliability = clearance < -0.5 ? 1.0 : 0.0;
+      return;
+    }
+
+    double3 directionSum{};
+    double weightSum = 0.0;
+    for (const NearbyImage &image : nearby)
+    {
+      const SitePair &pair = this->pairs[image.atom];
+      const double r = image.dr.length();
+      if (!(r > 1.0e-6)) continue;
+      const double weighted = r - pair.contact;
+      if (weighted - clearance > 6.0 * wellSoftminTau) continue;
+      const double w = std::exp(-(weighted - clearance) / wellSoftminTau);
+      directionSum += (-image.dr / r) * w;
+      weightSum += w;
+    }
+    if (!(weightSum > 0.0))
+    {
+      reliability = 0.0;
+      return;
+    }
+    reliability = directionSum.length() / weightSum;
+  }
+
+  template <typename Visitor>
+  void forEachNearby(double3 centre, Visitor &&visit) const
+  {
+    if (this->images.empty()) return;
 
     const double reach = this->longestCutOff + this->halfSpan + this->extraReach;
     const double reachSquared = reach * reach;
@@ -257,12 +323,11 @@ struct Neighbourhood
             const AtomImage &image = this->images[this->cellImages[slot]];
             double3 dr = centreCartesian - image.cartesian;
             if (double3::dot(dr, dr) >= reachSquared) continue;
-            nearby.push_back(NearbyImage{dr, image.atom});
+            visit(dr, image.atom);
           }
         }
       }
     }
-    return nearby;
   }
 
   template <bool WithCharges, bool WantClearance, bool WithLJ>
@@ -835,6 +900,9 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
   const double invY = 1.0 / static_cast<double>(gridSize.y);
   const double invZ = 1.0 / static_cast<double>(gridSize.z);
 
+  const bool spherical = neighbourhood.isSphericalUncharged();
+  const bool hasBlocking = !neighbourhood.spheres.empty();
+
   forEachBlock(gridSize.z, workersAvailable(),
                [&](std::size_t, std::size_t begin, std::size_t end)
                {
@@ -847,31 +915,43 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
                        double3 fractional(static_cast<double>(ix) * invX, static_cast<double>(iy) * invY,
                                           static_cast<double>(iz) * invZ);
 
-                       double pocket = blockingSphereDistance(fractional, neighbourhood.unitCell, neighbourhood.spheres);
+                       const double pocket =
+                           hasBlocking ? blockingSphereDistance(fractional, neighbourhood.unitCell, neighbourhood.spheres)
+                                       : 1.0e10;
 
-                       const std::vector<NearbyImage> &nearby = neighbourhood.gather(fractional);
-
-                       double bestClearance = 1.0e10;
-                       std::size_t bestOrientation = 0;
                        const std::size_t voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
-                       float *orientationOut =
-                           field.orientationEnergy.empty() ? nullptr : field.orientationEnergy.data() + voxel * nOrient;
-                       double value = neighbourhood.reduce<true>(nearby, fractional, double3{}, double3{},
-                                                                 bestClearance, bestOrientation, orientationOut);
-
+                       double value = 0.0;
+                       double bestClearance = 1.0e10;
                        double reliability = 1.0;
-                       if (bestClearance < 1.0e9)
+
+                       if (spherical)
                        {
-                         neighbourhood.softminDirection(nearby, bestOrientation, bestClearance, reliability);
+                         neighbourhood.sampleSpherical(fractional, value, bestClearance, reliability);
+                       }
+                       else
+                       {
+                         const std::vector<NearbyImage> &nearby = neighbourhood.gather(fractional);
+                         std::size_t bestOrientation = 0;
+                         float *orientationOut = field.orientationEnergy.empty()
+                                                     ? nullptr
+                                                     : field.orientationEnergy.data() + voxel * nOrient;
+                         value = neighbourhood.reduce<true>(nearby, fractional, double3{}, double3{}, bestClearance,
+                                                            bestOrientation, orientationOut);
+                         if (bestClearance < 1.0e9)
+                         {
+                           neighbourhood.softminDirection(nearby, bestOrientation, bestClearance, reliability);
+                         }
+                         if (pocket < 0.0 && orientationOut != nullptr)
+                         {
+                           for (std::size_t o = 0; o < nOrient; ++o) orientationOut[o] = static_cast<float>(
+                               std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling));
+                         }
                        }
 
-                       double energy = pocket < 0.0
-                                           ? std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling)
-                                           : value;
-                       if (pocket < 0.0 && orientationOut != nullptr)
-                       {
-                         for (std::size_t o = 0; o < nOrient; ++o) orientationOut[o] = static_cast<float>(energy);
-                       }
+                       const double energy =
+                           pocket < 0.0
+                               ? std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling)
+                               : value;
                        field.energy[voxel] = static_cast<float>(energy);
                        field.distance[voxel] = static_cast<float>(std::min(bestClearance, pocket));
                        field.reliability[voxel] = static_cast<float>(reliability);
