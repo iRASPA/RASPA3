@@ -4,6 +4,7 @@ export module sampled_structure;
 
 import std;
 
+import int3;
 import double3;
 import unit_cell;
 
@@ -12,6 +13,20 @@ export struct SegmentBottleneck
 {
   double radius{0.0};  // Å, negative when the way is blocked and this is how deep into an atom it goes
   double3 position{};  // Cartesian, the point of the segment where that is measured
+};
+
+// Periodic cell list over the atoms of one unit cell. Built on demand for the overlap and clearance
+// queries; leave it empty (the default) and the next query rebuilds it. Mutating `positions` or
+// `radii` after a query requires clearing `bins` (or the whole grid) so the next call rebuilds.
+export struct SampledNeighborGrid
+{
+  std::size_t atomCount{0};
+  double maximumRadius{0.0};
+  int3 gridSize{1, 1, 1};
+  double minimumBinWidth{0.0};
+  // Cartesian centres folded into the primary cell; bins and image shifts refer to these.
+  std::vector<double3> wrappedPositions;
+  std::vector<std::vector<std::size_t>> bins;
 };
 
 // A crystal as the samplers see it: a cell, the centres of the atoms of one unit cell, and the radius of
@@ -37,6 +52,9 @@ export struct SampledStructure
   std::vector<double> radii;       // Å, the distance from each centre at which contact is made
 
   double mass{0.0};  // g/mol, one unit cell
+
+  // Periodic neighbour bins; filled lazily by overlaps / clearance / segmentBottleneck.
+  mutable SampledNeighborGrid neighborGrid{};
 
   std::size_t size() const { return positions.size(); }
 
