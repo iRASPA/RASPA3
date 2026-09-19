@@ -100,7 +100,7 @@ export struct NitrogenBETPressurePlan
 };
 
 /// Place the nitrogen BET pressure span from a Widom Henry coefficient of the empty framework.
-/// `numberOfThreads` sizes the WHAM sampling ladder (8–32 rungs), matching raspa3-cli `--threads`.
+/// `numberOfThreads` sizes the WHAM sampling ladder (8–32 rungs), matching raspa3 `--threads`.
 export NitrogenBETPressurePlan planNitrogenBETPressures(System system, double temperature,
                                                         std::size_t numberOfThreads);
 

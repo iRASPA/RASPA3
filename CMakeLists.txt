@@ -176,10 +176,6 @@ if(BUILD_APP)
   add_subdirectory(app)
 endif()
 
-if(BUILD_CLI)
-  add_subdirectory(cli)
-endif()
-
 if(BUILD_DOXYGEN)
   add_subdirectory(docs)
 endif()

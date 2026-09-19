@@ -653,7 +653,7 @@ reported separately at the end of the simulation.
     the reference pressure (TMMC). Written as the string `"auto"` — only with
     `"ComputeBET" : true` — the range is placed from a Widom Henry coefficient
     of the empty framework to nitrogen P0 (101325 Pa), the same rule
-    `raspa3-cli --gcmc-bet` / `--tmmc-bet` uses. With `"ComputeBET"` the key
+    the simulation BET path uses. With `"ComputeBET"` the key
     may also be omitted, which is the same as `"auto"`.
 
 -   `"ReweightingNumberOfPressures" : integer`\
@@ -694,7 +694,7 @@ reported separately at the end of the simulation.
     `"auto"` or omitted: a Widom Henry coefficient of the empty framework
     places the bottom of the span at min(1 Pa, 10⁻³ n_Gurvich / K_H) and the
     top at P0. `"NumberOfThreads"` then sizes the WHAM pressure ladder
-    (8–32 rungs), matching `raspa3-cli --threads`. WHAM then scouts occupancy
+    (8–32 rungs), matching `raspa3 --threads`. WHAM then scouts occupancy
     at Langmuir θ = 0.1, 0.5, 0.9, fits Langmuir vs Langmuir–Freundlich vs Toth,
     and places rungs at equal Fisher overlap on a log-spaced skeleton (a point
     at least every two equal-log steps, at most two extras per interval). For WHAM,
