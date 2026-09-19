@@ -12,6 +12,7 @@ import exact_union_volume;
 import exact_boundary_components;
 import structure_parallel;
 import exact_solvent_excluded;
+import voronoi_network;
 
 namespace
 {
@@ -130,6 +131,9 @@ struct Sampler
   // but a signed zero: they are left at the zeros they start as.
   double largestIncludedDiameter{0.0};
 
+  // Distinct maximal-sphere diameters from that same vanishing-probe network (peaks-only route).
+  std::vector<double> candidateDiameters;
+
   double scale{0.0};                  // one over the void volume, which the whole curve is normalised by
   double probeAccessibleVolume{0.0};  // and the blocked remaining volume, which the primary curve is
 
@@ -149,6 +153,9 @@ struct Sampler
   Sample measureProbe(double voidVolume);
   Sample at(double diameter, PoreSizeDistributionPoint* row);
 };
+
+// Symmetry-equivalent network maxima can differ by a few 1e-3 Å; those are one room, not many.
+constexpr double peaksDiameterMergeTol = 1.0e-2;
 
 void Sampler::splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
                                const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
@@ -204,6 +211,24 @@ double Sampler::measureVoidVolume(double cellVolume)
   // found by the first zero of the sweep: that zero is the same number to a bin width, and costs a hundred
   // analyses to reach.
   largestIncludedDiameter = bare.network.largestIncludedSphereDiameter();
+
+  candidateDiameters.clear();
+  candidateDiameters.reserve(bare.network.nodes.size());
+  for (const VoronoiNode& node : bare.network.nodes)
+  {
+    if (node.maximalRadius > 0.0) candidateDiameters.push_back(2.0 * node.maximalRadius);
+  }
+  std::sort(candidateDiameters.begin(), candidateDiameters.end());
+  std::vector<double> merged;
+  merged.reserve(candidateDiameters.size());
+  for (double diameter : candidateDiameters)
+  {
+    if (merged.empty() || diameter - merged.back() > peaksDiameterMergeTol)
+      merged.push_back(diameter);
+    else
+      merged.back() = std::max(merged.back(), diameter);
+  }
+  candidateDiameters = std::move(merged);
 
   scale = (voidVolume > 0.0) ? 1.0 / voidVolume : 0.0;
   return voidVolume;
@@ -532,21 +557,102 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
                                              double cellVolume, std::size_t subdivisions, double probeRadius,
                                              double floorRadius, std::size_t refinements)
 {
-  // Read Di once so the scan stops where the void ends, then reuse the full spike finder on a coarse grid
-  // of the same spacing the default PSD uses (0.2 Å). Cliffs are still cornered by bisection to their own
-  // brackets; the continuous rows are discarded. That is much cheaper than a plot-resolution curve and does
-  // not double-count nearby network maxima the way a per-vertex bracket would.
-  PoreAccessibility bare = build(0.0);
-  const double largest = bare.network.largestIncludedSphereDiameter();
-  const double maximumDiameter = std::max(largest + 0.2, 0.2);
-  constexpr double step = 0.2;
-  const std::size_t bins = std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(maximumDiameter / step)));
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-  PoreSizeDistributionCurve curve =
-      exactPoreSizeDistribution(build, cellVolume, maximumDiameter, bins, subdivisions, probeRadius, floorRadius,
-                                refinements);
-  curve.points.clear();
+  PoreSizeDistributionCurve curve;
+  curve.cellVolume = cellVolume;
+  curve.probeRadius = std::max(0.0, probeRadius);
+  curve.floorRadius = std::max(0.0, floorRadius);
+
+  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius};
+
+  curve.voidVolume = sampler.measureVoidVolume(cellVolume);
+  const Sample probeSample = sampler.measureProbe(curve.voidVolume);
+  curve.probeAccessibleVolume = sampler.probeAccessibleVolume;
+
+  Sample origin;
+  origin.diameter = 0.0;
+  origin.whole.cumulative = 1.0;
+  origin.whole.distribution = 0.0;
+  origin.reachable.cumulative = (curve.probeAccessibleVolume > 0.0) ? 1.0 : 0.0;
+  origin.reachable.distribution = 0.0;
+
+  // Tight brackets: the network already supplies the diameter, so the two samples only need to sit on
+  // opposite sides of the cliff. Continuous loss over a few 1e-3 Å is below the spike floor; a true room
+  // loses a finite fraction at once and is kept. One family after merging → one bracket, so no double count.
+  constexpr double defaultHalfWidth = 5.0e-3;
+
+  const std::vector<double>& candidates = sampler.candidateDiameters;
+  std::vector<std::vector<Sample>> brackets(candidates.size());
+
+  forEachIndex(candidates.size(), workersAvailable(),
+               [&](std::size_t, std::size_t index)
+               {
+                 const double diameter = candidates[index];
+                 if (diameter <= 0.0 || diameter > sampler.largestIncludedDiameter + defaultHalfWidth) return;
+
+                 double half = defaultHalfWidth;
+                 if (index > 0) half = std::min(half, 0.25 * (diameter - candidates[index - 1]));
+                 if (index + 1 < candidates.size())
+                   half = std::min(half, 0.25 * (candidates[index + 1] - diameter));
+                 half = std::max(half, 1.0e-4);
+
+                 Sample left = (diameter - half <= 0.0) ? origin : sampler.at(diameter - half, nullptr);
+                 Sample right = sampler.at(diameter + half, nullptr);
+                 if (refinements == 0)
+                   brackets[index] = {left, right};
+                 else
+                   brackets[index] = narrowInterval(sampler, left, right, refinements);
+               });
+
+  const double allowance = (curve.probeAccessibleVolume > 0.0) ? curve.voidVolume / curve.probeAccessibleVolume : 0.0;
+
+  // Do not reuse collectSeries here: its "sixteen brackets" merge is meant for refined intervals of ~1e-5 Å.
+  // With a ±5e-3 Å peaks bracket that window is ~0.3 Å and chains every nearby MFI room into one spike.
+  Collector whole;
+  Collector reachable;
+  for (std::size_t index = 0; index < brackets.size(); ++index)
+  {
+    const std::vector<Sample>& pending = brackets[index];
+    if (pending.size() < 2) continue;
+
+    for (std::size_t k = 0; k + 1 < pending.size(); ++k)
+    {
+      const Sample& left = pending[k];
+      const Sample& right = pending[k + 1];
+      const double wholeGap = unaccounted(left, right, &Sample::whole);
+      if (wholeGap <= spikeFloor) continue;
+
+      PoreSizeSpike spike;
+      spike.diameter = (index < candidates.size()) ? candidates[index] : 0.5 * (left.diameter + right.diameter);
+      spike.weight = wholeGap;
+      spike.bracket = right.diameter - left.diameter;
+      whole.spikes.push_back(spike);
+      whole.singularWeight += wholeGap;
+
+      if (left.diameter < probeSample.diameter) continue;
+      const double reachableGap = std::min(unaccounted(left, right, &Sample::reachable), wholeGap * allowance);
+      if (reachableGap <= spikeFloor) continue;
+
+      PoreSizeSpike reachableSpike = spike;
+      reachableSpike.weight = reachableGap;
+      reachable.spikes.push_back(reachableSpike);
+      reachable.singularWeight += reachableGap;
+    }
+  }
+
   curve.integral = 0.0;
+  curve.singularWeight = whole.singularWeight;
+  curve.spikes = std::move(whole.spikes);
   curve.probeAccessibleIntegral = 0.0;
+  curve.probeAccessibleSingularWeight = reachable.singularWeight;
+  curve.probeAccessibleSpikes = std::move(reachable.spikes);
+  curve.truncatedWeight = 0.0;
+  curve.largestDiameter = curve.spikes.empty() ? 0.0 : curve.spikes.back().diameter;
+  curve.probeAccessibleTruncatedWeight = 0.0;
+  curve.probeAccessibleLargestDiameter =
+      curve.probeAccessibleSpikes.empty() ? 0.0 : curve.probeAccessibleSpikes.back().diameter;
+  curve.numberOfEvaluations = sampler.evaluations;
+  curve.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - begin).count();
   return curve;
 }

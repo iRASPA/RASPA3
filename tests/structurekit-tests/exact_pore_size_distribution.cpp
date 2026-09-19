@@ -101,6 +101,26 @@ TEST(exact_pore_size_distribution, a_simple_cubic_lattice_ends_at_its_corner)
 }
 
 
+TEST(exact_pore_size_distribution, peaks_only_finds_the_same_corner_spike)
+{
+  const double edge = 6.0;
+  const double radius = 1.5;
+  const double corner = std::sqrt(3.0) * edge - 2.0 * radius;
+  const Lattice lattice = simpleCubic(edge, radius);
+
+  auto build = [&](double probeRadius)
+  { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius); };
+
+  PoreSizeDistributionCurve peaks = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0);
+
+  ASSERT_FALSE(peaks.spikes.empty());
+  EXPECT_NEAR(peaks.spikes.back().diameter, corner, 1.0e-4) << "bracket " << peaks.spikes.back().bracket;
+  EXPECT_GT(peaks.spikes.back().weight, 0.1);
+  EXPECT_TRUE(peaks.points.empty());
+  EXPECT_LT(peaks.numberOfEvaluations, 40u);
+}
+
+
 TEST(exact_pore_size_distribution, the_continuous_part_and_the_spikes_account_for_the_void)
 {
   const double edge = 6.0;

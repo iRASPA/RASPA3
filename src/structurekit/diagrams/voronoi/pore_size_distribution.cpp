@@ -236,10 +236,10 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
   std::print(report, "# Only the discrete room sizes of the Gelb--Gubbins measure: each spike is the diameter of\n");
   std::print(report, "# a family of maximal inscribed spheres and the fraction of the (reachable) void that sits\n");
   std::print(report, "# at exactly that size. Wall corrugation between rooms is omitted; use --pore-size-distribution\n");
-  std::print(report, "# for the continuous curve as well. The scan uses a coarse diameter grid up to Di and the\n");
-  std::print(report, "# same bisection as the full PSD, so the cost scales with Di and the number of cliffs rather\n");
-  std::print(report, "# than with a plot-resolution table.\n");
+  std::print(report, "# for the continuous curve as well. Diameters come from the pore-network maxima; each distinct\n");
+  std::print(report, "# size is sampled once just below and once just above the cliff (no dense diameter sweep).\n");
   std::print(report, "#\n");
+  std::print(report, "# Rows sorted by weight descending.\n");
   std::print(report, "# column 1: diameter d [Å]\n");
   std::print(report, "# column 2: weight (fraction of the primary void at this pore size)\n");
   std::print(report, "# column 3: volume at this pore size [Å³]\n");
@@ -250,13 +250,17 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
   const double toVolumePerMass = (gramsPerCell > 0.0) ? 1.0e-24 / gramsPerCell : 0.0;
   const double normVolume = curve.probeAccessibleVolume;
 
+  auto byWeightDescending = [](const PoreSizeSpike& a, const PoreSizeSpike& b) { return a.weight > b.weight; };
+
   if (normVolume <= 0.0)
   {
     std::print(report, "# (none: every pore is sealed to this probe)\n");
   }
   else
   {
-    for (const PoreSizeSpike& spike : curve.probeAccessibleSpikes)
+    std::vector<PoreSizeSpike> peaks = curve.probeAccessibleSpikes;
+    std::ranges::sort(peaks, byWeightDescending);
+    for (const PoreSizeSpike& spike : peaks)
     {
       const double volume = spike.weight * normVolume;
       std::print(report, "{:11.6f} {:14.8f} {:14.5f} {:12.6f} {:.2e}\n", spike.diameter, spike.weight, volume,
@@ -272,12 +276,15 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
   {
     std::print(report, "#\n");
     std::print(report, "# Whole void (pockets not blocked):\n");
+    std::print(report, "# Rows sorted by weight descending.\n");
     std::print(report, "# column 1: diameter d [Å]\n");
     std::print(report, "# column 2: weight (fraction of the void)\n");
     std::print(report, "# column 3: volume [Å³]\n");
     std::print(report, "# column 4: [cm³/g]\n");
     std::print(report, "# column 5: bracket [Å]\n");
-    for (const PoreSizeSpike& spike : curve.spikes)
+    std::vector<PoreSizeSpike> peaks = curve.spikes;
+    std::ranges::sort(peaks, byWeightDescending);
+    for (const PoreSizeSpike& spike : peaks)
     {
       const double volume = spike.weight * curve.voidVolume;
       std::print(report, "{:11.6f} {:14.8f} {:14.5f} {:12.6f} {:.2e}\n", spike.diameter, spike.weight, volume,
