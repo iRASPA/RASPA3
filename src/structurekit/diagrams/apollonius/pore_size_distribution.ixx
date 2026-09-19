@@ -20,7 +20,8 @@ export struct ApolloniusPoreSizeDistribution
 
   // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
   // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest).
+  // With `peaksOnly`, only room-size spikes are evaluated (see `exactPoreSizePeaks`).
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            std::optional<double> maximumDiameter, std::optional<std::size_t> numberOfBins,
-           std::size_t subdivisions = 1, double floorRadius = 0.0);
+           std::size_t subdivisions = 1, double floorRadius = 0.0, bool peaksOnly = false);
 };

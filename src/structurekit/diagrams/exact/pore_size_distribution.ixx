@@ -164,3 +164,13 @@ export PoreSizeDistributionCurve exactPoreSizeDistribution(
     const std::function<PoreAccessibility(double)>& build, double cellVolume, double maximumDiameter,
     std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, double floorRadius = 0.0,
     std::size_t refinements = 12);
+
+// Room sizes and how much void sits at each, without the continuous curve between them.
+//
+// This is the spike finder of `exactPoreSizeDistribution` on a coarse grid that stops at Di, with the
+// continuous rows discarded afterwards. Wall corrugation is omitted on purpose: it is the continuous part
+// of the full curve, not a room size. Accessibility / floor conventions match `exactPoreSizeDistribution`.
+export PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibility(double)>& build,
+                                                    double cellVolume, std::size_t subdivisions,
+                                                    double probeRadius = 0.0, double floorRadius = 0.0,
+                                                    std::size_t refinements = 12);

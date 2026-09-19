@@ -204,6 +204,10 @@ void CommandLine::run(int argc, char *argv[])
            [&apply_blocking](std::string const &) { apply_blocking = false; })
       .reg({"-p", "--pore-size-distribution"}, argparser::no_argument, "Compute pore size distribution",
            [&state](std::string const &) { state.set(State::PSD); })
+      .reg({"--psd-peaks"}, argparser::no_argument,
+           "Compute only the discrete pore-size peaks (room diameters and void fraction at each), without the "
+           "continuous wall-corrugation curve. Much cheaper than --pore-size-distribution on large cells",
+           [&state](std::string const &) { state.set(State::PSDPeaks); })
       .reg({"--pore-size-distribution-probe-floor"}, argparser::required_argument,
            "Floor of the primary PSD curve. Default (flag omitted) is zero-probe hybrid: fill helium-sealed "
            "pockets with blocking spheres, then report the bare pore-size distribution of the remaining void. "
@@ -1126,14 +1130,16 @@ void CommandLine::run(int argc, char *argv[])
       }
     }
 
-    if (state.test(CommandLine::State::PSD))
+    if (state.test(CommandLine::State::PSD) || state.test(CommandLine::State::PSDPeaks))
     {
+      const bool peaksOnly = state.test(CommandLine::State::PSDPeaks);
       // The distribution itself is a closed form over the surface of the framework, so it is evaluated rather
       // than sampled unless the sampled estimate is asked for by name. Helium is the accessibility / blocking
       // Helium is the accessibility / blocking probe. By default the diameter floor is zero (hybrid):
       // helium-sealed pockets are filled by their blocking spheres and the bare pore-size distribution of
       // the remaining void is reported. --pore-size-distribution-probe-floor He restores the probe-occupiable
       // curve, flat below the helium diameter. The open whole-void curve is not computed for the hybrid.
+      // --psd-peaks keeps the same conventions but evaluates only the discrete room-size spikes.
       std::string psdAccessProbe = geometricProbe("probe-He");
       double psdFloorRadius = 0.0;
       if (psd_floor_probe.has_value())
@@ -1150,6 +1156,11 @@ void CommandLine::run(int argc, char *argv[])
       }
       if (use_gridbased_methods && use_gpu)
       {
+        if (peaksOnly)
+        {
+          std::cout << "Warning: --psd-peaks is implemented for the exact diagram routes; "
+                       "falling back to the full grid pore-size distribution" << std::endl;
+        }
         std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
 
         GridPoreSizeDistribution psd;
@@ -1158,52 +1169,82 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_apollonius)
       {
-        std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
+        std::cout << (peaksOnly ? "Compute pore-size peaks from the Apollonius diagram"
+                                : "Compute the pore-size distribution from the Apollonius diagram")
+                  << std::endl;
         ApolloniusPoreSizeDistribution psd;
         psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
-                number_of_slices.value_or(1), psdFloorRadius);
+                number_of_slices.value_or(1), psdFloorRadius, peaksOnly);
+        if (peaksOnly)
+        {
+          std::cout << psd.curve.probeAccessibleSpikes.size() << " peaks, largest room "
+                    << psd.curve.probeAccessibleLargestDiameter << " A, in " << psd.curve.seconds << " s ("
+                    << psd.curve.numberOfEvaluations << " surface evaluations)" << std::endl;
+        }
       }
       else if (use_voronoi)
       {
-        std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
+        std::cout << (peaksOnly ? "Compute pore-size peaks from the radical (Voronoi) network"
+                                : "Compute the pore-size distribution from the radical (Voronoi) network")
+                  << std::endl;
         VoronoiPoreSizeDistribution psd;
         psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
-                number_of_slices.value_or(1), psdFloorRadius);
+                number_of_slices.value_or(1), psdFloorRadius, peaksOnly);
+        if (peaksOnly)
+        {
+          std::cout << psd.curve.probeAccessibleSpikes.size() << " peaks, largest room "
+                    << psd.curve.probeAccessibleLargestDiameter << " A, in " << psd.curve.seconds << " s ("
+                    << psd.curve.numberOfEvaluations << " surface evaluations)" << std::endl;
+        }
       }
 
       if (use_monte_carlo_methods)
       {
-        SampledStructure structure = sampledVoid();
-
-        if (use_cpu)
+        if (peaksOnly)
         {
-          MC_PoreSizeDistribution psd(1000);
-          psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
+          std::cout << "Warning: --psd-peaks is not implemented for Monte Carlo PSD; skipping" << std::endl;
         }
-
-        if (use_gpu)
+        else
         {
-          MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
+          SampledStructure structure = sampledVoid();
+
+          if (use_cpu)
+          {
+            MC_PoreSizeDistribution psd(1000);
+            psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
+          }
+
+          if (use_gpu)
+          {
+            MC_OpenCL_PoreSizeDistribution psd(1000);
+            psd.run(structure, number_of_iterations, number_of_inner_steps, maximum_range);
+          }
         }
       }
 
       if (use_energy_methods)
       {
-        // As with the surface area: a molecule with a shape of its own goes through the orientational
-        // landscape, and anything else is sent round as a molecule of one site, which the landscape
-        // reproduces exactly.
-        LinearProbe molecule = energyMolecule("pore-size distribution", "probe-N2");
-        std::size_t orientations = molecule_name.has_value() ? number_of_orientations : 1;
+        if (peaksOnly)
+        {
+          std::cout << "Warning: --psd-peaks is not implemented for energy-based PSD; skipping" << std::endl;
+        }
+        else
+        {
+          // As with the surface area: a molecule with a shape of its own goes through the orientational
+          // landscape, and anything else is sent round as a molecule of one site, which the landscape
+          // reproduces exactly.
+          LinearProbe molecule = energyMolecule("pore-size distribution", "probe-N2");
+          std::size_t orientations = molecule_name.has_value() ? number_of_orientations : 1;
 
-        EnergyPoreSizeDistribution psd;
-        psd.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, orientations,
-                temperature, blocking_threshold, true, 1e-6, maximum_range, number_of_bins);
-        std::cout << "largest sphere the void holds: " << psd.largestDiameter << " A, void fraction at this level "
-                  << psd.voidFraction << ", running in " << psd.dimensionality << " directions" << std::endl;
-        std::cout << "mean pore per unit volume " << psd.volumetricMeanDiameter << " A, per molecule "
-                  << psd.occupancyMeanDiameter << " A, with " << psd.reachableOccupancyFraction
-                  << " of the molecules in reachable void" << std::endl;
+          EnergyPoreSizeDistribution psd;
+          psd.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, orientations,
+                  temperature, blocking_threshold, true, 1e-6, maximum_range, number_of_bins);
+          std::cout << "largest sphere the void holds: " << psd.largestDiameter << " A, void fraction at this level "
+                    << psd.voidFraction << ", running in " << psd.dimensionality << " directions" << std::endl;
+          std::cout << "mean pore per unit volume " << psd.volumetricMeanDiameter << " A, per molecule "
+                    << psd.occupancyMeanDiameter << " A, with " << psd.reachableOccupancyFraction
+                    << " of the molecules in reachable void" << std::endl;
+        }
       }
     }
 

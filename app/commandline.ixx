@@ -40,7 +40,8 @@ enum State : std::uint8_t
   BruteForce = 13, // The exact routes worked out again from the atoms alone, and the two set against each other
   WellSurface = 14, // The locus of energy wells: the surface a molecule sits on rather than the one it may not enter
   BET = 15,         // Predicted BET area from the well-surface contact sheet and the energy-grid Henry coefficient
-  Last = 16
+  PSDPeaks = 16,    // Room-size spikes of the pore-size distribution, without the continuous curve
+  Last = 17
 };
 
 void run(int argc, char* argv[]);

@@ -16,7 +16,7 @@ import voronoi_pore_size_distribution;
 void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, const Crystal& framework,
                                          std::string probePseudoAtom, std::optional<double> maximumDiameter,
                                          std::optional<std::size_t> numberOfBins, std::size_t subdivisions,
-                                         double floorRadius)
+                                         double floorRadius, bool peaksOnly)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -48,8 +48,9 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
 
   if (floorRadius > 0.0)
   {
-    curve = exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
-                                      floorRadius);
+    curve = peaksOnly ? exactPoreSizePeaks(build, cellVolume, subdivisions, probeRadius, floorRadius)
+                      : exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
+                                                  floorRadius);
   }
   else
   {
@@ -84,9 +85,13 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     };
 
     PoreSizeDistributionCurve blocked =
-        exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
+        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, 0.0)
+                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
     curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
   }
 
-  writePoreSizeDistribution(framework, "apollonius", probePseudoAtom, curve);
+  if (peaksOnly)
+    writePoreSizePeaks(framework, "apollonius", probePseudoAtom, curve);
+  else
+    writePoreSizeDistribution(framework, "apollonius", probePseudoAtom, curve);
 }

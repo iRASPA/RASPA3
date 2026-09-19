@@ -527,3 +527,26 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   curve.seconds = elapsed.count();
   return curve;
 }
+
+PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibility(double)>& build,
+                                             double cellVolume, std::size_t subdivisions, double probeRadius,
+                                             double floorRadius, std::size_t refinements)
+{
+  // Read Di once so the scan stops where the void ends, then reuse the full spike finder on a coarse grid
+  // of the same spacing the default PSD uses (0.2 Å). Cliffs are still cornered by bisection to their own
+  // brackets; the continuous rows are discarded. That is much cheaper than a plot-resolution curve and does
+  // not double-count nearby network maxima the way a per-vertex bracket would.
+  PoreAccessibility bare = build(0.0);
+  const double largest = bare.network.largestIncludedSphereDiameter();
+  const double maximumDiameter = std::max(largest + 0.2, 0.2);
+  constexpr double step = 0.2;
+  const std::size_t bins = std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(maximumDiameter / step)));
+
+  PoreSizeDistributionCurve curve =
+      exactPoreSizeDistribution(build, cellVolume, maximumDiameter, bins, subdivisions, probeRadius, floorRadius,
+                                refinements);
+  curve.points.clear();
+  curve.integral = 0.0;
+  curve.probeAccessibleIntegral = 0.0;
+  return curve;
+}

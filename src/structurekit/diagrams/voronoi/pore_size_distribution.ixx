@@ -21,14 +21,19 @@ export struct VoronoiPoreSizeDistribution
 
   // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
   // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest).
+  // With `peaksOnly`, only room-size spikes are evaluated (see `exactPoreSizePeaks`).
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            std::optional<double> maximumDiameter, std::optional<std::size_t> numberOfBins,
-           std::size_t subdivisions = 1, double floorRadius = 0.0);
+           std::size_t subdivisions = 1, double floorRadius = 0.0, bool peaksOnly = false);
 };
 
 // The report both diagrams write, the two differing only in the name in it.
 export void writePoreSizeDistribution(const Crystal& framework, const std::string& diagramName,
                                       const std::string& probePseudoAtom, const PoreSizeDistributionCurve& curve);
+
+// Peaks-only report: room diameters and the void fraction that sits at each, without continuous rows.
+export void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName,
+                               const std::string& probePseudoAtom, const PoreSizeDistributionCurve& curve);
 
 // Promote a bare PSD of the framework with He pockets filled by blocking spheres into the hybrid report
 // shape. The open-framework whole-void curve is not computed: only the blocked network is physical for

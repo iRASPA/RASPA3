@@ -208,6 +208,90 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
 }
 
 
+
+void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName,
+                        const std::string& probePseudoAtom, const PoreSizeDistributionCurve& curve)
+{
+  std::ofstream report;
+  report.open(std::format("{}.{}.psd-peaks.txt", framework.name, diagramName));
+
+  std::print(report, "# Pore-size peaks ({}, exact): room diameters and void fraction at each\n", diagramName);
+  std::print(report, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
+  std::print(report, "# Space-group HM-symbol: {}\n",
+             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+  std::print(report, "# Number of framework atoms: {}\n", framework.atoms.size());
+  std::print(report, "# Crystal volume: {} [Å³]\n", curve.cellVolume);
+  std::print(report, "# Crystal mass: {} [g/mol]\n", framework.mass);
+  std::print(report, "# Void volume: {} [Å³], void fraction {}\n", curve.voidVolume,
+             (curve.cellVolume > 0.0) ? curve.voidVolume / curve.cellVolume : 0.0);
+  std::print(report, "# Probe (blocking / accessibility): {}, radius {} [Å], diameter {} [Å]\n", probePseudoAtom,
+             curve.probeRadius, 2.0 * curve.probeRadius);
+  std::print(report, "# Floor radius: {} [Å] ({})\n", curve.floorRadius,
+             (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare peaks of the rest"
+                                       : "probe-occupiable: peaks only above this diameter");
+  std::print(report, "# Volume of the primary curve: {} [Å³], {} of the void\n", curve.probeAccessibleVolume,
+             (curve.voidVolume > 0.0) ? curve.probeAccessibleVolume / curve.voidVolume : 0.0);
+  std::print(report, "# Seconds: {}, over {} evaluations of the surface\n", curve.seconds, curve.numberOfEvaluations);
+  std::print(report, "#\n");
+  std::print(report, "# Only the discrete room sizes of the Gelb--Gubbins measure: each spike is the diameter of\n");
+  std::print(report, "# a family of maximal inscribed spheres and the fraction of the (reachable) void that sits\n");
+  std::print(report, "# at exactly that size. Wall corrugation between rooms is omitted; use --pore-size-distribution\n");
+  std::print(report, "# for the continuous curve as well. The scan uses a coarse diameter grid up to Di and the\n");
+  std::print(report, "# same bisection as the full PSD, so the cost scales with Di and the number of cliffs rather\n");
+  std::print(report, "# than with a plot-resolution table.\n");
+  std::print(report, "#\n");
+  std::print(report, "# column 1: diameter d [Å]\n");
+  std::print(report, "# column 2: weight (fraction of the primary void at this pore size)\n");
+  std::print(report, "# column 3: volume at this pore size [Å³]\n");
+  std::print(report, "# column 4: the same [cm³/g]\n");
+  std::print(report, "# column 5: bracket width the diameter was cornered within [Å]\n");
+
+  const double gramsPerCell = framework.mass / Units::AvogadroConstant;
+  const double toVolumePerMass = (gramsPerCell > 0.0) ? 1.0e-24 / gramsPerCell : 0.0;
+  const double normVolume = curve.probeAccessibleVolume;
+
+  if (normVolume <= 0.0)
+  {
+    std::print(report, "# (none: every pore is sealed to this probe)\n");
+  }
+  else
+  {
+    for (const PoreSizeSpike& spike : curve.probeAccessibleSpikes)
+    {
+      const double volume = spike.weight * normVolume;
+      std::print(report, "{:11.6f} {:14.8f} {:14.5f} {:12.6f} {:.2e}\n", spike.diameter, spike.weight, volume,
+                 volume * toVolumePerMass, spike.bracket);
+    }
+    std::print(report, "#\n");
+    std::print(report, "# {} peaks, singular weight {:.6f} of the primary void. Largest room {:.5f} [Å].\n",
+               curve.probeAccessibleSpikes.size(), curve.probeAccessibleSingularWeight,
+               curve.probeAccessibleLargestDiameter);
+  }
+
+  if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "#\n");
+    std::print(report, "# Whole void (pockets not blocked):\n");
+    std::print(report, "# column 1: diameter d [Å]\n");
+    std::print(report, "# column 2: weight (fraction of the void)\n");
+    std::print(report, "# column 3: volume [Å³]\n");
+    std::print(report, "# column 4: [cm³/g]\n");
+    std::print(report, "# column 5: bracket [Å]\n");
+    for (const PoreSizeSpike& spike : curve.spikes)
+    {
+      const double volume = spike.weight * curve.voidVolume;
+      std::print(report, "{:11.6f} {:14.8f} {:14.5f} {:12.6f} {:.2e}\n", spike.diameter, spike.weight, volume,
+                 volume * toVolumePerMass, spike.bracket);
+    }
+    std::print(report, "#\n");
+    std::print(report, "# {} whole-void peaks, singular weight {:.6f}. Largest {:.5f} [Å].\n", curve.spikes.size(),
+               curve.singularWeight, curve.largestDiameter);
+  }
+
+  report.close();
+}
+
+
 PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked, double accessibilityRadius)
 {
   PoreSizeDistributionCurve curve = std::move(blocked);
@@ -236,7 +320,7 @@ PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve block
 void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, const Crystal& framework,
                                       std::string probePseudoAtom, std::optional<double> maximumDiameter,
                                       std::optional<std::size_t> numberOfBins, std::size_t subdivisions,
-                                      double floorRadius)
+                                      double floorRadius, bool peaksOnly)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -256,8 +340,9 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
 
   if (floorRadius > 0.0)
   {
-    curve = exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
-                                      floorRadius);
+    curve = peaksOnly ? exactPoreSizePeaks(build, cellVolume, subdivisions, probeRadius, floorRadius)
+                      : exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
+                                                  floorRadius);
   }
   else
   {
@@ -288,9 +373,13 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
     { return PoreAccessibility::create(framework.unitCell, blockedPositions, blockedRadii, inflation); };
 
     PoreSizeDistributionCurve blocked =
-        exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
+        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, 0.0)
+                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
     curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
   }
 
-  writePoreSizeDistribution(framework, "voronoi", probePseudoAtom, curve);
+  if (peaksOnly)
+    writePoreSizePeaks(framework, "voronoi", probePseudoAtom, curve);
+  else
+    writePoreSizeDistribution(framework, "voronoi", probePseudoAtom, curve);
 }
