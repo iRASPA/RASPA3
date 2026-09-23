@@ -61,6 +61,19 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::GibbsConventionalCBCFCMC)] = MoveStatistics<double3>{
         .maxChange = double3(0.0, 0.0, 0.5), .lowerLimit = double3(0.1), .upperLimit = double3(1.0)};
 
+    // Pivot uses two statistics channels: direction 0 is the adaptive small-step channel, direction
+    // 1 the full-randomization channel whose angle window is pinned at pi by its limits, so that the
+    // randomizations do not bias the adaptive maximum angle of the small-step channel.
+    stats[std::to_underlying(Move::Types::Pivot)] =
+        MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
+                                .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
+                                .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
+    // Crankshaft uses the same two-channel layout as Pivot: direction 0 is the adaptive small-step
+    // channel, direction 1 the full-randomization channel pinned at pi by its limits.
+    stats[std::to_underlying(Move::Types::Crankshaft)] =
+        MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
+                                .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
+                                .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
     stats[std::to_underlying(Move::Types::VolumeChange)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::AnisotropicVolumeChange)] =

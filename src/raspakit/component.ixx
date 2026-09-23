@@ -142,7 +142,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{4};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -200,6 +200,23 @@ export struct Component
 
   double netCharge{0.0};                                ///< Net charge of the component [e].
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
+
+  // Fraction of pivot-move attempts that randomize the rotation angle completely (uniform in
+  // [-pi, pi]) instead of perturbing it within the adaptive window. Sampling both length scales is
+  // robustly more efficient than either alone: small steps relax dense (collapsed) states, full
+  // randomizations decorrelate expanded states and escape local minima (Vitalis & Pappu, Methods
+  // 2009). The two channels have separate acceptance statistics, so the randomizations do not bias
+  // the adaptive maximum angle.
+  double pivotRandomizationFraction{0.2};  ///< Fraction of pivot attempts with a fully random angle.
+  // Fraction of crankshaft-move attempts that randomize the rotation angle completely (uniform in
+  // [-pi, pi]) instead of perturbing it within the adaptive window; same rationale as
+  // 'pivotRandomizationFraction'.
+  double crankshaftRandomizationFraction{0.2};  ///< Fraction of crankshaft attempts with a fully random angle.
+  // Maximum number of atoms in the rotated segment of a crankshaft unit. Small segments carry small
+  // lever arms and accept at large angles; without a cap the unit list of a long chain would be
+  // dominated by large segments with poor acceptance, which would also drag the shared adaptive
+  // angle window down for the useful small segments.
+  std::size_t crankshaftMaxSegmentSize{4};  ///< Maximum size of the rotated segment of a crankshaft unit.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
@@ -250,6 +267,33 @@ export struct Component
   // Derived data: rebuilt on demand, never serialized. Marked 'mutable' so retraces on a
   // 'const Component&' can populate it.
   mutable std::map<std::vector<std::size_t>, std::vector<CBMC::GrowStep>> growthPlanCache{};
+
+  /// A valid pivot axis of the molecule together with the atoms that rotate about it. The bond is
+  /// not part of a ring, not interior to a rigid fragment, and the rotated set (the smaller of the
+  /// two molecule parts hanging off the bond, chosen deterministically) is non-empty.
+  struct PivotBond
+  {
+    std::array<std::size_t, 2> bond{};        ///< The two atoms defining the rotation axis.
+    std::vector<std::size_t> rotatedAtoms{};  ///< The atoms rotated about the axis (the smaller side).
+  };
+  // Cache of the valid pivot bonds used by the pivot move. Derived data: rebuilt on demand from the
+  // connectivity table and the fragment graph, never serialized. Marked 'mutable' so the pivot move
+  // can populate it on a 'const Component&'.
+  mutable std::optional<std::vector<PivotBond>> pivotBondsCache{};
+
+  /// A valid crankshaft unit of the molecule: two anchor atoms defining the rotation axis and the
+  /// connected segment between them (attached to the rest of the molecule only through the two
+  /// anchors) that rotates about it. The segment has at most 'crankshaftMaxSegmentSize' atoms and
+  /// every rigid fragment lies entirely inside or entirely outside it.
+  struct CrankshaftUnit
+  {
+    std::array<std::size_t, 2> axis{};        ///< The two anchor atoms defining the rotation axis.
+    std::vector<std::size_t> rotatedAtoms{};  ///< The segment rotated about the axis.
+  };
+  // Cache of the valid crankshaft units used by the crankshaft move. Derived data: rebuilt on
+  // demand from the connectivity table and the fragment graph, never serialized. Marked 'mutable'
+  // so the crankshaft move can populate it on a 'const Component&'.
+  mutable std::optional<std::vector<CrankshaftUnit>> crankshaftUnitsCache{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
   std::vector<std::size_t> identitySwitches{};  ///< Partner components for the canonical identity-switch move.
@@ -524,6 +568,14 @@ export struct Component
    * stays valid for the lifetime of the component (the cache never erases entries).
    */
   const std::vector<CBMC::GrowStep> &growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
+
+  /// Returns the valid pivot bonds of the molecule (see PivotBond); computed on first use and
+  /// cached, since the topology of a component does not change during a simulation.
+  const std::vector<PivotBond> &pivotBonds() const;
+
+  /// Returns the valid crankshaft units of the molecule (see CrankshaftUnit); computed on first use
+  /// and cached.
+  const std::vector<CrankshaftUnit> &crankshaftUnits() const;
 
   /**
    * \brief Returns whether all given atom indices lie inside one and the same rigid-body fragment.

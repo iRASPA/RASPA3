@@ -924,6 +924,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("PivotProbability") && item["PivotProbability"].is_number_float())
+      {
+        double pivotProbability = item["PivotProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::Pivot, pivotProbability);
+        }
+      }
+
+      if (item.contains("CrankshaftProbability") && item["CrankshaftProbability"].is_number_float())
+      {
+        double crankshaftProbability = item["CrankshaftProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::Crankshaft, crankshaftProbability);
+        }
+      }
+
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
@@ -1206,6 +1224,46 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           jsonComponents[i][componentId].startingBead = n;
+        }
+      }
+
+      if (item.contains("PivotRandomizationFraction") && item["PivotRandomizationFraction"].is_number_float())
+      {
+        double pivotRandomizationFraction = item["PivotRandomizationFraction"].get<double>();
+        if (pivotRandomizationFraction < 0.0 || pivotRandomizationFraction > 1.0)
+        {
+          throw std::runtime_error(std::format("[Input reader]: PivotRandomizationFraction must be in [0, 1]\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].pivotRandomizationFraction = pivotRandomizationFraction;
+        }
+      }
+
+      if (item.contains("CrankshaftRandomizationFraction") &&
+          item["CrankshaftRandomizationFraction"].is_number_float())
+      {
+        double crankshaftRandomizationFraction = item["CrankshaftRandomizationFraction"].get<double>();
+        if (crankshaftRandomizationFraction < 0.0 || crankshaftRandomizationFraction > 1.0)
+        {
+          throw std::runtime_error(std::format("[Input reader]: CrankshaftRandomizationFraction must be in [0, 1]\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].crankshaftRandomizationFraction = crankshaftRandomizationFraction;
+        }
+      }
+
+      if (item.contains("CrankshaftMaxSegmentSize") && item["CrankshaftMaxSegmentSize"].is_number_integer())
+      {
+        std::size_t crankshaftMaxSegmentSize = item["CrankshaftMaxSegmentSize"].get<std::size_t>();
+        if (crankshaftMaxSegmentSize == 0)
+        {
+          throw std::runtime_error(std::format("[Input reader]: CrankshaftMaxSegmentSize must be at least 1\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].crankshaftMaxSegmentSize = crankshaftMaxSegmentSize;
         }
       }
 
@@ -3736,6 +3794,11 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "RotationSmartMCProbability",
     "TranslationRotationSmartMCProbability",
     "RotationProbability",
+    "PivotProbability",
+    "PivotRandomizationFraction",
+    "CrankshaftProbability",
+    "CrankshaftRandomizationFraction",
+    "CrankshaftMaxSegmentSize",
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",

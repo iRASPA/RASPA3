@@ -36,6 +36,8 @@ import mc_moves_translation_rotation_smart_mc;
 import mc_moves_rotation;
 import mc_moves_random_rotation;
 import mc_moves_reinsertion;
+import mc_moves_pivot;
+import mc_moves_crankshaft;
 import mc_moves_partial_reinsertion;
 import mc_moves_insertion;
 import mc_moves_deletion;
@@ -106,6 +108,8 @@ bool isGuardedTMMCNeutralMove(Move::Types moveType)
     case Move::Types::RandomRotation:
     case Move::Types::ReinsertionCBMC:
     case Move::Types::PartialReinsertionCBMC:
+    case Move::Types::Pivot:
+    case Move::Types::Crankshaft:
       return true;
     default:
       return false;
@@ -251,6 +255,40 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
             MC_Moves::reinsertionMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         // accept if energy difference is not 0
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::Pivot:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::pivotMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::Crankshaft:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::crankshaftMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -477,6 +515,40 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
 
         selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      break;
+    }
+    case Move::Types::Pivot:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::pivotMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::Crankshaft:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::crankshaftMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -1214,6 +1286,40 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       }
       break;
     }
+    case Move::Types::Pivot:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::pivotMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::Crankshaft:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::crankshaftMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
     case Move::Types::PartialReinsertionCBMC:
     {
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
@@ -1926,6 +2032,40 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         }
         selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
+      break;
+    }
+    case Move::Types::Pivot:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::pivotMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::Crankshaft:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::crankshaftMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:

@@ -53,7 +53,9 @@ export struct Move
     GroupSwapCFCMC = 42,              // CFCMC insertion/deletion of a neutral group of molecules
     GroupSwapCBCFCMC = 43,            // CB/CFCMC insertion/deletion of a neutral group of molecules
     TetheredProtonHop = 44,           // relocation of a tethered proton among its discrete candidate sites
-    Count = 45
+    Pivot = 45,                       // rotation of a chain part about a randomly selected non-ring bond
+    Crankshaft = 46,                  // rotation of a small chain segment about the axis through its two anchors
+    Count = 47
   };
 
   /**
@@ -126,6 +128,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::RotationSmartMC,
                                                                 Move::Types::TranslationRotationSmartMC,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
+                                                                Move::Types::Pivot,
+                                                                Move::Types::Crankshaft,
                                                                 Move::Types::IdentityChangeCBMC,
                                                                 Move::Types::IdentitySwitchCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,

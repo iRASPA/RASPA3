@@ -610,6 +610,174 @@ const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::
   return it->second;
 }
 
+const std::vector<Component::PivotBond> &Component::pivotBonds() const
+{
+  if (pivotBondsCache.has_value()) return pivotBondsCache.value();
+
+  std::vector<PivotBond> result;
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+
+  // Collects the atoms reachable from 'root' without crossing the bond (root, excluded). The two
+  // axis atoms are not part of the result (they lie on the rotation axis and do not move). Returns
+  // nullopt when 'excluded' is reached through another path, i.e. the bond is part of a ring and
+  // there is no well-defined part to rotate.
+  auto partition = [&](std::size_t root, std::size_t excluded) -> std::optional<std::vector<std::size_t>>
+  {
+    std::vector<bool> visited(numberOfBeads, false);
+    visited[root] = true;
+    std::vector<std::size_t> stack{root};
+    std::vector<std::size_t> collected;
+    while (!stack.empty())
+    {
+      std::size_t current = stack.back();
+      stack.pop_back();
+      for (std::size_t neighbor : connectivityTable.findAllNeighbors(current))
+      {
+        if (neighbor == excluded)
+        {
+          if (current == root) continue;  // the pivot bond itself
+          return std::nullopt;            // reached the other axis atom through a ring
+        }
+        if (!visited[neighbor])
+        {
+          visited[neighbor] = true;
+          stack.push_back(neighbor);
+          collected.push_back(neighbor);
+        }
+      }
+    }
+    return collected;
+  };
+
+  for (const std::array<std::size_t, 2> &bond : connectivityTable.findAllBonds())
+  {
+    // A bond between two atoms of the same rigid fragment cannot be a pivot axis: rotating about it
+    // would change the internal geometry of the rigid body. Rigid fragments that lie entirely on
+    // one side of a pivot bond are fine (they rotate rigidly, which preserves their geometry).
+    const std::vector<std::size_t> &atomFragmentIds = fragmentGraph.atomFragmentIds;
+    if (!atomFragmentIds.empty() && atomFragmentIds[bond[0]] == atomFragmentIds[bond[1]] &&
+        fragmentGraph.fragments[atomFragmentIds[bond[0]]].isRigidBody())
+    {
+      continue;
+    }
+
+    std::optional<std::vector<std::size_t>> sideOfSecond = partition(bond[1], bond[0]);
+    if (!sideOfSecond.has_value()) continue;  // ring bond
+
+    // Rotate the smaller of the two parts; the choice is deterministic given the bond, so the
+    // pivot-move proposal stays symmetric.
+    std::size_t sizeOfFirstSide = numberOfBeads - 2 - sideOfSecond->size();
+    std::vector<std::size_t> rotatedAtoms;
+    if (sideOfSecond->size() <= sizeOfFirstSide)
+    {
+      rotatedAtoms = std::move(sideOfSecond.value());
+    }
+    else
+    {
+      rotatedAtoms = std::move(partition(bond[0], bond[1]).value());
+    }
+    if (rotatedAtoms.empty()) continue;  // terminal bond, nothing to rotate
+
+    result.push_back(PivotBond{bond, std::move(rotatedAtoms)});
+  }
+
+  pivotBondsCache = std::move(result);
+  return pivotBondsCache.value();
+}
+
+const std::vector<Component::CrankshaftUnit> &Component::crankshaftUnits() const
+{
+  if (crankshaftUnitsCache.has_value()) return crankshaftUnitsCache.value();
+
+  std::vector<CrankshaftUnit> result;
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+  const std::vector<std::size_t> &atomFragmentIds = fragmentGraph.atomFragmentIds;
+
+  // Enumerate all anchor pairs (a, b). Removing both anchors from the molecular graph splits it
+  // into connected components; every component that is bonded to both anchors lies 'between' them
+  // and is a candidate segment for rotation about the a-b axis. Since the anchors are fixed and
+  // every path from the segment to the rest of the molecule passes through an anchor, a rigid
+  // rotation of the segment preserves all bond lengths (distances to on-axis points are invariant).
+  // This construction handles branched molecules (side chains attached to the segment are part of
+  // its component and rotate along) and flexible rings (both arcs between two ring atoms are valid
+  // segments), which the pivot move cannot sample.
+  for (std::size_t anchorA = 0; anchorA + 1 < numberOfBeads; ++anchorA)
+  {
+    for (std::size_t anchorB = anchorA + 1; anchorB < numberOfBeads; ++anchorB)
+    {
+      std::vector<bool> visited(numberOfBeads, false);
+      visited[anchorA] = true;
+      visited[anchorB] = true;
+
+      for (std::size_t seed = 0; seed < numberOfBeads; ++seed)
+      {
+        if (visited[seed]) continue;
+
+        // Collect the connected component containing 'seed' in the graph without the anchors, and
+        // record whether it is bonded to each anchor.
+        std::vector<std::size_t> segment{seed};
+        std::vector<std::size_t> stack{seed};
+        visited[seed] = true;
+        bool bondedToA = false;
+        bool bondedToB = false;
+        while (!stack.empty())
+        {
+          std::size_t current = stack.back();
+          stack.pop_back();
+          for (std::size_t neighbor : connectivityTable.findAllNeighbors(current))
+          {
+            if (neighbor == anchorA)
+            {
+              bondedToA = true;
+            }
+            else if (neighbor == anchorB)
+            {
+              bondedToB = true;
+            }
+            else if (!visited[neighbor])
+            {
+              visited[neighbor] = true;
+              stack.push_back(neighbor);
+              segment.push_back(neighbor);
+            }
+          }
+        }
+
+        if (!bondedToA || !bondedToB) continue;
+        if (segment.size() > crankshaftMaxSegmentSize) continue;
+
+        // Every rigid fragment must lie entirely inside or entirely outside the rotated segment;
+        // a fragment straddling the boundary (including one containing an anchor) would deform.
+        std::vector<bool> inSegment(numberOfBeads, false);
+        for (std::size_t atom : segment) inSegment[atom] = true;
+        bool deformsRigidFragment = false;
+        for (std::size_t atom : segment)
+        {
+          if (atomFragmentIds.empty()) break;
+          const auto &fragment = fragmentGraph.fragments[atomFragmentIds[atom]];
+          if (!fragment.isRigidBody()) continue;
+          for (std::size_t fragmentAtom : fragment.atoms)
+          {
+            if (!inSegment[fragmentAtom])
+            {
+              deformsRigidFragment = true;
+              break;
+            }
+          }
+          if (deformsRigidFragment) break;
+        }
+        if (deformsRigidFragment) continue;
+
+        std::sort(segment.begin(), segment.end());
+        result.push_back(CrankshaftUnit{{anchorA, anchorB}, std::move(segment)});
+      }
+    }
+  }
+
+  crankshaftUnitsCache = std::move(result);
+  return crankshaftUnitsCache.value();
+}
+
 bool Component::isInsideRigidFragment(std::span<const std::size_t> ids) const
 {
   return fragmentGraph.isInsideRigidFragment(ids);
@@ -2134,6 +2302,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.netCharge;
   archive << c.startingBead;
+  archive << c.pivotRandomizationFraction;
+  archive << c.crankshaftRandomizationFraction;
+  archive << c.crankshaftMaxSegmentSize;
   archive << c.definedAtoms;
 
   archive << c.inertiaVector;
@@ -2237,6 +2408,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.netCharge;
   archive >> c.startingBead;
+  archive >> c.pivotRandomizationFraction;
+  archive >> c.crankshaftRandomizationFraction;
+  archive >> c.crankshaftMaxSegmentSize;
   archive >> c.definedAtoms;
 
   archive >> c.inertiaVector;
