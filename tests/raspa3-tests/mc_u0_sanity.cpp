@@ -16,6 +16,7 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_pivot;
 import mc_moves_crankshaft;
+import mc_moves_reptation;
 
 // 'U = 0' sanity test for the conformational Monte-Carlo moves (Vitalis & Pappu, Methods 46
 // (2009)): with every conformation-dependent potential switched off, the exact answers are known.
@@ -68,10 +69,136 @@ R"({
 }
 )";
 
+// The same chain declared as two three-bead repeat units, making it eligible for reptation.
+constexpr std::string_view kPeriodicHexaneJson =
+R"({
+  "CriticalTemperature" : 507.6,
+  "CriticalPressure" : 3025000.0,
+  "AcentricFactor" : 0.301,
+  "pseudoAtoms" :
+    [
+      ["CH2", [0.0, 0.0, 0.0]],
+      ["CH2", [1.54, 0.0, 0.0]],
+      ["CH2", [2.16637443033673, 1.40686000476961, 0.0]],
+      ["CH2", [3.70637443033673, 1.40686000476961, 0.0]],
+      ["CH2", [4.33274886067346, 2.81372000953922, 0.0]],
+      ["CH2", [5.87274886067346, 2.81372000953922, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5]
+  ],
+  "Bonds" : [
+    [["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2", "CH2", "CH2"], "HARMONIC", [0.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "RepeatUnits" : [
+    [0, 1, 2],
+    [3, 4, 5]
+  ]
+}
+)";
+
+// A CH3-capped chain is chemically NOT shift-periodic (the end slots differ in type from the
+// interior), so declaring repeat units on it must be rejected at parse time.
+constexpr std::string_view kCappedChainJson =
+R"({
+  "CriticalTemperature" : 507.6,
+  "CriticalPressure" : 3025000.0,
+  "AcentricFactor" : 0.301,
+  "pseudoAtoms" :
+    [
+      ["CH3", [0.0, 0.0, 0.0]],
+      ["CH2", [1.54, 0.0, 0.0]],
+      ["CH2", [2.16637443033673, 1.40686000476961, 0.0]],
+      ["CH2", [3.70637443033673, 1.40686000476961, 0.0]],
+      ["CH2", [4.33274886067346, 2.81372000953922, 0.0]],
+      ["CH3", [5.87274886067346, 2.81372000953922, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5]
+  ],
+  "Bonds" : [
+    [["CH3", "CH2"], "HARMONIC", [96500.0, 1.54]],
+    [["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH3", "CH2", "CH2"], "HARMONIC", [0.0, 114.0]],
+    [["CH2", "CH2", "CH2"], "HARMONIC", [0.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH3", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "RepeatUnits" : [
+    [0, 1, 2],
+    [3, 4, 5]
+  ]
+}
+)";
+
+// A periodic chain with a direction-asymmetric repeat unit (a CH3 side group on the second
+// backbone bead): types, connectivity and potentials are shift-periodic, but the unit grows with a
+// branch step from one chain end and single-bead steps from the other, so the reptation
+// plan-congruence validation must reject it.
+constexpr std::string_view kBranchedPolymerJson =
+R"({
+  "CriticalTemperature" : 600.0,
+  "CriticalPressure" : 3000000.0,
+  "AcentricFactor" : 0.3,
+  "pseudoAtoms" :
+    [
+      ["CH2", [0.0, 0.0, 0.0]],  ["CH2", [1.54, 0.0, 0.0]],  ["CH3", [2.17, 1.41, 0.0]],
+      ["CH2", [3.08, 0.0, 0.0]], ["CH2", [4.62, 0.0, 0.0]],  ["CH3", [5.25, 1.41, 0.0]],
+      ["CH2", [6.16, 0.0, 0.0]], ["CH2", [7.70, 0.0, 0.0]],  ["CH3", [8.33, 1.41, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1], [1, 2], [1, 3],
+    [3, 4], [4, 5], [4, 6],
+    [6, 7], [7, 8]
+  ],
+  "Bonds" : [
+    [["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]],
+    [["CH2", "CH3"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2", "CH2", "CH3"], "HARMONIC", [0.0, 112.0]],
+    [["CH2", "CH2", "CH2"], "HARMONIC", [0.0, 112.0]],
+    [["CH3", "CH2", "CH2"], "HARMONIC", [0.0, 112.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "CH2", "CH2", "CH3"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "RepeatUnits" : [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8]
+  ]
+}
+)";
+
 ForceField makeZeroForceField()
 {
-  return ForceField({{"CH2", false, 14.03, 0.0, 0.0, 6, false}}, {{0.0, 3.95}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, true, false);
+  return ForceField({{"CH2", false, 14.03, 0.0, 0.0, 6, false}, {"CH3", false, 15.04, 0.0, 0.0, 6, false}},
+                    {{0.0, 3.95}, {0.0, 3.75}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true,
+                    true, false);
 }
 
 Component makeFlexibleHexane(const ForceField& forceField)
@@ -189,6 +316,7 @@ TEST(MC_U0_SANITY, pivot_crankshaft_accept_all_and_sample_ideal_distributions)
                                                         ? MC_Moves::pivotMove(random, system, 0, 0)
                                                         : MC_Moves::crankshaftMove(random, system, 0, 0);
     if (!energyDifference.has_value()) ++rejected;
+    if (energyDifference.has_value()) system.runningEnergies += energyDifference.value();
 
     if (i < burnInMoves || i % sampleEvery != 0) continue;
     ++samples;
@@ -245,6 +373,139 @@ TEST(MC_U0_SANITY, pivot_crankshaft_accept_all_and_sample_ideal_distributions)
   {
     EXPECT_LT(chiSquaredUniform(cosBendCounts[bend]), 60.0) << "bend " << bend;
     EXPECT_NEAR(sumCosBend[bend] / static_cast<double>(samples), 0.0, 0.03) << "bend " << bend;
+  }
+
+  // Standard bookkeeping check: the running energies must match a full recomputation.
+  RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
+  EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+}
+
+// Repeat-unit validation: a homopolymer chain declared as equal monomer blocks passes the
+// shift-periodicity checks; the same chain with CH3 end caps is chemically not shift-periodic
+// (the end slots differ in type from the interior) and must be rejected at parse time.
+TEST(MC_U0_SANITY, repeat_units_validation)
+{
+  const ForceField forceField = makeZeroForceField();
+
+  {
+    TemporaryFile file("periodic-hexane-u0.json", kPeriodicHexaneJson);
+    Component periodic = Component(Component::Type::Adsorbate, 0, forceField, "periodic-hexane-u0",
+                                   file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+    EXPECT_EQ(periodic.repeatUnits.size(), 2uz);
+  }
+
+  {
+    TemporaryFile file("capped-chain-u0.json", kCappedChainJson);
+    EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "capped-chain-u0", file.stemPath().string(), 5,
+                           21, MCMoveProbabilities(), std::nullopt, false),
+                 std::runtime_error);
+  }
+
+  {
+    // Direction-asymmetric repeat unit: shift-periodic, but the head and tail growth plans differ
+    // (branch step from one end, single-bead steps from the other) -- rejected for reptation.
+    TemporaryFile file("branched-polymer-u0.json", kBranchedPolymerJson);
+    EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "branched-polymer-u0",
+                           file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false),
+                 std::runtime_error);
+  }
+}
+
+// U = 0 sanity test for the reptation move alone. Every reptation regrows one repeat unit at a
+// chain end with CBMC; at U = 0 every trial direction carries unit weight, so the Rosenbluth ratio
+// is exactly one and every proposal must be accepted. Unlike the pivot and crankshaft moves,
+// reptation resamples the bond lengths of the regrown unit (from the bond potential), the bend
+// angles (uniform in the cosine at zero bend strength) and the torsions (uniform), so the ideal
+// distributions must emerge from reptation alone.
+TEST(MC_U0_SANITY, reptation_accepts_all_and_samples_ideal_distributions)
+{
+  const ForceField forceField = makeZeroForceField();
+  TemporaryFile file("periodic-hexane-u0.json", kPeriodicHexaneJson);
+  Component hexane = Component(Component::Type::Adsorbate, 0, forceField, "periodic-hexane-u0",
+                               file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 300.0, 1e4, 1.0, {}, {hexane}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(1868);
+
+  std::span<Atom> atoms = system.spanOfMolecule(0, 0);
+  constexpr std::size_t numberOfAtoms = 6;
+  ASSERT_EQ(atoms.size(), numberOfAtoms);
+
+  std::array<double, numberOfAtoms - 1> initialBondLengths{};
+  for (std::size_t i = 0; i + 1 < numberOfAtoms; ++i)
+  {
+    initialBondLengths[i] = (atoms[i + 1].position - atoms[i].position).length();
+  }
+
+  constexpr std::size_t numberOfMoves = 40000;
+  constexpr std::size_t sampleEvery = 2;
+  constexpr std::size_t burnInMoves = 1000;
+  constexpr std::size_t torsionBins = 12;
+  constexpr std::size_t bendBins = 10;
+
+  std::array<std::vector<std::size_t>, 3> torsionCounts;
+  torsionCounts.fill(std::vector<std::size_t>(torsionBins, 0uz));
+  std::array<std::vector<std::size_t>, 4> cosBendCounts;
+  cosBendCounts.fill(std::vector<std::size_t>(bendBins, 0uz));
+  std::size_t samples = 0;
+  std::size_t rejected = 0;
+  double maxBondDeviation = 0.0;
+  double sumBondLength = 0.0;
+  std::size_t bondSamples = 0;
+
+  for (std::size_t i = 0; i != numberOfMoves; ++i)
+  {
+    std::optional<RunningEnergy> energyDifference = MC_Moves::reptationMove(random, system, 0, 0);
+    if (!energyDifference.has_value()) ++rejected;
+    if (energyDifference.has_value()) system.runningEnergies += energyDifference.value();
+
+    if (i < burnInMoves || i % sampleEvery != 0) continue;
+    ++samples;
+
+    for (std::size_t bond = 0; bond + 1 < numberOfAtoms; ++bond)
+    {
+      double length = (atoms[bond + 1].position - atoms[bond].position).length();
+      maxBondDeviation = std::max(maxBondDeviation, std::abs(length - initialBondLengths[bond]));
+      sumBondLength += length;
+      ++bondSamples;
+    }
+
+    for (std::size_t torsion = 0; torsion != 3; ++torsion)
+    {
+      double phi = dihedralAngle(atoms[torsion].position, atoms[torsion + 1].position, atoms[torsion + 2].position,
+                                 atoms[torsion + 3].position);
+      std::size_t bin = std::min(
+          torsionBins - 1, static_cast<std::size_t>((phi + std::numbers::pi) / (2.0 * std::numbers::pi) *
+                                                    static_cast<double>(torsionBins)));
+      ++torsionCounts[torsion][bin];
+    }
+
+    for (std::size_t bend = 0; bend != 4; ++bend)
+    {
+      double cosTheta = cosBendAngle(atoms[bend].position, atoms[bend + 1].position, atoms[bend + 2].position);
+      std::size_t bin =
+          std::min(bendBins - 1, static_cast<std::size_t>((cosTheta + 1.0) / 2.0 * static_cast<double>(bendBins)));
+      ++cosBendCounts[bend][bin];
+    }
+  }
+
+  // At U = 0 the Rosenbluth ratio is exactly one: every proposal must be accepted.
+  EXPECT_EQ(rejected, 0uz);
+
+  // Reptation must resample the bond lengths (thermal width of the harmonic bond at 300 K is about
+  // 0.06 Angstrom), in contrast to the pivot and crankshaft moves which preserve them exactly.
+  EXPECT_GT(maxBondDeviation, 0.01);
+  EXPECT_NEAR(sumBondLength / static_cast<double>(bondSamples), 1.54, 0.02);
+
+  for (std::size_t torsion = 0; torsion != 3; ++torsion)
+  {
+    EXPECT_LT(chiSquaredUniform(torsionCounts[torsion]), 60.0) << "torsion " << torsion;
+  }
+  for (std::size_t bend = 0; bend != 4; ++bend)
+  {
+    EXPECT_LT(chiSquaredUniform(cosBendCounts[bend]), 60.0) << "bend " << bend;
   }
 
   // Standard bookkeeping check: the running energies must match a full recomputation.

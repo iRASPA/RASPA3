@@ -942,6 +942,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("ReptationProbability") && item["ReptationProbability"].is_number_float())
+      {
+        double reptationProbability = item["ReptationProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::Reptation, reptationProbability);
+        }
+      }
+
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
@@ -3799,6 +3808,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "CrankshaftProbability",
     "CrankshaftRandomizationFraction",
     "CrankshaftMaxSegmentSize",
+    "ReptationProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",

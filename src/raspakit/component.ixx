@@ -260,6 +260,13 @@ export struct Component
   // Derived scratch state: not serialized (re-seeded from the reference geometry after a restart).
   mutable std::vector<Atom> grownIdealGasAtoms{};
   std::vector<std::vector<std::size_t>> partialReinsertionFixedAtoms{};
+  // The repeat units of a periodic chain molecule ('RepeatUnits' in the molecule JSON): an ordered
+  // partition of the atoms into monomer blocks (backbone plus side group), used by the reptation
+  // move. Validated at parse time to be shift-periodic: identical pseudo-atom types and charges per
+  // block slot, and connectivity, intramolecular potential terms and rigid fragments that map onto
+  // themselves under the one-unit shift. Empty when the molecule declares no repeat units; the
+  // reptation move then rejects immediately.
+  std::vector<std::vector<std::size_t>> repeatUnits{};
   // Cache of CBMC growth plans keyed by the set of already-placed beads. A plan is deterministic
   // (it depends only on the molecule's topology and the placed set), and building one filters the
   // intramolecular potentials per step, so the plans for the common placed sets (the starting bead
@@ -523,6 +530,10 @@ export struct Component
       const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<CoulombPotential> readCoulombPotentials(
       const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /// Reads and validates the 'RepeatUnits' of a periodic chain molecule (see 'repeatUnits'); throws
+  /// with a descriptive message when the units do not form a shift-periodic partition.
+  std::vector<std::vector<std::size_t>> readRepeatUnits(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);

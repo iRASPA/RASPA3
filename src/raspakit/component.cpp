@@ -425,6 +425,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.chiralCenters = readChiralCenters(parsed_data);
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
+    repeatUnits = readRepeatUnits(parsed_data);
 
     // Whether an atom lies in a cyclic cluster (a flexible ring): its fragment maps to a cluster id.
     auto cyclicClusterOf = [&](std::size_t atom) -> std::make_signed_t<std::size_t>
@@ -2125,6 +2126,245 @@ std::vector<CoulombPotential> Component::readCoulombPotentials(
   return coulomb_potentials;
 }
 
+std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  if (!parsed_data.contains("RepeatUnits")) return {};
+
+  std::vector<std::vector<std::size_t>> units{};
+  try
+  {
+    units = parsed_data["RepeatUnits"].get<std::vector<std::vector<std::size_t>>>();
+  }
+  catch (std::exception const &e)
+  {
+    throw std::runtime_error(
+        std::format("[Component reader]: 'RepeatUnits' must be an array of atom-index lists: {}\n", e.what()));
+  }
+
+  const std::size_t numberOfBeads = definedAtoms.size();
+  const std::size_t numberOfUnits = units.size();
+  if (numberOfUnits < 2)
+  {
+    throw std::runtime_error(std::format("[Component reader]: 'RepeatUnits' needs at least two repeat units\n"));
+  }
+  const std::size_t unitSize = units.front().size();
+  if (unitSize == 0)
+  {
+    throw std::runtime_error(std::format("[Component reader]: 'RepeatUnits' entries must not be empty\n"));
+  }
+
+  // The units must form an ordered partition of the atoms into equally sized blocks.
+  std::vector<std::size_t> unitOf(numberOfBeads, 0);
+  std::vector<std::size_t> offsetOf(numberOfBeads, 0);
+  std::vector<bool> seen(numberOfBeads, false);
+  for (std::size_t k = 0; k != numberOfUnits; ++k)
+  {
+    if (units[k].size() != unitSize)
+    {
+      throw std::runtime_error(std::format("[Component reader]: all 'RepeatUnits' must have the same size\n"));
+    }
+    for (std::size_t j = 0; j != unitSize; ++j)
+    {
+      std::size_t atom = units[k][j];
+      if (atom >= numberOfBeads || seen[atom])
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: 'RepeatUnits' must partition the atom indices (atom {} invalid or "
+                        "listed twice)\n",
+                        atom));
+      }
+      seen[atom] = true;
+      unitOf[atom] = k;
+      offsetOf[atom] = j;
+    }
+  }
+  if (numberOfUnits * unitSize != numberOfBeads)
+  {
+    throw std::runtime_error(std::format("[Component reader]: 'RepeatUnits' must cover every atom of the molecule\n"));
+  }
+
+  // Shift periodicity of the chemistry: atom j of every unit must have the same pseudo-atom type
+  // and charge. Reptation relabels physical unit k+1 into the slots of unit k, so a chain with
+  // distinct end groups (caps, initiator fragments) is chemically not shift-periodic and cannot
+  // reptate by relabeling.
+  for (std::size_t k = 1; k != numberOfUnits; ++k)
+  {
+    for (std::size_t j = 0; j != unitSize; ++j)
+    {
+      const Atom &current = definedAtoms[units[k][j]].first;
+      const Atom &previous = definedAtoms[units[k - 1][j]].first;
+      if (current.type != previous.type || current.charge != previous.charge)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: 'RepeatUnits' are not shift-periodic: atom {} of unit {} differs in "
+                        "type or charge from atom {} of unit {}\n",
+                        units[k][j], k, units[k - 1][j], k - 1));
+      }
+    }
+  }
+
+  auto shiftDown = [&](std::size_t atom) -> std::size_t { return units[unitOf[atom] - 1][offsetOf[atom]]; };
+
+  // Canonical form of an identifier tuple: a term and its reverse describe the same interaction.
+  auto normalized = [](std::vector<std::size_t> ids) -> std::vector<std::size_t>
+  {
+    std::vector<std::size_t> reversed(ids.rbegin(), ids.rend());
+    return std::min(ids, reversed);
+  };
+
+  // Shift periodicity of the topology: the set of terms living entirely in units 0..M-2 must equal
+  // the set of terms in units 1..M-1 shifted down by one unit. This single set equality covers the
+  // interior periodicity and the equality of the head and tail connections at once. (Potential
+  // parameters are generated from pseudo-atom type patterns, so identical types plus identical
+  // index topology imply identical parameters.)
+  auto checkPeriodicTerms = [&](const auto &identifierLists, std::string_view name)
+  {
+    std::set<std::vector<std::size_t>> lowTerms;
+    std::set<std::vector<std::size_t>> shiftedTerms;
+    for (const auto &identifiers : identifierLists)
+    {
+      std::vector<std::size_t> ids(identifiers.begin(), identifiers.end());
+      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] <= numberOfUnits - 2; }))
+      {
+        lowTerms.insert(normalized(ids));
+      }
+      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] >= 1; }))
+      {
+        std::vector<std::size_t> shifted(ids.size());
+        std::ranges::transform(ids, shifted.begin(), shiftDown);
+        shiftedTerms.insert(normalized(shifted));
+      }
+    }
+    if (lowTerms != shiftedTerms)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'RepeatUnits' are not shift-periodic: the {} terms do not map onto themselves "
+          "under the one-unit shift\n",
+          name));
+    }
+  };
+
+  checkPeriodicTerms(connectivityTable.findAllBonds(), "connectivity");
+  checkPeriodicTerms(intraMolecularPotentials.bonds |
+                         std::views::transform([](const BondPotential &p) { return p.identifiers; }),
+                     "bond");
+  checkPeriodicTerms(intraMolecularPotentials.bends |
+                         std::views::transform([](const BendPotential &p) { return p.identifiers; }),
+                     "bend");
+  checkPeriodicTerms(intraMolecularPotentials.torsions |
+                         std::views::transform([](const TorsionPotential &p) { return p.identifiers; }),
+                     "torsion");
+  checkPeriodicTerms(intraMolecularPotentials.vanDerWaals |
+                         std::views::transform([](const VanDerWaalsPotential &p) { return p.identifiers; }),
+                     "intramolecular van-der-Waals");
+  checkPeriodicTerms(intraMolecularPotentials.coulombs |
+                         std::views::transform([](const CoulombPotential &p) { return p.identifiers; }),
+                     "intramolecular Coulomb");
+
+  // Rigid fragments must lie inside a single repeat unit, map onto rigid fragments under the shift,
+  // and be congruent to their shifted counterparts (the relabeled body must fit the slot's rigid
+  // reference geometry exactly).
+  for (const auto &fragment : fragmentGraph.fragments)
+  {
+    if (!fragment.isRigidBody()) continue;
+    std::size_t unit = unitOf[fragment.atoms.front()];
+    for (std::size_t atom : fragment.atoms)
+    {
+      if (unitOf[atom] != unit)
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: 'RepeatUnits' invalid: rigid fragment straddles two repeat units (atom {})\n",
+            atom));
+      }
+    }
+    if (unit == 0) continue;
+
+    const auto &shiftedFragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[shiftDown(fragment.atoms.front())]];
+    std::set<std::size_t> shiftedAtoms{};
+    for (std::size_t atom : fragment.atoms) shiftedAtoms.insert(shiftDown(atom));
+    if (std::set<std::size_t>(shiftedFragment.atoms.begin(), shiftedFragment.atoms.end()) != shiftedAtoms)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'RepeatUnits' are not shift-periodic: rigid fragments do not map onto each other\n"));
+    }
+    for (std::size_t a = 0; a != fragment.atoms.size(); ++a)
+    {
+      for (std::size_t b = a + 1; b != fragment.atoms.size(); ++b)
+      {
+        double distance =
+            (definedAtoms[fragment.atoms[a]].first.position - definedAtoms[fragment.atoms[b]].first.position).length();
+        double shiftedDistance = (definedAtoms[shiftDown(fragment.atoms[a])].first.position -
+                                  definedAtoms[shiftDown(fragment.atoms[b])].first.position)
+                                     .length();
+        if (std::abs(distance - shiftedDistance) > 1e-6)
+        {
+          throw std::runtime_error(
+              std::format("[Component reader]: 'RepeatUnits' are not shift-periodic: rigid fragment reference "
+                          "geometries differ between units\n"));
+        }
+      }
+    }
+  }
+
+  // The chain that remains after removing an end unit must be connected, so that the CBMC growth of
+  // the arriving unit has a well-defined anchored plan.
+  std::array<std::vector<std::size_t>, 2> endPlacedSets{};
+  for (std::size_t end = 0; end != 2; ++end)
+  {
+    const std::vector<std::size_t> &endUnit = (end == 0) ? units.front() : units.back();
+    std::vector<bool> inEndUnit(numberOfBeads, false);
+    for (std::size_t atom : endUnit) inEndUnit[atom] = true;
+    for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+    {
+      if (!inEndUnit[atom]) endPlacedSets[end].push_back(atom);
+    }
+    if (!connectivityTable.checkIsConnectedSubgraph(endPlacedSets[end]))
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'RepeatUnits' invalid: removing an end unit disconnects the molecule\n"));
+    }
+  }
+
+  // The head and tail growth plans must be congruent (same step sequence: step kind, rigid-body
+  // flag, number and types of grown beads, and per-step counts of the filtered potential terms).
+  // Reptation pairs the Rosenbluth weight of a tail-plan growth against a head-plan retrace (and
+  // vice versa); the CBMC trial conformations are generated by approximate samplers whose small
+  // deviations depend on the step structure (single-bead steps use a direct scheme, multi-bead
+  // branch steps an internal Metropolis MC). Within reinsertion and partial reinsertion these
+  // deviations cancel exactly because grow and retrace share one plan; across the two reptation
+  // plans they only cancel when the plans are congruent. A direction-asymmetric repeat unit (e.g. a
+  // branch point that is a multi-bead step grown head-ward but a chain of single-bead steps grown
+  // tail-ward) produces a measurable sampling bias and is therefore rejected.
+  {
+    const std::vector<CBMC::GrowStep> &headPlan = growthPlan(endPlacedSets[0]);
+    const std::vector<CBMC::GrowStep> &tailPlan = growthPlan(endPlacedSets[1]);
+    auto stepSignature = [&](const CBMC::GrowStep &step)
+    {
+      std::vector<std::size_t> grownTypes{};
+      for (std::size_t bead : step.nextBeads) grownTypes.push_back(definedAtoms[bead].first.type);
+      std::sort(grownTypes.begin(), grownTypes.end());
+      return std::make_tuple(step.kind, step.rigidBody, grownTypes, step.intra.bonds.size(), step.intra.bends.size(),
+                             step.intra.torsions.size(), step.intra.vanDerWaals.size(), step.intra.coulombs.size());
+    };
+    bool congruent = headPlan.size() == tailPlan.size();
+    for (std::size_t i = 0; congruent && i != headPlan.size(); ++i)
+    {
+      congruent = stepSignature(headPlan[i]) == stepSignature(tailPlan[i]);
+    }
+    if (!congruent)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'RepeatUnits' invalid for reptation: the head and tail growth plans of the repeat "
+          "unit are not congruent (the unit grows with a different step structure from either chain end, e.g. a "
+          "branch point). The reptation acceptance pairs the grow weight of one plan against the retrace weight of "
+          "the other, which is only exact for congruent plans\n"));
+    }
+  }
+
+  return units;
+}
+
 std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
@@ -2305,6 +2545,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.pivotRandomizationFraction;
   archive << c.crankshaftRandomizationFraction;
   archive << c.crankshaftMaxSegmentSize;
+  archive << c.repeatUnits;
   archive << c.definedAtoms;
 
   archive << c.inertiaVector;
@@ -2411,6 +2652,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.pivotRandomizationFraction;
   archive >> c.crankshaftRandomizationFraction;
   archive >> c.crankshaftMaxSegmentSize;
+  archive >> c.repeatUnits;
   archive >> c.definedAtoms;
 
   archive >> c.inertiaVector;

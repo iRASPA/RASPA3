@@ -55,7 +55,8 @@ export struct Move
     TetheredProtonHop = 44,           // relocation of a tethered proton among its discrete candidate sites
     Pivot = 45,                       // rotation of a chain part about a randomly selected non-ring bond
     Crankshaft = 46,                  // rotation of a small chain segment about the axis through its two anchors
-    Count = 47
+    Reptation = 47,                   // slithering-snake move: one repeat unit removed at one chain end, regrown at the other
+    Count = 48
   };
 
   /**
@@ -130,6 +131,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
                                                                 Move::Types::Pivot,
                                                                 Move::Types::Crankshaft,
+                                                                Move::Types::Reptation,
                                                                 Move::Types::IdentityChangeCBMC,
                                                                 Move::Types::IdentitySwitchCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,

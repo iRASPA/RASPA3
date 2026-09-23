@@ -51,7 +51,8 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Group swap (CB/CFCMC)",
   "Tethered proton hop",
   "Pivot",
-  "Crankshaft"
+  "Crankshaft",
+  "Reptation"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -239,6 +240,8 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
                             Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
   // Crankshaft
   std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
-                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald}
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // Reptation
+  std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald}
 };
 
