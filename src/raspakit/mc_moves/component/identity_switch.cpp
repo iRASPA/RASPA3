@@ -205,6 +205,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
       exchange.grown->energies += correction.value();
       exchange.grown->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+      exchange.grown->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
     }
 
     if (step == 0)
@@ -238,6 +239,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
       exchange.retraced.energies += correction.value();
       exchange.retraced.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+      exchange.retraced.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
     }
 
     if (step == 0)
@@ -365,9 +367,11 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   const double correctionFactor =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
 
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      correctionFactor * (exchangeB.grown->RosenbluthWeight * exchangeA.grown->RosenbluthWeight) /
-      (exchangeA.retraced.RosenbluthWeight * exchangeB.retraced.RosenbluthWeight);
+      std::exp(std::log(correctionFactor) + exchangeB.grown->logRosenbluthWeight +
+               exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
+               exchangeB.retraced.logRosenbluthWeight);
 
   if (random.uniform() < acceptanceProbability)
   {

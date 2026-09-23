@@ -504,14 +504,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
           trial.cbmcInsert->energies += correctionNew.value();
           trial.cbmcInsert->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+          trial.cbmcInsert->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
         }
 
         RunningEnergy ewaldTail =
             growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, trial.cbmcInsert->atoms);
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
         const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
-        trial.acceptanceFactor = (trial.cbmcInsert->RosenbluthWeight / idealGas) *
-                                 std::exp(-system.beta * ewaldTail.potentialEnergy()) * volume / (integerCount + 1.0);
+        // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
+        trial.acceptanceFactor =
+            std::exp(trial.cbmcInsert->logRosenbluthWeight - std::log(idealGas) -
+                     system.beta * ewaldTail.potentialEnergy() + std::log(volume / (integerCount + 1.0)));
         return true;
       }
 
@@ -557,12 +560,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
         retraceData.energies += correctionOld.value();
         retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
       }
 
       RunningEnergy ewaldTail =
           retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, selectedMolecule);
-      trial.acceptanceFactor = (integerCount / volume) /
-                               (retraceData.RosenbluthWeight * std::exp(system.beta * ewaldTail.potentialEnergy()));
+      // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
+      // which would turn this quotient into +inf).
+      trial.acceptanceFactor = std::exp(std::log(integerCount / volume) - retraceData.logRosenbluthWeight -
+                                        system.beta * ewaldTail.potentialEnergy());
       std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
     }
 

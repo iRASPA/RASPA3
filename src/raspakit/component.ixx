@@ -228,6 +228,15 @@ export struct Component
   // fully rigid or single-atom components, and empty during its own construction so the grows that
   // fill it cold-start. Not serialized (a restart rebuilds it) and not thread-shared.
   mutable std::vector<std::vector<Atom>> conformationReservoir{};
+  // A few equilibrated ideal-gas conformations used as the energy reference of the recoil-growth
+  // open/closed test: a trial direction's openness is measured against the same growth step evaluated
+  // in these conformations (per-step maximum), so a molecule whose best placements carry intrinsic
+  // positive non-bonded strain (crowded united-atom beads, intramolecular charges) still tests 'open'
+  // where a correctly grown chain must pass. Built once at setup with a fixed local RNG (a fixed
+  // constant during the run, so grow and retrace share it and detailed balance is unaffected); empty
+  // for rigid/single-atom components and when recoil growth is disabled. Not serialized (a restart
+  // rebuilds it) and not thread-shared.
+  std::vector<std::vector<Atom>> recoilReferenceConformations{};
   // Persistent scratch conformation of a flexible molecule grown in isolation (ideal-gas), i.e. drawn
   // from exp(-beta * U_intra). Kept between calls so the CBMC reinsertion Markov chain that produces
   // equilibrated ideal-gas conformations (System::equilibratedIdealGasConformation) stays warm.

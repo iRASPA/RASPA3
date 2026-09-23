@@ -112,11 +112,11 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   // partition functions q_i can be used in the equilibrium term (Rosch and Maginn, eqs. 18-24)
   const double idealGasInsert = ReactionCommon::idealGasRosenbluthWeightProduct(system, insertStoichiometry);
   const double idealGasRemove = ReactionCommon::idealGasRosenbluthWeightProduct(system, removeStoichiometry);
-  const double rosenbluthNew = (growData->RosenbluthWeight / idealGasInsert) *
-                               std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
-  const double rosenbluthOld = retraceData->RosenbluthWeight / idealGasRemove;
-
-  const double acceptanceProbability = correctionFactorEwald * (rosenbluthNew / rosenbluthOld) * std::exp(equilibriumTerm);
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
+  const double acceptanceProbability =
+      std::exp(std::log(correctionFactorEwald) + growData->logRosenbluthWeight - std::log(idealGasInsert) -
+               system.beta * tailEnergyDifference.potentialEnergy() - retraceData->logRosenbluthWeight +
+               std::log(idealGasRemove) + equilibriumTerm);
 
   if (random.uniform() >= acceptanceProbability)
   {

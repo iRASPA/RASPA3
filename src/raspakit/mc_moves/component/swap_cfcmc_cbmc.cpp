@@ -253,6 +253,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       growData->energies += correctionNew.value();
       growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+      growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
     }
 
     // Check if the new molecule is inside blocked pockets
@@ -353,8 +354,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    double physicalPacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                          std::exp(-system.beta * energyDifference.potentialEnergy());
+    // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
+    double physicalPacc =
+        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
+                 system.beta * energyDifference.potentialEnergy());
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
@@ -488,6 +491,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
         retraceData.energies += correctionOld.value();
         retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
       }
 
       // Compute Ewald energy difference for the retraced molecule
@@ -692,9 +696,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                          double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      double physicalPacc =
-          preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
-          std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+      // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
+      // which would turn this quotient into +inf).
+      double physicalPacc = std::exp(
+          std::log(preFactor) + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight -
+          system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
       double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       // Retrieve bias from transition matrix

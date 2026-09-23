@@ -25,6 +25,7 @@ struct MoleculeGroupGrowData
 {
   std::vector<ChainGrowData> molecules;
   double RosenbluthWeight{1.0};
+  double logRosenbluthWeight{0.0};  ///< exact log of RosenbluthWeight (the raw product underflows for long chains)
   RunningEnergy energies{};
 };
 
@@ -32,6 +33,7 @@ struct MoleculeGroupRetraceData
 {
   std::vector<ChainRetraceData> molecules;
   double RosenbluthWeight{1.0};
+  double logRosenbluthWeight{0.0};  ///< exact log of RosenbluthWeight (the raw product underflows for long chains)
   RunningEnergy energies{};
 };
 

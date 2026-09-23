@@ -75,8 +75,11 @@ static Atom makeFirstBead(const Component &component, std::size_t selectedMolecu
 static ChainGrowData combineGrowData(const FirstBeadData &firstBeadData, const ChainGrowData &chainData,
                                      double storedR)
 {
+  // The first-bead weight is a single-bead average of Boltzmann factors (order one), so its plain log
+  // is exact; the chain log is accumulated per step and stays exact where the raw product underflows.
   return ChainGrowData(chainData.molecule, chainData.atoms, firstBeadData.energies + chainData.energies,
-                       firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, storedR);
+                       firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, storedR,
+                       std::log(firstBeadData.RosenbluthWeight) + chainData.logRosenbluthWeight);
 }
 
 // Grows the remainder of a freshly inserted molecule after its first bead was sampled: a single-atom
@@ -127,7 +130,8 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
   ChainRetraceData chainData = retraceChain(random, context, component, molecule_atoms, {component.startingBead});
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
-                          firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
+                          firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0,
+                          std::log(firstBeadData.RosenbluthWeight) + chainData.logRosenbluthWeight);
 }
 
 // Insertion:
@@ -242,7 +246,8 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
   chainData->molecule.atomIndex = molecule.atomIndex;
   chainData->molecule.numberOfAtoms = molecule.numberOfAtoms;
 
-  return ChainGrowData(chainData->molecule, chainData->atoms, chainData->energies, chainData->RosenbluthWeight, 0.0);
+  return ChainGrowData(chainData->molecule, chainData->atoms, chainData->energies, chainData->RosenbluthWeight, 0.0,
+                       chainData->logRosenbluthWeight);
 }
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculePartialReinsertion(
@@ -251,7 +256,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 {
   ChainRetraceData chainData = retraceChain(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
 
-  return ChainRetraceData(chainData.energies, chainData.RosenbluthWeight, 0.0);
+  return ChainRetraceData(chainData.energies, chainData.RosenbluthWeight, 0.0, chainData.logRosenbluthWeight);
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(

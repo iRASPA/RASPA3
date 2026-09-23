@@ -132,6 +132,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-systemA.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -systemA.beta * correctionNew->potentialEnergy();
   }
 
   // Get new molecule atoms
@@ -206,6 +207,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     retraceData.energies += correctionOld.value();
     retraceData.RosenbluthWeight *= std::exp(-systemB.beta * correctionOld->potentialEnergy());
+    retraceData.logRosenbluthWeight += -systemB.beta * correctionOld->potentialEnergy();
   }
 
   // Compute Ewald Fourier energy difference for system B
@@ -239,13 +241,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   double correctionFactorEwaldB =
       std::exp(systemB.beta * (energyFourierDifferenceB.potentialEnergy() + tailEnergyDifferenceB.potentialEnergy()));
 
-  const double physicalAcceptance =
-      (correctionFactorEwaldA * growData->RosenbluthWeight *
-       static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
-       systemA.simulationBox.volume) /
-      (correctionFactorEwaldB * retraceData.RosenbluthWeight *
-       (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *
-       systemB.simulationBox.volume);
+  // Rosenbluth weights through their exact logarithms: the raw weights of long chains underflow to
+  // zero, which would turn this cross-box ratio into 0/0 (NaN) or x/0 (inf).
+  const double physicalAcceptance = std::exp(
+      std::log(correctionFactorEwaldA) - std::log(correctionFactorEwaldB) + growData->logRosenbluthWeight -
+      retraceData.logRosenbluthWeight +
+      std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
+                systemA.simulationBox.volume) /
+               ((1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *
+                systemB.simulationBox.volume)));
 
   // Bounds must be checked before evaluating a TMMC bias, whose lookup assumes
   // both macrostates are representable.

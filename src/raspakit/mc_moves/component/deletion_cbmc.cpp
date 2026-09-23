@@ -83,6 +83,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       retraceData.energies += correctionOld.value();
       retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+      retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
     }
 
     // Compute the energy difference in Fourier space due to the deletion
@@ -158,7 +159,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * fugacity * system.simulationBox.volume);
-    double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
+    // Rosenbluth weight through its exact logarithm: the raw weight of a long chain underflows to zero,
+    // which would turn this quotient into +inf and unconditionally accept every deletion.
+    double Pacc =
+        std::exp(std::log(preFactor) + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight);
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if the new macrostate is within the allowed TMMC range

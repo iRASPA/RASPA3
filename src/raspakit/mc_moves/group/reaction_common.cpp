@@ -244,6 +244,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 
           growData->energies += correctionNew.value();
           growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+          growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
         }
       }
       else
@@ -273,6 +274,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       }
 
       result.RosenbluthWeight *= growData->RosenbluthWeight;
+      result.logRosenbluthWeight += growData->logRosenbluthWeight;
       result.energies += growData->energies;
 
       for (const Atom& atom : growData->atoms)
@@ -371,19 +373,22 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 
         retraceData.energies += correctionOld.value();
         retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
       }
     }
 
     result.RosenbluthWeight *= retraceData.RosenbluthWeight;
+    result.logRosenbluthWeight += retraceData.logRosenbluthWeight;
     result.energies += retraceData.energies;
     result.molecules.push_back(std::move(retraceData));
   }
 
   // A vanishing retrace weight means the current configuration itself is in (near-)overlap: the
-  // acceptance ratio would divide by zero and force-accept a move whose retrace energy does not
-  // describe the actual state (overlapping trials are discarded), corrupting the running energies.
-  // Reject instead, mirroring the minimumRosenbluthFactor guard of the insertion paths.
-  if (!(result.RosenbluthWeight >= system.forceField.minimumRosenbluthFactor))
+  // acceptance ratio would force-accept a move whose retrace energy does not describe the actual
+  // state (overlapping trials are discarded), corrupting the running energies. Reject instead.
+  // The test uses the exact log-weight (an overlap drives it to -inf/NaN); the raw product
+  // legitimately underflows to zero for long chains, so it cannot be thresholded directly.
+  if (!std::isfinite(result.logRosenbluthWeight))
   {
     return std::nullopt;
   }
@@ -1000,9 +1005,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
           reactantsToProducts ? reaction.reactantStoichiometry : reaction.productStoichiometry;
       const double idealGasNew = idealGasRosenbluthWeightProduct(system, newStoichiometry);
       const double idealGasOld = idealGasRosenbluthWeightProduct(system, oldStoichiometry);
+      // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
       acceptanceProbability =
-          ((growData->RosenbluthWeight / idealGasNew) / (retraceData->RosenbluthWeight / idealGasOld)) *
-          correctionFactor * std::exp(equilibriumTerm + biasNew - biasOld);
+          std::exp(growData->logRosenbluthWeight - std::log(idealGasNew) - retraceData->logRosenbluthWeight +
+                   std::log(idealGasOld) + std::log(correctionFactor) + equilibriumTerm + biasNew - biasOld);
     }
     else
     {
@@ -1363,12 +1369,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     // partition functions q_i can be used in the acceptance rule
     const double idealGasGrow = idealGasRosenbluthWeightProduct(system, growStoichiometry);
     const double idealGasGhost = idealGasRosenbluthWeightProduct(system, demoteStoichiometry);
-    const double rosenbluthRatio =
-        (growData->RosenbluthWeight / idealGasGrow) / (retraceData->RosenbluthWeight / idealGasGhost);
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     acceptanceProbability =
-        rosenbluthRatio * std::exp(equilibriumTerm + biasNew - biasOld) *
-        std::exp(-system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
-                                 fourierDifference.potentialEnergy()));
+        std::exp(growData->logRosenbluthWeight - std::log(idealGasGrow) - retraceData->logRosenbluthWeight +
+                 std::log(idealGasGhost) + equilibriumTerm + biasNew - biasOld -
+                 system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
+                                fourierDifference.potentialEnergy()));
   }
   else
   {
@@ -1376,6 +1382,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
         std::exp(equilibriumTerm + biasNew - biasOld - system.beta * energyDifference.potentialEnergy());
   }
 
+  // TEMP-DEBUG
+  std::cerr << "boundary acc=" << acceptanceProbability << " growLog=" << growData->logRosenbluthWeight
+            << " retraceLog=" << retraceData->logRosenbluthWeight << " eq=" << equilibriumTerm
+            << " bias=" << (biasNew - biasOld) << "\n";
   if (random.uniform() >= acceptanceProbability)
   {
     restoreOldScalings();

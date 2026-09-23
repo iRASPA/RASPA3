@@ -33,8 +33,8 @@ struct BoxIdentityChangeData
   RunningEnergy tailEnergyDifference;
   RunningEnergy polarizationDifference;
   double correctionFactorEwald{1.0};
-  double rosenbluthNew{1.0};
-  double rosenbluthOld{1.0};
+  double logRosenbluthNew{0.0};
+  double logRosenbluthOld{0.0};
   std::size_t oldComponent{};
   std::size_t newComponent{};
   std::size_t selectedMoleculeOld{};
@@ -100,6 +100,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
   }
 
   data.growData = std::move(*growData);
@@ -136,6 +137,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
     data.retraceData.energies += correctionOld.value();
     data.retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+    data.retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
   }
 
   time_begin = std::chrono::steady_clock::now();
@@ -176,9 +178,10 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   data.correctionFactorEwald = std::exp(
       -system.beta * (data.energyFourierDifference.potentialEnergy() + data.polarizationDifference.potentialEnergy()));
-  data.rosenbluthNew =
-      data.growData.RosenbluthWeight * std::exp(-system.beta * data.tailEnergyDifference.potentialEnergy());
-  data.rosenbluthOld = data.retraceData.RosenbluthWeight;
+  // Rosenbluth weights are carried as exact logarithms: the raw weights of long chains underflow to zero.
+  data.logRosenbluthNew =
+      data.growData.logRosenbluthWeight - system.beta * data.tailEnergyDifference.potentialEnergy();
+  data.logRosenbluthOld = data.retraceData.logRosenbluthWeight;
 
   return true;
 }
@@ -281,9 +284,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
   }
 
   const double acceptanceProbability =
-      boxIData.correctionFactorEwald * boxIIData.correctionFactorEwald * boxIData.rosenbluthNew *
-      boxIIData.rosenbluthNew / (boxIData.rosenbluthOld * boxIIData.rosenbluthOld) * numberOfMoleculesA_boxI *
-      numberOfMoleculesB_boxII / ((numberOfMoleculesA_boxII + 1.0) * (numberOfMoleculesB_boxI + 1.0));
+      std::exp(std::log(boxIData.correctionFactorEwald) + std::log(boxIIData.correctionFactorEwald) +
+               boxIData.logRosenbluthNew + boxIIData.logRosenbluthNew - boxIData.logRosenbluthOld -
+               boxIIData.logRosenbluthOld +
+               std::log(numberOfMoleculesA_boxI * numberOfMoleculesB_boxII /
+                        ((numberOfMoleculesA_boxII + 1.0) * (numberOfMoleculesB_boxI + 1.0))));
 
   if (random.uniform() < acceptanceProbability)
   {

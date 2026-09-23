@@ -359,6 +359,15 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
   // keep a fixed seed
   RandomNumber random(1200);
 
+  // Initial configurations are grown with CBMC even when the production moves use recoil growth.
+  // Creation only needs one valid (non-overlapping) configuration -- the do/while below retries until
+  // it has one, and the Markov chain equilibrates away from it -- so the growth scheme is free to
+  // choose. CBMC always completes (a bad step only shrinks the Rosenbluth weight), whereas the
+  // absolute open/closed test of recoil growth restarts a long chain indefinitely: per-step attrition
+  // compounds over hundreds of beads, and the recoil window aborts the attempt long before the end.
+  const bool recoilGrowth = forceField.useRecoilGrowth;
+  forceField.useRecoilGrowth = false;
+
   for (std::size_t componentId = 0; const Component& component : components)
   {
     if (component.hasFractionalMolecule)
@@ -562,6 +571,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
     componentId++;
   }
+
+  forceField.useRecoilGrowth = recoilGrowth;
 }
 
 void System::computeAutomaticBlockingPockets()
@@ -686,8 +697,9 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
     if (!retraceData) continue;
 
     // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
-    // corrections apply): accept with min(1, W_new / W_old).
-    if (random.uniform() < growData->RosenbluthWeight / retraceData->RosenbluthWeight)
+    // corrections apply): accept with min(1, W_new / W_old), with the ratio evaluated in log space so it
+    // stays exact for long chains whose raw Rosenbluth weights underflow to zero.
+    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData->logRosenbluthWeight))
     {
       std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
       scratchMolecule = growData->molecule;
@@ -728,16 +740,73 @@ void System::buildConformationReservoirs()
     // orientations); single-atom components have nothing to grow.
     if (component.atoms.size() < 2 || component.rigid) continue;
 
+    // The reservoir carries the long-lived internal state a fresh grow cannot rebuild from potentials:
+    // ring conformers ('generateRingConformation' seeds each ring-closure step from an independent,
+    // well-mixed whole-molecule conformation so different grows start from different puckers) and the
+    // exact internal geometry of rigid sub-fragments (fixed by construction, so no bond/bend potential
+    // exists to sample it from -- a cold start would place those atoms at guessed geometry and every
+    // grown configuration would be rejected downstream). A ring-free, fully flexible component has no
+    // such state: every flexible step freshly samples its bond lengths, bend angles, and torsion spin,
+    // and the cold-start path of 'generateFlexibleBaseConformation' (which doubles the internal-MC
+    // length) relaxes the step-local geometry just as well. Skipping the build for those components
+    // avoids its dominant cost: for a polymer chain the 256 x 20 full-molecule regrows take minutes
+    // and dwarf the simulation itself.
+    if (component.fragmentGraph.closureBonds.empty() && component.numberOfRigidFragments() == 0)
+    {
+      continue;
+    }
+
     // Build into a temporary so the reservoir stays empty while it is being filled: the ideal-gas grows
     // that fill it then cold-start (their own Metropolis still targets exp(-beta * U_intra) regardless
     // of the seed), avoiding any feedback from a half-filled reservoir.
+    //
+    // The reservoir is only a warm start for the bond/bend Monte Carlo. It carries no Rosenbluth
+    // weight, so it is grown with configurational bias even when production moves use recoil growth.
+    const bool recoilGrowth = forceField.useRecoilGrowth;
+    forceField.useRecoilGrowth = false;
     std::vector<std::vector<Atom>> reservoir{};
     reservoir.reserve(reservoirSize);
     for (std::size_t i = 0; i != reservoirSize; ++i)
     {
       reservoir.push_back(equilibratedIdealGasConformation(random, componentId));
     }
+    forceField.useRecoilGrowth = recoilGrowth;
     component.conformationReservoir = std::move(reservoir);
+  }
+}
+
+void System::buildRecoilReferenceConformations()
+{
+  if (!forceField.useRecoilGrowth) return;
+
+  // The openness reference takes, per growth step, the maximum energy over these conformations (any
+  // strain a valid equilibrated chain exhibits at a step is acceptable there), so more conformations
+  // widen the accepted strain range toward its Boltzmann-typical upper edge.
+  constexpr std::size_t numberOfConformations = 50;
+
+  // A fixed local generator keeps the reference reproducible and independent of the simulation's random
+  // stream. The reference must be a fixed constant of the run (grow and its reverse-move retrace both
+  // divide by the same openness probabilities), which a one-time deterministic build guarantees.
+  RandomNumber random(1867);
+
+  for (std::size_t componentId = 0; componentId != components.size(); ++componentId)
+  {
+    Component& component = components[componentId];
+    if (component.atoms.size() < 2 || component.rigid) continue;
+
+    // Grown with configurational bias (which always completes) rather than recoil growth itself: recoil
+    // growth cannot run before its own reference exists, and CBMC samples the same ideal-gas Boltzmann
+    // distribution.
+    const bool recoilGrowth = forceField.useRecoilGrowth;
+    forceField.useRecoilGrowth = false;
+    std::vector<std::vector<Atom>> conformations{};
+    conformations.reserve(numberOfConformations);
+    for (std::size_t i = 0; i != numberOfConformations; ++i)
+    {
+      conformations.push_back(equilibratedIdealGasConformation(random, componentId));
+    }
+    forceField.useRecoilGrowth = recoilGrowth;
+    component.recoilReferenceConformations = std::move(conformations);
   }
 }
 

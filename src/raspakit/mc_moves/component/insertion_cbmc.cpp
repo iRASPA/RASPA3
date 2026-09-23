@@ -80,6 +80,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
   }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -164,8 +165,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
-  // Calculate the acceptance probability Pacc
-  double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  // Calculate the acceptance probability Pacc, with the Rosenbluth weight entering through its exact
+  // logarithm: the raw weight of a long chain underflows to zero, which would silently drive the
+  // acceptance to zero regardless of the actual weight ratio.
+  double Pacc =
+      std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight));
 
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

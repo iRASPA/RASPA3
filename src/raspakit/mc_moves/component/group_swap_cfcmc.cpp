@@ -316,7 +316,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     std::vector<std::vector<Atom>> trialAtoms(groupSize);
     std::vector<RunningEnergy> trialGrowEnergies(groupSize);
     std::vector<double> distanceBiasFactors(groupSize, 1.0);  // radial-proposal bias per satellite (CB variant)
-    double rosenbluthRatio = 1.0;  // product of W/W_ideal (CB variant only; 1 for conventional)
+    // log of the product of W/W_ideal (CB variant only; 0 for conventional); kept in log space because
+    // the raw Rosenbluth weights of long chains underflow to zero
+    double logRosenbluthRatio = 0.0;
 
     // accumulated background: existing molecules plus already-created trial molecules
     std::vector<Atom> accumulatedBackground(system.spanOfMoleculeAtoms().begin(), system.spanOfMoleculeAtoms().end());
@@ -380,9 +382,11 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           }
           growData->energies += correction.value();
           growData->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+          growData->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
         }
 
-        rosenbluthRatio *= growData->RosenbluthWeight / memberComponent.idealGasRosenbluthWeight.value_or(1.0);
+        logRosenbluthRatio +=
+            growData->logRosenbluthWeight - std::log(memberComponent.idealGasRosenbluthWeight.value_or(1.0));
         trialMolecules[i] = growData->molecule;
         trialAtoms[i] = std::move(growData->atoms);
         trialGrowEnergies[i] = growData->energies;
@@ -577,9 +581,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     const double physicalPacc =
-        preFactor * rosenbluthRatio *
-        std::exp(-system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
-                                 polarizationDifference.potentialEnergy()));
+        std::exp(std::log(preFactor) + logRosenbluthRatio -
+                 system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
+                                polarizationDifference.potentialEnergy()));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -770,7 +774,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // (1a, CB variant) retrace the fractional group; the growth order of the reverse (insertion)
     // move is member 0 first, then 1, ..., each with the earlier members in the background, so
     // member i is retraced against the full background minus the members grown after it
-    double rosenbluthRatio = 1.0;  // product of W_ideal/W_retrace (CB variant only; 1 for conventional)
+    // log of the product of W_ideal/W_retrace (CB variant only; 0 for conventional); kept in log space
+    // because the raw Rosenbluth weights of long chains underflow to zero
+    double logRosenbluthRatio = 0.0;
     std::vector<RunningEnergy> retraceEnergies(groupSize);
     if (useCBMC)
     {
@@ -818,9 +824,11 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           }
           retraceData.energies += correction.value();
           retraceData.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+          retraceData.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
         }
 
-        rosenbluthRatio *= memberComponent.idealGasRosenbluthWeight.value_or(1.0) / retraceData.RosenbluthWeight;
+        logRosenbluthRatio +=
+            std::log(memberComponent.idealGasRosenbluthWeight.value_or(1.0)) - retraceData.logRosenbluthWeight;
         retraceEnergies[i] = retraceData.energies;
       }
       time_end = std::chrono::steady_clock::now();
@@ -1004,9 +1012,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     const double physicalPacc =
-        preFactor * rosenbluthRatio *
-        std::exp(-system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
-                                 polarizationDifference.potentialEnergy()));
+        std::exp(std::log(preFactor) + logRosenbluthRatio -
+                 system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
+                                polarizationDifference.potentialEnergy()));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)

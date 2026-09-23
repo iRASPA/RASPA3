@@ -236,8 +236,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
     retraceDataB.energies += correctionB.value();
     retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
     retraceDataA.energies += correctionA.value();
     retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+    retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
@@ -297,14 +299,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   const double k = double(numberOfPartners);
-  const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
+  // which would turn the quotient below into +inf).
+  const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
   const double preFactor = correctionFactorEwald *
                            (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k * distanceBias / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
+  const double Pacc = std::exp(std::log(preFactor) + std::log(idealGasA * idealGasB) - logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
@@ -494,8 +498,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
     retraceDataB.energies += correctionB.value();
     retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
     retraceDataA.energies += correctionA.value();
     retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+    retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
@@ -553,14 +559,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   const double k = double(numberOfPartners);
-  const double rosenbluthWeight = retraceDataA.RosenbluthWeight * retraceDataB.RosenbluthWeight;
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
+  // which would turn the quotient below into +inf).
+  const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
   const double preFactor = correctionFactorEwald *
                            (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = preFactor * (idealGasA * idealGasB) / rosenbluthWeight;
+  const double Pacc = std::exp(std::log(preFactor) + std::log(idealGasA * idealGasB) - logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

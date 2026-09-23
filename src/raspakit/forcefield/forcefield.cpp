@@ -737,6 +737,11 @@ ForceField::ForceField(std::string filePath)
         parsed_data.value("RecoilGrowthNumberOfTrialDirections", recoilGrowthNumberOfTrialDirections);
   }
 
+  if (parsed_data.contains("NumberOfTrialDirections"))
+  {
+    numberOfTrialDirections = parsed_data.value("NumberOfTrialDirections", numberOfTrialDirections);
+  }
+
   if (parsed_data.contains("NumberOfTrialMovesPerOpenBead"))
   {
     numberOfTrialMovesPerOpenBead = parsed_data.value("NumberOfTrialMovesPerOpenBead", numberOfTrialMovesPerOpenBead);
@@ -1820,6 +1825,7 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "UseRecoilGrowth",
     "RecoilGrowthMaximumRecoilLength",
     "RecoilGrowthNumberOfTrialDirections",
+    "NumberOfTrialDirections",
     "NumberOfTrialMovesPerOpenBead",
     "CBMCRingCrankshaftProbability",
     "CBMCRingTiltProbability"};

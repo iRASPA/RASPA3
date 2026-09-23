@@ -122,6 +122,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
     growDataA->energies += correctionA.value();
     growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+    growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
   }
 
   const double r = R_max * random.uniform();
@@ -163,6 +164,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
     growDataB->energies += correctionB.value();
     growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 0);
@@ -288,7 +290,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                            (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
                            (system.beta * fugacityB * sphereVolume * distanceBias / k_new);
 
-  const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
+  const double Pacc = std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
+                               growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
@@ -406,6 +410,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
     growDataA->energies += correctionA.value();
     growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+    growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
   }
 
   const double r = R_max * std::cbrt(random.uniform());
@@ -447,6 +452,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
     growDataB->energies += correctionB.value();
     growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+    growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 0);
@@ -571,7 +577,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                            (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
                            (system.beta * fugacityB * sphereVolume / k_new);
 
-  const double Pacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) * (growDataB->RosenbluthWeight / idealGasB);
+  // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
+  const double Pacc = std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
+                               growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

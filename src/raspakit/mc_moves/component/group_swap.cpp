@@ -170,6 +170,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     growDataCentral->energies += correction.value();
     growDataCentral->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+    growDataCentral->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
   }
 
   const double3 centralPosition = growDataCentral->atoms[centralComponent.startingBead].position;
@@ -231,6 +232,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
       growData->energies += correction.value();
       growData->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+      growData->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
     }
 
     distanceBiasFactors.push_back(distanceBiased ? 3.0 * r * r / (R_max * R_max) : 1.0);
@@ -374,10 +376,11 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   const double idealGasCentral = centralComponent.idealGasRosenbluthWeight.value_or(1.0);
   const double N_central = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
-  double Pacc = correctionFactorEwald *
-                (system.beta * fugacityCentral * system.simulationBox.volume /
-                 (N_central + double(insertedCentralComponentMolecules))) *
-                (growDataCentral->RosenbluthWeight / idealGasCentral);
+  // Accumulated in log space: the raw Rosenbluth weights of long chains underflow to zero.
+  double logPacc = std::log(correctionFactorEwald) +
+                   std::log(system.beta * fugacityCentral * system.simulationBox.volume /
+                            (N_central + double(insertedCentralComponentMolecules))) +
+                   growDataCentral->logRosenbluthWeight - std::log(idealGasCentral);
 
   // Per-slot reverse-selection candidate counts in the inserted state: the in-range integer
   // molecules of the slot's component (all inserted satellites of that component are in range by
@@ -408,9 +411,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
         satelliteComponent.molFraction * satelliteComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
     const double idealGasSatellite = satelliteComponent.idealGasRosenbluthWeight.value_or(1.0);
 
-    Pacc *= (system.beta * fugacitySatellite * sphereVolume * distanceBiasFactors[j] / double(reverseCandidates)) *
-            (satelliteGrowData[j].RosenbluthWeight / idealGasSatellite);
+    logPacc +=
+        std::log(system.beta * fugacitySatellite * sphereVolume * distanceBiasFactors[j] /
+                 double(reverseCandidates)) +
+        satelliteGrowData[j].logRosenbluthWeight - std::log(idealGasSatellite);
   }
+
+  const double Pacc = std::exp(logPacc);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
@@ -644,6 +651,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
       retrace.energies += correction.value();
       retrace.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
+      retrace.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
     }
 
     retraceData.push_back(std::move(retrace));
@@ -758,8 +766,11 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   const double idealGasCentral = centralComponent.idealGasRosenbluthWeight.value_or(1.0);
   const double N_central = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
-  double Pacc = correctionFactorEwald * (N_central / (system.beta * fugacityCentral * system.simulationBox.volume)) *
-                (idealGasCentral / retraceData[0].RosenbluthWeight);
+  // Accumulated in log space: the raw Rosenbluth weights of long chains underflow to zero, which
+  // would turn these quotients into +inf.
+  double logPacc = std::log(correctionFactorEwald) +
+                   std::log(N_central / (system.beta * fugacityCentral * system.simulationBox.volume)) +
+                   std::log(idealGasCentral) - retraceData[0].logRosenbluthWeight;
 
   for (std::size_t j = 0; j < numberOfSatellites; ++j)
   {
@@ -768,10 +779,12 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
         satelliteComponent.molFraction * satelliteComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
     const double idealGasSatellite = satelliteComponent.idealGasRosenbluthWeight.value_or(1.0);
 
-    Pacc *= (double(slotCandidateCounts[j]) /
-             (system.beta * fugacitySatellite * sphereVolume * distanceBiasFactors[j])) *
-            (idealGasSatellite / retraceData[1 + j].RosenbluthWeight);
+    logPacc += std::log(double(slotCandidateCounts[j]) /
+                        (system.beta * fugacitySatellite * sphereVolume * distanceBiasFactors[j])) +
+               std::log(idealGasSatellite) - retraceData[1 + j].logRosenbluthWeight;
   }
+
+  const double Pacc = std::exp(logPacc);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

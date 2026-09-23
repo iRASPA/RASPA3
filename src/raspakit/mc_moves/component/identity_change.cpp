@@ -125,6 +125,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
   }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -159,6 +160,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
     retraceData.energies += correctionOld.value();
     retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+    retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
   }
 
   time_begin = std::chrono::steady_clock::now();
@@ -238,11 +240,13 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const double numberOfMoleculesNew =
       static_cast<double>(system.numberOfIntegerMoleculesPerComponent[newComponent]);
 
-  const double rosenbluthNew =
-      growData->RosenbluthWeight * std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
-  const double acceptanceProbability =
-      correctionFactorEwald * (rosenbluthNew / idealGasRosenbluthWeightNew) * fugacityNew * numberOfMoleculesOld /
-      ((retraceData.RosenbluthWeight / idealGasRosenbluthWeightOld) * fugacityOld * (numberOfMoleculesNew + 1.0));
+  // The two Rosenbluth weights enter through their exact logarithms: the raw weights of long chains
+  // underflow to zero, which would turn this cross-component ratio into 0/0 (NaN) or x/0 (inf).
+  const double acceptanceProbability = std::exp(
+      std::log(correctionFactorEwald) - system.beta * tailEnergyDifference.potentialEnergy() +
+      growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeightNew) - retraceData.logRosenbluthWeight +
+      std::log(idealGasRosenbluthWeightOld) +
+      std::log(fugacityNew * numberOfMoleculesOld / (fugacityOld * (numberOfMoleculesNew + 1.0))));
 
   if (random.uniform() < acceptanceProbability)
   {

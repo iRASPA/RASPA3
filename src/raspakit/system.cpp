@@ -174,6 +174,10 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
   }
 
+  // 'CutOffCoulomb': "auto" is half the shortest box edge. Apply it before the reciprocal mesh is
+  // built: a fixed short cutoff in a large cell makes the Fourier sum the expensive part of every
+  // energy evaluation, including the initial chain growth.
+  forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
@@ -212,6 +216,12 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   // initial molecules are placed so their placement keeps using the cold-start seed (unchanged initial
   // geometry); the reservoir is only consulted by the production Monte-Carlo moves.
   buildConformationReservoirs();
+
+  // Build the recoil-growth openness reference. After the reservoirs so the reference grows of ring or
+  // semi-flexible components warm-start from them, and before any production move can grow with recoil:
+  // every recoil grow measures its trial directions against these conformations. Initial molecule
+  // creation (above) is safe without them -- it always grows with CBMC.
+  buildRecoilReferenceConformations();
 
   equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
                                     P.value_or(0.0), simulationBox, heliumVoidFraction, components);
@@ -310,6 +320,7 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
   // computes them before the framework atoms are appended; the preserved guest counts stay valid, so framework
   // atoms are not (re)counted here.
 
+  forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);

@@ -619,6 +619,19 @@ export struct System
   void buildConformationReservoirs();
 
   /**
+   * \brief Fills each flexible component's recoil-growth openness reference conformations.
+   *
+   * When recoil growth is enabled, draws a few independent ideal-gas conformations per flexible
+   * multi-atom component (via equilibratedIdealGasConformation, forced through the CBMC path) and
+   * stores them in Component::recoilReferenceConformations. The recoil-growth open/closed test measures
+   * every trial direction against the same growth step evaluated in these conformations (per-step
+   * maximum energy), so molecules whose correctly grown chains carry unavoidable intramolecular strain
+   * (crowded united-atom beads) are not rejected as 'closed'. Built once with a fixed local RNG so the
+   * reference is a fixed constant of the run (grow and retrace share it; detailed balance holds).
+   */
+  void buildRecoilReferenceConformations();
+
+  /**
    * \brief Works out the blocking pockets of the components that asked for them.
    *
    * A component with 'BlockingPockets' : 'auto' has its spheres measured from the framework here, for a probe

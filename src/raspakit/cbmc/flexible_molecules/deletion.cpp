@@ -36,6 +36,7 @@ import cbmc_operators;
   double beta = context.beta;
 
   double chain_rosenbluth_weight = 1.0;
+  double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
@@ -96,9 +97,22 @@ import cbmc_operators;
     for (std::size_t k = 0; k != nextBeads.size(); ++k) chain_atoms[nextBeads[k]] = molecule_atoms[nextBeads[k]];
     RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
     chain_rosenbluth_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+
+    // Log of the same per-step factor, with the Boltzmann sum evaluated as log-sum-exp so the log stays
+    // exact even where the raw factor (retrace has no per-step guard) or the running product underflows.
+    double maxLogBoltzmannFactor = *std::max_element(logBoltzmannFactors.begin(), logBoltzmannFactors.end());
+    double logRosenbluthSum =
+        maxLogBoltzmannFactor +
+        std::log(std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                 [&](const double &acc, const double &logBoltzmannFactor)
+                                 { return acc + std::exp(logBoltzmannFactor - maxLogBoltzmannFactor); }));
+    chain_log_rosenbluth_weight += std::log(selectedTrial.torsionWeight) + logRosenbluthSum -
+                                   std::log(static_cast<double>(forceField.numberOfTrialDirections)) -
+                                   beta * stepUnsampled.potentialEnergy();
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0);
+  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0,
+                          chain_log_rosenbluth_weight);
 }

@@ -1077,9 +1077,73 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
   return trials;
 }
 
+// One draw of a single next-bead's bond length and bend angle. Recoil growth uses this as the trial
+// direction itself for single-bead flexible steps: the internal bond/bend Monte Carlo (hundreds of
+// moves per call) is a CBMC warm-start, and repeating it for every trial and every look-ahead feeler
+// makes a single chain growth take seconds. Multi-bead (branch) steps keep the internal MC -- see the
+// 'coupled' dispatch in 'generateRecoilTrial'.
+static std::vector<Atom> sampleRecoilBase(RandomNumber &random, double beta, const std::vector<Atom> &chainAtoms,
+                                          std::size_t previousBead, std::size_t currentBead,
+                                          const std::vector<std::size_t> &nextBeads,
+                                          const Potentials::IntraMolecularPotentials &intra)
+{
+  std::vector<Atom> placed(chainAtoms.begin(), chainAtoms.end());
+  double3 last_bond_vector = placed[previousBead].position - placed[currentBead].position;
+  if (last_bond_vector.length() < 1e-8) last_bond_vector = double3{0.0, 0.0, 1.0};
+  last_bond_vector = last_bond_vector.normalized();
+
+  for (std::size_t next_bead : nextBeads)
+  {
+    std::optional<BondPotential> bond = intra.findBondPotential(currentBead, next_bead);
+    double bond_length =
+        bond.transform([&](const BondPotential &b) { return b.generateBondLength(random, beta); }).value_or(1.54);
+    const BendPotential *bend = nullptr;
+    const BendPotential *fallback = nullptr;
+    for (const BendPotential &candidate : intra.bends)
+    {
+      bool has_previous = false;
+      bool has_current = false;
+      bool has_next = false;
+      for (std::size_t id : candidate.identifiers)
+      {
+        has_previous = has_previous || id == previousBead;
+        has_current = has_current || id == currentBead;
+        has_next = has_next || id == next_bead;
+      }
+      if (has_current && has_next) fallback = &candidate;
+      if (has_previous && has_current && has_next)
+      {
+        bend = &candidate;
+        break;
+      }
+    }
+    if (bend == nullptr) bend = fallback;
+    double angle = bend != nullptr ? bend->generateBendAngle(random, beta) : 120.0 * Units::DegreesToRadians;
+    double3 vec = random.randomVectorOnCone(last_bond_vector, angle);
+    placed[next_bead].position = placed[currentBead].position + bond_length * vec;
+  }
+
+  std::vector<Atom> result(nextBeads.size());
+  for (std::size_t k = 0; k != nextBeads.size(); ++k) result[k] = placed[nextBeads[k]];
+  return result;
+}
+
+static std::vector<Atom> spinRecoilBase(RandomNumber &random, const std::vector<Atom> &chainAtoms,
+                                        const std::vector<Atom> &base, std::size_t currentBead, double3 lastBondVector)
+{
+  double angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+  std::vector<Atom> rotated = base;
+  for (std::size_t k = 0; k != rotated.size(); ++k)
+  {
+    rotated[k].position = chainAtoms[currentBead].position +
+                          lastBondVector.rotateAroundAxis(base[k].position - chainAtoms[currentBead].position, angle);
+  }
+  return rotated;
+}
+
 CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
                                           const Component &component, const std::vector<Atom> &contextAtoms,
-                                          const GrowStep &step)
+                                          const GrowStep &step, bool biasTorsion)
 {
   if (!step.previousBead.has_value())
   {
@@ -1103,11 +1167,29 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
     return {{trial_atom}, 1.0};
   }
 
-  std::vector<Atom> base = sampleBaseConformation(random, forceField, beta, component, contextAtoms, step);
-  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
-  double3 last_bond_vector =
-      (contextAtoms[step.previousBead.value()].position - contextAtoms[step.currentBead].position).normalized();
+  // Ring closure, rigid fragments, and branch steps keep the internal Monte Carlo. Only a SINGLE
+  // flexible bead is one Boltzmann bond length and bend angle, then a torsion spin: every bonded term
+  // that the torsion spin cannot change (it rotates the bead rigidly about the previous-current axis)
+  // is then either sampled (the bond and the previous-current-next bend) or carried by the spin weight.
+  // A branch step places two or more substituents whose sibling-sibling bend is invariant under the
+  // spin and is not drawn by independent per-bead cones, so the one-draw shortcut would leave that
+  // angle uniformly distributed instead of Boltzmann: a sampling bias, and (since the siblings then
+  // frequently overlap) a recoil search in which nearly every branch direction tests closed.
+  const bool coupled = step.rigidBody || step.kind == GrowStep::Kind::CloseRing || step.nextBeads.size() > 1;
+  std::vector<Atom> base =
+      coupled ? sampleBaseConformation(random, forceField, beta, component, contextAtoms, step)
+              : sampleRecoilBase(random, beta, contextAtoms, step.previousBead.value(), step.currentBead,
+                                 step.nextBeads, step.intra);
+  double3 last_bond_vector = contextAtoms[step.previousBead.value()].position - contextAtoms[step.currentBead].position;
+  if (last_bond_vector.length() < 1e-8) last_bond_vector = double3{0.0, 0.0, 1.0};
+  last_bond_vector = last_bond_vector.normalized();
 
+  if (!biasTorsion && !coupled)
+  {
+    return {spinRecoilBase(random, contextAtoms, base, step.currentBead, last_bond_vector), 1.0};
+  }
+
+  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   TorsionOrientation torsion =
       selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, contextAtoms, base,
                                step.previousBead.value(), step.currentBead, step.nextBeads, last_bond_vector,

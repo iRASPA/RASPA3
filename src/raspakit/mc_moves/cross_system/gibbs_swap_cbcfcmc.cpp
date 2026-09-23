@@ -434,6 +434,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
       growData->energies += correctionNew.value();
       growData->RosenbluthWeight *= std::exp(-systemA.beta * correctionNew->potentialEnergy());
+      growData->logRosenbluthWeight += -systemA.beta * correctionNew->potentialEnergy();
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -488,6 +489,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
       retraceData.energies += correctionOld.value();
       retraceData.RosenbluthWeight *= std::exp(-systemB.beta * correctionOld->potentialEnergy());
+      retraceData.logRosenbluthWeight += -systemB.beta * correctionOld->potentialEnergy();
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -597,10 +599,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     const double physicalAcceptance =
-        preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) / retraceData.RosenbluthWeight *
-        correctionFactorEwaldGrowA * correctionFactorEwaldRetraceB *
-        std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()));
+        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
+                 retraceData.logRosenbluthWeight + std::log(correctionFactorEwaldGrowA) +
+                 std::log(correctionFactorEwaldRetraceB) -
+                 systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()));
     if (!tmmcTrial.transferIsInBounds())
     {
       tmmcTrial.recordTransfer(physicalAcceptance);
@@ -786,6 +790,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
       growData->energies += correctionNew.value();
       growData->RosenbluthWeight *= std::exp(-systemB.beta * correctionNew->potentialEnergy());
+      growData->logRosenbluthWeight += -systemB.beta * correctionNew->potentialEnergy();
     }
 
     std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());
@@ -861,10 +866,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
     double idealGasRosenbluthWeight = componentB.idealGasRosenbluthWeight.value_or(1.0);
 
+    // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
     if (random.uniform() <
-        preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) +
-                     biasTerm))
+        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
+                 systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) +
+                 biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 

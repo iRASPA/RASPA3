@@ -39,6 +39,7 @@ import cbmc_operators;
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
   double chain_rosenbluth_weight = 1.0;
+  double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
   // Deterministic growth plan over the fragment graph (flexible beads, hinged rigid bodies, and
@@ -94,10 +95,8 @@ import cbmc_operators;
 
     const CBMC::ChainTrialTorsion &selectedTrial = externalEnergies[selected];
 
-    chain_rosenbluth_weight *= selectedTrial.torsionWeight * rosenbluth_weight /
-                                static_cast<double>(forceField.numberOfTrialDirections);
-
-    if (chain_rosenbluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
+    double step_weight = selectedTrial.torsionWeight * rosenbluth_weight /
+                         static_cast<double>(forceField.numberOfTrialDirections);
 
     chain_external_energies += selectedTrial.energy;
 
@@ -109,8 +108,19 @@ import cbmc_operators;
       chain_atoms[nextBeads[i]] = selectedTrial.positions[i];
     }
     RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-    chain_rosenbluth_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
-    if (chain_rosenbluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
+    step_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+
+    // Overlap guard on the per-step factor, not the running product. The cumulative weight of a long
+    // chain decays roughly as f^N (f ~ 0.1 per bead for a chain with intra 1-4 charges), so a chain of
+    // a few hundred beads is below any fixed absolute threshold in every attempt: growth would always
+    // "dead-end" even though no step overlaps. A genuine overlap still trips the per-step test, since a
+    // surviving trial near the 'energyOverlapCriteria' contributes exp(-beta*E) << the threshold. The
+    // retrace path carries no guard, so grow and retrace stay symmetric.
+    if (step_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
+    chain_rosenbluth_weight *= step_weight;
+    // The per-step factor is bounded below by the guard, so its log is finite; the log sum stays exact
+    // where the raw product of a long chain underflows to zero.
+    chain_log_rosenbluth_weight += std::log(step_weight);
   }
 
   // Recompute all the internal interactions (including the cross-terms) for the returned energy.
@@ -122,5 +132,5 @@ import cbmc_operators;
   Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
   return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
-                       0.0);
+                       0.0, chain_log_rosenbluth_weight);
 }

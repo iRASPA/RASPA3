@@ -60,11 +60,14 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceFi
 /**
  * \brief Generates one independent trial direction of a growth step (recoil growth).
  *
- * Each call samples a fresh base conformation, so consecutive calls are i.i.d. -- required by the
- * lazy one-at-a-time trial generation of the recoil-growth search.
+ * Bond lengths and bend angles are drawn once from their Boltzmann distributions. When 'biasTorsion'
+ * is true the spin about the preceding bond is chosen with the usual torsion Rosenbluth weight; feeler
+ * look-ahead passes false and takes one random spin, because a feeler only tests whether an open path
+ * exists and does not enter the chain weight.
  */
 StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
-                              const Component &component, const std::vector<Atom> &contextAtoms, const GrowStep &step);
+                              const Component &component, const std::vector<Atom> &contextAtoms, const GrowStep &step,
+                              bool biasTorsion = true);
 
 /**
  * \brief Torsion Rosenbluth weight of the existing (old) orientation of a step (recoil retrace).

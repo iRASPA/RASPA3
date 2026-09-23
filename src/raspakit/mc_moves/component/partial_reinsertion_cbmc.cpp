@@ -145,8 +145,10 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
     retraceData.energies += correctionOld.value();
     retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+    retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
   }
 
   std::vector<double3> electricFieldNeighborDelta;
@@ -184,12 +186,15 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     }
   }
 
-  // Compute correction factor from the Fourier energy difference.
-  double correctionFactorFourier =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  // Metropolis acceptance with the weight ratio evaluated in log space: the raw Rosenbluth weights of a
+  // long regrown segment underflow to zero, turning the raw quotient into NaN (silent reject) or inf
+  // (unconditional accept). The log difference is exact for any segment length.
+  double logAcceptance =
+      -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
+      growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
 
   // Apply Metropolis acceptance criterion.
-  if (random.uniform() < correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
+  if (random.uniform() < std::exp(logAcceptance))
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);

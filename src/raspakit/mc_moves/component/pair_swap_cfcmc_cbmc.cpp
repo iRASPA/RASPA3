@@ -336,6 +336,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       growDataA->energies += correctionA.value();
       growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+      growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
     }
 
     // (2b) grow a new fractional molecule of component B with lambda_new; its first bead is fixed at
@@ -390,6 +391,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       growDataB->energies += correctionB.value();
       growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+      growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
     }
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
@@ -514,9 +516,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                              (system.beta * fugacityB * sphereVolume * distanceBias /
                               static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double physicalPacc = preFactor * (growDataA->RosenbluthWeight / idealGasA) *
-                                (growDataB->RosenbluthWeight / idealGasB) *
-                                std::exp(-system.beta * energyDifference.potentialEnergy());
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
+    const double physicalPacc =
+        std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
+                 growDataB->logRosenbluthWeight - std::log(idealGasB) -
+                 system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
@@ -707,8 +711,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
       retraceDataB.energies += correctionB.value();
       retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
+      retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
       retraceDataA.energies += correctionA.value();
       retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
+      retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
     }
 
     double runningNetCharge = system.netCharge;
@@ -899,9 +905,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                              (static_cast<double>(oldN_B) * distanceBias /
                               (system.beta * fugacityB * sphereVolume));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double physicalPacc = preFactor * (idealGasA / retraceDataA.RosenbluthWeight) *
-                                (idealGasB / retraceDataB.RosenbluthWeight) *
-                                std::exp(-system.beta * energyDifference.potentialEnergy());
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
+    // which would turn these quotients into +inf).
+    const double physicalPacc =
+        std::exp(std::log(preFactor) + std::log(idealGasA) - retraceDataA.logRosenbluthWeight +
+                 std::log(idealGasB) - retraceDataB.logRosenbluthWeight -
+                 system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)

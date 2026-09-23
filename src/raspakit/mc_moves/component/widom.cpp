@@ -75,6 +75,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
   }
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -151,5 +152,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
-  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  // The Rosenbluth weight enters through its exact logarithm: the raw weight of a long chain underflows
+  // to zero even when the normalized sample W/W_ideal is of order one.
+  return std::exp(std::log(correctionFactorEwald) + growData->logRosenbluthWeight -
+                  std::log(idealGasRosenbluthWeight));
 }
