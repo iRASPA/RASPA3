@@ -29,11 +29,13 @@ struct StepTrial
  *    direction; a rigid body or ring seed gets uniformly random orientations about the anchor (no
  *    orientational reference exists yet, all torsion weights are 1).
  *  - AttachFragment: flexible beads sample a base conformation exactly (Boltzmann bond lengths and
- *    anchor-bend cone directions per bead, sibling bends between beads of the same step imposed by
- *    rejection, declared chiral centers enforced by parity rejection) carrying no weight; every
- *    other bonded term of the step (torsions and spin-variant bends) is Rosenbluth-weighted in the
- *    torsion (spin) selection about the junction bond. A rigid body samples its junction-bend tilt
- *    with a rigid-rotation Metropolis Monte-Carlo.
+ *    anchor-bend cone directions per bead; sibling bends and the step-local spin-invariant coupling
+ *    terms -- Urey-Bradley, central inversion bends, bond/bond, bond/bend, bend/bend, improper
+ *    torsions -- imposed by clamped rejection, whose excess weight max(1, e^{-beta(u-u_ref)}) rides
+ *    on every trial; declared chiral centers enforced by parity rejection); every other bonded term
+ *    of the step (torsions, spin-variant bends, and the remaining unsampled terms that touch placed
+ *    geometry) is Rosenbluth-weighted in the torsion (spin) selection about the junction bond. A
+ *    rigid body samples its junction-bend tilt with a rigid-rotation Metropolis Monte-Carlo.
  *  - CloseRing: the internal conformation of the cyclic cluster is sampled from its Boltzmann
  *    distribution by an internal Monte-Carlo (the closure bonds keep every ring closed -- simple,
  *    fused, and bridged), and the spin about the junction bond is biased by the junction-crossing
@@ -76,14 +78,27 @@ StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField
  * are random rotations around the last bond vector.
  */
 double oldConfigurationTorsionWeight(RandomNumber &random, const ForceField &forceField, double beta,
-                                     const std::vector<Atom> &oldAtoms, const GrowStep &step);
+                                     const Component &component, const std::vector<Atom> &oldAtoms,
+                                     const GrowStep &step);
+
+/**
+ * \brief Whether a step's growth machinery samples/weights the classically unsampled internal terms
+ * itself (Urey-Bradley, inversion and out-of-plane bends, improper torsions, and the cross terms).
+ *
+ * True for flexible attach steps: their base sampler imposes the step-local ("base coupling") share
+ * of these terms by rejection, and the torsion-spin selection Rosenbluth-weights the rest. Callers
+ * must then NOT apply the post-selection e^{-beta u} factor for such steps (it would double count).
+ * Rigid-body, ring-closure, and seed steps still rely on the caller's post-selection factor.
+ */
+bool stepHandlesUnsampledInternalTerms(const GrowStep &step);
 
 /**
  * \brief The log of the base-sampler normalization of a growth plan's flexible steps.
  *
  * The exact flexible base sampler draws each bead from the normalized density
- * r^2 exp(-beta u_bond) x sin(theta) exp(-beta u_anchor) / Z_step, restricted by rejection to the
- * sibling-bend coupling (contributing the mean coupling Boltzmann factor to Z_step) and optionally
+ * r^2 exp(-beta u_bond) x sin(theta) exp(-beta u_anchor) / Z_step, restricted by clamped rejection
+ * to the coupling terms (sibling bends plus the base-routed unsampled terms, contributing
+ * <min(1, e^{-beta(u-u_ref)})> e^{-beta u_ref} to Z_step) and optionally
  * to the declared chirality sector (probability one half). The Rosenbluth acceptance
  * W_grow / W_retrace of a CBMC move is therefore only correct up to the ratio of the two plans'
  * base normalizations: for moves that grow and retrace with the same plan the ratio is one and

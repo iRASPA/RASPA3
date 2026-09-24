@@ -100,15 +100,19 @@ import cbmc_operators;
 
     chain_external_energies += selectedTrial.energy;
 
-    // Fold the internal terms whose atoms are all placed by this step, but which are not sampled by
-    // the growth scheme (Urey-Bradley, inversion/out-of-plane bend, improper torsion, cross-terms),
-    // into this step's Rosenbluth weight instead of a single end-of-growth correction.
+    // Internal terms not sampled by the classic growth stages (Urey-Bradley, inversion/out-of-plane
+    // bend, improper torsion, cross-terms): flexible attach steps handle them inside the operator
+    // engine (base-coupling rejection plus the torsion-spin selection, see splitUnsampledStepTerms);
+    // rigid-body, ring-closure, and seed steps fold them into this step's Rosenbluth weight here.
     for (std::size_t i = 0; i != nextBeads.size(); ++i)
     {
       chain_atoms[nextBeads[i]] = selectedTrial.positions[i];
     }
-    RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-    step_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+    if (!CBMC::stepHandlesUnsampledInternalTerms(step))
+    {
+      RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
+      step_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+    }
 
     // Overlap guard on the per-step factor, not the running product. The cumulative weight of a long
     // chain decays roughly as f^N (f ~ 0.1 per bead for a chain with intra 1-4 charges), so a chain of

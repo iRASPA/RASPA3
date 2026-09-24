@@ -93,10 +93,15 @@ import cbmc_operators;
 
     chain_external_energies += selectedTrial.energy;
 
-    // Fold this step's not-sampled internal terms into the weight (mirrors the insertion).
+    // Fold this step's not-sampled internal terms into the weight (mirrors the insertion). Flexible
+    // attach steps handle these terms inside the operator engine, so skip them here (no double count).
     for (std::size_t k = 0; k != nextBeads.size(); ++k) chain_atoms[nextBeads[k]] = molecule_atoms[nextBeads[k]];
-    RunningEnergy stepUnsampled = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-    chain_rosenbluth_weight *= std::exp(-beta * stepUnsampled.potentialEnergy());
+    double stepUnsampledEnergy = 0.0;
+    if (!CBMC::stepHandlesUnsampledInternalTerms(step))
+    {
+      stepUnsampledEnergy = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms).potentialEnergy();
+    }
+    chain_rosenbluth_weight *= std::exp(-beta * stepUnsampledEnergy);
 
     // Log of the same per-step factor, with the Boltzmann sum evaluated as log-sum-exp so the log stays
     // exact even where the raw factor (retrace has no per-step guard) or the running product underflows.
@@ -108,7 +113,7 @@ import cbmc_operators;
                                  { return acc + std::exp(logBoltzmannFactor - maxLogBoltzmannFactor); }));
     chain_log_rosenbluth_weight += std::log(selectedTrial.torsionWeight) + logRosenbluthSum -
                                    std::log(static_cast<double>(forceField.numberOfTrialDirections)) -
-                                   beta * stepUnsampled.potentialEnergy();
+                                   beta * stepUnsampledEnergy;
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);

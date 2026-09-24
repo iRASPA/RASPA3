@@ -271,13 +271,17 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
     chain_external_energies += record.energy.external;
 
-    // Fold this step's not-sampled internal terms into the weight (mirrors the CBMC path).
+    // Fold this step's not-sampled internal terms into the weight (mirrors the CBMC path). Flexible
+    // attach steps handle these terms inside the operator engine, so skip them here (no double count).
     for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
     {
       chain_atoms[step.nextBeads[k]] = record.selected.positions[k];
     }
-    RunningEnergy stepUnsampled = step.intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
-    step_weight *= std::exp(-ctx.env.beta * stepUnsampled.potentialEnergy());
+    if (!CBMC::stepHandlesUnsampledInternalTerms(step))
+    {
+      RunningEnergy stepUnsampled = step.intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms);
+      step_weight *= std::exp(-ctx.env.beta * stepUnsampled.potentialEnergy());
+    }
 
     // Per-step overlap guard: the cumulative weight of a long chain is below any fixed absolute
     // threshold (it decays exponentially with chain length), so guarding the running product would
@@ -336,7 +340,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     double open_probability = openProbability(ctx, seg, selected_potential);
 
     double torsion_weight =
-        CBMC::oldConfigurationTorsionWeight(random, ctx.env.forceField, ctx.env.beta, old_atoms, step);
+        CBMC::oldConfigurationTorsionWeight(random, ctx.env.forceField, ctx.env.beta, component, old_atoms, step);
 
     std::size_t numberOfFeelers = 1;
     if (ctx.numberOfTrialDirections > 1)
@@ -368,15 +372,19 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
     chain_external_energies += selected_energy.external;
 
-    RunningEnergy stepUnsampled = step.intra.computeInternalEnergiesNotSampledDuringGrowth(old_atoms);
-    chain_rosenbluth_weight *= std::exp(-ctx.env.beta * stepUnsampled.potentialEnergy());
+    double stepUnsampledEnergy = 0.0;
+    if (!CBMC::stepHandlesUnsampledInternalTerms(step))
+    {
+      stepUnsampledEnergy = step.intra.computeInternalEnergiesNotSampledDuringGrowth(old_atoms).potentialEnergy();
+    }
+    chain_rosenbluth_weight *= std::exp(-ctx.env.beta * stepUnsampledEnergy);
 
     // Log of the same per-step factor (retrace has no per-step guard, so the raw product of a long
     // chain underflows; the log sum stays exact).
     chain_log_rosenbluth_weight +=
         std::log(static_cast<double>(numberOfFeelers) / static_cast<double>(ctx.numberOfTrialDirections)) -
         ctx.env.beta * selected_potential - std::log(open_probability) + std::log(torsion_weight) -
-        ctx.env.beta * stepUnsampled.potentialEnergy();
+        ctx.env.beta * stepUnsampledEnergy;
   }
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(old_atoms);
