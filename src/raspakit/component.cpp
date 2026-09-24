@@ -426,6 +426,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
     repeatUnits = readRepeatUnits(parsed_data);
+    endToEndAtoms = determineEndToEndAtoms(parsed_data);
 
     // Whether an atom lies in a cyclic cluster (a flexible ring): its fragment maps to a cluster id.
     auto cyclicClusterOf = [&](std::size_t atom) -> std::make_signed_t<std::size_t>
@@ -2371,6 +2372,63 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
   return units;
 }
 
+std::optional<std::array<std::size_t, 2>> Component::determineEndToEndAtoms(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const
+{
+  const std::size_t numberOfBeads = definedAtoms.size();
+
+  // Explicit specification always wins.
+  if (parsed_data.contains("EndToEndAtoms"))
+  {
+    std::array<std::size_t, 2> pair{};
+    try
+    {
+      pair = parsed_data["EndToEndAtoms"].get<std::array<std::size_t, 2>>();
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: 'EndToEndAtoms' must be an array of two atom indices: {}\n", e.what()));
+    }
+    if (pair[0] >= numberOfBeads || pair[1] >= numberOfBeads || pair[0] == pair[1])
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'EndToEndAtoms' [{}, {}] must be two distinct atom indices below {}\n", pair[0],
+          pair[1], numberOfBeads));
+    }
+    return pair;
+  }
+
+  if (numberOfBeads < 2) return std::nullopt;
+
+  // A chain declared with 'RepeatUnits': the ends are the backbone entry bead of the first unit and
+  // the backbone exit bead of the last unit. The units are shift-periodic, so the (unique up to
+  // slots) bond crossing the first junction identifies both backbone slots: the slot bonding
+  // FORWARD into the next unit (exit) and the slot receiving that bond (entry). This deliberately
+  // skips side-chain atoms, which can form the longest graph path but are not the polymer ends.
+  if (repeatUnits.size() >= 2)
+  {
+    const std::vector<std::size_t> &firstUnit = repeatUnits.front();
+    const std::vector<std::size_t> &secondUnit = repeatUnits[1];
+    for (std::size_t slotA = 0; slotA != firstUnit.size(); ++slotA)
+    {
+      for (std::size_t slotB = 0; slotB != secondUnit.size(); ++slotB)
+      {
+        if (connectivityTable[firstUnit[slotA], secondUnit[slotB]])
+        {
+          // slotA bonds forward (exit), slotB receives (entry).
+          return std::array<std::size_t, 2>{firstUnit[slotB], repeatUnits.back()[slotA]};
+        }
+      }
+    }
+    // Validated repeat units are always connected; not reached.
+  }
+
+  // General molecule: the endpoints of the topological diameter of the bond graph (the two termini
+  // of a linear chain; for branched molecules an explicit 'EndToEndAtoms' may be preferable).
+  return connectivityTable.graphDiameterEndpoints();
+}
+
 std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
@@ -2552,6 +2610,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.crankshaftRandomizationFraction;
   archive << c.crankshaftMaxSegmentSize;
   archive << c.repeatUnits;
+  archive << c.endToEndAtoms;
   archive << c.definedAtoms;
 
   archive << c.inertiaVector;
@@ -2659,6 +2718,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.crankshaftRandomizationFraction;
   archive >> c.crankshaftMaxSegmentSize;
   archive >> c.repeatUnits;
+  archive >> c.endToEndAtoms;
   archive >> c.definedAtoms;
 
   archive >> c.inertiaVector;

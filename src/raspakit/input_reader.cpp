@@ -2697,9 +2697,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             bondRangeMoleculeProperties = value["BondRangeMoleculeProperties"].get<double>();
           }
 
+          // Upper limit of the end-to-end distance histogram; defaults to the contour length
+          // between the component's end-to-end atoms.
+          std::optional<double> endToEndRangeMoleculeProperties{};
+          if (value.contains("EndToEndRangeMoleculeProperties") &&
+              value["EndToEndRangeMoleculeProperties"].is_number())
+          {
+            endToEndRangeMoleculeProperties = value["EndToEndRangeMoleculeProperties"].get<double>();
+          }
+
           systems[systemId].propertyMoleculeProperties = PropertyMoleculeProperties(
               jsonNumberOfBlocks, systems[systemId].components, numberOfBinsMoleculeProperties,
-              bondRangeMoleculeProperties, sampleMoleculePropertiesEvery, writeMoleculePropertiesEvery);
+              bondRangeMoleculeProperties, sampleMoleculePropertiesEvery, writeMoleculePropertiesEvery,
+              endToEndRangeMoleculeProperties);
         }
       }
 
@@ -3733,6 +3743,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteMoleculePropertiesEvery",
     "NumberOfBinsMoleculeProperties",
     "BondRangeMoleculeProperties",
+    "EndToEndRangeMoleculeProperties",
     "ComputeElasticConstantsFromFluctuations",
     "ElasticConstantsSampleEvery",
     "ComputeRDF",

@@ -8,12 +8,17 @@ import archive;
 import atom;
 import component;
 
-// Samples intra-molecular geometry histograms (bond lengths, bend angles, and
-// torsion/dihedral angles) for the flexible connectivity of every component.
+// Samples intra-molecular geometry histograms (bond lengths, bend angles,
+// torsion/dihedral angles, and the end-to-end distance) for the flexible
+// connectivity of every component.
 //
 // This mirrors the "molecule properties" analysis from RASPA2
 // (src/molecule_properties.c): for each component the bond, bend and torsion
 // distributions are accumulated into probability histograms and written to disk.
+// The end-to-end distance is sampled between 'Component::endToEndAtoms' (explicit
+// 'EndToEndAtoms' in the molecule JSON or inferred from the topology); its
+// histogram range defaults to the contour length between the two ends and can be
+// overridden with 'EndToEndRangeMoleculeProperties'.
 
 export struct PropertyMoleculeProperties
 {
@@ -21,7 +26,8 @@ export struct PropertyMoleculeProperties
 
   PropertyMoleculeProperties(std::size_t numberOfBlocks, const std::vector<Component> &components,
                              std::size_t numberOfBins, double bondRange, std::size_t sampleEvery,
-                             std::optional<std::size_t> writeEvery);
+                             std::optional<std::size_t> writeEvery,
+                             std::optional<double> endToEndRangeOverride = std::nullopt);
 
   std::uint64_t versionNumber{1};
 
@@ -44,10 +50,22 @@ export struct PropertyMoleculeProperties
   std::vector<std::size_t> numberOfBendsPerComponent{};
   std::vector<std::size_t> numberOfTorsionsPerComponent{};
 
+  // End-to-end distance sampling, one per component (nullopt: not sampled, e.g. rigid molecules).
+  std::vector<std::optional<std::array<std::size_t, 2>>> endToEndAtomsPerComponent{};
+  std::vector<double> endToEndRangePerComponent{};  ///< Histogram upper limit [Angstrom].
+  std::vector<double> deltaEndToEndPerComponent{};  ///< Bin width [Angstrom].
+
   // Histograms indexed as [block][component][potentialIndex][bin].
   std::vector<std::vector<std::vector<std::vector<double>>>> bondHistogram{};
   std::vector<std::vector<std::vector<std::vector<double>>>> bendHistogram{};
   std::vector<std::vector<std::vector<std::vector<double>>>> torsionHistogram{};
+  // End-to-end distance histogram, indexed as [block][component][0][bin] (the extra singleton index
+  // matches the layout the shared 'result' block-statistics helper expects).
+  std::vector<std::vector<std::vector<std::vector<double>>>> endToEndHistogram{};
+  // Accumulators for the end-to-end moments <R> and <R^2>, indexed as [block][component]; the
+  // per-block molecule count in 'numberOfCounts' is their normalization.
+  std::vector<std::vector<double>> endToEndSum{};
+  std::vector<std::vector<double>> endToEndSquaredSum{};
 
   // Number of molecule-samples per [block][component]; identical for every
   // potential of a given component, used as the normalization factor.

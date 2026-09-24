@@ -122,6 +122,78 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   return {previous_bead, current_bead, nextBeads};
 }
 
+std::vector<std::size_t> ConnectivityTable::shortestPath(std::size_t source, std::size_t target) const
+{
+  constexpr std::size_t unvisited = std::numeric_limits<std::size_t>::max();
+  std::vector<std::size_t> parent(numberOfBeads, unvisited);
+  std::deque<std::size_t> queue{source};
+  parent[source] = source;
+  while (!queue.empty())
+  {
+    std::size_t bead = queue.front();
+    queue.pop_front();
+    if (bead == target) break;
+    for (std::size_t neighbor : findAllNeighbors(bead))
+    {
+      if (parent[neighbor] == unvisited)
+      {
+        parent[neighbor] = bead;
+        queue.push_back(neighbor);
+      }
+    }
+  }
+  if (parent[target] == unvisited) return {};
+
+  std::vector<std::size_t> path{target};
+  while (path.back() != source) path.push_back(parent[path.back()]);
+  std::reverse(path.begin(), path.end());
+  return path;
+}
+
+std::optional<std::array<std::size_t, 2>> ConnectivityTable::graphDiameterEndpoints() const
+{
+  if (numberOfBeads < 2) return std::nullopt;
+
+  // Breadth-first distances from a source; the farthest bead (lowest index on ties).
+  auto farthestFrom = [&](std::size_t source) -> std::pair<std::size_t, std::size_t>
+  {
+    constexpr std::size_t unreached = std::numeric_limits<std::size_t>::max();
+    std::vector<std::size_t> distance(numberOfBeads, unreached);
+    std::deque<std::size_t> queue{source};
+    distance[source] = 0;
+    while (!queue.empty())
+    {
+      std::size_t bead = queue.front();
+      queue.pop_front();
+      for (std::size_t neighbor : findAllNeighbors(bead))
+      {
+        if (distance[neighbor] == unreached)
+        {
+          distance[neighbor] = distance[bead] + 1;
+          queue.push_back(neighbor);
+        }
+      }
+    }
+    std::size_t best = source, bestDistance = 0;
+    for (std::size_t i = 0; i < numberOfBeads; ++i)
+    {
+      if (distance[i] != unreached && distance[i] > bestDistance)
+      {
+        best = i;
+        bestDistance = distance[i];
+      }
+    }
+    return {best, bestDistance};
+  };
+
+  // Double sweep: the farthest bead from any start lies on a diameter; the farthest bead from it is
+  // the other end (exact on trees, i.e. acyclic molecules; a good approximation with rings).
+  auto [endA, distanceA] = farthestFrom(0);
+  auto [endB, distanceB] = farthestFrom(endA);
+  if (distanceB == 0) return std::nullopt;  // no bonds at all
+  return std::array<std::size_t, 2>{std::min(endA, endB), std::max(endA, endB)};
+}
+
 std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t currentBead) const
 {
   std::vector<std::size_t> neighbors{};

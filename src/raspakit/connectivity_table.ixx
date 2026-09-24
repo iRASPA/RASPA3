@@ -26,6 +26,17 @@ export struct ConnectivityTable
   std::optional<std::vector<std::size_t>> checkValidityNextBeads(const std::vector<std::size_t> &placedBeads) const;
 
   std::vector<std::size_t> findAllNeighbors(std::size_t currentBead) const;
+
+  /// Shortest path (in bonds) between two beads via breadth-first search, both endpoints included;
+  /// empty when no path exists.
+  std::vector<std::size_t> shortestPath(std::size_t source, std::size_t target) const;
+
+  /// The endpoints of a longest shortest path of the bond graph (the topological diameter), found
+  /// with a double breadth-first search; ties break to the lowest bead index. For a linear chain
+  /// these are the two chain termini. Nullopt for molecules with fewer than two beads or without
+  /// any bond.
+  std::optional<std::array<std::size_t, 2>> graphDiameterEndpoints() const;
+
   std::vector<std::array<std::size_t, 2>> findAllBonds() const;
   std::vector<std::array<std::size_t, 3>> findAllBends() const;
   std::vector<std::array<std::size_t, 4>> findAllTorsions() const;

@@ -267,6 +267,13 @@ export struct Component
   // themselves under the one-unit shift. Empty when the molecule declares no repeat units; the
   // reptation move then rejects immediately.
   std::vector<std::vector<std::size_t>> repeatUnits{};
+  // The two atoms whose distance is the molecule's end-to-end distance (sampled by the
+  // molecule-properties histograms). Explicitly set with 'EndToEndAtoms' in the molecule JSON;
+  // otherwise inferred: for a chain declared with 'RepeatUnits' the backbone entry bead of the
+  // first unit and the backbone exit bead of the last unit (side chains never qualify), else the
+  // endpoints of the topological diameter of the bond graph (the chain termini of a linear
+  // molecule). Nullopt for rigid or single-bead molecules.
+  std::optional<std::array<std::size_t, 2>> endToEndAtoms{};
   // Cache of CBMC growth plans keyed by the set of already-placed beads. A plan is deterministic
   // (it depends only on the molecule's topology and the placed set), and building one filters the
   // intramolecular potentials per step, so the plans for the common placed sets (the starting bead
@@ -534,6 +541,12 @@ export struct Component
   /// Reads and validates the 'RepeatUnits' of a periodic chain molecule (see 'repeatUnits'); throws
   /// with a descriptive message when the units do not form a shift-periodic partition.
   std::vector<std::vector<std::size_t>> readRepeatUnits(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /// Resolves 'endToEndAtoms' (see that field): the explicit 'EndToEndAtoms' key when present,
+  /// otherwise inference from 'repeatUnits' or the bond-graph diameter. Requires 'connectivityTable'
+  /// and 'repeatUnits' to be set.
+  std::optional<std::array<std::size_t, 2>> determineEndToEndAtoms(
+      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const;
 
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
