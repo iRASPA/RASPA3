@@ -14,6 +14,7 @@ add_executable(unit_tests_raspa3
   mc_semi_flexible_cbmc.cpp
   mc_cyclic_cbmc.cpp
   mc_u0_sanity.cpp
+  cbmc_base_sampler.cpp
   transition_matrix.cpp
   input_reader_tmmc.cpp
   reweighted_histogram_wham.cpp

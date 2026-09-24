@@ -153,8 +153,8 @@ R"({
 
 // A periodic chain with a direction-asymmetric repeat unit (a CH3 side group on the second
 // backbone bead): types, connectivity and potentials are shift-periodic, but the unit grows with a
-// branch step from one chain end and single-bead steps from the other, so the reptation
-// plan-congruence validation must reject it.
+// branch step from one chain end and single-bead steps from the other. With the exact flexible-bead
+// base sampler this is valid for reptation (no rigid/ring steps involved).
 constexpr std::string_view kBranchedPolymerJson =
 R"({
   "CriticalTemperature" : 600.0,
@@ -177,13 +177,11 @@ R"({
   ],
   "Bends" : [
     [["CH2", "CH2", "CH3"], "HARMONIC", [0.0, 112.0]],
-    [["CH2", "CH2", "CH2"], "HARMONIC", [0.0, 112.0]],
-    [["CH3", "CH2", "CH2"], "HARMONIC", [0.0, 112.0]]
+    [["CH2", "CH2", "CH2"], "HARMONIC", [0.0, 112.0]]
   ],
   "Torsions" : [
     [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
-    [["CH3", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
-    [["CH3", "CH2", "CH2", "CH3"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+    [["CH3", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
   ],
   "VanDerWaals" : "auto",
   "RepeatUnits" : [
@@ -402,12 +400,14 @@ TEST(MC_U0_SANITY, repeat_units_validation)
   }
 
   {
-    // Direction-asymmetric repeat unit: shift-periodic, but the head and tail growth plans differ
-    // (branch step from one end, single-bead steps from the other) -- rejected for reptation.
+    // Direction-asymmetric repeat unit (branch step from one chain end, single-bead steps from the
+    // other): valid for reptation, because purely flexible acyclic steps draw their trial
+    // conformations from the exact bonded-Boltzmann base sampler, which makes the cross-plan
+    // grow/retrace pairing of reptation exact for arbitrary plans.
     TemporaryFile file("branched-polymer-u0.json", kBranchedPolymerJson);
-    EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "branched-polymer-u0",
-                           file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false),
-                 std::runtime_error);
+    Component component(Component::Type::Adsorbate, 0, forceField, "branched-polymer-u0", file.stemPath().string(), 5,
+                        21, MCMoveProbabilities(), std::nullopt, false);
+    EXPECT_EQ(component.repeatUnits.size(), 3);
   }
 }
 

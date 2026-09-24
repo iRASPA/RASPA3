@@ -33,13 +33,16 @@ export namespace MC_Moves
  * shifted chain, and both use cached growth plans. Rigid fragments and rings inside a
  * repeat unit are grown with the standard rigid-fragment/ring-closure growth.
  *
- * Because the acceptance pairs the grow weight of one chain end's plan against the
- * retrace weight of the other end's plan, the two plans must be congruent (validated
- * at parse time): the approximate CBMC trial-conformation samplers deviate slightly
- * per step structure, and these deviations only cancel across the two plans when the
- * repeat unit grows with the same step sequence from either chain end. Direction-
- * asymmetric units (e.g. a branch point that forms a multi-bead step from one side
- * only) are rejected by the 'RepeatUnits' validation.
+ * The acceptance pairs the grow weight of one chain end's plan against the retrace
+ * weight of the other end's plan. Flexible acyclic steps draw their trial
+ * conformations from the exact bonded-Boltzmann base sampler, and the acceptance is
+ * corrected by the ratio of the two plans' base-sampler normalizations
+ * (CBMC::logBaseSamplerNormalization), so this cross-plan pairing satisfies detailed
+ * balance for arbitrary (including direction-asymmetric, e.g. branched) repeat
+ * units. Rigid-body and ring-closure steps still use approximate internal-MC
+ * samplers whose deviations only cancel between grow and retrace on the same plan;
+ * repeat units whose end plans contain such steps are therefore required (at parse
+ * time) to have congruent head and tail plans.
  *
  * @param random Random number generator instance.
  * @param system The current state of the simulation system.

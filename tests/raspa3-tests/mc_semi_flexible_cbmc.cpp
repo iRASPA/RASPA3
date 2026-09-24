@@ -857,6 +857,12 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_muvt_geometry_molecular_dynamics)
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
   Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
+  // At fugacity 1e6 Pa the equilibrium occupation of this box is essentially zero molecules
+  // (beta*f*V*<W> << 1): the box empties during initialization and insertions are then accepted at
+  // only ~0.1%, so the acceptance assertions below hinge on seed luck. Boost the fugacity
+  // coefficient so that beta*f*V*<W> ~ N at N~16: the molecule count then fluctuates around its
+  // initial value with both insertions and deletions accepted at O(10%).
+  pentane.fugacityCoefficient = 300.0;
 
   System system =
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
@@ -865,9 +871,11 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_muvt_geometry_molecular_dynamics)
   system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom,
                                  system.rotationalDegreesOfFreedom, 3, 3, 0.15);
 
-  // More production cycles than the other MD tests: particle exchange is only attempted every
-  // third cycle and the acceptance assertions below need accepted exchanges within the MD stages.
-  MolecularDynamics md = MolecularDynamics({60, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+  // More production cycles than the other MD tests: particle exchange is only attempted every third
+  // cycle and the acceptance assertions below need accepted exchanges in both directions within the
+  // MD stages regardless of the RNG stream (~40 attempts per direction at O(10%) acceptance).
+  MolecularDynamics md =
+      MolecularDynamics({240, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
 
   const auto verifyGroupStates = [&md]()
   {
@@ -888,7 +896,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_muvt_geometry_molecular_dynamics)
   for (System& s : md.systems)
   {
     // both an insertion and a deletion must have been accepted, otherwise the group-state splicing
-    // was not exercised (the run is deterministic through the fixed seed)
+    // was not exercised
     const auto& swapStatistics =
         std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::SwapCBMC]);
     const double3 acceptedCounts = swapStatistics.accepted + swapStatistics.totalAccepted;
@@ -910,6 +918,10 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_mupt_geometry_molecular_dynamics)
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
   Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
+  // See the MuVT test above: balance the exchange so that both insertions and deletions are
+  // accepted at O(10%) instead of the box emptying out during initialization. The barostat still
+  // operates on the unmodified system pressure.
+  pentane.fugacityCoefficient = 300.0;
 
   System system =
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
@@ -921,7 +933,10 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_mupt_geometry_molecular_dynamics)
       Thermobarostat(MolecularDynamicsEnsemble::MuPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
                      system.pressure, system.timeStep, system.translationalDegreesOfFreedom);
 
-  MolecularDynamics md = MolecularDynamics({60, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+  // Enough exchange attempts (~40 per direction at O(10%) acceptance) to make the acceptance
+  // assertion below independent of the RNG stream.
+  MolecularDynamics md =
+      MolecularDynamics({240, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
 
   const auto verifyGroupStates = [&md]()
   {

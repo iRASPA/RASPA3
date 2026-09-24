@@ -105,6 +105,17 @@ export struct BendPotential
 
   double generateBendAngle(RandomNumber &random, double beta) const;
 
+  /**
+   * \brief The log of the solid-angle normalization of the cone direction shaped by this bend.
+   *
+   * Returns log(2 pi Int_0^pi sin(theta) exp(-beta u(theta)) dtheta), the normalization of the
+   * direction density sampled by placing a bead on a cone with the angle from generateBendAngle
+   * and a uniform azimuth; delta-distributed types (Fixed, Rigid) contribute log(2 pi sin
+   * theta_0). Memoized per (type, parameters, beta). Used by CBMC to normalize the
+   * base-conformation sampler density across different growth plans (reptation).
+   */
+  double logBoltzmannConeNormalization(double beta) const;
+
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc,
                          const std::optional<const double3> &posD) const;
 

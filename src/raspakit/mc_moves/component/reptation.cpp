@@ -13,6 +13,8 @@ import cbmc;
 import cbmc_chain_data;
 import cbmc_interactions;
 import cbmc_growth_context;
+import cbmc_growth_plan;
+import cbmc_operators;
 import randomnumbers;
 import system;
 import running_energy;
@@ -215,10 +217,23 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
     }
   }
 
+  // The grow and retrace plans belong to opposite chain ends and may partition the bonded terms
+  // differently between the base samplers and the Rosenbluth weights (a branched unit grows its
+  // side group as a sibling of the backbone at one end but sequentially at the other). The exact
+  // base samplers make the base densities Boltzmann, but their normalizations are plan-dependent,
+  // and the weight ratio below is only a valid acceptance up to the ratio of those normalizations:
+  // correct by exp(logZ_growPlan - logZ_retracePlan). (For same-plan moves such as reinsertion this
+  // factor is identically one.)
+  const std::vector<CBMC::GrowStep> &growPlan = component.growthPlan(placedForGrow);
+  const std::vector<CBMC::GrowStep> &retracePlan = component.growthPlan(placedForRetrace);
+  const double logBaseNormalizationCorrection =
+      CBMC::logBaseSamplerNormalization(system.beta, component, growPlan) -
+      CBMC::logBaseSamplerNormalization(system.beta, component, retracePlan);
+
   // Metropolis acceptance with the configurational-bias weight ratio evaluated in log space.
   double logAcceptance =
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
-      growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
+      growData->logRosenbluthWeight - retraceData.logRosenbluthWeight + logBaseNormalizationCorrection;
 
   if (random.uniform() < std::exp(logAcceptance))
   {

@@ -194,10 +194,36 @@ std::string BendPotential::print() const
   }
 }
 
+
+// Exact rejection sampling of the bend-angle density p(theta) ~ sin(theta) exp(-beta u(theta)) on
+// [0, pi]: uniform proposals against a grid-estimated envelope (the 10% headroom covers the
+// discretization error of the grid maximum for these smooth one-dimensional densities). Note the
+// solid-angle Jacobian is a single power of sin(theta) -- a direction placed on the cone with a
+// uniform azimuth -- where the former samplers accepted with sin^2(theta).
+template <typename EnergyFunction>
+static double sampleBendAngleRejection(RandomNumber &random, double beta, EnergyFunction energy)
+{
+  constexpr std::size_t numberOfGridPoints = 1024;
+  double envelope = 0.0;
+  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
+  {
+    double t = std::numbers::pi * (static_cast<double>(i) + 0.5) / static_cast<double>(numberOfGridPoints);
+    envelope = std::max(envelope, std::sin(t) * std::exp(-beta * energy(t)));
+  }
+  envelope *= 1.1;
+
+  double theta, density;
+  do
+  {
+    theta = std::numbers::pi * random.uniform();
+    density = std::sin(theta) * std::exp(-beta * energy(theta));
+  } while (random.uniform() > density / envelope);
+  return theta;
+}
+
 double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
 {
-  double theta, sin_theta, energy;
-  double temp, temp2;
+  double theta, sigma;
 
   switch (type)
   {
@@ -206,116 +232,132 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
     case BendType::Rigid:
       return parameters[0];
     case BendType::Harmonic:
-      // (1/2)p_0*(theta-p_1)^2
-      // ===============================================
-      // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
     case BendType::CoreShell:
       // (1/2)p_0*(theta-p_1)^2
       // ===============================================
       // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      do
+      // p_1     [radians]
+      //
+      // Stiff bends: Gaussian proposals (the exact Boltzmann factor of the harmonic bend) restricted
+      // to (0, pi), accepted with the sin(theta) solid-angle Jacobian (a valid envelope: sin <= 1).
+      // Soft or zero-strength bends (sigma not well below pi, where Gaussian proposals rarely land
+      // inside the interval; for k = 0 never) use the generic grid-envelope sampler instead.
+      sigma = std::sqrt(1.0 / (beta * parameters[0]));
+      if (!(sigma < 1.0))
       {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+        return sampleBendAngleRejection(
+            random, beta,
+            [&](double t) { return 0.5 * parameters[0] * (t - parameters[1]) * (t - parameters[1]); });
+      }
+      do theta = random.Gaussian(parameters[1], sigma);
+      while ((theta <= 0.0) || (theta >= std::numbers::pi) || (random.uniform() > std::sin(theta)));
       return theta;
     case BendType::Quartic:
       // (1/2)p_0*(theta-p_1)^2+(1/3)*p_2*(theta-p_1)^3+(1/4)*p_2*(theta-p_1)^4
       // ======================================================================
       // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
+      // p_1     [radians]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(theta - parameters[1], 2) +
-                 (1.0 / 3.0) * parameters[2] * std::pow(theta - parameters[1], 3) +
-                 0.25 * parameters[3] * std::pow(theta - parameters[1], 4);
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      {
+                                        return 0.5 * parameters[0] * std::pow(t - parameters[1], 2) +
+                                               (1.0 / 3.0) * parameters[2] * std::pow(t - parameters[1], 3) +
+                                               0.25 * parameters[3] * std::pow(t - parameters[1], 4);
+                                      });
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
       // =====================================================
       // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
+      // p_1     [radians]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = parameters[0] * std::pow(theta - parameters[1], 2) +
-                 parameters[2] * std::pow(theta - parameters[1], 3) +
-                 parameters[3] * std::pow(theta - parameters[1], 4);
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      {
+                                        return parameters[0] * std::pow(t - parameters[1], 2) +
+                                               parameters[2] * std::pow(t - parameters[1], 3) +
+                                               parameters[3] * std::pow(t - parameters[1], 4);
+                                      });
     case BendType::HarmonicCosine:
       // (1/2)*p_0*(cos(theta)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
-      // p_1     [degrees]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - parameters[1], 2);
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      // p_1     [radians]
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      { return 0.5 * parameters[0] * std::pow(std::cos(t) - parameters[1], 2); });
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
       // ===============================================
       // p_0/k_B [K]
       // p_1     [-]
-      // p_2     [degrees]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = parameters[0] * (1.0 + std::cos(parameters[1] * theta - parameters[2]));
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      // p_2     [radians]
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      { return parameters[0] * (1.0 + std::cos(parameters[1] * t - parameters[2])); });
     case BendType::Tafipolsky:
       // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
       // ===============================================
       // p_0/k_B [K]
-      do
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
-      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      { return 0.5 * parameters[0] * (1.0 + std::cos(t)) * (1.0 + std::cos(2.0 * t)); });
     case BendType::MM3:
     case BendType::MM3_inplane:
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
-      // p_1     [degrees]
-      {
-        theta = std::numbers::pi * random.uniform();
-        sin_theta = std::sin(theta);
-        temp = (theta - parameters[1]) * Units::RadiansToDegrees;
-        temp2 = temp * temp;
-        energy = parameters[0] * temp2 *
-                 (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
-      }
-      while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
-      return theta;
+      // p_1     [radians]
+      return sampleBendAngleRejection(random, beta,
+                                      [&](double t)
+                                      {
+                                        double temp = (t - parameters[1]) * Units::RadiansToDegrees;
+                                        double temp2 = temp * temp;
+                                        return parameters[0] * temp2 *
+                                               (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 +
+                                                2.2e-8 * temp2 * temp2);
+                                      });
     default:
       std::unreachable();
   }
+}
+
+double BendPotential::logBoltzmannConeNormalization(double beta) const
+{
+  // Delta-distributed bend angles: the direction density is delta(theta - theta0) on the solid-angle
+  // measure sin(theta) dtheta dphi, contributing 2 pi sin(theta0).
+  switch (type)
+  {
+    case BendType::Fixed:
+    case BendType::Rigid:
+      return std::log(2.0 * std::numbers::pi * std::sin(parameters[0]));
+    default:
+      break;
+  }
+
+  using ParameterArray = std::remove_cvref_t<decltype(parameters)>;
+  using CacheKey = std::tuple<BendType, ParameterArray, double>;
+  thread_local std::map<CacheKey, double> cache{};
+  const CacheKey key{type, parameters, beta};
+  if (auto it = cache.find(key); it != cache.end()) return it->second;
+
+  constexpr std::size_t numberOfGridPoints = 4096;
+  const double3 posA{1.0, 0.0, 0.0};
+  const double3 posB{0.0, 0.0, 0.0};
+  const double h = std::numbers::pi / static_cast<double>(numberOfGridPoints);
+  double integral = 0.0;
+  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
+  {
+    const double theta = (static_cast<double>(i) + 0.5) * h;
+    const double3 posC{std::cos(theta), std::sin(theta), 0.0};
+    integral += std::sin(theta) * std::exp(-beta * calculateEnergy(posA, posB, posC, std::nullopt));
+  }
+  const double result = std::log(2.0 * std::numbers::pi * integral * h);
+
+  cache[key] = result;
+  return result;
 }
 
 double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,

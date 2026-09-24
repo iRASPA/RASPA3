@@ -28,12 +28,12 @@ struct StepTrial
  *  - PlaceSeedFragment: a flexible bead is placed with a Boltzmann bond length in a uniformly random
  *    direction; a rigid body or ring seed gets uniformly random orientations about the anchor (no
  *    orientational reference exists yet, all torsion weights are 1).
- *  - AttachFragment: flexible beads sample a base conformation (bond lengths, bend angles, and at
- *    branch points the coupled branch arrangement, with chiral centers protected against parity
- *    flips) with an internal Metropolis Monte-Carlo carrying no weight; a rigid body samples its
- *    junction-bend tilt with a rigid-rotation Metropolis Monte-Carlo. Each trial direction then gets
- *    its own coupled-decoupled torsion (spin) selection about the junction bond, weighted per
- *    direction.
+ *  - AttachFragment: flexible beads sample a base conformation exactly (Boltzmann bond lengths and
+ *    anchor-bend cone directions per bead, sibling bends between beads of the same step imposed by
+ *    rejection, declared chiral centers enforced by parity rejection) carrying no weight; every
+ *    other bonded term of the step (torsions and spin-variant bends) is Rosenbluth-weighted in the
+ *    torsion (spin) selection about the junction bond. A rigid body samples its junction-bend tilt
+ *    with a rigid-rotation Metropolis Monte-Carlo.
  *  - CloseRing: the internal conformation of the cyclic cluster is sampled from its Boltzmann
  *    distribution by an internal Monte-Carlo (the closure bonds keep every ring closed -- simple,
  *    fused, and bridged), and the spin about the junction bond is biased by the junction-crossing
@@ -77,4 +77,22 @@ StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField
  */
 double oldConfigurationTorsionWeight(RandomNumber &random, const ForceField &forceField, double beta,
                                      const std::vector<Atom> &oldAtoms, const GrowStep &step);
+
+/**
+ * \brief The log of the base-sampler normalization of a growth plan's flexible steps.
+ *
+ * The exact flexible base sampler draws each bead from the normalized density
+ * r^2 exp(-beta u_bond) x sin(theta) exp(-beta u_anchor) / Z_step, restricted by rejection to the
+ * sibling-bend coupling (contributing the mean coupling Boltzmann factor to Z_step) and optionally
+ * to the declared chirality sector (probability one half). The Rosenbluth acceptance
+ * W_grow / W_retrace of a CBMC move is therefore only correct up to the ratio of the two plans'
+ * base normalizations: for moves that grow and retrace with the same plan the ratio is one and
+ * cancels, but reptation pairs the grow weight of one chain end's plan against the retrace weight
+ * of the other end's, and must correct its acceptance by exp(logZ_growPlan - logZ_retracePlan).
+ *
+ * Rigid-body and ring-closure steps are skipped: their internal-MC samplers have no closed-form
+ * normalization, which is why reptation requires (at parse time) congruent end plans whenever a
+ * repeat unit contains such steps -- congruent steps contribute equal factors that cancel.
+ */
+double logBaseSamplerNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan);
 }  // namespace CBMC

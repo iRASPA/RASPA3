@@ -108,6 +108,18 @@ export struct BondPotential
 
   double generateBondLength(RandomNumber &random, double beta) const;
 
+  /**
+   * \brief The log of the normalization of the bond-length density sampled by generateBondLength.
+   *
+   * Returns log Int r^2 exp(-beta u(r)) dr over the support of the sampled density;
+   * delta-distributed types (None, Fixed) contribute the log of their fixed r^2 Jacobian.
+   * Memoized per (type, parameters, beta). Used by CBMC to normalize the base-conformation
+   * sampler density across different growth plans (the reptation move pairs the grow weight of
+   * one chain end's plan against the retrace weight of the other's, so unequal base
+   * normalizations would violate detailed balance).
+   */
+  double logBoltzmannVolumeNormalization(double beta) const;
+
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
 
   std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
