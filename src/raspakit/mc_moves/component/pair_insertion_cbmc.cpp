@@ -97,11 +97,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.insideBlockedPockets(componentA, std::span<const Atom>(growDataA->atoms)))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   if (system.forceField.useDualCutOff)
   {
     // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
@@ -133,11 +128,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-  if (system.insideBlockedPockets(componentBRef, std::span<const Atom>(growDataB->atoms)))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
 
   if (system.forceField.useDualCutOff)
   {
@@ -369,11 +359,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.insideBlockedPockets(componentA, std::span<const Atom>(growDataA->atoms)))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   if (system.forceField.useDualCutOff)
   {
     // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
@@ -405,11 +390,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-  if (system.insideBlockedPockets(componentBRef, std::span<const Atom>(growDataB->atoms)))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
 
   if (system.forceField.useDualCutOff)
   {

@@ -352,7 +352,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
         system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-        if (!growData || system.insideBlockedPockets(memberComponent, growData->atoms))
+        if (!growData)
         {
           restoreFractionalGroup();
           return {std::nullopt, double3(0.0, 1.0, 0.0)};

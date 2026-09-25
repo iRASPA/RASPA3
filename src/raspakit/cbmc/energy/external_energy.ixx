@@ -31,13 +31,6 @@ struct FirstBeadTrial
   RunningEnergy energy;
 };
 
-/// External energy of a trial set of bead positions.
-struct ChainTrial
-{
-  std::vector<Atom> positions;
-  RunningEnergy energy;
-};
-
 /// External energy of a trial set of bead positions, together with the torsion Rosenbluth weight
 /// accumulated while generating that orientation.
 struct ChainTrialTorsion
@@ -47,7 +40,11 @@ struct ChainTrialTorsion
   double torsionWeight;
 };
 
-bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Component &component,
+/// Whether any of 'molecule_atoms' lies inside one of the component's blocking pockets (spheres in
+/// fractional framework coordinates, radius scaled by the atom's 'scalingVDW'). Every trial set of a
+/// CBMC grow is filtered with this, so a grown molecule never lies in a pocket; 'System' delegates its
+/// own check (for non-CBMC placements and rescaled fractional molecules) to this function.
+bool insideBlockedPockets(const std::optional<Framework> &framework, const Component &component,
                           std::span<const Atom> molecule_atoms);
 
 [[nodiscard]] std::vector<FirstBeadTrial> computeExternalNonOverlappingEnergies(
@@ -56,14 +53,10 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
 
 /// External (external-field, framework-molecule, inter-molecular) energy of one trial set of bead
 /// positions at the context's cut-offs; std::nullopt when the set lies in a blocked pocket or
-/// overlaps. The single evaluation the set-wise overloads below and the dual cut-off correction are
+/// overlaps. The single evaluation the set-wise overload below and the dual cut-off correction are
 /// built on; recoil growth calls it directly (one trial at a time, no intermediate containers).
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergy(
     const GrowContext &context, const Component &component, std::span<Atom> trialPositionSet,
-    std::make_signed_t<std::size_t> skip = -1, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
-
-[[nodiscard]] std::vector<ChainTrial> computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip = -1, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 [[nodiscard]] std::vector<ChainTrialTorsion> computeExternalNonOverlappingEnergies(

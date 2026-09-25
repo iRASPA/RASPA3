@@ -473,7 +473,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(random, context, component, selectedComponent,
                                                            system.numberOfMolecules(), lambdaNew,
                                                            component.lambdaGibbs.dUdlambdaGroupId, true);
-        if (!trial.cbmcInsert.has_value() || system.insideBlockedPockets(component, trial.cbmcInsert->atoms))
+        if (!trial.cbmcInsert.has_value())
         {
           return false;
         }

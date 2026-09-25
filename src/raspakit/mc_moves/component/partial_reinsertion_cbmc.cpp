@@ -83,12 +83,6 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
   std::vector<double3> new_electric_field = std::vector<double3>(old_molecule.size());
 
-  // Check if the new molecule is inside blocked pockets; if so, exit the move.
-  if (system.insideBlockedPockets(component, newMolecule))
-  {
-    return std::nullopt;
-  }
-
   // Increment the constructed moves count.
   component.mc_moves_statistics.addConstructed(move);
 

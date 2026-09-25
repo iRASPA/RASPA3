@@ -122,11 +122,6 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   std::vector<double3> old_electric_field(old_molecule.size());
   std::vector<double3> new_electric_field(newMolecule.size());
 
-  if (system.insideBlockedPockets(newComponentData, newMolecule))
-  {
-    return std::nullopt;
-  }
-
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::steady_clock::now();

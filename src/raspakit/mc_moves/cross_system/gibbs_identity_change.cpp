@@ -98,11 +98,6 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   data.oldElectricField.resize(data.oldMoleculeCopy.size());
   data.newElectricField.resize(newMolecule.size());
 
-  if (system.insideBlockedPockets(newComponentData, newMolecule))
-  {
-    return false;
-  }
-
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::steady_clock::now();

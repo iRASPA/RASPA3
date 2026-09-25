@@ -75,12 +75,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<double3> new_electric_field = std::vector<double3>(newMolecule.size());
 
-  // Check if the new molecule is inside blocked pockets
-  if (system.insideBlockedPockets(system.components[selectedComponent], newMolecule))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   // Update statistics for successfully constructed molecules
   system.components[selectedComponent].mc_moves_statistics.addConstructed(move, 0);
 

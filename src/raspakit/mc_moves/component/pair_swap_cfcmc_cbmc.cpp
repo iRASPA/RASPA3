@@ -306,12 +306,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
-    if (system.insideBlockedPockets(componentA, growDataA->atoms))
-    {
-      restoreFractionalPair();
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
     if (system.forceField.useDualCutOff)
     {
       // Dual cut-off scheme: correct the grown molecule A from the inner cut-off to the full cut-offs.
@@ -351,12 +345,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
     if (!growDataB)
-    {
-      restoreFractionalPair();
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
-    if (system.insideBlockedPockets(componentBRef, growDataB->atoms))
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};

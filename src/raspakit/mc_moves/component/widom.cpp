@@ -67,13 +67,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
-  [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
-
-  // Check if the new molecule is inside blocked pockets; if so, abort the move.
-  if (system.insideBlockedPockets(component, newMolecule))
-  {
-    return 0.0;
-  }
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   // Update statistics for successfully constructed molecules.
   component.mc_moves_statistics.addConstructed(move);

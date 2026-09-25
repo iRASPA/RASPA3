@@ -245,15 +245,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
     }
 
-    // Check if the new molecule is inside blocked pockets
-    if ((system.insideBlockedPockets(component, growData->atoms)))
-    {
-      // Reject move and restore the fractional molecule
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
     component.mc_moves_statistics.addConstructed(move, 0);
 
     // Compute Ewald energy contribution for the new molecule

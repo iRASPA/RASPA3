@@ -121,11 +121,6 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
   std::vector<double3> new_electric_field = std::vector<double3>(old_molecule.size());
 
-  if (system.insideBlockedPockets(component, newMolecule))
-  {
-    return std::nullopt;
-  }
-
   component.mc_moves_statistics.addConstructed(move);
 
   // Retrace the departing unit in the current configuration.

@@ -20,6 +20,7 @@ import simulationbox;
 import units;
 import cbmc;
 import cbmc_results;
+import cbmc_external_energy;
 import interpolation_energy_grid;
 
 // System molecules: insertion/deletion, initialization, and geometry helpers.
@@ -542,23 +543,17 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
     for (std::size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
     {
+      // The grow filters every trial against the blocking pockets, so the returned molecule needs no
+      // further pocket check.
       std::optional<ChainGrowData> growData = std::nullopt;
-      bool inside_blocked_pocket{false};
       do
       {
-        do
-        {
-          growData = CBMC::growMoleculeSwapInsertion(
-              random,
-              makeGrowContext(CBMC::CutOffMode::Full),
-              components[componentId], componentId, numberOfMolecules(), 1.0, false, false);
+        growData = CBMC::growMoleculeSwapInsertion(
+            random,
+            makeGrowContext(CBMC::CutOffMode::Full),
+            components[componentId], componentId, numberOfMolecules(), 1.0, false, false);
 
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
-
-        std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
-        inside_blocked_pocket = insideBlockedPockets(components[componentId], newMolecule);
-
-      } while (inside_blocked_pocket);
+      } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
       insertMolecule(componentId, growData->molecule, growData->atoms);
     }
@@ -602,27 +597,10 @@ void System::computeAutomaticBlockingPockets()
 
 bool System::insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const
 {
-  if (framework.has_value())
-  {
-    for (std::size_t i = 0; i != component.blockingPockets.size(); ++i)
-    {
-      double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
-      double3 pos =
-          framework->simulationBox.cell *
-          double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
-      for (const Atom& atom : molecule_atoms)
-      {
-        double vdwScaling = atom.scalingVDW;
-        double3 dr = atom.position - pos;
-        dr = framework->simulationBox.applyPeriodicBoundaryConditions(dr);
-        if (dr.length_squared() < vdwScaling * radius_squared)
-        {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
+  // Same test the CBMC grow applies to every trial set; a molecule returned by a CBMC grow therefore
+  // never needs this check again. It remains for placements that bypass CBMC and for fractional
+  // molecules whose 'scalingVDW' (which scales the pocket radius) is changed in place.
+  return CBMC::insideBlockedPockets(framework, component, molecule_atoms);
 }
 std::vector<Atom> System::randomConfiguration(RandomNumber& random, std::size_t selectedComponent,
                                               const std::span<const Atom> molecule)

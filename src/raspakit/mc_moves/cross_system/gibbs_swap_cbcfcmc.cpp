@@ -395,12 +395,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    if (systemA.insideBlockedPockets(componentA, growData->atoms))
-    {
-      restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-      return std::nullopt;
-    }
-
     if (systemA.forceField.useDualCutOff)
     {
       // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
@@ -733,13 +727,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
 
     if (!growData)
-    {
-      restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      return std::nullopt;
-    }
-
-    if (systemB.insideBlockedPockets(componentB, growData->atoms))
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());

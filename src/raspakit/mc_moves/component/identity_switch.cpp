@@ -165,8 +165,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     exchange.grown = CBMC::growMoleculeIdentityChangeInsertion(random, growContext, *exchange.component,
                                                                exchange.componentId, exchange.trialMoleculeId,
                                                                exchange.growStartingBead, 1.0, 0, false);
-    if (!exchange.grown ||
-        system.insideBlockedPockets(*exchange.component, std::span<const Atom>(exchange.grown->atoms)))
+    if (!exchange.grown)
     {
       constructed = false;
       break;

@@ -143,11 +143,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   if (!growDataCentral) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.insideBlockedPockets(centralComponent, std::span<const Atom>(growDataCentral->atoms)))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   if (system.forceField.useDualCutOff)
   {
     // Dual cut-off scheme: correct the central molecule from the inner cut-off to the full cut-offs.
@@ -197,11 +192,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
     centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
     if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    if (system.insideBlockedPockets(satelliteComponent, std::span<const Atom>(growData->atoms)))
-    {
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
 
     if (system.forceField.useDualCutOff)
     {
