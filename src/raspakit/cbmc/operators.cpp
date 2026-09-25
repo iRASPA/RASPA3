@@ -12,7 +12,9 @@ import atom;
 import double3;
 import double3x3;
 import cbmc_util;
+import cbmc_constants;
 import cbmc_growth_plan;
+import cbmc_base_coupling;
 import cbmc_move_statistics;
 import move_statistics;
 import intra_molecular_potentials;
@@ -32,239 +34,8 @@ import running_energy;
 
 namespace
 {
-// ---------------------------------------------------------------------------------------------------
-// Numerical constants of the operator engine, gathered in one place. None of them affects the
-// sampled distribution (the samplers are exact or Metropolis-correct for any value); they set
-// fall-backs for under-specified topologies, the resolution of one-off numerical estimates, and the
-// budgets of rejection loops.
-// ---------------------------------------------------------------------------------------------------
-namespace Constants
-{
-/// Bond length (Angstrom) used when a step's bond carries no potential (e.g. a connectivity entry
-/// without a matching 'Bonds' term): a fixed C-C single-bond length. Also the value the normalization
-/// integrates over in that case.
-constexpr double defaultBondLength = 1.54;
-
-/// Junction bend angle used by the rigid tilt when no previous-current-inner bend potential exists:
-/// a trigonal 120 degrees.
-constexpr double defaultRigidJunctionBendAngle = 120.0 * Units::DegreesToRadians;
-
-/// Squared-length threshold below which a previous-current vector is treated as degenerate (the two
-/// beads coincide) and replaced by the z axis.
-constexpr double degenerateAxisLength = 1e-8;
-
-/// Rejection budget of the exact flexible base sampler; exceeding it signals a pathologically stiff
-/// coupling or an unsatisfiable chiral constraint and throws.
-constexpr std::size_t baseSamplerMaximumAttempts = 1'000'000;
-
-/// Random re-orientation attempts of the ring seed geometry to recover the declared parity of a
-/// chiral centre before giving up on that seed.
-constexpr std::size_t ringParityMaximumReorientations = 1000;
-
-/// Grid over [0, pi] for the numerical minimum of a non-harmonic bend potential, and the slack
-/// (Kelvin) subtracted because a grid minimum can only overestimate the true minimum.
-constexpr std::size_t bendMinimumGridPoints = 8192;
-constexpr double bendMinimumSlack = 0.01;
-
-/// Fixed seed of the one-off Monte-Carlo estimate of the base-coupling constants: the estimate must
-/// be one frozen number per step signature so grow and retrace share it.
-constexpr std::size_t baseCouplingEstimateSeed = 1806;
-/// Samples of the minimum search of the coupling energy, and the slack (Kelvin) below that minimum
-/// for the rejection reference (see stepBaseCouplingConstants; exactness does not depend on it).
-constexpr std::size_t baseCouplingMinimumSearchSamples = 1uz << 20;
-constexpr double baseCouplingReferenceSlack = 1.0;
-/// Batching of the clamped-acceptance mean: batches of 'batchSize' samples until the standard error
-/// drops below 'relativeTolerance' of the mean, or 'maximumBatches' is reached.
-constexpr std::size_t baseCouplingBatchSize = 1uz << 20;
-constexpr std::size_t baseCouplingMaximumBatches = 32;
-constexpr double baseCouplingRelativeTolerance = 0.005;
-
-/// Roll angles about the junction bond tried when seating a hinged rigid body (a Rosenbluth selection
-/// over this grid, randomly offset, seeds the tilt Monte-Carlo).
-constexpr std::size_t rigidTiltRollGridPoints = 72;
-}  // namespace Constants
-
-// A bend is 'spin-variant' when it involves a placed atom other than the previous or current bead.
-// Rotating the next-beads about the previous-current axis (the torsion spin) changes such bends,
-// while bends among {previous, current, next-beads} transform rigidly (previous and current lie on
-// the axis). Spin-variant bends are excluded from the base conformation (no Rosenbluth weight) and
-// weighted exactly in the torsion selection instead.
-bool isSpinVariantBend(const BendPotential &bend, std::optional<std::size_t> previousBead, std::size_t currentBead,
-                       const std::vector<std::size_t> &nextBeads)
-{
-  for (std::size_t id : bend.identifiers)
-  {
-    if (id == currentBead) continue;
-    if (previousBead.has_value() && id == previousBead.value()) continue;
-    if (std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end()) continue;
-    return true;
-  }
-  return false;
-}
-
-// A sibling bend couples two beads grown in the same step (next_i - current - next_j). It is
-// spin-invariant (the whole branch rotates rigidly) and is imposed on the base conformation by
-// rejection sampling; its coupling integral is part of the base normalization (see
-// logBaseSamplerNormalization).
-bool isSiblingBend(const BendPotential &bend, std::size_t currentBead, const std::vector<std::size_t> &nextBeads)
-{
-  if (bend.identifiers[1] != currentBead) return false;
-  const bool endA_is_next = std::find(nextBeads.begin(), nextBeads.end(), bend.identifiers[0]) != nextBeads.end();
-  const bool endC_is_next = std::find(nextBeads.begin(), nextBeads.end(), bend.identifiers[2]) != nextBeads.end();
-  return endA_is_next && endC_is_next;
-}
-
-// ---------------------------------------------------------------------------------------------------
-// Partition of a flexible attach step's internal terms that the classic growth stages do not sample
-// (Urey-Bradley, inversion and out-of-plane bends, improper torsions, and the cross terms). Each such
-// term gets one of two exact homes, replacing the former post-selection Boltzmann factor:
-//
-//  - BASE COUPLING: terms fully determined by the step's own sampled coordinates. Every distance the
-//    energy uses must lie within {current} + nextBeads (those pairwise distances are set by this
-//    step); the previous bead may participate only in purely direction-based terms centered on the
-//    current bead (the direction to the previous bead is the cone axis; the placed previous-current
-//    DISTANCE must not enter, or the base normalization would depend on the placed configuration).
-//    Such terms are automatically spin-invariant -- the previous bead lies on the spin axis, so the
-//    spin preserves every internal coordinate of {previous, current} + nextBeads. They are imposed on
-//    the base conformation by rejection, and their coupling average is part of the base
-//    normalization (see logBaseSamplerNormalization).
-//
-//  - SPIN TERMS: every other unsampled term of the step (dependence on placed geometry beyond the
-//    axis direction, or on the spin angle itself). They enter the torsion-spin selection energy,
-//    steering the spin choice exactly like torsions and spin-variant bends -- Rosenbluth-weighted
-//    identically on growth and retrace, with no normalization consequences.
-// ---------------------------------------------------------------------------------------------------
-struct UnsampledStepTerms
-{
-  Potentials::IntraMolecularPotentials baseCoupling{};
-  Potentials::IntraMolecularPotentials spinTerms{};
-};
-
-static bool hasUnsampledTerms(const Potentials::IntraMolecularPotentials &terms)
-{
-  return !(terms.ureyBradleys.empty() && terms.inversionBends.empty() && terms.outOfPlaneBends.empty() &&
-           terms.improperTorsions.empty() && terms.bondBonds.empty() && terms.bondBends.empty() &&
-           terms.bondTorsions.empty() && terms.bendBends.empty() && terms.bendTorsions.empty());
-}
-
-static UnsampledStepTerms splitUnsampledStepTerms(const CBMC::GrowStep &step)
-{
-  UnsampledStepTerms split{};
-  const std::size_t currentBead = step.currentBead;
-  const std::size_t previousBead = step.previousBead.value();
-
-  auto isGrown = [&](std::size_t id)
-  { return std::find(step.nextBeads.begin(), step.nextBeads.end(), id) != step.nextBeads.end(); };
-  auto inStep = [&](std::size_t id) { return id == currentBead || isGrown(id); };
-  auto inStepOrPrevious = [&](std::size_t id) { return inStep(id) || id == previousBead; };
-
-  // Urey-Bradley: a plain distance between its two identifiers.
-  for (const UreyBradleyPotential &term : step.intra.ureyBradleys)
-  {
-    const bool base = inStep(term.identifiers[0]) && inStep(term.identifiers[1]);
-    (base ? split.baseCoupling : split.spinTerms).ureyBradleys.push_back(term);
-  }
-
-  // Inversion bend: the B-centered functional forms depend only on directions from the central atom
-  // B, so the previous bead is admissible there; the plane-ACD forms mix distances among A, C, D.
-  for (const InversionBendPotential &term : step.intra.inversionBends)
-  {
-    const bool centeredOnCurrent =
-        term.identifiers[1] == currentBead &&
-        (term.type == InversionBendType::Harmonic || term.type == InversionBendType::HarmonicCosine ||
-         term.type == InversionBendType::Planar);
-    const bool base = std::ranges::all_of(term.identifiers, inStep) ||
-                      (centeredOnCurrent && std::ranges::all_of(term.identifiers, inStepOrPrevious));
-    (base ? split.baseCoupling : split.spinTerms).inversionBends.push_back(term);
-  }
-
-  // Out-of-plane bends evaluate to zero for every implemented form; route them to the spin terms
-  // (a zero contribution either way).
-  split.spinTerms.outOfPlaneBends = step.intra.outOfPlaneBends;
-
-  // Improper torsion: a dihedral A-B-C-D depends only on its three bond unit vectors, so the
-  // previous bead is admissible as a terminal atom adjacent to the current bead (that unit vector is
-  // the cone axis itself).
-  for (const TorsionPotential &term : step.intra.improperTorsions)
-  {
-    const auto &ids = term.identifiers;
-    const bool base = std::ranges::all_of(ids, inStep) ||
-                      (ids[0] == previousBead && ids[1] == currentBead && inStep(ids[2]) && inStep(ids[3])) ||
-                      (ids[3] == previousBead && ids[2] == currentBead && inStep(ids[0]) && inStep(ids[1]));
-    (base ? split.baseCoupling : split.spinTerms).improperTorsions.push_back(term);
-  }
-
-  // Bond-bond: two distances from the central identifier.
-  for (const BondBondPotential &term : step.intra.bondBonds)
-  {
-    const bool base = std::ranges::all_of(term.identifiers, inStep);
-    (base ? split.baseCoupling : split.spinTerms).bondBonds.push_back(term);
-  }
-
-  // Bond-bend: distances A-B and C-B plus the angle at B (the fourth identifier is unused).
-  for (const BondBendPotential &term : step.intra.bondBends)
-  {
-    const bool base = inStep(term.identifiers[0]) && inStep(term.identifiers[1]) && inStep(term.identifiers[2]);
-    (base ? split.baseCoupling : split.spinTerms).bondBends.push_back(term);
-  }
-
-  // Bond-torsion and bend-torsion mix distances and dihedrals; base only when fully within the step.
-  for (const BondTorsionPotential &term : step.intra.bondTorsions)
-  {
-    const bool base = std::ranges::all_of(term.identifiers, inStep);
-    (base ? split.baseCoupling : split.spinTerms).bondTorsions.push_back(term);
-  }
-  for (const BendTorsionPotential &term : step.intra.bendTorsions)
-  {
-    const bool base = std::ranges::all_of(term.identifiers, inStep);
-    (base ? split.baseCoupling : split.spinTerms).bendTorsions.push_back(term);
-  }
-
-  // Bend-bend: both angles at the central identifier B, directions only.
-  for (const BendBendPotential &term : step.intra.bendBends)
-  {
-    const bool base = std::ranges::all_of(term.identifiers, inStepOrPrevious) &&
-                      (term.identifiers[1] == currentBead || std::ranges::all_of(term.identifiers, inStep));
-    (base ? split.baseCoupling : split.spinTerms).bendBends.push_back(term);
-  }
-
-  return split;
-}
-
-// A torsion transforms rigidly (is spin-invariant) when all four atoms belong to the ring body
-// ('currentBead' plus the 'nextBeads'); it is spin-variant when it also involves an outside atom.
-bool isSpinVariantRingTorsion(const std::array<std::size_t, 4> &identifiers, std::size_t currentBead,
-                              const std::vector<std::size_t> &nextBeads)
-{
-  bool hasRingAtom = false;
-  bool hasOutsideAtom = false;
-  for (std::size_t id : identifiers)
-  {
-    bool inRingBody = (id == currentBead) || (std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end());
-    bool moves = std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end();
-    if (moves) hasRingAtom = true;
-    if (!inRingBody) hasOutsideAtom = true;
-  }
-  return hasRingAtom && hasOutsideAtom;
-}
-
-// Potentials restricted to the spin-selected (junction-crossing) terms of a ring-closure step: the
-// spin-variant torsions (the torsion selection filters the spin-variant bends itself, so all bends
-// are kept). The internal ring torsions are sampled by the conformational MC and must be excluded
-// here to avoid double counting.
-Potentials::IntraMolecularPotentials ringSpinPotentials(const Potentials::IntraMolecularPotentials &intra,
-                                                        std::size_t currentBead,
-                                                        const std::vector<std::size_t> &nextBeads)
-{
-  Potentials::IntraMolecularPotentials spin{};
-  spin.bends = intra.bends;
-  spin.torsions.reserve(intra.torsions.size());
-  for (const TorsionPotential &torsion : intra.torsions)
-  {
-    if (isSpinVariantRingTorsion(torsion.identifiers, currentBead, nextBeads)) spin.torsions.push_back(torsion);
-  }
-  return spin;
-}
+// Numerical constants of the operator engine (see the cbmc_constants module).
+namespace Constants = CBMC::Constants;
 
 // Signed volume of the tetrahedron of a chiral center; its sign is the center's parity.
 double chiralSignedVolume(const std::array<std::size_t, 4> &ids, const std::vector<Atom> &atoms)
@@ -276,6 +47,27 @@ double chiralSignedVolume(const std::array<std::size_t, 4> &ids, const std::vect
   return double3::dot(d1, double3::cross(d2, d3));
 }
 
+// The frozen base-coupling constants of a flexible attach step at 'beta'. Normally a plain lookup:
+// the component prepared its plans for the system temperature at setup ('Component::prepareGrowthPlans')
+// and every cached step carries its constants. The fall-back covers a component that was never
+// prepared for this 'beta' (e.g. a unit test driving the operators directly): prepare it now, which
+// fills the cached steps in place; a step that is not owned by the component's cache (a copied plan)
+// is estimated directly -- the estimate is deterministic per signature, so it equals the memoised one.
+CBMC::BaseCouplingConstants baseCouplingConstantsOf(double beta, const Component &component,
+                                                    const CBMC::GrowStep &step)
+{
+  if (!step.hasBaseCoupling) return {0.0, 0.0};
+  if (step.baseCouplingConstants.has_value() && component.growthPlanBeta == beta)
+  {
+    return step.baseCouplingConstants.value();
+  }
+  component.prepareGrowthPlans(beta);
+  if (step.baseCouplingConstants.has_value() && component.growthPlanBeta == beta)
+  {
+    return step.baseCouplingConstants.value();
+  }
+  return CBMC::estimateBaseCouplingConstants(beta, component.atoms.size(), step);
+}
 }  // namespace
 
 // ---------------------------------------------------------------------------------------------------
@@ -287,25 +79,22 @@ struct TorsionOrientation
   double rosenbluthWeight;
 };
 
+// The spin about the previous-current axis is selected among 'numberOfTorsionTrials' rotations of the
+// base orientation by a Rosenbluth selection over the step's precomputed torsion-selection data: its
+// torsions, its spin-variant bends (bends to placed atoms other than the previous bead, which are
+// not invariant under the spin), and -- for a flexible attach step -- the spin-routed unsampled terms.
+// All are Rosenbluth-weighted identically on growth and retrace.
 static TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials, double beta,
                                                    const std::vector<Atom> &chainAtoms,
-                                                   const std::vector<Atom> &baseOrientation, std::size_t previousBead,
-                                                   std::size_t currentBead, const std::vector<std::size_t> &nextBeads,
-                                                   double3 lastBondVector,
-                                                   const Potentials::IntraMolecularPotentials &intra,
-                                                   bool pinFirstToBase)
+                                                   const std::vector<Atom> &baseOrientation, const CBMC::GrowStep &step,
+                                                   double3 lastBondVector, bool pinFirstToBase)
 {
+  const std::size_t currentBead = step.currentBead;
+  const std::vector<std::size_t> &nextBeads = step.nextBeads;
+  const Potentials::IntraMolecularPotentials &intra = step.torsionSelectionPotentials;
+
   std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrials);
   std::vector<Atom> chain_atoms(chainAtoms.begin(), chainAtoms.end());
-
-  // Bends to placed atoms other than the previous bead are not invariant under the spin about the
-  // previous-current axis and must enter the selection energy here (Rosenbluth-weighted identically
-  // on growth and retrace).
-  std::vector<const BendPotential *> spin_variant_bends{};
-  for (const BendPotential &bend : intra.bends)
-  {
-    if (isSpinVariantBend(bend, previousBead, currentBead, nextBeads)) spin_variant_bends.push_back(&bend);
-  }
 
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
@@ -325,15 +114,18 @@ static TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::si
     }
 
     double torsion_energy = intra.calculateTorsionEnergies(chain_atoms);
-    for (const BendPotential *bend : spin_variant_bends)
+    for (const BendPotential &bend : step.spinVariantBends)
     {
-      torsion_energy += bend->calculateEnergy(chain_atoms[bend->identifiers[0]].position,
-                                              chain_atoms[bend->identifiers[1]].position,
-                                              chain_atoms[bend->identifiers[2]].position, std::nullopt);
+      torsion_energy += bend.calculateEnergy(chain_atoms[bend.identifiers[0]].position,
+                                             chain_atoms[bend.identifiers[1]].position,
+                                             chain_atoms[bend.identifiers[2]].position, std::nullopt);
     }
-    // The step's spin-routed unsampled terms (see splitUnsampledStepTerms): couplings to placed
-    // geometry or to the spin angle, steering the spin choice through the Rosenbluth selection.
-    torsion_energy += intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms).potentialEnergy();
+    // The step's spin-routed unsampled terms (see the growth plan's term classification): couplings
+    // to placed geometry or to the spin angle, steering the spin choice through the selection.
+    if (step.torsionSelectionHasUnsampledTerms)
+    {
+      torsion_energy += intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms).potentialEnergy();
+    }
     torsion_orientations[j] = {rotated_atoms, torsion_energy};
   }
 
@@ -353,241 +145,6 @@ static TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::si
           rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)};
 }
 
-
-// Minimum of a bend potential over [0, pi]: the envelope offset that makes the sibling-bend
-// rejection acceptance exp(-beta (u - u_min)) valid. Analytic for the harmonic forms; a fine grid
-// otherwise, lowered by a small slack because a grid minimum can only overestimate the true minimum
-// (memoized per potential).
-static double bendMinimumEnergy(const BendPotential &bend)
-{
-  if ((bend.type == BendType::Harmonic || bend.type == BendType::CoreShell) && bend.parameters[1] >= 0.0 &&
-      bend.parameters[1] <= std::numbers::pi)
-  {
-    return 0.0;
-  }
-
-  using ParameterArray = std::remove_cvref_t<decltype(bend.parameters)>;
-  using CacheKey = std::pair<BendType, ParameterArray>;
-  thread_local std::map<CacheKey, double> cache{};
-  CacheKey key{bend.type, bend.parameters};
-  auto it = cache.find(key);
-  if (it != cache.end()) return it->second;
-
-  constexpr std::size_t numberOfGridPoints = Constants::bendMinimumGridPoints;
-  const double3 posA{1.0, 0.0, 0.0};
-  const double3 posB{0.0, 0.0, 0.0};
-  double minimum = std::numeric_limits<double>::max();
-  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
-  {
-    double theta = std::numbers::pi * static_cast<double>(i) / static_cast<double>(numberOfGridPoints - 1);
-    double3 posC{std::cos(theta), std::sin(theta), 0.0};
-    minimum = std::min(minimum, bend.calculateEnergy(posA, posB, posC, std::nullopt));
-  }
-  minimum -= Constants::bendMinimumSlack;  // the grid can only overestimate the true minimum
-
-  cache[key] = minimum;
-  return minimum;
-}
-
-// The anchor bend of a next bead within a step (previous - current - next, centered on the current
-// bead), the potential that shapes its cone direction in the exact flexible base sampler.
-static const BendPotential *findAnchorBend(const Potentials::IntraMolecularPotentials &intra,
-                                           std::size_t previousBead, std::size_t currentBead, std::size_t nextBead)
-{
-  for (const BendPotential &bend : intra.bends)
-  {
-    if (bend.identifiers[1] != currentBead) continue;
-    if ((bend.identifiers[0] == previousBead && bend.identifiers[2] == nextBead) ||
-        (bend.identifiers[2] == previousBead && bend.identifiers[0] == nextBead))
-    {
-      return &bend;
-    }
-  }
-  return nullptr;
-}
-
-// The sibling-sibling bends of a step (next_i - current - next_j).
-static std::vector<const BendPotential *> collectSiblingBends(const Potentials::IntraMolecularPotentials &intra,
-                                                              std::size_t currentBead,
-                                                              const std::vector<std::size_t> &nextBeads)
-{
-  std::vector<const BendPotential *> sibling_bends{};
-  for (const BendPotential &bend : intra.bends)
-  {
-    if (isSiblingBend(bend, currentBead, nextBeads)) sibling_bends.push_back(&bend);
-  }
-  return sibling_bends;
-}
-
-// The total coupling energy imposed on a step's base conformation by rejection: the sibling bends
-// plus the base-routed unsampled terms (see splitUnsampledStepTerms), evaluated on real positions.
-static double baseCouplingEnergy(const std::vector<const BendPotential *> &siblingBends,
-                                 const Potentials::IntraMolecularPotentials &baseCouplingTerms,
-                                 const std::span<const Atom> atoms)
-{
-  double energy = 0.0;
-  for (const BendPotential *bend : siblingBends)
-  {
-    energy += bend->calculateEnergy(atoms[bend->identifiers[0]].position, atoms[bend->identifiers[1]].position,
-                                    atoms[bend->identifiers[2]].position, std::nullopt);
-  }
-  if (hasUnsampledTerms(baseCouplingTerms))
-  {
-    energy += baseCouplingTerms.computeInternalEnergiesNotSampledDuringGrowth(atoms).potentialEnergy();
-  }
-  return energy;
-}
-
-// ---------------------------------------------------------------------------------------------------
-// The frozen per-step-signature constants of the base coupling, estimated once by a fixed-seed Monte
-// Carlo that mirrors the sampler's own independent per-bead draws (memoized):
-//
-//  - referenceEnergy u_ref: the offset of the rejection acceptance min(1, e^{-beta (u - u_ref)}).
-//    Sibling-bends-only steps use the rigorous per-bend minima; steps with general coupling terms
-//    (whose cross terms may be negative) use the Monte-Carlo minimum with slack. u_ref does NOT need
-//    to be a rigorous bound: whenever u < u_ref the acceptance clamps at one and the excess
-//    e^{-beta (u - u_ref)} > 1 rides the trial's Rosenbluth weight instead (see
-//    flexibleBaseClampWeight), so the sampled-density x weight product is exactly Boltzmann for any
-//    u_ref -- the constant only tunes efficiency.
-//
-//  - logMeanClampedBoltzmann log<a>: the log mean CLAMPED acceptance a = min(1, e^{-beta (u -
-//    u_ref)}) over the independent base. The step's base normalization is
-//    Z_indep x <a> x e^{-beta u_ref} (which reduces to Z_indep x <e^{-beta u}> when no clamping
-//    occurs); the frozen relative error (< 0.5%) enters the reptation acceptance as a constant at
-//    the same sub-percent level.
-// ---------------------------------------------------------------------------------------------------
-struct BaseCouplingConstants
-{
-  double referenceEnergy;
-  double logMeanClampedBoltzmann;
-};
-
-static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Component &component,
-                                                       const CBMC::GrowStep &step,
-                                                       const std::vector<const BendPotential *> &siblingBends,
-                                                       const Potentials::IntraMolecularPotentials &baseCouplingTerms)
-{
-  const std::size_t previousBead = step.previousBead.value();
-  const std::size_t currentBead = step.currentBead;
-  const bool hasGeneralCoupling = hasUnsampledTerms(baseCouplingTerms);
-
-  if (siblingBends.empty() && !hasGeneralCoupling) return {0.0, 0.0};
-
-  // The memo key: the step's per-bead samplers plus every coupling term, with atom identifiers
-  // mapped to their step-local roles so congruent steps share one entry.
-  const auto roleOf = [&](std::size_t id) -> std::string
-  {
-    if (id == currentBead) return "c";
-    if (id == previousBead) return "p";
-    return std::format(
-        "n{}", std::distance(step.nextBeads.begin(), std::find(step.nextBeads.begin(), step.nextBeads.end(), id)));
-  };
-
-  std::string key = std::format("beta={:.12e}", beta);
-  for (std::size_t nextBead : step.nextBeads)
-  {
-    const std::optional<BondPotential> bond = step.intra.findBondPotential(currentBead, nextBead);
-    key += bond.has_value() ? std::format(";bond{}", static_cast<std::size_t>(bond->type)) : ";bond-none";
-    if (bond.has_value())
-      for (double p : bond->parameters) key += std::format(",{:.12e}", p);
-    const BendPotential *anchor = findAnchorBend(step.intra, previousBead, currentBead, nextBead);
-    key += anchor != nullptr ? std::format(";anchor{}", static_cast<std::size_t>(anchor->type)) : ";anchor-none";
-    if (anchor != nullptr)
-      for (double p : anchor->parameters) key += std::format(",{:.12e}", p);
-  }
-  const auto appendTerm = [&](std::string_view tag, std::size_t type, const auto &identifiers, const auto &parameters)
-  {
-    key += std::format(";{}{}", tag, type);
-    for (std::size_t id : identifiers) key += ":" + roleOf(id);
-    for (double p : parameters) key += std::format(",{:.12e}", p);
-  };
-  for (const BendPotential *bend : siblingBends)
-    appendTerm("sib", static_cast<std::size_t>(bend->type), bend->identifiers, bend->parameters);
-  for (const auto &t : baseCouplingTerms.ureyBradleys)
-    appendTerm("ub", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.inversionBends)
-    appendTerm("inv", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.improperTorsions)
-    appendTerm("imp", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.bondBonds)
-    appendTerm("bb", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.bondBends)
-    appendTerm("bB", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.bondTorsions)
-    appendTerm("bt", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.bendBends)
-    appendTerm("BB", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : baseCouplingTerms.bendTorsions)
-    appendTerm("Bt", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-
-  thread_local std::map<std::string, BaseCouplingConstants> cache{};
-  if (auto it = cache.find(key); it != cache.end()) return it->second;
-
-  RandomNumber random(Constants::baseCouplingEstimateSeed);  // frozen: one constant per signature
-  const double3 axis{0.0, 0.0, 1.0};
-
-  // Evaluation frame: current bead at the origin, previous bead at unit distance along the axis (the
-  // classification guarantees no base term depends on the placed previous-current distance).
-  std::vector<Atom> atoms(component.atoms.begin(), component.atoms.end());
-  atoms[currentBead].position = double3{0.0, 0.0, 0.0};
-  atoms[previousBead].position = axis;
-
-  const auto drawIndependentBase = [&]()
-  {
-    for (std::size_t nextBead : step.nextBeads)
-    {
-      const std::optional<BondPotential> bond = step.intra.findBondPotential(currentBead, nextBead);
-      const double bondLength =
-          bond.has_value() ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
-      const BendPotential *anchor = findAnchorBend(step.intra, previousBead, currentBead, nextBead);
-      const double3 direction = anchor != nullptr
-                                    ? random.randomVectorOnCone(axis, anchor->generateBendAngle(random, beta))
-                                    : random.randomVectorOnUnitSphere();
-      atoms[nextBead].position = bondLength * direction;
-    }
-    return baseCouplingEnergy(siblingBends, baseCouplingTerms, atoms);
-  };
-
-  // Reference energy: rigorous per-bend minima when only sibling bends couple; otherwise the
-  // Monte-Carlo minimum with slack (exactness does not depend on it, see above).
-  double referenceEnergy = 0.0;
-  if (!hasGeneralCoupling)
-  {
-    for (const BendPotential *bend : siblingBends) referenceEnergy += bendMinimumEnergy(*bend);
-  }
-  else
-  {
-    double minimum = std::numeric_limits<double>::max();
-    for (std::size_t s = 0; s != Constants::baseCouplingMinimumSearchSamples; ++s)
-    {
-      minimum = std::min(minimum, drawIndependentBase());
-    }
-    referenceEnergy = minimum - Constants::baseCouplingReferenceSlack;
-  }
-
-  double sum = 0.0;
-  double sumOfSquares = 0.0;
-  double numberOfSamples = 0.0;
-  constexpr std::size_t batchSize = Constants::baseCouplingBatchSize;
-  for (std::size_t batch = 0; batch != Constants::baseCouplingMaximumBatches; ++batch)
-  {
-    for (std::size_t s = 0; s != batchSize; ++s)
-    {
-      const double clampedBoltzmannFactor = std::min(1.0, std::exp(-beta * (drawIndependentBase() - referenceEnergy)));
-      sum += clampedBoltzmannFactor;
-      sumOfSquares += clampedBoltzmannFactor * clampedBoltzmannFactor;
-    }
-    numberOfSamples += static_cast<double>(batchSize);
-    const double mean = sum / numberOfSamples;
-    const double variance = std::max(0.0, sumOfSquares / numberOfSamples - mean * mean);
-    if (std::sqrt(variance / numberOfSamples) < Constants::baseCouplingRelativeTolerance * mean) break;
-  }
-
-  const BaseCouplingConstants result{referenceEnergy, std::log(sum / numberOfSamples)};
-  cache[key] = result;
-  return result;
-}
-
 // The clamp-excess weight of a base conformation, max(1, e^{-beta (u - u_ref)}): one wherever the
 // rejection acceptance was unclamped, the acceptance excess where the coupling energy fell below the
 // reference. It multiplies the step's trial weights on growth (freshly sampled base) and retrace
@@ -596,16 +153,10 @@ static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Compon
 static double flexibleBaseClampWeight(double beta, const Component &component, const CBMC::GrowStep &step,
                                       const std::span<const Atom> atoms)
 {
-  if (step.rigidBody || step.kind == CBMC::GrowStep::Kind::CloseRing || !step.previousBead.has_value()) return 1.0;
+  if (!step.flexibleAttach || !step.hasBaseCoupling) return 1.0;
 
-  const std::vector<const BendPotential *> siblingBends =
-      collectSiblingBends(step.intra, step.currentBead, step.nextBeads);
-  const Potentials::IntraMolecularPotentials baseCouplingTerms = splitUnsampledStepTerms(step).baseCoupling;
-  if (siblingBends.empty() && !hasUnsampledTerms(baseCouplingTerms)) return 1.0;
-
-  const BaseCouplingConstants constants =
-      stepBaseCouplingConstants(beta, component, step, siblingBends, baseCouplingTerms);
-  const double couplingEnergy = baseCouplingEnergy(siblingBends, baseCouplingTerms, atoms);
+  const CBMC::BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
+  const double couplingEnergy = CBMC::baseCouplingEnergy(step, atoms);
   return std::max(1.0, std::exp(-beta * (couplingEnergy - constants.referenceEnergy)));
 }
 
@@ -621,13 +172,13 @@ struct FlexibleBase
 // Flexible-bead base conformation, sampled exactly: bond lengths from their one-dimensional
 // Boltzmann densities, each direction from its anchor-bend density on the cone (uniform azimuth),
 // and the step's internal couplings -- sibling-sibling bends and the base-routed unsampled terms
-// (see splitUnsampledStepTerms) -- imposed by rejection sampling. Carries no Rosenbluth weight
-// (apart from the rare clamp excess, see flexibleBaseClampWeight), so this distribution must be the
-// exact bonded Boltzmann of its terms: the former internal Metropolis MC (finite, reservoir-seeded,
-// adaptive step sizes) only approximated it, and its deviations depended on the structure of the
-// growth step -- harmless for moves that pair grow and retrace on the same growth plan, but a
-// systematic bias for reptation, which pairs the grow weight of one chain end's plan against the
-// retrace weight of the other's.
+// (see the growth plan's term classification) -- imposed by rejection sampling. Carries no Rosenbluth
+// weight (apart from the rare clamp excess, see flexibleBaseClampWeight), so this distribution must
+// be the exact bonded Boltzmann of its terms: the former internal Metropolis MC (finite,
+// reservoir-seeded, adaptive step sizes) only approximated it, and its deviations depended on the
+// structure of the growth step -- harmless for moves that pair grow and retrace on the same growth
+// plan, but a systematic bias for reptation, which pairs the grow weight of one chain end's plan
+// against the retrace weight of the other's.
 //
 // The base density is Boltzmann but its NORMALIZATION is plan-dependent (per-bead bond and
 // anchor-bend integrals, the coupling average, and a factor one half per determined chiral center);
@@ -641,6 +192,9 @@ struct FlexibleBase
 // density -- the coupling terms preserve it, since distances, angles, and the cosine-even dihedral
 // forms are reflection-invariant. (The torsion spin afterwards is a proper rotation and preserves
 // that parity.)
+//
+// Every per-step ingredient (bonds, anchor bends, coupling terms, determined chiral centres, and the
+// frozen coupling constants) is precomputed in the growth plan; this function only samples.
 // ---------------------------------------------------------------------------------------------------
 static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, const Component &component,
                                             const std::vector<Atom> &moleculeAtoms, const CBMC::GrowStep &step)
@@ -648,7 +202,7 @@ static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, c
   const std::size_t previousBead = step.previousBead.value();
   const std::size_t currentBead = step.currentBead;
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
-  const Potentials::IntraMolecularPotentials &intra = step.intra;
+  const std::size_t numberOfNextBeads = nextBeads.size();
 
   std::vector<Atom> chain_atoms(moleculeAtoms.begin(), moleculeAtoms.end());
 
@@ -656,82 +210,37 @@ static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, c
   if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
-  const std::size_t numberOfNextBeads = nextBeads.size();
-
-  // Per next bead: its bond to the current bead and its anchor bend (previous-current-next, centered
-  // on the current bead).
-  std::vector<std::optional<BondPotential>> bonds(numberOfNextBeads);
-  std::vector<const BendPotential *> anchor_bends(numberOfNextBeads, nullptr);
-  for (std::size_t i = 0; i != numberOfNextBeads; ++i)
-  {
-    bonds[i] = intra.findBondPotential(currentBead, nextBeads[i]);
-    for (const BendPotential &bend : intra.bends)
-    {
-      if (bend.identifiers[1] != currentBead) continue;
-      bool matches = (bend.identifiers[0] == previousBead && bend.identifiers[2] == nextBeads[i]) ||
-                     (bend.identifiers[2] == previousBead && bend.identifiers[0] == nextBeads[i]);
-      if (matches)
-      {
-        anchor_bends[i] = &bend;
-        break;
-      }
-    }
-  }
-
-  // The coupling imposed by rejection: sibling-sibling bends plus the base-routed unsampled terms,
-  // with the frozen reference constant shared with the normalization (see stepBaseCouplingConstants).
-  const std::vector<const BendPotential *> sibling_bends = collectSiblingBends(intra, currentBead, nextBeads);
-  const Potentials::IntraMolecularPotentials base_coupling_terms = splitUnsampledStepTerms(step).baseCoupling;
-  const bool has_coupling = !sibling_bends.empty() || hasUnsampledTerms(base_coupling_terms);
-  const BaseCouplingConstants coupling_constants =
-      has_coupling ? stepBaseCouplingConstants(beta, component, step, sibling_bends, base_coupling_terms)
-                   : BaseCouplingConstants{0.0, 0.0};
-
-  // Declared chiral centers fully determined by this step: centered on the current bead, with every
-  // neighbor either the previous bead or grown here.
-  std::vector<const ChiralCenter *> chiral_centers{};
-  for (const ChiralCenter &center : component.intraMolecularPotentials.chiralCenters)
-  {
-    if (center.ids[0] != currentBead) continue;
-    bool determined = true;
-    for (std::size_t k = 1; k != 4; ++k)
-    {
-      std::size_t id = center.ids[k];
-      determined =
-          determined && (id == previousBead || std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end());
-    }
-    if (determined) chiral_centers.push_back(&center);
-  }
+  const bool has_coupling = step.hasBaseCoupling;
+  const CBMC::BaseCouplingConstants coupling_constants =
+      has_coupling ? baseCouplingConstantsOf(beta, component, step) : CBMC::BaseCouplingConstants{0.0, 0.0};
 
   for (std::size_t attempt = 0; attempt != Constants::baseSamplerMaximumAttempts; ++attempt)
   {
     for (std::size_t i = 0; i != numberOfNextBeads; ++i)
     {
-      double bond_length =
-          bonds[i]
-              .transform([&](const BondPotential &b) { return b.generateBondLength(random, beta); })
-              .value_or(Constants::defaultBondLength);
-      double3 direction =
-          anchor_bends[i] != nullptr
-              ? random.randomVectorOnCone(last_bond_vector, anchor_bends[i]->generateBendAngle(random, beta))
-              : random.randomVectorOnUnitSphere();
+      const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
+      const std::optional<BendPotential> &anchor = step.nextBeadAnchorBends[i];
+      double bond_length = bond.has_value() ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
+      double3 direction = anchor.has_value()
+                              ? random.randomVectorOnCone(last_bond_vector, anchor->generateBendAngle(random, beta))
+                              : random.randomVectorOnUnitSphere();
       chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + bond_length * direction;
     }
 
     double clamp_weight = 1.0;
     if (has_coupling)
     {
-      const double coupling_energy = baseCouplingEnergy(sibling_bends, base_coupling_terms, chain_atoms);
+      const double coupling_energy = CBMC::baseCouplingEnergy(step, chain_atoms);
       const double boltzmann_excess = std::exp(-beta * (coupling_energy - coupling_constants.referenceEnergy));
       if (random.uniform() > boltzmann_excess) continue;
       clamp_weight = std::max(1.0, boltzmann_excess);
     }
 
     bool parity_ok = true;
-    for (const ChiralCenter *center : chiral_centers)
+    for (const ChiralCenter &center : step.determinedChiralCenters)
     {
-      double reference_sign = center->type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
-      parity_ok = parity_ok && (reference_sign * chiralSignedVolume(center->ids, chain_atoms) > 0.0);
+      double reference_sign = center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
+      parity_ok = parity_ok && (reference_sign * chiralSignedVolume(center.ids, chain_atoms) > 0.0);
     }
     if (!parity_ok) continue;
 
@@ -748,15 +257,11 @@ static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, c
 // The base-sampler normalization of a plan: for each flexible attach step, the bead densities
 // r^2 exp(-beta u_bond) and sin(theta) exp(-beta u_anchor) (uniform azimuth) integrate to the
 // product of the potentials' one-dimensional normalizations, the coupling rejection (sibling bends
-// plus base-routed unsampled terms) multiplies in <a> e^{-beta u_ref} (see
-// stepBaseCouplingConstants), and each fully determined chiral center restricts the base to a
-// sector of probability exactly one half. See the interface documentation for why reptation needs
-// this.
+// plus base-routed unsampled terms) multiplies in <a> e^{-beta u_ref} (see BaseCouplingConstants),
+// and each fully determined chiral center restricts the base to a sector of probability exactly one
+// half. See the interface documentation for why reptation needs this.
 // ---------------------------------------------------------------------------------------------------
-bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step)
-{
-  return step.kind == GrowStep::Kind::AttachFragment && !step.rigidBody && step.previousBead.has_value();
-}
+bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step) { return step.flexibleAttach; }
 
 double CBMC::logBaseSamplerNormalization(double beta, const Component &component,
                                          const std::vector<CBMC::GrowStep> &plan)
@@ -768,45 +273,27 @@ double CBMC::logBaseSamplerNormalization(double beta, const Component &component
     // Rigid-body and ring-closure steps keep internal-MC samplers without a closed-form
     // normalization; reptation enforces congruent end plans for units containing them, so their
     // (equal) factors cancel and are skipped here. Seed steps do not occur in partial plans.
-    if (step.rigidBody || step.kind == CBMC::GrowStep::Kind::CloseRing || !step.previousBead.has_value()) continue;
+    if (!step.flexibleAttach) continue;
 
-    const std::size_t previousBead = step.previousBead.value();
-    const std::size_t currentBead = step.currentBead;
-
-    for (std::size_t nextBead : step.nextBeads)
+    for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
     {
-      const std::optional<BondPotential> bond = step.intra.findBondPotential(currentBead, nextBead);
+      const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
       // A bond without potential is placed at the fixed default length: r^2 dr integrates to r^2.
       logNormalization += bond.has_value() ? bond->logBoltzmannVolumeNormalization(beta)
                                            : 2.0 * std::log(Constants::defaultBondLength);
 
-      const BendPotential *anchorBend = findAnchorBend(step.intra, previousBead, currentBead, nextBead);
-      logNormalization += anchorBend != nullptr ? anchorBend->logBoltzmannConeNormalization(beta)
-                                                : std::log(4.0 * std::numbers::pi);  // uniform sphere
+      const std::optional<BendPotential> &anchorBend = step.nextBeadAnchorBends[i];
+      logNormalization += anchorBend.has_value() ? anchorBend->logBoltzmannConeNormalization(beta)
+                                                 : std::log(4.0 * std::numbers::pi);  // uniform sphere
     }
 
-    const std::vector<const BendPotential *> siblingBends =
-        collectSiblingBends(step.intra, currentBead, step.nextBeads);
-    const Potentials::IntraMolecularPotentials baseCouplingTerms = splitUnsampledStepTerms(step).baseCoupling;
-    if (!siblingBends.empty() || hasUnsampledTerms(baseCouplingTerms))
+    if (step.hasBaseCoupling)
     {
-      const BaseCouplingConstants constants =
-          stepBaseCouplingConstants(beta, component, step, siblingBends, baseCouplingTerms);
+      const BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
       logNormalization += constants.logMeanClampedBoltzmann - beta * constants.referenceEnergy;
     }
 
-    for (const ChiralCenter &center : component.intraMolecularPotentials.chiralCenters)
-    {
-      if (center.ids[0] != currentBead) continue;
-      bool determined = true;
-      for (std::size_t k = 1; k != 4; ++k)
-      {
-        std::size_t id = center.ids[k];
-        determined = determined && (id == previousBead ||
-                                    std::find(step.nextBeads.begin(), step.nextBeads.end(), id) != step.nextBeads.end());
-      }
-      if (determined) logNormalization += std::log(0.5);
-    }
+    logNormalization += static_cast<double>(step.determinedChiralCenters.size()) * std::log(0.5);
   }
 
   return logNormalization;
@@ -952,19 +439,6 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
 // fragments (e.g. a macrocycle of rigid rings linked by flexible bridges); those fragments are
 // moved as whole rigid units so their internal geometry stays exact.
 // ---------------------------------------------------------------------------------------------------
-static bool bendIsSpinVariantRing(const std::array<std::size_t, 3> &identifiers, std::optional<std::size_t> previousBead,
-                                  std::size_t currentBead, const std::vector<std::size_t> &nextBeads)
-{
-  for (std::size_t id : identifiers)
-  {
-    if (id == currentBead) continue;
-    if (previousBead.has_value() && id == previousBead.value()) continue;
-    if (std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end()) continue;
-    return true;
-  }
-  return false;
-}
-
 static std::vector<Atom> randomlyOrientRing(RandomNumber &random, const std::vector<Atom> &ringAtoms,
                                             double3 anchorPosition)
 {
@@ -976,10 +450,12 @@ static std::vector<Atom> randomlyOrientRing(RandomNumber &random, const std::vec
 
 static std::vector<Atom> generateRingConformation(RandomNumber &random, const ForceField &forceField, double beta,
                                                   const Component &component, const std::vector<Atom> &chainAtoms,
-                                                  std::optional<std::size_t> previousBead, std::size_t currentBead,
-                                                  const std::vector<std::size_t> &nextBeads,
-                                                  const Potentials::IntraMolecularPotentials &intra)
+                                                  const CBMC::GrowStep &step)
 {
+  const std::optional<std::size_t> previousBead = step.previousBead;
+  const std::size_t currentBead = step.currentBead;
+  const std::vector<std::size_t> &nextBeads = step.nextBeads;
+
   // Seed geometry: an independent, well-mixed ideal-gas conformation from the reservoir (so different
   // grows start from different ring puckers), or the reference geometry while the reservoir is still
   // being built. A reservoir member keeps the exact internal geometry of any rigid sub-fragment, so
@@ -1091,10 +567,10 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, const Fo
   // no energy, so a free Cartesian displacement of a ring atom would stretch it with no penalty and be
   // accepted. Any move of a flexible ring atom is therefore built as a rotation about its fixed
   // neighbour(s), which preserves those bond lengths exactly (a rotation about an axis through a point
-  // preserves the distance to it). 'intra.bonds' only involves atoms placed in this step, all of which
-  // have positions, so every listed endpoint is usable as a pivot.
+  // preserves the distance to it). 'step.intra.bonds' only involves atoms placed in this step, all of
+  // which have positions, so every listed endpoint is usable as a pivot.
   std::vector<std::vector<std::size_t>> fixedNeighbors(chain_atoms.size());
-  for (const BondPotential &bond : intra.bonds)
+  for (const BondPotential &bond : step.intra.bonds)
   {
     if (bond.type != BondType::Fixed) continue;
     fixedNeighbors[bond.identifiers[0]].push_back(bond.identifiers[1]);
@@ -1142,16 +618,9 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, const Fo
     }
   }
 
-  Potentials::IntraMolecularPotentials baseIntra{};
-  baseIntra.bonds = intra.bonds;
-  for (const BendPotential &bend : intra.bends)
-  {
-    if (!bendIsSpinVariantRing(bend.identifiers, previousBead, currentBead, nextBeads)) baseIntra.bends.push_back(bend);
-  }
-  for (const TorsionPotential &torsion : intra.torsions)
-  {
-    if (!isSpinVariantRingTorsion(torsion.identifiers, currentBead, nextBeads)) baseIntra.torsions.push_back(torsion);
-  }
+  // The bonded terms the internal MC samples (bonds, spin-invariant bends and torsions), precomputed
+  // in the plan; the spin-variant terms are weighted in the torsion selection.
+  const Potentials::IntraMolecularPotentials &baseIntra = step.ringInternalPotentials;
 
   auto baseEnergy = [&](std::vector<Atom> &atoms)
   {
@@ -1301,8 +770,7 @@ static FlexibleBase sampleBaseConformation(RandomNumber &random, const ForceFiel
 {
   if (step.kind == CBMC::GrowStep::Kind::CloseRing)
   {
-    return {generateRingConformation(random, forceField, beta, component, chainAtoms, step.previousBead,
-                                     step.currentBead, step.nextBeads, step.intra),
+    return {generateRingConformation(random, forceField, beta, component, chainAtoms, step),
             1.0};
   }
   if (step.rigidBody)
@@ -1312,38 +780,6 @@ static FlexibleBase sampleBaseConformation(RandomNumber &random, const ForceFiel
             1.0};
   }
   return sampleExactFlexibleBase(random, beta, component, chainAtoms, step);
-}
-
-// The intramolecular potentials used in the torsion (spin) selection: the junction-crossing subset
-// for a ring-closure step, the full step potentials otherwise.
-// The potentials evaluated by the torsion-spin selection of a step: all torsions and bends (the
-// selection filters the spin-variant ones itself), plus -- for flexible attach steps -- the
-// spin-routed share of the unsampled terms (see splitUnsampledStepTerms). Ring and rigid-body steps
-// carry no unsampled terms here: theirs stay in the caller's post-selection factor.
-static Potentials::IntraMolecularPotentials torsionSelectionPotentials(const CBMC::GrowStep &step)
-{
-  if (step.kind == CBMC::GrowStep::Kind::CloseRing)
-  {
-    return ringSpinPotentials(step.intra, step.currentBead, step.nextBeads);
-  }
-
-  Potentials::IntraMolecularPotentials spin{};
-  spin.torsions = step.intra.torsions;
-  spin.bends = step.intra.bends;
-  if (!step.rigidBody && step.previousBead.has_value())
-  {
-    UnsampledStepTerms split = splitUnsampledStepTerms(step);
-    spin.ureyBradleys = std::move(split.spinTerms.ureyBradleys);
-    spin.inversionBends = std::move(split.spinTerms.inversionBends);
-    spin.outOfPlaneBends = std::move(split.spinTerms.outOfPlaneBends);
-    spin.improperTorsions = std::move(split.spinTerms.improperTorsions);
-    spin.bondBonds = std::move(split.spinTerms.bondBonds);
-    spin.bondBends = std::move(split.spinTerms.bondBends);
-    spin.bondTorsions = std::move(split.spinTerms.bondTorsions);
-    spin.bendBends = std::move(split.spinTerms.bendBends);
-    spin.bendTorsions = std::move(split.spinTerms.bendTorsions);
-  }
-  return spin;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -1373,8 +809,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
     {
       // Ring seed: sample one internal conformation and rigidly rotate it for the other directions.
       std::vector<Atom> base =
-          generateRingConformation(random, forceField, beta, component, chainAtoms,
-                                   std::nullopt, step.currentBead, step.nextBeads, step.intra);
+          generateRingConformation(random, forceField, beta, component, chainAtoms, step);
       trials[0] = {base, 1.0};
       for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
       {
@@ -1399,7 +834,6 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
   // Attach / ring-closure with a junction: one shared base conformation, one torsion spin per
   // direction about the junction bond. The base's clamp-excess weight is shared by every direction.
   FlexibleBase base = sampleBaseConformation(random, forceField, beta, component, chainAtoms, step);
-  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   double3 last_bond_vector =
       (chainAtoms[step.previousBead.value()].position - chainAtoms[step.currentBead].position).normalized();
 
@@ -1407,8 +841,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
   {
     TorsionOrientation torsion =
         selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, chainAtoms,
-                                 base.nextBeadAtoms, step.previousBead.value(), step.currentBead, step.nextBeads,
-                                 last_bond_vector, torsionIntra, false);
+                                 base.nextBeadAtoms, step, last_bond_vector, false);
     trials[i] = {torsion.positions, torsion.rosenbluthWeight * base.clampWeight};
   }
   return trials;
@@ -1464,17 +897,14 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
   // Attach / ring-closure with a junction. The old orientation is the shared torsion base for every
   // trial direction, pinned as torsion trial 0 of the first trial direction; its clamp-excess weight
   // (the old positions ARE the base) is shared by every direction, mirroring the grow side.
-  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   const double base_clamp_weight = flexibleBaseClampWeight(beta, component, step, chainAtoms);
   double3 last_bond_vector =
       (chainAtoms[step.previousBead.value()].position - chainAtoms[step.currentBead].position).normalized();
 
   for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
   {
-    TorsionOrientation torsion =
-        selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, chainAtoms, old_orientation,
-                                 step.previousBead.value(), step.currentBead, step.nextBeads, last_bond_vector,
-                                 torsionIntra, i == 0);
+    TorsionOrientation torsion = selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta,
+                                                          chainAtoms, old_orientation, step, last_bond_vector, i == 0);
     trials[i] = {i == 0 ? old_orientation : torsion.positions, torsion.rosenbluthWeight * base_clamp_weight};
   }
   return trials;
@@ -1494,8 +924,7 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
     }
     if (step.kind == GrowStep::Kind::CloseRing)
     {
-      return {generateRingConformation(random, forceField, beta, component, contextAtoms,
-                                       std::nullopt, step.currentBead, step.nextBeads, step.intra),
+      return {generateRingConformation(random, forceField, beta, component, contextAtoms, step),
               1.0};
     }
     const BondPotential *bond = step.intra.bonds.empty() ? nullptr : &step.intra.bonds.front();
@@ -1514,11 +943,9 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
   if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
-  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   TorsionOrientation torsion =
       selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, contextAtoms,
-                               base.nextBeadAtoms, step.previousBead.value(), step.currentBead, step.nextBeads,
-                               last_bond_vector, torsionIntra, false);
+                               base.nextBeadAtoms, step, last_bond_vector, false);
   return {torsion.positions, torsion.rosenbluthWeight * base.clampWeight};
 }
 
@@ -1531,14 +958,11 @@ double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const ForceFiel
   std::vector<Atom> old_orientation(step.nextBeads.size());
   for (std::size_t k = 0; k != step.nextBeads.size(); ++k) old_orientation[k] = oldAtoms[step.nextBeads[k]];
 
-  Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   const double base_clamp_weight = flexibleBaseClampWeight(beta, component, step, oldAtoms);
   double3 last_bond_vector =
       (oldAtoms[step.previousBead.value()].position - oldAtoms[step.currentBead].position).normalized();
 
-  TorsionOrientation torsion =
-      selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, oldAtoms, old_orientation,
-                               step.previousBead.value(), step.currentBead, step.nextBeads, last_bond_vector,
-                               torsionIntra, true);
+  TorsionOrientation torsion = selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta,
+                                                        oldAtoms, old_orientation, step, last_bond_vector, true);
   return torsion.rosenbluthWeight * base_clamp_weight;
 }

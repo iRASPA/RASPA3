@@ -43,8 +43,9 @@ struct RecoilContext
   std::size_t numberOfTrialDirections;  // k
   std::size_t recoilLength;             // l
   const std::vector<Step> &steps;
-  // Per-step openness reference energy (see 'openProbability' below).
-  std::vector<double> referenceStepEnergies{};
+  // Per-step openness reference energy (see 'openProbability' below); cached per plan by the
+  // component, alongside the plan itself.
+  const std::vector<double> &referenceStepEnergies;
 };
 
 // The open/closed test of recoil growth is an absolute Boltzmann filter, and the weight divides by the
@@ -62,35 +63,9 @@ struct RecoilContext
 // per-step minimum would be the floor of the strain distribution: typical good placements sit above it,
 // each step then tests open with probability well below one, and the compounded attrition over the
 // hundreds of steps of a polymer aborts essentially every grow.) For an unstrained chain the reference
-// is ~0 and the standard test is recovered; no per-molecule tuning is needed.
-static std::vector<double> computeReferenceStepEnergies(const Component &component, const std::vector<Step> &steps)
-{
-  std::vector<double> reference(steps.size());
-  for (std::size_t seg = 0; seg != steps.size(); ++seg)
-  {
-    double referenceEnergy;
-    if (component.recoilReferenceConformations.empty())
-    {
-      // No reference conformations built (e.g. a unit test constructing the context directly): fall
-      // back to the component's declared geometry.
-      referenceEnergy =
-          steps[seg].intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(component.atoms).potentialEnergy();
-    }
-    else
-    {
-      referenceEnergy = 0.0;
-      for (const std::vector<Atom> &conformation : component.recoilReferenceConformations)
-      {
-        referenceEnergy = std::max(
-            referenceEnergy,
-            steps[seg].intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(conformation).potentialEnergy());
-      }
-    }
-    reference[seg] = std::max(0.0, referenceEnergy);
-  }
-  return reference;
-}
-
+// is ~0 and the standard test is recovered; no per-molecule tuning is needed. The reference is a pure
+// function of the plan and the reference conformations, so the component computes and caches it per
+// plan ('Component::recoilReferenceStepEnergies').
 static double openProbability(const RecoilContext &ctx, std::size_t seg, double potentialEnergy)
 {
   return std::min(1.0, std::exp(-ctx.env.beta * (potentialEnergy - ctx.referenceStepEnergies[seg])));
@@ -238,7 +213,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
                     steps,
-                    computeReferenceStepEnergies(component, steps)};
+                    component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<GrowRecord> records(ctx.steps.size());
@@ -325,7 +300,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
                     steps,
-                    computeReferenceStepEnergies(component, steps)};
+                    component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
 
   std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
 

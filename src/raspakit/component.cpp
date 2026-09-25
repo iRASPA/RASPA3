@@ -51,6 +51,8 @@ import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
 import chiral_center;
+import cbmc_growth_plan;
+import cbmc_base_coupling;
 import vdwparameters;
 import json;
 import blocking_pockets;
@@ -560,8 +562,10 @@ std::vector<std::vector<std::size_t>> Component::readRigidBodies(
 
 void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &rigidBodies)
 {
-  // The topology changes, so any cached growth plans are stale.
+  // The topology changes, so any cached growth plans and the data derived from them are stale.
   growthPlanCache.clear();
+  baseCouplingConstantsMemo.clear();
+  recoilReferenceStepEnergiesCache.clear();
 
   std::size_t numberOfBeads = definedAtoms.size();
 
@@ -608,8 +612,62 @@ const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::
              .emplace(beadsAlreadyPlaced, CBMC::buildGrowthPlan(connectivityTable, fragmentGraph,
                                                                 intraMolecularPotentials, beadsAlreadyPlaced))
              .first;
+    if (growthPlanBeta.has_value())
+    {
+      CBMC::prepareBaseCouplingConstants(growthPlanBeta.value(), atoms.size(), it->second, baseCouplingConstantsMemo);
+    }
   }
   return it->second;
+}
+
+void Component::prepareGrowthPlans(double beta) const
+{
+  if (growthPlanBeta.has_value() && growthPlanBeta.value() == beta) return;
+
+  growthPlanBeta = beta;
+  baseCouplingConstantsMemo.clear();
+  for (auto &[beadsAlreadyPlaced, plan] : growthPlanCache)
+  {
+    CBMC::prepareBaseCouplingConstants(beta, atoms.size(), plan, baseCouplingConstantsMemo);
+  }
+}
+
+void Component::setRecoilReferenceConformations(std::vector<std::vector<Atom>> conformations)
+{
+  recoilReferenceConformations = std::move(conformations);
+  recoilReferenceStepEnergiesCache.clear();
+}
+
+const std::vector<double> &Component::recoilReferenceStepEnergies(
+    const std::vector<std::size_t> &beadsAlreadyPlaced) const
+{
+  auto it = recoilReferenceStepEnergiesCache.find(beadsAlreadyPlaced);
+  if (it != recoilReferenceStepEnergiesCache.end()) return it->second;
+
+  const std::vector<CBMC::GrowStep> &plan = growthPlan(beadsAlreadyPlaced);
+  std::vector<double> reference(plan.size());
+  for (std::size_t seg = 0; seg != plan.size(); ++seg)
+  {
+    const Potentials::IntraMolecularPotentials &intra = plan[seg].intra;
+    double referenceEnergy = 0.0;
+    if (recoilReferenceConformations.empty())
+    {
+      // No reference conformations built: fall back to the component's declared geometry.
+      referenceEnergy = intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(atoms).potentialEnergy();
+    }
+    else
+    {
+      // The MAXIMUM over the equilibrated conformations: any strain a valid chain exhibits at this
+      // step is acceptable there (see the recoil-growth openness test for the rationale).
+      for (const std::vector<Atom> &conformation : recoilReferenceConformations)
+      {
+        referenceEnergy = std::max(
+            referenceEnergy, intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(conformation).potentialEnergy());
+      }
+    }
+    reference[seg] = std::max(0.0, referenceEnergy);
+  }
+  return recoilReferenceStepEnergiesCache.emplace(beadsAlreadyPlaced, std::move(reference)).first->second;
 }
 
 const std::vector<Component::PivotBond> &Component::pivotBonds() const

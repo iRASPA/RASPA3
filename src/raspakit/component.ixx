@@ -281,6 +281,16 @@ export struct Component
   // Derived data: rebuilt on demand, never serialized. Marked 'mutable' so retraces on a
   // 'const Component&' can populate it.
   mutable std::map<std::vector<std::size_t>, std::vector<CBMC::GrowStep>> growthPlanCache{};
+  // The inverse temperature the cached plans' base-coupling constants were prepared for (see
+  // 'prepareGrowthPlans'); nullopt until the system prepares the component. The memo shares one
+  // frozen estimate among congruent steps of all plans of this component. Derived data, not
+  // serialized: a restart re-prepares at setup.
+  mutable std::optional<double> growthPlanBeta{};
+  mutable std::map<std::string, CBMC::BaseCouplingConstants> baseCouplingConstantsMemo{};
+  // Per-plan recoil-growth openness reference (see 'recoilReferenceStepEnergies'), keyed like the
+  // plan cache. Derived from 'recoilReferenceConformations' and the plan; dropped when either
+  // changes. Not serialized.
+  mutable std::map<std::vector<std::size_t>, std::vector<double>> recoilReferenceStepEnergiesCache{};
 
   /// A valid pivot axis of the molecule together with the atoms that rotate about it. The bond is
   /// not part of a ring, not interior to a rigid fragment, and the rotated set (the smaller of the
@@ -589,9 +599,40 @@ export struct Component
    *
    * The plan is built once per distinct placed set and reused afterwards; grow and retrace of the
    * same move obtain the identical plan, as required for detailed balance. The returned reference
-   * stays valid for the lifetime of the component (the cache never erases entries).
+   * stays valid for the lifetime of the component (the cache never erases entries). When the
+   * component has been prepared for a temperature ('prepareGrowthPlans'), a plan built here is
+   * prepared as well, so every returned step carries its base-coupling constants.
    */
   const std::vector<CBMC::GrowStep> &growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
+
+  /**
+   * \brief Prepares the cached growth plans for inverse temperature 'beta': fills the frozen
+   * base-coupling constants of every flexible attach step (see 'CBMC::BaseCouplingConstants').
+   *
+   * Called by the system at setup and whenever a driver changes the system temperature; plans built
+   * later by 'growthPlan' are prepared on construction. The estimates are memoised per step signature
+   * in 'baseCouplingConstantsMemo' so congruent steps share one number (their factors then cancel
+   * exactly in the reptation acceptance). A no-op when already prepared for this 'beta'. Const
+   * because it only touches derived, mutable caches (retraces hold a 'const Component&').
+   */
+  void prepareGrowthPlans(double beta) const;
+
+  /**
+   * \brief Sets the recoil-growth openness reference conformations and drops the derived per-plan
+   * reference step energies (see 'recoilReferenceStepEnergies').
+   */
+  void setRecoilReferenceConformations(std::vector<std::vector<Atom>> conformations);
+
+  /**
+   * \brief The per-step openness reference energies of recoil growth for the plan starting from
+   * 'beadsAlreadyPlaced' (cached on the same key as the plan).
+   *
+   * Per step: the maximum over 'recoilReferenceConformations' of the step's intramolecular vdW plus
+   * Coulomb energy, floored at zero; with no reference conformations built (e.g. a unit test that
+   * constructs the context directly) the component's declared geometry is used instead. The returned
+   * reference stays valid for the lifetime of the component (the cache never erases entries).
+   */
+  const std::vector<double> &recoilReferenceStepEnergies(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
 
   /// Returns the valid pivot bonds of the molecule (see PivotBond); computed on first use and
   /// cached, since the topology of a component does not change during a simulation.

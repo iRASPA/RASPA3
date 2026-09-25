@@ -614,9 +614,18 @@ export struct System
    * (together with the ring conformer-hopping move) samples every ring conformer. The reservoir seeds
    * the internal MC only; it does not enter any Rosenbluth weight. Built once at the system temperature
    * with a fixed local RNG so it does not perturb the simulation's random stream; a temperature change
-   * (e.g. parallel tempering) would require rebuilding it.
+   * (e.g. parallel tempering) would require rebuilding it. Because drivers that change the temperature
+   * call this to rebuild, it first re-prepares the growth plans for the current 'beta'
+   * (prepareGrowthPlans).
    */
   void buildConformationReservoirs();
+
+  /**
+   * \brief Prepares every component's cached CBMC growth plans for the system's current 'beta'
+   * (Component::prepareGrowthPlans): fills the frozen base-coupling constants of the flexible attach
+   * steps. Must run before the first grow, and again after any change of the temperature.
+   */
+  void prepareGrowthPlans();
 
   /**
    * \brief Fills each flexible component's recoil-growth openness reference conformations.

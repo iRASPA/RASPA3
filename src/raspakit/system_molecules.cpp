@@ -721,8 +721,21 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   return scratchAtoms;
 }
 
+void System::prepareGrowthPlans()
+{
+  for (Component& component : components)
+  {
+    component.prepareGrowthPlans(beta);
+  }
+}
+
 void System::buildConformationReservoirs()
 {
+  // The reservoirs are Boltzmann samples at the current temperature, and so are the base-coupling
+  // constants of the growth plans that grow them: bring those up to date first (a no-op when the
+  // temperature is unchanged).
+  prepareGrowthPlans();
+
   // Number of independent seed conformations kept per component. A few hundred is enough to cover the
   // ring conformers and decorrelate successive grows; each is a cheap isolated-molecule regrow, so the
   // whole build is well under a second even for the largest adsorbates and is a one-time cost.
@@ -806,7 +819,7 @@ void System::buildRecoilReferenceConformations()
       conformations.push_back(equilibratedIdealGasConformation(random, componentId));
     }
     forceField.useRecoilGrowth = recoilGrowth;
-    component.recoilReferenceConformations = std::move(conformations);
+    component.setRecoilReferenceConformations(std::move(conformations));
   }
 }
 

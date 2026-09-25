@@ -208,6 +208,10 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   // initial configuration is grown through the same refusal as every move after it.
   computeAutomaticBlockingPockets();
 
+  // The CBMC growth plans carry temperature-dependent constants (the frozen base-coupling estimates);
+  // prepare them for the system temperature before the first grow.
+  prepareGrowthPlans();
+
   createInitialMolecules(initialpositions);
   initializeFixedLambdaFractionalMolecules();
   computeTailCorrectionCounts();
